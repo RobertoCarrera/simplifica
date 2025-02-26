@@ -1,0 +1,88 @@
+<div class="cointainer-fluid">
+    <div class="row vh-100 p-2 m-0">
+      <div class="col-2 h-100 p-0 m-0 d-flex flex-column align-items-start justify-content-between shadow-lg rounded" id="menu-principal" [class.shrink] = "isShrink">
+        <ul class="list-unstyled w-100 p-2">
+          <i class="bi toggle" 
+            [ngClass]="{'bi-caret-left-fill': !isShrink, 'bi-caret-right-fill': isShrink}"
+            (click) = "toggleMenu()">
+          </i>
+          <li (click) = "activeElement(element = 1)"
+          [ngClass]="{'elemento-actual-menu': element === 1}">
+            <a routerLink="inicio">
+                <i class="bi bi-house menu-dashboard"></i>
+                <span>Inicio</span>
+            </a>
+          </li>
+          <li (click) = "activeElement(element = 2)"
+          [ngClass]="{'elemento-actual-menu': element === 2}">
+            <a routerLink="servicios">
+                <i class="bi bi-ticket"></i>
+                <span>Servicios</span>
+            </a>
+          </li>
+          <li (click) = "activeElement(element = 3)"
+          [ngClass]="{'elemento-actual-menu': element === 3}">
+            <a routerLink="taller">
+                <i class="bi bi-person-raised-hand"></i>
+                <span>Taller</span>
+            </a>
+          </li>
+          <li (click) = "activeElement(element = 4)"
+          [ngClass]="{'elemento-actual-menu': element === 4}">
+            <a routerLink="presupuestos">
+                <i class="bi bi-file-spreadsheet"></i>
+                <span>Presupuestos</span>
+            </a>
+          </li>
+          <li (click) = "activeElement(element = 5)"
+          [ngClass]="{'elemento-actual-menu': element === 5}">
+            <a routerLink="material">
+                <i class="bi bi-wrench-adjustable-circle"></i>
+                <span>Material</span>
+            </a>
+          </li>
+          <li (click) = "activeElement(element = 6)"
+          [ngClass]="{'elemento-actual-menu': element === 6}">
+            <a routerLink="clientes">
+                <i class="bi bi-person-fill"></i>
+                <span>Clientes</span>
+            </a>
+          </li>
+          <li (click) = "activeElement(element = 7)"
+          [ngClass]="{'elemento-actual-menu': element === 7}">
+            <a routerLink="facturas">
+                <i class="bi bi-file-pdf"></i>
+                <span>Facturas</span>
+            </a>
+          </li>
+          <li (click) = "activeElement(element = 8)"
+          [ngClass]="{'elemento-actual-menu': element === 8}">
+            <a routerLink="ventas">
+                <i class="bi bi-graph-up-arrow"></i>
+                <span>Ventas</span>
+            </a>
+          </li>
+        </ul>
+        <ul class="list-unstyled w-100 p-2">
+          <li>
+            <a routerLink="configuracion">
+              <i class="bi bi-gear"></i>
+              <span>Configuración</span>
+            </a>
+          </li>
+          <li>
+            <a routerLink="mi-perfil">
+              <i class="bi bi-info-square"></i>
+              <span>Mi Perfil</span>
+            </a>
+          </li>
+          <li>
+            <a routerLink="login">
+              <i class="bi bi-door-closed"></i>
+              <span>Cerrar Sesión</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
