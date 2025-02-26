@@ -5,90 +5,90 @@
           <i class="bi toggle" 
             [ngClass]="{'bi-caret-left-fill': !isShrink, 'bi-caret-right-fill': isShrink}"
             (click) = "toggleMenu()">
-          </i>          
-          <li (click) = "activeElement(element = 1)"
+          </i>
+          <li (click) = "activeElement(1)"
           [ngClass]="{'elemento-actual-menu': element === 1}">
             <a routerLink="inicio">
-                <i class="bi bi-house"
-                data-bs-toggle="tooltip" 
-                data-bs-placement="right" 
+                <i class="bi bi-house menu-dashboard"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
                 data-bs-title="Inicio"
                 data-bs-custom-class="bg-tooltip"></i>
                 <span>Inicio</span>
             </a>
-          </li>          
-          <li (click) = "activeElement(element = 2)"
+          </li>
+          <li (click) = "activeElement(2)"
           [ngClass]="{'elemento-actual-menu': element === 2}">
             <a routerLink="servicios">
                 <i class="bi bi-ticket"
-                data-bs-toggle="tooltip" 
-                data-bs-placement="right" 
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
                 data-bs-title="Servicios"
                 data-bs-custom-class="bg-tooltip"></i>
                 <span>Servicios</span>
             </a>
           </li>
-          <li (click) = "activeElement(element = 3)"
+          <li (click) = "activeElement(3)"
           [ngClass]="{'elemento-actual-menu': element === 3}">
             <a routerLink="taller">
                 <i class="bi bi-person-raised-hand"
-                data-bs-toggle="tooltip" 
-                data-bs-placement="right" 
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
                 data-bs-title="Taller"
                 data-bs-custom-class="bg-tooltip"></i>
                 <span>Taller</span>
             </a>
           </li>
-          <li (click) = "activeElement(element = 4)"
+          <li (click) = "activeElement(4)"
           [ngClass]="{'elemento-actual-menu': element === 4}">
             <a routerLink="presupuestos">
                 <i class="bi bi-file-spreadsheet"
-                data-bs-toggle="tooltip" 
-                data-bs-placement="right" 
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
                 data-bs-title="Presupuestos"
                 data-bs-custom-class="bg-tooltip"></i>
                 <span>Presupuestos</span>
             </a>
           </li>
-          <li (click) = "activeElement(element = 5)"
+          <li (click) = "activeElement(5)"
           [ngClass]="{'elemento-actual-menu': element === 5}">
             <a routerLink="material">
                 <i class="bi bi-wrench-adjustable-circle"
-                data-bs-toggle="tooltip" 
-                data-bs-placement="right" 
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
                 data-bs-title="Material"
                 data-bs-custom-class="bg-tooltip"></i>
                 <span>Material</span>
             </a>
           </li>
-          <li (click) = "activeElement(element = 6)"
+          <li (click) = "activeElement(6)"
           [ngClass]="{'elemento-actual-menu': element === 6}">
             <a routerLink="clientes">
                 <i class="bi bi-person-fill"
-                data-bs-toggle="tooltip" 
-                data-bs-placement="right" 
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
                 data-bs-title="Clientes"
                 data-bs-custom-class="bg-tooltip"></i>
                 <span>Clientes</span>
             </a>
           </li>
-          <li (click) = "activeElement(element = 7)"
+          <li (click) = "activeElement(7)"
           [ngClass]="{'elemento-actual-menu': element === 7}">
             <a routerLink="facturas">
                 <i class="bi bi-file-pdf"
-                data-bs-toggle="tooltip" 
-                data-bs-placement="right" 
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
                 data-bs-title="Facturas"
                 data-bs-custom-class="bg-tooltip"></i>
                 <span>Facturas</span>
             </a>
           </li>
-          <li (click) = "activeElement(element = 8)"
+          <li (click) = "activeElement(8)"
           [ngClass]="{'elemento-actual-menu': element === 8}">
             <a routerLink="ventas">
                 <i class="bi bi-graph-up-arrow"
-                data-bs-toggle="tooltip" 
-                data-bs-placement="right" 
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
                 data-bs-title="Ventas"
                 data-bs-custom-class="bg-tooltip"></i>
                 <span>Ventas</span>
@@ -99,8 +99,8 @@
           <li>
             <a routerLink="configuracion">
               <i class="bi bi-gear"
-              data-bs-toggle="tooltip" 
-              data-bs-placement="right" 
+              data-bs-toggle="tooltip"
+              data-bs-placement="right"
               data-bs-title="Configuración"
               data-bs-custom-class="bg-tooltip"></i>
               <span>Configuración</span>
@@ -109,8 +109,8 @@
           <li>
             <a routerLink="mi-perfil">
               <i class="bi bi-info-square"
-              data-bs-toggle="tooltip" 
-              data-bs-placement="right" 
+              data-bs-toggle="tooltip"
+              data-bs-placement="right"
               data-bs-title="Mi Perfil"
               data-bs-custom-class="bg-tooltip"></i>
               <span>Mi Perfil</span>
@@ -119,8 +119,8 @@
           <li>
             <a routerLink="login">
               <i class="bi bi-door-closed"
-              data-bs-toggle="tooltip" 
-              data-bs-placement="right" 
+              data-bs-toggle="tooltip"
+              data-bs-placement="right"
               data-bs-title="Cerrar Sesión"
               data-bs-custom-class="bg-tooltip"></i>
               <span>Cerrar Sesión</span>

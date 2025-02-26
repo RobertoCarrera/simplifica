@@ -3,8 +3,13 @@ $secondary-color: #38369A;
 $font-color: #141414;
 $terciary-color: #957D95;
 $bg-color: #EDE6E3;
-.tooltip .tooltip-inner {
-    background-color: $secondary-color;
-  }.tooltip .tooltip-arrow::before {
-    border-right-color: $secondary-color !important; // Para tooltips a la derecha
+
+
+.bg-tooltip .tooltip-inner {
+    background-color: $secondary-color !important;
+    color: $bg-color !important; /* Asegúrate de que $bg-color esté definido en styles.scss */
+  }
+  
+  .bg-tooltip .tooltip-arrow::before {
+    border-right-color: $secondary-color !important;
   }
