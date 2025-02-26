@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 
 import { SidebarComponent } from './utils/sidebar/sidebar.component';
@@ -7,7 +7,7 @@ import { SidebarService } from './services/sidebar.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, SidebarComponent, CommonModule],
+  imports: [RouterOutlet, RouterModule, SidebarComponent, CommonModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })

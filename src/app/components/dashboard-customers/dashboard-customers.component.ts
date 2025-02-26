@@ -16,75 +16,75 @@ import { FormsModule } from '@angular/forms';
 })
 export class DashboardCustomersComponent implements OnInit{
 
-  clients: Customer[] = [];
+  customers: Customer[] = [];
   searchCustomer: string = '';
   isShrink = false;
   modalCustomer = false;
-  clientSeleccionado: Customer = {} as Customer;
+  selectedCustomer: Customer = {} as Customer;
   isModalVisible: boolean = false;
-  customerEnEdicion: Customer | null = null;
-  cambioEdicionCustomer: boolean = false;
+  customerInEdition: Customer | null = null;
+  changeEditionCustomer: boolean = false;
   currentPage: number = 1;
   totalPages: number = 0;
 
-  constructor(private clientService: CustomersService){}
+  constructor(private customerService: CustomersService){}
   
   ngOnInit(): void {
-      this.clientService.getCustomers().subscribe(clients => {
-        this.clients = clients;
+      this.customerService.getCustomers().subscribe(customers => {
+        this.customers = customers;
       });
   };
 
   filterCustomers(): Customer[]{
     if(!this.searchCustomer.trim()){
-      return this.clients;
+      return this.customers;
     }
 
     const searchTerm = this.searchCustomer.toLowerCase().trim();
 
-    const filtered = this.clients.filter(client => {
+    const filtered = this.customers.filter(customer => {
       return (
-        client.nombre.toLowerCase().includes(searchTerm) ||
-        client.apellidos.toLowerCase().includes(searchTerm) ||
-        client.direccion.nombre.toLowerCase().includes(searchTerm) ||
-        client.telefono.includes(searchTerm) ||
-        client.email.toLowerCase().includes(searchTerm)
+        customer.nombre.toLowerCase().includes(searchTerm) ||
+        customer.apellidos.toLowerCase().includes(searchTerm) ||
+        customer.direccion.nombre.toLowerCase().includes(searchTerm) ||
+        customer.telefono.includes(searchTerm) ||
+        customer.email.toLowerCase().includes(searchTerm)
       );
     });
     return filtered;
   }
 
-  verCustomer(customer: Customer): void {
-    this.clientSeleccionado = customer;
+  seeCustomer(customer: Customer): void {
+    this.selectedCustomer = customer;
     this.showModal();
   }
 
-  editandoCustomer(customer: Customer){
-    this.customerEnEdicion = customer;
-    this.cambioEdicionCustomer = true;
+  editingCustomer(customer: Customer){
+    this.customerInEdition = customer;
+    this.changeEditionCustomer = true;
   }
 
-  isEditandoCustomer(customer: Customer): boolean{
-    return this.customerEnEdicion === customer;
+  isEditingCustomer(customer: Customer): boolean{
+    return this.customerInEdition === customer;
   }
 
-  enviarEdicion(client: Customer, nombre: HTMLElement, apellidos: HTMLElement, direccion: HTMLElement, telefono: HTMLElement, email: HTMLElement) {
+  sendEdition(customer: Customer, nombre: HTMLElement, apellidos: HTMLElement, direccion: HTMLElement, telefono: HTMLElement, email: HTMLElement) {
     
-    const customerActualizado: Customer = {
-      ...client,
+    const customerUpdated: Customer = {
+      ...customer,
       nombre: nombre.innerText,
       apellidos: apellidos.innerText,
       telefono: telefono.innerText,
       email: email.innerText
     };
 
-    if (this.customerEnEdicion) {
-      this.clientService.updateCustomer(client._id, customerActualizado).subscribe(
+    if (this.customerInEdition) {
+      this.customerService.updateCustomer(customer._id, customerUpdated).subscribe(
         response => {
-          console.log('Customer actualizado', response);
-          this.cancelarEdicion();
-          this.clientService.getCustomers().subscribe(clients => {
-            this.clients = clients;
+          console.log('Cliente actualizado', response);
+          this.cancelEdition();
+          this.customerService.getCustomers().subscribe(customers => {
+            this.customers = customers;
           });
         },
         error => {
@@ -94,19 +94,19 @@ export class DashboardCustomersComponent implements OnInit{
     }
   }
 
-  cancelarEdicion(){
-    this.customerEnEdicion = null;
-    this.cambioEdicionCustomer = false;
+  cancelEdition(){
+    this.customerInEdition = null;
+    this.changeEditionCustomer = false;
   }
 
-  eliminarCustomer(client: Customer){
+  removeCustomer(customer: Customer){
 
-    if(confirm(`¿Estás seguro de que deseas eliminar a ${client.nombre+' '+client.apellidos}?`)){
-      this.clientService.deleteCustomer(client._id).subscribe(() => {
-        this.clients = this.clients.filter(c => c._id !== client._id);
+    if(confirm(`¿Estás seguro de que deseas eliminar a ${customer.nombre+' '+customer.apellidos}?`)){
+      this.customerService.deleteCustomer(customer._id).subscribe(() => {
+        this.customers = this.customers.filter(c => c._id !== customer._id);
         alert('Customer eliminado exitosamente');
       }, error => {
-        alert('Error al eliminar a '+client.nombre+' '+client.apellidos);
+        alert('Error al eliminar a '+customer.nombre+' '+customer.apellidos);
       });
     }
   }

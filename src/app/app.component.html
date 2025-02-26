@@ -4,8 +4,8 @@
     <div class="col-12 p-0 d-flex overflow-hidden">
       <app-sidebar></app-sidebar>
       <div class="n-fullwidth" 
-           [ngClass]="sidebarService.isShrink() ? 'fullwidth' : ''">
-         <router-outlet></router-outlet>
+      [ngClass]="sidebarService.isShrink() ? 'fullwidth' : ''">
+        <router-outlet></router-outlet>
       </div>
     </div>
   </div>

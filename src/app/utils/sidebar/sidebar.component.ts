@@ -1,10 +1,12 @@
 import { Component, AfterViewInit, Renderer2, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { isPlatformBrowser } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { SidebarService } from '../../services/sidebar.service';
 
 @Component({
   selector: 'app-sidebar',
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss']
 })
@@ -14,9 +16,9 @@ export class SidebarComponent implements AfterViewInit {
   private tooltips: any[] = [];
 
   constructor(
+    private sidebarService: SidebarService,
     private renderer: Renderer2,
-    @Inject(PLATFORM_ID) private platformId: Object
-  ) {}
+    @Inject(PLATFORM_ID) private platformId: Object) {}
 
   ngAfterViewInit(): void {
     if (isPlatformBrowser(this.platformId)) {
@@ -26,6 +28,7 @@ export class SidebarComponent implements AfterViewInit {
 
   toggleMenu(): void {
     this.isShrink = !this.isShrink;
+    this.sidebarService.toggleSidebar(this.isShrink);
     if (isPlatformBrowser(this.platformId)) {
       this.updateTooltips();
     }
