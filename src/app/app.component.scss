@@ -1,0 +1,11 @@
+@use '../styles.scss' as styles;
+.bg-simplifica{
+    background-color: styles.$bg-color;
+}
+
+.n-fullwidth{
+    width: 87vw !important;
+}
+.fullwidth{
+    width: 95vw !important;
+}
