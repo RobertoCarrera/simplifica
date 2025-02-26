@@ -1,0 +1,59 @@
+<div class="container-fluid vh-100">
+    <div class="row h-100 p-2">
+        <div class="col-12 h-100 rounded p-1 overflow-hidden">
+            <div class="input-group mb-3" id="inputTablaCustomers">
+                <input [(ngModel)]="searchCustomer" type="text" id="buscadorCustomers" class="form-control w-75" placeholder="Realiza tus búsquedas aquí">
+            </div>
+            <table id="tablaEncabezados" class="table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Apellidos</th>
+                        <th>DNI</th>
+                        <th>Dirección</th>
+                        <th>Teléfono</th>
+                        <th>Email</th>
+                        <th><span>Acciones</span>
+                            <button class="bg-primary border-0 text-white ms-2 rounded">
+                                <i class="bi bi-person-fill-add" data-bs-toggle="modal" data-bs-target="#newCustomerModal"></i>
+                            </button>
+                        </th>
+                    </tr>
+                </thead>
+            </table>
+            <div class="h-100 w-100 table-responsive" id="containerTablaCustomers">
+                <table id="tablaCustomers" class="table table-striped">
+                    <tbody id="customersTablaBody">
+                        <tr *ngFor="let customer of filterCustomers()" class="customer" 
+                        (click)="verCustomer(customer)" 
+                        [ngClass]="{'editandoCustomer': isEditandoCustomer(customer)}">
+                            <td class="align-content-center" [contentEditable]="isEditandoCustomer(customer)" #nombre>{{customer.nombre}}</td>
+                            <td class="align-content-center" [contentEditable]="isEditandoCustomer(customer)" #apellidos>{{customer.apellidos}}</td>
+                            <td class="align-content-center" [contentEditable]="isEditandoCustomer(customer)" #apellidos>{{customer.dni}}</td>
+                            <td class="align-content-center" [contentEditable]="isEditandoCustomer(customer)" #direccion>{{customer.direccion}}</td>
+                            <td class="align-content-center" [contentEditable]="isEditandoCustomer(customer)" #telefono>{{customer.telefono}}</td>
+                            <td class="align-content-center" [contentEditable]="isEditandoCustomer(customer)" #email>{{customer.email}}</td>
+                            <td *ngIf="!cambioEdicionCustomer" class="d-flex align-items-center justify-content-center w-100">
+                                <button class="border-0 bg-warning" (click)="verCustomer(customer)">
+                                    <i class="bi bi-person-badge" data-bs-toggle="modal" data-bs-target="#profileModal"></i>
+                                </button>
+                                <!-- <app-modal-profile [client]="clientSeleccionado" (closeModalEvent)="closeModal()"></app-modal-profile> -->
+                                <button class="border-0 bg-success ms-2" (click)="editandoCustomer(customer)">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <button class="border-0 bg-danger ms-2">
+                                    <i class="bi bi-eraser-fill" (click)="eliminarCustomer(customer)"></i>
+                                </button>
+                            </td>
+                            <td *ngIf="cambioEdicionCustomer && isEditandoCustomer(customer)" class="d-flex align-items-center justify-content-center w-100">
+                                <button class="border-0 bg-success ms-2" (click)="enviarEdicion(customer, nombre, apellidos, direccion, telefono, email)"><i class="bi bi-check"></i></button>
+                                <button class="border-0 bg-danger ms-2" (click)="cancelarEdicion()"><i class="bi bi-x"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- <app-nuevo-customer-modal></app-nuevo-customer-modal> -->

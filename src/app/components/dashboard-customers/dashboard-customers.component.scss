@@ -1,0 +1,64 @@
+.cliente:hover td{
+    background-color: #F94F4F;
+    cursor: pointer;
+}
+
+.cliente:hover td:last-child{
+    background-color: transparent;
+    cursor: auto;
+}
+
+.cliente{
+    height: 6vh;
+}
+.cliente > td{
+    border: 0;
+}
+
+#inputTablaClientes{
+    height: 6%;
+}
+
+#containerTablaClientes{
+    scrollbar-width: none;
+}
+
+#clientesTablaBody{
+    overflow: auto !important;
+}
+
+#clientesTablaBody tr, #clientesTablaBody td{
+    height: 6vh !important;
+}
+#clientesTablaBody tr td:first-child, #tablaEncabezados thead tr th:first-child{
+
+    width: 15% !important;
+}
+#tablaClientes tbody tr td:nth-child(2), #tablaEncabezados thead tr th:nth-child(2){
+
+    width: 20% !important;
+}
+#clientesTablaBody tr td:nth-child(3), #tablaEncabezados thead tr th:nth-child(3){
+    width: 25%;
+}
+#clientesTablaBody tr td:nth-child(4), #tablaEncabezados thead tr th:nth-child(4){
+    width: 10%;
+}
+#clientesTablaBody tr td:nth-child(5), #tablaEncabezados thead tr th:nth-child(5){
+    width: 15%;
+}
+#tablaEncabezados thead tr th:last-child{
+    width: 15%;
+    text-align: center;
+}
+#clientesTablaBody tr td:last-child{
+    width: 15%;
+}
+
+.editandoCliente:hover td{
+    background-color: transparent;
+}
+
+.editandoCliente > td{
+    color: red;
+}
