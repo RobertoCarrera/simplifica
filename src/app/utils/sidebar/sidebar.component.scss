@@ -51,9 +51,8 @@
 #menu-principal .toggle{
 
     position: absolute;
-    top: 50%;
+    top: 45%;
     right: -12px;
-    transform: translateY(-50%);
     height: 35px;
     width: 35px;
     font-size: 1.2em;
@@ -110,3 +109,9 @@
 
     color: styles.$secondary-color !important;
 }
+
+.bg-tooltip .tooltip-inner {
+    background-color: styles.$secondary-color; // Asegúrate de que $secondary-color esté definido
+    color: #fff; // Color del texto
+  }
+  
