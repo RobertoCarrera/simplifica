@@ -51,17 +51,25 @@
 #menu-principal .toggle{
 
     position: absolute;
-    top: 2%;
-    right: 0px;
+    top: 50%;
+    right: -12px;
     transform: translateY(-50%);
     height: 35px;
     width: 35px;
     font-size: 1.2em;
-    border-radius: 0.25em;
+    border-radius: 0.3em;
     color: styles.$secondary-color;
+    background-color: styles.$primary-color;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
+    cursor: pointer;
+}
+
+#menu-principal .toggle:hover{
+
+    color: styles.$primary-color !important;
+    background-color: styles.$secondary-color !important;
 }
 
 #menu-principal li a:hover span{
