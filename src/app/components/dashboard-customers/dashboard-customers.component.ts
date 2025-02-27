@@ -3,13 +3,14 @@ import { CustomersService } from '../../services/customers.service';
 import { Customer } from '../../models/customer';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { BtnNewComponent } from "../btn-new/btn-new.component";
 // import { ModalProfileComponent } from '../modal-profile/modal-profile.component';
 // import { NuevoCustomerModalComponent } from '../nuevo-customer-modal/nuevo-customer-modal.component';
 
 @Component({
   selector: 'app-dashboard-customers',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BtnNewComponent],
   templateUrl: './dashboard-customers.component.html',
   styleUrl: './dashboard-customers.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

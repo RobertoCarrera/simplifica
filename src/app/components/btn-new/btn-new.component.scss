@@ -1,0 +1,55 @@
+@use '../../../styles.scss' as styles;
+.form-btn-cerrar{
+    height: 25px;
+    width: 25px;
+    background-color: styles.$primary-color;
+}
+
+.form-logo-cliente{
+    width: auto;
+    max-height: 50px;
+}
+
+.nuevo-servicio-container{
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.nuevo-servicio-modal{
+    background-color: styles.$bg-color !important;
+    color: styles.$font-color !important;
+    box-shadow: rgba(0, 0, 0, 0.07) 0px 1px 2px, rgba(0, 0, 0, 0.07) 0px 2px 4px, rgba(0, 0, 0, 0.07) 0px 4px 8px, rgba(0, 0, 0, 0.07) 0px 8px 16px, rgba(0, 0, 0, 0.07) 0px 16px 32px, rgba(0, 0, 0, 0.07) 0px 32px 64px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.nuevo-servicio-modal::-webkit-scrollbar{
+    width: 0;
+}
+
+.btn-new-item{
+    background-color: styles.$secondary-color;
+    color: styles.$bg-color;
+}
+
+.btns-nuevo-servicio{
+    max-width: 30%;
+    display: flex !important;
+    justify-content: center;
+}
+
+.btn-anadir-servicio{
+    max-width: 10%;
+}
+.type-person{
+    background-color: styles.$secondary-color;
+    color: styles.$bg-color;
+}
+
+.type-business{
+    background-color: styles.$primary-color;
+    color: styles.$font-color;
+}

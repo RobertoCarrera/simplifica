@@ -1,0 +1,76 @@
+<div class="col-2 p-0 position-absolute bottom-0 mb-3 ms-2 bg-transparent z-3"
+[ngClass]="{'d-none': this.creating === true}" >
+    <button class="btn w-75 btn-new-item"
+    [ngClass]="{'btn-success d-none': this.creating === true}" 
+    (click)="isCreating()">
+        <i class="bi bi-plus"></i> Nuevo {{itemType}}
+    </button>
+</div>
+<div [ngClass]="{'nuevo-servicio-modal overflow-hidden d-flex align-content-center justify-content-between z-3': this.creating === true}" 
+    class="col-4 nuevo-servicio-col position-absolute bottom-0 rounded p-2 ms-2 mb-3">
+    <div [ngClass]="{'nuevo-servicio-container h-100': this.creating === true}" 
+    class="row w-100 d-none">
+        <div class="div col-12">
+            <div class="row d-flex align-items-center justify-content-between">
+                <p class="h-100 w-75 m-0 p-0">{{itemType}} #{{this.totalItems+1}}</p>
+                <button class="form-btn-cerrar p-0 me-1 text-black rounded-1 border-0"
+                (click)= "isCreating()">
+                    <i class="bi bi-x-lg text-end p-0"></i>
+                </button>
+            </div>
+        </div>
+        <div class="div col-12" 
+        *ngIf="totalItems">
+            <div *ngIf="this.formStep === 1" class="row d-flex align-items-center justify-content-around p-2">
+                <div class="col-10 pb-5 pt-5">
+                    <h3>De tipo:</h3>
+                </div>
+                <div class="col-4 p-2">
+                    <button class="btn type-person w-100"
+                    (click)="customerType('person')">Persona física</button>
+                </div>
+                <div class="col-4 p-2">
+                    <button class="btn type-business w-100"
+                    (click)="customerType('business')">Empresa</button>
+                </div>
+            </div>
+            <div class="row d-flex align-items-center justify-content-around" *ngIf="this.formStep === 2 && this.personType === true">
+                <h3 class="w-75 m-0">Información de la persona</h3>
+                <img class="form-logo-cliente rounded-5 p-1" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="">
+            </div>
+            <div class="row d-flex align-items-center justify-content-around" *ngIf="this.formStep === 2 && this.businessType === true">
+                <h3 class="w-75 m-0">Información de la empresa</h3>
+                <img class="form-logo-cliente rounded-5 p-1" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="">
+            </div>
+        </div>
+        <div *ngIf="this.formStep >= 2" class="col-12">
+            <div class="row d-flex align-items-center justify-content-around">
+                <button class="btn btn-danger d-none"
+                [ngClass]="{'btns-nuevo-servicio': this.creating === true}" 
+                (click)="removeStep()">
+                    <div class="col-2">
+                        <i class="bi bi-x fs-5"></i>
+                    </div>
+                    <div class="col-10 align-content-center">
+                        <span *ngIf="this.formStep === 2">Cancelar</span>
+                        <span *ngIf="this.formStep > 2 ">Atrás</span>
+                    </div>
+                </button>
+                <button *ngIf="this.formStep === 3" class="btn btn-primary btn-anadir-servicio">
+                    <i class="bi bi-plus-circle-fill"></i>
+                </button>
+                <button class="btn btn-success d-none"
+                [ngClass]="{'btns-nuevo-servicio': this.creating === true}" 
+                (click)="addStep()">
+                    <div class="col-2">
+                        <i class="bi bi-check fs-5"></i> 
+                    </div>
+                    <div class="col-10 align-content-center">
+                        <span *ngIf="this.formStep >= 1 && this.formStep < 4">Siguiente</span>
+                        <span *ngIf="this.formStep === 4">Crear</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
