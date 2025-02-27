@@ -11,6 +11,7 @@
                         <th>Apellidos</th>
                         <th>DNI</th>
                         <th>Dirección</th>
+                        <th>Localidad</th>
                         <th>Teléfono</th>
                         <th>Email</th>
                         <th><span>Acciones</span>
@@ -27,12 +28,13 @@
                         <tr *ngFor="let customer of filterCustomers()" class="customer" 
                         (click)="seeCustomer(customer)" 
                         [ngClass]="{'editingCustomer': isEditingCustomer(customer)}">
-                            <td class="align-content-center h-100" [contentEditable]="isEditingCustomer(customer)" #nombre>{{customer.nombre}}</td>
-                            <td class="align-content-center h-100" [contentEditable]="isEditingCustomer(customer)" #apellidos>{{customer.apellidos}}</td>
-                            <td class="align-content-center h-100" [contentEditable]="isEditingCustomer(customer)" #dni>{{customer.dni}}</td>
-                            <td class="align-content-center h-100" [contentEditable]="isEditingCustomer(customer)" #direccion>{{customer.direccion.tipo_via}} {{customer.direccion.nombre}} {{customer.direccion.numero}}, {{customer.direccion.localidad.nombre}}, {{customer.direccion.localidad.CP}}</td>
-                            <td class="align-content-center h-100" [contentEditable]="isEditingCustomer(customer)" #telefono>{{customer.telefono}}</td>
-                            <td class="align-content-center h-100" [contentEditable]="isEditingCustomer(customer)" #email>{{customer.email}}</td>
+                            <td class="align-content-center" [contentEditable]="isEditingCustomer(customer)" #nombre>{{customer.nombre}}</td>
+                            <td class="align-content-center" [contentEditable]="isEditingCustomer(customer)" #apellidos>{{customer.apellidos}}</td>
+                            <td class="align-content-center" [contentEditable]="isEditingCustomer(customer)" #dni>{{customer.dni}}</td>
+                            <td class="align-content-center" [contentEditable]="isEditingCustomer(customer)" #direccion>{{customer.direccion.tipo_via}} {{customer.direccion.nombre}} {{customer.direccion.numero}}</td>
+                            <td class="align-content-center" [contentEditable]="isEditingCustomer(customer)" #localidad>{{customer.direccion.localidad.nombre}}, {{customer.direccion.localidad.CP}}</td>
+                            <td class="align-content-center" [contentEditable]="isEditingCustomer(customer)" #telefono>{{customer.telefono}}</td>
+                            <td class="align-content-center" [contentEditable]="isEditingCustomer(customer)" #email>{{customer.email}}</td>
                             <td *ngIf="!changeEditionCustomer" class="d-flex align-items-center justify-content-center w-100">
                                 <button class="border-0 bg-warning" (click)="seeCustomer(customer)">
                                     <i class="bi bi-person-badge" data-bs-toggle="modal" data-bs-target="#profileModal"></i>

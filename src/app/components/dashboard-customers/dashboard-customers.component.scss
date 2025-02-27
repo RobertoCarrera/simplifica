@@ -1,5 +1,9 @@
 @use '../../../styles.scss' as styles;
 
+#inputCustomersTable{
+    height: 6%;
+}
+
 #buscadorCustomers:focus{
     border-color: styles.$primary-color;
     box-shadow: 0 0 0 .25rem styles.$primary-color-25;
@@ -17,56 +21,46 @@
 .customer:hover td:last-child{
     cursor: auto;
 }
-
-.customer{
-    height: 5vh;
-    position: relative;
-}
 .customer > td{
     border: 0;
-}
-
-#inputCustomersTable{
-    height: 6%;
 }
 
 #containerCustomersTable{
     scrollbar-width: none;
 }
 
-#customersBodyTable{
-    overflow: auto !important;
-}
-
 #customersBodyTable tr, #customersBodyTable td{
-    height: 5vh !important;
+    height: 7vh;
 }
 #customersBodyTable tr td:first-child, #headersTable thead tr th:first-child{
 
-    width: 10% !important;
+    width: 8% !important;
 }
 #tablaCustomers tbody tr td:nth-child(2), #headersTable thead tr th:nth-child(2){
 
     width: 15% !important;
 }
 #customersBodyTable tr td:nth-child(3), #headersTable thead tr th:nth-child(3){
-    width: 10%;
+    width: 8%;
 }
 #customersBodyTable tr td:nth-child(4), #headersTable thead tr th:nth-child(4){
-    width: 30%;
+    width: 18%;
 }
 #customersBodyTable tr td:nth-child(5), #headersTable thead tr th:nth-child(5){
-    width: 10%;
+    width: 15%;
 }
 #customersBodyTable tr td:nth-child(6), #headersTable thead tr th:nth-child(6){
-    width: 10%;
+    width: 8%;
+}
+#customersBodyTable tr td:nth-child(7), #headersTable thead tr th:nth-child(7){
+    width: 13%;
+}
+#customersBodyTable tr td:last-child{
+    width: 15%;
 }
 #headersTable thead tr th:last-child{
     width: 15%;
     text-align: center;
-}
-#customersBodyTable tr td:last-child{
-    width: 10%;
 }
 
 .editingCustomer:hover td{
