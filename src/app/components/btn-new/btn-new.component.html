@@ -19,8 +19,7 @@
                 </button>
             </div>
         </div>
-        <div class="div col-12" 
-        *ngIf="totalItems">
+        <div class="div col-12" *ngIf="totalItems">
             <div *ngIf="this.formStep === 1" class="row d-flex align-items-center justify-content-around p-2">
                 <div class="col-10 pb-5 pt-5">
                     <h3>De tipo:</h3>
@@ -42,6 +41,12 @@
                 <h3 class="w-75 m-0">Información de la empresa</h3>
                 <img class="form-logo-cliente rounded-5 p-1" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="">
             </div>
+        </div>
+        <div>
+            <app-form-new-customer 
+            [formStep] = this.formStep
+            [creatingPerson] = this.personType
+            [creatingCompany] = this.businessType/>
         </div>
         <div *ngIf="this.formStep >= 2" class="col-12">
             <div class="row d-flex align-items-center justify-content-around">
@@ -66,8 +71,8 @@
                         <i class="bi bi-check fs-5"></i> 
                     </div>
                     <div class="col-10 align-content-center">
-                        <span *ngIf="this.formStep >= 1 && this.formStep < 4">Siguiente</span>
-                        <span *ngIf="this.formStep === 4">Crear</span>
+                        <span *ngIf="this.formStep >= 1 && this.formStep < maxSteps">Siguiente</span>
+                        <span *ngIf="this.formStep === maxSteps">Crear</span>
                     </div>
                 </button>
             </div>

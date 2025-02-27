@@ -3,7 +3,6 @@
 $inputCustomersTableHeight: 5%;
 $headersTableHeight: 4%;
 
-
 #inputCustomersTable{
     height: $inputCustomersTableHeight;
 }
@@ -21,6 +20,8 @@ $headersTableHeight: 4%;
 }
 #headersTable thead tr th{
     align-content: center;
+    // background-color: styles.$secondary-color;
+    // color: styles.$bg-color;
 }
 #containerCustomersTable{
     scrollbar-width: none;
@@ -56,7 +57,12 @@ $headersTableHeight: 4%;
 .customer > td{
     border: 0;
 }
-
+// .table-striped > tbody > tr:nth-of-type(even) > * {
+//     background-color: styles.$bg-color !important;
+// }
+// .table-striped > tbody > tr:nth-of-type(odd) > * {
+//     background-color: styles.$primary-color-25 !important;
+// }
 #customersBodyTable tr, #customersBodyTable td{
     height: 5vh;
 }
@@ -80,10 +86,6 @@ $headersTableHeight: 4%;
 #customersBodyTable tr td:nth-child(6), #headersTable thead tr th:nth-child(6){
     width: 10%;
 }
-#customersBodyTable tr td:last-child{
+#customersBodyTable tr td:last-child, #headersTable thead tr th:last-child{
     width: 15%;
-}
-#headersTable thead tr th:last-child{
-    width: 15%;
-    text-align: center;
 }

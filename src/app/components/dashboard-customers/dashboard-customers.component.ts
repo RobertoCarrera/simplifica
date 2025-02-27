@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, OnInit } from '@angular/core';
 import { CustomersService } from '../../services/customers.service';
 import { Customer } from '../../models/customer';
 import { CommonModule } from '@angular/common';
@@ -68,6 +68,14 @@ export class DashboardCustomersComponent implements OnInit{
   seeCustomer(customer: Customer): void {
     this.selectedCustomer = customer;
     this.showModal();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  manejarAtajo(event: KeyboardEvent) {
+    if (event.shiftKey && event.key.toLowerCase() === 'n') {
+      event.preventDefault(); // Evita que se abra una nueva ventana
+      this.isCreatingCustomer();
+    }
   }
 
   showModal() {
