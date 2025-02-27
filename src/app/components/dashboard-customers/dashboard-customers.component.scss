@@ -1,14 +1,27 @@
 @use '../../../styles.scss' as styles;
 
+$inputCustomersTableHeight: 5%;
+$headersTableHeight: 4%;
+
+
 #inputCustomersTable{
-    height: 6%;
+    height: $inputCustomersTableHeight;
+}
+#headersTable {
+    height: $headersTableHeight;
+}
+
+#containerCustomersTable {
+    height: calc(100% - $inputCustomersTableHeight - $headersTableHeight);
 }
 
 #buscadorCustomers:focus{
     border-color: styles.$primary-color;
     box-shadow: 0 0 0 .25rem styles.$primary-color-25;
 }
-
+.customer{
+    position: relative;
+}
 .customer:hover td{
     cursor: pointer;
 }
@@ -24,36 +37,35 @@
 .customer > td{
     border: 0;
 }
-
+#headersTable thead tr th{
+    align-content: center;
+}
 #containerCustomersTable{
     scrollbar-width: none;
 }
 
 #customersBodyTable tr, #customersBodyTable td{
-    height: 7vh;
+    height: 5vh;
 }
 #customersBodyTable tr td:first-child, #headersTable thead tr th:first-child{
 
-    width: 8% !important;
+    width: 12%;
 }
 #tablaCustomers tbody tr td:nth-child(2), #headersTable thead tr th:nth-child(2){
 
-    width: 15% !important;
+    width: 14%;
 }
 #customersBodyTable tr td:nth-child(3), #headersTable thead tr th:nth-child(3){
-    width: 8%;
+    width: 9%;
 }
 #customersBodyTable tr td:nth-child(4), #headersTable thead tr th:nth-child(4){
-    width: 18%;
+    width: 20%;
 }
 #customersBodyTable tr td:nth-child(5), #headersTable thead tr th:nth-child(5){
-    width: 15%;
+    width: 20%;
 }
 #customersBodyTable tr td:nth-child(6), #headersTable thead tr th:nth-child(6){
-    width: 8%;
-}
-#customersBodyTable tr td:nth-child(7), #headersTable thead tr th:nth-child(7){
-    width: 13%;
+    width: 10%;
 }
 #customersBodyTable tr td:last-child{
     width: 15%;
@@ -61,12 +73,4 @@
 #headersTable thead tr th:last-child{
     width: 15%;
     text-align: center;
-}
-
-.editingCustomer:hover td{
-    background-color: transparent;
-}
-
-.editingCustomer > td{
-    color: red;
 }

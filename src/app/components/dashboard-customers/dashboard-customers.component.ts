@@ -26,6 +26,7 @@ export class DashboardCustomersComponent implements OnInit{
   changeEditionCustomer: boolean = false;
   currentPage: number = 1;
   totalPages: number = 0;
+  creatingCustomer: boolean = false;
 
   constructor(private customerService: CustomersService){}
   
@@ -52,63 +53,20 @@ export class DashboardCustomersComponent implements OnInit{
       );
     });
     return filtered;
+  } 
+
+  isCreatingCustomer(){
+
+    if(this.creatingCustomer == true)
+      this.creatingCustomer = false;
+    else{
+      this.creatingCustomer = true;
+    }
   }
 
   seeCustomer(customer: Customer): void {
     this.selectedCustomer = customer;
     this.showModal();
-  }
-
-  editingCustomer(customer: Customer){
-    this.customerInEdition = customer;
-    this.changeEditionCustomer = true;
-  }
-
-  isEditingCustomer(customer: Customer): boolean{
-    return this.customerInEdition === customer;
-  }
-
-  sendEdition(customer: Customer, nombre: HTMLElement, apellidos: HTMLElement, direccion: HTMLElement, telefono: HTMLElement, email: HTMLElement) {
-    
-    const customerUpdated: Customer = {
-      ...customer,
-      nombre: nombre.innerText,
-      apellidos: apellidos.innerText,
-      telefono: telefono.innerText,
-      email: email.innerText
-    };
-
-    if (this.customerInEdition) {
-      this.customerService.updateCustomer(customer._id, customerUpdated).subscribe(
-        response => {
-          console.log('Cliente actualizado', response);
-          this.cancelEdition();
-          this.customerService.getCustomers().subscribe(customers => {
-            this.customers = customers;
-          });
-        },
-        error => {
-          console.error('Error actualizando customer', error);
-        }
-      );
-    }
-  }
-
-  cancelEdition(){
-    this.customerInEdition = null;
-    this.changeEditionCustomer = false;
-  }
-
-  removeCustomer(customer: Customer){
-
-    if(confirm(`¿Estás seguro de que deseas eliminar a ${customer.nombre+' '+customer.apellidos}?`)){
-      this.customerService.deleteCustomer(customer._id).subscribe(() => {
-        this.customers = this.customers.filter(c => c._id !== customer._id);
-        alert('Customer eliminado exitosamente');
-      }, error => {
-        alert('Error al eliminar a '+customer.nombre+' '+customer.apellidos);
-      });
-    }
   }
 
   showModal() {
