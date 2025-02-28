@@ -24,8 +24,6 @@ export class BtnNewComponent implements AfterViewInit {
     personType: boolean = false;
 
     ngAfterViewInit() {
-        // Aquí puedes estar seguro de que actionsNewCustomerComponent está inicializado.
-        console.log(this.actionsNewCustomerComponent);
     }
 
     isCreating() {
