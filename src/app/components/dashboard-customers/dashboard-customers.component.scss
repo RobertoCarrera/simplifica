@@ -1,24 +1,21 @@
 @use '../../../styles.scss' as styles;
 
-$inputCustomersTableHeight: 5%;
-$headersTableHeight: 4%;
-
 #inputCustomersTable{
-    height: $inputCustomersTableHeight;
+    height: styles.$inputTableHeight;
 }
 #headersTable {
-    height: $headersTableHeight;
+    height: styles.$headersTableHeight;
 }
 
 #containerCustomersTable {
-    height: calc(100% - $inputCustomersTableHeight - $headersTableHeight);
+    height: calc(100% - styles.$inputTableHeight - styles.$headersTableHeight);
 }
 
 #buscadorCustomers:focus{
     border-color: styles.$primary-color;
     box-shadow: 0 0 0 .25rem styles.$primary-color-25;
 }
-#headersTable thead tr th{
+#headersTable tr th{
     align-content: center;
     // background-color: styles.$secondary-color;
     // color: styles.$bg-color;
@@ -66,26 +63,26 @@ $headersTableHeight: 4%;
 #customersBodyTable tr, #customersBodyTable td{
     height: 5vh;
 }
-#customersBodyTable tr td:first-child, #headersTable thead tr th:first-child{
+#customersBodyTable tr td:first-child, #headersTable tr th:first-child{
 
     width: 12%;
 }
-#tablaCustomers tbody tr td:nth-child(2), #headersTable thead tr th:nth-child(2){
+#tablaCustomers tr td:nth-child(2), #headersTable tr th:nth-child(2){
 
     width: 14%;
 }
-#customersBodyTable tr td:nth-child(3), #headersTable thead tr th:nth-child(3){
+#customersBodyTable tr td:nth-child(3), #headersTable tr th:nth-child(3){
     width: 9%;
 }
-#customersBodyTable tr td:nth-child(4), #headersTable thead tr th:nth-child(4){
+#customersBodyTable tr td:nth-child(4), #headersTable tr th:nth-child(4){
     width: 20%;
 }
-#customersBodyTable tr td:nth-child(5), #headersTable thead tr th:nth-child(5){
+#customersBodyTable tr td:nth-child(5), #headersTable tr th:nth-child(5){
     width: 20%;
 }
-#customersBodyTable tr td:nth-child(6), #headersTable thead tr th:nth-child(6){
+#customersBodyTable tr td:nth-child(6), #headersTable tr th:nth-child(6){
     width: 10%;
 }
-#customersBodyTable tr td:last-child, #headersTable thead tr th:last-child{
+#customersBodyTable tr td:last-child, #headersTable tr th:last-child{
     width: 15%;
 }
