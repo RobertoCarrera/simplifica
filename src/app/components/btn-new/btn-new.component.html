@@ -3,7 +3,7 @@
     <button class="btn w-75 btn-new-item"
     [ngClass]="{'btn-success d-none': this.creating === true}" 
     (click)="isCreating()">
-        <i class="bi bi-plus"></i> Nuevo {{itemType}}
+        <i class="bi bi-plus"></i>{{itemType}}
     </button>
 </div>
 <div [ngClass]="{'nuevo-servicio-modal overflow-hidden d-flex align-content-center justify-content-between z-3': this.creating === true}" 
