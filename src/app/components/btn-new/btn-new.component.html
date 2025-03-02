@@ -48,6 +48,10 @@
             [creatingPerson] = this.personType
             [creatingCompany] = this.businessType/>
         </div>
+        <div>
+            <app-form-new-repairing
+            [formStep] = this.formStep/>
+        </div>
         <div *ngIf="this.formStep >= 2" class="col-12">
             <div class="row d-flex align-items-center justify-content-around">
                 <button class="btn btn-danger d-none"

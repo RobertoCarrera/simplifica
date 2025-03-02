@@ -8,7 +8,7 @@ import { Category } from '../models/category';
 })
 export class CategoriesService {
   
-  private apiUrl = "https://a2022.twidget.io/categias";
+  private apiUrl = "https://a2022.twidget.io/categorias";
   
   constructor(private http: HttpClient){}
 

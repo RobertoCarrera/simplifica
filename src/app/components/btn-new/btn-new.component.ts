@@ -1,10 +1,11 @@
 import { AfterViewInit, Component, Input, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormNewCustomerComponent } from "../form-new-customer/form-new-customer.component";
+import { FormNewRepairingComponent } from "../form-new-repairing/form-new-repairing.component";
 
 @Component({
     selector: 'app-btn-new',
-    imports: [CommonModule, FormNewCustomerComponent],
+    imports: [CommonModule, FormNewCustomerComponent, FormNewRepairingComponent],
     templateUrl: './btn-new.component.html',
     styleUrl: './btn-new.component.scss'
 })

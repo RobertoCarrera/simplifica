@@ -127,7 +127,6 @@ export class DashboardWorkshopComponent implements OnInit{
     this.domainsService.getDomains().subscribe(domain => {
       this.domains = domain;
     });
-    console.log(this.services);
   }
 
   selectText(event: Event): void {

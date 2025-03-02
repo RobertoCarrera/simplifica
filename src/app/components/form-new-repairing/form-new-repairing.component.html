@@ -1,0 +1,15 @@
+<div *ngIf="this.formStep === 3" class="row p-0 m-0">
+    <div class="col-6 p-2">
+        <label for="vencimiento_service" class="form-label">Vencimiento</label>
+        <input type="text" class="form-control" id="vencimiento_service" placeholder="Introducir vencimiento..." name="vencimiento_service" required>
+        <div *ngIf="selectedDueDate === true" class="text-danger">El vencimiento es obligatorio.</div>
+    </div>
+    <div class="col-6 p-2">
+        <label for="tipo_service" class="form-label">Tipo</label>
+        <select class="form-control" id="tipo_service" name="tipo_service" required [(ngModel)]="selectedServiceType">
+            <option value="" disabled selected>Seleccionar tipo...</option>
+            <option *ngFor="let type of categories" [value]="type">{{ type.nombre }}</option>
+        </select>
+        <div *ngIf="selectedCategory === true" class="text-danger">El tipo de servicio es obligatorio.</div>
+    </div>
+</div>
