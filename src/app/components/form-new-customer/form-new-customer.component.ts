@@ -17,8 +17,6 @@ import { DomainsService } from '../../services/domains.service';
 export class FormNewCustomerComponent  implements OnInit{
 
   @Input() formStep: number = 0;  
-  @Input() creatingPerson: boolean = false;
-  @Input() creatingCompany: boolean = false;
 
   customers: Customer[] = [];
   domains: Domain[] = [];
@@ -33,10 +31,6 @@ export class FormNewCustomerComponent  implements OnInit{
   localityHasResults: boolean = false;
   domainHasResults: boolean = false;
   cpHasResults: boolean = false;
-
-  selectedCustomer = '';
-  selectedDNI = '';
-  selectedDomain: boolean = false;
   
   selectedCustomerDNI: string = '';
   selectedCustomerTelephone: string = '';
@@ -48,14 +42,16 @@ export class FormNewCustomerComponent  implements OnInit{
   selectedCustomerAddress: string = '';
   selectedCustomerCP: string = '';
 
-  selectedCIF = false;
-  selectedName = false;
-  selectedSurname = false;
-  selectedEmail = false;
-  selectedTelephone = false;
-  selectedCP = false;
-  selectedLocality = false;
-  selectedAddress = false;
+  selectedCustomer: boolean = false;
+  selectedDNI: boolean = false;
+  selectedCIF: boolean = false;
+  selectedName: boolean = false;
+  selectedSurname: boolean = false;
+  selectedEmail: boolean = false;
+  selectedTelephone: boolean = false;
+  selectedCP: boolean = false;
+  selectedLocality: boolean = false;
+  selectedAddress: boolean = false;
 
   constructor(private customersService: CustomersService,
     private localitiesService: LocalitiesService,
@@ -74,7 +70,6 @@ export class FormNewCustomerComponent  implements OnInit{
   }
 
   clearForm(){
-      
     this.selectedCustomerDNI = '';
     this.selectedCustomerTelephone = '';
     this.selectedCustomerSurname = '';
@@ -110,10 +105,21 @@ export class FormNewCustomerComponent  implements OnInit{
     this.filteredCustomers = []; // Limpia la lista tras la selección
   }
 
-  onSearchCustomer(event: Event) {
+  onSearchCustomerDNI(event: Event) {
     const query = (event.target as HTMLInputElement).value.toLowerCase();
     if (query.length > 0) {
-      this.filteredCustomers = this.customers.filter(customer => customer.dni.toLowerCase().includes(query));
+      this.filteredCustomers = this.customers.filter(customer => customer.dni.toLowerCase().startsWith(query));
+      this.customerHasResults = this.filteredCustomers.length > 0;
+    } else {
+      this.filteredCustomers = [];
+      this.customerHasResults = false;
+    }
+  }
+
+  onSearchCustomerName(event: Event) {
+    const query = (event.target as HTMLInputElement).value.toLowerCase();
+    if (query.length > 0) {
+      this.filteredCustomers = this.customers.filter(customer => customer.nombre.toLowerCase().startsWith(query))
       this.customerHasResults = this.filteredCustomers.length > 0;
     } else {
       this.filteredCustomers = [];

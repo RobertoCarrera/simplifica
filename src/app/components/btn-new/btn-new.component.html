@@ -6,14 +6,14 @@
         <i class="bi bi-plus"></i>{{itemType}}
     </button>
 </div>
-<div [ngClass]="{'nuevo-servicio-modal overflow-hidden d-flex align-content-center justify-content-between z-3': this.creating === true}" 
-    class="col-4 nuevo-servicio-col position-absolute bottom-0 rounded p-2 ms-2 mb-3">
-    <div [ngClass]="{'nuevo-servicio-container h-100': this.creating === true}" 
-    class="row w-100 d-none">
+<div [ngClass]="{'nuevo-servicio-modal overflow-hidden d-flex align-content-center justify-content-center z-3': this.creating === true}" 
+    class="col-4 position-absolute bottom-0 rounded p-2 ms-2 mb-3">
+    <div [ngClass]="{'nuevo-servicio-container': this.creating === true}" 
+    class="row d-none">
         <div class="div col-12">
-            <div class="row d-flex align-items-center justify-content-between">
-                <p class="h-100 w-75 m-0 p-0">{{itemType}} #{{this.totalItems+1}}</p>
-                <button class="form-btn-cerrar p-0 me-1 text-black rounded-1 border-0"
+            <div class="row d-flex align-items-center justify-content-between pe-3">
+                <p class="w-50">{{itemType}} #{{this.totalItems+1}}</p>
+                <button class="btn form-btn-cerrar p-0 text-black rounded-1 border-0"
                 (click)= "isCreating()">
                     <i class="bi bi-x-lg text-end p-0"></i>
                 </button>
@@ -44,9 +44,7 @@
         </div>
         <div>
             <app-form-new-customer 
-            [formStep] = this.formStep
-            [creatingPerson] = this.personType
-            [creatingCompany] = this.businessType/>
+            [formStep] = this.formStep/>
         </div>
         <div>
             <app-form-new-repairing

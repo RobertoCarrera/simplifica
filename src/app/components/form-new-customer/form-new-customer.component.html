@@ -1,38 +1,53 @@
-<div class="col-12 h-75 text-start overflow-y-auto pb-3">
+<div class="col-12 h-100 text-start overflow-y-auto pb-3">
     <form action="" (ngSubmit)="onSubmit()" #newServicioForm="ngForm">
         <div *ngIf="this.formStep === 2" class=" row p-0 m-0">
-            <div *ngIf="this.creatingPerson === true" class="col-6 p-2">
-                <label for="dniSearch" class="form-label w-100 d-flex align-items-center justify-content-between">DNI</label>
+            <div class="col-6 p-2">
+                <label for="dniSearch" class="form-label">DNI</label>
                 <input [(ngModel)]="selectedCustomerDNI" 
-                (input)="onSearchCustomer($event)" 
+                (input)="onSearchCustomerDNI($event)" 
                 type="text" class="form-control" id="dniSearch" 
                 placeholder="Buscar DNI..." 
                 name="dniSearch" required>
-                <div *ngIf="newServicioForm.submitted && !selectedCustomer" class="text-danger">
-                    El DNI es obligatorio.
-                </div>
+                <div *ngIf="newServicioForm.submitted && !selectedCustomer" class="text-danger">El DNI es obligatorio.</div>
                 <ul *ngIf="filteredCustomers.length > 0 && selectedCustomerDNI.length > 0" class="list-group position-absolute z-2">
-                    <li *ngFor="let cliente of filteredCustomers"
-                    (click)="selectCustomer(cliente)"
+                    <li *ngFor="let customer of filteredCustomers"
+                    (click)="selectCustomer(customer)"
                     class="list-group-item">
-                    {{cliente.dni}}
+                    {{customer.dni}}
                     </li>
                 </ul>
             </div>
             <div class="col-6 p-2">
                 <label for="nombreSearch" class="form-label">Nombre</label>
-                <input [(ngModel)]="selectedCustomerName" type="text" class="form-control" id="nombreSearch" placeholder="Buscar nombre..." name="nombreSearch" required>
+                <input [(ngModel)]="selectedCustomerName"
+                (input)="onSearchCustomerName($event)" 
+                type="text" class="form-control" id="nombreSearch" 
+                placeholder="Buscar nombre..." 
+                name="nombreSearch" required>
                 <div *ngIf="selectedName === true" class="text-danger">El nombre es obligatorio.</div>
+                <ul *ngIf="filteredCustomers.length > 0 && (selectedCustomerDNI.length > 0 || selectedCustomerName.length > 0)" class="list-group position-absolute z-2">
+                    <li *ngFor="let customer of filteredCustomers"
+                    (click)="selectCustomer(customer)"
+                    class="list-group-item">
+                    {{customer.nombre}}
+                    </li>
+                </ul>
             </div>
-            <div *ngIf="this.creatingCompany === true" class="col-6 p-2">
-                <label for="cifSearch" class="form-label">CIF</label>
-                <input type="text" class="form-control" id="cifSearch" placeholder="Buscar CIF..." name="cifSearch" required>
-                <div *ngIf="selectedCIF === true" class="text-danger">El CIF es obligatorio.</div>
-            </div>
-            <div *ngIf="this.creatingPerson === true" class="col-12 w-100 p-2">
+            <div class="col-12 w-100 p-2">
                 <label for="apellidosSearch" class="form-label">Apellidos</label>
-                <input [(ngModel)]="selectedCustomerSurname" type="text" class="form-control" id="apellidosSearch" placeholder="Buscar apellidos..." name="apellidosSearch" required>
-                <div *ngIf="selectedSurname === true" class="text-danger">Los apellidos son obligatorios.</div>
+                <input [(ngModel)]="selectedCustomerSurname"
+                (input)="onSearchCustomerName($event)"  
+                type="text" class="form-control" id="apellidosSearch" 
+                placeholder="Buscar apellidos..." 
+                name="apellidosSearch" required>
+                <div *ngIf="selectedName === true" class="text-danger">Los apellidos son obligatorios.</div>
+                <ul *ngIf="filteredCustomers.length > 0 && (selectedCustomerDNI.length > 0 || selectedCustomerName.length > 0)" class="list-group position-absolute">
+                    <li *ngFor="let customer of filteredCustomers"
+                    (click)="selectCustomer(customer)"
+                    class="list-group-item">
+                    {{customer.apellidos}}
+                    </li>
+                </ul>
             </div>
             <div *ngIf="!this.customerHasResults && selectedCustomerDNI !== ''" class="col-12 input-group mb-3">
                 <div class="row w-100">
