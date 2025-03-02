@@ -58,6 +58,7 @@ export class BtnNewComponent implements AfterViewInit {
     removeStep() {
       if(this.formStep === 2){
         this.clearFormFromParent();
+        this.formStep = 1;
       }else{
         this.formStep--;
       }
