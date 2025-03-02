@@ -127,6 +127,17 @@ export class FormNewCustomerComponent  implements OnInit{
     }
   }
 
+  onSearchCustomerSurname(event: Event) {
+    const query = (event.target as HTMLInputElement).value.toLowerCase();
+    if (query.length > 0) {
+      this.filteredCustomers = this.customers.filter(customer => customer.apellidos.toLowerCase().startsWith(query))
+      this.customerHasResults = this.filteredCustomers.length > 0;
+    } else {
+      this.filteredCustomers = [];
+      this.customerHasResults = false;
+    }
+  }
+
   onSearchDomain(event: Event) {
     const query = (event.target as HTMLInputElement).value.toLowerCase();
     if (query.length > 0) {

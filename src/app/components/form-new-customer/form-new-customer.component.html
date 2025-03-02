@@ -9,7 +9,7 @@
                 placeholder="Buscar DNI..." 
                 name="dniSearch" required>
                 <div *ngIf="newServicioForm.submitted && !selectedCustomer" class="text-danger">El DNI es obligatorio.</div>
-                <ul *ngIf="filteredCustomers.length > 0 && selectedCustomerDNI.length > 0" class="list-group position-absolute z-2">
+                <ul *ngIf="filteredCustomers.length" class="list-group position-absolute z-2">
                     <li *ngFor="let customer of filteredCustomers"
                     (click)="selectCustomer(customer)"
                     class="list-group-item">
@@ -25,7 +25,7 @@
                 placeholder="Buscar nombre..." 
                 name="nombreSearch" required>
                 <div *ngIf="selectedName === true" class="text-danger">El nombre es obligatorio.</div>
-                <ul *ngIf="filteredCustomers.length > 0 && (selectedCustomerDNI.length > 0 || selectedCustomerName.length > 0)" class="list-group position-absolute z-2">
+                <ul *ngIf="filteredCustomers.length" class="list-group position-absolute z-2">
                     <li *ngFor="let customer of filteredCustomers"
                     (click)="selectCustomer(customer)"
                     class="list-group-item">
@@ -36,12 +36,12 @@
             <div class="col-12 w-100 p-2">
                 <label for="apellidosSearch" class="form-label">Apellidos</label>
                 <input [(ngModel)]="selectedCustomerSurname"
-                (input)="onSearchCustomerName($event)"  
+                (input)="onSearchCustomerSurname($event)"  
                 type="text" class="form-control" id="apellidosSearch" 
                 placeholder="Buscar apellidos..." 
                 name="apellidosSearch" required>
                 <div *ngIf="selectedName === true" class="text-danger">Los apellidos son obligatorios.</div>
-                <ul *ngIf="filteredCustomers.length > 0 && (selectedCustomerDNI.length > 0 || selectedCustomerName.length > 0)" class="list-group position-absolute">
+                <ul *ngIf="filteredCustomers.length" class="list-group position-absolute">
                     <li *ngFor="let customer of filteredCustomers"
                     (click)="selectCustomer(customer)"
                     class="list-group-item">
@@ -49,7 +49,7 @@
                     </li>
                 </ul>
             </div>
-            <div *ngIf="!this.customerHasResults && selectedCustomerDNI !== ''" class="col-12 input-group mb-3">
+            <div *ngIf="!this.customerHasResults && (selectedCustomerDNI !== '' || selectedCustomerName !== '' || selectedCustomerSurname !== '')" class="col-12 input-group mb-3">
                 <div class="row w-100">
                     <div class="col-12 d-flex">
                         <label for="emailSearch" class="form-label w-50">Email</label>
@@ -72,7 +72,7 @@
                         </div>
                       </div>
                       <div class="col-6 offset-6 position-relative align-self-right">
-                        <ul *ngIf="filteredDomains.length > 0 && selectedCustomerDomain.length > 0" class="list-group position-absolute mt-1">
+                        <ul *ngIf="filteredDomains.length > 0 && (selectedCustomerDNI !== '' || selectedCustomerName !== '' || selectedCustomerSurname !== '')" class="list-group position-absolute mt-1">
                           <li *ngFor="let dominio of filteredDomains" (click)="selectDomain(dominio)" class="list-group-item">
                             {{dominio.nombre}}
                           </li>
@@ -81,12 +81,12 @@
                     </div>
                   </div>
             </div>
-            <div *ngIf="!this.customerHasResults && selectedCustomerDNI !== ''" class="col-4 p-2">
+            <div *ngIf="!this.customerHasResults && (selectedCustomerDNI !== '' || selectedCustomerName !== '' || selectedCustomerSurname !== '')" class="col-4 p-2">
                 <label for="telefonoSearch" class="form-label">Teléfono</label>
                 <input [(ngModel)]="selectedCustomerTelephone" type="text" class="form-control" id="telefonoSearch" placeholder="Buscar teléfono..." name="telefonoSearch" required>
                 <div *ngIf="selectedTelephone === true" class="text-danger">El teléfono es obligatorio.</div>
             </div>
-            <div *ngIf="!this.customerHasResults && selectedCustomerDNI !== ''" class="col-4 p-2">
+            <div *ngIf="!this.customerHasResults && (selectedCustomerDNI !== '' || selectedCustomerName !== '' || selectedCustomerSurname !== '')" class="col-4 p-2">
                 <label for="cpSearch" class="form-label">CP</label>
                 <input [(ngModel)]="selectedCustomerCP" 
                 (input)="onSearchCP($event)" 
@@ -106,7 +106,7 @@
                     </li>
                 </ul>
             </div>
-            <div *ngIf="!this.customerHasResults && selectedCustomerDNI !== ''" class="col-4 p-2">
+            <div *ngIf="!this.customerHasResults && (selectedCustomerDNI !== '' || selectedCustomerName !== '' || selectedCustomerSurname !== '')" class="col-4 p-2">
                 <label for="localidadSearch" class="form-label">Localidad</label>
                 <input [(ngModel)]="selectedCustomerLocality"
                 (input)="onSearchLocality($event)" 
@@ -122,7 +122,7 @@
                     </li>
                 </ul>
             </div>
-            <div  *ngIf="!this.customerHasResults && selectedCustomerDNI !== ''" class="col-12 p-2">
+            <div  *ngIf="!this.customerHasResults && (selectedCustomerDNI !== '' || selectedCustomerName !== '' || selectedCustomerSurname !== '')" class="col-12 p-2">
                 <label for="direccion_cliente" class="form-label">Dirección</label>
                 <input [(ngModel)]="selectedCustomerAddress" type="text" class="form-control" id="direccion_cliente" placeholder="Buscar dirección..." name="direccion_cliente" required>
                 <div *ngIf="selectedAddress === true" class="text-danger">La dirección es obligatoria.</div>
