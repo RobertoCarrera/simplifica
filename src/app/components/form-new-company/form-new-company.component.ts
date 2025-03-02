@@ -1,10 +1,10 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { Domain } from '../../models/domain';
 import { Locality } from '../../models/locality';
-import { Customer } from '../../models/customer';
+import { Company } from '../../models/company';
 import { DomainsService } from '../../services/domains.service';
 import { LocalitiesService } from '../../services/localities.service';
-import { CustomersService } from '../../services/customers.service';
+import { CompaniesService } from '../../services/companies.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -20,33 +20,33 @@ export class FormNewCompanyComponent  implements OnInit{
   @Input() creatingPerson: boolean = false;
   @Input() creatingCompany: boolean = false;
 
-  customers: Customer[] = [];
+  companies: Company[] = [];
   domains: Domain[] = [];
   localities: Locality[] = [];
   
-  filteredCustomers = [...this.customers];
+  filteredCompanies = [...this.companies];
   filteredDomains = [...this.domains];
   filteredLocalities = [...this.localities];
   filteredCPS = [...this.localities];
 
-  customerHasResults: boolean = false;
+  companyHasResults: boolean = false;
   localityHasResults: boolean = false;
   domainHasResults: boolean = false;
   cpHasResults: boolean = false;
 
-  selectedCustomer = '';
+  selectedCompany = '';
   selectedDNI = '';
   selectedDomain: boolean = false;
   
-  selectedCustomerDNI: string = '';
-  selectedCustomerTelephone: string = '';
-  selectedCustomerSurname: string = '';
-  selectedCustomerEmail: string = '';
-  selectedCustomerDomain: string = 'gmail.com';
-  selectedCustomerName: string = '';
-  selectedCustomerLocality: string = '';
-  selectedCustomerAddress: string = '';
-  selectedCustomerCP: string = '';
+  selectedCompanyDNI: string = '';
+  selectedCompanyTelephone: string = '';
+  selectedCompanySurname: string = '';
+  selectedCompanyEmail: string = '';
+  selectedCompanyDomain: string = 'gmail.com';
+  selectedCompanyName: string = '';
+  selectedCompanyLocality: string = '';
+  selectedCompanyAddress: string = '';
+  selectedCompanyCP: string = '';
 
   selectedCIF = false;
   selectedName = false;
@@ -57,13 +57,13 @@ export class FormNewCompanyComponent  implements OnInit{
   selectedLocality = false;
   selectedAddress = false;
 
-  constructor(private customersService: CustomersService,
+  constructor(private companiesService: CompaniesService,
     private localitiesService: LocalitiesService,
     private domainsService: DomainsService){}
 
   ngOnInit(): void {
-    this.customersService.getCustomers().subscribe(customer => {
-      this.customers = customer;
+    this.companiesService.getCompanies().subscribe(company => {
+      this.companies = company;
     });
     this.localitiesService.getLocalities().subscribe(locality => {
       this.localities = locality;
@@ -75,21 +75,21 @@ export class FormNewCompanyComponent  implements OnInit{
 
   clearForm(){
       
-    this.selectedCustomerDNI = '';
-    this.selectedCustomerTelephone = '';
-    this.selectedCustomerSurname = '';
-    this.selectedCustomerEmail = '';
-    this.selectedCustomerDomain = 'gmail.com';
-    this.selectedCustomerName = '';
-    this.selectedCustomerLocality = '';
-    this.selectedCustomerAddress = '';
-    this.selectedCustomerCP = '';
+    this.selectedCompanyDNI = '';
+    this.selectedCompanyTelephone = '';
+    this.selectedCompanySurname = '';
+    this.selectedCompanyEmail = '';
+    this.selectedCompanyDomain = 'gmail.com';
+    this.selectedCompanyName = '';
+    this.selectedCompanyLocality = '';
+    this.selectedCompanyAddress = '';
+    this.selectedCompanyCP = '';
   }
 
   onSubmit() {
   }
 
-  handleNoResultsCustomer() {
+  handleNoResultsCompany() {
   }
 
   selectText(event: Event): void {
@@ -97,27 +97,26 @@ export class FormNewCompanyComponent  implements OnInit{
     input.select();
   }
 
-  selectCustomer(cliente: Customer) {
-    this.selectedCustomerDNI = cliente.dni; // Muestra el nombre de la marca seleccionada en el input
-    this.selectedCustomerTelephone = cliente.telefono;
-    this.selectedCustomerSurname= cliente.apellidos;
-    this.selectedCustomerEmail= cliente.email;
-    this.selectedCustomerName= cliente.nombre;
-    this.selectedCustomerEmail= cliente.email;
-    this.selectedCustomerCP= cliente.direccion.localidad.CP;
-    this.selectedCustomerLocality= cliente.direccion.localidad.nombre;
-    this.selectedCustomerAddress= cliente.direccion.tipo_via+' '+cliente.direccion.nombre+' '+cliente.direccion.numero;
-    this.filteredCustomers = []; // Limpia la lista tras la selección
+  selectCompany(company: Company) {
+    this.selectedCompanyDNI = company.cif; // Muestra el nombre de la marca seleccionada en el input
+    this.selectedCompanyTelephone = company.telefono;
+    this.selectedCompanyEmail= company.email;
+    this.selectedCompanyName= company.nombre;
+    this.selectedCompanyEmail= company.email;
+    // this.selectedCompanyCP= company.direccion.localidad.CP;
+    // this.selectedCompanyLocality= company.direccion.localidad.nombre;
+    // this.selectedCompanyAddress= company.direccion.tipo_via+' '+company.direccion.nombre+' '+company.direccion.numero;
+    this.filteredCompanies = []; // Limpia la lista tras la selección
   }
 
-  onSearchCustomer(event: Event) {
+  onSearchCompany(event: Event) {
     const query = (event.target as HTMLInputElement).value.toLowerCase();
     if (query.length > 0) {
-      this.filteredCustomers = this.customers.filter(customer => customer.dni.toLowerCase().includes(query));
-      this.customerHasResults = this.filteredCustomers.length > 0;
+      this.filteredCompanies = this.companies.filter(company => company.cif.toLowerCase().includes(query));
+      this.companyHasResults = this.filteredCompanies.length > 0;
     } else {
-      this.filteredCustomers = [];
-      this.customerHasResults = false;
+      this.filteredCompanies = [];
+      this.companyHasResults = false;
     }
   }
 
@@ -155,19 +154,19 @@ export class FormNewCompanyComponent  implements OnInit{
   }
 
   selectDomain(domain: Domain) {
-    this.selectedCustomerDNI = domain.nombre;
-    this.filteredCustomers = [];
+    this.selectedCompanyDNI = domain.nombre;
+    this.filteredCompanies = [];
   }
 
   selectLocality(locality: Locality) {
-    this.selectedCustomerLocality = locality.nombre;
-    this.selectedCustomerCP = locality.CP;
+    this.selectedCompanyLocality = locality.nombre;
+    this.selectedCompanyCP = locality.CP;
     this.filteredLocalities = [];
   }
 
   selectCP(locality: Locality) {
-    this.selectedCustomerCP = locality.CP
-    this.selectedCustomerLocality = locality.nombre;
+    this.selectedCompanyCP = locality.CP
+    this.selectedCompanyLocality = locality.nombre;
     this.filteredCPS = [];
   }
 }
