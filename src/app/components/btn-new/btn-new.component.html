@@ -1,4 +1,4 @@
-<div class="col-2 p-0 position-absolute bottom-0 mb-3 ms-2 bg-transparent z-3"
+<div class="col-2 p-0 position-absolute bottom-0 mb-2 ms-0 bg-transparent z-3"
 [ngClass]="{'d-none': this.creating === true}" >
     <button class="btn w-75 btn-new-item"
     [ngClass]="{'btn-success d-none': this.creating === true}" 
@@ -12,7 +12,7 @@
     class="row d-none">
         <div class="div col-12">
             <div class="row d-flex align-items-center justify-content-between pe-3">
-                <p class="w-50">{{itemType}} #{{this.totalItems+1}}</p>
+                <p class="w-50 m-0">{{itemType}} #{{this.totalItems+1}}</p>
                 <button class="btn form-btn-cerrar p-0 text-black rounded-1 border-0"
                 (click)= "isCreating()">
                     <i class="bi bi-x-lg text-end p-0"></i>
@@ -46,9 +46,13 @@
             <app-form-new-customer 
             [formStep] = this.formStep/>
         </div>
-        <div>
-            <app-form-new-repairing
-            [formStep] = this.formStep/>
+        <div class="row d-flex align-items-center justify-content-between" *ngIf="this.formStep === 3">
+            <h3 class="w-75 m-0">Cantidad de productos</h3>
+        </div>
+        <div *ngIf="this.formStep === 3" class="row">
+            <div *ngFor="let product of [].constructor(totalProducts); let i = index">
+                <app-form-new-repairing (productRemoved)="removeProduct(i)"></app-form-new-repairing>
+            </div>
         </div>
         <div *ngIf="this.formStep >= 2" class="col-12">
             <div class="row d-flex align-items-center justify-content-around">
@@ -63,7 +67,9 @@
                         <span *ngIf="this.formStep > 2 ">Atrás</span>
                     </div>
                 </button>
-                <button *ngIf="this.formStep === 3" class="btn btn-primary btn-anadir-servicio">
+                <button *ngIf="this.formStep === 3" 
+                    (click)="addProduct()"
+                    class="btn btn-primary btn-anadir-servicio">
                     <i class="bi bi-plus-circle-fill"></i>
                 </button>
                 <button class="btn btn-success d-none"

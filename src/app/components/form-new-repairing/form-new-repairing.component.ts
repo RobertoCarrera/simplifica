@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CategoriesService } from '../../services/categories.service';
-import { Category } from '../../models/category';
+import { Product } from '../../models/product';
+import { ProductsService } from '../../services/products.service';
+import { Work } from '../../models/work';
+import { WorksService } from '../../services/works.service';
 
 @Component({
   selector: 'app-form-new-repairing',
@@ -13,18 +15,29 @@ import { Category } from '../../models/category';
 export class FormNewRepairingComponent implements OnInit{
 
   @Input()formStep: number = 0;
+  @Output() productRemoved = new EventEmitter<void>();
 
   selectedServiceType: boolean = false;
   selectedCategory: boolean = false;
+  selectedProduct: boolean = false;
   selectedDueDate: boolean = false;
-  categories: Category[] = [];
+  products: Product[] = [];
+  works: Work[] = [];
 
-  constructor(private categoriesService: CategoriesService){}
+  constructor(private productsService: ProductsService,
+    private worksService: WorksService){}
 
   ngOnInit(): void {
-      this.categoriesService.getCategories().subscribe( category =>{
-        this.categories = category;
-      })
+      this.productsService.getProducts().subscribe( product =>{
+        this.products = product;
+      });
+      this.worksService.getWorks().subscribe( work =>{
+        this.works = work;
+      });
+  }
+
+  removeProduct(){
+    this.productRemoved.emit();
   }
 
 }

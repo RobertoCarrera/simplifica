@@ -15,10 +15,12 @@ export class BtnNewComponent implements AfterViewInit {
     @Input() totalItems: number = 0;
     @Input() maxSteps: number = 0;
 
-    @ViewChild(FormNewCustomerComponent) actionsNewCustomerComponent!: FormNewCustomerComponent; // Usamos !
+    @ViewChild(FormNewCustomerComponent) actionsNewCustomerComponent!: FormNewCustomerComponent;
 
     newItem: any = null;
     formStep: number = 1;
+    totalProducts: number = 0;
+    maxTotalProducts: number = 6;
 
     creating: boolean = false;
     businessType: boolean = false;
@@ -49,6 +51,18 @@ export class BtnNewComponent implements AfterViewInit {
         }
     }
 
+    addProduct(){
+        if(this.totalProducts < this.maxTotalProducts){
+        this.totalProducts++;}
+        
+    }
+
+    removeProduct(index: number){
+        if (this.totalProducts > 0) {
+            this.totalProducts--;
+          }
+    }
+
     addStep() {
         if (this.formStep < this.maxSteps) {
             this.formStep++;
@@ -67,6 +81,7 @@ export class BtnNewComponent implements AfterViewInit {
     clearFormFromParent() {
         if (this.actionsNewCustomerComponent) {
             this.actionsNewCustomerComponent.clearForm();
+            this.totalProducts = 0;
             this.isCreating();
         }
     }
