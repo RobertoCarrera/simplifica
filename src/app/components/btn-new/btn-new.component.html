@@ -8,7 +8,7 @@
 </div>
 <div [ngClass]="{'nuevo-servicio-modal overflow-hidden z-3': this.creating === true}" 
     class="col-4 position-absolute bottom-0 rounded p-2 ms-2 mb-3">
-    <div [ngClass]="{'nuevo-servicio-container h-100 d-flex flex-column align-items-center justify-content-between': this.creating === true}" 
+    <div [ngClass]="{'nuevo-servicio-container d-flex flex-column align-items-center justify-content-between': this.creating === true}" 
     class="row d-none">
         <div class="div col-12">
             <div class="row d-flex align-items-center justify-content-between pe-3">
@@ -54,7 +54,12 @@
                 <app-form-new-repairing (productRemoved)="removeProduct(i)"></app-form-new-repairing>
             </div>
         </div>
-        <div *ngIf="this.formStep >= 2" class="col-12">
+        <div *ngIf="this.formStep === 4" class="row">
+            <div *ngFor="let product of [].constructor(totalProducts); let i = index">
+                <app-form-new-product></app-form-new-product>
+            </div>
+        </div>
+        <div *ngIf="this.formStep >= 2" class="col-12 pt-3">
             <div class="row d-flex align-items-center justify-content-around">
                 <button class="btn btn-danger d-none"
                 [ngClass]="{'btns-nuevo-servicio': this.creating === true}" 
