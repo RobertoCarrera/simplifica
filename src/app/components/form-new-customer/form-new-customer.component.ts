@@ -31,6 +31,7 @@ export class FormNewCustomerComponent  implements OnInit{
   localityHasResults: boolean = false;
   domainHasResults: boolean = false;
   cpHasResults: boolean = false;
+  searchValid: boolean = true;
   
   selectedCustomerDNI: string = '';
   selectedCustomerTelephone: string = '';
@@ -79,6 +80,11 @@ export class FormNewCustomerComponent  implements OnInit{
     this.selectedCustomerLocality = '';
     this.selectedCustomerAddress = '';
     this.selectedCustomerCP = '';
+  
+    this.filteredCustomers = [];
+    this.filteredDomains = [];
+    this.filteredLocalities = [];
+    this.filteredCPS = [];
   }
 
   onSubmit() {
@@ -105,39 +111,57 @@ export class FormNewCustomerComponent  implements OnInit{
     this.filteredCustomers = []; // Limpia la lista tras la selección
   }
 
-  onSearchCustomerDNI(event: Event) {
-    const query = (event.target as HTMLInputElement).value.toLowerCase();
-    if (query.length > 0) {
-      this.filteredCustomers = this.customers.filter(customer => customer.dni.toLowerCase().startsWith(query));
-      this.customerHasResults = this.filteredCustomers.length > 0;
+  onSearchCustomerDNI(event: any) {
+    const dni = event.target.value;
+    if (!dni) {
+      this.searchValid = false; // Detener búsquedas si el DNI está vacío
+      return;
+    }
+  
+    // Simula la búsqueda de clientes por DNI
+    this.filteredCustomers = this.customers.filter(customer => customer.dni.includes(dni));
+  
+    if (this.filteredCustomers.length === 0) {
+      this.searchValid = false; // Detener búsquedas si no hay resultados
     } else {
-      this.filteredCustomers = [];
-      this.customerHasResults = false;
+      this.searchValid = true; // Continuar búsquedas si hay resultados
     }
   }
-
-  onSearchCustomerName(event: Event) {
-    const query = (event.target as HTMLInputElement).value.toLowerCase();
-    if (query.length > 0) {
-      this.filteredCustomers = this.customers.filter(customer => customer.nombre.toLowerCase().startsWith(query))
-      this.customerHasResults = this.filteredCustomers.length > 0;
-    } else {
-      this.filteredCustomers = [];
-      this.customerHasResults = false;
+  
+  onSearchCustomerName(event: any) {
+    if (!this.searchValid) return; // Detener si las búsquedas ya no son válidas
+  
+    const name = event.target.value;
+    if (!name) {
+      this.searchValid = false; // Detener búsquedas si el nombre está vacío
+      return;
+    }
+  
+    // Simula la búsqueda de clientes por nombre
+    this.filteredCustomers = this.customers.filter(customer => customer.nombre.includes(name));
+  
+    if (this.filteredCustomers.length === 0) {
+      this.searchValid = false; // Detener búsquedas si no hay resultados
     }
   }
-
-  onSearchCustomerSurname(event: Event) {
-    const query = (event.target as HTMLInputElement).value.toLowerCase();
-    if (query.length > 0) {
-      this.filteredCustomers = this.customers.filter(customer => customer.apellidos.toLowerCase().startsWith(query))
-      this.customerHasResults = this.filteredCustomers.length > 0;
-    } else {
-      this.filteredCustomers = [];
-      this.customerHasResults = false;
+  
+  onSearchCustomerSurname(event: any) {
+    if (!this.searchValid) return; // Detener si las búsquedas ya no son válidas
+  
+    const surname = event.target.value;
+    if (!surname) {
+      this.searchValid = false; // Detener búsquedas si los apellidos están vacíos
+      return;
+    }
+  
+    // Simula la búsqueda de clientes por apellidos
+    this.filteredCustomers = this.customers.filter(customer => customer.apellidos.includes(surname));
+  
+    if (this.filteredCustomers.length === 0) {
+      this.searchValid = false; // Detener búsquedas si no hay resultados
     }
   }
-
+  
   onSearchDomain(event: Event) {
     const query = (event.target as HTMLInputElement).value.toLowerCase();
     if (query.length > 0) {

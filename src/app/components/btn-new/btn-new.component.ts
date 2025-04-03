@@ -80,7 +80,7 @@ export class BtnNewComponent implements AfterViewInit {
     }
 
     clearFormFromParent() {
-        if (this.actionsNewCustomerComponent) {
+         {
             this.actionsNewCustomerComponent.clearForm();
             this.totalProducts = 0;
             this.isCreating();
