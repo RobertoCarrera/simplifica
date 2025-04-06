@@ -7,6 +7,7 @@ import { Domain } from '../../models/domain';
 import { CustomersService } from '../../services/customers.service';
 import { LocalitiesService } from '../../services/localities.service';
 import { DomainsService } from '../../services/domains.service';
+import { Address } from '../../models/address';
 
 @Component({
   selector: 'app-form-new-customer',
@@ -21,11 +22,14 @@ export class FormNewCustomerComponent  implements OnInit{
   customers: Customer[] = [];
   domains: Domain[] = [];
   localities: Locality[] = [];
-  
+  addresses: Address[] = [];
+  vias: string[] = ['Calle', 'Avenida', 'Plaza', 'Paseo', 'Camino', 'Carretera', 'Autovía', 'Autopista', 'Travesía', 'Barrio', 'Ronda', 'Pasaje', 'Paseo Marítimo'];  
+
   filteredCustomers = [...this.customers];
   filteredDomains = [...this.domains];
   filteredLocalities = [...this.localities];
   filteredCPS = [...this.localities];
+  filteredVias: string[] = [...this.vias]; // Opciones filtradas
 
   customerHasResults: boolean = false;
   localityHasResults: boolean = false;
@@ -42,6 +46,7 @@ export class FormNewCustomerComponent  implements OnInit{
   selectedCustomerLocality: string = '';
   selectedCustomerAddress: string = '';
   selectedCustomerCP: string = '';
+  viaSearch: string = ''; // Texto de búsqueda
 
   selectedCustomer: boolean = false;
   selectedDNI: boolean = false;
@@ -144,6 +149,11 @@ export class FormNewCustomerComponent  implements OnInit{
       this.searchValid = false; // Detener búsquedas si no hay resultados
     }
   }
+
+  filterVias() {
+    const search = this.viaSearch.toLowerCase();
+    this.filteredVias = this.vias.filter(via => via.toLowerCase().includes(search));
+  } 
   
   onSearchCustomerSurname(event: any) {
     if (!this.searchValid) return; // Detener si las búsquedas ya no son válidas
