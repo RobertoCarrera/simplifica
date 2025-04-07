@@ -1,15 +1,16 @@
 <div class="row pb-3 pt-3 m-0">
     <div class="col-3">
         <label for="tipo_service" class="form-label">Producto</label>
-        <select class="form-control" id="products" name="tipo_service" required [(ngModel)]="selectedProduct">
-            <option value="product" disabled>Elige producto</option>
+        <select class="form-control" id="products" name="tipo_service" required [(ngModel)]="selectedProductName">
+            <option value="" disabled hidden>Elige producto</option>
             <option *ngFor="let product of products" [value]="product">{{ product.nombre }}</option>
         </select>
         <div *ngIf="selectedProduct === true" class="text-danger">El tipo de producto es obligatorio.</div>
     </div>
     <div class="col-4">
         <label for="tipo_service" class="form-label">Tipo</label>
-        <select class="form-control" id="categories" name="tipo_service" required [(ngModel)]="selectedCategory">
+        <select class="form-control" id="categories" name="tipo_service" required [(ngModel)]="selectedCategoryName">
+            <option value="" disabled hidden>Elige categoría</option>
             <option *ngFor="let work of works" [value]="work">{{ work.nombre }}</option>
         </select>
         <div *ngIf="selectedCategory === true" class="text-danger">El tipo de categoría es obligatorio.</div>

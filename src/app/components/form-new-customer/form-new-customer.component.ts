@@ -44,7 +44,9 @@ export class FormNewCustomerComponent  implements OnInit{
   selectedCustomerDomain: string = 'gmail.com';
   selectedCustomerName: string = '';
   selectedCustomerLocality: string = '';
-  selectedCustomerAddress: string = '';
+  selectedCustomerAddressRoadType: string = '';
+  selectedCustomerAddressName: string = '';
+  selectedCustomerAddressNumber: number = 1;
   selectedCustomerCP: string = '';
   viaSearch: string = ''; // Texto de búsqueda
 
@@ -57,7 +59,9 @@ export class FormNewCustomerComponent  implements OnInit{
   selectedTelephone: boolean = false;
   selectedCP: boolean = false;
   selectedLocality: boolean = false;
-  selectedAddress: boolean = false;
+  selectedAddressRoadType: boolean = false;
+  selectedAddressName: boolean = false;
+  selectedAddressNumber: boolean = false;
 
   constructor(private customersService: CustomersService,
     private localitiesService: LocalitiesService,
@@ -83,7 +87,9 @@ export class FormNewCustomerComponent  implements OnInit{
     this.selectedCustomerDomain = 'gmail.com';
     this.selectedCustomerName = '';
     this.selectedCustomerLocality = '';
-    this.selectedCustomerAddress = '';
+    this.selectedCustomerAddressRoadType = '';
+    this.selectedCustomerAddressName = '';
+    this.selectedCustomerAddressNumber = 1;
     this.selectedCustomerCP = '';
   
     this.filteredCustomers = [];
@@ -112,7 +118,9 @@ export class FormNewCustomerComponent  implements OnInit{
     this.selectedCustomerEmail= cliente.email;
     this.selectedCustomerCP= cliente.direccion.localidad.CP;
     this.selectedCustomerLocality= cliente.direccion.localidad.nombre;
-    this.selectedCustomerAddress= cliente.direccion.tipo_via+' '+cliente.direccion.nombre+' '+cliente.direccion.numero;
+    this.selectedCustomerAddressRoadType = cliente.direccion.tipo_via;
+    this.selectedCustomerAddressName = cliente.direccion.nombre;
+    this.selectedCustomerAddressNumber = cliente.direccion.numero;
     this.filteredCustomers = []; // Limpia la lista tras la selección
   }
 

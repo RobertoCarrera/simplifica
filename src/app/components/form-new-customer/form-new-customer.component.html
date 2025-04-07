@@ -123,20 +123,21 @@
                 </ul>
             </div>
             <div *ngIf="!this.customerHasResults && (selectedCustomerDNI !== '' || selectedCustomerName !== '' || selectedCustomerSurname !== '')" class="col-4 p-2">
-                <label for="tipo-via-direccion-cliente" class="form-label">Tipo vía</label>
-                <select class="form-control" id="tipo-via-direccion-cliente" name="tipo_service" required [(ngModel)]="selectedCustomerAddress">
+                <label for="tipo-via-direccion-cliente" class="form-label">Tipo vía  </label>
+                <select class="form-control" id="tipo-via-direccion-cliente" name="tipo-road" required [(ngModel)]="selectedCustomerAddressRoadType">
+                    <option value="" disabled hidden>Elige tipo vía</option>
                     <option *ngFor="let via of filteredVias" [value]="via">{{ via }}</option>
                 </select>
             </div>
             <div *ngIf="!this.customerHasResults && (selectedCustomerDNI !== '' || selectedCustomerName !== '' || selectedCustomerSurname !== '')" class="col-4 p-2">
                 <label for="nombre-direccion-cliente" class="form-label">Dirección</label>
-                    <input [(ngModel)]="selectedCustomerAddress" type="text" class="form-control" id="nombre-direccion-cliente" placeholder="Nombre calle..." name="direccion_cliente" required>
+                    <input [(ngModel)]="selectedCustomerAddressRoadType" type="text" class="form-control" id="nombre-direccion-cliente" placeholder="Nombre calle..." name="direccion_cliente" required>
             </div>
             <div *ngIf="!this.customerHasResults && (selectedCustomerDNI !== '' || selectedCustomerName !== '' || selectedCustomerSurname !== '')" class="col-4 p-2">
                 <label for="numero-direccion_cliente" class="form-label">Número</label>
-                <input [(ngModel)]="selectedCustomerAddress" type="text" class="form-control" id="numero-direccion_cliente" placeholder="Número..." name="direccion_cliente" required>
+                <input [(ngModel)]="selectedCustomerAddressName" type="text" class="form-control" id="numero-direccion_cliente" placeholder="Número..." name="direccion_cliente" required>
             </div>
-            <div *ngIf="selectedAddress === true" class="text-danger">La dirección es obligatoria.</div>
+            <div *ngIf="selectedAddressRoadType === true && selectedAddressName === true && selectedAddressNumber === true" class="text-danger">La dirección es obligatoria.</div>
         </div>
     </form>
 </div>

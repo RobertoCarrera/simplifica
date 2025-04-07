@@ -17,7 +17,11 @@ export class FormNewRepairingComponent implements OnInit{
   @Input()formStep: number = 0;
   @Output() productRemoved = new EventEmitter<void>();
 
-  selectedServiceType: boolean = false;
+  selectedServiceType: string = '';
+  selectedCategoryName: string = '';
+  selectedProductName: string = '';
+  
+  selectedService: boolean = false;
   selectedCategory: boolean = false;
   selectedProduct: boolean = false;
   selectedDueDate: boolean = false;
