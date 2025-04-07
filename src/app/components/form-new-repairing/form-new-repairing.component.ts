@@ -35,7 +35,7 @@ export class FormNewRepairingComponent implements OnInit{
       this.productsService.getProducts().subscribe( product =>{
         this.products = product;
       });
-      this.worksService.getWorks().subscribe( work =>{
+      this.worksService.getWorks('671eca034ecc7019c9ea3bd3').subscribe( work =>{
         this.works = work;
       });
   }

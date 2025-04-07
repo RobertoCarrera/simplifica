@@ -1,53 +1,89 @@
 <div class="container-fluid h-100">
     <div class="row h-100">
-        <div class="col-6">
-            <label for="modelo_producto" class="form-label">Modelo</label>
-            <input type="text" class="form-control" id="modelo_producto" placeholder="Introducir modelo..." name="modelo_producto"required>
-            <div *ngIf="selectedModelo === true" class="text-danger">El modelo es obligatorio.</div>
-        </div>
-        <div class="col-6">
-            <label for="cpu_producto" class="form-label">CPU</label>
-            <input type="text" class="form-control" id="cpu_producto" placeholder="Introducir CPU..." name="cpu_producto" required>
-            <div *ngIf="selectedCPU === true" class="text-danger">La CPU es obligatoria.</div>
-        </div>
-        <div class="col-6">
-            <label for="ram_producto" class="form-label">RAM</label>
-            <input type="text" class="form-control" id="ram_producto" placeholder="Introducir RAM..." name="ram_producto"required>
-            <div *ngIf="selectedRAM === true" class="text-danger">La RAM es obligatoria.</div>
-        </div>
-        <div class="col-6">
-            <label for="ssd_producto" class="form-label">SSD</label>
-            <input type="text" class="form-control" id="ssd_producto" placeholder="Introducir SSD..." name="ssd_producto"required>
-            <div *ngIf="selectedSSD === true" class="text-danger">El SSD es obligatoria.</div>
-        </div>
-        <div class="col-6">
-            <label for="hdd_producto" class="form-label">HDD</label>
-            <input type="text" class="form-control" id="hdd_producto" placeholder="Introducir HDD..." name="hdd_producto" required>
-            <div *ngIf="selectedHDD === true" class="text-danger">El HDD es obligatorio.</div>
-        </div>
-        <div class="col-6">
-            <label for="grafica_producto" class="form-label">Tarjeta gráfica</label>
-            <input type="text" class="form-control" id="grafica_producto" placeholder="Introducir la gráfica..." name="grafica_producto"required>
-            <div *ngIf="selectedGrafica === true" class="text-danger">La gráfica es obligatoria.</div>
-        </div>
-        <div class="col-6">
-            <label for="pulgadas_producto" class="form-label">Pulgadas</label>
-            <input type="text" class="form-control" id="pulgadas_producto" placeholder="Introducir pulgadas..." name="pulgadas_producto" required>
-            <div *ngIf="selectedPulgadas === true" class="text-danger">Las pulgadas son obligatorias.</div>
-        </div>
-        <div class="col-6">
-            <label for="peso_producto" class="form-label">Peso</label>
-            <input type="text" class="form-control" id="peso_producto" placeholder="Introducir peso..." name="peso_producto" required>
-            <div *ngIf="selectedPeso === true" class="text-danger">El peso es obligatorio.</div>
-        </div>
-        <div class="col-6">
+        <div class="col-6 p-2">
             <label for="marca_producto" class="form-label">Marca</label>
-            <input type="text" class="form-control" id="marca_producto" placeholder="Introducir marca..." name="marca_producto" required>
-            <div *ngIf="selectedMarca === true" class="text-danger">La marca es obligatoria.</div>
+            <select class="form-control" id="brands" name="tipo_service" required 
+                [(ngModel)]="selectedBrand" (change)="onBrandChange()">
+                <option [ngValue]= "null" disabled hidden>Elige marca</option>
+                <option *ngFor="let brand of brands" [ngValue]="brand">{{ brand.nombre }}</option>
+            </select>
+        </div>                                      
+        <div *ngIf="isSelectedBrand && models.length" class="col-6 p-2">
+            <label for="modelSearch" class="form-label">Modelo</label>
+            <input [(ngModel)]="selectedModelName"
+            (input)="onSearchProductModel($event)"
+            type="text" class="form-control" id="modelSearch"
+            placeholder="Buscar Modelo..."
+            name="modelSearch" required>
+            <!-- <div *ngIf="newServiceForm.submitted && !selectedModel" class="text-danger">El modelo es obligatorio.</div> -->
+            <ul *ngIf="filteredModels.length" class="list-group position-absolute z-2">
+                <li *ngFor="let model of filteredModels"
+                    (click)="selectModel(model)"
+                    class="list-group-item">
+                    {{model.nombre}}
+                </li>
+            </ul>
         </div>
-        <div class="col-6">
+        <div *ngIf="selectedModelName" class="col-6 p-2">
+            <label for="cpuSearch" class="form-label">CPU</label>
+            <input [(ngModel)]="selectedCPUModel"
+                    (input)="onSearchProductCPU($event)"
+                    type="text" class="form-control" id="cpuSearch"
+                    placeholder="Buscar CPU..."
+                    name="cpuSearch" required>
+            <ul *ngIf="filteredCPUs.length" class="list-group position-absolute z-2">
+                <li *ngFor="let cpu of filteredCPUs"
+                    (click)="selectCPU(cpu)"
+                    class="list-group-item">
+                    {{cpu.serie}}
+                </li>
+            </ul>
+        </div>
+        <div *ngIf="selectedModelName" class="col-6 p-2">
+            <label for="ram_producto" class="form-label">RAM</label>
+            <select class="form-control" id="product-ram" name="product-ram" required [(ngModel)]="selectedProductRAM">
+                <option value="" disabled hidden>Elige RAM</option>
+                <option *ngFor="let ram of rams" [value]="ram">{{ ram.cantidad }} GB</option>
+            </select>
+            <!-- <div *ngIf="selectedRAM === true" class="text-danger">La RAM es obligatoria.</div> -->
+        </div>
+        <div *ngIf="selectedModelName" class="col-6 p-2">
+            <label for="ssd_producto" class="form-label">SSD</label>
+            <select class="form-control" id="product-ssd" name="product-ssd" required [(ngModel)]="selectedProductSSD">
+                <option value="" disabled hidden>Elige SSD</option>
+                <option *ngFor="let ssd of ssds" [value]="ssd">{{ ssd.capacidad }} GB</option>
+            </select>            <!-- <div *ngIf="selectedSSD === true" class="text-danger">El SSD es obligatoria.</div> -->
+        </div>
+        <div *ngIf="selectedModelName" class="col-6 p-2">
+            <label for="hdd_producto" class="form-label">HDD</label>
+            <select class="form-control" id="product-hhd" name="product-hhd" required [(ngModel)]="selectedProductHHD">
+                <option value="" disabled hidden>Elige HHD</option>
+                <option *ngFor="let hhd of hhds" [value]="hhd">{{ hhd.capacidad }} GB</option>
+            </select>              <!-- <div *ngIf="selectedHDD === true" class="text-danger">El HDD es obligatorio.</div> -->
+        </div>
+        <div *ngIf="selectedModelName" class="col-6 p-2">
+            <label for="grafica_producto" class="form-label">Tarjeta gráfica</label>
+            <input type="text" class="form-control" id="grafica_producto" placeholder="Buscar la gráfica" name="grafica_producto"required>
+            <!-- <div *ngIf="selectedGrafica === true" class="text-danger">La gráfica es obligatoria.</div> -->
+        </div>
+        <div *ngIf="selectedModelName" class="col-6 p-2">
+            <label for="pulgadas_producto" class="form-label">Pulgadas</label>
+            <select class="form-control" id="inches" name="inches" required [(ngModel)]="selectedProductInches">
+                <option value="" disabled hidden>Elige Pulgadas</option>
+                <option *ngFor="let inch of inches" [value]="inch">{{ inch.tamanyo }}</option>
+            </select>            <!-- <div *ngIf="selectedPulgadas === true" class="text-danger">Las pulgadas son obligatorias.</div> -->
+        </div>
+        <div *ngIf="selectedModelName" class="col-6 p-2">
+            <label for="peso_producto" class="form-label">Peso</label>
+            <input type="text" class="form-control" id="peso_producto" placeholder="Introducir peso" name="peso_producto" required>
+            <!-- <div *ngIf="selectedPeso === true" class="text-danger">El peso es obligatorio.</div> -->
+        </div>
+        <div *ngIf="selectedModelName" class="col-6 p-2">
             <label for="so_producto" class="form-label">SO</label>
-            <input type="text" class="form-control" id="so_producto" placeholder="Introducir SO..." name="so_producto"required>
+            <select class="form-control" id="sos" name="so" required [(ngModel)]="selectedSOName">
+                <option value="" disabled hidden>Elige SO</option>
+                <option *ngFor="let so of sos" [value]="so">{{ so.nombre }}</option>
+            </select>
             <div *ngIf="selectedSO === true" class="text-danger">El SO es obligatoria.</div>
         </div>
     </div>

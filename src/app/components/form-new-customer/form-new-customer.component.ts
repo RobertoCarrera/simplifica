@@ -132,7 +132,8 @@ export class FormNewCustomerComponent  implements OnInit{
     }
   
     // Simula la búsqueda de clientes por DNI
-    this.filteredCustomers = this.customers.filter(customer => customer.dni.includes(dni));
+    this.filteredCustomers = this.customers.filter(customer => 
+      customer.dni.includes(dni));
   
     if (this.filteredCustomers.length === 0) {
       this.searchValid = false; // Detener búsquedas si no hay resultados

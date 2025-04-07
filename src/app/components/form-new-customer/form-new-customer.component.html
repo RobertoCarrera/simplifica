@@ -131,11 +131,11 @@
             </div>
             <div *ngIf="!this.customerHasResults && (selectedCustomerDNI !== '' || selectedCustomerName !== '' || selectedCustomerSurname !== '')" class="col-4 p-2">
                 <label for="nombre-direccion-cliente" class="form-label">Dirección</label>
-                    <input [(ngModel)]="selectedCustomerAddressRoadType" type="text" class="form-control" id="nombre-direccion-cliente" placeholder="Nombre calle..." name="direccion_cliente" required>
+                    <input [(ngModel)]="selectedCustomerAddressName" type="text" class="form-control" id="nombre-direccion-cliente" placeholder="Nombre calle..." name="nombre-direccion-cliente" required>
             </div>
             <div *ngIf="!this.customerHasResults && (selectedCustomerDNI !== '' || selectedCustomerName !== '' || selectedCustomerSurname !== '')" class="col-4 p-2">
-                <label for="numero-direccion_cliente" class="form-label">Número</label>
-                <input [(ngModel)]="selectedCustomerAddressName" type="text" class="form-control" id="numero-direccion_cliente" placeholder="Número..." name="direccion_cliente" required>
+                <label for="numero-direccion-cliente" class="form-label">Número</label>
+                <input [(ngModel)]="selectedCustomerAddressNumber" type="text" class="form-control" id="numero-direccion-cliente" placeholder="Número..." name="numero-direccion-cliente" required>
             </div>
             <div *ngIf="selectedAddressRoadType === true && selectedAddressName === true && selectedAddressNumber === true" class="text-danger">La dirección es obligatoria.</div>
         </div>

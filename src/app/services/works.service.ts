@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Work } from '../models/work';
@@ -12,8 +12,10 @@ export class WorksService {
   
   constructor(private http: HttpClient){}
 
-  getWorks(): Observable<Work[]>{
-    return this.http.get<Work[]>(this.apiUrl);
+  getWorks(negocioId: string): Observable<Work[]>{
+    let params = new HttpParams().set('negocio_id', negocioId);
+    
+    return this.http.get<Work[]>(this.apiUrl, {params});
   }
 
   createWork(work: Work): Observable<Work> {
