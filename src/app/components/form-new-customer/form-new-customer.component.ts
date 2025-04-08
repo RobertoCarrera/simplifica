@@ -29,7 +29,7 @@ export class FormNewCustomerComponent  implements OnInit{
   filteredDomains = [...this.domains];
   filteredLocalities = [...this.localities];
   filteredCPS = [...this.localities];
-  filteredVias: string[] = [...this.vias]; // Opciones filtradas
+  filteredVias: string[] = [...this.vias];
 
   customerHasResults: boolean = false;
   localityHasResults: boolean = false;

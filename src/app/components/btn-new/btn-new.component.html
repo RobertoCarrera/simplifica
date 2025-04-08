@@ -42,8 +42,12 @@
                 <img class="form-logo-cliente rounded-5 p-1" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="">
             </div>
         </div>
-        <div>
+        <div *ngIf="this.formStep === 2 && this.personType === true" class="row d-flex align-items-center justify-content-around">
             <app-form-new-customer 
+            [formStep] = this.formStep/>
+        </div>
+        <div *ngIf="this.formStep === 2 && this.businessType === true" class="row d-flex align-items-center justify-content-around">
+            <app-form-new-company
             [formStep] = this.formStep/>
         </div>
         <div class="row d-flex align-items-center justify-content-between" *ngIf="this.formStep === 3">

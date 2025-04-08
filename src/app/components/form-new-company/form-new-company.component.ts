@@ -17,8 +17,6 @@ import { FormsModule } from '@angular/forms';
 export class FormNewCompanyComponent  implements OnInit{
 
   @Input() formStep: number = 0;  
-  @Input() creatingPerson: boolean = false;
-  @Input() creatingCompany: boolean = false;
 
   companies: Company[] = [];
   domains: Domain[] = [];
@@ -38,7 +36,7 @@ export class FormNewCompanyComponent  implements OnInit{
   selectedDNI = '';
   selectedDomain: boolean = false;
   
-  selectedCompanyDNI: string = '';
+  selectedCompanyCIF: string = '';
   selectedCompanyTelephone: string = '';
   selectedCompanySurname: string = '';
   selectedCompanyEmail: string = '';
@@ -75,7 +73,7 @@ export class FormNewCompanyComponent  implements OnInit{
 
   clearForm(){
       
-    this.selectedCompanyDNI = '';
+    this.selectedCompanyCIF = '';
     this.selectedCompanyTelephone = '';
     this.selectedCompanySurname = '';
     this.selectedCompanyEmail = '';
@@ -98,7 +96,7 @@ export class FormNewCompanyComponent  implements OnInit{
   }
 
   selectCompany(company: Company) {
-    this.selectedCompanyDNI = company.cif; // Muestra el nombre de la marca seleccionada en el input
+    this.selectedCompanyCIF = company.cif; // Muestra el nombre de la marca seleccionada en el input
     this.selectedCompanyTelephone = company.telefono;
     this.selectedCompanyEmail= company.email;
     this.selectedCompanyName= company.nombre;
@@ -154,7 +152,7 @@ export class FormNewCompanyComponent  implements OnInit{
   }
 
   selectDomain(domain: Domain) {
-    this.selectedCompanyDNI = domain.nombre;
+    this.selectedCompanyCIF = domain.nombre;
     this.filteredCompanies = [];
   }
 

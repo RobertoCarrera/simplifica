@@ -1,12 +1,13 @@
 import { AfterViewInit, Component, Input, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormNewCustomerComponent } from "../form-new-customer/form-new-customer.component";
+import { FormNewCompanyComponent } from "../form-new-company/form-new-company.component";
 import { FormNewRepairingComponent } from "../form-new-repairing/form-new-repairing.component";
 import { FormNewProductComponent } from '../form-new-product/form-new-product.component';
 
 @Component({
     selector: 'app-btn-new',
-    imports: [CommonModule, FormNewCustomerComponent, FormNewRepairingComponent, FormNewProductComponent],
+    imports: [CommonModule, FormNewCustomerComponent, FormNewRepairingComponent, FormNewProductComponent, FormNewCompanyComponent],
     templateUrl: './btn-new.component.html',
     styleUrl: './btn-new.component.scss'
 })
@@ -17,6 +18,7 @@ export class BtnNewComponent implements AfterViewInit {
     @Input() maxSteps: number = 0;
 
     @ViewChild(FormNewCustomerComponent) actionsNewCustomerComponent!: FormNewCustomerComponent;
+    @ViewChild(FormNewCompanyComponent) actionsNewCompanyComponent!: FormNewCompanyComponent;
 
     newItem: any = null;
     formStep: number = 1;
@@ -81,7 +83,12 @@ export class BtnNewComponent implements AfterViewInit {
 
     clearFormFromParent() {
          {
-            this.actionsNewCustomerComponent.clearForm();
+            if (this.actionsNewCustomerComponent) {
+                this.actionsNewCustomerComponent.clearForm();
+            }
+            if (this.actionsNewCompanyComponent) {
+                this.actionsNewCompanyComponent.clearForm();
+            }
             this.totalProducts = 0;
             this.isCreating();
         }
