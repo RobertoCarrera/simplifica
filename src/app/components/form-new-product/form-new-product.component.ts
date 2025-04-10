@@ -44,6 +44,7 @@ export class FormNewProductComponent implements OnInit {
 
   selectedBrand: Brand | null = null;
 
+  serialNumber: string = '';
   selectedModelName: string = '';
   selectedCPUModel: string = '';
   selectedBrandName: string = '';

@@ -26,12 +26,15 @@ export class FormNewCustomerComponent  implements OnInit{
   vias: string[] = ['Calle', 'Avenida', 'Plaza', 'Paseo', 'Camino', 'Carretera', 'Autovía', 'Autopista', 'Travesía', 'Barrio', 'Ronda', 'Pasaje', 'Paseo Marítimo'];  
 
   filteredCustomers = [...this.customers];
+  filteredCustomersByDNI: Customer[] = [];
+  filteredCustomersByName: Customer[] = [];
+  filteredCustomersByTelephone: Customer[] = [];
+
   filteredDomains = [...this.domains];
   filteredLocalities = [...this.localities];
   filteredCPS = [...this.localities];
   filteredVias: string[] = [...this.vias];
 
-  customerHasResults: boolean = false;
   localityHasResults: boolean = false;
   domainHasResults: boolean = false;
   cpHasResults: boolean = false;
@@ -93,6 +96,9 @@ export class FormNewCustomerComponent  implements OnInit{
     this.selectedCustomerCP = '';
   
     this.filteredCustomers = [];
+    this.filteredCustomersByDNI = [];
+    this.filteredCustomersByName = [];
+    this.filteredCustomersByTelephone = [];
     this.filteredDomains = [];
     this.filteredLocalities = [];
     this.filteredCPS = [];
@@ -122,6 +128,9 @@ export class FormNewCustomerComponent  implements OnInit{
     this.selectedCustomerAddressName = cliente.direccion.nombre;
     this.selectedCustomerAddressNumber = cliente.direccion.numero;
     this.filteredCustomers = []; // Limpia la lista tras la selección
+    this.filteredCustomersByDNI = []; // Limpia la lista tras la selección
+    this.filteredCustomersByName = []; // Limpia la lista tras la selección
+    this.filteredCustomersByTelephone = []; // Limpia la lista tras la selección
   }
 
   onSearchCustomerDNI(event: any) {
@@ -132,10 +141,10 @@ export class FormNewCustomerComponent  implements OnInit{
     }
   
     // Simula la búsqueda de clientes por DNI
-    this.filteredCustomers = this.customers.filter(customer => 
-      customer.dni.includes(dni));
+    this.filteredCustomersByDNI = this.customers.filter(customer => 
+      customer.dni.startsWith(dni));
   
-    if (this.filteredCustomers.length === 0) {
+    if (this.filteredCustomersByDNI.length === 0) {
       this.searchValid = false; // Detener búsquedas si no hay resultados
     } else {
       this.searchValid = true; // Continuar búsquedas si hay resultados
@@ -152,9 +161,11 @@ export class FormNewCustomerComponent  implements OnInit{
     }
   
     // Simula la búsqueda de clientes por nombre
-    this.filteredCustomers = this.customers.filter(customer => customer.nombre.includes(name));
+    this.filteredCustomersByName = this.customers.filter(customer => 
+      customer.nombre.includes(name) || 
+      customer.apellidos.includes(name));
   
-    if (this.filteredCustomers.length === 0) {
+    if (this.filteredCustomersByName.length === 0) {
       this.searchValid = false; // Detener búsquedas si no hay resultados
     }
   }
@@ -164,19 +175,20 @@ export class FormNewCustomerComponent  implements OnInit{
     this.filteredVias = this.vias.filter(via => via.toLowerCase().includes(search));
   } 
   
-  onSearchCustomerSurname(event: any) {
+  onSearchCustomerTelephone(event: any) {
     if (!this.searchValid) return; // Detener si las búsquedas ya no son válidas
   
-    const surname = event.target.value;
-    if (!surname) {
+    const telephone = event.target.value;
+    if (!telephone) {
       this.searchValid = false; // Detener búsquedas si los apellidos están vacíos
       return;
     }
   
     // Simula la búsqueda de clientes por apellidos
-    this.filteredCustomers = this.customers.filter(customer => customer.apellidos.includes(surname));
+    this.filteredCustomersByTelephone = this.customers.filter(customer => 
+      customer.telefono.startsWith(telephone));
   
-    if (this.filteredCustomers.length === 0) {
+    if (this.filteredCustomersByTelephone.length === 0) {
       this.searchValid = false; // Detener búsquedas si no hay resultados
     }
   }
@@ -184,7 +196,8 @@ export class FormNewCustomerComponent  implements OnInit{
   onSearchDomain(event: Event) {
     const query = (event.target as HTMLInputElement).value.toLowerCase();
     if (query.length > 0) {
-      this.filteredDomains = this.domains.filter(domain => domain.nombre.toLowerCase().startsWith(query));
+      this.filteredDomains = this.domains.filter(domain => 
+        domain.nombre.toLowerCase().startsWith(query));
       this.domainHasResults = this.filteredDomains.length > 0;
     } else {
       this.filteredDomains = [];
@@ -215,8 +228,8 @@ export class FormNewCustomerComponent  implements OnInit{
   }
 
   selectDomain(domain: Domain) {
-    this.selectedCustomerDNI = domain.nombre;
-    this.filteredCustomers = [];
+    this.selectedCustomerDomain = domain.nombre;
+    this.filteredDomains = [];
   }
 
   selectLocality(locality: Locality) {
