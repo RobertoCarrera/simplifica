@@ -79,6 +79,8 @@ export class FormNewProductComponent implements OnInit {
     // Cargar marcas
     this.brandsService.getBrands('671eca034ecc7019c9ea3bd3').subscribe(brand => {
       this.brands = brand;
+
+      console.log(this.brands);
     });
 
     // Cargar CPUs
@@ -156,10 +158,11 @@ export class FormNewProductComponent implements OnInit {
       });
     }
     
-    this.modelService.getModels('671eca034ecc7019c9ea3bd3',this.selectedBrand!._id).subscribe(model => {
+    this.modelService.getModels('671eca034ecc7019c9ea3bd3', this.selectedBrand!._id).subscribe(model => {
       this.models = model;
       this.filteredModels = this.models; 
     });
+
     this.isSelectedBrand = true;
   }
 }

@@ -1,18 +1,16 @@
-import { Category } from "./category";
-import { Customer } from "./customer";
-import { ServiceStage } from "./service-stage";
+import { Product } from "./product";
+import { Work } from "./work";
 
 export interface Service {
 
     _id: string,
     created_at: Date,
-    contador: number,
-    cliente_id: string,
-    cliente: Customer,
     fecha_vencimiento: Date,
-    estado_id: string,
-    estado: ServiceStage,
-    comentarios: string[],
-    categoria_id: string[],
-    categorias: Category[]
+    unidades: number,
+    trabajo_id: string[],
+    producto_id: string[],
+    ticket_id: string,
+    trabajo: Work,
+    producto: Product | null,
+    acabado: boolean
 }

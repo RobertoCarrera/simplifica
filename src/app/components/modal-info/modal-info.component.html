@@ -1,0 +1,51 @@
+<div class="modal fade show" tabindex="-1" role="dialog" style="display: block;" aria-labelledby="modalInfoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title" id="modalInfoLabel">Ticket # {{ticket.contador}} para <a href="#">{{ticket.cliente.nombre}} {{ticket.cliente.apellidos}}</a></h2>
+          <button type="button" class="btn-close" aria-label="Close" (click)="closeModal()"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row d-flex align-items-center justify-content-around pt-5">
+            <div *ngFor="let estado of estados" class="col-2 d-flex flex-column align-items-center justify-content-center" [ngClass]="{'estado-pasado': ticket.estado.posicion > estado.posicion}">
+              <div>{{estado.nombre}}</div>
+              <div class="marcador" [ngClass]="{'marcador-estado-actual': ticket.estado.posicion === estado.posicion, 'marcador-estado-pasado': ticket.estado.posicion > estado.posicion}"></div>
+            </div>
+          </div>
+          <div class="table-responsive rounded pt-5" id="containerServicesTable">
+            <table id="tablaServices" class="table table-striped mb-1 rounded">
+              <thead>
+                <tr>
+                  <th>Unidades</th>
+                  <th>Productos</th>
+                  <th>Trabajos</th>
+                  <th class="text-center">Acabado</th>
+                </tr>
+              </thead>
+              <tbody id="customersBodyTable" class="h-100">
+                <tr *ngFor="let servicio of ticket.servicios" class="customer">
+                    <td class="align-content-center" #unidades>{{servicio.unidades}}</td>
+                    <td class="align-content-center" #producto>{{servicio.producto?.nombre || ''}}</td>
+                    <td class="align-content-center" #trabajo>{{servicio.trabajo.nombre}}</td>
+                    <td class="align-content-center text-center" #finalizado>
+                      <input type="checkbox" name="finalizado" id="" [checked]="servicio.finalizado">
+                    </td>
+                </tr>
+            </tbody>
+            </table>
+          </div>
+          <div class="pt-5 d-flex flex-column align-items-center justify-content-center">
+            <h2>Comentarios</h2>
+              <div class="comentario" *ngFor="let comentario of ticket.comentarios">
+                <div class="w-50">
+                  <p class="m-0">{{comentario}}</p>
+                </div>
+              </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeModal()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>

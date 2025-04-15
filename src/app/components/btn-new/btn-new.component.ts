@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, Input, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, Input, Output, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormNewCustomerComponent } from "../form-new-customer/form-new-customer.component";
 import { FormNewCompanyComponent } from "../form-new-company/form-new-company.component";
@@ -16,13 +16,13 @@ export class BtnNewComponent implements AfterViewInit {
     @Input() itemType: string = '';
     @Input() totalItems: number = 0;
     @Input() maxSteps: number = 0;
+    @Output() totalProducts: number = 1;
 
     @ViewChild(FormNewCustomerComponent) actionsNewCustomerComponent!: FormNewCustomerComponent;
     @ViewChild(FormNewCompanyComponent) actionsNewCompanyComponent!: FormNewCompanyComponent;
 
     newItem: any = null;
     formStep: number = 1;
-    totalProducts: number = 0;
     maxTotalProducts: number = 6;
 
     creating: boolean = false;

@@ -21,7 +21,7 @@
             <div class="table-responsive rounded" id="containerServicesTable">
                 <table id="tableServices" class="table table-striped mb-1 rounded">
                     <tbody id="servicesTableBody" class="h-100">
-                        <tr *ngFor="let service of filterServices()" class="service" >
+                        <!-- <tr *ngFor="let service of filterServices()" class="service" >
                             <td class="align-content-center" #contador>{{service.contador}}</td>
                             <td class="align-content-center" #created_at>{{service.created_at | date:'dd/MM/yyyy'}}</td>
                             <td class="align-content-center" #dni>{{service.cliente.dni}}</td>
@@ -30,11 +30,11 @@
                             <td class="align-content-center" #fecha_vencimiento>{{service.fecha_vencimiento | date:'dd/MM/yyyy'}}</td>
                             <td class="align-content-center" #estado_nombre>{{service.estado.nombre}}</td>
                             <td class="align-content-center" #categories>
-                                <p class="m-0" *ngFor="let category of service.categorias">
-                                    {{category.nombre}}
+                                <p class="m-0" *ngFor="let trabajo of service.trabajos">
+                                    {{trabajo.nombre}}
                                 </p>
                             </td>
-                        </tr>
+                        </tr> -->
                     </tbody>
                 </table>
             </div>

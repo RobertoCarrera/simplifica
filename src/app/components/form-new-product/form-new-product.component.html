@@ -4,7 +4,7 @@
             <div class="row">
                 <div class="col-6 p-2">
                     <label for="marca_producto" class="form-label">Marca</label>
-                    <select class="form-control" id="brands" name="tipo_service" required 
+                    <select class="form-control" id="brands" name="brand" required 
                         [(ngModel)]="selectedBrand" (change)="onBrandChange()">
                         <option [ngValue]= "null" disabled hidden>Elige marca</option>
                         <option *ngFor="let brand of brands" [ngValue]="brand">{{ brand.nombre }}</option>

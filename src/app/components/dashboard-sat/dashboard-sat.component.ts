@@ -2,43 +2,45 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BtnNewComponent } from '../btn-new/btn-new.component';
-import { Service } from '../../models/service';
-import { ServicesService } from '../../services/services.service';
+import { Ticket } from '../../models/ticket';
+import { TicketsService } from '../../services/tickets.service';
+import { ModalInfoComponent } from "../modal-info/modal-info.component";
 
 @Component({
   selector: 'app-dashboard-sat',
-  imports: [FormsModule, CommonModule, BtnNewComponent],
+  imports: [FormsModule, CommonModule, BtnNewComponent, ModalInfoComponent],
   templateUrl: './dashboard-sat.component.html',
   styleUrl: './dashboard-sat.component.scss'
 })
 export class DashboardSatComponent implements OnInit{
 
-  services: Service[] = [];
+  tickets: Ticket[] = [];
+  selectedTicket: Ticket | null = null;
   
-  searchService: string = '';
+  searchTicket: string = '';
 
-  constructor(private servicesService: ServicesService){}
+  constructor(private ticketsService: TicketsService){}
 
   ngOnInit(): void{
-    this.servicesService.getServices().subscribe( service => {
-      this.services = service;
+    this.ticketsService.getTickets().subscribe( ticket => {
+      this.tickets = ticket;
     });
   }
 
-  filterServices(): Service[]{
-    if(!this.searchService.trim()){
-      return this.services;
+  filterTickets(): Ticket[]{
+    if(!this.searchTicket.trim()){
+      return this.tickets;
     }
 
-    const searchTerm = this.removeAccents(this.searchService.toLowerCase().trim());
+    const searchTerm = this.removeAccents(this.searchTicket.toLowerCase().trim());
 
-    return this.services.filter(service => {
+    return this.tickets.filter(ticket => {
 
       const opcionesMes: Intl.DateTimeFormatOptions = { month: "long" };// Para obtener el nombre del mes en español
       const normalize = (text: string) => this.removeAccents(text.toLowerCase());
 
       // Convertir la fecha a formatos buscables
-      const fechaVencimiento = new Date(service.fecha_vencimiento);
+      const fechaVencimiento = new Date(ticket.fecha_vencimiento);
       // Extraer datos de fecha de vencimiento
       const diaVencimiento = fechaVencimiento.getDate().toString();
       const mesNumVencimiento = (fechaVencimiento.getMonth() + 1).toString().padStart(2, '0');
@@ -46,7 +48,7 @@ export class DashboardSatComponent implements OnInit{
       const añoVencimiento = fechaVencimiento.getFullYear().toString();
   
       // Convertir la fecha a formatos buscables
-      const fechaCreacion = new Date(service.created_at);
+      const fechaCreacion = new Date(ticket.created_at);
       // Extraer datos de fecha de creación
       const diaCreacion = fechaCreacion.getDate().toString();
       const mesNumCreacion = (fechaCreacion.getMonth() + 1).toString().padStart(2, '0');
@@ -64,14 +66,13 @@ export class DashboardSatComponent implements OnInit{
       const fechaCreacionFormateada3 = `${diaCreacion} ${mesNombreCreacion} ${añoCreacion}`;
 
       return  (
-        normalize(service.created_at.toString()).startsWith(searchTerm) ||
-        normalize(service.contador.toString()).startsWith(searchTerm) ||
-        normalize(service.cliente.dni.toLowerCase()).startsWith(searchTerm) ||
-        normalize(service.cliente.nombre.toLowerCase()).startsWith(searchTerm) ||
-        normalize(service.cliente.apellidos.toLowerCase()).includes(searchTerm) ||
-        normalize(service.fecha_vencimiento.toString()).startsWith(searchTerm) ||
-        normalize(service.estado.toString()).includes(searchTerm) || 
-        (service.categorias?.some(cat => normalize(cat.nombre).includes(searchTerm)) ?? false) ||
+        normalize(ticket.created_at.toString()).startsWith(searchTerm) ||
+        normalize(ticket.contador.toString()).startsWith(searchTerm) ||
+        normalize(ticket.cliente.dni.toLowerCase()).startsWith(searchTerm) ||
+        normalize(ticket.cliente.nombre.toLowerCase()).startsWith(searchTerm) ||
+        normalize(ticket.cliente.apellidos.toLowerCase()).includes(searchTerm) ||
+        normalize(ticket.fecha_vencimiento.toString()).startsWith(searchTerm) ||
+        normalize(ticket.estado.toString()).includes(searchTerm) ||
         // Filtrar por fecha de vencimiento
         normalize(fechaVencimientoFormateada1).includes(searchTerm) ||
         normalize(fechaVencimientoFormateada2).toLowerCase().includes(searchTerm) ||
@@ -87,5 +88,14 @@ export class DashboardSatComponent implements OnInit{
   // Función para eliminar tildes
   removeAccents(text: string): string {
     return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  openTicketModal(ticket: Ticket): void{
+    this.selectedTicket = ticket;
+    console.log(this.selectedTicket);
+  }
+
+  closeTicketModal(): void{
+    this.selectedTicket = null;
   }
 }
