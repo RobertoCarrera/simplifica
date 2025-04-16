@@ -11,8 +11,7 @@ import { BtnNewComponent } from "../btn-new/btn-new.component";
   standalone: true,
   imports: [CommonModule, FormsModule, BtnNewComponent, ModalCustomerComponent],
   templateUrl: './dashboard-customers.component.html',
-  styleUrl: './dashboard-customers.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  styleUrl: './dashboard-customers.component.scss'
 })
 export class DashboardCustomersComponent implements OnInit{
 

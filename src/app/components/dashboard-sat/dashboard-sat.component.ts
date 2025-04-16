@@ -16,10 +16,10 @@ import { TicketStagesService } from '../../services/ticket-stages.service';
 })
 export class DashboardSatComponent implements OnInit{
 
-  tickets: Ticket[] = [];
-  selectedTicket: Ticket | null = null;
   @Output() estados: TicketsStage [] = [];
   
+  tickets: Ticket[] = [];
+  selectedTicket: Ticket | null = null;
   searchTicket: string = '';
 
   constructor(private ticketsService: TicketsService,
