@@ -6,13 +6,13 @@
           <button type="button" class="btn-close" aria-label="Close" (click)="closeModal()"></button>
         </div>
         <div class="modal-body">
-          <div class="row d-flex align-items-center justify-content-around pt-5">
+          <div class="row d-flex align-items-center justify-content-around pt-3">
             <div *ngFor="let estado of estados" class="col-2 d-flex flex-column align-items-center justify-content-center" [ngClass]="{'estado-pasado': ticket.estado.posicion > estado.posicion}">
-              <div>{{estado.nombre}}</div>
+              <div class="pb-2">{{estado.nombre}}</div>
               <div class="marcador" [ngClass]="{'marcador-estado-actual': ticket.estado.posicion === estado.posicion, 'marcador-estado-pasado': ticket.estado.posicion > estado.posicion}"></div>
             </div>
           </div>
-          <div class="table-responsive rounded pt-5" id="containerServicesTable">
+          <div class="table-responsive rounded pt-3" id="containerServicesTable">
             <table id="tablaServices" class="table table-striped mb-1 rounded">
               <thead>
                 <tr>
@@ -34,17 +34,33 @@
             </tbody>
             </table>
           </div>
-          <div class="pt-5 d-flex flex-column align-items-center justify-content-center">
-            <h2>Comentarios</h2>
-              <div class="comentario" *ngFor="let comentario of ticket.comentarios">
-                <div class="w-50">
-                  <p class="m-0">{{comentario}}</p>
+          <div class="row pt-3 d-flex flex-column align-items-center justify-content-center">
+            <div class="col-12">
+              <div class="row m-0">
+                <div class="col-12">
+                  <h2>Comentarios</h2>
+                </div>
+                <div class="col-12 d-flex flex-column align-items-center justify-content-between rounded-3 p-3">
+                  <div class="comentario row w-100" *ngFor="let comentario of ticket.comentarios">
+                    <div class="col-4 p-0">
+                      <p class="m-0 shadow-sm">{{comentario}}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <div class="pt-3 row m-0 d-flex align-items-center justify-content-end">
+                    <textarea name="" id="" class="col-12 rounded p-1"></textarea>
+                    <div class="col-2 pt-3 pe-0 d-flex align-items-center justify-content-end">
+                      <button id="enviar-comentario" class="btn btn-success w-100">Enviar</button>
+                    </div>
+                  </div>
                 </div>
               </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="closeModal()">Cerrar</button>
+          <button type="button" class="btn btn-danger" (click)="closeModal()">Cerrar</button>
         </div>
       </div>
     </div>

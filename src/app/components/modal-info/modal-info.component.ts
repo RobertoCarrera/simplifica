@@ -1,8 +1,7 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TicketsStage } from '../../models/tickets-stage';
-import { TicketStagesService } from '../../services/ticket-stages.service';
 
 @Component({
   selector: 'app-modal-info',
@@ -10,20 +9,13 @@ import { TicketStagesService } from '../../services/ticket-stages.service';
   templateUrl: './modal-info.component.html',
   styleUrl: './modal-info.component.scss'
 })
-export class ModalInfoComponent implements OnInit {
+export class ModalInfoComponent{
 
   @Input() ticket: any;
+  @Input() estados: TicketsStage[] = [];
   @Output() close = new EventEmitter<void>();
-  estados: TicketsStage [] = [];
 
-  constructor(private ticketStageService: TicketStagesService){}
-
-  ngOnInit(): void {
-    this.ticketStageService.getStages().subscribe((stages: TicketsStage[]) => {
-      this.estados = stages;
-    });
-    console.log(this.ticket);
-  }
+  constructor(){}
 
   closeModal(): void{
     this.close.emit();

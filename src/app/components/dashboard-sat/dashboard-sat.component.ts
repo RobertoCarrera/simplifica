@@ -1,10 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BtnNewComponent } from '../btn-new/btn-new.component';
 import { Ticket } from '../../models/ticket';
 import { TicketsService } from '../../services/tickets.service';
 import { ModalInfoComponent } from "../modal-info/modal-info.component";
+import { TicketsStage } from '../../models/tickets-stage';
+import { TicketStagesService } from '../../services/ticket-stages.service';
 
 @Component({
   selector: 'app-dashboard-sat',
@@ -16,14 +18,19 @@ export class DashboardSatComponent implements OnInit{
 
   tickets: Ticket[] = [];
   selectedTicket: Ticket | null = null;
+  @Output() estados: TicketsStage [] = [];
   
   searchTicket: string = '';
 
-  constructor(private ticketsService: TicketsService){}
+  constructor(private ticketsService: TicketsService,
+              private ticketStageService: TicketStagesService){}
 
   ngOnInit(): void{
     this.ticketsService.getTickets().subscribe( ticket => {
       this.tickets = ticket;
+    });
+    this.ticketStageService.getStages().subscribe(stages => {
+      this.estados = stages;
     });
   }
 
@@ -92,7 +99,6 @@ export class DashboardSatComponent implements OnInit{
 
   openTicketModal(ticket: Ticket): void{
     this.selectedTicket = ticket;
-    console.log(this.selectedTicket);
   }
 
   closeTicketModal(): void{
