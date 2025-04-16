@@ -9,11 +9,14 @@
                     <tr>
                         <th>#</th>
                         <th>Estado</th>
-                        <th>Vencimiento</th>
+                        <!-- <th>Vencimiento</th> -->
                         <th>Nombre</th>
                         <th>Apellidos</th>
+                        <th>Teléfono</th>
                         <th>DNI</th>
-                        <th>Creación</th>
+                        <th>Servicio</th>
+                        <th>Producto</th>
+                        <!-- <th>Creación</th> -->
                     </tr>
                 </thead>
             </table>
@@ -23,11 +26,24 @@
                         <tr *ngFor="let ticket of filterTickets()" class="ticket" (click)="openTicketModal(ticket)">
                             <td class="align-content-center" #contador>{{ticket.contador}}</td>
                             <td class="align-content-center" #estado_nombre>{{ticket.estado.nombre}}</td>
-                            <td class="align-content-center" #fecha_vencimiento>{{ticket.fecha_vencimiento | date:'dd/MM/yyyy'}}</td>
+                            <!-- <td class="align-content-center" #fecha_vencimiento>{{ticket.fecha_vencimiento | date:'dd/MM/yyyy'}}</td> -->
                             <td class="align-content-center" #nombre>{{ticket.cliente.nombre}}</td>
                             <td class="align-content-center" #apellidos>{{ticket.cliente.apellidos}}</td>
+                            <td class="align-content-center" #apellidos>
+                                <a href="tel:{{ticket.cliente.telefono}}">{{ticket.cliente.telefono}}</a>
+                            </td>
                             <td class="align-content-center" #dni>{{ticket.cliente.dni}}</td>
-                            <td class="align-content-center" #created_at>{{ticket.created_at | date:'dd/MM/yyyy'}}</td>
+                            <td class="align-content-center" #trabajos>
+                                <ul class="m-0 p-0">
+                                    <li *ngFor="let servicio of ticket.servicios">{{servicio.trabajo.nombre}}</li>
+                                </ul>
+                            </td>
+                            <td class="align-content-center" #productos>
+                                <ul class="m-0 p-0">
+                                    <li *ngFor="let servicio of ticket.servicios">{{servicio.producto?.nombre}}</li>
+                                </ul>
+                            </td>
+                            <!-- <td class="align-content-center" #created_at>{{ticket.created_at | date:'dd/MM/yyyy'}}</td> -->
                         </tr>
                     </tbody>
                 </table>

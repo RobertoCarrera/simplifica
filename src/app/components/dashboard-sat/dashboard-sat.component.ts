@@ -71,6 +71,12 @@ export class DashboardSatComponent implements OnInit{
       const fechaCreacionFormateada1 = `${diaCreacion}/${mesNumCreacion}/${añoCreacion}`;
       const fechaCreacionFormateada2 = `${mesNombreCreacion} ${diaCreacion}, ${añoCreacion}`;
       const fechaCreacionFormateada3 = `${diaCreacion} ${mesNombreCreacion} ${añoCreacion}`;
+      
+      // Filtrar por servicios
+      const serviciosMatch = ticket.servicios.some(servicio => 
+        normalize(servicio.trabajo.nombre || '').startsWith(searchTerm) ||
+        normalize(servicio.producto?.nombre || '').startsWith(searchTerm)
+      );
 
       return  (
         normalize(ticket.created_at.toString()).startsWith(searchTerm) ||
@@ -79,7 +85,8 @@ export class DashboardSatComponent implements OnInit{
         normalize(ticket.cliente.nombre.toLowerCase()).startsWith(searchTerm) ||
         normalize(ticket.cliente.apellidos.toLowerCase()).includes(searchTerm) ||
         normalize(ticket.fecha_vencimiento.toString()).startsWith(searchTerm) ||
-        normalize(ticket.estado.toString()).includes(searchTerm) ||
+        normalize(ticket.estado.nombre.toLowerCase()).startsWith(searchTerm) ||
+        serviciosMatch ||
         // Filtrar por fecha de vencimiento
         normalize(fechaVencimientoFormateada1).includes(searchTerm) ||
         normalize(fechaVencimientoFormateada2).toLowerCase().includes(searchTerm) ||

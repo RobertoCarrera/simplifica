@@ -65,6 +65,10 @@
     width: 15%;
 }
 
+#ticketsTableBody > tr > td > ul > li{
+    list-style: none;
+}
+
 .form-btn-cerrar{
     height: 25px;
     width: 25px;
