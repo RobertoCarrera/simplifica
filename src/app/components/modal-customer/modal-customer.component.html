@@ -1,0 +1,46 @@
+<div class="modal fade show" tabindex="-1" role="dialog" style="display: block;" aria-labelledby="modalInfoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+            <div class="row w-100 d-flex align-items-center justify-content-between">
+                <div class="col-8">
+                    <h2>{{customer.nombre}} {{customer.apellidos}}</h2>
+                </div>
+                <div class="col-4">
+                    <h2>
+                        <a href="tel:{{customer.telefono}}">{{customer.telefono}}</a>
+                    </h2>
+                </div>
+            </div>
+            <button type="button" class="btn-close" aria-label="Close" (click)="closeModal()"></button>
+        </div>
+        <div class="modal-body">
+            <div class="row">
+                <div class="col-4">
+                    <h3>DNI:</h3>
+                </div>
+                <div class="col-8">
+                    <h3>{{customer.dni}}</h3>
+                </div>
+                <div class="col-4">
+                    <h3>Dirección: </h3>
+                </div>
+                <div class="col-8">
+                    <h3>{{customer.direccion.tipo_via}} {{customer.direccion.nombre}}, {{customer.direccion.numero}} ({{customer.direccion.localidad.nombre}}, {{customer.direccion.localidad.provincia}})</h3>
+                </div>
+                <div class="col-4">
+                    <h3>Email: </h3>
+                </div>
+                <div class="col-8">
+                    <h3>
+                        <a href="mailto:{{customer.email}}">{{customer.email}}</a>
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger" (click)="closeModal()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>

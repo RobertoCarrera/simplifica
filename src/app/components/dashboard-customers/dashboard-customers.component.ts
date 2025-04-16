@@ -3,12 +3,13 @@ import { CustomersService } from '../../services/customers.service';
 import { Customer } from '../../models/customer';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ModalCustomerComponent } from '../modal-customer/modal-customer.component';
 import { BtnNewComponent } from "../btn-new/btn-new.component";
 
 @Component({
   selector: 'app-dashboard-customers',
   standalone: true,
-  imports: [CommonModule, FormsModule, BtnNewComponent],
+  imports: [CommonModule, FormsModule, BtnNewComponent, ModalCustomerComponent],
   templateUrl: './dashboard-customers.component.html',
   styleUrl: './dashboard-customers.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -19,7 +20,7 @@ export class DashboardCustomersComponent implements OnInit{
   searchCustomer: string = '';
   isShrink = false;
   modalCustomer = false;
-  selectedCustomer: Customer = {} as Customer;
+  selectedCustomer: Customer | null = null;
   isModalVisible: boolean = false;
   customerInEdition: Customer | null = null;
   changeEditionCustomer: boolean = false;
@@ -44,11 +45,15 @@ export class DashboardCustomersComponent implements OnInit{
 
     const filtered = this.customers.filter(customer => {
       return (
-        customer.nombre.toLowerCase().includes(searchTerm) ||
+        customer.nombre.toLowerCase().startsWith(searchTerm) ||
         customer.apellidos.toLowerCase().includes(searchTerm) ||
+        customer.dni.toLowerCase().startsWith(searchTerm) ||
+        customer.direccion.tipo_via.toLowerCase().startsWith(searchTerm) ||
         customer.direccion.nombre.toLowerCase().includes(searchTerm) ||
-        customer.telefono.includes(searchTerm) ||
-        customer.email.toLowerCase().includes(searchTerm)
+        customer.direccion.localidad.nombre.toLowerCase().startsWith(searchTerm) ||
+        customer.direccion.localidad.CP.toString().toLowerCase().startsWith(searchTerm) ||
+        customer.telefono.startsWith(searchTerm) ||
+        customer.email.toLowerCase().startsWith(searchTerm)
       );
     });
     return filtered;
@@ -63,11 +68,6 @@ export class DashboardCustomersComponent implements OnInit{
     }
   }
 
-  seeCustomer(customer: Customer): void {
-    this.selectedCustomer = customer;
-    this.showModal();
-  }
-
   @HostListener('window:keydown', ['$event'])
   manejarAtajo(event: KeyboardEvent) {
     if (event.shiftKey && event.key.toLowerCase() === 'n') {
@@ -76,11 +76,11 @@ export class DashboardCustomersComponent implements OnInit{
     }
   }
 
-  showModal() {
-    this.isModalVisible = true;
+  openCustomerModal(ticket: Customer): void{
+    this.selectedCustomer = ticket;
   }
-  
-  closeModal() {
-    this.isModalVisible = false;
+
+  closeCustomerModal(): void{
+    this.selectedCustomer = null;
   }
 }
