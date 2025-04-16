@@ -33,9 +33,10 @@
                 </table>
             </div>
             <app-btn-new 
-            itemType="Nuevo Cliente"
-            [totalItems] = this.customers.length
-            [maxSteps] = 2></app-btn-new>
+                itemType="Nuevo Cliente"
+                [totalItems] = this.customers.length
+                [maxSteps] = 2>
+            </app-btn-new>
             <app-modal-customer
                 *ngIf="selectedCustomer"
                 [customer]="selectedCustomer"

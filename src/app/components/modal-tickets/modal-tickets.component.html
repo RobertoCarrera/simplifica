@@ -1,9 +1,14 @@
-<div class="modal fade show" tabindex="-1" role="dialog" style="display: block;" aria-labelledby="modalInfoLabel" aria-hidden="true">
+<div *ngIf="ticket" class="modal" [class.show]="true" [style.display]="'block'" tabindex="-1" role="dialog" aria-labelledby="modalTicket" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
       <div class="modal-content">
         <div class="modal-header">
-          <h2 class="modal-title" id="modalInfoLabel">Ticket # {{ticket.contador}} para <a href="#">{{ticket.cliente.nombre}} {{ticket.cliente.apellidos}}</a></h2>
-          <button type="button" class="btn-close" aria-label="Close" (click)="closeModal()"></button>
+          <h2 class="modal-title" id="modalInfoLabel">
+            Ticket # {{ticket.contador}} para 
+            <a href="" 
+              (click)="openCustomerModal(ticket.cliente); $event.preventDefault()">{{ticket.cliente.nombre}} {{ticket.cliente.apellidos}}
+            </a>
+          </h2>
+          <button type="button" class="btn-close" aria-label="Close" (click)="closeTicket()"></button>
         </div>
         <div class="modal-body">
           <div class="row d-flex align-items-center justify-content-around pt-3">
@@ -60,8 +65,13 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-danger" (click)="closeModal()">Cerrar</button>
+          <button type="button" class="btn btn-danger" (click)="closeTicket()">Cerrar</button>
         </div>
       </div>
     </div>
   </div>
+  <app-modal-customer
+    *ngIf="showCustomerModal"
+    [customer]="selectedCustomer"
+    (close)="closeCustomerModal()">
+  </app-modal-customer>

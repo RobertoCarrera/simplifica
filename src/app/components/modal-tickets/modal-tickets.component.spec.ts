@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ModalInfoComponent } from './modal-info.component';
+import { ModalTicketsComponent } from './modal-tickets.component';
 
-describe('ModalInfoComponent', () => {
-  let component: ModalInfoComponent;
-  let fixture: ComponentFixture<ModalInfoComponent>;
+describe('ModalTicketsComponent', () => {
+  let component: ModalTicketsComponent;
+  let fixture: ComponentFixture<ModalTicketsComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ModalInfoComponent]
+      imports: [ModalTicketsComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(ModalInfoComponent);
+    fixture = TestBed.createComponent(ModalTicketsComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

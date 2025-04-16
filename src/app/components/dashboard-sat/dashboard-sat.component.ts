@@ -4,13 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { BtnNewComponent } from '../btn-new/btn-new.component';
 import { Ticket } from '../../models/ticket';
 import { TicketsService } from '../../services/tickets.service';
-import { ModalInfoComponent } from "../modal-info/modal-info.component";
+import { ModalTicketsComponent } from '../modal-tickets/modal-tickets.component';
 import { TicketsStage } from '../../models/tickets-stage';
 import { TicketStagesService } from '../../services/ticket-stages.service';
 
 @Component({
   selector: 'app-dashboard-sat',
-  imports: [FormsModule, CommonModule, BtnNewComponent, ModalInfoComponent],
+  imports: [FormsModule, CommonModule, BtnNewComponent, ModalTicketsComponent],
   templateUrl: './dashboard-sat.component.html',
   styleUrl: './dashboard-sat.component.scss'
 })

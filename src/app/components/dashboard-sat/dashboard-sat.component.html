@@ -37,12 +37,12 @@
                 [totalItems] = this.tickets.length
                 [maxSteps] = 4>
             </app-btn-new>
-            <app-modal-info
+            <app-modal-tickets
                 *ngIf="selectedTicket"
                 [ticket]="selectedTicket"
                 [estados] = "estados"
                 (close)="closeTicketModal()">
-            </app-modal-info>
+            </app-modal-tickets>
         </div>
     </div>
 </div>

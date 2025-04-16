@@ -12,5 +12,5 @@ export interface Service {
     ticket_id: string,
     trabajo: Work,
     producto: Product | null,
-    acabado: boolean
+    finalizado: boolean
 }
