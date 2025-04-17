@@ -49,7 +49,7 @@ export class FormNewCustomerComponent  implements OnInit{
   selectedCustomerLocality: string = '';
   selectedCustomerAddressRoadType: string = '';
   selectedCustomerAddressName: string = '';
-  selectedCustomerAddressNumber: number = 1;
+  selectedCustomerAddressNumber: string = '';
   selectedCustomerCP: string = '';
   viaSearch: string = ''; // Texto de búsqueda
 
@@ -92,7 +92,7 @@ export class FormNewCustomerComponent  implements OnInit{
     this.selectedCustomerLocality = '';
     this.selectedCustomerAddressRoadType = '';
     this.selectedCustomerAddressName = '';
-    this.selectedCustomerAddressNumber = 1;
+    this.selectedCustomerAddressNumber = '';
     this.selectedCustomerCP = '';
   
     this.filteredCustomers = [];

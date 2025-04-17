@@ -41,15 +41,16 @@ export class DashboardCustomersComponent implements OnInit{
     }
 
     const searchTerm = this.searchCustomer.toLowerCase().trim();
+    const normalize = (text: string) => this.removeAccents(text.toLowerCase());
 
     const filtered = this.customers.filter(customer => {
       return (
-        customer.nombre.toLowerCase().startsWith(searchTerm) ||
-        customer.apellidos.toLowerCase().includes(searchTerm) ||
+        normalize(customer.nombre.toLowerCase()).startsWith(searchTerm) ||
+        normalize(customer.apellidos.toLowerCase()).includes(searchTerm) ||
         customer.dni.toLowerCase().startsWith(searchTerm) ||
-        customer.direccion.tipo_via.toLowerCase().startsWith(searchTerm) ||
-        customer.direccion.nombre.toLowerCase().includes(searchTerm) ||
-        customer.direccion.localidad.nombre.toLowerCase().startsWith(searchTerm) ||
+        normalize(customer.direccion.tipo_via.toLowerCase()).startsWith(searchTerm) ||
+        normalize(customer.direccion.nombre.toLowerCase()).includes(searchTerm) ||
+        normalize(customer.direccion.localidad.nombre.toLowerCase()).startsWith(searchTerm) ||
         customer.direccion.localidad.CP.toString().toLowerCase().startsWith(searchTerm) ||
         customer.telefono.startsWith(searchTerm) ||
         customer.email.toLowerCase().startsWith(searchTerm)
@@ -57,6 +58,11 @@ export class DashboardCustomersComponent implements OnInit{
     });
     return filtered;
   } 
+
+  // Función para eliminar tildes
+  removeAccents(text: string): string {
+    return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
 
   isCreatingCustomer(){
 

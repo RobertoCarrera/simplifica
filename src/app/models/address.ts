@@ -6,6 +6,6 @@ export interface Address {
     created_at: Date,
     tipo_via: string,
     nombre: string,
-    numero: number,
+    numero: string,
     localidad: Locality
   }
