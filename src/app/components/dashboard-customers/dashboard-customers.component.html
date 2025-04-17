@@ -26,7 +26,11 @@
                             <td class="align-content-center" #dni>{{customer.dni}}</td>
                             <td class="align-content-center" #direccion>{{customer.direccion.tipo_via}} {{customer.direccion.nombre}} {{customer.direccion.numero}}</td>
                             <td class="align-content-center" #localidad>{{customer.direccion.localidad.nombre}}, {{customer.direccion.localidad.CP}}</td>
-                            <td class="align-content-center" #telefono>{{customer.telefono}}</td>
+                            <td class="align-content-center" #telefono>
+                                <a href="tel:{{customer.telefono}}" (click)="$event.stopPropagation()">{{customer.telefono}}
+
+                                </a>
+                            </td>
                             <td class="align-content-center" #email>{{customer.email}}</td>
                         </tr>
                     </tbody>

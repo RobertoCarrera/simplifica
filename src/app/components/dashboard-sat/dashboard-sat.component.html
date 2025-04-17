@@ -30,7 +30,7 @@
                             <td class="align-content-center" #nombre>{{ticket.cliente.nombre}}</td>
                             <td class="align-content-center" #apellidos>{{ticket.cliente.apellidos}}</td>
                             <td class="align-content-center" #apellidos>
-                                <a href="tel:{{ticket.cliente.telefono}}">{{ticket.cliente.telefono}}</a>
+                                <a href="tel:{{ticket.cliente.telefono}}" (click)="$event.stopPropagation()">{{ticket.cliente.telefono}}</a>
                             </td>
                             <td class="align-content-center" #dni>{{ticket.cliente.dni}}</td>
                             <td class="align-content-center" #trabajos>
