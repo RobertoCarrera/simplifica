@@ -118,7 +118,7 @@ export class DashboardWorkshopComponent implements OnInit{
     this.categoriesService.getCategories().subscribe(category => {
       this.categories = category;
     });
-    this.customersService.getCustomers().subscribe(customer => {
+    this.customersService.getCustomers('672275dacb317c137fb1dd1f').subscribe(customer => {
       this.customers = customer;
     });
     this.localitiesService.getLocalities().subscribe(locality => {

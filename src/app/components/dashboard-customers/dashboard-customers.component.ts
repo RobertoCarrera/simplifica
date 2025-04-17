@@ -30,7 +30,7 @@ export class DashboardCustomersComponent implements OnInit{
   constructor(private customerService: CustomersService){}
   
   ngOnInit(): void {
-      this.customerService.getCustomers().subscribe(customers => {
+      this.customerService.getCustomers('672275dacb317c137fb1dd1f').subscribe(customers => {
         this.customers = customers;
       });
   };

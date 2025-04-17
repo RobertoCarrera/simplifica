@@ -71,7 +71,7 @@ export class FormNewCustomerComponent  implements OnInit{
     private domainsService: DomainsService){}
 
   ngOnInit(): void {
-    this.customersService.getCustomers().subscribe(customer => {
+    this.customersService.getCustomers('672275dacb317c137fb1dd1f').subscribe(customer => {
       this.customers = customer;
     });
     this.localitiesService.getLocalities().subscribe(locality => {
