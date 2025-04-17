@@ -28,10 +28,10 @@
                 <div class="col-8">
                     <h3>
                         <a 
-                          href="https://www.google.com/maps/search/?api=1&query={{customer.direccion.tipo_via}}+{{customer.direccion.nombre}}+{{customer.direccion.numero}},+{{customer.direccion.localidad.nombre}},+{{customer.direccion.localidad.provincia}}" 
+                          href="https://www.google.com/maps/search/?api=1&query={{customer.direccion?.tipo_via}}+{{customer.direccion?.nombre}}+{{customer.direccion?.numero}},+{{customer.direccion?.localidad?.nombre}},+{{customer.direccion?.localidad?.provincia}}" 
                           target="_blank" 
                           rel="noopener noreferrer">
-                          {{customer.direccion.tipo_via}} {{customer.direccion.nombre}}, {{customer.direccion.numero}} ({{customer.direccion.localidad.nombre}}, {{customer.direccion.localidad.provincia}})
+                          {{customer.direccion?.tipo_via}} {{customer.direccion?.nombre}}, {{customer.direccion?.numero}} ({{customer.direccion?.localidad?.nombre}}, {{customer.direccion?.localidad?.provincia}})
                         </a>
                       </h3>                
                     </div>

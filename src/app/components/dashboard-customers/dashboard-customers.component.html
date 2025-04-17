@@ -24,8 +24,8 @@
                             <td class="align-content-center" #nombre>{{customer.nombre}}</td>
                             <td class="align-content-center" #apellidos>{{customer.apellidos}}</td>
                             <td class="align-content-center" #dni>{{customer.dni}}</td>
-                            <td class="align-content-center" #direccion>{{customer.direccion.tipo_via}} {{customer.direccion.nombre}} {{customer.direccion.numero}}</td>
-                            <td class="align-content-center" #localidad>{{customer.direccion.localidad.nombre}}, {{customer.direccion.localidad.CP}}</td>
+                            <td class="align-content-center" #direccion>{{customer.direccion?.tipo_via}} {{customer.direccion?.nombre}} {{customer.direccion?.numero}}</td>
+                            <td class="align-content-center" #localidad>{{customer.direccion?.localidad?.nombre}}, {{customer.direccion?.localidad?.CP}}</td>
                             <td class="align-content-center" #telefono>
                                 <a href="tel:{{customer.telefono}}" (click)="$event.stopPropagation()">{{customer.telefono}}
 

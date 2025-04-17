@@ -78,13 +78,14 @@
                                 </div>
                             </div>
                             <div class="col-6 offset-6 position-relative align-self-right">
-                            <ul *ngIf="filteredDomains.length > 0 && (selectedCustomerDNI !== '' || selectedCustomerName !== '' || selectedCustomerTelephone !== '')" class="list-group position-absolute mt-1">
-                                <li *ngFor="let dominio of filteredDomains" 
-                                (click)="selectDomain(dominio)" 
-                                class="list-group-item">
-                                {{dominio.nombre}}
-                                </li>
-                            </ul>
+                                <ul *ngIf="filteredDomains.length > 0 && (searchValidDNI || searchValidName || searchValidTelephone)" 
+                                    class="list-group position-absolute mt-1">
+                                    <li *ngFor="let dominio of filteredDomains" 
+                                    (click)="selectDomain(dominio)" 
+                                    class="list-group-item">
+                                    {{dominio.nombre}}
+                                    </li>
+                                </ul>
                             </div>
                         </div>
                     </div>
@@ -92,15 +93,14 @@
                 <div class="col-5 p-2">
                     <label for="cpSearch" class="form-label">CP</label>
                     <input [(ngModel)]="selectedCustomerCP" 
-                    (input)="onSearchCP($event)" 
+                    (input)="onSearchCPAndLocality()" 
                     (click)="selectText($event)"
                     type="text" 
                     class="form-control" 
                     id="cpSearch" 
                     placeholder="Buscar CP" 
                     name="cpSearch">
-                    <div *ngIf="selectedCP === true" class="text-danger">El CP es obligatorio.</div>
-                    <ul *ngIf="filteredCPS.length > 0 && selectedCustomerCP.length > 0" class="list-group position-absolute">
+                    <ul *ngIf="filteredCPS.length > 0 && selectedCustomerCP" class="list-group position-absolute">
                         <li *ngFor="let cp of filteredCPS"
                         (click)="selectCP(cp)"
                         class="list-group-item">
@@ -110,13 +110,13 @@
                 </div>
                 <div class="col-7 p-2">
                     <label for="localidadSearch" class="form-label">Localidad</label>
-                    <input [(ngModel)]="selectedCustomerLocality"
-                    (input)="onSearchLocality($event)" 
+                    <input [(ngModel)]="selectedCustomerLocalityName"
+                    (input)="onSearchCPAndLocality()" 
+                    (click)="selectText($event)"
                     type="text" class="form-control" id="localidadSearch" 
                     placeholder="Buscar localidad" 
                     name="localidadSearch">
-                    <div *ngIf="selectedLocality === true" class="text-danger">La localidad es obligatoria.</div>
-                    <ul *ngIf="filteredLocalities.length > 0 && selectedCustomerLocality.length > 0" class="list-group position-absolute">
+                    <ul *ngIf="filteredLocalities.length && selectedCustomerLocalityName" class="list-group position-absolute">
                         <li *ngFor="let localidad of filteredLocalities"
                         (click)="selectLocality(localidad)"
                         class="list-group-item">

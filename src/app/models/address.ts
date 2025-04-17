@@ -7,5 +7,6 @@ export interface Address {
     tipo_via: string,
     nombre: string,
     numero: string,
-    localidad: Locality
+    localidad_id: string,
+    localidad?: Locality
   }

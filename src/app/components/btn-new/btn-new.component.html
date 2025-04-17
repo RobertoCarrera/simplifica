@@ -109,5 +109,6 @@
 <app-modal-customer
     *ngIf="showCustomerModal" 
     [customer]="selectedCustomer" 
-    (close)="closeCustomerModal()">
+    (close)="closeCustomerModal()"
+    #formCustomer>
 </app-modal-customer>

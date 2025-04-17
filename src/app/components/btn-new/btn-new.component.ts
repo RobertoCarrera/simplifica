@@ -6,6 +6,7 @@ import { FormNewRepairingComponent } from "../form-new-repairing/form-new-repair
 import { FormNewProductComponent } from '../form-new-product/form-new-product.component';
 import { Customer } from '../../models/customer';
 import { ModalCustomerComponent } from "../modal-customer/modal-customer.component";
+import { CustomersService } from '../../services/customers.service';
 
 @Component({
     selector: 'app-btn-new',
@@ -25,6 +26,7 @@ export class BtnNewComponent implements AfterViewInit {
 
     @ViewChild(FormNewCustomerComponent) actionsNewCustomerComponent!: FormNewCustomerComponent;
     @ViewChild(FormNewCompanyComponent) actionsNewCompanyComponent!: FormNewCompanyComponent;
+    @ViewChild('formCustomer') formCustomerComponent!: FormNewCustomerComponent;
 
     newItem: any = null;
     formStep: number = 1;
@@ -33,6 +35,8 @@ export class BtnNewComponent implements AfterViewInit {
     creating: boolean = false;
     businessType: boolean = false;
     personType: boolean = false;
+
+    constructor(private customerService: CustomersService) {}
 
     ngAfterViewInit() {
     }
@@ -107,6 +111,22 @@ export class BtnNewComponent implements AfterViewInit {
         this.formStep--;
       }
     }
+
+    handleCreate(direccion_id: string): void {
+        if (this.formCustomerComponent.isFormValid()) {
+          const customer: Customer = this.formCustomerComponent.getCustomerData(direccion_id);
+          this.customerService.createCustomer(customer).subscribe({
+            next: (createdCustomer) => {
+              console.log('Cliente creado:', createdCustomer);
+            },
+            error: (err) => {
+              console.error('Error al crear cliente:', err);
+            }
+          });
+        } else {
+          console.warn('Formulario no válido');
+        }
+      }
 
     clearFormFromParent() {
          {

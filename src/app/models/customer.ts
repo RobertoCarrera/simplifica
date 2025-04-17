@@ -6,11 +6,11 @@ export interface Customer {
   created_at: Date,
   nombre: string,
   apellidos: string,
-  direccion: Address,
+  direccion_id: string,
+  direccion?: Address,
   dni: string,
   telefono: string,
   email: string,
-  fecha_alta: Date,
   favicon: File | null,
   usuario_id: string
 }

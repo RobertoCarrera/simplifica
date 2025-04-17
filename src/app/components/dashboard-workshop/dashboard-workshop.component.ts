@@ -97,10 +97,9 @@ export class DashboardWorkshopComponent implements OnInit{
     nombre: '',
     apellidos: '',
     dni: '',
-    direccion: {} as Address,
+    direccion_id: '',
     telefono: '',
     email: '',
-    fecha_alta: new Date,
     favicon: null,
     usuario_id: ''
   };
@@ -160,9 +159,9 @@ export class DashboardWorkshopComponent implements OnInit{
     this.selectedCustomerEmail= customer.email;
     this.selectedCustomerNombre= customer.nombre;
     this.selectedCustomerEmail= customer.email;
-    this.selectedCustomerCP= customer.direccion.localidad.CP;
-    this.selectedCustomerLocality= customer.direccion.localidad.nombre;
-    this.selectedCustomerAddress= customer.direccion.tipo_via+' '+customer.direccion.nombre+' '+customer.direccion.numero;
+    this.selectedCustomerCP = customer.direccion?.localidad?.CP || '';
+    this.selectedCustomerLocality = customer.direccion?.localidad?.nombre || '';
+    this.selectedCustomerAddress= customer.direccion?.tipo_via+' '+customer.direccion?.nombre+' '+customer.direccion?.numero;
     this.filteredCustomers = []; // Limpia la lista tras la selección
   }
 

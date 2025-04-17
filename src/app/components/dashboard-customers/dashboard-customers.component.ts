@@ -48,10 +48,10 @@ export class DashboardCustomersComponent implements OnInit{
         normalize(customer.nombre.toLowerCase()).startsWith(searchTerm) ||
         normalize(customer.apellidos.toLowerCase()).includes(searchTerm) ||
         customer.dni.toLowerCase().startsWith(searchTerm) ||
-        normalize(customer.direccion.tipo_via.toLowerCase()).startsWith(searchTerm) ||
-        normalize(customer.direccion.nombre.toLowerCase()).includes(searchTerm) ||
-        normalize(customer.direccion.localidad.nombre.toLowerCase()).startsWith(searchTerm) ||
-        customer.direccion.localidad.CP.toString().toLowerCase().startsWith(searchTerm) ||
+        normalize(customer.direccion?.tipo_via?.toLowerCase() || '').startsWith(searchTerm) ||
+        normalize((customer.direccion?.nombre || '').toLowerCase()).includes(searchTerm) ||
+        normalize((customer.direccion?.localidad?.nombre || '').toLowerCase()).startsWith(searchTerm) ||
+        customer.direccion?.localidad?.CP.toString().toLowerCase().startsWith(searchTerm) ||
         customer.telefono.startsWith(searchTerm) ||
         customer.email.toLowerCase().startsWith(searchTerm)
       );
