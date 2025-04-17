@@ -45,7 +45,8 @@
         <div *ngIf="this.formStep === 2 && this.personType === true" class="row d-flex align-items-center justify-content-around">
             <app-form-new-customer 
             [formStep] = "this.formStep"
-            (customerFound)="onBooleanChanged($event)"/>
+            (customerFound)="onBooleanChanged($event)"
+            (customerSelectedEvent)="onCustomerSelected($event)"/>
         </div>
         <div *ngIf="this.formStep === 2 && this.businessType === true" class="row d-flex align-items-center justify-content-around">
             <app-form-new-company
@@ -83,8 +84,9 @@
                     <i class="bi bi-plus-circle-fill"></i>
                 </button>
                 <button *ngIf="this.formStep === 2 && childBoolean" class="btn btn-warning"
-                [ngClass]="{'btns-nuevo-servicio': this.creating === true}" >
-                    <div class="col-2">
+                [ngClass]="{'btns-nuevo-servicio': this.creating === true}"
+                (click)="openCustomerModal()">
+                    <div class="col-2">     
                         <i class="bi bi-check fs-5"></i>
                     </div>
                     <div class="col-10 align-content-center">Ver Cliente</div>
@@ -104,3 +106,8 @@
         </div>
     </div>
 </div>
+<app-modal-customer
+    *ngIf="showCustomerModal" 
+    [customer]="selectedCustomer" 
+    (close)="closeCustomerModal()">
+</app-modal-customer>

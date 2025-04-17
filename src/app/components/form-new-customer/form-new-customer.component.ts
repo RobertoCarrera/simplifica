@@ -19,12 +19,14 @@ export class FormNewCustomerComponent  implements OnInit{
 
   @Input() formStep: number = 0;
   @Output() customerFound = new EventEmitter<boolean>();
+  @Output() customerSelectedEvent = new EventEmitter<Customer>();
 
   customers: Customer[] = [];
   domains: Domain[] = [];
   localities: Locality[] = [];
   addresses: Address[] = [];
   vias: string[] = ['Calle', 'Avenida', 'Plaza', 'Paseo', 'Camino', 'Carretera', 'Autovía', 'Autopista', 'Travesía', 'Barrio', 'Ronda', 'Pasaje', 'Paseo Marítimo'];  
+  selectedCustomer: Customer | null = null;
 
   filteredCustomers = [...this.customers];
   filteredCustomersByDNI: Customer[] = [];
@@ -102,6 +104,7 @@ export class FormNewCustomerComponent  implements OnInit{
 
     this.customerFoundChanged = false;
     this.checkCustomerFound();
+    this.selectedCustomer = null; // Limpiamos el cliente seleccionado
   }
 
   onSubmit() {
@@ -126,6 +129,10 @@ export class FormNewCustomerComponent  implements OnInit{
       this.filteredCustomersByDNI = []; // Limpia la lista tras la selección
       this.filteredCustomersByName = []; // Limpia la lista tras la selección
       this.filteredCustomersByTelephone = []; // Limpia la lista tras la selección
+      this.selectedCustomer = cliente; // Guardamos el cliente seleccionado
+      this.selectedCustomer = cliente; // Guardamos el cliente seleccionado
+      console.log('Cliente seleccionado en el hijo:', cliente);      
+      this.customerSelectedEvent.emit(this.selectedCustomer); // Emitimos el cliente seleccionado al padre
     }else{
       this.selectedCustomerDNI = cliente.dni; // Muestra el nombre de la marca seleccionada en el input
       this.selectedCustomerTelephone = cliente.telefono;

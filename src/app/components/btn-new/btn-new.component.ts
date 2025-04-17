@@ -4,10 +4,12 @@ import { FormNewCustomerComponent } from "../form-new-customer/form-new-customer
 import { FormNewCompanyComponent } from "../form-new-company/form-new-company.component";
 import { FormNewRepairingComponent } from "../form-new-repairing/form-new-repairing.component";
 import { FormNewProductComponent } from '../form-new-product/form-new-product.component';
+import { Customer } from '../../models/customer';
+import { ModalCustomerComponent } from "../modal-customer/modal-customer.component";
 
 @Component({
     selector: 'app-btn-new',
-    imports: [CommonModule, FormNewCustomerComponent, FormNewRepairingComponent, FormNewProductComponent, FormNewCompanyComponent],
+    imports: [CommonModule, FormNewCustomerComponent, FormNewRepairingComponent, FormNewProductComponent, FormNewCompanyComponent, ModalCustomerComponent],
     templateUrl: './btn-new.component.html',
     styleUrl: './btn-new.component.scss'
 })
@@ -18,6 +20,8 @@ export class BtnNewComponent implements AfterViewInit {
     @Input() maxSteps: number = 0;
     @Output() totalProducts: number = 1;
     childBoolean = false;
+    showCustomerModal: boolean = false; // Controla si el modal está visible
+    selectedCustomer: Customer | null = null; // Almacena el cliente seleccionado
 
     @ViewChild(FormNewCustomerComponent) actionsNewCustomerComponent!: FormNewCustomerComponent;
     @ViewChild(FormNewCompanyComponent) actionsNewCompanyComponent!: FormNewCompanyComponent;
@@ -58,8 +62,25 @@ export class BtnNewComponent implements AfterViewInit {
     onBooleanChanged(newValue: boolean) {
         this.childBoolean = newValue; // Actualizamos la variable con el valor del hijo
         console.log('Boolean value from child:', this.childBoolean);
-      }
+    }
 
+    onCustomerSelected(customer: Customer) {
+        console.log('Cliente recibido del hijo:', customer);
+        this.selectedCustomer = customer; // Guardamos el cliente recibido
+    }
+
+    openCustomerModal() {  
+        console.log('Abriendo modal con cliente:', this.selectedCustomer);
+        if (this.selectedCustomer) {
+            this.showCustomerModal = true; // Mostramos el modal
+        } else {
+            console.error('No se ha seleccionado un cliente.');
+        }
+    }
+
+    closeCustomerModal() {
+        this.showCustomerModal = false; // Ocultamos el modal
+    }
     addProduct(){
         if(this.totalProducts < this.maxTotalProducts){
         this.totalProducts++;}
