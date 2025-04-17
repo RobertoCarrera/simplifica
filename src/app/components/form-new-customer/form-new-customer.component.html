@@ -8,7 +8,7 @@
                         <input [(ngModel)]="selectedCustomerDNI" 
                         (input)="onSearchCustomerDNI($event)" 
                         type="text" class="form-control" id="dniSearch" 
-                        [placeholder]="searchValid ? 'Buscar DNI' : 'Introducir DNI'" 
+                        [placeholder]="searchValidDNI ? 'Buscar DNI' : 'Introducir DNI'" 
                         name="dniSearch" required>
                         <ul *ngIf="filteredCustomersByDNI.length" class="list-group position-absolute z-2">
                             <li *ngFor="let customer of filteredCustomersByDNI"
@@ -23,7 +23,7 @@
                         <input [(ngModel)]="selectedCustomerTelephone"
                         (input)="onSearchCustomerTelephone($event)"  
                         type="text" class="form-control" id="telephoneSearch" 
-                        [placeholder]="searchValid ? 'Buscar Teléfono' : 'Introducir Teléfono'" 
+                        [placeholder]="searchValidTelephone ? 'Buscar Teléfono' : 'Introducir Teléfono'" 
                         name="telephoneSearch" required>
                         <ul *ngIf="filteredCustomersByTelephone.length" class="list-group position-absolute">
                             <li *ngFor="let customer of filteredCustomersByTelephone"
@@ -38,7 +38,7 @@
                         <input [(ngModel)]="selectedCustomerName"
                         (input)="onSearchCustomerName($event)" 
                         type="text" class="form-control" id="nombreSearch" 
-                        [placeholder]="searchValid ? 'Buscar Nombre o Apellidos' : 'Introducir Nombre y Apellidos'" 
+                        [placeholder]="searchValidName ? 'Buscar Nombre o Apellidos' : 'Introducir Nombre y Apellidos'" 
                         name="nombreSearch" required>
                         <ul *ngIf="filteredCustomersByName.length" class="list-group position-absolute z-2">
                             <li *ngFor="let customer of filteredCustomersByName"
@@ -51,7 +51,7 @@
                 </div>
             </div>
         </div>
-        <div *ngIf="!this.searchValid && (selectedCustomerDNI !== '' || selectedCustomerName !== '' || selectedCustomerTelephone !== '')" class="optional-info col-12">
+        <div *ngIf="(!this.searchValidDNI && !this.searchValidName && !this.searchValidTelephone)" class="optional-info col-12">
             <div class="row p-0 m-0">
                 <h2 class="col-10 fs-4">Información opcional</h2>
                 <div class="col-12 input-group mb-3">

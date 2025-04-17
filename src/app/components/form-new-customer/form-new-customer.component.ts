@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Locality } from '../../models/locality';
 import { Customer } from '../../models/customer';
@@ -17,7 +17,8 @@ import { Address } from '../../models/address';
 })
 export class FormNewCustomerComponent  implements OnInit{
 
-  @Input() formStep: number = 0;  
+  @Input() formStep: number = 0;
+  @Output() customerFound = new EventEmitter<boolean>();
 
   customers: Customer[] = [];
   domains: Domain[] = [];
@@ -38,7 +39,10 @@ export class FormNewCustomerComponent  implements OnInit{
   localityHasResults: boolean = false;
   domainHasResults: boolean = false;
   cpHasResults: boolean = false;
-  searchValid: boolean = true;
+  searchValidDNI: boolean = true;
+  searchValidName: boolean = true;
+  searchValidTelephone: boolean = true;
+  customerFoundChanged: boolean = false;
   
   selectedCustomerDNI: string = '';
   selectedCustomerTelephone: string = '';
@@ -53,13 +57,6 @@ export class FormNewCustomerComponent  implements OnInit{
   selectedCustomerCP: string = '';
   viaSearch: string = ''; // Texto de búsqueda
 
-  selectedCustomer: boolean = false;
-  selectedDNI: boolean = false;
-  selectedCIF: boolean = false;
-  selectedName: boolean = false;
-  selectedSurname: boolean = false;
-  selectedEmail: boolean = false;
-  selectedTelephone: boolean = false;
   selectedCP: boolean = false;
   selectedLocality: boolean = false;
   selectedAddressRoadType: boolean = false;
@@ -102,6 +99,9 @@ export class FormNewCustomerComponent  implements OnInit{
     this.filteredDomains = [];
     this.filteredLocalities = [];
     this.filteredCPS = [];
+
+    this.customerFoundChanged = false;
+    this.checkCustomerFound();
   }
 
   onSubmit() {
@@ -116,83 +116,114 @@ export class FormNewCustomerComponent  implements OnInit{
   }
 
   selectCustomer(cliente: Customer) {
-    this.selectedCustomerDNI = cliente.dni; // Muestra el nombre de la marca seleccionada en el input
-    this.selectedCustomerTelephone = cliente.telefono;
-    this.selectedCustomerSurname= cliente.apellidos;
-    this.selectedCustomerEmail= cliente.email;
-    this.selectedCustomerName= cliente.nombre;
-    this.selectedCustomerEmail= cliente.email;
-    this.selectedCustomerCP= cliente.direccion.localidad.CP;
-    this.selectedCustomerLocality= cliente.direccion.localidad.nombre;
-    this.selectedCustomerAddressRoadType = cliente.direccion.tipo_via;
-    this.selectedCustomerAddressName = cliente.direccion.nombre;
-    this.selectedCustomerAddressNumber = cliente.direccion.numero;
-    this.filteredCustomers = []; // Limpia la lista tras la selección
-    this.filteredCustomersByDNI = []; // Limpia la lista tras la selección
-    this.filteredCustomersByName = []; // Limpia la lista tras la selección
-    this.filteredCustomersByTelephone = []; // Limpia la lista tras la selección
+
+    if(this.searchValidDNI || this.searchValidName || this.searchValidTelephone) {
+      this.selectedCustomerDNI = cliente.dni; // Muestra el nombre de la marca seleccionada en el input
+      this.selectedCustomerTelephone = cliente.telefono;
+      this.selectedCustomerName= cliente.nombre +" "+ cliente.apellidos;
+      this.customerFoundChanged = true;
+      this.checkCustomerFound();
+      this.filteredCustomersByDNI = []; // Limpia la lista tras la selección
+      this.filteredCustomersByName = []; // Limpia la lista tras la selección
+      this.filteredCustomersByTelephone = []; // Limpia la lista tras la selección
+    }else{
+      this.selectedCustomerDNI = cliente.dni; // Muestra el nombre de la marca seleccionada en el input
+      this.selectedCustomerTelephone = cliente.telefono;
+      this.selectedCustomerEmail= cliente.email;
+      this.selectedCustomerName= cliente.nombre +" "+ cliente.apellidos;
+      this.selectedCustomerEmail= cliente.email;
+      this.selectedCustomerCP= cliente.direccion.localidad.CP;
+      this.selectedCustomerLocality= cliente.direccion.localidad.nombre;
+      this.selectedCustomerAddressRoadType = cliente.direccion.tipo_via;
+      this.selectedCustomerAddressName = cliente.direccion.nombre;
+      this.selectedCustomerAddressNumber = cliente.direccion.numero;
+      this.filteredCustomersByDNI = []; // Limpia la lista tras la selección
+      this.filteredCustomersByName = []; // Limpia la lista tras la selección
+      this.filteredCustomersByTelephone = []; // Limpia la lista tras la selección
+    }
   }
 
   onSearchCustomerDNI(event: any) {
-    const dni = event.target.value;
+
+    const dni = event.target.value.trim();
+
+    this.searchValidName = false;
+    this.searchValidDNI = false;
+    this.searchValidTelephone = false;
+
     if (!dni) {
-      this.searchValid = false; // Detener búsquedas si el DNI está vacío
+      this.filteredCustomersByDNI = [];
+      this.searchValidName = true;
+      this.searchValidDNI = true;
+      this.searchValidTelephone = true;
+      this.customerFoundChanged = false;
+      this.checkCustomerFound();
       return;
     }
-  
-    // Simula la búsqueda de clientes por DNI
-    this.filteredCustomersByDNI = this.customers.filter(customer => 
-      customer.dni.startsWith(dni));
-  
-    if (this.filteredCustomersByDNI.length === 0) {
-      this.searchValid = false; // Detener búsquedas si no hay resultados
-    } else {
-      this.searchValid = true; // Continuar búsquedas si hay resultados
-    }
+
+    this.filteredCustomersByDNI = this.customers.filter(customer =>
+      customer.dni.startsWith(dni)
+    );
+    
+    this.searchValidDNI = this.filteredCustomersByDNI.length > 0;
   }
   
-  onSearchCustomerName(event: any) {
-    if (!this.searchValid) return; // Detener si las búsquedas ya no son válidas
-  
-    const name = event.target.value;
+  onSearchCustomerName(event: any): void {
+
+    const name = event.target.value.trim();
+    const normalize = (text: string) => this.removeAccents(text.toLowerCase());
+
+    this.searchValidName = false;
+    this.searchValidDNI = false;
+    this.searchValidTelephone = false;
+
     if (!name) {
-      this.searchValid = false; // Detener búsquedas si el nombre está vacío
+      this.filteredCustomersByName = [];
+      this.searchValidName = true;
+      this.searchValidDNI = true;
+      this.searchValidTelephone = true;
+      this.customerFoundChanged = false;
+      this.checkCustomerFound();
       return;
     }
-  
-    // Simula la búsqueda de clientes por nombre
+
     this.filteredCustomersByName = this.customers.filter(customer => 
-      customer.nombre.includes(name) || 
-      customer.apellidos.includes(name));
+        normalize(customer.nombre).startsWith(name) || 
+        normalize(customer.apellidos).includes(name));
+
+    this.searchValidName = this.filteredCustomersByName.length > 0;
+  }
   
-    if (this.filteredCustomersByName.length === 0) {
-      this.searchValid = false; // Detener búsquedas si no hay resultados
+  onSearchCustomerTelephone(event: any) {
+
+    const telephone = event.target.value.trim();
+
+    this.searchValidName = false;
+    this.searchValidDNI = false;
+    this.searchValidTelephone = false;
+
+    if (!telephone) {
+      this.filteredCustomersByTelephone = [];
+      this.searchValidName = true;
+      this.searchValidDNI = true;
+      this.searchValidTelephone = true;
+      this.customerFoundChanged = false;
+      this.checkCustomerFound();
+      return;
     }
+
+    this.filteredCustomersByTelephone = this.customers.filter(customer =>
+      customer.telefono.startsWith(telephone)
+    );
+    
+    this.searchValidTelephone = this.filteredCustomersByTelephone.length > 0;
   }
 
   filterVias() {
     const search = this.viaSearch.toLowerCase();
     this.filteredVias = this.vias.filter(via => via.toLowerCase().includes(search));
   } 
-  
-  onSearchCustomerTelephone(event: any) {
-    if (!this.searchValid) return; // Detener si las búsquedas ya no son válidas
-  
-    const telephone = event.target.value;
-    if (!telephone) {
-      this.searchValid = false; // Detener búsquedas si los apellidos están vacíos
-      return;
-    }
-  
-    // Simula la búsqueda de clientes por apellidos
-    this.filteredCustomersByTelephone = this.customers.filter(customer => 
-      customer.telefono.startsWith(telephone));
-  
-    if (this.filteredCustomersByTelephone.length === 0) {
-      this.searchValid = false; // Detener búsquedas si no hay resultados
-    }
-  }
-  
+
   onSearchDomain(event: Event) {
     const query = (event.target as HTMLInputElement).value.toLowerCase();
     if (query.length > 0) {
@@ -242,5 +273,14 @@ export class FormNewCustomerComponent  implements OnInit{
     this.selectedCustomerCP = locality.CP
     this.selectedCustomerLocality = locality.nombre;
     this.filteredCPS = [];
+  }
+
+  // Función para eliminar tildes
+  removeAccents(text: string): string {
+    return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  checkCustomerFound() {
+    this.customerFound.emit(this.customerFoundChanged); // Emitimos el nuevo valor
   }
 }

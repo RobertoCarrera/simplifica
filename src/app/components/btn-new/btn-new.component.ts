@@ -17,6 +17,7 @@ export class BtnNewComponent implements AfterViewInit {
     @Input() totalItems: number = 0;
     @Input() maxSteps: number = 0;
     @Output() totalProducts: number = 1;
+    childBoolean = false;
 
     @ViewChild(FormNewCustomerComponent) actionsNewCustomerComponent!: FormNewCustomerComponent;
     @ViewChild(FormNewCompanyComponent) actionsNewCompanyComponent!: FormNewCompanyComponent;
@@ -53,6 +54,11 @@ export class BtnNewComponent implements AfterViewInit {
                 break;
         }
     }
+
+    onBooleanChanged(newValue: boolean) {
+        this.childBoolean = newValue; // Actualizamos la variable con el valor del hijo
+        console.log('Boolean value from child:', this.childBoolean);
+      }
 
     addProduct(){
         if(this.totalProducts < this.maxTotalProducts){
