@@ -1,31 +1,31 @@
-<div class="col-12 text-start overflow-y-auto pb-3">
+<div class="w-full text-left overflow-y-auto pb-3">
     <form action="" (ngSubmit)="onSubmit()" #newServicioForm="ngForm"><!--Reducir las búsquedas a DNI, nombre con los apellidos y teléfono-->
-        <div *ngIf="this.formStep === 2" class=" row p-0 m-0">
-            <div class="required-info col-12">
-                <div class="row">
-                    <div class="col-6 p-2">
-                        <label for="dniSearch" class="form-label">DNI</label>
+        <div *ngIf="this.formStep === 2" class="w-full p-0 m-0">
+            <div class="required-info w-full">
+                <div class="flex flex-wrap -mx-2">
+                    <div class="w-1/2 px-2">
+                        <label for="dniSearch" class="block text-sm font-medium text-gray-700 mb-2">DNI</label>
                         <input [(ngModel)]="selectedCustomerDNI" 
                         (input)="onSearchCustomerDNI($event)" 
-                        type="text" class="form-control" id="dniSearch" 
+                        type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" id="dniSearch" 
                         [placeholder]="searchValidDNI ? 'Buscar DNI' : 'Introducir DNI'" 
                         name="dniSearch" required>
-                        <ul *ngIf="filteredCustomersByDNI.length" class="list-group position-absolute z-2">
+                        <ul *ngIf="filteredCustomersByDNI.length" class="absolute z-20 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1">
                             <li *ngFor="let customer of filteredCustomersByDNI"
                             (click)="selectCustomer(customer)"
-                            class="list-group-item">
+                            class="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0">
                             {{customer.dni}}
                             </li>
                         </ul>
                     </div>
-                    <div class="col-6 p-2">
-                        <label for="telephoneSearch" class="form-label">Teléfono</label>
+                    <div class="w-1/2 px-2">
+                        <label for="telephoneSearch" class="block text-sm font-medium text-gray-700 mb-2">Teléfono</label>
                         <input [(ngModel)]="selectedCustomerTelephone"
                         (input)="onSearchCustomerTelephone($event)"  
-                        type="text" class="form-control" id="telephoneSearch" 
+                        type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent" id="telephoneSearch" 
                         [placeholder]="searchValidTelephone ? 'Buscar Teléfono' : 'Introducir Teléfono'" 
                         name="telephoneSearch" required>
-                        <ul *ngIf="filteredCustomersByTelephone.length" class="list-group position-absolute">
+                        <ul *ngIf="filteredCustomersByTelephone.length" class="absolute z-20 w-full bg-white border border-gray-300 rounded-lg shadow-lg mt-1">
                             <li *ngFor="let customer of filteredCustomersByTelephone"
                             (click)="selectCustomer(customer)"
                             class="list-group-item">
@@ -94,7 +94,6 @@
                     <label for="cpSearch" class="form-label">CP</label>
                     <input [(ngModel)]="selectedCustomerCP" 
                     (input)="onSearchCPAndLocality()" 
-                    (click)="selectText($event)"
                     type="text" 
                     class="form-control" 
                     id="cpSearch" 
@@ -112,7 +111,6 @@
                     <label for="localidadSearch" class="form-label">Localidad</label>
                     <input [(ngModel)]="selectedCustomerLocalityName"
                     (input)="onSearchCPAndLocality()" 
-                    (click)="selectText($event)"
                     type="text" class="form-control" id="localidadSearch" 
                     placeholder="Buscar localidad" 
                     name="localidadSearch">

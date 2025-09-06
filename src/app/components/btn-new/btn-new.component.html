@@ -1,73 +1,77 @@
-<div class="col-2 p-0 position-absolute bottom-0 mb-3 ms-2 bg-transparent z-3"
-[ngClass]="{'d-none': this.creating === true}" >
-    <button class="btn w-75 btn-new-item"
-    [ngClass]="{'btn-success d-none': this.creating === true}" 
+<div class="w-32 p-0 fixed bottom-0 mb-3 ml-2 bg-transparent z-30"
+[ngClass]="{'hidden': this.creating === true}">
+    <button class="btn w-3/4 bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+    [ngClass]="{'bg-green-500 hidden': this.creating === true}" 
     (click)="isCreating()">
-        <i class="bi bi-plus"></i>{{itemType}}
+        <i class="bi bi-plus mr-1"></i>{{itemType}}
     </button>
 </div>
-<div [ngClass]="{'nuevo-servicio-modal overflow-hidden z-3': this.creating === true}" 
-    class="col-5 position-absolute bottom-0 rounded p-2 ms-2 mb-3">
-    <div [ngClass]="{'nuevo-servicio-container d-flex flex-column align-items-center justify-content-between': this.creating === true}" 
-    class="row d-none">
-        <div class="div col-12">
-            <div class="row d-flex align-items-center justify-content-between pe-3">
-                <p class="w-50 m-0">{{itemType}} #{{this.totalItems+1}}</p>
-                <button class="btn form-btn-cerrar p-0 text-black rounded-1 border-0"
-                (click)= "isCreating()">
-                    <i class="bi bi-x-lg text-end p-0"></i>
+<div [ngClass]="{'bg-white shadow-lg rounded-lg overflow-hidden z-30': this.creating === true}" 
+    class="w-80 fixed bottom-0 rounded-lg p-4 ml-2 mb-3">
+    <div [ngClass]="{'flex flex-col items-center justify-between space-y-4': this.creating === true}" 
+    class="hidden">
+        <div class="w-full">
+            <div class="flex items-center justify-between pr-3">
+                <p class="w-1/2 m-0 font-semibold text-gray-900">{{itemType}} #{{this.totalItems+1}}</p>
+                <button class="p-0 text-gray-600 hover:text-gray-900 rounded border-0 transition-colors duration-200"
+                (click)="isCreating()">
+                    <i class="bi bi-x-lg text-lg"></i>
                 </button>
             </div>
         </div>
-        <div class="div col-12" *ngIf="totalItems">
-            <div *ngIf="this.formStep === 1" class="row d-flex align-items-center justify-content-around p-2">
-                <div class="col-10 pb-5 pt-5">
-                    <h3>De tipo:</h3>
+        <div class="w-full" *ngIf="totalItems">
+            <div *ngIf="this.formStep === 1" class="flex items-center justify-around p-2">
+                <div class="w-10/12 pb-5 pt-5">
+                    <h3 class="text-lg font-semibold text-gray-900">De tipo:</h3>
                 </div>
-                <div class="col-4 p-2">
-                    <button class="btn type-person w-100"
+                <div class="w-4/12 p-2">
+                    <button class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
                     (click)="customerType('person')">Persona física</button>
                 </div>
-                <div class="col-4 p-2">
-                    <button class="btn type-business w-100"
+                <div class="w-4/12 p-2">
+                    <button class="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
                     (click)="customerType('business')">Empresa</button>
                 </div>
             </div>
-            <div class="row d-flex align-items-center justify-content-around" *ngIf="this.formStep === 2 && this.personType === true">
-                <h3 class="w-75 m-0">Información de la persona</h3>
-                <img class="form-logo-cliente rounded-5 p-1" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="">
+            <div class="flex items-center justify-around" *ngIf="this.formStep === 2 && this.personType === true">
+                <h3 class="w-3/4 m-0 text-lg font-semibold text-gray-900">Información de la persona</h3>
+                <img class="w-12 h-12 rounded-full p-1 border border-gray-200" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="">
             </div>
-            <div class="row d-flex align-items-center justify-content-around" *ngIf="this.formStep === 2 && this.businessType === true">
-                <h3 class="w-75 m-0">Información de la empresa</h3>
-                <img class="form-logo-cliente rounded-5 p-1" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="">
+            <div class="flex items-center justify-around" *ngIf="this.formStep === 2 && this.businessType === true">
+                <h3 class="w-3/4 m-0 text-lg font-semibold text-gray-900">Información de la empresa</h3>
+                <img class="w-12 h-12 rounded-full p-1 border border-gray-200" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="">
             </div>
         </div>
-        <div *ngIf="this.formStep === 2 && this.personType === true" class="row d-flex align-items-center justify-content-around">
+        <div *ngIf="this.formStep === 2 && this.personType === true" class="flex items-center justify-around">
             <app-form-new-customer 
+            #formCustomer
             [formStep] = "this.formStep"
             (customerFound)="onBooleanChanged($event)"
             (customerSelectedEvent)="onCustomerSelected($event)"/>
         </div>
-        <div *ngIf="this.formStep === 2 && this.businessType === true" class="row d-flex align-items-center justify-content-around">
+        <div *ngIf="this.formStep === 2 && this.businessType === true" class="flex items-center justify-around">
             <app-form-new-company
             [formStep] = this.formStep/>
         </div>
-        <div class="row d-flex align-items-center justify-content-between" *ngIf="this.formStep === 3">
-            <h3 class="w-75 m-0">Cantidad de productos</h3>
+        <div *ngIf="this.formStep === 3 && (this.businessType === true || this.personType === true)" class="flex items-center justify-center">
+            <h3 class="text-lg font-semibold text-green-600">Cliente creado con éxito</h3>
         </div>
-        <div *ngIf="this.formStep === 3" class="row">
+        <div class="flex items-center justify-between" *ngIf="this.formStep === 3">
+            <h3 class="w-3/4 m-0 text-lg font-semibold text-gray-900">Cantidad de productos</h3>
+        </div>
+        <div *ngIf="this.formStep === 4 && (this.businessType === false || this.personType === false)" class="row">
             <div *ngFor="let product of [].constructor(totalProducts); let i = index">
                 <app-form-new-repairing (productRemoved)="removeProduct(i)"></app-form-new-repairing>
             </div>
         </div>
-        <div *ngIf="this.formStep === 4" class="row">
+        <div *ngIf="this.formStep === 5 && (this.businessType === false || this.personType === false)" class="row">
             <div *ngFor="let product of [].constructor(totalProducts); let i = index">
                 <app-form-new-product></app-form-new-product>
             </div>
         </div>
-        <div *ngIf="this.formStep >= 2" class="col-12 pt-3">
+        <div *ngIf="this.formStep >= 2 && this.formStep <= maxSteps" class="col-12 pt-3">
             <div class="row d-flex align-items-center justify-content-around">
-                <button class="btn btn-danger d-none"
+                <button class="btn btn-danger"
                 [ngClass]="{'btns-nuevo-servicio': this.creating === true}" 
                 (click)="removeStep()">
                     <div class="col-2">
@@ -91,15 +95,28 @@
                     </div>
                     <div class="col-10 align-content-center">Ver Cliente</div>
                 </button>
-                <button class="btn btn-success d-none"
+                <button
+                *ngIf="this.formStep >= 1 && this.formStep < maxSteps"
+                class="btn btn-success"
                 [ngClass]="{'btns-nuevo-servicio': this.creating === true}" 
                 (click)="addStep()">
                     <div class="col-2">
                         <i class="bi bi-check fs-5"></i> 
                     </div>
                     <div class="col-10 align-content-center">
-                        <span *ngIf="this.formStep >= 1 && this.formStep < maxSteps">Siguiente</span>
-                        <span *ngIf="this.formStep === maxSteps">Crear</span>
+                        <span>Siguiente</span>
+                    </div>
+                </button>
+                <button 
+                *ngIf="this.formStep === maxSteps && !this.customerExists"
+                class="btn btn-success"
+                [ngClass]="{'btns-nuevo-servicio': this.creating === true}" 
+                 (click)="addStep(); createCustomer()">
+                    <div class="col-2">
+                        <i class="bi bi-check fs-5"></i> 
+                    </div>
+                    <div class="col-10 align-content-center">
+                        <span>Crear</span>
                     </div>
                 </button>
             </div>

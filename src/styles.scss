@@ -1,18 +1,23 @@
-$primary-color: #F0A202;
-$primary-color-25: #f0a1022c;
-$secondary-color: #6f6ccf;
-$font-color: #141414;
-$terciary-color: #957D95;
-$bg-color: #EDE6E3;
-$inputTableHeight: 5%;
-$headersTableHeight: 4%;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
+/* Variables de colores personalizados */
+:root {
+  --primary-color: #F0A202;
+  --primary-color-25: #f0a1022c;
+  --secondary-color: #6f6ccf;
+  --font-color: #141414;
+  --terciary-color: #957D95;
+  --bg-color: #EDE6E3;
+}
 
-.bg-tooltip .tooltip-inner {
-    background-color: $secondary-color !important;
-    color: $bg-color !important; /* Asegúrate de que $bg-color esté definido en styles.scss */
-  }
-  
-  .bg-tooltip .tooltip-arrow::before {
-    border-right-color: $secondary-color !important;
-  }
+/* Estilos globales */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

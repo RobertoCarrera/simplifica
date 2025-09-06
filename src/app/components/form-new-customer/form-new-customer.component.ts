@@ -9,6 +9,8 @@ import { LocalitiesService } from '../../services/localities.service';
 import { DomainsService } from '../../services/domains.service';
 import { Address } from '../../models/address';
 import { AddressesService } from '../../services/addresses.service';
+import { Observable } from 'rxjs';
+import { create } from 'domain';
 
 @Component({
   selector: 'app-form-new-customer',
@@ -111,21 +113,33 @@ export class FormNewCustomerComponent  implements OnInit{
     };
   }
 
-  createDireccion(localidad_id: string) {
-    const direccion = {
-      _id: '',
-      created_at: new Date(),
-      tipo_via: this.selectedCustomerAddressRoadType,
-      nombre: this.selectedCustomerAddressName,
-      numero: this.selectedCustomerAddressNumber,
-      localidad_id: localidad_id
-    };
+  // createDireccion(localidad_id: string) {
+  //   const direccion = {
+  //     _id: '',
+  //     created_at: new Date(),
+  //     tipo_via: this.selectedCustomerAddressRoadType,
+  //     nombre: this.selectedCustomerAddressName,
+  //     numero: this.selectedCustomerAddressNumber,
+  //     localidad_id: localidad_id
+  //   };
   
-    this.addressService.createAddress(direccion).subscribe(newDireccion => {
-      const direccion_id = newDireccion._id;
-      this.createCliente(direccion_id);
-    });
-  }
+  //   this.addressService.createAddress(direccion).subscribe(newDireccion => {
+  //     const direccion_id = newDireccion._id;
+  //     this.createCliente(direccion_id);
+  //   });
+  // }
+
+  createDireccion(localidad_id: string): Observable<Address> {
+  const direccion = {
+    _id: '',
+    created_at: new Date(),
+    tipo_via: this.selectedCustomerAddressRoadType,
+    nombre: this.selectedCustomerAddressName,
+    numero: this.selectedCustomerAddressNumber,
+    localidad_id: localidad_id
+  };
+  return this.addressService.createAddress(direccion);
+}
 
   createCliente(direccion_id: string) {
     const cliente: Customer = {
@@ -322,17 +336,32 @@ export class FormNewCustomerComponent  implements OnInit{
     }
   }
 
-  onSearchLocality(event: Event) {
-    const query = (event.target as HTMLInputElement).value.toLowerCase();
-    if (query.length > 0) {
-      this.filteredLocalities = this.localities.filter(locality => 
-        locality.nombre.toLowerCase().startsWith(query));
-      this.localityHasResults = this.filteredLocalities.length > 0;
-    } else {
-      this.filteredLocalities = [];
-      this.localityHasResults = false;
-    }
-  }
+  // onSearchLocality(event: Event) {
+  //   const query = (event.target as HTMLInputElement).value.toLowerCase();
+  //   if (query.length > 0) {
+  //     this.filteredLocalities = this.localities.filter(locality => 
+  //       locality.nombre.toLowerCase().startsWith(query));
+  //     this.localityHasResults = this.filteredLocalities.length > 0;
+  //   } else {
+  //     this.filteredLocalities = [];
+  //     this.localityHasResults = false;
+  //   }
+  // }
+
+  onSearchLocality(): void {
+  const cp = (this.selectedCustomerCP || '').trim().toLowerCase();
+  const locality = (this.selectedCustomerLocalityName || '').trim().toLowerCase();
+
+  this.filteredCPS = this.localities.filter(loc =>
+    (!cp || loc.CP.toString().toLowerCase().includes(cp)) &&
+    (!locality || loc.nombre.toLowerCase().includes(locality))
+  );
+
+  this.filteredLocalities = this.localities.filter(loc =>
+    (!locality || loc.nombre.toLowerCase().includes(locality)) &&
+    (!cp || loc.CP.toString().toLowerCase().includes(cp))
+  );
+}
 
   onSearchCP(event: Event) {
     const query = (event.target as HTMLInputElement).value.toLowerCase();

@@ -1,91 +1,383 @@
-import { ChangeDetectionStrategy, Component, HostListener, OnInit } from '@angular/core';
-import { CustomersService } from '../../services/customers.service';
-import { Customer } from '../../models/customer';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ModalCustomerComponent } from '../modal-customer/modal-customer.component';
-import { BtnNewComponent } from "../btn-new/btn-new.component";
+import { SimpleSupabaseService, SimpleClient } from '../../services/simple-supabase.service';
+import { TenantService } from '../../services/tenant.service';
 
 @Component({
   selector: 'app-dashboard-customers',
   standalone: true,
-  imports: [CommonModule, FormsModule, BtnNewComponent, ModalCustomerComponent],
-  templateUrl: './dashboard-customers.component.html',
-  styleUrl: './dashboard-customers.component.scss'
+  imports: [CommonModule, FormsModule],
+  template: `
+    <div class="dashboard-container">
+      <div class="header">
+        <h1>👥 Clientes</h1>
+        @if (currentTenant) {
+          <div class="tenant-info">
+            <span class="badge">🏢 {{ currentTenant.name }}</span>
+          </div>
+        }
+      </div>
+
+      @if (loading) {
+        <div class="loading">
+          ⏳ Cargando clientes...
+        </div>
+      }
+
+      @if (error) {
+        <div class="error">
+          ❌ {{ error }}
+          <button (click)="loadClients()" class="retry-btn">🔄 Reintentar</button>
+        </div>
+      }
+
+      @if (!loading && !error) {
+        <div class="clients-grid">
+          @if (clients.length === 0) {
+            <div class="no-clients">
+              📭 No hay clientes en esta empresa aún.
+              <button (click)="loadClients()" class="refresh-btn">🔄 Actualizar</button>
+            </div>
+          } @else {
+            <div class="clients-count">
+              📊 Total: {{ clients.length }} clientes
+            </div>
+            
+            @for (client of clients; track client.id) {
+              <div class="client-card">
+                <div class="client-name">👤 {{ client.name }}</div>
+                @if (client.email) {
+                  <div class="client-email">📧 {{ client.email }}</div>
+                }
+                @if (client.phone) {
+                  <div class="client-phone">📞 {{ client.phone }}</div>
+                }
+                <div class="client-meta">
+                  🏢 {{ client.company_name || 'Sin empresa' }}
+                </div>
+              </div>
+            }
+          }
+        </div>
+      }
+    </div>
+  `,
+  styles: [`
+    .dashboard-container {
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .tenant-info .badge {
+      background: #e3f2fd;
+      color: #1976d2;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .loading, .error, .no-clients {
+      text-align: center;
+      padding: 40px;
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+
+    .error {
+      border-color: #f5c6cb;
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .retry-btn, .refresh-btn {
+      margin-left: 10px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: #007bff;
+      color: white;
+    }
+
+    .clients-count {
+      margin-bottom: 20px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    .clients-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .client-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-left: 4px solid #007bff;
+    }
+
+    .client-name {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .client-email, .client-phone, .client-meta {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .client-meta {
+      font-style: italic;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #eee;
+    }
+  `]
 })
-export class DashboardCustomersComponent implements OnInit{
+export class DashboardCustomersComponent implements OnInit {
+  clients: SimpleClient[] = [];
+  loading = false;
+  error: string | null = null;
+  currentTenant: any = null;
 
-  customers: Customer[] = [];
-  searchCustomer: string = '';
-  isShrink = false;
-  modalCustomer = false;
-  selectedCustomer: Customer | null = null;
-  isModalVisible: boolean = false;
-  customerInEdition: Customer | null = null;
-  changeEditionCustomer: boolean = false;
-  currentPage: number = 1;
-  totalPages: number = 0;
-  creatingCustomer: boolean = false;
+  constructor(
+    private supabase: SimpleSupabaseService,
+    private tenantService: TenantService
+  ) {}
 
-  constructor(private customerService: CustomersService){}
-  
   ngOnInit(): void {
-      this.customerService.getCustomers('672275dacb317c137fb1dd1f').subscribe(customers => {
-        this.customers = customers;
-      });
-  };
-
-  filterCustomers(): Customer[]{
-    if(!this.searchCustomer.trim()){
-      return this.customers;
-    }
-
-    const searchTerm = this.searchCustomer.toLowerCase().trim();
-    const normalize = (text: string) => this.removeAccents(text.toLowerCase());
-
-    const filtered = this.customers.filter(customer => {
-      return (
-        normalize(customer.nombre.toLowerCase()).startsWith(searchTerm) ||
-        normalize(customer.apellidos.toLowerCase()).includes(searchTerm) ||
-        customer.dni.toLowerCase().startsWith(searchTerm) ||
-        normalize(customer.direccion?.tipo_via?.toLowerCase() || '').startsWith(searchTerm) ||
-        normalize((customer.direccion?.nombre || '').toLowerCase()).includes(searchTerm) ||
-        normalize((customer.direccion?.localidad?.nombre || '').toLowerCase()).startsWith(searchTerm) ||
-        customer.direccion?.localidad?.CP.toString().toLowerCase().startsWith(searchTerm) ||
-        customer.telefono.startsWith(searchTerm) ||
-        customer.email.toLowerCase().startsWith(searchTerm)
-      );
+    console.log('🔄 Dashboard customers iniciado');
+    
+    // Obtener tenant actual
+    this.tenantService.getCurrentTenant().subscribe(tenant => {
+      console.log('🏢 Tenant actual:', tenant);
+      this.currentTenant = tenant;
+      this.loadClients();
     });
-    return filtered;
-  } 
-
-  // Función para eliminar tildes
-  removeAccents(text: string): string {
-    return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
 
-  isCreatingCustomer(){
+  async loadClients() {
+    this.loading = true;
+    this.error = null;
+    
+    try {
+      console.log('📋 Cargando clientes...');
+      
+      const { data: clients, error } = await this.supabase.getClient()
+        .from('clients')
+        .select(`
+          id,
+          name,
+          email,
+          phone,
+          metadata,
+          companies:company_id (name)
+        `)
+        .order('name');
 
-    if(this.creatingCustomer == true)
-      this.creatingCustomer = false;
-    else{
-      this.creatingCustomer = true;
+      if (error) {
+        console.error('❌ Error cargando clientes:', error);
+        this.error = `Error: ${error.message}`;
+      } else {
+        console.log('✅ Clientes cargados:', clients);
+        this.clients = (clients || []).map((client: any) => ({
+          id: client.id,
+          name: client.name,
+          email: client.email,
+          phone: client.phone,
+          company_name: client.companies?.name || 'Sin empresa'
+        }));
+      }
+    } catch (err: any) {
+      console.error('❌ Error general:', err);
+      this.error = `Error: ${err.message}`;
+    } finally {
+      this.loading = false;
+    }
+  }
+}
+
+    // Cargar datos multi-tenant
+    this.loadMultiTenantData();
+  }
+
+  // === NUEVOS MÉTODOS MULTI-TENANT ===
+
+  async loadMultiTenantData(): Promise<void> {
+    this.loading = true;
+    this.error = null;
+
+    try {
+      const result = await this.supabase.getClients();
+      
+      if (result.success && result.data) {
+        this.clients = result.data;
+        console.log('Clientes cargados:', this.clients);
+      } else {
+        this.error = 'Error cargando clientes: ' + (result.error || 'Unknown');
+      }
+    } catch (error: any) {
+      this.error = 'Error cargando clientes: ' + error.message;
+    } finally {
+      this.loading = false;
     }
   }
 
-  @HostListener('window:keydown', ['$event'])
-  manejarAtajo(event: KeyboardEvent) {
-    if (event.shiftKey && event.key.toLowerCase() === 'n') {
-      event.preventDefault(); // Evita que se abra una nueva ventana
-      this.isCreatingCustomer();
+  async createNewClient(): Promise<void> {
+    const clientName = prompt('Nombre del cliente:');
+    const clientEmail = prompt('Email del cliente (opcional):');
+    
+    if (!clientName) return;
+
+    this.loading = true;
+    try {
+      const result = await this.supabase.createClient(clientName, clientEmail || undefined);
+      
+      if (result.success && result.data) {
+        this.clients.push(result.data);
+        console.log('Cliente creado:', result.data);
+      } else {
+        this.error = 'Error creando cliente: ' + (result.error || 'Unknown');
+      }
+    } catch (error: any) {
+      this.error = 'Error creando cliente: ' + error.message;
+    } finally {
+      this.loading = false;
     }
   }
 
-  openCustomerModal(ticket: Customer): void{
-    this.selectedCustomer = ticket;
+  async deleteClient(clientId: string): Promise<void> {
+    if (!confirm('¿Estás seguro de eliminar este cliente?')) return;
+
+    this.loading = true;
+    try {
+      const result = await this.supabase.deleteClient(clientId);
+      
+      if (result.success) {
+        this.clients = this.clients.filter(c => c.id !== clientId);
+        console.log('Cliente eliminado');
+      } else {
+        this.error = 'Error eliminando cliente: ' + (result.error || 'Unknown');
+      }
+    } catch (error: any) {
+      this.error = 'Error eliminando cliente: ' + error.message;
+    } finally {
+      this.loading = false;
+    }
   }
 
-  closeCustomerModal(): void{
+  async searchClients(): Promise<void> {
+    if (!this.searchCustomer.trim()) {
+      this.loadMultiTenantData();
+      return;
+    }
+
+    this.loading = true;
+    try {
+      const result = await this.supabase.searchClients(this.searchCustomer);
+      
+      if (result.success && result.data) {
+        this.clients = result.data;
+      } else {
+        this.error = 'Error buscando clientes: ' + (result.error || 'Unknown');
+      }
+    } catch (error: any) {
+      this.error = 'Error buscando clientes: ' + error.message;
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  // === MÉTODOS DE UTILIDAD ===
+
+  getClientsWithEmail(): number {
+    return this.clients.filter(c => c.email && c.email.trim()).length;
+  }
+
+  getClientsWithPhone(): number {
+    return this.clients.filter(c => c.phone && c.phone.trim()).length;
+  }
+
+  // === MÉTODOS LEGACY SIMPLIFICADOS ===
+
+  filterCustomers(): Customer[] {
+    return this.customers.filter(c => 
+      c.nombre?.toLowerCase().includes(this.searchCustomer.toLowerCase()) ||
+      c.email?.toLowerCase().includes(this.searchCustomer.toLowerCase())
+    );
+  }
+
+  openCustomerModal(customer: Customer): void {
+    this.selectedCustomer = customer;
+    this.modalCustomer = true;
+  }
+
+  closeCustomerModal(): void {
+    this.modalCustomer = false;
     this.selectedCustomer = null;
+  }
+
+  selectCustomer(customer: Customer): void {
+    this.selectedCustomer = customer;
+    this.modalCustomer = true;
+  }
+
+  closeModal(): void {
+    this.modalCustomer = false;
+    this.selectedCustomer = null;
+  }
+
+  openModal(customer?: Customer): void {
+    this.customerInEdition = customer || null;
+    this.isModalVisible = true;
+  }
+
+  closeModalCustomer(): void {
+    this.isModalVisible = false;
+    this.customerInEdition = null;
+    this.changeEditionCustomer = false;
+  }
+
+  onCustomerCreated(customer: Customer): void {
+    console.log('Cliente legacy creado:', customer);
+  }
+
+  onCustomerUpdated(customer: Customer): void {
+    console.log('Cliente legacy actualizado:', customer);
+  }
+
+  editCustomer(customer: Customer): void {
+    console.log('Editando cliente legacy:', customer);
+  }
+
+  deleteLegacyCustomer(customerId: number): void {
+    console.log('Eliminando cliente legacy:', customerId);
+  }
+
+  searchCustomers(): void {
+    console.log('Buscando clientes legacy:', this.searchCustomer);
+  }
+
+  onResize(): void {
+    this.isShrink = window.innerWidth < 768;
   }
 }

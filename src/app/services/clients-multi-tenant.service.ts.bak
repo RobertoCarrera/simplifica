@@ -1,0 +1,283 @@
+import { Injectable } from '@angular/core';
+import { SupabaseService } from './supabase.service';
+import { Observable, from, map, switchMap } from 'rxjs';
+
+export interface Client {
+  id: string;
+  company_id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: any;
+  metadata?: any;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string;
+}
+
+export interface CreateClientRequest {
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: any;
+  metadata?: any;
+}
+
+export interface UpdateClientRequest {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: any;
+  metadata?: any;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ClientsMultiTenantService {
+  
+  constructor(private supabase: SupabaseService) {}
+
+  // === CRUD METHODS ===
+
+  /**
+   * Obtener todos los clientes de la empresa actual
+   */
+  getClients(): Observable<Client[]> {
+    return from(
+      this.supabase.from('clients')
+        .select('*')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+    ).pipe(
+      map(response => {
+        if (response.error) {
+          console.error('Error fetching clients:', response.error);
+          throw response.error;
+        }
+        return response.data || [];
+      })
+    );
+  }
+
+  /**
+   * Obtener un cliente por ID
+   */
+  getClient(id: string): Observable<Client | null> {
+    return from(
+      this.supabase.from('clients')
+        .select('*')
+        .eq('id', id)
+        .is('deleted_at', null)
+        .single()
+    ).pipe(
+      map(response => {
+        if (response.error) {
+          console.error('Error fetching client:', response.error);
+          throw response.error;
+        }
+        return response.data;
+      })
+    );
+  }
+
+  /**
+   * Crear un nuevo cliente
+   */
+  createClient(clientData: CreateClientRequest): Observable<Client> {
+    return this.supabase.company$.pipe(
+      switchMap(companyId => {
+        if (!companyId) {
+          throw new Error('No company context set');
+        }
+
+        return from(
+          this.supabase.from('clients')
+            .insert({
+              company_id: companyId,
+              ...clientData
+            })
+            .select()
+            .single()
+        );
+      }),
+      map(response => {
+        if (response.error) {
+          console.error('Error creating client:', response.error);
+          throw response.error;
+        }
+        return response.data;
+      })
+    );
+  }
+
+  /**
+   * Actualizar un cliente
+   */
+  updateClient(id: string, updates: UpdateClientRequest): Observable<Client> {
+    return from(
+      this.supabase.from('clients')
+        .update(updates)
+        .eq('id', id)
+        .is('deleted_at', null)
+        .select()
+        .single()
+    ).pipe(
+      map(response => {
+        if (response.error) {
+          console.error('Error updating client:', response.error);
+          throw response.error;
+        }
+        return response.data;
+      })
+    );
+  }
+
+  /**
+   * Soft delete de un cliente
+   */
+  deleteClient(id: string): Observable<boolean> {
+    return from(
+      this.supabase.from('clients')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id)
+        .is('deleted_at', null)
+    ).pipe(
+      map(response => {
+        if (response.error) {
+          console.error('Error deleting client:', response.error);
+          throw response.error;
+        }
+        return true;
+      })
+    );
+  }
+
+  // === SEARCH METHODS ===
+
+  /**
+   * Buscar clientes por texto
+   */
+  searchClients(searchTerm: string): Observable<Client[]> {
+    return from(
+      this.supabase.from('clients')
+        .select('*')
+        .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+    ).pipe(
+      map(response => {
+        if (response.error) {
+          console.error('Error searching clients:', response.error);
+          throw response.error;
+        }
+        return response.data || [];
+      })
+    );
+  }
+
+  /**
+   * Obtener clientes con paginación
+   */
+  getClientsPaginated(page: number = 0, pageSize: number = 20): Observable<{
+    data: Client[];
+    count: number;
+    hasMore: boolean;
+  }> {
+    const fromIndex = page * pageSize;
+    const to = fromIndex + pageSize - 1;
+
+    return from(
+      this.supabase.from('clients')
+        .select('*', { count: 'exact' })
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .range(fromIndex, to)
+    ).pipe(
+      map((response: any) => {
+        if (response.error) {
+          console.error('Error fetching paginated clients:', response.error);
+          throw response.error;
+        }
+
+        const data = response.data || [];
+        const count = response.count || 0;
+        const hasMore = count > (page + 1) * pageSize;
+
+        return { data, count, hasMore };
+      })
+    );
+  }
+
+  // === UTILITY METHODS ===
+
+  /**
+   * Verificar si un email ya existe
+   */
+  emailExists(email: string, excludeId?: string): Observable<boolean> {
+    let query = this.supabase.from('clients')
+      .select('id')
+      .eq('email', email)
+      .is('deleted_at', null);
+
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+
+    return from(query).pipe(
+      map(response => {
+        if (response.error) {
+          console.error('Error checking email:', response.error);
+          throw response.error;
+        }
+        return (response.data?.length || 0) > 0;
+      })
+    );
+  }
+
+  /**
+   * Obtener estadísticas de clientes
+   */
+  getClientStats(): Observable<{
+    total: number;
+    active: number;
+    withEmail: number;
+    withPhone: number;
+  }> {
+    return from(
+      this.supabase.from('clients')
+        .select('id, email, phone')
+        .is('deleted_at', null)
+    ).pipe(
+      map(response => {
+        if (response.error) {
+          console.error('Error fetching client stats:', response.error);
+          throw response.error;
+        }
+
+        const clients = response.data || [];
+        return {
+          total: clients.length,
+          active: clients.length, // todos los no-deleted son activos
+          withEmail: clients.filter(c => c.email).length,
+          withPhone: clients.filter(c => c.phone).length
+        };
+      })
+    );
+  }
+
+  // === REALTIME METHODS ===
+
+  /**
+   * Suscribirse a cambios en clientes
+   */
+  subscribeToChanges(callback: (payload: any) => void) {
+    return this.supabase.subscribe('clients', (payload) => {
+      // Solo procesar cambios de la empresa actual
+      const companyId = this.supabase.currentCompanyId;
+      if (companyId && payload.new?.company_id === companyId) {
+        callback(payload);
+      }
+    });
+  }
+}

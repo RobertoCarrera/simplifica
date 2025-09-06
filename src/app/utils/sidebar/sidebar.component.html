@@ -17,8 +17,10 @@
                 <span>Inicio</span>
             </a>
           </li>
-          <li (click) = "activeElement(2)"
-          [ngClass]="{'elemento-actual-menu': element === 2}">
+          <!-- Servicios - Solo si está permitido -->
+          <li *ngIf="isModuleAllowed('servicios')" 
+              (click) = "activeElement(2)"
+              [ngClass]="{'elemento-actual-menu': element === 2}">
             <a routerLink="sat">
                 <i class="bi bi-ticket"
                 data-bs-toggle="tooltip"
@@ -28,6 +30,8 @@
                 <span>Servicios</span>
             </a>
           </li>
+          
+          <!-- Taller -->
           <li (click) = "activeElement(3)"
           [ngClass]="{'elemento-actual-menu': element === 3}">
             <a routerLink="taller">
@@ -39,8 +43,11 @@
                 <span>Taller</span>
             </a>
           </li>
-          <!-- <li (click) = "activeElement(4)"
-          [ngClass]="{'elemento-actual-menu': element === 4}">
+          
+          <!-- Presupuestos - Solo si está permitido -->
+          <li *ngIf="isModuleAllowed('presupuestos')" 
+              (click) = "activeElement(4)"
+              [ngClass]="{'elemento-actual-menu': element === 4}">
             <a routerLink="presupuestos">
                 <i class="bi bi-file-spreadsheet"
                 data-bs-toggle="tooltip"
@@ -49,7 +56,7 @@
                 data-bs-custom-class="bg-tooltip"></i>
                 <span>Presupuestos</span>
             </a>
-          </li> -->
+          </li>
           <!-- <li (click) = "activeElement(5)"
           [ngClass]="{'elemento-actual-menu': element === 5}">
             <a routerLink="material">
@@ -70,6 +77,19 @@
                 data-bs-title="Clientes"
                 data-bs-custom-class="bg-tooltip"></i>
                 <span>Clientes</span>
+            </a>
+          </li>
+          <!-- Test DB - Solo para Super Admin -->
+          <li *ngIf="isSuperAdmin" 
+              (click) = "activeElement(7)"
+              [ngClass]="{'elemento-actual-menu': element === 7}">
+            <a routerLink="test-multitenant">
+                <i class="bi bi-database-gear"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                data-bs-title="Test Multi-tenant"
+                data-bs-custom-class="bg-tooltip"></i>
+                <span>Test DB</span>
             </a>
           </li>
           <!-- <li (click) = "activeElement(7)"

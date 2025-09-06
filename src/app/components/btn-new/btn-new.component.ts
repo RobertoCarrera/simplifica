@@ -35,6 +35,7 @@ export class BtnNewComponent implements AfterViewInit {
     creating: boolean = false;
     businessType: boolean = false;
     personType: boolean = false;
+    customerExists: boolean = false;
 
     constructor(private customerService: CustomersService) {}
 
@@ -55,7 +56,9 @@ export class BtnNewComponent implements AfterViewInit {
             case 'person':
                 this.personType = true;
                 this.businessType = false;
+                alert(this.formStep);
                 this.formStep++;
+                alert(this.formStep);
                 break;
             default:
                 alert("Error en la elección");
@@ -71,6 +74,7 @@ export class BtnNewComponent implements AfterViewInit {
     onCustomerSelected(customer: Customer) {
         console.log('Cliente recibido del hijo:', customer);
         this.selectedCustomer = customer; // Guardamos el cliente recibido
+        this.customerExists = true; // Marcamos que el cliente existe
     }
 
     openCustomerModal() {  
@@ -100,6 +104,7 @@ export class BtnNewComponent implements AfterViewInit {
     addStep() {
         if (this.formStep < this.maxSteps) {
             this.formStep++;
+                alert(this.formStep);
         }
     }
 
@@ -111,6 +116,40 @@ export class BtnNewComponent implements AfterViewInit {
         this.formStep--;
       }
     }
+
+    createCustomer() {
+  // 1. Validar el formulario del hijo
+  if (this.formCustomerComponent && this.formCustomerComponent.isFormValid()) {
+    // 2. Crear la dirección primero
+    this.formCustomerComponent.createDireccion(
+      this.formCustomerComponent.selectedCustomerLocality?._id
+    ).subscribe({
+      next: (direccion: any) => {
+        // 3. Obtener los datos del cliente con el id de dirección
+        const customer = this.formCustomerComponent.getCustomerData(direccion._id);
+        // 4. Crear el cliente
+        this.customerService.createCustomer(customer).subscribe({
+          next: (createdCustomer) => {
+            this.customerExists = true;
+            alert(this.formStep);
+            setTimeout(() => {
+              this.creating = false;
+              this.clearFormFromParent();
+            }, 5000);
+          },
+          error: (err) => {
+            console.error('Error al crear cliente:', err);
+          }
+        });
+      },
+      error: (err) => {
+        console.error('Error al crear dirección:', err);
+      }
+    });
+  } else {
+    console.warn('Formulario no válido');
+  }
+}
 
     handleCreate(direccion_id: string): void {
         if (this.formCustomerComponent.isFormValid()) {
@@ -138,6 +177,7 @@ export class BtnNewComponent implements AfterViewInit {
             }
             this.totalProducts = 0;
             this.isCreating();
+            this.customerExists = false;
         }
     }
 }

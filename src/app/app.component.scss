@@ -1,6 +1,5 @@
-@use '../styles.scss' as styles;
 .bg-simplifica{
-    background-color: styles.$bg-color;
+    background-color: var(--bg-color);
 }
 
 .n-fullwidth{

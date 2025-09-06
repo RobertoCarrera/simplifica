@@ -1,8 +1,9 @@
-import { Component, AfterViewInit, Renderer2, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, AfterViewInit, Renderer2, Inject, PLATFORM_ID, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { isPlatformBrowser } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { SidebarService } from '../../services/sidebar.service';
+import { TenantService, TenantConfig } from '../../services/tenant.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -10,15 +11,28 @@ import { SidebarService } from '../../services/sidebar.service';
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss']
 })
-export class SidebarComponent implements AfterViewInit {
+export class SidebarComponent implements AfterViewInit, OnInit {
   isShrink = false;
   element = 1;
   private tooltips: any[] = [];
+  currentTenant: TenantConfig | null = null;
+  isSuperAdmin: boolean = false;
 
   constructor(
     private sidebarService: SidebarService,
+    private tenantService: TenantService,
     private renderer: Renderer2,
     @Inject(PLATFORM_ID) private platformId: Object) {}
+
+  ngOnInit(): void {
+    // Suscribirse a cambios de tenant
+    this.tenantService.tenant$.subscribe(tenant => {
+      this.currentTenant = tenant;
+      console.log('🏢 Sidebar loaded for tenant:', tenant?.name);
+    });
+
+    this.isSuperAdmin = this.tenantService.isSuperAdmin();
+  }
 
   ngAfterViewInit(): void {
     if (isPlatformBrowser(this.platformId)) {
@@ -36,6 +50,12 @@ export class SidebarComponent implements AfterViewInit {
 
   activeElement(el: number): void {
     this.element = el;
+  }
+
+  // Verificar si un módulo está permitido para el tenant actual
+  isModuleAllowed(module: keyof TenantConfig['allowedModules']): boolean {
+    if (this.isSuperAdmin) return true;
+    return this.currentTenant?.allowedModules[module] || false;
   }
 
   private async updateTooltips(): Promise<void> {

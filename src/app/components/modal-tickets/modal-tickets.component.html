@@ -1,33 +1,39 @@
-<div *ngIf="ticket" class="modal" [class.show]="true" [style.display]="'block'" tabindex="-1" role="dialog" aria-labelledby="modalTicket" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h2 class="modal-title" id="modalInfoLabel">
+<div *ngIf="ticket" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" tabindex="-1" role="dialog" aria-labelledby="modalTicket" aria-hidden="true">
+    <div class="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-90vh overflow-hidden mx-4" role="document">
+      <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
+        <div class="flex justify-between items-center">
+          <h2 class="text-xl font-semibold text-gray-900" id="modalInfoLabel">
             Ticket # {{ticket.contador}} para 
             <a href="" 
-              (click)="openCustomerModal(ticket.cliente); $event.preventDefault()">{{ticket.cliente.nombre}} {{ticket.cliente.apellidos}}
+              (click)="openCustomerModal(ticket.cliente); $event.preventDefault()" 
+              class="text-orange-600 hover:text-orange-700 underline">{{ticket.cliente.nombre}} {{ticket.cliente.apellidos}}
             </a>
           </h2>
-          <button type="button" class="btn-close" aria-label="Close" (click)="closeTicket()"></button>
+          <button type="button" class="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200" aria-label="Close" (click)="closeTicket()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
-        <div class="modal-body">
-          <div class="row d-flex align-items-center justify-content-around pt-3">
-            <div *ngFor="let estado of estados" class="col-2 d-flex flex-column align-items-center justify-content-center" [ngClass]="{'estado-pasado': ticket.estado.posicion > estado.posicion}">
-              <div class="pb-2">{{estado.nombre}}</div>
-              <div class="marcador" [ngClass]="{'marcador-estado-actual': ticket.estado.posicion === estado.posicion, 'marcador-estado-pasado': ticket.estado.posicion > estado.posicion}"></div>
-            </div>
+      </div>
+      <div class="p-6 overflow-y-auto max-h-96">
+        <div class="flex items-center justify-around pt-3 mb-6">
+          <div *ngFor="let estado of estados" class="flex flex-col items-center justify-center" [ngClass]="{'text-gray-400': ticket.estado.posicion > estado.posicion}">
+            <div class="pb-2 text-sm font-medium">{{estado.nombre}}</div>
+            <div class="w-4 h-4 rounded-full border-2" [ngClass]="{'bg-orange-500 border-orange-500': ticket.estado.posicion === estado.posicion, 'bg-green-500 border-green-500': ticket.estado.posicion > estado.posicion, 'border-gray-300': ticket.estado.posicion < estado.posicion}"></div>
           </div>
-          <div class="table-responsive rounded pt-3" id="containerServicesTable">
-            <table id="tablaServices" class="table table-striped mb-1 rounded">
-              <thead>
-                <tr>
-                  <th>Unidades</th>
-                  <th>Productos</th>
-                  <th>Trabajos</th>
-                  <th class="text-center">Acabado</th>
-                </tr>
-              </thead>
-              <tbody id="customersBodyTable" class="h-100">
+        </div>
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden pt-3" id="containerServicesTable">
+          <table id="tablaServices" class="w-full">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-900">Unidades</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-900">Productos</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-900">Trabajos</th>
+                <th class="px-4 py-3 text-center text-sm font-medium text-gray-900">Acabado</th>
+              </tr>
+            </thead>
+            <tbody id="customersBodyTable" class="divide-y divide-gray-200">
                 <tr *ngFor="let servicio of ticket.servicios" class="customer">
                     <td class="align-content-center" #unidades>{{servicio.unidades}}</td>
                     <td class="align-content-center" #producto>{{servicio.producto?.nombre || ''}}</td>
