@@ -8,6 +8,8 @@ import { WorksComponent } from './components/works/works.component';
 import { DemoComponentsComponent } from './components/demo-components/demo-components.component';
 import { DashboardAnalyticsComponent } from './components/dashboard-analytics/dashboard-analytics.component';
 import { AdvancedSearchComponent } from './components/advanced-search/advanced-search.component';
+import { NotificationCenterComponent } from './components/notification-center/notification-center.component';
+import { NotificationDemoComponent } from './components/notification-demo/notification-demo.component';
 
 export const routes: Routes = [
     {path: 'clientes', component: UltraSimpleComponent},
@@ -17,7 +19,9 @@ export const routes: Routes = [
     {path: 'trabajos', component: WorksComponent},
     {path: 'analytics', component: DashboardAnalyticsComponent},
     {path: 'search', component: AdvancedSearchComponent},
+    {path: 'notifications', component: NotificationCenterComponent},
     {path: 'demo', component: DemoComponentsComponent},
+    {path: 'notification-demo', component: NotificationDemoComponent},
     {path: 'setup-db', component: SetupDbComponent},
     {path: '', redirectTo: '/clientes', pathMatch: 'full'}
 ];

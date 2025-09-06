@@ -2,13 +2,14 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { ThemeSelectorComponent } from '../theme-selector/theme-selector.component';
+import { NotificationBellComponent } from '../notification-bell/notification-bell.component';
 import { ThemeService } from '../../services/theme.service';
 import { AnimationService } from '../../services/animation.service';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ThemeSelectorComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ThemeSelectorComponent, NotificationBellComponent],
   animations: [
     AnimationService.sidebarCollapse,
     AnimationService.fadeInUp,
@@ -93,6 +94,76 @@ import { AnimationService } from '../../services/animation.service';
             <!-- Divider -->
             <div *ngIf="!sidebarCollapsed()" class="border-t border-white border-opacity-20 my-4"></div>
             
+            <!-- Analytics Dashboard -->
+            <a routerLink="/analytics" 
+               routerLinkActive="active-nav-item"
+               class="nav-item group relative"
+               [class.collapsed-nav]="sidebarCollapsed()">
+               <span class="nav-icon">📊</span>
+               <span *ngIf="!sidebarCollapsed()" class="nav-text">Analytics</span>
+               <div *ngIf="sidebarCollapsed()" 
+                    class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                 Analytics
+               </div>
+            </a>
+            
+            <!-- Advanced Search -->
+            <a routerLink="/search" 
+               routerLinkActive="active-nav-item"
+               class="nav-item group relative"
+               [class.collapsed-nav]="sidebarCollapsed()">
+               <span class="nav-icon">🔍</span>
+               <span *ngIf="!sidebarCollapsed()" class="nav-text">Búsqueda</span>
+               <div *ngIf="sidebarCollapsed()" 
+                    class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                 Búsqueda
+               </div>
+            </a>
+            
+            <!-- Notifications -->
+            <a routerLink="/notifications" 
+               routerLinkActive="active-nav-item"
+               class="nav-item group relative"
+               [class.collapsed-nav]="sidebarCollapsed()">
+               <span class="nav-icon">🔔</span>
+               <span *ngIf="!sidebarCollapsed()" class="nav-text">Notificaciones</span>
+               <div *ngIf="sidebarCollapsed()" 
+                    class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                 Notificaciones
+               </div>
+            </a>
+            
+            <!-- Divider -->
+            <div *ngIf="!sidebarCollapsed()" class="border-t border-white border-opacity-20 my-4"></div>
+            
+            <!-- Demo Pages -->
+            <a routerLink="/demo" 
+               routerLinkActive="active-nav-item"
+               class="nav-item group relative"
+               [class.collapsed-nav]="sidebarCollapsed()">
+               <span class="nav-icon">✨</span>
+               <span *ngIf="!sidebarCollapsed()" class="nav-text">Demo UX</span>
+               <div *ngIf="sidebarCollapsed()" 
+                    class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                 Demo UX
+               </div>
+            </a>
+            
+            <a routerLink="/notification-demo" 
+               routerLinkActive="active-nav-item"
+               class="nav-item group relative"
+               [class.collapsed-nav]="sidebarCollapsed()">
+               <span class="nav-icon">🔔</span>
+               <span *ngIf="!sidebarCollapsed()" class="nav-text">Demo Notif</span>
+               <div *ngIf="sidebarCollapsed()" 
+                    class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                 Demo Notif
+               </div>
+            </a>
+            
+            <!-- Divider -->
+            <div *ngIf="!sidebarCollapsed()" class="border-t border-white border-opacity-20 my-4"></div>
+            
             <!-- Theme Selector Toggle -->
             <button 
               (click)="toggleThemeSelector()"
@@ -117,6 +188,7 @@ import { AnimationService } from '../../services/animation.service';
             <div class="flex items-center justify-between">
               <h2 class="text-xl font-semibold text-gray-800 dark:text-white">{{ getPageTitle() }}</h2>
               <div class="flex items-center space-x-4">
+                <app-notification-bell></app-notification-bell>
                 <span class="text-sm text-gray-600 dark:text-gray-300">{{ getCurrentDate() }}</span>
                 <div class="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
                   <span class="text-sm font-medium text-gray-600 dark:text-gray-300">👤</span>

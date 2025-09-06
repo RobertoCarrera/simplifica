@@ -91,6 +91,18 @@
                 <span>Demo UX</span>
             </a>
           </li>
+          <!-- Notification Demo - OPCIÓN 2 -->
+          <li (click) = "activeElement(12)"
+          [ngClass]="{'elemento-actual-menu': element === 12}">
+            <a routerLink="notification-demo">
+                <i class="bi bi-play-circle"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                data-bs-title="Demo Notificaciones"
+                data-bs-custom-class="bg-tooltip"></i>
+                <span>Demo Notif</span>
+            </a>
+          </li>
           <!-- Analytics Dashboard - OPCIÓN 2 -->
           <li (click) = "activeElement(9)"
           [ngClass]="{'elemento-actual-menu': element === 9}">
@@ -113,6 +125,18 @@
                 data-bs-title="Búsqueda Avanzada"
                 data-bs-custom-class="bg-tooltip"></i>
                 <span>Búsqueda</span>
+            </a>
+          </li>
+          <!-- Notifications - OPCIÓN 2 -->
+          <li (click) = "activeElement(11)"
+          [ngClass]="{'elemento-actual-menu': element === 11}">
+            <a routerLink="notifications">
+                <i class="bi bi-bell-fill"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                data-bs-title="Centro de Notificaciones"
+                data-bs-custom-class="bg-tooltip"></i>
+                <span>Notificaciones</span>
             </a>
           </li>
           <!-- Test DB - Solo para Super Admin -->
