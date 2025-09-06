@@ -142,8 +142,13 @@ export class NotificationService {
     this.notifications.update(current => [newNotification, ...current]);
     this.saveToStorage();
     
-    // Show desktop notification if enabled and supported
+    // Show toast notification (sistema visual mejorado)
     const settings = this.settings();
+    if (settings?.generalSettings.inApp) {
+      this.showToast(newNotification);
+    }
+    
+    // Show desktop notification if enabled and supported
     if (settings?.generalSettings.desktop && 'Notification' in window) {
       this.showDesktopNotification(newNotification);
     }
@@ -390,7 +395,7 @@ export class NotificationService {
             desktop: true,
             email: true,
             sms: false,
-            inApp: false, // Deshabilitado para evitar duplicados con el nuevo sistema
+            inApp: true, // Habilitado para mostrar las notificaciones visuales
             dailyDigest: false,
             quietHours: {
               enabled: false,

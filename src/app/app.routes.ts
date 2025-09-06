@@ -10,6 +10,7 @@ import { DashboardAnalyticsComponent } from './components/dashboard-analytics/da
 import { AdvancedSearchComponent } from './components/advanced-search/advanced-search.component';
 import { NotificationCenterComponent } from './components/notification-center/notification-center.component';
 import { NotificationDemoComponent } from './components/notification-demo/notification-demo.component';
+import { WorkflowBuilderComponent } from './components/workflow-builder/workflow-builder.component';
 
 export const routes: Routes = [
     {path: 'clientes', component: UltraSimpleComponent},
@@ -20,6 +21,7 @@ export const routes: Routes = [
     {path: 'analytics', component: DashboardAnalyticsComponent},
     {path: 'search', component: AdvancedSearchComponent},
     {path: 'notifications', component: NotificationCenterComponent},
+    {path: 'workflows', component: WorkflowBuilderComponent},
     {path: 'demo', component: DemoComponentsComponent},
     {path: 'notification-demo', component: NotificationDemoComponent},
     {path: 'setup-db', component: SetupDbComponent},

@@ -133,6 +133,19 @@ import { AnimationService } from '../../services/animation.service';
                </div>
             </a>
             
+            <!-- Workflows -->
+            <a routerLink="/workflows" 
+               routerLinkActive="active-nav-item"
+               class="nav-item group relative"
+               [class.collapsed-nav]="sidebarCollapsed()">
+               <span class="nav-icon">🤖</span>
+               <span *ngIf="!sidebarCollapsed()" class="nav-text">Workflows</span>
+               <div *ngIf="sidebarCollapsed()" 
+                    class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                 Workflows
+               </div>
+            </a>
+            
             <!-- Divider -->
             <div *ngIf="!sidebarCollapsed()" class="border-t border-white border-opacity-20 my-4"></div>
             

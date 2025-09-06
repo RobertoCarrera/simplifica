@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { LayoutComponent } from './components/layout/layout.component';
-import { NotificationToastComponent } from './components/notification-toast/notification-toast.component';
+import { ToastComponent } from './components/toast/toast.component';
 import { PwaInstallComponent } from './components/pwa-install/pwa-install.component';
 import { ToastService } from './services/toast.service';
 import { NotificationService } from './services/notification.service';
@@ -8,10 +8,10 @@ import { NotificationService } from './services/notification.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [LayoutComponent, NotificationToastComponent, PwaInstallComponent],
+  imports: [LayoutComponent, ToastComponent, PwaInstallComponent],
   template: `
     <app-layout></app-layout>
-    <app-notification-toast></app-notification-toast>
+    <app-toast></app-toast>
     <app-pwa-install></app-pwa-install>
   `
 })

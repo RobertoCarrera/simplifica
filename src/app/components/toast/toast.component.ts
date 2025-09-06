@@ -101,6 +101,10 @@ import { AnimationService } from '../../services/animation.service';
 export class ToastComponent {
   toastService = inject(ToastService);
 
+  removeToast(id: string): void {
+    this.toastService.removeToast(id);
+  }
+
   getToastClasses(type: Toast['type']): string {
     const classes = {
       success: 'toast-success',
