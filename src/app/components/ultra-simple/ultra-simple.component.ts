@@ -2,21 +2,27 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { SimpleSupabaseService } from '../../services/simple-supabase.service';
+import { AnimationService } from '../../services/animation.service';
 
 @Component({
   selector: 'app-ultra-simple',
   standalone: true,
   imports: [CommonModule],
+  animations: [
+    AnimationService.fadeInUp,
+    AnimationService.staggerList,
+    AnimationService.cardHover
+  ],
   template: `
-    <div class="p-6">
+    <div class="p-6" @fadeInUp>
       <!-- Header Section -->
-      <div class="mb-6">
+      <div class="mb-6" @fadeInUp>
         <div class="flex items-center justify-between">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
               Clientes{{ tenantName ? ' de ' + tenantName : '' }}
             </h1>
-            <p class="text-gray-600 mt-1">Gestión de clientes del sistema</p>
+            <p class="text-gray-600 dark:text-gray-300 mt-1">Gestión de clientes del sistema</p>
           </div>
           <div class="flex space-x-2">
             <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
