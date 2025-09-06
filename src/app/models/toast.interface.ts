@@ -1,4 +1,4 @@
-export interface ToastMessage {
+export interface Toast {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';
   title: string;

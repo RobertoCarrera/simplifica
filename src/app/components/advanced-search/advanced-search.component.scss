@@ -1,0 +1,176 @@
+:host {
+  display: block;
+}
+
+// Animaciones para búsqueda
+.search-input {
+  transition: all 0.3s ease;
+  
+  &:focus {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// Sugerencias animadas
+.suggestions-container {
+  animation: fadeInDown 0.2s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Resultados con hover suave
+.result-item {
+  transition: all 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// Filtros activos
+.active-filter {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+// Loading spinner personalizado
+.search-spinner {
+  border-top-color: #3b82f6;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Highlight de texto
+mark {
+  background-color: #fef3c7;
+  color: #92400e;
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: 500;
+}
+
+// Modal backdrop
+.modal-backdrop {
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+// Tags responsivos
+.tags-container {
+  .tag {
+    transition: all 0.2s ease;
+    
+    &:hover {
+      transform: scale(1.05);
+      background-color: #e5e7eb;
+    }
+  }
+}
+
+// Scrollbar personalizado
+.custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+    
+    &:hover {
+      background: #94a3b8;
+    }
+  }
+}
+
+// Estados responsivos
+@media (max-width: 768px) {
+  .mobile-search {
+    .search-input {
+      font-size: 16px; // Evita zoom en iOS
+    }
+    
+    .filters-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .results-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+// Estados de focus mejorados
+.focus-ring {
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+  }
+}
+
+// Microinteracciones
+.micro-interaction {
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+// Gradient borders
+.gradient-border {
+  position: relative;
+  background: linear-gradient(45deg, #3b82f6, #8b5cf6);
+  border-radius: 8px;
+  padding: 1px;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    right: 1px;
+    bottom: 1px;
+    background: white;
+    border-radius: 7px;
+  }
+  
+  .content {
+    position: relative;
+    z-index: 1;
+  }
+}

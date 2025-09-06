@@ -127,6 +127,14 @@ export class AnimationService {
     ])
   ]);
 
+  // Animación de slide simple
+  static slideIn: AnimationTriggerMetadata = trigger('slideIn', [
+    transition(':enter', [
+      style({ transform: 'translateX(-20px)', opacity: 0 }),
+      animate('250ms ease-out', style({ transform: 'translateX(0)', opacity: 1 }))
+    ])
+  ]);
+
   // Obtener todas las animaciones como array
   static getAllAnimations(): AnimationTriggerMetadata[] {
     return [
@@ -140,7 +148,8 @@ export class AnimationService {
       this.loadingSpinner,
       this.toastNotification,
       this.progressBar,
-      this.slideInFromDirection
+      this.slideInFromDirection,
+      this.slideIn
     ];
   }
 }

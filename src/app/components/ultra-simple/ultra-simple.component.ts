@@ -3,11 +3,23 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { SimpleSupabaseService } from '../../services/simple-supabase.service';
 import { AnimationService } from '../../services/animation.service';
+import { DataTableComponent } from '../data-table/data-table.component';
+import { CalendarComponent } from '../calendar/calendar.component';
+import { ToastService } from '../../services/toast.service';
+import { 
+  TableColumn, 
+  TableAction 
+} from '../data-table/data-table.interface';
+import { 
+  CalendarEvent, 
+  CalendarEventClick, 
+  CalendarDateClick 
+} from '../calendar/calendar.interface';
 
 @Component({
   selector: 'app-ultra-simple',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DataTableComponent, CalendarComponent],
   animations: [
     AnimationService.fadeInUp,
     AnimationService.staggerList,
@@ -164,6 +176,60 @@ import { AnimationService } from '../../services/animation.service';
           </a>
         </div>
       </div>
+
+      <!-- 🎨 PREMIUM COMPONENTS SECTION -->
+      <div class="mt-8 space-y-8" @fadeInUp>
+        <!-- Data Table Premium -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h3 class="text-lg font-medium text-gray-900">📊 Tabla Avanzada de Clientes</h3>
+              <p class="text-sm text-gray-600 mt-1">Tabla con ordenamiento, filtros y acciones</p>
+            </div>
+            <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+              ✨ Premium UX
+            </span>
+          </div>
+          
+          <app-data-table
+            [data]="clientTableData"
+            [columns]="clientTableColumns"
+            [actions]="clientTableActions"
+            [title]="'Clientes ' + (tenantName || 'Todos')"
+            [subtitle]="'Gestión avanzada de clientes con funcionalidades premium'"
+            [searchable]="true"
+            [sortable]="true"
+            [paginated]="true"
+            [pageSize]="5"
+            (sortChange)="onTableSort($event)"
+            (filterChange)="onTableFilter($event)"
+            (pageChange)="onTablePage($event)">
+          </app-data-table>
+        </div>
+
+        <!-- Calendar Premium -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h3 class="text-lg font-medium text-gray-900">📅 Calendario de Citas</h3>
+              <p class="text-sm text-gray-600 mt-1">Gestión de citas y eventos con clientes</p>
+            </div>
+            <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+              ✨ Premium UX
+            </span>
+          </div>
+          
+          <app-calendar
+            [events]="calendarEvents"
+            [editable]="true"
+            [selectable]="true"
+            (eventClick)="onEventClick($event)"
+            (dateClick)="onDateClick($event)"
+            (addEvent)="onAddEvent()"
+            (viewChange)="onViewChange($event)">
+          </app-calendar>
+        </div>
+      </div>
     </div>
   `
 })
@@ -174,11 +240,20 @@ export class UltraSimpleComponent implements OnInit {
   tenant: string | null = null;
   tenantName: string | null = null;
   
+  // Premium components data
+  clientTableData: any[] = [];
+  clientTableColumns: TableColumn[] = [];
+  clientTableActions: TableAction[] = [];
+  calendarEvents: CalendarEvent[] = [];
+  
   private route = inject(ActivatedRoute);
   private supabase = inject(SimpleSupabaseService);
+  private toastService = inject(ToastService);
 
   ngOnInit() {
     console.log('🚀 Componente iniciado');
+    
+    this.initializePremiumComponents();
     
     this.route.queryParams.subscribe(params => {
       this.tenant = params['tenant'] || null;
@@ -256,11 +331,170 @@ export class UltraSimpleComponent implements OnInit {
         console.log('✅ Todos los clientes:', this.clients.length);
       }
       
+      // Update premium components data
+      this.updateTableData();
+      
     } catch (error: any) {
       this.error = error.message;
       console.error('❌ Error:', error);
     } finally {
       this.loading = false;
     }
+  }
+
+  // 🎨 Premium Components Methods
+  private initializePremiumComponents() {
+    this.setupTableColumns();
+    this.setupTableActions();
+    this.generateCalendarEvents();
+  }
+
+  private setupTableColumns() {
+    this.clientTableColumns = [
+      {
+        key: 'name',
+        label: 'Nombre',
+        sortable: true,
+        type: 'text'
+      },
+      {
+        key: 'email',
+        label: 'Email',
+        sortable: true,
+        type: 'text'
+      },
+      {
+        key: 'phone',
+        label: 'Teléfono',
+        sortable: true,
+        type: 'text'
+      },
+      {
+        key: 'created_at',
+        label: 'Cliente desde',
+        sortable: true,
+        type: 'date',
+        format: (value: string) => this.formatDate(value)
+      }
+    ];
+  }
+
+  private setupTableActions() {
+    this.clientTableActions = [
+      {
+        label: 'Ver detalles',
+        icon: 'view',
+        color: 'primary',
+        onClick: (client: any) => this.viewClient(client)
+      },
+      {
+        label: 'Editar',
+        icon: 'edit',
+        color: 'secondary',
+        onClick: (client: any) => this.editClient(client)
+      },
+      {
+        label: 'Ver tickets',
+        icon: 'ticket',
+        color: 'success',
+        onClick: (client: any) => this.viewClientTickets(client)
+      }
+    ];
+  }
+
+  private generateCalendarEvents() {
+    // Generar eventos de ejemplo basados en clientes
+    this.calendarEvents = [
+      {
+        id: '1',
+        title: 'Reunión con cliente',
+        description: 'Revisión de requerimientos',
+        start: new Date(2025, 8, 8, 10, 0), // 8 Sept 2025, 10:00
+        end: new Date(2025, 8, 8, 11, 0),
+        allDay: false,
+        color: '#6366f1',
+        attendees: ['Cliente', 'Asesor técnico'],
+        location: 'Oficina principal'
+      },
+      {
+        id: '2',
+        title: 'Seguimiento técnico',
+        description: 'Revisión del estado del equipo',
+        start: new Date(2025, 8, 10, 14, 0), // 10 Sept 2025, 14:00
+        end: new Date(2025, 8, 10, 15, 30),
+        allDay: false,
+        color: '#10b981',
+        attendees: ['Técnico', 'Cliente'],
+        location: 'Taller'
+      },
+      {
+        id: '3',
+        title: 'Presentación de propuesta',
+        description: 'Presentación de solución técnica',
+        start: new Date(2025, 8, 12, 16, 0), // 12 Sept 2025, 16:00
+        end: new Date(2025, 8, 12, 17, 0),
+        allDay: false,
+        color: '#f59e0b',
+        attendees: ['Gerente', 'Cliente', 'Técnico'],
+        location: 'Sala de reuniones'
+      }
+    ];
+  }
+
+  // Table event handlers
+  onTableSort(event: any) {
+    console.log('Table sort:', event);
+    this.toastService.info('Ordenamiento', `Ordenando por ${event.column}`);
+  }
+
+  onTableFilter(event: any) {
+    console.log('Table filter:', event);
+    this.toastService.info('Filtro', `Filtrando: ${event.value}`);
+  }
+
+  onTablePage(event: any) {
+    console.log('Table page:', event);
+    this.toastService.info('Paginación', `Página ${event.page}`);
+  }
+
+  // Table actions
+  viewClient(client: any) {
+    this.toastService.info('Cliente', `Viendo detalles de ${client.name}`);
+  }
+
+  editClient(client: any) {
+    this.toastService.info('Cliente', `Editando ${client.name}`);
+  }
+
+  viewClientTickets(client: any) {
+    this.toastService.info('Tickets', `Tickets de ${client.name}`);
+  }
+
+  // Calendar event handlers
+  onEventClick(event: CalendarEventClick) {
+    console.log('Calendar event click:', event);
+    this.toastService.info('Evento', `Evento: ${event.event.title}`);
+  }
+
+  onDateClick(event: CalendarDateClick) {
+    console.log('Calendar date click:', event);
+    this.toastService.info('Fecha', `Fecha: ${event.date.toLocaleDateString('es-CL')}`);
+  }
+
+  onAddEvent() {
+    this.toastService.success('Calendario', 'Agregar nuevo evento - Funcionalidad en desarrollo');
+  }
+
+  onViewChange(view: any) {
+    console.log('Calendar view change:', view);
+    this.toastService.info('Vista', `Vista cambiada a: ${view.type}`);
+  }
+
+  // Update table data when clients change
+  private updateTableData() {
+    this.clientTableData = this.clients.map(client => ({
+      ...client,
+      id: client.id?.substring(0, 8) + '...' || 'N/A'
+    }));
   }
 }

@@ -79,6 +79,42 @@
                 <span>Clientes</span>
             </a>
           </li>
+          <!-- Demo Components - Premium UX -->
+          <li (click) = "activeElement(8)"
+          [ngClass]="{'elemento-actual-menu': element === 8}">
+            <a routerLink="demo">
+                <i class="bi bi-magic"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                data-bs-title="Demo Premium UX"
+                data-bs-custom-class="bg-tooltip"></i>
+                <span>Demo UX</span>
+            </a>
+          </li>
+          <!-- Analytics Dashboard - OPCIÓN 2 -->
+          <li (click) = "activeElement(9)"
+          [ngClass]="{'elemento-actual-menu': element === 9}">
+            <a routerLink="analytics">
+                <i class="bi bi-graph-up-arrow"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                data-bs-title="Panel de Análisis"
+                data-bs-custom-class="bg-tooltip"></i>
+                <span>Analytics</span>
+            </a>
+          </li>
+          <!-- Advanced Search - OPCIÓN 2 -->
+          <li (click) = "activeElement(10)"
+          [ngClass]="{'elemento-actual-menu': element === 10}">
+            <a routerLink="search">
+                <i class="bi bi-search"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                data-bs-title="Búsqueda Avanzada"
+                data-bs-custom-class="bg-tooltip"></i>
+                <span>Búsqueda</span>
+            </a>
+          </li>
           <!-- Test DB - Solo para Super Admin -->
           <li *ngIf="isSuperAdmin" 
               (click) = "activeElement(7)"
