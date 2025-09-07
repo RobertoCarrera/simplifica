@@ -1,0 +1,18 @@
+<div class="container-fluid bg-simplifica" 
+     [ngClass]="{'sidebar-shrink': sidebarService.isShrink()}">
+  <div class="row">
+    <div class="col-12 p-0 d-flex overflow-hidden">
+      <app-sidebar></app-sidebar>
+      <div class="n-fullwidth" 
+      [ngClass]="sidebarService.isShrink() ? 'fullwidth' : ''">
+        <router-outlet></router-outlet>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Development Navigation -->
+<app-dev-nav></app-dev-nav>
+
+<!-- Tour Overlay Global -->
+<app-tour-overlay></app-tour-overlay>

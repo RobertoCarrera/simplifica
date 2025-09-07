@@ -1,8 +1,12 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SimpleSupabaseService, SimpleClient } from '../../services/simple-supabase.service';
 import { TenantService } from '../../services/tenant.service';
+import { SkeletonComponent } from '../skeleton/skeleton.component';
+import { LoadingComponent } from '../loading/loading.component';
+import { SmoothTransitionDirective } from '../../directives/smooth-transition.directive';
+import { AnimationService } from '../../services/animation.service';
 
 @Component({
   selector: 'app-dashboard-customers',

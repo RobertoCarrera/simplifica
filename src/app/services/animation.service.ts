@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { 
   trigger, 
   state, 
@@ -11,10 +11,138 @@ import {
   AnimationTriggerMetadata
 } from '@angular/animations';
 
+export interface AnimationConfig {
+  duration?: number;
+  delay?: number;
+  easing?: string;
+}
+
+export type MicroAnimationType = 
+  | 'pulse' | 'heartbeat' | 'shake' | 'bounce' | 'swing'
+  | 'fadeIn' | 'slideIn' | 'zoomIn' | 'rotateIn';
+
 @Injectable({
   providedIn: 'root'
 })
 export class AnimationService {
+  private _isReducedMotion = signal(this.checkReducedMotion());
+  readonly isReducedMotion = this._isReducedMotion.asReadonly();
+
+  constructor() {
+    this.setupMotionListener();
+  }
+
+  private checkReducedMotion(): boolean {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  private setupMotionListener(): void {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    mediaQuery.addEventListener('change', () => {
+      this._isReducedMotion.set(mediaQuery.matches);
+    });
+  }
+
+  // Crear micro-animación para elementos individuales
+  createMicroAnimation(element: HTMLElement, type: MicroAnimationType, config: AnimationConfig = {}): Animation {
+    if (this._isReducedMotion()) {
+      return this.createSimpleAnimation(element, config);
+    }
+
+    const keyframes = this.getMicroAnimationKeyframes(type);
+    const defaultConfig = { duration: 300, delay: 0, easing: 'ease-out' };
+    const finalConfig = { ...defaultConfig, ...config };
+
+    return element.animate(keyframes, {
+      duration: finalConfig.duration,
+      delay: finalConfig.delay,
+      easing: finalConfig.easing,
+      fill: 'both'
+    });
+  }
+
+  private createSimpleAnimation(element: HTMLElement, config: AnimationConfig): Animation {
+    return element.animate([
+      { opacity: 0.8 },
+      { opacity: 1 }
+    ], {
+      duration: config.duration || 150,
+      easing: 'ease-out',
+      fill: 'both'
+    });
+  }
+
+  private getMicroAnimationKeyframes(type: MicroAnimationType): Keyframe[] {
+    const keyframes = {
+      pulse: [
+        { transform: 'scale(1)', opacity: 1 },
+        { transform: 'scale(1.05)', opacity: 0.9 },
+        { transform: 'scale(1)', opacity: 1 }
+      ],
+      heartbeat: [
+        { transform: 'scale(1)' },
+        { transform: 'scale(1.1)' },
+        { transform: 'scale(1)' },
+        { transform: 'scale(1.1)' },
+        { transform: 'scale(1)' }
+      ],
+      shake: [
+        { transform: 'translateX(0)' },
+        { transform: 'translateX(-5px)' },
+        { transform: 'translateX(5px)' },
+        { transform: 'translateX(-5px)' },
+        { transform: 'translateX(5px)' },
+        { transform: 'translateX(0)' }
+      ],
+      bounce: [
+        { transform: 'translateY(0)' },
+        { transform: 'translateY(-10px)' },
+        { transform: 'translateY(0)' },
+        { transform: 'translateY(-5px)' },
+        { transform: 'translateY(0)' }
+      ],
+      swing: [
+        { transform: 'rotate(0deg)' },
+        { transform: 'rotate(10deg)' },
+        { transform: 'rotate(-8deg)' },
+        { transform: 'rotate(6deg)' },
+        { transform: 'rotate(-4deg)' },
+        { transform: 'rotate(2deg)' },
+        { transform: 'rotate(0deg)' }
+      ],
+      fadeIn: [
+        { opacity: 0 },
+        { opacity: 1 }
+      ],
+      slideIn: [
+        { transform: 'translateX(-20px)', opacity: 0 },
+        { transform: 'translateX(0)', opacity: 1 }
+      ],
+      zoomIn: [
+        { transform: 'scale(0.8)', opacity: 0 },
+        { transform: 'scale(1)', opacity: 1 }
+      ],
+      rotateIn: [
+        { transform: 'rotate(-180deg)', opacity: 0 },
+        { transform: 'rotate(0deg)', opacity: 1 }
+      ]
+    };
+
+    return keyframes[type] || keyframes.fadeIn;
+  }
+
+  // Stagger animations para listas
+  async staggerElements(elements: NodeListOf<Element> | Element[], config: AnimationConfig = {}): Promise<void> {
+    const elementArray = Array.from(elements);
+    const staggerDelay = 100;
+    
+    const animations = elementArray.map((element, index) => {
+      const delay = (config.delay || 0) + (index * staggerDelay);
+      return this.createMicroAnimation(element as HTMLElement, 'slideIn', { ...config, delay });
+    });
+
+    await Promise.all(animations.map(animation => animation.finished));
+  }
 
   // Animación de entrada suave para elementos
   static fadeInUp: AnimationTriggerMetadata = trigger('fadeInUp', [

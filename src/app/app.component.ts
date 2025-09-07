@@ -3,6 +3,7 @@ import { ResponsiveLayoutComponent } from './components/responsive-layout/respon
 import { ToastComponent } from './components/toast/toast.component';
 import { PwaInstallComponent } from './components/pwa-install/pwa-install.component';
 import { MobileStatusComponent } from './components/mobile-status/mobile-status.component';
+import { DevNavComponent } from './components/dev-nav/dev-nav.component';
 import { ToastService } from './services/toast.service';
 import { NotificationService } from './services/notification.service';
 import { PWAService } from './services/pwa.service';
@@ -10,7 +11,7 @@ import { PWAService } from './services/pwa.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [ResponsiveLayoutComponent, ToastComponent, PwaInstallComponent, MobileStatusComponent],
+  imports: [ResponsiveLayoutComponent, ToastComponent, PwaInstallComponent, MobileStatusComponent, DevNavComponent],
   template: `
     <app-responsive-layout></app-responsive-layout>
     <app-toast></app-toast>
@@ -19,6 +20,8 @@ import { PWAService } from './services/pwa.service';
     @if (pwaService.shouldShowMobileOptimizations()) {
       <app-mobile-status></app-mobile-status>
     }
+    <!-- Navigation de desarrollo -->
+    <app-dev-nav></app-dev-nav>
   `
 })
 export class AppComponent {

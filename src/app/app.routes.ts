@@ -15,11 +15,15 @@ import { ExportImportManagerComponent } from './components/export-import-manager
 import { AdvancedFeaturesDashboardComponent } from './components/advanced-features-dashboard/advanced-features-dashboard.component';
 import { OnboardingCenterComponent } from './components/onboarding-center/onboarding-center.component';
 import { MobileDashboardComponent } from './components/mobile-dashboard/mobile-dashboard.component';
+import { EnhancedCustomersComponent } from './components/enhanced-customers/enhanced-customers.component';
+import { AnimationShowcaseComponent } from './components/animation-showcase/animation-showcase.component';
 
 export const routes: Routes = [
     {path: '', component: UltraSimpleComponent}, // Ruta por defecto
-    {path: 'clientes', component: UltraSimpleComponent},
-    {path: 'customers', component: UltraSimpleComponent}, // Alias para móvil
+    {path: 'clientes', component: EnhancedCustomersComponent}, // Nueva versión con animaciones
+    {path: 'customers', component: EnhancedCustomersComponent}, // Alias para móvil
+    {path: 'animaciones', component: AnimationShowcaseComponent}, // Demostración de animaciones
+    {path: 'animations', component: AnimationShowcaseComponent}, // Alias para móvil
     {path: 'tickets', component: TicketsComponent},
     {path: 'ticket/:id', component: TicketDetailComponent},
     {path: 'productos', component: ProductsComponent},
