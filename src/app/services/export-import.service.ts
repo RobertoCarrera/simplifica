@@ -767,7 +767,7 @@ export class ExportImportService {
         entityType: 'customers',
         format: 'csv',
         fields: this.getDefaultFieldsForEntity('customers'),
-        icon: 'bi-people',
+        icon: 'people',
         color: 'bg-blue-500',
         popularity: 95,
         tags: ['clientes', 'básico', 'csv']
@@ -780,7 +780,7 @@ export class ExportImportService {
         entityType: 'tickets',
         format: 'xlsx',
         fields: this.getDefaultFieldsForEntity('tickets'),
-        icon: 'bi-ticket',
+        icon: 'confirmation_number',
         color: 'bg-green-500',
         popularity: 88,
         tags: ['tickets', 'detallado', 'excel', 'métricas']
@@ -793,7 +793,7 @@ export class ExportImportService {
         entityType: 'products',
         format: 'csv',
         fields: this.getDefaultFieldsForEntity('products'),
-        icon: 'bi-box',
+        icon: 'inventory_2',
         color: 'bg-purple-500',
         popularity: 72,
         tags: ['productos', 'inventario', 'stock']
@@ -831,7 +831,7 @@ export class ExportImportService {
             severity: 'error'
           }
         ],
-        icon: 'bi-people-fill',
+        icon: 'people-fill',
         color: 'bg-blue-500',
         popularity: 92,
         tags: ['clientes', 'importar', 'csv']
@@ -866,7 +866,7 @@ export class ExportImportService {
             severity: 'error'
           }
         ],
-        icon: 'bi-box-seam',
+        icon: 'inventory_2-seam',
         color: 'bg-purple-500',
         popularity: 76,
         tags: ['productos', 'masivo', 'excel', 'validación']

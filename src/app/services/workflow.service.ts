@@ -535,7 +535,7 @@ export class WorkflowService {
         category: 'triggers',
         name: 'Nuevo Ticket',
         description: 'Se activa cuando se crea un ticket',
-        icon: 'bi-plus-circle',
+        icon: 'add_circle',
         color: 'bg-green-500',
         defaultConfig: { triggerType: 'ticket_created' },
         configSchema: []
@@ -545,7 +545,7 @@ export class WorkflowService {
         category: 'triggers',
         name: 'Ticket Actualizado',
         description: 'Se activa cuando se actualiza un ticket',
-        icon: 'bi-arrow-repeat',
+        icon: 'sync',
         color: 'bg-blue-500',
         defaultConfig: { triggerType: 'ticket_updated' },
         configSchema: []
@@ -555,7 +555,7 @@ export class WorkflowService {
         category: 'triggers',
         name: 'Programado',
         description: 'Se activa en horarios específicos',
-        icon: 'bi-clock',
+        icon: 'schedule',
         color: 'bg-purple-500',
         defaultConfig: { triggerType: 'time_based' },
         configSchema: []
@@ -567,7 +567,7 @@ export class WorkflowService {
         category: 'conditions',
         name: 'Prioridad',
         description: 'Evalúa la prioridad del ticket',
-        icon: 'bi-exclamation-triangle',
+        icon: 'warning',
         color: 'bg-yellow-500',
         defaultConfig: { field: 'priority', operator: 'equals', value: 'high' },
         configSchema: [
@@ -608,7 +608,7 @@ export class WorkflowService {
         category: 'actions',
         name: 'Asignar Técnico',
         description: 'Asigna el ticket a un técnico',
-        icon: 'bi-person-check',
+        icon: 'person_check',
         color: 'bg-indigo-500',
         defaultConfig: { actionType: 'assign_user' },
         configSchema: [
@@ -630,7 +630,7 @@ export class WorkflowService {
         category: 'actions',
         name: 'Enviar Email',
         description: 'Envía un email automático',
-        icon: 'bi-envelope',
+        icon: 'mail',
         color: 'bg-red-500',
         defaultConfig: { actionType: 'send_email' },
         configSchema: [
@@ -664,7 +664,7 @@ export class WorkflowService {
         category: 'actions',
         name: 'Crear Notificación',
         description: 'Crea una notificación en el sistema',
-        icon: 'bi-bell',
+        icon: 'notifications',
         color: 'bg-orange-500',
         defaultConfig: { actionType: 'create_notification' },
         configSchema: [
@@ -701,7 +701,7 @@ export class WorkflowService {
         category: 'utilities',
         name: 'Esperar',
         description: 'Pausa el workflow por un tiempo',
-        icon: 'bi-hourglass',
+        icon: 'hourglass_empty',
         color: 'bg-gray-500',
         defaultConfig: { delayType: 'minutes', duration: 30 },
         configSchema: [
@@ -749,7 +749,7 @@ export class WorkflowService {
             connections: ['condition-1'],
             data: {
               title: 'Nuevo Ticket',
-              icon: 'bi-plus-circle',
+              icon: 'add_circle',
               color: 'bg-green-500',
               config: { triggerType: 'ticket_created' }
             }
@@ -761,7 +761,7 @@ export class WorkflowService {
             connections: [],
             data: {
               title: 'Es Urgente?',
-              icon: 'bi-exclamation-triangle',
+              icon: 'warning',
               color: 'bg-yellow-500',
               config: { 
                 field: 'priority', 
@@ -779,7 +779,7 @@ export class WorkflowService {
             connections: ['action-1'],
             data: {
               title: 'Esperar 2 horas',
-              icon: 'bi-hourglass',
+              icon: 'hourglass_empty',
               color: 'bg-gray-500',
               config: { delayType: 'hours', duration: 2 }
             }
@@ -791,7 +791,7 @@ export class WorkflowService {
             connections: [],
             data: {
               title: 'Escalar a Supervisor',
-              icon: 'bi-arrow-up-circle',
+              icon: 'keyboard_arrow_up',
               color: 'bg-red-500',
               config: { 
                 actionType: 'escalate',
@@ -818,7 +818,7 @@ export class WorkflowService {
             connections: ['condition-2'],
             data: {
               title: 'Nuevo Ticket',
-              icon: 'bi-plus-circle',
+              icon: 'add_circle',
               color: 'bg-green-500',
               config: { triggerType: 'ticket_created' }
             }
@@ -830,7 +830,7 @@ export class WorkflowService {
             connections: [],
             data: {
               title: 'Categoría Hardware?',
-              icon: 'bi-cpu',
+              icon: 'memory',
               color: 'bg-blue-500',
               config: { 
                 field: 'category', 
@@ -848,7 +848,7 @@ export class WorkflowService {
             connections: [],
             data: {
               title: 'Asignar a Técnico Hardware',
-              icon: 'bi-person-check',
+              icon: 'person_check',
               color: 'bg-indigo-500',
               config: { 
                 actionType: 'assign_user',
@@ -863,7 +863,7 @@ export class WorkflowService {
             connections: [],
             data: {
               title: 'Asignar a Técnico Software',
-              icon: 'bi-person-check',
+              icon: 'person_check',
               color: 'bg-indigo-500',
               config: { 
                 actionType: 'assign_user',
@@ -896,7 +896,7 @@ export class WorkflowService {
             data: {
               title: 'Nuevo Ticket',
               description: 'Se activa cuando se crea un nuevo ticket',
-              icon: 'bi-plus-circle',
+              icon: 'add_circle',
               color: 'bg-green-500',
               config: { triggerType: 'ticket_created' }
             }
@@ -909,7 +909,7 @@ export class WorkflowService {
             data: {
               title: 'Prioridad Alta?',
               description: 'Verifica si el ticket tiene prioridad alta',
-              icon: 'bi-exclamation-triangle',
+              icon: 'warning',
               color: 'bg-yellow-500',
               config: { 
                 field: 'priority', 
@@ -928,7 +928,7 @@ export class WorkflowService {
             data: {
               title: 'Notificar Supervisor',
               description: 'Envía notificación al supervisor',
-              icon: 'bi-bell',
+              icon: 'notifications',
               color: 'bg-orange-500',
               config: { 
                 actionType: 'create_notification',

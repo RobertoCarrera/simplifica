@@ -17,6 +17,7 @@ import { OnboardingCenterComponent } from './components/onboarding-center/onboar
 import { MobileDashboardComponent } from './components/mobile-dashboard/mobile-dashboard.component';
 
 export const routes: Routes = [
+    {path: '', component: UltraSimpleComponent}, // Ruta por defecto
     {path: 'clientes', component: UltraSimpleComponent},
     {path: 'customers', component: UltraSimpleComponent}, // Alias para móvil
     {path: 'tickets', component: TicketsComponent},

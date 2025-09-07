@@ -20,7 +20,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
             (click)="toggleExpanded()"
             class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           >
-            <i class="bi" [class]="expanded ? 'bi-chevron-down' : 'bi-chevron-up'"></i>
+            <span class="material-icons">{{ expanded ? 'expand_less' : 'expand_more' }}</span>
           </button>
         </div>
 
@@ -41,7 +41,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
             <!-- Pending sync -->
             @if (offlineService.hasPendingActions()) {
               <div class="flex items-center">
-                <i class="bi bi-cloud-upload text-orange-500 text-xs mr-1"></i>
+                <span class="material-icons text-orange-500 text-xs mr-1">cloud_upload</span>
                 <span class="text-xs text-orange-600 dark:text-orange-400">
                   {{ offlineService.syncStatus().pendingActions }}
                 </span>
@@ -76,7 +76,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
             <!-- PWA Status -->
             <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
               <div class="flex items-center">
-                <i class="bi bi-phone mr-3 text-blue-500"></i>
+                <span class="material-icons mr-3 text-blue-500">phone_android</span>
                 <span class="text-sm font-medium">PWA</span>
               </div>
               <span class="text-sm text-gray-600 dark:text-gray-300">
@@ -99,7 +99,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
             @if (offlineService.syncStatus().pendingActions > 0) {
               <div class="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-900/20 rounded border border-orange-200 dark:border-orange-800">
                 <div class="flex items-center">
-                  <i class="bi bi-cloud-upload mr-3 text-orange-500"></i>
+                  <span class="material-icons mr-3 text-orange-500">cloud_upload</span>
                   <span class="text-sm font-medium">Sincronización</span>
                 </div>
                 <span class="text-sm text-orange-600 dark:text-orange-400">
@@ -111,7 +111,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
             <!-- Notifications -->
             <div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
               <div class="flex items-center">
-                <i class="bi bi-bell mr-3 text-green-500"></i>
+                <span class="material-icons mr-3 text-green-500">notifications</span>
                 <span class="text-sm font-medium">Notificaciones</span>
               </div>
               <span class="text-sm text-gray-600 dark:text-gray-300">
@@ -126,7 +126,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
                   (click)="installPWA()"
                   class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs py-2 px-3 rounded-md transition-colors"
                 >
-                  <i class="bi bi-download mr-1"></i>
+                  <span class="material-icons mr-1">download</span>
                   Instalar
                 </button>
               }
@@ -136,7 +136,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
                   (click)="enableNotifications()"
                   class="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs py-2 px-3 rounded-md transition-colors"
                 >
-                  <i class="bi bi-bell mr-1"></i>
+                  <span class="material-icons mr-1">notifications</span>
                   Notificar
                 </button>
               } @else {
@@ -144,7 +144,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
                   (click)="testNotification()"
                   class="flex-1 bg-gray-500 hover:bg-gray-600 text-white text-xs py-2 px-3 rounded-md transition-colors"
                 >
-                  <i class="bi bi-bell mr-1"></i>
+                  <span class="material-icons mr-1">notifications</span>
                   Test
                 </button>
               }
@@ -155,7 +155,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
                   [disabled]="!pwaService.isOnline() || offlineService.syncStatus().isSyncing"
                   class="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white text-xs py-2 px-3 rounded-md transition-colors"
                 >
-                  <i class="bi" [class]="offlineService.syncStatus().isSyncing ? 'bi-arrow-repeat animate-spin' : 'bi-cloud-upload'"></i>
+                  <span class="material-icons" [class.animate-spin]="offlineService.syncStatus().isSyncing">{{ offlineService.syncStatus().isSyncing ? 'sync' : 'cloud_upload' }}</span>
                   Sync
                 </button>
               }
@@ -213,9 +213,9 @@ export class MobileStatusComponent implements OnInit {
 
   getDeviceIcon(): string {
     const device = this.pwaService.deviceInfo();
-    if (device.isMobile) return 'bi-phone';
-    if (device.isTablet) return 'bi-tablet';
-    return 'bi-display';
+    if (device.isMobile) return 'phone_android';
+    if (device.isTablet) return 'tablet';
+    return 'computer';
   }
 
   getNotificationStatus(): string {

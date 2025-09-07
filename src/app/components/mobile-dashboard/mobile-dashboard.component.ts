@@ -26,7 +26,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
         <!-- Device Info Card -->
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
           <h2 class="text-xl font-semibold mb-4 flex items-center">
-            <i class="bi bi-info-circle mr-2 text-blue-500"></i>
+            <span class="material-icons mr-2 text-blue-500">info</span>
             Información del Dispositivo
           </h2>
           
@@ -34,7 +34,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
             <!-- Device Type -->
             <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
               <div class="flex items-center mb-2">
-                <i class="bi" [class]="getDeviceIcon()" class="text-blue-500 mr-2"></i>
+                <span class="material-icons text-blue-500 mr-2" [innerHTML]="getDeviceIcon()"></span>
                 <span class="font-medium">Dispositivo</span>
               </div>
               <p class="text-sm text-gray-600 dark:text-gray-300">{{ getDeviceType() }}</p>
@@ -43,7 +43,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
             <!-- Screen Size -->
             <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
               <div class="flex items-center mb-2">
-                <i class="bi bi-aspect-ratio text-purple-500 mr-2"></i>
+                <span class="material-icons text-purple-500 mr-2">aspect_ratio</span>
                 <span class="font-medium">Pantalla</span>
               </div>
               <p class="text-sm text-gray-600 dark:text-gray-300">{{ pwaService.deviceInfo().screenSize.toUpperCase() }}</p>
@@ -66,7 +66,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
             <!-- PWA Status -->
             <div class="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
               <div class="flex items-center mb-2">
-                <i class="bi bi-phone text-orange-500 mr-2"></i>
+                <span class="material-icons text-orange-500 mr-2">phone_android</span>
                 <span class="font-medium">PWA</span>
               </div>
               <p class="text-sm text-gray-600 dark:text-gray-300">
@@ -83,7 +83,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
           <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
             <div class="flex items-center mb-4">
               <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center mr-4">
-                <i class="bi bi-download text-blue-500 text-xl"></i>
+                <span class="material-icons text-blue-500 text-xl">download</span>
               </div>
               <div>
                 <h3 class="font-semibold text-gray-900 dark:text-white">Instalación PWA</h3>
@@ -96,12 +96,12 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
                 (click)="installPWA()"
                 class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors"
               >
-                <i class="bi bi-download mr-2"></i>
+                <span class="material-icons mr-2">download</span>
                 Instalar Aplicación
               </button>
             } @else if (pwaService.isInstalled()) {
               <div class="text-center py-2">
-                <i class="bi bi-check-circle text-green-500 text-2xl mb-2"></i>
+                <span class="material-icons text-green-500 text-2xl mb-2">check_circle</span>
                 <p class="text-sm text-green-600 dark:text-green-400">¡PWA Instalada!</p>
               </div>
             } @else {
@@ -115,7 +115,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
           <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
             <div class="flex items-center mb-4">
               <div class="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mr-4">
-                <i class="bi bi-bell text-green-500 text-xl"></i>
+                <span class="material-icons text-green-500 text-xl">notifications</span>
               </div>
               <div>
                 <h3 class="font-semibold text-gray-900 dark:text-white">Notificaciones</h3>
@@ -129,7 +129,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
                   (click)="testNotification()"
                   class="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors"
                 >
-                  <i class="bi bi-bell mr-2"></i>
+                  <span class="material-icons mr-2">notifications</span>
                   Probar Notificación
                 </button>
                 <button
@@ -144,7 +144,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
                 (click)="enableNotifications()"
                 class="w-full bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg transition-colors"
               >
-                <i class="bi bi-bell mr-2"></i>
+                <span class="material-icons mr-2">notifications</span>
                 Activar Notificaciones
               </button>
             }
@@ -154,7 +154,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
           <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
             <div class="flex items-center mb-4">
               <div class="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mr-4">
-                <i class="bi bi-cloud-slash text-purple-500 text-xl"></i>
+                <span class="material-icons text-purple-500 text-xl">cloud_off</span>
               </div>
               <div>
                 <h3 class="font-semibold text-gray-900 dark:text-white">Almacenamiento</h3>
@@ -176,12 +176,12 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
                   [disabled]="!pwaService.isOnline() || offlineService.syncStatus().isSyncing"
                   class="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white py-2 px-4 rounded-lg transition-colors"
                 >
-                  <i class="bi" [class]="offlineService.syncStatus().isSyncing ? 'bi-arrow-repeat animate-spin' : 'bi-cloud-upload'"></i>
+                  <span class="material-icons" [class.animate-spin]="offlineService.syncStatus().isSyncing">{{ offlineService.syncStatus().isSyncing ? 'sync' : 'cloud_upload' }}</span>
                   {{ offlineService.syncStatus().isSyncing ? 'Sincronizando...' : 'Sincronizar Ahora' }}
                 </button>
               } @else {
                 <div class="text-center py-2">
-                  <i class="bi bi-check-circle text-green-500 text-lg"></i>
+                  <span class="material-icons text-green-500 text-lg">check_circle</span>
                   <p class="text-sm text-green-600 dark:text-green-400">Todo sincronizado</p>
                 </div>
               }
@@ -193,7 +193,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
         <!-- Advanced Features -->
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
           <h2 class="text-xl font-semibold mb-4 flex items-center">
-            <i class="bi bi-tools mr-2 text-indigo-500"></i>
+            <span class="material-icons mr-2 text-indigo-500">build</span>
             Funcionalidades Avanzadas
           </h2>
           
@@ -203,7 +203,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
               (click)="testShare()"
               class="flex flex-col items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
             >
-              <i class="bi bi-share text-blue-500 text-2xl mb-2"></i>
+              <span class="material-icons text-blue-500 text-2xl mb-2">share</span>
               <span class="text-sm font-medium">Compartir</span>
             </button>
 
@@ -212,7 +212,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
               (click)="testVibration()"
               class="flex flex-col items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
             >
-              <i class="bi bi-phone-vibrate text-purple-500 text-2xl mb-2"></i>
+              <span class="material-icons text-purple-500 text-2xl mb-2">vibration</span>
               <span class="text-sm font-medium">Vibración</span>
             </button>
 
@@ -221,7 +221,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
               (click)="toggleWakeLock()"
               class="flex flex-col items-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
             >
-              <i class="bi bi-lightbulb text-green-500 text-2xl mb-2"></i>
+              <span class="material-icons text-green-500 text-2xl mb-2">lightbulb</span>
               <span class="text-sm font-medium">Keep Awake</span>
             </button>
 
@@ -230,7 +230,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
               (click)="clearCache()"
               class="flex flex-col items-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
             >
-              <i class="bi bi-trash text-red-500 text-2xl mb-2"></i>
+              <span class="material-icons text-red-500 text-2xl mb-2">delete</span>
               <span class="text-sm font-medium">Limpiar Cache</span>
             </button>
           </div>
@@ -239,7 +239,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
         <!-- Quick Actions -->
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
           <h2 class="text-xl font-semibold mb-4 flex items-center">
-            <i class="bi bi-lightning mr-2 text-yellow-500"></i>
+            <span class="material-icons mr-2 text-yellow-500">flash_on</span>
             Acciones Rápidas
           </h2>
           
@@ -248,7 +248,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
               routerLink="/customers"
               class="flex flex-col items-center p-4 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all"
             >
-              <i class="bi bi-people text-2xl mb-2"></i>
+              <span class="material-icons text-2xl mb-2">people</span>
               <span class="text-sm font-medium">Clientes</span>
             </a>
 
@@ -256,7 +256,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
               routerLink="/tickets"
               class="flex flex-col items-center p-4 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all"
             >
-              <i class="bi bi-ticket text-2xl mb-2"></i>
+              <span class="material-icons text-2xl mb-2">confirmation_number</span>
               <span class="text-sm font-medium">Tickets</span>
             </a>
 
@@ -264,7 +264,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
               routerLink="/works"
               class="flex flex-col items-center p-4 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all"
             >
-              <i class="bi bi-tools text-2xl mb-2"></i>
+              <span class="material-icons text-2xl mb-2">build</span>
               <span class="text-sm font-medium">Trabajos</span>
             </a>
 
@@ -272,7 +272,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
               routerLink="/products"
               class="flex flex-col items-center p-4 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all"
             >
-              <i class="bi bi-box text-2xl mb-2"></i>
+              <span class="material-icons text-2xl mb-2">inventory_2</span>
               <span class="text-sm font-medium">Productos</span>
             </a>
           </div>
@@ -312,9 +312,9 @@ export class MobileDashboardComponent implements OnInit {
 
   getDeviceIcon(): string {
     const device = this.pwaService.deviceInfo();
-    if (device.isMobile) return 'bi-phone';
-    if (device.isTablet) return 'bi-tablet';
-    return 'bi-display';
+    if (device.isMobile) return 'phone_android';
+    if (device.isTablet) return 'tablet';
+    return 'computer';
   }
 
   async installPWA() {

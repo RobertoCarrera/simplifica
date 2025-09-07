@@ -1,8 +1,9 @@
-import { Component, inject, signal, HostListener } from '@angular/core';
+import { Component, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ResponsiveSidebarComponent } from '../responsive-sidebar/responsive-sidebar.component';
 import { PWAService } from '../../services/pwa.service';
+import { SidebarStateService } from '../../services/sidebar-state.service';
 
 @Component({
   selector: 'app-responsive-layout',
@@ -14,11 +15,11 @@ import { PWAService } from '../../services/pwa.service';
       <app-responsive-sidebar></app-responsive-sidebar>
 
       <!-- Main content area -->
-      <div class="flex-1" [class]="getMainContentClasses()">
+      <div class="main-content-area flex flex-col min-h-screen overflow-hidden" [class]="mainAreaClasses()">
         
         <!-- Top navigation bar (mobile) -->
         @if (isMobile()) {
-          <div class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 py-3">
+          <div class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex-shrink-0">
             <div class="flex items-center justify-between">
               <div class="flex items-center ml-12"> <!-- Offset for mobile menu button -->
                 <h1 class="text-lg font-semibold text-gray-900 dark:text-white">
@@ -38,7 +39,9 @@ import { PWAService } from '../../services/pwa.service';
                 
                 <!-- PWA status -->
                 @if (pwaService.isInstalled()) {
-                  <i class="bi bi-phone text-blue-500 text-sm"></i>
+                  <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a1 1 0 001-1V4a1 1 0 00-1-1H8a1 1 0 00-1 1v16a1 1 0 001 1z"/>
+                  </svg>
                 }
               </div>
             </div>
@@ -46,7 +49,7 @@ import { PWAService } from '../../services/pwa.service';
         }
 
         <!-- Page content -->
-        <main class="flex-1" [class]="getMainContentPadding()">
+        <main class="flex-1 overflow-auto" [class]="getMainContentPadding()">
           <div class="mx-auto" [class]="getContentWidth()">
             <router-outlet></router-outlet>
           </div>
@@ -54,14 +57,16 @@ import { PWAService } from '../../services/pwa.service';
 
         <!-- Bottom navigation (mobile only) -->
         @if (showBottomNav()) {
-          <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-2 z-40">
+          <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-2 z-40 flex-shrink-0">
             <div class="flex justify-around items-center">
               <a
                 routerLink="/clientes"
                 routerLinkActive="text-blue-500"
                 class="flex flex-col items-center py-1 px-2 text-gray-600 dark:text-gray-400 hover:text-blue-500 transition-colors"
               >
-                <i class="bi bi-people text-xl mb-1"></i>
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a4 4 0 11-8 0 4 4 0 018 0z"/>
+                </svg>
                 <span class="text-xs">Clientes</span>
               </a>
               
@@ -70,7 +75,9 @@ import { PWAService } from '../../services/pwa.service';
                 routerLinkActive="text-blue-500"
                 class="flex flex-col items-center py-1 px-2 text-gray-600 dark:text-gray-400 hover:text-blue-500 transition-colors relative"
               >
-                <i class="bi bi-ticket text-xl mb-1"></i>
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+                </svg>
                 <span class="text-xs">Tickets</span>
                 <!-- Badge -->
                 <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">5</span>
@@ -81,7 +88,10 @@ import { PWAService } from '../../services/pwa.service';
                 routerLinkActive="text-blue-500"
                 class="flex flex-col items-center py-1 px-2 text-gray-600 dark:text-gray-400 hover:text-blue-500 transition-colors"
               >
-                <i class="bi bi-tools text-xl mb-1"></i>
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
                 <span class="text-xs">Trabajos</span>
               </a>
               
@@ -90,7 +100,9 @@ import { PWAService } from '../../services/pwa.service';
                 routerLinkActive="text-blue-500"
                 class="flex flex-col items-center py-1 px-2 text-gray-600 dark:text-gray-400 hover:text-blue-500 transition-colors"
               >
-                <i class="bi bi-grid text-xl mb-1"></i>
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                </svg>
                 <span class="text-xs">Más</span>
               </a>
             </div>
@@ -103,12 +115,43 @@ import { PWAService } from '../../services/pwa.service';
     .router-link-active {
       @apply text-blue-500;
     }
+    
+    /* CSS puro para layout responsivo */
+    .main-content-area {
+      margin-left: 16rem !important; /* 256px = w-64 por defecto */
+      min-height: 100vh !important;
+      transition: margin-left 0.3s ease !important;
+    }
+    
+    .main-content-area.collapsed {
+      margin-left: 4rem !important; /* 64px = w-16 cuando está colapsada */
+    }
+    
+    .main-content-area.mobile {
+      margin-left: 0 !important; /* Sin margen en móvil */
+    }
+    
+    @media (max-width: 1024px) {
+      .main-content-area {
+        margin-left: 0 !important; /* Forzar sin margen en pantallas pequeñas */
+      }
+    }
   `]
 })
 export class ResponsiveLayoutComponent {
   pwaService = inject(PWAService);
+  private sidebarService = inject(SidebarStateService);
   
   private _currentTitle = signal('Dashboard');
+
+  // Computed signal para las clases del área principal con CSS puro
+  mainAreaClasses = computed(() => {
+    if (this.isMobile()) {
+      return 'mobile';
+    } else {
+      return this.sidebarService.isCollapsed() ? 'collapsed' : '';
+    }
+  });
 
   @HostListener('window:resize', ['$event'])
   onResize() {
@@ -121,13 +164,6 @@ export class ResponsiveLayoutComponent {
 
   showBottomNav(): boolean {
     return this.isMobile() && this.pwaService.deviceInfo().screenSize === 'sm';
-  }
-
-  getMainContentClasses(): string {
-    if (this.isMobile()) {
-      return 'flex flex-col min-h-screen';
-    }
-    return 'lg:ml-64 flex flex-col min-h-screen'; // Default desktop margin for sidebar
   }
 
   getMainContentPadding(): string {

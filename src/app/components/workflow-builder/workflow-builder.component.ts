@@ -34,7 +34,7 @@ interface DragState {
         <!-- Header del Sidebar -->
         <div class="p-4 border-b border-gray-200">
           <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <i class="bi bi-diagram-3 text-blue-600"></i>
+            <span class="material-icons text-blue-600">account_tree</span>
             Constructor de Workflows
           </h2>
           <p class="text-sm text-gray-600 mt-1">Arrastra nodos al canvas para crear tu workflow</p>
@@ -67,14 +67,14 @@ interface DragState {
                 [disabled]="!canSave()"
                 class="flex-1 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
-                <i class="bi bi-save mr-1"></i>
+                <span class="material-icons mr-1">save</span>
                 Guardar
               </button>
               <button
                 (click)="clearCanvas()"
                 class="flex-1 px-3 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors"
               >
-                <i class="bi bi-trash mr-1"></i>
+                <span class="material-icons mr-1">delete</span>
                 Limpiar
               </button>
             </div>
@@ -84,7 +84,7 @@ interface DragState {
         <!-- Plantillas -->
         <div class="p-4 border-b border-gray-200">
           <h3 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <i class="bi bi-collection text-purple-600"></i>
+            <span class="material-icons text-purple-600">view_module</span>
             Plantillas
           </h3>
           <div class="space-y-2">
@@ -104,11 +104,11 @@ interface DragState {
                         {{ template.difficulty }}
                       </span>
                       <span class="text-xs text-gray-500">
-                        <i class="bi bi-clock mr-1"></i>{{ template.estimatedSetupTime }}min
+                        <span class="material-icons mr-1">schedule</span>{{ template.estimatedSetupTime }}min
                       </span>
                     </div>
                   </div>
-                  <i class="bi bi-arrow-right text-gray-400 group-hover:text-purple-600 transition-colors"></i>
+                  <span class="material-icons text-gray-400 group-hover:text-purple-600 transition-colors">arrow_forward</span>
                 </div>
               </div>
             }
