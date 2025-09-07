@@ -91,6 +91,48 @@
                 <span>Demo UX</span>
             </a>
           </li>
+          
+          <!-- FUNCIONALIDADES AVANZADAS - DASHBOARD PRINCIPAL -->
+          <li (click) = "activeElement(13)"
+          [ngClass]="{'elemento-actual-menu': element === 13}">
+            <a routerLink="advanced-features">
+                <i class="bi bi-stars"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                data-bs-title="✨ Funcionalidades Avanzadas"
+                data-bs-custom-class="bg-tooltip"></i>
+                <span>✨ Avanzadas</span>
+            </a>
+          </li>
+          
+          <!-- Separador visual -->
+          <hr class="text-muted my-2" style="opacity: 0.3;">
+          
+          <!-- Workflow Builder - OPCIÓN 2 -->
+          <li (click) = "activeElement(14)"
+          [ngClass]="{'elemento-actual-menu': element === 14}">
+            <a routerLink="workflows">
+                <i class="bi bi-diagram-3"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                data-bs-title="Constructor de Workflows"
+                data-bs-custom-class="bg-tooltip"></i>
+                <span>Workflows</span>
+            </a>
+          </li>
+          
+          <!-- Export/Import - OPCIÓN 2 -->
+          <li (click) = "activeElement(15)"
+          [ngClass]="{'elemento-actual-menu': element === 15}">
+            <a routerLink="export-import">
+                <i class="bi bi-arrow-down-up"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                data-bs-title="Export/Import & Drag Drop"
+                data-bs-custom-class="bg-tooltip"></i>
+                <span>Export/Import</span>
+            </a>
+          </li>
           <!-- Notification Demo - OPCIÓN 2 -->
           <li (click) = "activeElement(12)"
           [ngClass]="{'elemento-actual-menu': element === 12}">

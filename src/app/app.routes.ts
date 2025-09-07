@@ -11,6 +11,8 @@ import { AdvancedSearchComponent } from './components/advanced-search/advanced-s
 import { NotificationCenterComponent } from './components/notification-center/notification-center.component';
 import { NotificationDemoComponent } from './components/notification-demo/notification-demo.component';
 import { WorkflowBuilderComponent } from './components/workflow-builder/workflow-builder.component';
+import { ExportImportManagerComponent } from './components/export-import-manager/export-import-manager.component';
+import { AdvancedFeaturesDashboardComponent } from './components/advanced-features-dashboard/advanced-features-dashboard.component';
 
 export const routes: Routes = [
     {path: 'clientes', component: UltraSimpleComponent},
@@ -18,10 +20,12 @@ export const routes: Routes = [
     {path: 'ticket/:id', component: TicketDetailComponent},
     {path: 'productos', component: ProductsComponent},
     {path: 'trabajos', component: WorksComponent},
+    {path: 'advanced-features', component: AdvancedFeaturesDashboardComponent},
     {path: 'analytics', component: DashboardAnalyticsComponent},
     {path: 'search', component: AdvancedSearchComponent},
     {path: 'notifications', component: NotificationCenterComponent},
     {path: 'workflows', component: WorkflowBuilderComponent},
+    {path: 'export-import', component: ExportImportManagerComponent},
     {path: 'demo', component: DemoComponentsComponent},
     {path: 'notification-demo', component: NotificationDemoComponent},
     {path: 'setup-db', component: SetupDbComponent},
