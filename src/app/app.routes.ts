@@ -14,13 +14,18 @@ import { WorkflowBuilderComponent } from './components/workflow-builder/workflow
 import { ExportImportManagerComponent } from './components/export-import-manager/export-import-manager.component';
 import { AdvancedFeaturesDashboardComponent } from './components/advanced-features-dashboard/advanced-features-dashboard.component';
 import { OnboardingCenterComponent } from './components/onboarding-center/onboarding-center.component';
+import { MobileDashboardComponent } from './components/mobile-dashboard/mobile-dashboard.component';
 
 export const routes: Routes = [
     {path: 'clientes', component: UltraSimpleComponent},
+    {path: 'customers', component: UltraSimpleComponent}, // Alias para móvil
     {path: 'tickets', component: TicketsComponent},
     {path: 'ticket/:id', component: TicketDetailComponent},
     {path: 'productos', component: ProductsComponent},
+    {path: 'products', component: ProductsComponent}, // Alias para móvil
     {path: 'trabajos', component: WorksComponent},
+    {path: 'works', component: WorksComponent}, // Alias para móvil
+    {path: 'mobile', component: MobileDashboardComponent},
     {path: 'onboarding', component: OnboardingCenterComponent},
     {path: 'advanced-features', component: AdvancedFeaturesDashboardComponent},
     {path: 'analytics', component: DashboardAnalyticsComponent},

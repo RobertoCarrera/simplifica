@@ -29,15 +29,15 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
       <!-- Tenant Filter -->
       <div class="mb-6 bg-white rounded-lg shadow-sm p-4">
         <h3 class="text-sm font-medium text-gray-700 mb-3">Filtrar por empresa:</h3>
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-col sm:flex-row flex-wrap gap-2">
           <a href="/tickets?tenant=satpcgo" 
              [class]="tenant === 'satpcgo' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'"
-             class="px-4 py-2 rounded-lg transition-colors duration-200">
+             class="px-4 py-2 rounded-lg transition-colors duration-200 text-center sm:text-left">
             🏢 SatPCGo
           </a>
           <a href="/tickets?tenant=michinanny" 
              [class]="tenant === 'michinanny' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700 hover:bg-green-200'"
-             class="px-4 py-2 rounded-lg transition-colors duration-200">
+             class="px-4 py-2 rounded-lg transition-colors duration-200 text-center sm:text-left">
             🏢 Michinanny
           </a>
           <a href="/tickets" 
@@ -78,21 +78,21 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
              class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-orange-300 transition-all duration-200 cursor-pointer">
           
           <!-- Ticket Header -->
-          <div class="flex items-start justify-between mb-4">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 space-y-2 sm:space-y-0">
             <div class="flex-1">
-              <div class="flex items-center space-x-3">
+              <div class="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
                 <h3 class="text-lg font-semibold text-gray-900">
                   🎫 #{{ ticket.ticket_number || ticket.id.substring(0, 8) }}
                 </h3>
                 <span [style.background-color]="getStageColor(ticket.stage?.color)"
-                      class="px-2 py-1 text-white rounded-full text-xs font-medium">
+                      class="px-2 py-1 text-white rounded-full text-xs font-medium self-start">
                   {{ ticket.stage?.name || 'Sin estado' }}
                 </span>
               </div>
-              <h4 class="text-gray-900 font-medium mt-1">{{ ticket.title || 'Sin título' }}</h4>
-              <p class="text-gray-600 mt-1">{{ ticket.description || 'Sin descripción' }}</p>
+              <h4 class="text-gray-900 font-medium mt-2">{{ ticket.title || 'Sin título' }}</h4>
+              <p class="text-gray-600 mt-1 text-sm sm:text-base">{{ ticket.description || 'Sin descripción' }}</p>
             </div>
-            <div class="text-right">
+            <div class="text-left sm:text-right flex-shrink-0">
               <p class="text-sm text-gray-500">{{ formatDate(ticket.created_at) }}</p>
               <p *ngIf="ticket.total_amount" class="text-lg font-bold text-orange-600 mt-1">
                 {{ ticket.total_amount }} €
@@ -101,12 +101,12 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
           </div>
 
           <!-- Client and Priority Info -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
             <div>
               <h4 class="text-sm font-medium text-gray-700 mb-2">Cliente</h4>
               <div class="bg-gray-50 rounded-md p-3">
-                <p class="font-medium text-gray-900">{{ ticket.client?.name || 'No asignado' }}</p>
-                <p *ngIf="ticket.client?.email" class="text-sm text-gray-600">{{ ticket.client.email }}</p>
+                <p class="font-medium text-gray-900 text-sm">{{ ticket.client?.name || 'No asignado' }}</p>
+                <p *ngIf="ticket.client?.email" class="text-xs text-gray-600 truncate">{{ ticket.client.email }}</p>
               </div>
             </div>
             
@@ -114,7 +114,7 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
               <h4 class="text-sm font-medium text-gray-700 mb-2">Prioridad</h4>
               <div class="bg-gray-50 rounded-md p-3">
                 <span [style.color]="getPriorityColor(ticket.priority)" 
-                      class="font-medium">
+                      class="font-medium text-sm">
                   {{ ticket.priority || 'normal' }}
                 </span>
               </div>
@@ -162,13 +162,13 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
       <!-- Quick Actions -->
       <div class="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 class="text-lg font-medium text-gray-900 mb-4">Acciones rápidas</h3>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <a href="/clientes?tenant={{ tenant || '' }}" 
              class="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200">
             <span class="text-2xl mr-3">👥</span>
             <div>
-              <p class="font-medium text-gray-900">Ver Clientes</p>
-              <p class="text-sm text-gray-600">Gestionar clientes</p>
+              <p class="font-medium text-gray-900 text-sm sm:text-base">Ver Clientes</p>
+              <p class="text-xs sm:text-sm text-gray-600">Gestionar clientes</p>
             </div>
           </a>
           
@@ -176,8 +176,8 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
              class="flex items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors duration-200">
             <span class="text-2xl mr-3">📦</span>
             <div>
-              <p class="font-medium text-gray-900">Productos</p>
-              <p class="text-sm text-gray-600">Catálogo disponible</p>
+              <p class="font-medium text-gray-900 text-sm sm:text-base">Productos</p>
+              <p class="text-xs sm:text-sm text-gray-600">Catálogo disponible</p>
             </div>
           </a>
           

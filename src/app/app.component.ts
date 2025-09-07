@@ -1,31 +1,41 @@
 import { Component, inject } from '@angular/core';
-import { LayoutComponent } from './components/layout/layout.component';
+import { ResponsiveLayoutComponent } from './components/responsive-layout/responsive-layout.component';
 import { ToastComponent } from './components/toast/toast.component';
 import { PwaInstallComponent } from './components/pwa-install/pwa-install.component';
+import { MobileStatusComponent } from './components/mobile-status/mobile-status.component';
 import { ToastService } from './services/toast.service';
 import { NotificationService } from './services/notification.service';
+import { PWAService } from './services/pwa.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [LayoutComponent, ToastComponent, PwaInstallComponent],
+  imports: [ResponsiveLayoutComponent, ToastComponent, PwaInstallComponent, MobileStatusComponent],
   template: `
-    <app-layout></app-layout>
+    <app-responsive-layout></app-responsive-layout>
     <app-toast></app-toast>
     <app-pwa-install></app-pwa-install>
+    <!-- Solo mostrar mobile status en dispositivos pequeños -->
+    @if (pwaService.shouldShowMobileOptimizations()) {
+      <app-mobile-status></app-mobile-status>
+    }
   `
 })
 export class AppComponent {
   title = 'simplifica';
   private toastService = inject(ToastService);
   private notificationService = inject(NotificationService);
+  pwaService = inject(PWAService);
 
   constructor() {
-    // Mensaje de bienvenida
+    // Mensaje de bienvenida adaptado al dispositivo
     setTimeout(() => {
+      const deviceType = this.pwaService.isMobileDevice() ? 'móvil' : 'escritorio';
+      const isPWA = this.pwaService.isInstalled() ? 'PWA' : 'web';
+      
       this.toastService.info(
         '¡Bienvenido a Simplifica CRM!', 
-        'Experiencia de usuario premium con PWA activada 🎉'
+        `Experiencia optimizada para ${deviceType} (${isPWA}) 🎉`
       );
     }, 1000);
     
