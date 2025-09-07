@@ -13,6 +13,7 @@ import { NotificationDemoComponent } from './components/notification-demo/notifi
 import { WorkflowBuilderComponent } from './components/workflow-builder/workflow-builder.component';
 import { ExportImportManagerComponent } from './components/export-import-manager/export-import-manager.component';
 import { AdvancedFeaturesDashboardComponent } from './components/advanced-features-dashboard/advanced-features-dashboard.component';
+import { OnboardingCenterComponent } from './components/onboarding-center/onboarding-center.component';
 
 export const routes: Routes = [
     {path: 'clientes', component: UltraSimpleComponent},
@@ -20,6 +21,7 @@ export const routes: Routes = [
     {path: 'ticket/:id', component: TicketDetailComponent},
     {path: 'productos', component: ProductsComponent},
     {path: 'trabajos', component: WorksComponent},
+    {path: 'onboarding', component: OnboardingCenterComponent},
     {path: 'advanced-features', component: AdvancedFeaturesDashboardComponent},
     {path: 'analytics', component: DashboardAnalyticsComponent},
     {path: 'search', component: AdvancedSearchComponent},

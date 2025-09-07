@@ -117,6 +117,53 @@
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
+/* Clases específicas para el tour */
+.tour-button-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  color: white;
+  border: none;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.tour-button-primary:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  transform: translateY(-1px);
+}
+
+.tour-button-secondary {
+  background-color: white;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  font-weight: 500;
+}
+
+.tour-button-secondary:hover {
+  background-color: #f9fafb;
+  color: #374151;
+  border-color: #9ca3af;
+}
+
+/* Animación para resaltar elementos */
+@keyframes highlight-pulse {
+  0%, 100% {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+  }
+  50% {
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 6px rgba(139, 92, 246, 0.2);
+  }
+}
+
+.tour-highlight {
+  position: relative;
+  border: 3px solid #3b82f6;
+  border-radius: 8px;
+  animation: highlight-pulse 2s infinite;
+  z-index: 9999;
+}
+
 /* Estilos globales */
 body {
   margin: 0;

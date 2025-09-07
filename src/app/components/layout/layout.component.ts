@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { ThemeSelectorComponent } from '../theme-selector/theme-selector.component';
 import { NotificationBellComponent } from '../notification-bell/notification-bell.component';
+import { TourOverlayComponent } from '../tour-overlay/tour-overlay.component';
 import { ThemeService } from '../../services/theme.service';
 import { AnimationService } from '../../services/animation.service';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ThemeSelectorComponent, NotificationBellComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ThemeSelectorComponent, NotificationBellComponent, TourOverlayComponent],
   animations: [
     AnimationService.sidebarCollapse,
     AnimationService.fadeInUp,
@@ -162,6 +163,35 @@ import { AnimationService } from '../../services/animation.service';
             <!-- Divider -->
             <div *ngIf="!sidebarCollapsed()" class="border-t border-white border-opacity-20 my-4"></div>
             
+            <!-- Centro de Onboarding y Ayuda -->
+            <a routerLink="/onboarding" 
+               routerLinkActive="active-nav-item"
+               class="nav-item group relative"
+               [class.collapsed-nav]="sidebarCollapsed()">
+               <span class="nav-icon">🎓</span>
+               <span *ngIf="!sidebarCollapsed()" class="nav-text">Ayuda & Tours</span>
+               <div *ngIf="sidebarCollapsed()" 
+                    class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                 Ayuda & Tours
+               </div>
+            </a>
+            
+            <!-- Advanced Features Dashboard -->
+            <a routerLink="/advanced-features" 
+               routerLinkActive="active-nav-item"
+               class="nav-item group relative"
+               [class.collapsed-nav]="sidebarCollapsed()">
+               <span class="nav-icon">⭐</span>
+               <span *ngIf="!sidebarCollapsed()" class="nav-text">Funciones Avanzadas</span>
+               <div *ngIf="sidebarCollapsed()" 
+                    class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                 Funciones Avanzadas
+               </div>
+            </a>
+            
+            <!-- Divider -->
+            <div *ngIf="!sidebarCollapsed()" class="border-t border-white border-opacity-20 my-4"></div>
+            
             <!-- Demo Pages -->
             <a routerLink="/demo" 
                routerLinkActive="active-nav-item"
@@ -239,6 +269,9 @@ import { AnimationService } from '../../services/animation.service';
         </div>
       </div>
     </div>
+
+    <!-- Tour Overlay Global -->
+    <app-tour-overlay></app-tour-overlay>
   `,
   styles: [`
     .sidebar {
