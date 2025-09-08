@@ -124,24 +124,63 @@ import { DevicesService, Device } from '../../services/devices.service';
 
             <!-- Progress Bar -->
             <div class="bg-white shadow rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Progreso del Ticket</h3>
-              <div class="relative">
-                <div class="flex items-center justify-between">
-                  <div *ngFor="let stage of allStages; let i = index" 
-                       class="flex flex-col items-center flex-1 relative">
-                    <div [class]="getProgressStepClasses(stage, ticket.stage)"
-                         class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium z-10 relative">
-                      <span *ngIf="getStageStatus(stage, ticket.stage) === 'completed'">✓</span>
-                      <span *ngIf="getStageStatus(stage, ticket.stage) === 'current'">{{ i + 1 }}</span>
-                      <span *ngIf="getStageStatus(stage, ticket.stage) === 'pending'">{{ i + 1 }}</span>
-                    </div>
-                    <span class="mt-2 text-xs text-center max-w-20">{{ stage.name }}</span>
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Estado del Ticket</h3>
+              
+              <!-- Current Stage Display -->
+              <div class="flex items-center justify-between mb-4 p-4 bg-gray-50 rounded-lg">
+                <div class="flex items-center space-x-3">
+                  <div [class]="'w-4 h-4 rounded-full ' + (ticket.stage?.color || 'bg-blue-500')"></div>
+                  <div>
+                    <p class="font-medium text-gray-900">{{ ticket.stage?.name || 'Sin estado' }}</p>
+                    <p class="text-sm text-gray-500">Estado actual</p>
+                  </div>
+                </div>
+                <button 
+                  (click)="changeStage()" 
+                  class="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  Cambiar
+                </button>
+              </div>
+
+              <!-- Progress Indicator (Simple) -->
+              <div class="space-y-4">
+                <div class="flex justify-between text-sm text-gray-600">
+                  <span>Progreso</span>
+                  <span>{{ getProgressPercentage() }}%</span>
+                </div>
+                
+                <!-- Progress Bar with Stage Markers -->
+                <div class="relative">
+                  <!-- Progress Bar Background -->
+                  <div class="w-full bg-gray-200 rounded-full h-3 relative">
+                    <div 
+                      class="bg-blue-500 h-3 rounded-full transition-all duration-300"
+                      [style.width.%]="getProgressPercentage()"
+                    ></div>
                     
-                    <!-- Progress Line -->
-                    <div *ngIf="i < allStages.length - 1" 
-                         [class]="getProgressLineClasses(stage, ticket.stage)"
-                         class="absolute top-5 left-1/2 w-full h-0.5 z-0"
-                         style="transform: translateX(50%)"></div>
+                    <!-- Stage Markers -->
+                    <div *ngFor="let stage of allStages; let i = index" 
+                         class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2"
+                         [style.left.%]="getStagePosition(i)">
+                      <div 
+                        [class]="getStageMarkerClass(stage)"
+                        class="w-4 h-4 rounded-full border-2 border-white flex items-center justify-center"
+                        [title]="stage.name"
+                      >
+                        <div *ngIf="isStageCompleted(stage)" class="w-2 h-2 bg-white rounded-full"></div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Stage Labels -->
+                  <div class="flex justify-between mt-2 text-xs text-gray-500">
+                    <div *ngFor="let stage of getVisibleStages(); let i = index" 
+                         class="text-center flex-1"
+                         [class.font-medium]="stage.id === ticket.stage_id"
+                         [class.text-blue-600]="stage.id === ticket.stage_id">
+                      {{ stage.name }}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -924,6 +963,64 @@ export class TicketDetailComponent implements OnInit {
     }
   }
 
+  getProgressPercentage(): number {
+    if (!this.ticket?.stage || !this.allStages.length) return 0;
+    
+    const currentStageIndex = this.allStages.findIndex(stage => stage.id === this.ticket?.stage_id);
+    if (currentStageIndex === -1) return 0;
+    
+    // Calculate percentage based on stage position
+    return Math.round(((currentStageIndex + 1) / this.allStages.length) * 100);
+  }
+
+  getStagePosition(index: number): number {
+    if (this.allStages.length <= 1) return 50;
+    return (index / (this.allStages.length - 1)) * 100;
+  }
+
+  getStageMarkerClass(stage: TicketStage): string {
+    const currentStageIndex = this.allStages.findIndex(s => s.id === this.ticket?.stage_id);
+    const stageIndex = this.allStages.findIndex(s => s.id === stage.id);
+    
+    if (stageIndex <= currentStageIndex) {
+      return 'bg-blue-500'; // Completed or current
+    }
+    return 'bg-gray-300'; // Pending
+  }
+
+  isStageCompleted(stage: TicketStage): boolean {
+    const currentStageIndex = this.allStages.findIndex(s => s.id === this.ticket?.stage_id);
+    const stageIndex = this.allStages.findIndex(s => s.id === stage.id);
+    
+    return stageIndex < currentStageIndex;
+  }
+
+  getVisibleStages(): TicketStage[] {
+    // Show maximum 4 stages for better responsive design
+    if (this.allStages.length <= 4) {
+      return this.allStages;
+    }
+    
+    const currentIndex = this.allStages.findIndex(s => s.id === this.ticket?.stage_id);
+    const firstStage = this.allStages[0];
+    const lastStage = this.allStages[this.allStages.length - 1];
+    
+    if (currentIndex <= 1) {
+      // Show first 4 if we're at the beginning
+      return this.allStages.slice(0, 4);
+    } else if (currentIndex >= this.allStages.length - 2) {
+      // Show last 4 if we're at the end
+      return this.allStages.slice(-4);
+    } else {
+      // Show current stage and surrounding ones
+      return [
+        firstStage,
+        this.allStages[currentIndex],
+        lastStage
+      ];
+    }
+  }
+
   getTagColor(tagName: string): string {
     const tag = this.availableTags.find(t => t.name === tagName);
     return tag?.color || '#6b7280';
@@ -931,34 +1028,6 @@ export class TicketDetailComponent implements OnInit {
 
   isOverdue(): boolean {
     return this.ticket?.due_date ? new Date(this.ticket.due_date) < new Date() : false;
-  }
-
-  getProgressStepClasses(stage: TicketStage, currentStage?: TicketStage): string {
-    if (!currentStage) return 'bg-gray-300 text-gray-600';
-    
-    if (stage.position < currentStage.position) {
-      return 'bg-green-600 text-white'; // Completed
-    } else if (stage.position === currentStage.position) {
-      return 'bg-blue-600 text-white'; // Current
-    }
-    return 'bg-gray-300 text-gray-600'; // Pending
-  }
-
-  getProgressLineClasses(stage: TicketStage, currentStage?: TicketStage): string {
-    if (!currentStage) return 'bg-gray-300';
-    
-    if (stage.position < currentStage.position) {
-      return 'bg-green-600';
-    }
-    return 'bg-gray-300';
-  }
-
-  getStageStatus(stage: TicketStage, currentStage?: TicketStage): 'completed' | 'current' | 'pending' {
-    if (!currentStage) return 'pending';
-    
-    if (stage.position < currentStage.position) return 'completed';
-    if (stage.position === currentStage.position) return 'current';
-    return 'pending';
   }
 
   formatDescription(description: string): string {

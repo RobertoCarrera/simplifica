@@ -23,7 +23,7 @@ interface MenuItem {
     @if (isOpen() && isMobile()) {
       <div 
         class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-        (click)="toggleSidebar()"
+        (click)="closeSidebar()"
       ></div>
     }
 
@@ -52,18 +52,16 @@ interface MenuItem {
           }
         </div>
 
-        <!-- Toggle button for desktop -->
-        @if (!isCollapsed()) {
-          <button
-            (click)="toggleCollapse()"
-            class="flex items-center justify-center w-8 h-8 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-sm hover:shadow-md"
-            [title]="'Colapsar sidebar'"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-            </svg>
-          </button>
-        }
+        <!-- Toggle button for desktop and mobile -->
+        <button
+          (click)="toggleSidebar()"
+          class="flex items-center justify-center w-8 h-8 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-sm hover:shadow-md"
+          [title]="isOpen() ? 'Cerrar sidebar' : 'Abrir sidebar'"
+        >
+          <svg class="w-4 h-4 transition-transform duration-200" [class.rotate-180]="!isOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+          </svg>
+        </button>
       </div>
 
       <!-- Expand button when collapsed (positioned outside) -->
@@ -148,7 +146,7 @@ interface MenuItem {
                 }
                 
                 @if (item.children && item.children.length > 0) {
-                  <span class="material-icons ml-auto text-xs transform transition-transform duration-200">expand_more</span>
+                  <i class="fas fa-chevron-down ml-auto text-xs transform transition-transform duration-200"></i>
                 }
               }
             </a>
@@ -216,16 +214,6 @@ interface MenuItem {
         }
       </div>
     </div>
-
-    <!-- Mobile menu button -->
-    @if (isMobile()) {
-      <button
-        (click)="toggleSidebar()"
-        class="fixed top-4 left-4 z-50 p-2 rounded-md bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 lg:hidden"
-      >
-        <span class="material-icons text-xl text-gray-600 dark:text-gray-300">menu</span>
-      </button>
-    }
   `,
   styles: [`
     .router-link-active {
@@ -380,7 +368,13 @@ export class ResponsiveSidebarComponent implements OnInit {
   }
 
   toggleSidebar() {
-    this.sidebarState.toggleOpen();
+    if (this.isMobile()) {
+      // En mobile: abrir/cerrar completamente
+      this.sidebarState.toggleOpen();
+    } else {
+      // En desktop: colapsar/expandir
+      this.sidebarState.toggleCollapse();
+    }
   }
 
   closeSidebar() {
