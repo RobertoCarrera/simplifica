@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, input, output } from '@angular/core';
+import { Component, inject, signal, computed, input, output, effect, OnDestroy, EffectRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Customer, CreateCustomer, UpdateCustomer } from '../../models/customer';
@@ -319,7 +319,7 @@ import { SmoothTransitionDirective } from '../../directives/smooth-transition.di
   `,
   styleUrls: ['./customer-form.component.scss']
 })
-export class CustomerFormComponent {
+export class CustomerFormComponent implements OnDestroy {
   // Inputs
   customer = input<Customer | null>(null);
   isOpen = input<boolean>(false);
@@ -349,6 +349,37 @@ export class CustomerFormComponent {
     
     // Watch for customer changes
     this.setupCustomerWatcher();
+    
+    // Watch isOpen input and block scroll when modal opens
+    effect(() => {
+      if (this.isOpen()) {
+        // Bloquear scroll de la página principal de forma más agresiva
+        document.body.classList.add('modal-open');
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        document.body.style.height = '100%';
+        document.documentElement.style.overflow = 'hidden';
+      } else {
+        // Restaurar scroll de la página principal
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.height = '';
+        document.documentElement.style.overflow = '';
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    // Restaurar scroll de la página principal
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.height = '';
+    document.documentElement.style.overflow = '';
   }
 
   private createForm(): FormGroup {

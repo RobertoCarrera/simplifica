@@ -529,6 +529,14 @@ export class SupabaseCustomersComponent implements OnInit {
     this.resetForm();
     this.selectedCustomer.set(null);
     this.showForm.set(true);
+    
+    // Bloquear scroll de la página principal de forma más agresiva
+    document.body.classList.add('modal-open');
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
+    document.documentElement.style.overflow = 'hidden';
   }
 
   editCustomer(customer: Customer) {
@@ -536,6 +544,14 @@ export class SupabaseCustomersComponent implements OnInit {
     this.selectedCustomer.set(customer);
     this.populateForm(customer);
     this.showForm.set(true);
+    
+    // Bloquear scroll de la página principal de forma más agresiva
+    document.body.classList.add('modal-open');
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
+    document.documentElement.style.overflow = 'hidden';
   }
 
   viewCustomer(customer: Customer) {
@@ -561,6 +577,14 @@ export class SupabaseCustomersComponent implements OnInit {
     this.showForm.set(false);
     this.selectedCustomer.set(null);
     this.resetForm();
+    
+    // Restaurar scroll de la página principal
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.height = '';
+    document.documentElement.style.overflow = '';
   }
 
   saveCustomer() {
