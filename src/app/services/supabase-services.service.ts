@@ -12,6 +12,41 @@ export interface Service {
   company_id: string;
   created_at: string;
   updated_at: string;
+  
+  // Campos para presupuestos y facturación
+  tax_rate?: number;
+  unit_type?: string;
+  min_quantity?: number;
+  max_quantity?: number;
+  
+  // Campos para analíticas y métricas
+  difficulty_level?: number;
+  profit_margin?: number;
+  cost_price?: number;
+  
+  // Campos adicionales para gestión
+  requires_parts?: boolean;
+  requires_diagnosis?: boolean;
+  warranty_days?: number;
+  skill_requirements?: string[];
+  tools_required?: string[];
+  
+  // Campos para ubicación y disponibilidad
+  can_be_remote?: boolean;
+  priority_level?: number;
+}
+
+export interface ServiceCategory {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  description?: string;
+  company_id: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ServiceStats {
@@ -33,56 +68,178 @@ export class SupabaseServicesService {
     console.log('🔧 SupabaseServicesService initialized');
   }
 
-  async getServices(companyId?: number): Promise<Service[]> {
+  async getServices(companyId?: string): Promise<Service[]> {
     try {
-      const targetCompanyId = companyId || parseInt(this.currentCompanyId);
+      const targetCompanyId = companyId || this.currentCompanyId;
       console.log(`🔧 Getting services for company ID: ${targetCompanyId}`);
       
-      // Usar tabla works existente como fuente principal
-      console.log('🔧 Using works table as primary source...');
-      return this.getServicesFromWorks(targetCompanyId);
+      // Usar tabla services existente como fuente principal
+      console.log('🔧 Using services table as primary source...');
+      return this.getServicesFromTable(targetCompanyId);
     } catch (error) {
       console.error('❌ Error getting services:', error);
       throw error;
     }
   }
 
-  private async getServicesFromWorks(companyId: number): Promise<Service[]> {
-    const { data: works, error } = await this.supabase.getClient()
-      .from('works')
+  async getServiceCategories(companyId: string): Promise<ServiceCategory[]> {
+    try {
+      const client = this.supabase.getClient();
+      const { data, error } = await client
+        .from('service_categories')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error getting service categories:', error);
+      throw error;
+    }
+  }
+
+  async createServiceCategory(category: Partial<ServiceCategory>): Promise<ServiceCategory> {
+    try {
+      const client = this.supabase.getClient();
+      const { data, error } = await client
+        .from('service_categories')
+        .insert([category])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('❌ Error creating service category:', error);
+      throw error;
+    }
+  }
+
+  async findOrCreateCategory(categoryName: string, companyId: string): Promise<ServiceCategory> {
+    try {
+      // Buscar categoría existente con comparación normalizada
+      const categories = await this.getServiceCategories(companyId);
+      const normalizedSearch = this.normalizeText(categoryName);
+      
+      const existing = categories.find(cat => 
+        this.normalizeText(cat.name) === normalizedSearch
+      );
+
+      if (existing) {
+        return existing;
+      }
+
+      // Crear nueva categoría
+      const newCategory: Partial<ServiceCategory> = {
+        name: categoryName,
+        company_id: companyId,
+        color: this.generateCategoryColor(categoryName),
+        icon: this.generateCategoryIcon(categoryName),
+        description: `Categoría creada automáticamente: ${categoryName}`,
+        is_active: true,
+        sort_order: categories.length
+      };
+
+      return await this.createServiceCategory(newCategory);
+    } catch (error) {
+      console.error('❌ Error finding or creating category:', error);
+      throw error;
+    }
+  }
+
+  // Normalizar texto para búsqueda insensible a mayúsculas y acentos
+  private normalizeText(text: string): string {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remover acentos
+      .trim();
+  }
+
+  private generateCategoryColor(categoryName: string): string {
+    const colors = [
+      '#3b82f6', '#059669', '#d97706', '#dc2626', '#7c3aed',
+      '#f59e0b', '#10b981', '#8b5cf6', '#06b6d4', '#ef4444'
+    ];
+    
+    // Generar color basado en el hash del nombre
+    let hash = 0;
+    for (let i = 0; i < categoryName.length; i++) {
+      hash = categoryName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  }
+
+  private generateCategoryIcon(categoryName: string): string {
+    const iconMap: Record<string, string> = {
+      'diagnóstico': 'fas fa-search',
+      'software': 'fas fa-code',
+      'mantenimiento': 'fas fa-tools',
+      'datos': 'fas fa-database',
+      'seguridad': 'fas fa-shield-alt',
+      'hardware': 'fas fa-microchip',
+      'redes': 'fas fa-network-wired',
+      'formación': 'fas fa-graduation-cap',
+      'consultoría': 'fas fa-lightbulb',
+      'backup': 'fas fa-save',
+      'virus': 'fas fa-bug',
+      'instalación': 'fas fa-download',
+      'configuración': 'fas fa-cogs',
+      'limpieza': 'fas fa-broom'
+    };
+
+    const lowerName = categoryName.toLowerCase();
+    for (const [key, icon] of Object.entries(iconMap)) {
+      if (lowerName.includes(key)) {
+        return icon;
+      }
+    }
+    
+    return 'fas fa-cog'; // Default icon
+  }
+
+  private async getServicesFromTable(companyId: string): Promise<Service[]> {
+    const { data: services, error } = await this.supabase.getClient()
+      .from('services')
       .select('*')
+      .eq('company_id', companyId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    // Transform works data to services format
-    return (works || []).map(work => ({
-      id: work.id,
-      name: work.name,
-      description: work.description || '',
-      base_price: work.base_price || 0,
-      estimated_hours: work.estimated_hours || 0,
-      category: 'Servicio Técnico',
-      is_active: true,
-      company_id: companyId.toString(),
-      created_at: work.created_at,
-      updated_at: work.updated_at || work.created_at
+    // Transform services data to services format
+    return (services || []).map(service => ({
+      id: service.id,
+      name: service.name,
+      description: service.description || '',
+      base_price: service.base_price || 0,
+      estimated_hours: service.estimated_hours || 0,
+      category: service.category || 'Servicio Técnico',
+      is_active: service.is_active !== undefined ? service.is_active : true, // Usar campo is_active de la BD
+      // Preferir company_id almacenado en service cuando exista
+      company_id: service.company_id ? service.company_id : companyId.toString(),
+      created_at: service.created_at,
+      updated_at: service.updated_at || service.created_at
     }));
   }
 
   async createService(serviceData: Partial<Service>): Promise<Service> {
-    // Usar tabla works para la persistencia
-    const workData = {
+    // Usar tabla services para la persistencia
+    const serviceDataForDB: any = {
       name: serviceData.name,
       description: serviceData.description,
       base_price: serviceData.base_price,
       estimated_hours: serviceData.estimated_hours
     };
 
+    if (serviceData.company_id) serviceDataForDB.company_id = serviceData.company_id;
+
     const { data, error } = await this.supabase.getClient()
-      .from('works')
-      .insert([workData])
+      .from('services')
+      .insert([serviceDataForDB])
       .select()
       .single();
 
@@ -96,24 +253,25 @@ export class SupabaseServicesService {
       estimated_hours: data.estimated_hours || 0,
       category: serviceData.category || 'Servicio Técnico',
       is_active: true,
-      company_id: this.currentCompanyId,
+      company_id: serviceData.company_id || this.currentCompanyId,
       created_at: data.created_at,
       updated_at: data.updated_at || data.created_at
     };
   }
 
   async updateService(id: string, updates: Partial<Service>): Promise<Service> {
-    const workData = {
+    const serviceData: any = {
       name: updates.name,
       description: updates.description,
       base_price: updates.base_price,
       estimated_hours: updates.estimated_hours,
       updated_at: new Date().toISOString()
     };
+    if (updates.company_id) serviceData.company_id = updates.company_id;
 
     const { data, error } = await this.supabase.getClient()
-      .from('works')
-      .update(workData)
+      .from('services')
+      .update(serviceData)
       .eq('id', id)
       .select()
       .single();
@@ -128,16 +286,16 @@ export class SupabaseServicesService {
       estimated_hours: data.estimated_hours || 0,
       category: updates.category || 'Servicio Técnico',
       is_active: updates.is_active !== false,
-      company_id: this.currentCompanyId,
+      company_id: updates.company_id || this.currentCompanyId,
       created_at: data.created_at,
       updated_at: data.updated_at || data.created_at
     };
   }
 
   async deleteService(id: string): Promise<void> {
-    // Soft delete en tabla works
+    // Soft delete en tabla services
     const { error } = await this.supabase.getClient()
-      .from('works')
+      .from('services')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id);
 
@@ -145,13 +303,43 @@ export class SupabaseServicesService {
   }
 
   async toggleServiceStatus(id: string): Promise<Service> {
-    // Para works table, solo simulamos el toggle
-    const services = await this.getServices();
-    const service = services.find(s => s.id === id);
-    if (!service) throw new Error('Service not found');
+    console.log(`🔧 Toggling service status for ID: ${id}`);
+    
+    // Primero obtenemos el servicio actual
+    const { data: currentService, error: fetchError } = await this.supabase.getClient()
+      .from('services')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    // En works no tenemos is_active, así que solo retornamos el servicio
-    return service;
+    if (fetchError) throw fetchError;
+    if (!currentService) throw new Error('Service not found');
+
+    // Cambiamos el estado
+    const newStatus = !currentService.is_active;
+    
+    const { data, error } = await this.supabase.getClient()
+      .from('services')
+      .update({ is_active: newStatus })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Retornamos el servicio actualizado en el formato correcto
+    return {
+      id: data.id,
+      name: data.name,
+      description: data.description || '',
+      base_price: data.base_price || 0,
+      estimated_hours: data.estimated_hours || 0,
+      category: data.category || 'Servicio Técnico',
+      is_active: data.is_active,
+  company_id: data.company_id || this.currentCompanyId,
+      created_at: data.created_at,
+      updated_at: data.updated_at || data.created_at
+    };
   }
 
   async duplicateService(id: string): Promise<Service> {

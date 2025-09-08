@@ -14,15 +14,18 @@
         <div class="company-selector">
           <label for="companySelect">Empresa:</label>
           <select id="companySelect" class="form-control" [(ngModel)]="selectedCompanyId" (change)="onCompanyChange()">
-            <option value="1">SatPCGo (ID: 1)</option>
-            <option value="2">Michinanny (ID: 2)</option>
-            <option value="3">Libera Tus Creencias (ID: 3)</option>
+            <option *ngFor="let c of companies" [value]="c.id">{{ c.name }} ({{ c.id }})</option>
           </select>
         </div>
-        <button class="btn btn-primary" (click)="openForm()">
-          <i class="fas fa-plus"></i>
-          Nuevo Servicio
-        </button>
+        <div class="search-input-container">
+          <i class="fas fa-search search-icon"></i>
+          <input 
+            type="text" 
+            class="search-input-full" 
+            placeholder="Buscar servicios por nombre, descripción o categoría..."
+            [(ngModel)]="searchTerm"
+            (input)="onSearch()">
+        </div>
       </div>
     </div>
   </div>
@@ -70,49 +73,6 @@
     </div>
   </div>
 
-  <!-- Filters Section -->
-  <div class="filters-section">
-    <div class="filters-grid">
-      <div class="filter-item">
-        <input 
-          type="text" 
-          class="form-control" 
-          placeholder="Buscar servicios..."
-          [(ngModel)]="searchTerm"
-          (input)="onSearch()">
-        <i class="fas fa-search filter-icon"></i>
-      </div>
-      
-      <div class="filter-item">
-        <select 
-          class="form-control" 
-          [(ngModel)]="filterCategory"
-          (change)="onFilterChange()">
-          <option value="">Todas las categorías</option>
-          <option *ngFor="let category of categories" [value]="category">
-            {{ category }}
-          </option>
-        </select>
-      </div>
-      
-      <div class="filter-item">
-        <select 
-          class="form-control" 
-          [(ngModel)]="filterStatus"
-          (change)="onFilterChange()">
-          <option value="">Todos los estados</option>
-          <option value="active">Solo activos</option>
-          <option value="inactive">Solo inactivos</option>
-        </select>
-      </div>
-      
-      <button class="btn btn-secondary clear-filters" (click)="clearFilters()">
-        <i class="fas fa-times"></i>
-        Limpiar
-      </button>
-    </div>
-  </div>
-
   <!-- Loading State -->
   <div *ngIf="loading" class="loading-state">
     <div class="spinner"></div>
@@ -130,90 +90,126 @@
     </button>
   </div>
 
-  <!-- Services Grid -->
-  <div *ngIf="!loading && !error" class="services-grid">
-    <div *ngFor="let service of filteredServices" class="service-card">
-      <!-- Service Header -->
-      <div class="service-header">
-        <div class="service-info">
-          <h3 class="service-name">{{ service.name }}</h3>
-          <div class="service-category" [style.background-color]="getCategoryColor(service.category || '')">>
-            {{ service.category }}
+  <!-- Active Services Grid -->
+  <div *ngIf="!loading && !error" class="services-section">
+    <h2 class="section-title">Servicios Activos</h2>
+    <div class="services-grid">
+      <div *ngFor="let service of getActiveServices()" class="service-card">
+        <!-- Service Header -->
+        <div class="service-header">
+          <div class="service-info">
+            <h3 class="service-name">{{ service.name }}</h3>
+            <div class="service-category" [style.background-color]="getCategoryColor(service.category || '')">
+              {{ service.category }}
+            </div>
+          </div>
+          <div class="service-actions">
+            <button class="action-btn edit" (click)="openForm(service)" title="Editar">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="action-btn deactivate" (click)="toggleServiceStatus(service)" title="Desactivar servicio">
+              <i class="fas fa-toggle-off"></i>
+            </button>
           </div>
         </div>
-        <div class="service-actions">
-          <button class="action-btn view" (click)="openForm(service)" title="Ver detalles">
-            <i class="fas fa-eye"></i>
-          </button>
-          <button class="action-btn edit" (click)="openForm(service)" title="Editar">
-            <i class="fas fa-edit"></i>
-          </button>
-          <button class="action-btn duplicate" (click)="duplicateService(service)" title="Duplicar">
-            <i class="fas fa-copy"></i>
-          </button>
-          <button class="action-btn delete" (click)="deleteService(service)" title="Eliminar">
-            <i class="fas fa-trash"></i>
-          </button>
+
+        <!-- Service Details -->
+        <div class="service-details">
+          <div class="detail-item">
+            <i class="detail-icon fas fa-euro-sign"></i>
+            <span class="detail-label">Precio:</span>
+            <span class="detail-value price">{{ formatCurrency(service.base_price) }}</span>
+          </div>
+          
+          <div class="detail-item">
+            <i class="detail-icon fas fa-clock"></i>
+            <span class="detail-label">Duración:</span>
+            <span class="detail-value">{{ formatHours(service.estimated_hours) }}</span>
+          </div>
+          
+          <div class="detail-item">
+            <i class="detail-icon fas fa-calculator"></i>
+            <span class="detail-label">Precio/hora:</span>
+            <span class="detail-value">{{ formatCurrency(service.base_price / service.estimated_hours) }}</span>
+          </div>
+        </div>
+
+        <!-- Service Description -->
+        <div *ngIf="service.description" class="service-description">
+          <i class="fas fa-file-text"></i>
+          <p>{{ service.description }}</p>
+        </div>
+
+        <!-- Service Actions -->
+        <div class="service-footer">
+          <!-- Footer vacío o se puede eliminar esta sección completa -->
         </div>
       </div>
 
-      <!-- Service Details -->
-      <div class="service-details">
-        <div class="detail-item">
-          <i class="detail-icon fas fa-euro-sign"></i>
-          <span class="detail-label">Precio:</span>
-          <span class="detail-value price">{{ formatCurrency(service.base_price) }}</span>
-        </div>
-        
-        <div class="detail-item">
-          <i class="detail-icon fas fa-clock"></i>
-          <span class="detail-label">Duración:</span>
-          <span class="detail-value">{{ formatHours(service.estimated_hours) }}</span>
-        </div>
-        
-        <div class="detail-item">
-          <i class="detail-icon fas fa-calculator"></i>
-          <span class="detail-label">Precio/hora:</span>
-          <span class="detail-value">{{ formatCurrency(service.base_price / service.estimated_hours) }}</span>
-        </div>
-        
-        <div class="detail-item">
-          <i class="detail-icon fas fa-info-circle"></i>
-          <span class="detail-label">Estado:</span>
-          <span class="detail-value status" [class]="getServiceStatusClass(service)">
-            {{ getServiceStatus(service) }}
-          </span>
-        </div>
-      </div>
-
-      <!-- Service Description -->
-      <div *ngIf="service.description" class="service-description">
-        <i class="fas fa-file-text"></i>
-        <p>{{ service.description }}</p>
-      </div>
-
-      <!-- Service Actions -->
-      <div class="service-footer">
-        <button class="btn btn-primary add-to-ticket">
-          <i class="fas fa-plus"></i>
-          Añadir al Ticket
-        </button>
-        <button class="btn btn-secondary toggle-status" (click)="toggleServiceStatus(service)">
-          <i class="fas" [class.fa-toggle-on]="service.is_active" [class.fa-toggle-off]="!service.is_active"></i>
-          {{ service.is_active ? 'Desactivar' : 'Activar' }}
-        </button>
+      <!-- Empty State for Active Services -->
+      <div *ngIf="getActiveServices().length === 0" class="empty-state">
+        <i class="fas fa-tools"></i>
+        <h3>No hay servicios activos</h3>
+        <p>No se encontraron servicios activos que coincidan con la búsqueda.</p>
       </div>
     </div>
+  </div>
 
-    <!-- Empty State -->
-    <div *ngIf="filteredServices.length === 0" class="empty-state">
-      <i class="fas fa-tools"></i>
-      <h3>No hay servicios</h3>
-      <p>No se encontraron servicios que coincidan con los filtros aplicados.</p>
-      <button class="btn btn-primary" (click)="clearFilters()">
-        <i class="fas fa-refresh"></i>
-        Mostrar todos
-      </button>
+  <!-- Inactive Services Section -->
+  <div *ngIf="!loading && !error && getInactiveServices().length > 0" class="services-section inactive-section">
+    <h2 class="section-title inactive-title">
+      <i class="fas fa-eye-slash"></i>
+      Servicios Inactivos
+    </h2>
+    <div class="services-grid">
+      <div *ngFor="let service of getInactiveServices()" class="service-card inactive-card">
+        <!-- Service Header -->
+        <div class="service-header">
+          <div class="service-info">
+            <h3 class="service-name">{{ service.name }}</h3>
+            <div class="service-category inactive" [style.background-color]="getCategoryColor(service.category || '')">
+              {{ service.category }}
+            </div>
+          </div>
+          <div class="service-actions">
+            <button class="action-btn view" (click)="openForm(service)" title="Ver detalles">
+              <i class="fas fa-eye"></i>
+            </button>
+            <button class="action-btn edit" (click)="openForm(service)" title="Editar">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="action-btn activate" (click)="toggleServiceStatus(service)" title="Activar servicio">
+              <i class="fas fa-toggle-on"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Service Details -->
+        <div class="service-details">
+          <div class="detail-item">
+            <i class="detail-icon fas fa-euro-sign"></i>
+            <span class="detail-label">Precio:</span>
+            <span class="detail-value price">{{ formatCurrency(service.base_price) }}</span>
+          </div>
+          
+          <div class="detail-item">
+            <i class="detail-icon fas fa-clock"></i>
+            <span class="detail-label">Duración:</span>
+            <span class="detail-value">{{ formatHours(service.estimated_hours) }}</span>
+          </div>
+        </div>
+
+        <!-- Service Description -->
+        <div *ngIf="service.description" class="service-description">
+          <i class="fas fa-file-text"></i>
+          <p>{{ service.description }}</p>
+        </div>
+
+        <!-- Service Actions -->
+        <div class="service-footer">
+          <!-- Footer vacío para servicios inactivos -->
+        </div>
+      </div>
     </div>
   </div>
 
@@ -228,84 +224,323 @@
       </div>
       
       <form class="service-form" (ngSubmit)="saveService()">
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="name">Nombre del Servicio *</label>
-            <input 
-              type="text" 
-              id="name"
-              class="form-control"
-              [(ngModel)]="formData.name"
-              name="name"
-              [class.error]="formErrors['name']"
-              placeholder="Ej: Diagnóstico de Hardware">
-            <div *ngIf="formErrors['name']" class="error-message">{{ formErrors['name'] }}</div>
+        <!-- Información Básica -->
+        <div class="form-section">
+          <h3 class="form-section-title">
+            <i class="fas fa-info-circle"></i>
+            Información Básica
+          </h3>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="name">Nombre del Servicio *</label>
+              <input 
+                type="text" 
+                id="name"
+                class="form-control"
+                [(ngModel)]="formData.name"
+                name="name"
+                [class.error]="formErrors['name']"
+                placeholder="Ej: Diagnóstico de Hardware">
+              <div *ngIf="formErrors['name']" class="error-message">{{ formErrors['name'] }}</div>
+            </div>
+            
+            <div class="form-group">
+              <label for="category">Categoría *</label>
+              <div class="category-input-container">
+                <input 
+                  type="text" 
+                  id="category"
+                  class="form-control"
+                  [(ngModel)]="formData.category"
+                  name="category"
+                  [class.error]="formErrors['category']"
+                  (focus)="showCategoryInput = true"
+                  placeholder="Ej: Diagnóstico, Software, Mantenimiento">
+                
+                <!-- Category Dropdown -->
+                <div *ngIf="showCategoryInput" class="category-dropdown">
+                  <div class="category-search">
+                    <input 
+                      type="text"
+                      class="form-control small"
+                      [(ngModel)]="categoryFilterText"
+                      (ngModelChange)="onCategoryFilterChange()"
+                      placeholder="Buscar o crear categoría..."
+                      name="categoryFilter">
+                  </div>
+                  
+                  <div class="category-options">
+                    <div *ngFor="let cat of filteredCategories" 
+                         class="category-option"
+                         (click)="selectCategory(cat)">
+                      <i [class]="cat.icon" [style.color]="cat.color"></i>
+                      <span>{{ cat.name }}</span>
+                    </div>
+                    
+                    <div *ngIf="categoryFilterText && filteredCategories.length === 0 && !hasExactMatch()" 
+                         class="category-option create-new"
+                         (click)="createNewCategory()">
+                      <i class="fas fa-plus" style="color: #10b981;"></i>
+                      <span>Crear "{{ categoryFilterText }}"</span>
+                    </div>
+                    
+                    <div *ngIf="categoryFilterText && filteredCategories.length === 0 && hasExactMatch()" 
+                         class="category-option existing-match"
+                         (click)="selectExistingMatch()">
+                      <i class="fas fa-check" style="color: #3b82f6;"></i>
+                      <span>Usar "{{ getExactMatch()?.name }}" (existe)</span>
+                    </div>
+                  </div>
+                  
+                  <div class="category-actions">
+                    <button type="button" class="btn btn-sm btn-secondary" (click)="showCategoryInput = false">
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div *ngIf="formErrors['category']" class="error-message">{{ formErrors['category'] }}</div>
+            </div>
           </div>
           
-          <div class="form-group">
-            <label for="category">Categoría *</label>
-            <input 
-              type="text" 
-              id="category"
+          <div class="form-group full-width">
+            <label for="description">Descripción</label>
+            <textarea 
+              id="description"
               class="form-control"
-              [(ngModel)]="formData.category"
-              name="category"
-              [class.error]="formErrors['category']"
-              placeholder="Ej: Diagnóstico, Software, Mantenimiento">
-            <div *ngIf="formErrors['category']" class="error-message">{{ formErrors['category'] }}</div>
-          </div>
-          
-          <div class="form-group">
-            <label for="base_price">Precio Base (€) *</label>
-            <input 
-              type="number" 
-              id="base_price"
-              class="form-control"
-              [(ngModel)]="formData.base_price"
-              name="base_price"
-              step="0.01"
-              min="0"
-              [class.error]="formErrors['base_price']"
-              placeholder="25.00">
-            <div *ngIf="formErrors['base_price']" class="error-message">{{ formErrors['base_price'] }}</div>
-          </div>
-          
-          <div class="form-group">
-            <label for="estimated_hours">Horas Estimadas *</label>
-            <input 
-              type="number" 
-              id="estimated_hours"
-              class="form-control"
-              [(ngModel)]="formData.estimated_hours"
-              name="estimated_hours"
-              step="0.25"
-              min="0"
-              [class.error]="formErrors['estimated_hours']"
-              placeholder="1.5">
-            <div *ngIf="formErrors['estimated_hours']" class="error-message">{{ formErrors['estimated_hours'] }}</div>
+              [(ngModel)]="formData.description"
+              name="description"
+              rows="3"
+              placeholder="Descripción detallada del servicio que se mostrará en presupuestos y facturas..."></textarea>
           </div>
         </div>
-        
-        <div class="form-group full-width">
-          <label for="description">Descripción</label>
-          <textarea 
-            id="description"
-            class="form-control"
-            [(ngModel)]="formData.description"
-            name="description"
-            rows="3"
-            placeholder="Descripción detallada del servicio..."></textarea>
+
+        <!-- Precios y Facturación -->
+        <div class="form-section">
+          <h3 class="form-section-title">
+            <i class="fas fa-euro-sign"></i>
+            Precios y Facturación
+          </h3>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="base_price">Precio Base (€) *</label>
+              <input 
+                type="number" 
+                id="base_price"
+                class="form-control"
+                [(ngModel)]="formData.base_price"
+                name="base_price"
+                step="0.01"
+                min="0"
+                [class.error]="formErrors['base_price']"
+                placeholder="25.00">
+              <div *ngIf="formErrors['base_price']" class="error-message">{{ formErrors['base_price'] }}</div>
+            </div>
+
+            <div class="form-group">
+              <label for="cost_price">Costo (€)</label>
+              <input 
+                type="number" 
+                id="cost_price"
+                class="form-control"
+                [(ngModel)]="formData.cost_price"
+                name="cost_price"
+                step="0.01"
+                min="0"
+                [class.error]="formErrors['cost_price']"
+                placeholder="15.00">
+              <div *ngIf="formErrors['cost_price']" class="error-message">{{ formErrors['cost_price'] }}</div>
+            </div>
+
+            <div class="form-group">
+              <label for="tax_rate">IVA (%)</label>
+              <input 
+                type="number" 
+                id="tax_rate"
+                class="form-control"
+                [(ngModel)]="formData.tax_rate"
+                name="tax_rate"
+                step="0.01"
+                min="0"
+                max="100"
+                [class.error]="formErrors['tax_rate']"
+                placeholder="21.00">
+              <div *ngIf="formErrors['tax_rate']" class="error-message">{{ formErrors['tax_rate'] }}</div>
+            </div>
+
+            <div class="form-group">
+              <label for="profit_margin">Margen (%)</label>
+              <input 
+                type="number" 
+                id="profit_margin"
+                class="form-control"
+                [(ngModel)]="formData.profit_margin"
+                name="profit_margin"
+                step="0.01"
+                min="0"
+                [class.error]="formErrors['profit_margin']"
+                placeholder="30.00">
+              <div *ngIf="formErrors['profit_margin']" class="error-message">{{ formErrors['profit_margin'] }}</div>
+            </div>
+          </div>
         </div>
-        
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input 
-              type="checkbox" 
-              [(ngModel)]="formData.is_active"
-              name="is_active">
-            <span class="checkmark"></span>
-            Servicio activo
-          </label>
+
+        <!-- Tiempo y Cantidades -->
+        <div class="form-section">
+          <h3 class="form-section-title">
+            <i class="fas fa-clock"></i>
+            Tiempo y Cantidades
+          </h3>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="estimated_hours">Horas Estimadas *</label>
+              <input 
+                type="number" 
+                id="estimated_hours"
+                class="form-control"
+                [(ngModel)]="formData.estimated_hours"
+                name="estimated_hours"
+                step="0.25"
+                min="0.25"
+                [class.error]="formErrors['estimated_hours']"
+                placeholder="1.5">
+              <div *ngIf="formErrors['estimated_hours']" class="error-message">{{ formErrors['estimated_hours'] }}</div>
+            </div>
+
+            <div class="form-group">
+              <label for="unit_type">Unidad de Medida</label>
+              <select 
+                id="unit_type"
+                class="form-control"
+                [(ngModel)]="formData.unit_type"
+                name="unit_type">
+                <option value="horas">Horas</option>
+                <option value="unidades">Unidades</option>
+                <option value="días">Días</option>
+                <option value="trabajos">Trabajos</option>
+                <option value="licencias">Licencias</option>
+                <option value="sesiones">Sesiones</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="min_quantity">Cantidad Mínima</label>
+              <input 
+                type="number" 
+                id="min_quantity"
+                class="form-control"
+                [(ngModel)]="formData.min_quantity"
+                name="min_quantity"
+                step="0.25"
+                min="0.25"
+                [class.error]="formErrors['min_quantity']"
+                placeholder="1.00">
+              <div *ngIf="formErrors['min_quantity']" class="error-message">{{ formErrors['min_quantity'] }}</div>
+            </div>
+
+            <div class="form-group">
+              <label for="max_quantity">Cantidad Máxima</label>
+              <input 
+                type="number" 
+                id="max_quantity"
+                class="form-control"
+                [(ngModel)]="formData.max_quantity"
+                name="max_quantity"
+                step="0.25"
+                min="0.25"
+                [class.error]="formErrors['max_quantity']"
+                placeholder="10.00">
+              <div *ngIf="formErrors['max_quantity']" class="error-message">{{ formErrors['max_quantity'] }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dificultad y Gestión -->
+        <div class="form-section">
+          <h3 class="form-section-title">
+            <i class="fas fa-cogs"></i>
+            Dificultad y Gestión
+          </h3>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="difficulty_level">Nivel de Dificultad</label>
+              <select 
+                id="difficulty_level"
+                class="form-control"
+                [(ngModel)]="formData.difficulty_level"
+                name="difficulty_level">
+                <option value="1">1 - Muy Fácil</option>
+                <option value="2">2 - Fácil</option>
+                <option value="3">3 - Medio</option>
+                <option value="4">4 - Difícil</option>
+                <option value="5">5 - Muy Difícil</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="priority_level">Nivel de Prioridad</label>
+              <select 
+                id="priority_level"
+                class="form-control"
+                [(ngModel)]="formData.priority_level"
+                name="priority_level">
+                <option value="1">1 - Muy Baja</option>
+                <option value="2">2 - Baja</option>
+                <option value="3">3 - Media</option>
+                <option value="4">4 - Alta</option>
+                <option value="5">5 - Muy Alta</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="warranty_days">Días de Garantía</label>
+              <input 
+                type="number" 
+                id="warranty_days"
+                class="form-control"
+                [(ngModel)]="formData.warranty_days"
+                name="warranty_days"
+                min="0"
+                [class.error]="formErrors['warranty_days']"
+                placeholder="30">
+              <div *ngIf="formErrors['warranty_days']" class="error-message">{{ formErrors['warranty_days'] }}</div>
+            </div>
+
+            <div class="form-group">
+              <div class="checkbox-group">
+                <label class="checkbox-label">
+                  <input 
+                    type="checkbox"
+                    [(ngModel)]="formData.can_be_remote"
+                    name="can_be_remote">
+                  <span class="checkmark"></span>
+                  Se puede realizar en remoto
+                </label>
+
+                <label class="checkbox-label">
+                  <input 
+                    type="checkbox"
+                    [(ngModel)]="formData.requires_parts"
+                    name="requires_parts">
+                  <span class="checkmark"></span>
+                  Requiere piezas/componentes
+                </label>
+
+                <label class="checkbox-label">
+                  <input 
+                    type="checkbox"
+                    [(ngModel)]="formData.requires_diagnosis"
+                    name="requires_diagnosis">
+                  <span class="checkmark"></span>
+                  Requiere diagnóstico previo
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
         
         <div class="form-actions">
@@ -321,4 +556,14 @@
       </form>
     </div>
   </div>
+
+  <!-- FAB Button -->
+  <button 
+    class="fab-button"
+    (click)="openForm()"
+    title="Nuevo Servicio"
+    aria-label="Crear nuevo servicio"
+  >
+    <i class="fas fa-plus"></i>
+  </button>
 </div>

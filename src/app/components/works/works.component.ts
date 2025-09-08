@@ -160,15 +160,15 @@ export class WorksComponent implements OnInit {
     this.error = null;
     
     try {
-      const { data: works, error } = await this.supabase.getClient()
-        .from('works')
+      const { data: services, error } = await this.supabase.getClient()
+        .from('services')
         .select('*')
         .is('deleted_at', null)
         .order('name');
       
       if (error) throw new Error('Error servicios: ' + error.message);
       
-      this.works = works || [];
+      this.works = services || [];
       console.log('✅ Servicios cargados:', this.works.length);
       
     } catch (error: any) {
