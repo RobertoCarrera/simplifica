@@ -474,7 +474,7 @@ export class SupabaseTicketsComponent implements OnInit {
       // Intentar cargar tags filtrados por empresa (si la columna existe)
       let tagsResponse: any = await client
         .from('ticket_tags')
-        .select('id, name, color, description, company_id, is_active')
+        .select('id, name, color, description, company_id')
         .eq('company_id', this.selectedCompanyId)
         .order('name', { ascending: true });
 
@@ -483,7 +483,7 @@ export class SupabaseTicketsComponent implements OnInit {
         console.warn('ticket_tags no tiene company_id, cargando tags globales...');
         tagsResponse = await client
           .from('ticket_tags')
-          .select('id, name, color, description, is_active')
+          .select('id, name, color, description')
           .order('name', { ascending: true }) as any;
       }
 
@@ -1106,7 +1106,7 @@ export class SupabaseTicketsComponent implements OnInit {
 
   // Navigation
   viewTicketDetail(ticket: Ticket) {
-    this.router.navigate(['/tickets', ticket.id]);
+    this.router.navigate(['/ticket', ticket.id]);
   }
 
   // Utility methods

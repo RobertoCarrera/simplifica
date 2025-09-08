@@ -1,22 +1,38 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SimpleSupabaseService } from '../../services/simple-supabase.service';
+import { SupabaseTicketsService, Ticket, TicketStage } from '../../services/supabase-tickets.service';
+import { DevicesService, Device } from '../../services/devices.service';
 
 @Component({
   selector: 'app-ticket-detail',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
+  styleUrls: ['./ticket-detail.component.scss'],
   template: `
     <div class="min-h-screen bg-gray-50 py-8">
-      <div class="max-w-4xl mx-auto px-4">
+      <div class="max-w-6xl mx-auto px-4">
         
         <!-- Header con navegación -->
-        <div class="mb-6">
+        <div class="mb-6 flex justify-between items-center">
           <button (click)="goBack()" 
                   class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
             ← Volver a Tickets
           </button>
+          
+          <!-- Quick Actions -->
+          <div *ngIf="!loading && !error && ticket" class="flex space-x-2">
+            <button (click)="editTicket()" 
+                    class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700">
+              ✏️ Editar
+            </button>
+            <button (click)="deleteTicket()" 
+                    class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700">
+              🗑️ Eliminar
+            </button>
+          </div>
         </div>
 
         <!-- Loading State -->
@@ -39,147 +55,497 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
         </div>
 
         <!-- Ticket Detail -->
-        <div *ngIf="!loading && !error && ticket" class="space-y-6">
+        <div *ngIf="!loading && !error && ticket" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          <!-- Ticket Header -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <div class="flex justify-between items-start">
-              <div>
-                <h1 class="text-2xl font-bold text-gray-900">
-                  🎫 Ticket #{{ ticket.ticket_number }}
-                </h1>
-                <h2 class="text-xl text-gray-700 mt-1">{{ ticket.title }}</h2>
-              </div>
-              <span [class]="getStageClasses(ticket.stage?.color)"
-                    class="px-3 py-1 rounded-full text-sm font-medium">
-                {{ ticket.stage?.name || 'Sin estado' }}
-              </span>
-            </div>
+          <!-- Main Content (Left Side) -->
+          <div class="lg:col-span-2 space-y-6">
             
-            <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <span class="text-sm font-medium text-gray-500">Cliente</span>
-                <p class="mt-1 text-sm text-gray-900">{{ ticket.client?.name || 'N/A' }}</p>
-                <p class="text-sm text-gray-600">{{ ticket.client?.email || '' }}</p>
-              </div>
-              <div>
-                <span class="text-sm font-medium text-gray-500">Prioridad</span>
-                <p class="mt-1">
+            <!-- Ticket Header -->
+            <div class="bg-white shadow rounded-lg p-6">
+              <div class="flex justify-between items-start mb-4">
+                <div>
+                  <h1 class="text-2xl font-bold text-gray-900">
+                    🎫 Ticket #{{ ticket.ticket_number }}
+                  </h1>
+                  <h2 class="text-xl text-gray-700 mt-1">{{ ticket.title }}</h2>
+                </div>
+                <div class="flex flex-col items-end space-y-2">
+                  <span [style.background-color]="ticket.stage?.color || '#6b7280'"
+                        class="px-3 py-1 rounded-full text-sm font-medium text-white">
+                    {{ ticket.stage?.name || 'Sin estado' }}
+                  </span>
                   <span [class]="getPriorityClasses(ticket.priority)"
                         class="px-2 py-1 rounded text-xs font-medium">
-                    {{ ticket.priority || 'Normal' }}
+                    {{ getPriorityLabel(ticket.priority) }}
                   </span>
-                </p>
-              </div>
-              <div>
-                <span class="text-sm font-medium text-gray-500">Fecha límite</span>
-                <p class="mt-1 text-sm text-gray-900">{{ formatDate(ticket.due_date) }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Progress Bar -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Progreso del Ticket</h3>
-            <div class="flex items-center justify-between">
-              <div *ngFor="let stage of allStages; let i = index" 
-                   class="flex flex-col items-center flex-1">
-                <div [class]="getProgressStepClasses(stage, ticket.stage)"
-                     class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium">
-                  {{ i + 1 }}
                 </div>
-                <span class="mt-2 text-xs text-center max-w-20">{{ stage.name }}</span>
-                <div *ngIf="i < allStages.length - 1" 
-                     [class]="getProgressLineClasses(stage, ticket.stage)"
-                     class="absolute h-0.5 w-16 mt-4 ml-16"></div>
+              </div>
+              
+              <!-- Tags -->
+              <div *ngIf="ticketTags && ticketTags.length > 0" class="mb-4">
+                <span class="text-sm font-medium text-gray-500">Tags:</span>
+                <div class="mt-1 flex flex-wrap gap-2">
+                  <span *ngFor="let tag of ticketTags" 
+                        [style.background-color]="getTagColor(tag)"
+                        class="px-2 py-1 rounded text-xs font-medium text-white">
+                    {{ tag }}
+                  </span>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <span class="text-sm font-medium text-gray-500">Cliente</span>
+                  <p class="mt-1 text-sm text-gray-900">{{ ticket.client?.name || 'N/A' }}</p>
+                  <p class="text-sm text-gray-600">{{ ticket.client?.email || '' }}</p>
+                  <p *ngIf="ticket.client?.phone" class="text-sm text-gray-600">{{ ticket.client?.phone }}</p>
+                </div>
+                <div>
+                  <span class="text-sm font-medium text-gray-500">Fechas</span>
+                  <p class="mt-1 text-sm text-gray-900">
+                    <span class="font-medium">Creado:</span> {{ formatDate(ticket.created_at) }}
+                  </p>
+                  <p *ngIf="ticket.due_date" class="text-sm text-gray-900">
+                    <span class="font-medium">Vencimiento:</span> {{ formatDate(ticket.due_date) }}
+                    <span *ngIf="isOverdue()" class="text-red-600 ml-1">⚠️ Vencido</span>
+                  </p>
+                </div>
+                <div>
+                  <span class="text-sm font-medium text-gray-500">Horas</span>
+                  <p class="mt-1 text-sm text-gray-900">
+                    <span class="font-medium">Estimadas:</span> {{ getEstimatedHours() }}h
+                  </p>
+                  <p class="text-sm text-gray-900">
+                    <span class="font-medium">Reales:</span> {{ getActualHours() }}h
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Description -->
-          <div *ngIf="ticket.description" class="bg-white shadow rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-3">Descripción</h3>
-            <p class="text-gray-700">{{ ticket.description }}</p>
-          </div>
-
-          <!-- Services -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Servicios</h3>
-            <div *ngIf="services.length === 0" class="text-center py-6 text-gray-500">
-              📭 No hay servicios asignados a este ticket
-            </div>
-            <div *ngIf="services.length > 0" class="space-y-4">
-              <div *ngFor="let service of services" 
-                   class="border border-gray-200 rounded-lg p-4">
-                <div class="flex justify-between items-start">
-                  <div class="flex-1">
-                    <h4 class="font-medium text-gray-900">{{ service.work?.name || 'Servicio no especificado' }}</h4>
-                    <p *ngIf="service.product" class="text-sm text-gray-600 mt-1">
-                      📦 Producto: {{ service.product.name }}
-                    </p>
-                    <p class="text-sm text-gray-600 mt-1">
-                      Cantidad: {{ service.quantity || 1 }}
-                    </p>
-                  </div>
-                  <div class="text-right">
-                    <p class="font-medium text-gray-900">{{ service.total_price || service.unit_price || 0 }} €</p>
-                    <span [class]="service.is_completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'"
-                          class="inline-block px-2 py-1 text-xs font-medium rounded mt-1">
-                      {{ service.is_completed ? '✅ Completado' : '🔄 En progreso' }}
-                    </span>
+            <!-- Progress Bar -->
+            <div class="bg-white shadow rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Progreso del Ticket</h3>
+              <div class="relative">
+                <div class="flex items-center justify-between">
+                  <div *ngFor="let stage of allStages; let i = index" 
+                       class="flex flex-col items-center flex-1 relative">
+                    <div [class]="getProgressStepClasses(stage, ticket.stage)"
+                         class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium z-10 relative">
+                      <span *ngIf="getStageStatus(stage, ticket.stage) === 'completed'">✓</span>
+                      <span *ngIf="getStageStatus(stage, ticket.stage) === 'current'">{{ i + 1 }}</span>
+                      <span *ngIf="getStageStatus(stage, ticket.stage) === 'pending'">{{ i + 1 }}</span>
+                    </div>
+                    <span class="mt-2 text-xs text-center max-w-20">{{ stage.name }}</span>
+                    
+                    <!-- Progress Line -->
+                    <div *ngIf="i < allStages.length - 1" 
+                         [class]="getProgressLineClasses(stage, ticket.stage)"
+                         class="absolute top-5 left-1/2 w-full h-0.5 z-0"
+                         style="transform: translateX(50%)"></div>
                   </div>
                 </div>
-                <p *ngIf="service.notes" class="mt-2 text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                  {{ service.notes }}
-                </p>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div *ngIf="ticket.description" class="bg-white shadow rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-3">Descripción</h3>
+              <div class="prose prose-sm text-gray-700" [innerHTML]="formatDescription(ticket.description)"></div>
+            </div>
+
+            <!-- Services -->
+            <div class="bg-white shadow rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Servicios Asignados</h3>
+              <div *ngIf="ticketServices.length === 0" class="text-center py-6 text-gray-500">
+                📭 No hay servicios asignados a este ticket
+              </div>
+              <div *ngIf="ticketServices.length > 0" class="space-y-4">
+                <div *ngFor="let serviceItem of ticketServices" 
+                     class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                  <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                      <h4 class="font-medium text-gray-900">{{ serviceItem.service?.name || 'Servicio no especificado' }}</h4>
+                      <p *ngIf="serviceItem.service?.description" class="text-sm text-gray-600 mt-1">
+                        {{ serviceItem.service.description }}
+                      </p>
+                      <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600">
+                        <span>📦 Cantidad: {{ serviceItem.quantity || 1 }}</span>
+                        <span>⏱️ {{ serviceItem.service?.estimated_hours || 0 }}h</span>
+                        <span>🏷️ {{ serviceItem.service?.category || 'Sin categoría' }}</span>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <p class="font-medium text-gray-900">{{ formatPrice(serviceItem.service?.base_price || 0) }}</p>
+                      <p class="text-sm text-gray-600">Total: {{ formatPrice((serviceItem.service?.base_price || 0) * (serviceItem.quantity || 1)) }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Devices -->
+            <div *ngIf="ticketDevices.length > 0" class="bg-white shadow rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Dispositivos</h3>
+              <div class="space-y-4">
+                <div *ngFor="let device of ticketDevices" 
+                     class="border border-gray-200 rounded-lg p-4">
+                  <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                      <h4 class="font-medium text-gray-900">{{ device.brand }} {{ device.model }}</h4>
+                      <p class="text-sm text-gray-600 mt-1">{{ device.device_type }}</p>
+                      <p *ngIf="device.imei" class="text-sm text-gray-600">IMEI: {{ device.imei }}</p>
+                      <p *ngIf="device.color" class="text-sm text-gray-600">Color: {{ device.color }}</p>
+                      <p class="text-sm text-gray-600 mt-2">
+                        <span class="font-medium">Problema reportado:</span> {{ device.reported_issue }}
+                      </p>
+                    </div>
+                    <div class="text-right">
+                      <span [class]="getDeviceStatusClass(device.status)"
+                            class="inline-block px-2 py-1 text-xs font-medium rounded">
+                        {{ getDeviceStatusLabel(device.status) }}
+                      </span>
+                      <p class="text-xs text-gray-500 mt-1">
+                        {{ formatDate(device.received_at) }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Comments Section -->
+            <div class="bg-white shadow rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Comentarios</h3>
+              
+              <!-- Add Comment Form -->
+              <div class="mb-6">
+                <textarea [(ngModel)]="newComment" 
+                          placeholder="Añadir un comentario..."
+                          class="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          rows="3"></textarea>
+                <div class="mt-2 flex justify-between items-center">
+                  <label class="flex items-center text-sm text-gray-600">
+                    <input type="checkbox" [(ngModel)]="isInternalComment" class="mr-2">
+                    Comentario interno (no visible para el cliente)
+                  </label>
+                  <button (click)="addComment()" 
+                          [disabled]="!newComment.trim()"
+                          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-300">
+                    💬 Añadir Comentario
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Comments List -->
+              <div *ngIf="comments.length === 0" class="text-center py-6 text-gray-500">
+                💬 No hay comentarios aún
+              </div>
+              <div *ngIf="comments.length > 0" class="space-y-4">
+                <div *ngFor="let comment of comments" 
+                     [class]="comment.is_internal ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50'"
+                     class="rounded-lg p-4 border">
+                  <div class="flex justify-between items-start mb-2">
+                    <div class="flex items-center space-x-2">
+                      <span class="font-medium text-gray-900">{{ comment.user?.name || 'Usuario' }}</span>
+                      <span *ngIf="comment.is_internal" 
+                            class="px-2 py-1 text-xs bg-yellow-200 text-yellow-800 rounded">
+                        🔒 Interno
+                      </span>
+                    </div>
+                    <span class="text-xs text-gray-500">{{ formatDate(comment.created_at) }}</span>
+                  </div>
+                  <p class="text-gray-700">{{ comment.comment }}</p>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Comments -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Comentarios</h3>
-            <div *ngIf="!ticket.comments || ticket.comments.length === 0" 
-                 class="text-center py-6 text-gray-500">
-              💬 No hay comentarios
-            </div>
-            <div *ngIf="ticket.comments && ticket.comments.length > 0" class="space-y-3">
-              <div *ngFor="let comment of ticket.comments; let i = index" 
-                   class="bg-gray-50 rounded-lg p-3">
-                <p class="text-sm text-gray-700">{{ comment }}</p>
-                <p class="text-xs text-gray-500 mt-1">Comentario #{{ i + 1 }}</p>
+          <!-- Sidebar (Right Side) -->
+          <div class="space-y-6">
+            
+            <!-- Quick Stats -->
+            <div class="bg-white shadow rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Resumen</h3>
+              <div class="space-y-3">
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600">Total Servicios:</span>
+                  <span class="text-sm font-medium">{{ formatPrice(calculateServicesTotal()) }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600">Total Ticket:</span>
+                  <span class="text-lg font-bold text-green-600">{{ formatPrice(ticket.total_amount || calculateServicesTotal()) }}</span>
+                </div>
+                <hr>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600">Horas Estimadas:</span>
+                  <span class="text-sm font-medium">{{ getEstimatedHours() }}h</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-sm text-gray-600">Horas Reales:</span>
+                  <span class="text-sm font-medium">{{ getActualHours() }}h</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- Total -->
-          <div class="bg-white shadow rounded-lg p-6">
-            <div class="flex justify-between items-center">
-              <h3 class="text-lg font-medium text-gray-900">Total del Ticket</h3>
-              <span class="text-2xl font-bold text-green-600">
-                {{ calculateTotal() }} €
-              </span>
+            <!-- Timeline -->
+            <div class="bg-white shadow rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Timeline</h3>
+              <div class="space-y-4">
+                <div class="flex items-start space-x-3">
+                  <div class="flex-shrink-0 w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Ticket creado</p>
+                    <p class="text-xs text-gray-500">{{ formatDate(ticket.created_at) }}</p>
+                  </div>
+                </div>
+                
+                <div *ngIf="ticket.updated_at !== ticket.created_at" class="flex items-start space-x-3">
+                  <div class="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">Última actualización</p>
+                    <p class="text-xs text-gray-500">{{ formatDate(ticket.updated_at) }}</p>
+                  </div>
+                </div>
+                
+                <div *ngFor="let activity of recentActivity" class="flex items-start space-x-3">
+                  <div class="flex-shrink-0 w-2 h-2 bg-gray-400 rounded-full mt-2"></div>
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">{{ activity.action }}</p>
+                    <p class="text-xs text-gray-500">{{ formatDate(activity.created_at) }}</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <p class="text-sm text-gray-500 mt-1">
-              Creado el {{ formatDate(ticket.created_at) }}
-            </p>
+
+            <!-- Actions -->
+            <div class="bg-white shadow rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Acciones</h3>
+              <div class="space-y-3">
+                <button (click)="changeStage()" 
+                        class="w-full px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100">
+                  🔄 Cambiar Estado
+                </button>
+                <button (click)="updateHours()" 
+                        class="w-full px-4 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100">
+                  ⏱️ Actualizar Horas
+                </button>
+                <button (click)="addAttachment()" 
+                        class="w-full px-4 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100">
+                  📎 Adjuntar Archivo
+                </button>
+                <button (click)="printTicket()" 
+                        class="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100">
+                  🖨️ Imprimir
+                </button>
+              </div>
+            </div>
+
+            <!-- Company Info -->
+            <div *ngIf="getCompanyName()" class="bg-white shadow rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-2">Empresa</h3>
+              <p class="text-sm text-gray-700">{{ getCompanyName() }}</p>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- Change Stage Modal -->
+      @if (showChangeStageModal) {
+        <div class="modal-overlay" (click)="closeChangeStageModal()">
+          <div class="modal-content" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2 class="modal-title">
+                <i class="fas fa-exchange-alt"></i>
+                Cambiar Estado del Ticket
+              </h2>
+              <button (click)="closeChangeStageModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label for="stageSelect" class="form-label">Nuevo Estado</label>
+                <select
+                  id="stageSelect"
+                  [(ngModel)]="selectedStageId"
+                  class="form-input"
+                >
+                  <option value="">Seleccionar estado...</option>
+                  <option 
+                    *ngFor="let stage of allStages" 
+                    [value]="stage.id"
+                    [selected]="stage.id === ticket?.stage_id"
+                  >
+                    {{ stage.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="modal-actions">
+                <button 
+                  type="button" 
+                  (click)="closeChangeStageModal()" 
+                  class="btn btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="button" 
+                  (click)="saveStageChange()" 
+                  class="btn btn-primary"
+                  [disabled]="!selectedStageId"
+                >
+                  <i class="fas fa-save"></i>
+                  Guardar Cambio
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Update Hours Modal -->
+      @if (showUpdateHoursModal) {
+        <div class="modal-overlay" (click)="closeUpdateHoursModal()">
+          <div class="modal-content" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2 class="modal-title">
+                <i class="fas fa-clock"></i>
+                Actualizar Horas Trabajadas
+              </h2>
+              <button (click)="closeUpdateHoursModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label for="hoursInput" class="form-label">Horas Reales Trabajadas</label>
+                <input
+                  type="number"
+                  id="hoursInput"
+                  [(ngModel)]="newHoursValue"
+                  min="0"
+                  step="0.25"
+                  class="form-input"
+                  placeholder="0.00"
+                />
+                <small class="form-help">
+                  Horas estimadas: {{ getEstimatedHours() }}h
+                </small>
+              </div>
+              <div class="modal-actions">
+                <button 
+                  type="button" 
+                  (click)="closeUpdateHoursModal()" 
+                  class="btn btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="button" 
+                  (click)="saveHoursUpdate()" 
+                  class="btn btn-primary"
+                  [disabled]="newHoursValue < 0"
+                >
+                  <i class="fas fa-save"></i>
+                  Actualizar Horas
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Attachment Modal -->
+      @if (showAttachmentModal) {
+        <div class="modal-overlay" (click)="closeAttachmentModal()">
+          <div class="modal-content" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2 class="modal-title">
+                <i class="fas fa-paperclip"></i>
+                Adjuntar Archivo
+              </h2>
+              <button (click)="closeAttachmentModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label for="fileInput" class="form-label">Seleccionar Archivo</label>
+                <input
+                  type="file"
+                  id="fileInput"
+                  (change)="onFileSelected($event)"
+                  class="form-input"
+                  accept="image/*,.pdf,.doc,.docx,.txt"
+                />
+                <small class="form-help">
+                  Formatos permitidos: imágenes, PDF, documentos de Word, texto
+                </small>
+              </div>
+              <div *ngIf="selectedFile" class="file-preview">
+                <div class="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
+                  <i class="fas fa-file text-blue-500"></i>
+                  <span class="text-sm font-medium">{{ selectedFile.name }}</span>
+                  <span class="text-xs text-gray-500">({{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB)</span>
+                </div>
+              </div>
+              <div class="modal-actions">
+                <button 
+                  type="button" 
+                  (click)="closeAttachmentModal()" 
+                  class="btn btn-secondary"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="button" 
+                  (click)="uploadAttachment()" 
+                  class="btn btn-primary"
+                  [disabled]="!selectedFile"
+                >
+                  <i class="fas fa-upload"></i>
+                  Subir Archivo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `
 })
 export class TicketDetailComponent implements OnInit {
   loading = true;
   error: string | null = null;
-  ticket: any = null;
-  services: any[] = [];
-  allStages: any[] = [];
+  ticket: Ticket | null = null;
+  ticketServices: any[] = [];
+  ticketDevices: Device[] = [];
+  ticketTags: string[] = [];
+  availableTags: any[] = [];
+  allStages: TicketStage[] = [];
+  comments: any[] = [];
+  recentActivity: any[] = [];
   ticketId: string | null = null;
+  
+  // Comment form
+  newComment: string = '';
+  isInternalComment: boolean = false;
+  
+  // Modal controls
+  showChangeStageModal = false;
+  showUpdateHoursModal = false;
+  showAttachmentModal = false;
+  
+  // Modal form data
+  selectedStageId: string = '';
+  newHoursValue: number = 0;
+  selectedFile: File | null = null;
   
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private supabase = inject(SimpleSupabaseService);
+  private ticketsService = inject(SupabaseTicketsService);
+  private devicesService = inject(DevicesService);
 
   ngOnInit() {
     this.route.params.subscribe(params => {
@@ -195,12 +561,15 @@ export class TicketDetailComponent implements OnInit {
 
   async loadTicketDetail() {
     try {
+      this.loading = true;
+      this.error = null;
+      
       // Cargar ticket con relaciones
       const { data: ticketData, error: ticketError } = await this.supabase.getClient()
         .from('tickets')
         .select(`
           *,
-          client:clients(id, name, email),
+          client:clients(id, name, email, phone),
           stage:ticket_stages(id, name, position, color),
           company:companies(id, name)
         `)
@@ -210,18 +579,17 @@ export class TicketDetailComponent implements OnInit {
       if (ticketError) throw new Error('Error cargando ticket: ' + ticketError.message);
       this.ticket = ticketData;
 
-      // Cargar servicios del ticket
-      const { data: servicesData, error: servicesError } = await this.supabase.getClient()
-        .from('services')
-        .select(`
-          *,
-          work:works(id, name, description, estimated_hours, base_price),
-          product:products(id, name, category, brand, price)
-        `)
-        .eq('ticket_id', this.ticketId);
-
-      if (servicesError) throw new Error('Error cargando servicios: ' + servicesError.message);
-      this.services = servicesData || [];
+      // Cargar servicios del ticket desde ticket_services
+      await this.loadTicketServices();
+      
+      // Cargar tags del ticket
+      await this.loadTicketTags();
+      
+      // Cargar dispositivos vinculados
+      await this.loadTicketDevices();
+      
+      // Cargar comentarios
+      await this.loadComments();
 
       // Cargar todos los estados para el progreso
       const { data: stagesData, error: stagesError } = await this.supabase.getClient()
@@ -229,8 +597,14 @@ export class TicketDetailComponent implements OnInit {
         .select('*')
         .order('position');
 
-      if (stagesError) throw new Error('Error cargando estados: ' + stagesError.message);
+      if (stagesError) console.warn('Error cargando estados:', stagesError);
       this.allStages = stagesData || [];
+
+      // Simular actividad reciente
+      this.recentActivity = [
+        { action: 'Servicio añadido', created_at: this.ticket?.updated_at || new Date().toISOString() },
+        { action: 'Estado actualizado', created_at: this.ticket?.updated_at || new Date().toISOString() }
+      ];
 
     } catch (error: any) {
       this.error = error.message;
@@ -239,41 +613,425 @@ export class TicketDetailComponent implements OnInit {
     }
   }
 
+  async loadTicketServices() {
+    try {
+      const { data: services, error } = await this.supabase.getClient()
+        .from('ticket_services')
+        .select(`
+          *,
+          service:services(
+            id,
+            name,
+            description,
+            base_price,
+            estimated_hours,
+            category,
+            is_active
+          )
+        `)
+        .eq('ticket_id', this.ticketId);
+
+      if (error) {
+        console.warn('Error cargando servicios del ticket:', error);
+        return;
+      }
+
+      this.ticketServices = services || [];
+    } catch (error) {
+      console.error('Error en loadTicketServices:', error);
+    }
+  }
+
+  async loadTicketTags() {
+    try {
+      const { data: tagRelations, error } = await this.supabase.getClient()
+        .from('ticket_tag_relations')
+        .select(`
+          tag_id,
+          tag:ticket_tags(id, name, color)
+        `)
+        .eq('ticket_id', this.ticketId);
+
+      if (error) {
+        console.warn('Error cargando tags del ticket:', error);
+        return;
+      }
+
+      this.ticketTags = (tagRelations || []).map((rel: any) => rel.tag?.name).filter(Boolean);
+      this.availableTags = (tagRelations || []).map((rel: any) => rel.tag).filter(Boolean);
+    } catch (error) {
+      console.error('Error en loadTicketTags:', error);
+    }
+  }
+
+  async loadTicketDevices() {
+    try {
+      // Cargar dispositivos vinculados al ticket (si existe tabla device_tickets o similar)
+      // Por ahora, cargar dispositivos del cliente
+      if (this.ticket?.client?.id) {
+        const devices = await this.devicesService.getDevices(this.ticket.company_id);
+        this.ticketDevices = devices.filter(device => device.client_id === this.ticket?.client?.id);
+      }
+    } catch (error) {
+      console.error('Error cargando dispositivos:', error);
+      this.ticketDevices = [];
+    }
+  }
+
+  async loadComments() {
+    try {
+      const { data: comments, error } = await this.supabase.getClient()
+        .from('ticket_comments')
+        .select(`
+          *,
+          user:users(name, email)
+        `)
+        .eq('ticket_id', this.ticketId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.warn('Error cargando comentarios:', error);
+        this.comments = [];
+        return;
+      }
+
+      this.comments = comments || [];
+    } catch (error) {
+      console.error('Error en loadComments:', error);
+      this.comments = [];
+    }
+  }
+
+  async addComment() {
+    if (!this.newComment.trim()) return;
+
+    try {
+      const { data, error } = await this.supabase.getClient()
+        .from('ticket_comments')
+        .insert({
+          ticket_id: this.ticketId,
+          comment: this.newComment.trim(),
+          is_internal: this.isInternalComment,
+          user_id: 'current-user-id' // TODO: obtener del contexto de usuario
+        })
+        .select(`
+          *,
+          user:users(name, email)
+        `)
+        .single();
+
+      if (error) throw error;
+
+      this.comments.push(data);
+      this.newComment = '';
+      this.isInternalComment = false;
+
+    } catch (error: any) {
+      console.error('Error añadiendo comentario:', error);
+      alert('Error al añadir comentario: ' + error.message);
+    }
+  }
+
+  // Navigation and actions
   goBack() {
     this.router.navigate(['/tickets']);
   }
 
-  getStageClasses(color?: string): string {
-    return `bg-gray-100 text-gray-800`;
+  editTicket() {
+    // TODO: abrir modal de edición o navegar a página de edición
+    console.log('Editar ticket:', this.ticketId);
+  }
+
+  async deleteTicket() {
+    if (!confirm('¿Estás seguro de que deseas eliminar este ticket?')) return;
+
+    try {
+      await this.ticketsService.deleteTicket(this.ticketId!);
+      this.router.navigate(['/tickets']);
+    } catch (error: any) {
+      alert('Error al eliminar ticket: ' + error.message);
+    }
+  }
+
+  changeStage() {
+    if (!this.ticket) return;
+    this.selectedStageId = this.ticket.stage_id || '';
+    this.showChangeStageModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  updateHours() {
+    if (!this.ticket) return;
+    this.newHoursValue = this.getActualHours();
+    this.showUpdateHoursModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  addAttachment() {
+    this.showAttachmentModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  // Modal methods
+  closeChangeStageModal() {
+    this.showChangeStageModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  closeUpdateHoursModal() {
+    this.showUpdateHoursModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  closeAttachmentModal() {
+    this.showAttachmentModal = false;
+    this.selectedFile = null;
+    document.body.classList.remove('modal-open');
+  }
+
+  async saveStageChange() {
+    if (!this.ticket || !this.selectedStageId) return;
+
+    try {
+      const { error } = await this.supabase.getClient()
+        .from('tickets')
+        .update({ stage_id: this.selectedStageId })
+        .eq('id', this.ticketId);
+
+      if (error) throw error;
+
+      // Update local ticket data
+      this.ticket.stage_id = this.selectedStageId;
+      const newStage = this.allStages.find(s => s.id === this.selectedStageId);
+      if (newStage) {
+        this.ticket.stage = newStage;
+      }
+
+      // Add comment about stage change
+      const comment = `Estado cambiado a "${newStage?.name || 'Desconocido'}"`;
+      await this.addSystemComment(comment);
+
+      this.closeChangeStageModal();
+      alert('Estado actualizado correctamente');
+    } catch (error: any) {
+      console.error('Error actualizando estado:', error);
+      alert('Error al actualizar estado: ' + error.message);
+    }
+  }
+
+  async saveHoursUpdate() {
+    if (!this.ticket || this.newHoursValue < 0) return;
+
+    try {
+      // Intentar actualizar la columna actual_hours
+      const { error } = await this.supabase.getClient()
+        .from('tickets')
+        .update({ actual_hours: this.newHoursValue })
+        .eq('id', this.ticketId);
+
+      if (error) {
+        // Si la columna no existe, mostrar mensaje informativo
+        if (error.message.includes('column') && error.message.includes('does not exist')) {
+          alert('La tabla tickets no tiene la columna actual_hours. Por favor ejecuta el script SQL para agregar las columnas de horas.');
+          return;
+        }
+        throw error;
+      }
+
+      // Update local ticket data
+      this.ticket.actual_hours = this.newHoursValue;
+
+      // Add comment about hours update
+      const comment = `Horas reales actualizadas a ${this.newHoursValue}h`;
+      await this.addSystemComment(comment);
+
+      this.closeUpdateHoursModal();
+      alert('Horas actualizadas correctamente');
+    } catch (error: any) {
+      console.error('Error actualizando horas:', error);
+      alert('Error al actualizar horas: ' + error.message);
+    }
+  }
+
+  onFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedFile = file;
+    }
+  }
+
+  async uploadAttachment() {
+    if (!this.selectedFile || !this.ticket) return;
+
+    try {
+      // TODO: Implementar subida de archivos a Supabase Storage
+      console.log('Subiendo archivo:', this.selectedFile.name);
+      
+      // Simular subida exitosa
+      const comment = `Archivo adjunto: ${this.selectedFile.name}`;
+      await this.addSystemComment(comment);
+
+      this.closeAttachmentModal();
+      alert('Archivo adjunto agregado correctamente');
+    } catch (error: any) {
+      console.error('Error subiendo archivo:', error);
+      alert('Error al subir archivo: ' + error.message);
+    }
+  }
+
+  async addSystemComment(content: string) {
+    try {
+      const { error } = await this.supabase.getClient()
+        .from('ticket_comments')
+        .insert({
+          ticket_id: this.ticketId,
+          content: content,
+          is_internal: true,
+          created_at: new Date().toISOString()
+        });
+
+      if (!error) {
+        // Reload comments
+        await this.loadComments();
+      }
+    } catch (error) {
+      console.warn('Error agregando comentario del sistema:', error);
+    }
+  }
+
+  printTicket() {
+    window.print();
+  }
+
+  // Utility methods
+  getPriorityLabel(priority?: string): string {
+    const labels: Record<string, string> = {
+      'low': 'Baja',
+      'normal': 'Normal',
+      'high': 'Alta',
+      'critical': 'Crítica'
+    };
+    return labels[priority || 'normal'] || 'Normal';
   }
 
   getPriorityClasses(priority?: string): string {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'critical': return 'bg-red-100 text-red-800';
+      case 'high': return 'bg-orange-100 text-orange-800';
+      case 'normal': return 'bg-blue-100 text-blue-800';
       case 'low': return 'bg-green-100 text-green-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   }
 
-  getProgressStepClasses(stage: any, currentStage: any): string {
-    if (currentStage && stage.position <= currentStage.position) {
-      return 'bg-blue-600 text-white';
-    }
-    return 'bg-gray-300 text-gray-600';
+  getTagColor(tagName: string): string {
+    const tag = this.availableTags.find(t => t.name === tagName);
+    return tag?.color || '#6b7280';
   }
 
-  getProgressLineClasses(stage: any, currentStage: any): string {
-    if (currentStage && stage.position < currentStage.position) {
-      return 'bg-blue-600';
+  isOverdue(): boolean {
+    return this.ticket?.due_date ? new Date(this.ticket.due_date) < new Date() : false;
+  }
+
+  getProgressStepClasses(stage: TicketStage, currentStage?: TicketStage): string {
+    if (!currentStage) return 'bg-gray-300 text-gray-600';
+    
+    if (stage.position < currentStage.position) {
+      return 'bg-green-600 text-white'; // Completed
+    } else if (stage.position === currentStage.position) {
+      return 'bg-blue-600 text-white'; // Current
+    }
+    return 'bg-gray-300 text-gray-600'; // Pending
+  }
+
+  getProgressLineClasses(stage: TicketStage, currentStage?: TicketStage): string {
+    if (!currentStage) return 'bg-gray-300';
+    
+    if (stage.position < currentStage.position) {
+      return 'bg-green-600';
     }
     return 'bg-gray-300';
   }
 
-  calculateTotal(): number {
-    const servicesTotal = this.services.reduce((sum, service) => 
-      sum + (service.total_price || service.unit_price || 0), 0);
-    return servicesTotal || this.ticket?.total_amount || 0;
+  getStageStatus(stage: TicketStage, currentStage?: TicketStage): 'completed' | 'current' | 'pending' {
+    if (!currentStage) return 'pending';
+    
+    if (stage.position < currentStage.position) return 'completed';
+    if (stage.position === currentStage.position) return 'current';
+    return 'pending';
+  }
+
+  formatDescription(description: string): string {
+    // Simple text to HTML conversion
+    return description
+      .replace(/\n/g, '<br>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>');
+  }
+
+  formatPrice(amount: number): string {
+    return new Intl.NumberFormat('es-ES', {
+      style: 'currency',
+      currency: 'EUR'
+    }).format(amount);
+  }
+
+  getDeviceStatusClass(status: string): string {
+    const statusClasses: Record<string, string> = {
+      'received': 'bg-blue-100 text-blue-800',
+      'in_diagnosis': 'bg-yellow-100 text-yellow-800',
+      'in_repair': 'bg-orange-100 text-orange-800',
+      'waiting_parts': 'bg-purple-100 text-purple-800',
+      'waiting_client': 'bg-indigo-100 text-indigo-800',
+      'ready': 'bg-green-100 text-green-800',
+      'delivered': 'bg-gray-100 text-gray-800',
+      'cancelled': 'bg-red-100 text-red-800'
+    };
+    return statusClasses[status] || 'bg-gray-100 text-gray-800';
+  }
+
+  getDeviceStatusLabel(status: string): string {
+    const statusLabels: Record<string, string> = {
+      'received': 'Recibido',
+      'in_diagnosis': 'En Diagnóstico',
+      'in_repair': 'En Reparación',
+      'waiting_parts': 'Esperando Repuestos',
+      'waiting_client': 'Esperando Cliente',
+      'ready': 'Listo',
+      'delivered': 'Entregado',
+      'cancelled': 'Cancelado'
+    };
+    return statusLabels[status] || status;
+  }
+
+  calculateServicesTotal(): number {
+    return this.ticketServices.reduce((sum, serviceItem) => {
+      const price = serviceItem.service?.base_price || 0;
+      const quantity = serviceItem.quantity || 1;
+      return sum + (price * quantity);
+    }, 0);
+  }
+
+  calculateEstimatedHours(): number {
+    return this.ticketServices.reduce((sum, serviceItem) => {
+      const hours = serviceItem.service?.estimated_hours || 0;
+      const quantity = serviceItem.quantity || 1;
+      return sum + (hours * quantity);
+    }, 0);
+  }
+
+  getEstimatedHours(): number {
+    // Primero intentar usar la columna estimated_hours del ticket si existe
+    if (this.ticket?.estimated_hours !== undefined && this.ticket.estimated_hours > 0) {
+      return this.ticket.estimated_hours;
+    }
+    // Si no existe o es 0, calcular desde los servicios
+    return this.calculateEstimatedHours();
+  }
+
+  getActualHours(): number {
+    // Retornar las horas reales del ticket si existe la columna
+    return this.ticket?.actual_hours || 0;
   }
 
   formatDate(dateString?: string): string {
@@ -281,7 +1039,13 @@ export class TicketDetailComponent implements OnInit {
     return new Date(dateString).toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
+  }
+
+  getCompanyName(): string {
+    return (this.ticket as any)?.company?.name || '';
   }
 }
