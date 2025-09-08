@@ -18,6 +18,7 @@ import { MobileDashboardComponent } from './components/mobile-dashboard/mobile-d
 import { AnimationShowcaseComponent } from './components/animation-showcase/animation-showcase.component';
 import { SupabaseCustomersComponent } from './components/supabase-customers/supabase-customers.component';
 import { TestSupabaseComponent } from './components/test-supabase/test-supabase.component';
+import { SupabaseServicesComponent } from './components/supabase-services/supabase-services.component';
 
 export const routes: Routes = [
     {path: '', component: UltraSimpleComponent}, // Ruta por defecto
@@ -30,8 +31,10 @@ export const routes: Routes = [
     {path: 'ticket/:id', component: TicketDetailComponent},
     {path: 'productos', component: ProductsComponent},
     {path: 'products', component: ProductsComponent}, // Alias para móvil
-    {path: 'trabajos', component: WorksComponent},
-    {path: 'works', component: WorksComponent}, // Alias para móvil
+    {path: 'servicios', component: SupabaseServicesComponent}, // Nueva versión con Supabase
+    {path: 'services', component: SupabaseServicesComponent}, // Alias para móvil
+    {path: 'trabajos', component: SupabaseServicesComponent}, // Redirección del antiguo nombre
+    {path: 'works', component: SupabaseServicesComponent}, // Alias para móvil
     {path: 'mobile', component: MobileDashboardComponent},
     {path: 'onboarding', component: OnboardingCenterComponent},
     {path: 'advanced-features', component: AdvancedFeaturesDashboardComponent},
