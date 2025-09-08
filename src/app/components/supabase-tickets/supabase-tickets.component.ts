@@ -1,8 +1,10 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { SupabaseTicketsService, Ticket, TicketStage, TicketStats } from '../../services/supabase-tickets.service';
+import { SupabaseServicesService, Service } from '../../services/supabase-services.service';
+import { SimpleSupabaseService, SimpleClient } from '../../services/simple-supabase.service';
 
 @Component({
   selector: 'app-supabase-tickets',
@@ -15,6 +17,7 @@ export class SupabaseTicketsComponent implements OnInit {
   
   // Company selector for development
   selectedCompanyId: string = '1'; // Default to SatPCGo
+  companies: any[] = [];
   
   // Core data
   tickets: Ticket[] = [];
@@ -45,21 +48,61 @@ export class SupabaseTicketsComponent implements OnInit {
   editingTicket: Ticket | null = null;
   formData: Partial<Ticket> = {};
   
+  // Services management
+  availableServices: Service[] = [];
+  filteredServices: Service[] = [];
+  topUsedServices: Service[] = [];
+  serviceSearchText: string = '';
+  selectedServices: { service: Service; quantity: number }[] = [];
+  showServiceForm = false;
+  serviceFormData: Partial<Service> = {};
+  
+  // Customer selection
+  customers: SimpleClient[] = [];
+  filteredCustomers: SimpleClient[] = [];
+  customerSearchText = '';
+  selectedCustomer: SimpleClient | null = null;
+  showCustomerDropdown = false;
+  
   // Form validation
   formErrors: Record<string, string> = {};
   
   private ticketsService = inject(SupabaseTicketsService);
+  private servicesService = inject(SupabaseServicesService);
+  private simpleSupabase = inject(SimpleSupabaseService);
   private router = inject(Router);
 
   ngOnInit() {
+    this.loadCompanies();
     this.loadTickets();
     this.loadStages();
+    this.loadServices();
+    this.loadCustomers();
   }
 
   onCompanyChange() {
     console.log(`Cambiando a empresa ID: ${this.selectedCompanyId}`);
     this.loadTickets();
     this.loadStages();
+    this.loadServices();
+    this.loadCustomers();
+  }
+
+  async loadCompanies() {
+    try {
+      const res = await this.simpleSupabase.getCompanies();
+      if (res.success) {
+        this.companies = res.data || [];
+        // Default to first company if none selected
+        if (!this.selectedCompanyId && this.companies.length > 0) {
+          this.selectedCompanyId = this.companies[0].id;
+        }
+      } else {
+        console.warn('No se pudieron cargar companies:', res.error);
+      }
+    } catch (err) {
+      console.error('Error cargando companies', err);
+    }
   }
 
   async loadTickets() {
@@ -93,6 +136,81 @@ export class SupabaseTicketsComponent implements OnInit {
       this.stats = await this.ticketsService.getTicketStats(parseInt(this.selectedCompanyId));
     } catch (error: any) {
       console.error('❌ Error loading stats:', error);
+    }
+  }
+
+  async loadServices() {
+    try {
+      this.availableServices = await this.servicesService.getServices(this.selectedCompanyId);
+      // Filtrar solo servicios activos
+      this.availableServices = this.availableServices.filter(service => service.is_active);
+      
+      // Obtener los 3 servicios más usados
+      this.topUsedServices = await this.getTopUsedServices();
+      
+      // Inicialmente mostrar solo los más usados
+      this.filteredServices = [...this.topUsedServices];
+    } catch (error: any) {
+      console.error('❌ Error loading services:', error);
+    }
+  }
+
+  async getTopUsedServices(): Promise<Service[]> {
+    try {
+      // Por simplicidad, obtener todos los tickets y contar servicios usados
+      const tickets = await this.ticketsService.getTickets(Number(this.selectedCompanyId));
+      const serviceCounts = new Map<string, number>();
+
+      // Contar servicios en los tickets existentes (si tienen servicios)
+      tickets.forEach(ticket => {
+        if (ticket.services && Array.isArray(ticket.services)) {
+          ticket.services.forEach((serviceItem: any) => {
+            const serviceId = serviceItem.service_id || serviceItem.id;
+            serviceCounts.set(serviceId, (serviceCounts.get(serviceId) || 0) + 1);
+          });
+        }
+      });
+
+      // Obtener los servicios más usados
+      const sortedServiceIds = Array.from(serviceCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([serviceId]) => serviceId);
+
+      // Filtrar servicios disponibles que coincidan con los más usados
+      const topServices = this.availableServices.filter(service => 
+        sortedServiceIds.includes(service.id)
+      );
+
+      // Si tenemos menos de 3, completar con los primeros servicios disponibles
+      if (topServices.length < 3) {
+        const usedServiceIds = new Set(topServices.map(s => s.id));
+        const additionalServices = this.availableServices
+          .filter(s => !usedServiceIds.has(s.id))
+          .slice(0, 3 - topServices.length);
+        
+        return [...topServices, ...additionalServices];
+      }
+
+      return topServices;
+    } catch (error) {
+      console.error('Error getting top used services:', error);
+      // Fallback: devolver los primeros 3 servicios disponibles
+      return this.availableServices.slice(0, 3);
+    }
+  }
+
+  async loadCustomers() {
+    try {
+      // Usar SimpleSupabaseService para obtener clientes
+      const response = await this.simpleSupabase.getClients();
+      
+      if (response.success && response.data) {
+        this.customers = response.data;
+        this.filteredCustomers = [...this.customers];
+      }
+    } catch (error) {
+      console.error('Error loading customers:', error);
     }
   }
 
@@ -163,7 +281,22 @@ export class SupabaseTicketsComponent implements OnInit {
       company_id: this.selectedCompanyId
     };
     this.formErrors = {};
+    this.selectedServices = [];
+    this.serviceSearchText = '';
+    this.filteredServices = [...this.topUsedServices];
+    this.customerSearchText = '';
+    this.selectedCustomer = null;
+    this.showCustomerDropdown = false;
+    this.filteredCustomers = [...this.customers];
     this.showForm = true;
+    
+    // Bloquear scroll de la página principal de forma más agresiva
+    document.body.classList.add('modal-open');
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    document.body.style.height = '100%';
+    document.documentElement.style.overflow = 'hidden';
   }
 
   closeForm() {
@@ -171,6 +304,150 @@ export class SupabaseTicketsComponent implements OnInit {
     this.editingTicket = null;
     this.formData = {};
     this.formErrors = {};
+    this.selectedServices = [];
+    this.showServiceForm = false;
+    
+    // Restaurar scroll de la página principal
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.height = '';
+    document.documentElement.style.overflow = '';
+  }
+
+  // Services management methods
+  addServiceToTicket(service: Service) {
+    const existing = this.selectedServices.find(s => s.service.id === service.id);
+    if (existing) {
+      existing.quantity += 1;
+    } else {
+      this.selectedServices.push({ service, quantity: 1 });
+    }
+    // Clear search after adding and return to top used services
+    this.serviceSearchText = '';
+    this.filteredServices = [...this.topUsedServices];
+  }
+
+  removeServiceFromTicket(serviceId: string) {
+    this.selectedServices = this.selectedServices.filter(s => s.service.id !== serviceId);
+  }
+
+  updateServiceQuantity(serviceId: string, quantity: number) {
+    const serviceItem = this.selectedServices.find(s => s.service.id === serviceId);
+    if (serviceItem) {
+      serviceItem.quantity = Math.max(1, quantity);
+    }
+  }
+
+  filterServices() {
+    if (!this.serviceSearchText.trim()) {
+      // Si no hay búsqueda, mostrar solo los 3 más usados
+      this.filteredServices = [...this.topUsedServices];
+      return;
+    }
+
+    // Si hay búsqueda, filtrar de todos los servicios disponibles
+    const searchText = this.serviceSearchText.toLowerCase().trim();
+    this.filteredServices = this.availableServices.filter(service =>
+      service.name.toLowerCase().includes(searchText) ||
+      service.description?.toLowerCase().includes(searchText) ||
+      service.category?.toLowerCase().includes(searchText)
+    );
+  }
+
+  // Customer search and selection methods
+  filterCustomers() {
+    if (!this.customerSearchText.trim()) {
+      this.filteredCustomers = [...this.customers];
+      return;
+    }
+
+    const searchText = this.customerSearchText.toLowerCase().trim();
+    this.filteredCustomers = this.customers.filter(customer =>
+      customer.name.toLowerCase().includes(searchText) ||
+      customer.email?.toLowerCase().includes(searchText) ||
+      customer.phone?.toLowerCase().includes(searchText)
+    );
+  }
+
+  selectCustomer(customer: SimpleClient) {
+    this.selectedCustomer = customer;
+    this.formData.client_id = customer.id;
+    this.customerSearchText = customer.name;
+    this.showCustomerDropdown = false;
+  }
+
+  clearCustomerSelection() {
+    this.selectedCustomer = null;
+    this.formData.client_id = '';
+    this.customerSearchText = '';
+  }
+
+  onCustomerSearchFocus() {
+    this.showCustomerDropdown = true;
+    this.filteredCustomers = [...this.customers];
+  }
+
+  // Listen for clicks outside the customer dropdown
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event) {
+    const target = event.target as HTMLElement;
+    const customerContainer = target.closest('.customer-search-container');
+    if (!customerContainer) {
+      this.showCustomerDropdown = false;
+    }
+  }
+
+  getSelectedServicesTotal(): number {
+    return this.selectedServices.reduce((total, item) => {
+      return total + (item.service.base_price * item.quantity);
+    }, 0);
+  }
+
+  getTotalEstimatedHours(): number {
+    return this.selectedServices.reduce((total, item) => {
+      return total + (item.service.estimated_hours * item.quantity);
+    }, 0);
+  }
+
+  isServiceSelected(serviceId: string): boolean {
+    return this.selectedServices.some(s => s.service.id === serviceId);
+  }
+
+  openServiceForm() {
+    this.serviceFormData = {
+      name: '',
+      description: '',
+      base_price: 0,
+      estimated_hours: 1,
+      category: '',
+      is_active: true,
+      company_id: this.selectedCompanyId
+    };
+    this.showServiceForm = true;
+  }
+
+  closeServiceForm() {
+    this.showServiceForm = false;
+    this.serviceFormData = {};
+  }
+
+  async createServiceFromTicket() {
+    try {
+      if (!this.serviceFormData.name?.trim()) {
+        alert('El nombre del servicio es requerido');
+        return;
+      }
+
+      const newService = await this.servicesService.createService(this.serviceFormData as Service);
+      this.availableServices.push(newService);
+      this.addServiceToTicket(newService);
+      this.closeServiceForm();
+    } catch (error: any) {
+      console.error('Error creando servicio:', error);
+      alert('Error al crear el servicio');
+    }
   }
 
   validateForm(): boolean {
@@ -196,8 +473,9 @@ export class SupabaseTicketsComponent implements OnInit {
       this.formErrors['estimated_hours'] = 'Las horas estimadas deben ser mayor a 0';
     }
 
-    if (this.formData.total_amount && this.formData.total_amount < 0) {
-      this.formErrors['total_amount'] = 'El monto no puede ser negativo';
+    // Validar que hay al menos un servicio seleccionado
+    if (this.selectedServices.length === 0) {
+      this.formErrors['services'] = 'Debe seleccionar al menos un servicio';
     }
 
     return Object.keys(this.formErrors).length === 0;
@@ -208,10 +486,14 @@ export class SupabaseTicketsComponent implements OnInit {
     
     this.loading = true;
     try {
+      // Autocomputar horas estimadas basándose en los servicios seleccionados
+      const totalHours = this.getTotalEstimatedHours();
+      
       // Add company_id to form data
       const dataWithCompany = {
         ...this.formData,
-        company_id: this.selectedCompanyId
+        company_id: this.selectedCompanyId,
+        estimated_hours: totalHours > 0 ? totalHours : this.formData.estimated_hours
       };
 
       if (this.editingTicket) {
@@ -287,12 +569,8 @@ export class SupabaseTicketsComponent implements OnInit {
   }
 
   getCompanyName(): string {
-    const companies = {
-      '1': 'SatPCGo',
-      '2': 'Michinanny',
-      '3': 'Libera Tus Creencias'
-    };
-    return companies[this.selectedCompanyId as keyof typeof companies] || 'Empresa';
+    const company = this.companies.find(c => c.id === this.selectedCompanyId);
+    return company ? company.name : 'Empresa';
   }
 
   toggleViewMode() {

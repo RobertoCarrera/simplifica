@@ -14,19 +14,14 @@
         <div class="company-selector">
           <label for="companySelect">Empresa:</label>
           <select id="companySelect" class="form-control" [(ngModel)]="selectedCompanyId" (change)="onCompanyChange()">
-            <option value="1">SatPCGo (ID: 1)</option>
-            <option value="2">Michinanny (ID: 2)</option>
-            <option value="3">Libera Tus Creencias (ID: 3)</option>
+            <option value="">Seleccionar empresa...</option>
+            <option *ngFor="let company of companies" [value]="company.id">{{ company.name }}</option>
           </select>
         </div>
         <!-- View Mode Toggle -->
         <button class="btn btn-secondary" (click)="toggleViewMode()">
           <i class="fas" [class.fa-list]="viewMode === 'board'" [class.fa-th-large]="viewMode === 'list'"></i>
           {{ viewMode === 'list' ? 'Vista Board' : 'Vista Lista' }}
-        </button>
-        <button class="btn btn-primary" (click)="openForm()">
-          <i class="fas fa-plus"></i>
-          Nuevo Ticket
         </button>
       </div>
     </div>
@@ -81,16 +76,6 @@
       <div class="stat-content">
         <div class="stat-number">{{ stats.overdue }}</div>
         <div class="stat-label">Vencidos</div>
-      </div>
-    </div>
-
-    <div class="stat-card">
-      <div class="stat-icon revenue">
-        <i class="fas fa-euro-sign"></i>
-      </div>
-      <div class="stat-content">
-        <div class="stat-number">{{ stats.totalRevenue }}€</div>
-        <div class="stat-label">Ingresos Totales</div>
       </div>
     </div>
   </div>
@@ -350,14 +335,49 @@
           <div class="form-row">
             <div class="form-group">
               <label for="client_id">Cliente *</label>
-              <input 
-                type="text" 
-                id="client_id"
-                [(ngModel)]="formData.client_id" 
-                name="client_id"
-                class="form-control"
-                [class.error]="formErrors['client_id']"
-                placeholder="ID o nombre del cliente">
+              <div class="customer-search-container">
+                <input 
+                  type="text" 
+                  id="client_id"
+                  [(ngModel)]="customerSearchText" 
+                  (input)="filterCustomers()"
+                  (focus)="onCustomerSearchFocus()"
+                  name="client_search"
+                  class="form-control customer-search-input"
+                  [class.error]="formErrors['client_id']"
+                  placeholder="Buscar cliente por nombre, email o teléfono..."
+                  autocomplete="off">
+                
+                <!-- Dropdown de clientes -->
+                <div 
+                  *ngIf="showCustomerDropdown && filteredCustomers.length > 0" 
+                  class="customer-dropdown">
+                  <div 
+                    *ngFor="let customer of filteredCustomers" 
+                    class="customer-option"
+                    (click)="selectCustomer(customer)">
+                    <div class="customer-info">
+                      <div class="customer-name">{{ customer.name }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Cliente seleccionado -->
+                <div *ngIf="selectedCustomer" class="selected-customer">
+                  <span class="customer-name">{{ selectedCustomer.name }}</span>
+                  <button type="button" class="btn-clear" (click)="clearCustomerSelection()">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+
+                <!-- Mensaje cuando no hay resultados -->
+                <div 
+                  *ngIf="showCustomerDropdown && filteredCustomers.length === 0 && customerSearchText.trim()" 
+                  class="no-customers-found">
+                  <i class="fas fa-search"></i>
+                  <p>No se encontraron clientes</p>
+                </div>
+              </div>
               <div *ngIf="formErrors['client_id']" class="error-message">{{ formErrors['client_id'] }}</div>
             </div>
 
@@ -414,23 +434,124 @@
                 [class.error]="formErrors['estimated_hours']"
                 min="0"
                 step="0.5"
-                placeholder="0">
+                placeholder="0"
+                readonly
+                [value]="getTotalEstimatedHours() || formData.estimated_hours"
+                title="Calculado automáticamente basado en los servicios seleccionados">
               <div *ngIf="formErrors['estimated_hours']" class="error-message">{{ formErrors['estimated_hours'] }}</div>
+              <div class="field-help">⚡ Se calcula automáticamente según los servicios</div>
+            </div>
+          </div>
+
+          <!-- Sección de Servicios -->
+          <div class="services-section">
+            <div class="services-header">
+              <h3>
+                <i class="fas fa-tools"></i>
+                Servicios *
+              </h3>
+              <button type="button" class="btn btn-outline btn-sm" (click)="openServiceForm()">
+                <i class="fas fa-plus"></i>
+                Crear Servicio
+              </button>
             </div>
 
-            <div class="form-group">
-              <label for="total_amount">Monto total (€)</label>
-              <input 
-                type="number" 
-                id="total_amount"
-                [(ngModel)]="formData.total_amount" 
-                name="total_amount"
-                class="form-control"
-                [class.error]="formErrors['total_amount']"
-                min="0"
-                step="0.01"
-                placeholder="0.00">
-              <div *ngIf="formErrors['total_amount']" class="error-message">{{ formErrors['total_amount'] }}</div>
+            <!-- Error de servicios -->
+            <div *ngIf="formErrors['services']" class="error-message mb-3">
+              <i class="fas fa-exclamation-triangle"></i>
+              {{ formErrors['services'] }}
+            </div>
+
+            <!-- Lista de servicios disponibles -->
+            <div class="available-services">
+              <h4>
+                <span *ngIf="!serviceSearchText.trim()">Servicios Más Usados</span>
+                <span *ngIf="serviceSearchText.trim()">Resultados de Búsqueda</span>
+              </h4>
+              
+              <!-- Buscador de servicios -->
+              <div class="search-container">
+                <input 
+                  type="text" 
+                  [(ngModel)]="serviceSearchText" 
+                  (input)="filterServices()"
+                  placeholder="Buscar servicios por nombre, descripción o categoría..."
+                  class="search-input">
+                <i class="fas fa-search search-icon"></i>
+              </div>
+
+              <div class="services-grid">
+                <div 
+                  *ngFor="let service of filteredServices" 
+                  class="service-item"
+                  [class.selected]="isServiceSelected(service.id)"
+                  (click)="addServiceToTicket(service)">
+                  <div class="service-info">
+                    <div class="service-name">{{ service.name }}</div>
+                    <div class="service-details">
+                      {{ service.estimated_hours }}h • {{ service.base_price }}€
+                      <span *ngIf="service.category" class="service-category">• {{ service.category }}</span>
+                    </div>
+                    <div *ngIf="service.description" class="service-description">{{ service.description }}</div>
+                  </div>
+                  <div class="service-actions">
+                    <button type="button" class="btn-add">
+                      <i class="fas fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mensaje cuando no hay resultados -->
+              <div *ngIf="filteredServices.length === 0" class="no-results">
+                <i class="fas fa-search"></i>
+                <p>No se encontraron servicios que coincidan con tu búsqueda</p>
+              </div>
+
+              <!-- Mensaje informativo para servicios más usados -->
+              <div *ngIf="!serviceSearchText.trim() && filteredServices.length > 0" class="info-message">
+                <i class="fas fa-info-circle"></i>
+                <span>Mostrando los 3 servicios más utilizados. Usa el buscador para ver todos.</span>
+              </div>
+            </div>
+
+            <!-- Lista de servicios seleccionados -->
+            <div *ngIf="selectedServices.length > 0" class="selected-services">
+              <h4>Servicios Seleccionados</h4>
+              <div class="selected-services-list">
+                <div *ngFor="let item of selectedServices" class="selected-service-item">
+                  <div class="service-info">
+                    <div class="service-name">{{ item.service.name }}</div>
+                    <div class="service-price">{{ item.service.base_price }}€ × {{ item.quantity }}</div>
+                  </div>
+                  <div class="service-controls">
+                    <input 
+                      type="number" 
+                      [value]="item.quantity" 
+                      (input)="updateServiceQuantity(item.service.id, +$any($event.target).value)"
+                      min="1" 
+                      class="quantity-input">
+                    <button 
+                      type="button" 
+                      class="btn-remove" 
+                      (click)="removeServiceFromTicket(item.service.id)">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Resumen -->
+              <div class="services-summary">
+                <div class="summary-row">
+                  <span>Total Horas:</span>
+                  <strong>{{ getTotalEstimatedHours() }}h</strong>
+                </div>
+                <div class="summary-row">
+                  <span>Total Estimado:</span>
+                  <strong>{{ getSelectedServicesTotal() }}€</strong>
+                </div>
+              </div>
             </div>
           </div>
         </form>
@@ -445,4 +566,92 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal para crear servicio rápido -->
+  <div *ngIf="showServiceForm" class="modal-overlay" (click)="closeServiceForm()">
+    <div class="modal-content service-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <i class="fas fa-plus"></i>
+          Crear Servicio Rápido
+        </h2>
+        <button class="modal-close" (click)="closeServiceForm()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="service_name">Nombre del Servicio *</label>
+            <input 
+              type="text" 
+              id="service_name"
+              [(ngModel)]="serviceFormData.name"
+              name="service_name"
+              class="form-control"
+              placeholder="Ej: Reparación de pantalla">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="service_price">Precio Base (€)</label>
+            <input 
+              type="number" 
+              id="service_price"
+              [(ngModel)]="serviceFormData.base_price"
+              name="service_price"
+              class="form-control"
+              min="0"
+              step="0.01"
+              placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label for="service_hours">Horas Estimadas</label>
+            <input 
+              type="number" 
+              id="service_hours"
+              [(ngModel)]="serviceFormData.estimated_hours"
+              name="service_hours"
+              class="form-control"
+              min="0"
+              step="0.5"
+              placeholder="1">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="service_description">Descripción</label>
+            <textarea 
+              id="service_description"
+              [(ngModel)]="serviceFormData.description"
+              name="service_description"
+              class="form-control"
+              rows="2"
+              placeholder="Descripción del servicio..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeServiceForm()">Cancelar</button>
+        <button class="btn btn-primary" (click)="createServiceFromTicket()">
+          <i class="fas fa-save"></i>
+          Crear y Agregar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Action Button (FAB) -->
+  <button
+    (click)="openForm()"
+    class="fab-button"
+    title="Nuevo Ticket"
+    [disabled]="loading"
+  >
+    <i class="fas fa-plus"></i>
+  </button>
 </div>
