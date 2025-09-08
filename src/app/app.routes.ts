@@ -35,7 +35,7 @@ export const routes: Routes = [
     {path: 'products', component: ProductsComponent}, // Alias para móvil
     {path: 'servicios', component: SupabaseServicesComponent}, // Nueva versión con Supabase
     {path: 'services', component: SupabaseServicesComponent}, // Alias para móvil
-    {path: 'trabajos', component: SupabaseServicesComponent}, // Redirección del antiguo nombre
+    {path: 'servicios', component: SupabaseServicesComponent}, // Redirección del antiguo nombre
     {path: 'works', component: SupabaseServicesComponent}, // Alias para móvil
     {path: 'mobile', component: MobileDashboardComponent},
     {path: 'onboarding', component: OnboardingCenterComponent},

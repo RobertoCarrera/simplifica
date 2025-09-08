@@ -295,9 +295,9 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 4,
-      label: 'Trabajos',
+      label: 'Servicios',
       icon: 'build',
-      route: '/trabajos'
+      route: '/servicios'
     },
     {
       id: 5,

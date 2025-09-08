@@ -434,7 +434,7 @@ export class NotificationDemoComponent {
     setTimeout(() => {
       this.notificationService.createNotification({
         type: 'info',
-        title: 'Trabajo Iniciado',
+        title: 'Servicio Iniciado',
         message: `Se comenzó a trabajar en el ticket ${ticketId}`,
         priority: 'medium',
         category: 'workflow',

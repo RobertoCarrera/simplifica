@@ -395,7 +395,7 @@ export class DashboardWorkshopComponent implements OnInit{
   //       normalize(service.cliente.apellidos.toLowerCase()).includes(searchTerm) ||
   //       normalize(service.fecha_vencimiento.toString()).startsWith(searchTerm) ||
   //       normalize(service.estado.toString()).includes(searchTerm) || 
-  //       (service.trabajos?.some(trabajo => normalize(trabajo.nombre).includes(searchTerm)) ?? false) ||
+  //       (service.servicios?.some(servicio => normalize(servicio.nombre).includes(searchTerm)) ?? false) ||
   //       // Filtrar por fecha de vencimiento
   //       normalize(fechaVencimientoFormateada1).includes(searchTerm) ||
   //       normalize(fechaVencimientoFormateada2).toLowerCase().includes(searchTerm) ||

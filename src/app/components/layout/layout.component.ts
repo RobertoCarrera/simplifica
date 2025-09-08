@@ -80,15 +80,15 @@ import { AnimationService } from '../../services/animation.service';
                </div>
             </a>
             
-            <a routerLink="/trabajos" 
+            <a routerLink="/servicios" 
                routerLinkActive="active-nav-item"
                class="nav-item group relative"
                [class.collapsed-nav]="sidebarCollapsed()">
                <span class="nav-icon">🔧</span>
-               <span *ngIf="!sidebarCollapsed()" class="nav-text">Trabajos</span>
+               <span *ngIf="!sidebarCollapsed()" class="nav-text">Servicios</span>
                <div *ngIf="sidebarCollapsed()" 
                     class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                 Trabajos
+                 Servicios
                </div>
             </a>
             
@@ -341,7 +341,7 @@ export class LayoutComponent {
       '/clientes': 'Gestión de Clientes',
       '/tickets': 'Tickets de Soporte',
       '/productos': 'Catálogo de Productos',
-      '/trabajos': 'Servicios y Trabajos',
+      '/servicios': 'Servicios',
       '/setup-db': 'Configuración de Base de Datos'
     };
     

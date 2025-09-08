@@ -7,10 +7,10 @@ export interface Service {
     created_at: Date,
     fecha_vencimiento: Date,
     unidades: number,
-    trabajo_id: string[],
+    servicio_id: string[],
     producto_id: string[],
     ticket_id: string,
-    trabajo: Work,
+    servicio: Work,
     producto: Product | null,
     finalizado: boolean
 }

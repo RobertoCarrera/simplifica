@@ -156,7 +156,7 @@ export class ClientsComponent implements OnInit {
   }
 }
 
-// 3. En jobs.component.ts - manejo de trabajos con archivos:
+// 3. En jobs.component.ts - manejo de servicios con archivos:
 import { Component, OnInit } from '@angular/core';
 import { JobsMultiTenantService } from '../services/jobs-multi-tenant.service';
 
@@ -164,7 +164,7 @@ import { JobsMultiTenantService } from '../services/jobs-multi-tenant.service';
   selector: 'app-jobs',
   template: `
     <div>
-      <h2>Trabajos</h2>
+      <h2>Servicios</h2>
       
       <div *ngFor="let job of jobs">
         <h3>{{job.title}}</h3>
@@ -192,7 +192,7 @@ export class JobsComponent implements OnInit {
   loadJobs() {
     this.jobsService.getJobs().subscribe(jobs => {
       this.jobs = jobs;
-      // Cargar adjuntos para cada trabajo
+      // Cargar adjuntos para cada servicio
       jobs.forEach(job => {
         this.loadJobAttachments(job.id);
       });

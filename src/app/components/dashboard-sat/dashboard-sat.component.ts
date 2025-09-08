@@ -74,7 +74,7 @@ export class DashboardSatComponent implements OnInit{
       
       // Filtrar por servicios
       const serviciosMatch = ticket.servicios.some(servicio => 
-        normalize(servicio.trabajo.nombre || '').startsWith(searchTerm) ||
+        normalize(servicio.servicio.nombre || '').startsWith(searchTerm) ||
         normalize(servicio.producto?.nombre || '').startsWith(searchTerm)
       );
 

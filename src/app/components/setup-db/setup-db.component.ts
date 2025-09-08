@@ -79,7 +79,7 @@ export class SetupDbComponent implements OnInit {
       // 1. Crear tabla de estados de tickets
       await this.createTicketStages();
       
-      // 2. Crear tabla de trabajos
+      // 2. Crear tabla de servicios
       await this.createWorks();
       
       // 3. Crear tabla de productos
@@ -136,7 +136,7 @@ export class SetupDbComponent implements OnInit {
   }
 
   async createWorks() {
-    this.progress = 'Creando tipos de trabajos...';
+    this.progress = 'Creando tipos de servicios...';
     
     const { error } = await this.supabase.getClient().rpc('exec_sql', {
       sql: `
@@ -151,7 +151,7 @@ export class SetupDbComponent implements OnInit {
           deleted_at TIMESTAMP WITH TIME ZONE NULL
         );
         
-        -- Insertar trabajos típicos
+        -- Insertar servicios típicos
         INSERT INTO works (name, description, estimated_hours, base_price) VALUES
         ('Diagnóstico General', 'Revisión completa del equipo', 1.0, 25.00),
         ('Limpieza Interna', 'Limpieza de ventiladores y componentes', 0.5, 15.00),
@@ -168,7 +168,7 @@ export class SetupDbComponent implements OnInit {
     if (error) {
       this.errors.push('Error creando works: ' + error.message);
     } else {
-      this.results.push('✅ Trabajos creados');
+      this.results.push('✅ Servicios creados');
     }
   }
 

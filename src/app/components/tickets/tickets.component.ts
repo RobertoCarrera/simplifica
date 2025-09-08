@@ -181,12 +181,12 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
             </div>
           </a>
           
-          <a href="/trabajos" 
+          <a href="/servicios" 
              class="flex items-center p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors duration-200">
             <span class="text-2xl mr-3">🔧</span>
             <div>
               <p class="font-medium text-gray-900">Servicios</p>
-              <p class="text-sm text-gray-600">Trabajos disponibles</p>
+              <p class="text-sm text-gray-600">Servicios disponibles</p>
             </div>
           </a>
           

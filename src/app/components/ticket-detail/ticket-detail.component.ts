@@ -113,7 +113,7 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
                    class="border border-gray-200 rounded-lg p-4">
                 <div class="flex justify-between items-start">
                   <div class="flex-1">
-                    <h4 class="font-medium text-gray-900">{{ service.work?.name || 'Trabajo no especificado' }}</h4>
+                    <h4 class="font-medium text-gray-900">{{ service.work?.name || 'Servicio no especificado' }}</h4>
                     <p *ngIf="service.product" class="text-sm text-gray-600 mt-1">
                       📦 Producto: {{ service.product.name }}
                     </p>

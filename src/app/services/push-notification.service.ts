@@ -176,8 +176,8 @@ export class PushNotificationService {
 
   async showWorkCompletedNotification(workId: string, customerName: string): Promise<void> {
     await this.showNotification({
-      title: 'Trabajo Completado',
-      body: `El trabajo para ${customerName} ha sido finalizado`,
+      title: 'Servicio Completado',
+      body: `El servicio para ${customerName} ha sido finalizado`,
       icon: '/favicon.ico',
       tag: `work-${workId}`,
       actions: [

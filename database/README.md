@@ -43,8 +43,8 @@ Deberías ver 1 cliente para cada empresa.
 - **users** - Usuarios de cada empresa
 - **clients** - Clientes de cada empresa
 - **services** - Servicios ofrecidos por cada empresa
-- **jobs** - Trabajos/tickets (servicios o reparaciones)
-- **job_notes** - Notas de los trabajos
+- **jobs** - Servicios/tickets (servicios o reparaciones)
+- **job_notes** - Notas de los servicios
 - **attachments** - Archivos adjuntos
 
 ### Características de Seguridad

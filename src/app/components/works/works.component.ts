@@ -13,7 +13,7 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
         <div class="flex items-center justify-between">
           <div>
             <h1 class="text-2xl font-bold text-gray-900">Catálogo de Servicios</h1>
-            <p class="text-gray-600 mt-1">Trabajos y servicios técnicos disponibles</p>
+            <p class="text-gray-600 mt-1">Servicios técnicos disponibles</p>
           </div>
           <div class="flex space-x-2">
             <span class="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
@@ -155,7 +155,7 @@ export class WorksComponent implements OnInit {
   }
 
   async loadWorks() {
-    console.log('🔧 Cargando trabajos...');
+    console.log('🔧 Cargando servicios...');
     this.loading = true;
     this.error = null;
     
@@ -166,10 +166,10 @@ export class WorksComponent implements OnInit {
         .is('deleted_at', null)
         .order('name');
       
-      if (error) throw new Error('Error trabajos: ' + error.message);
+      if (error) throw new Error('Error servicios: ' + error.message);
       
       this.works = works || [];
-      console.log('✅ Trabajos cargados:', this.works.length);
+      console.log('✅ Servicios cargados:', this.works.length);
       
     } catch (error: any) {
       this.error = error.message;

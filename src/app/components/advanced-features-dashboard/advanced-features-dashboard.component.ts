@@ -309,7 +309,7 @@ export class AdvancedFeaturesDashboardComponent implements OnInit {
     {
       id: 'workflows',
       name: 'Automatización de Workflows',
-      description: 'Constructor visual de flujos de trabajo automatizados',
+      description: 'Constructor visual de flujos de servicios automatizados',
       icon: '🤖',
       color: 'bg-gradient-to-br from-orange-500 to-orange-600',
       route: '/workflows',

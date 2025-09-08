@@ -8,11 +8,11 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
   imports: [CommonModule],
   template: `
     <div style="padding: 20px; font-family: Arial; background: lightcoral;">
-      <h1>🔧 TRABAJOS / SERVICIOS</h1>
+      <h1>🔧 SERVICIOS</h1>
       
       <div style="background: #f0f0f0; padding: 10px; margin: 10px 0;">
         <p><strong>Loading:</strong> {{ loading }}</p>
-        <p><strong>Trabajos:</strong> {{ works.length }}</p>
+        <p><strong>Servicios:</strong> {{ works.length }}</p>
         <p><strong>Error:</strong> {{ error || 'Ninguno' }}</p>
       </div>
       
@@ -25,7 +25,7 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
       
       <!-- Loading -->
       <div *ngIf="loading" style="background: yellow; padding: 10px;">
-        ⏳ Cargando trabajos...
+        ⏳ Cargando servicios...
       </div>
       
       <!-- Error -->
@@ -33,9 +33,9 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
         ❌ {{ error }}
       </div>
       
-      <!-- Trabajos -->
+      <!-- Servicios -->
       <div *ngIf="!loading && !error">
-        <h3>🔧 Catálogo de Trabajos ({{ works.length }}):</h3>
+        <h3>🔧 Catálogo de Servicios ({{ works.length }}):</h3>
         
         <div *ngFor="let work of works" style="border: 2px solid #333; margin: 10px 0; padding: 15px; background: white; border-radius: 5px;">
           <h4 style="margin: 0 0 10px 0; color: #333;">{{ work.name }}</h4>
@@ -56,7 +56,7 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
         </div>
         
         <div *ngIf="works.length === 0" style="background: orange; padding: 10px; margin-top: 20px;">
-          📭 No hay trabajos definidos
+          📭 No hay servicios definidos
         </div>
       </div>
     </div>
@@ -75,7 +75,7 @@ export class WorksComponent implements OnInit {
   }
 
   async loadWorks() {
-    console.log('🔧 Cargando trabajos...');
+    console.log('🔧 Cargando servicios...');
     this.loading = true;
     this.error = null;
     
@@ -86,10 +86,10 @@ export class WorksComponent implements OnInit {
         .is('deleted_at', null)
         .order('base_price', { ascending: false });
       
-      if (error) throw new Error('Error trabajos: ' + error.message);
+      if (error) throw new Error('Error servicios: ' + error.message);
       
       this.works = works || [];
-      console.log('✅ Trabajos cargados:', this.works.length);
+      console.log('✅ Servicios cargados:', this.works.length);
       
     } catch (error: any) {
       this.error = error.message;

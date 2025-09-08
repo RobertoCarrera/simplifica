@@ -8,7 +8,7 @@ import { Work } from '../models/work';
 })
 export class WorksService {
 
-  private apiUrl = "https://a2022.twidget.io/trabajos";
+  private apiUrl = "https://a2022.twidget.io/servicios";
   
   constructor(private http: HttpClient){}
 

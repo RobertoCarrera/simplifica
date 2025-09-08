@@ -265,7 +265,7 @@ import { OfflineStorageService } from '../../services/offline-storage.service';
               class="flex flex-col items-center p-4 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all"
             >
               <span class="material-icons text-2xl mb-2">build</span>
-              <span class="text-sm font-medium">Trabajos</span>
+              <span class="text-sm font-medium">Servicios</span>
             </a>
 
             <a

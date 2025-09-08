@@ -30,8 +30,8 @@
                             <td class="align-content-center" #fecha_vencimiento>{{service.fecha_vencimiento | date:'dd/MM/yyyy'}}</td>
                             <td class="align-content-center" #estado_nombre>{{service.estado.nombre}}</td>
                             <td class="align-content-center" #categories>
-                                <p class="m-0" *ngFor="let trabajo of service.trabajos">
-                                    {{trabajo.nombre}}
+                                <p class="m-0" *ngFor="let servicio of service.servicios">
+                                    {{servicio.nombre}}
                                 </p>
                             </td>
                         </tr> -->

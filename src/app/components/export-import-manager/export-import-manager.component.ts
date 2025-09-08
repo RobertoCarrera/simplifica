@@ -91,7 +91,7 @@ import {
           <div class="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-4 text-white">
             <div class="flex items-center justify-between">
               <div>
-                <p class="text-orange-100 text-sm">Trabajos Activos</p>
+                <p class="text-orange-100 text-sm">Servicios Activos</p>
                 <p class="text-2xl font-bold">{{ activeJobs().length }}</p>
               </div>
               <i class="bi bi-clock text-3xl text-orange-200"></i>
@@ -258,9 +258,9 @@ import {
             <div class="flex items-center justify-between">
               <h2 class="text-lg font-semibold text-gray-900">
                 @if (activeTab() === 'export') {
-                  Trabajos de Exportación
+                  Servicios de Exportación
                 } @else {
-                  Trabajos de Importación
+                  Servicios de Importación
                 }
               </h2>
               
@@ -279,7 +279,7 @@ import {
                   [(ngModel)]="jobFilter"
                   class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="all">Todos los trabajos</option>
+                  <option value="all">Todos los servicios</option>
                   <option value="running">En progreso</option>
                   <option value="completed">Completados</option>
                   <option value="failed">Fallidos</option>
@@ -293,7 +293,7 @@ import {
             @if (filteredJobs().length === 0) {
               <div class="text-center py-12">
                 <i class="bi bi-inbox text-6xl text-gray-300 mb-4"></i>
-                <h3 class="text-lg font-medium text-gray-600 mb-2">No hay trabajos</h3>
+                <h3 class="text-lg font-medium text-gray-600 mb-2">No hay servicios</h3>
                 <p class="text-gray-500">
                   @if (activeTab() === 'export') {
                     Crea tu primera exportación usando las plantillas de la izquierda
@@ -494,7 +494,7 @@ import {
                     <option value="customers">Clientes</option>
                     <option value="tickets">Tickets</option>
                     <option value="products">Productos</option>
-                    <option value="works">Trabajos</option>
+                    <option value="works">Servicios</option>
                   </select>
                 </div>
                 
@@ -710,7 +710,7 @@ export class ExportImportManagerComponent implements OnInit {
   downloadExport(jobId: string) {
     try {
       this.exportImportService.downloadExportFile(jobId);
-      console.log('📥 Descarga iniciada para trabajo:', jobId);
+      console.log('📥 Descarga iniciada para servicio:', jobId);
     } catch (error) {
       console.error('❌ Error descargando archivo:', error);
     }
@@ -718,16 +718,16 @@ export class ExportImportManagerComponent implements OnInit {
 
   cancelJob(jobId: string) {
     this.exportImportService.cancelJob(jobId);
-    console.log('🛑 Trabajo cancelado:', jobId);
+    console.log('🛑 Servicio cancelado:', jobId);
   }
 
   viewJobDetails(job: ExportJob | ImportJob) {
-    console.log('👁️ Viendo detalles del trabajo:', job);
+    console.log('👁️ Viendo detalles del servicio:', job);
     // TODO: Open job details modal
   }
 
   refreshJobs() {
-    console.log('🔄 Actualizando lista de trabajos');
+    console.log('🔄 Actualizando lista de servicios');
     // Force refresh - could call service methods if needed
   }
 

@@ -29,7 +29,7 @@
               <tr>
                 <th class="px-4 py-3 text-left text-sm font-medium text-gray-900">Unidades</th>
                 <th class="px-4 py-3 text-left text-sm font-medium text-gray-900">Productos</th>
-                <th class="px-4 py-3 text-left text-sm font-medium text-gray-900">Trabajos</th>
+                <th class="px-4 py-3 text-left text-sm font-medium text-gray-900">Servicio</th>
                 <th class="px-4 py-3 text-center text-sm font-medium text-gray-900">Acabado</th>
               </tr>
             </thead>
@@ -37,7 +37,7 @@
                 <tr *ngFor="let servicio of ticket.servicios" class="customer">
                     <td class="align-content-center" #unidades>{{servicio.unidades}}</td>
                     <td class="align-content-center" #producto>{{servicio.producto?.nombre || ''}}</td>
-                    <td class="align-content-center" #trabajo>{{servicio.trabajo.nombre}}</td>
+                    <td class="align-content-center" #servicio>{{servicio.servicio.nombre}}</td>
                     <td class="align-content-center text-center" #finalizado>
                       <input type="checkbox" name="finalizado" id="" [checked]="servicio.finalizado">
                     </td>
@@ -75,7 +75,6 @@
         </div>
       </div>
     </div>
-  </div>
   <app-modal-customer
     *ngIf="showCustomerModal"
     [customer]="selectedCustomer"

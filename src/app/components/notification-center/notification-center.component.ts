@@ -116,7 +116,7 @@ import {
               <option value="customer">Clientes</option>
               <option value="system">Sistema</option>
               <option value="reminder">Recordatorios</option>
-              <option value="workflow">Flujo de trabajo</option>
+              <option value="workflow">Flujo de servicios</option>
               <option value="general">General</option>
             </select>
           </div>
