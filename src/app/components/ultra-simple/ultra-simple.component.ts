@@ -139,7 +139,7 @@ import {
       <div class="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 class="text-lg font-medium text-gray-900 mb-4">Acciones rápidas</h3>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <a href="/tickets?tenant={{ tenant || '' }}" 
+          <a href="/tickets" 
              class="flex items-center p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors duration-200">
             <span class="text-2xl mr-3">🎫</span>
             <div>

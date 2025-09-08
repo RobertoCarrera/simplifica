@@ -19,6 +19,7 @@ import { AnimationShowcaseComponent } from './components/animation-showcase/anim
 import { SupabaseCustomersComponent } from './components/supabase-customers/supabase-customers.component';
 import { TestSupabaseComponent } from './components/test-supabase/test-supabase.component';
 import { SupabaseServicesComponent } from './components/supabase-services/supabase-services.component';
+import { SupabaseTicketsComponent } from './components/supabase-tickets/supabase-tickets.component';
 
 export const routes: Routes = [
     {path: '', component: UltraSimpleComponent}, // Ruta por defecto
@@ -27,7 +28,8 @@ export const routes: Routes = [
     {path: 'customers', component: SupabaseCustomersComponent}, // Alias para móvil
     {path: 'animaciones', component: AnimationShowcaseComponent}, // Demostración de animaciones
     {path: 'animations', component: AnimationShowcaseComponent}, // Alias para móvil
-    {path: 'tickets', component: TicketsComponent},
+    {path: 'tickets-old', component: TicketsComponent}, // Versión antigua
+    {path: 'tickets', component: SupabaseTicketsComponent}, // Nueva versión con Supabase
     {path: 'ticket/:id', component: TicketDetailComponent},
     {path: 'productos', component: ProductsComponent},
     {path: 'products', component: ProductsComponent}, // Alias para móvil

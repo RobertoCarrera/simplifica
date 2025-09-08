@@ -1,0 +1,448 @@
+<div class="tickets-container">
+  <!-- Header Section -->
+  <div class="header-section">
+    <div class="header-content">
+      <div class="header-text">
+        <h1 class="page-title">
+          <i class="fas fa-ticket-alt"></i>
+          Sistema de Tickets
+        </h1>
+        <p class="page-subtitle">Gestión completa de tickets y reparaciones - {{ getCompanyName() }}</p>
+      </div>
+      <div class="header-actions">
+        <!-- Company Selector for Development -->
+        <div class="company-selector">
+          <label for="companySelect">Empresa:</label>
+          <select id="companySelect" class="form-control" [(ngModel)]="selectedCompanyId" (change)="onCompanyChange()">
+            <option value="1">SatPCGo (ID: 1)</option>
+            <option value="2">Michinanny (ID: 2)</option>
+            <option value="3">Libera Tus Creencias (ID: 3)</option>
+          </select>
+        </div>
+        <!-- View Mode Toggle -->
+        <button class="btn btn-secondary" (click)="toggleViewMode()">
+          <i class="fas" [class.fa-list]="viewMode === 'board'" [class.fa-th-large]="viewMode === 'list'"></i>
+          {{ viewMode === 'list' ? 'Vista Board' : 'Vista Lista' }}
+        </button>
+        <button class="btn btn-primary" (click)="openForm()">
+          <i class="fas fa-plus"></i>
+          Nuevo Ticket
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics Grid -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon total">
+        <i class="fas fa-ticket-alt"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-number">{{ stats.total }}</div>
+        <div class="stat-label">Total Tickets</div>
+      </div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon open">
+        <i class="fas fa-folder-open"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-number">{{ stats.open }}</div>
+        <div class="stat-label">Abiertos</div>
+      </div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon progress">
+        <i class="fas fa-cogs"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-number">{{ stats.inProgress }}</div>
+        <div class="stat-label">En Progreso</div>
+      </div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="stat-icon completed">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-number">{{ stats.completed }}</div>
+        <div class="stat-label">Completados</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon overdue">
+        <i class="fas fa-exclamation-triangle"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-number">{{ stats.overdue }}</div>
+        <div class="stat-label">Vencidos</div>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon revenue">
+        <i class="fas fa-euro-sign"></i>
+      </div>
+      <div class="stat-content">
+        <div class="stat-number">{{ stats.totalRevenue }}€</div>
+        <div class="stat-label">Ingresos Totales</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section">
+    <div class="filters-content">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input 
+          type="text" 
+          placeholder="Buscar tickets..." 
+          [(ngModel)]="searchTerm"
+          (input)="onSearch()"
+          class="search-input">
+      </div>
+      
+      <div class="filter-group">
+        <select [(ngModel)]="filterStage" (change)="onFilterChange()" class="filter-select">
+          <option value="">Todos los estados</option>
+          <option *ngFor="let stage of stages" [value]="stage.id">{{ stage.name }}</option>
+        </select>
+        
+        <select [(ngModel)]="filterPriority" (change)="onFilterChange()" class="filter-select">
+          <option value="">Todas las prioridades</option>
+          <option value="low">Baja</option>
+          <option value="normal">Normal</option>
+          <option value="high">Alta</option>
+          <option value="critical">Crítica</option>
+        </select>
+        
+        <select [(ngModel)]="filterStatus" (change)="onFilterChange()" class="filter-select">
+          <option value="">Todos</option>
+          <option value="open">Abiertos</option>
+          <option value="completed">Completados</option>
+          <option value="overdue">Vencidos</option>
+        </select>
+        
+        <button class="btn btn-secondary" (click)="clearFilters()">
+          <i class="fas fa-times"></i>
+          Limpiar
+        </button>
+      </div>
+    </div>
+    
+    <div class="results-info">
+      <span class="results-count">{{ filteredTickets.length }} ticket(s) encontrado(s)</span>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="loading-content">
+      <div class="spinner"></div>
+      <p>Cargando tickets...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="error-container">
+    <div class="error-content">
+      <i class="fas fa-exclamation-triangle"></i>
+      <h3>Error al cargar tickets</h3>
+      <p>{{ error }}</p>
+      <button class="btn btn-primary" (click)="loadTickets()">Reintentar</button>
+    </div>
+  </div>
+
+  <!-- Tickets Content -->
+  <div *ngIf="!loading && !error" class="tickets-content">
+    
+    <!-- List View -->
+    <div *ngIf="viewMode === 'list'" class="tickets-list">
+      <div *ngFor="let ticket of filteredTickets" class="ticket-card">
+        <div class="ticket-header">
+          <div class="ticket-info">
+            <div class="ticket-number-title">
+              <h3 class="ticket-number">#{{ ticket.ticket_number }}</h3>
+              <h4 class="ticket-title">{{ ticket.title }}</h4>
+            </div>
+            <div class="ticket-badges">
+              <span 
+                [class]="getStatusBadgeClass(ticket.stage!)"
+                [style.background-color]="ticket.stage?.color"
+                class="stage-badge">
+                {{ ticket.stage?.name }}
+              </span>
+              <span 
+                class="priority-badge"
+                [style.color]="getPriorityColor(ticket.priority)">
+                <i class="fas fa-flag"></i>
+                {{ getPriorityLabel(ticket.priority) }}
+              </span>
+              <span *ngIf="isOverdue(ticket)" class="overdue-badge">
+                <i class="fas fa-clock"></i>
+                Vencido
+              </span>
+            </div>
+          </div>
+          <div class="ticket-meta">
+            <div class="ticket-date">{{ formatDate(ticket.created_at) }}</div>
+            <div *ngIf="ticket.total_amount" class="ticket-amount">{{ ticket.total_amount }}€</div>
+          </div>
+        </div>
+
+        <div class="ticket-content">
+          <p class="ticket-description">{{ ticket.description }}</p>
+          
+          <div class="ticket-details">
+            <div class="detail-item">
+              <i class="fas fa-user"></i>
+              <span class="detail-label">Cliente:</span>
+              <span class="detail-value">{{ ticket.client?.name || 'No asignado' }}</span>
+            </div>
+            
+            <div class="detail-item" *ngIf="ticket.due_date">
+              <i class="fas fa-calendar"></i>
+              <span class="detail-label">Fecha límite:</span>
+              <span class="detail-value">{{ formatDate(ticket.due_date) }}</span>
+            </div>
+            
+            <div class="detail-item" *ngIf="ticket.estimated_hours">
+              <i class="fas fa-clock"></i>
+              <span class="detail-label">Horas estimadas:</span>
+              <span class="detail-value">{{ ticket.estimated_hours }}h</span>
+            </div>
+
+            <div class="detail-item" *ngIf="ticket.tags && ticket.tags.length > 0">
+              <i class="fas fa-tags"></i>
+              <span class="detail-label">Tags:</span>
+              <div class="tags-container">
+                <span *ngFor="let tag of ticket.tags" class="tag">{{ tag }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ticket-actions">
+          <button class="btn btn-sm btn-secondary" (click)="viewTicketDetail(ticket)">
+            <i class="fas fa-eye"></i>
+            Ver Detalle
+          </button>
+          <button class="btn btn-sm btn-outline" (click)="openForm(ticket)">
+            <i class="fas fa-edit"></i>
+            Editar
+          </button>
+          <button class="btn btn-sm btn-danger" (click)="deleteTicket(ticket)">
+            <i class="fas fa-trash"></i>
+            Eliminar
+          </button>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="filteredTickets.length === 0" class="empty-state">
+        <i class="fas fa-ticket-alt"></i>
+        <h3>No hay tickets</h3>
+        <p>No se encontraron tickets con los filtros aplicados.</p>
+        <button class="btn btn-primary" (click)="openForm()">
+          <i class="fas fa-plus"></i>
+          Crear primer ticket
+        </button>
+      </div>
+    </div>
+
+    <!-- Board View -->
+    <div *ngIf="viewMode === 'board'" class="tickets-board">
+      <div *ngFor="let stage of stages" class="board-column">
+        <div class="column-header" [style.background-color]="stage.color">
+          <h3 class="column-title">{{ stage.name }}</h3>
+          <span class="column-count">{{ getTicketsByStage(stage.id).length }}</span>
+        </div>
+        
+        <div class="column-content">
+          <div *ngFor="let ticket of getTicketsByStage(stage.id)" class="board-ticket">
+            <div class="board-ticket-header">
+              <span class="board-ticket-number">#{{ ticket.ticket_number }}</span>
+              <span 
+                class="board-priority"
+                [style.color]="getPriorityColor(ticket.priority)">
+                <i class="fas fa-flag"></i>
+              </span>
+            </div>
+            
+            <h4 class="board-ticket-title">{{ ticket.title }}</h4>
+            <p class="board-ticket-description">{{ ticket.description | slice:0:100 }}{{ ticket.description.length > 100 ? '...' : '' }}</p>
+            
+            <div class="board-ticket-meta">
+              <div class="board-client">
+                <i class="fas fa-user"></i>
+                {{ ticket.client?.name || 'Sin cliente' }}
+              </div>
+              <div *ngIf="ticket.total_amount" class="board-amount">
+                {{ ticket.total_amount }}€
+              </div>
+            </div>
+
+            <div class="board-ticket-actions">
+              <button class="board-action-btn" (click)="viewTicketDetail(ticket)">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="board-action-btn" (click)="openForm(ticket)">
+                <i class="fas fa-edit"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Modal -->
+  <div *ngIf="showForm" class="modal-overlay" (click)="closeForm()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <i class="fas fa-ticket-alt"></i>
+          {{ editingTicket ? 'Editar Ticket' : 'Nuevo Ticket' }}
+        </h2>
+        <button class="modal-close" (click)="closeForm()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <form class="ticket-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="title">Título *</label>
+              <input 
+                type="text" 
+                id="title"
+                [(ngModel)]="formData.title" 
+                name="title"
+                class="form-control"
+                [class.error]="formErrors['title']"
+                placeholder="Descripción breve del problema">
+              <div *ngIf="formErrors['title']" class="error-message">{{ formErrors['title'] }}</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="description">Descripción *</label>
+              <textarea 
+                id="description"
+                [(ngModel)]="formData.description" 
+                name="description"
+                class="form-control"
+                [class.error]="formErrors['description']"
+                rows="4"
+                placeholder="Descripción detallada del problema o solicitud"></textarea>
+              <div *ngIf="formErrors['description']" class="error-message">{{ formErrors['description'] }}</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="client_id">Cliente *</label>
+              <input 
+                type="text" 
+                id="client_id"
+                [(ngModel)]="formData.client_id" 
+                name="client_id"
+                class="form-control"
+                [class.error]="formErrors['client_id']"
+                placeholder="ID o nombre del cliente">
+              <div *ngIf="formErrors['client_id']" class="error-message">{{ formErrors['client_id'] }}</div>
+            </div>
+
+            <div class="form-group">
+              <label for="stage_id">Estado *</label>
+              <select 
+                id="stage_id"
+                [(ngModel)]="formData.stage_id" 
+                name="stage_id"
+                class="form-control"
+                [class.error]="formErrors['stage_id']">
+                <option value="">Seleccionar estado</option>
+                <option *ngFor="let stage of stages" [value]="stage.id">{{ stage.name }}</option>
+              </select>
+              <div *ngIf="formErrors['stage_id']" class="error-message">{{ formErrors['stage_id'] }}</div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="priority">Prioridad</label>
+              <select 
+                id="priority"
+                [(ngModel)]="formData.priority" 
+                name="priority"
+                class="form-control">
+                <option value="low">Baja</option>
+                <option value="normal">Normal</option>
+                <option value="high">Alta</option>
+                <option value="critical">Crítica</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="due_date">Fecha límite</label>
+              <input 
+                type="date" 
+                id="due_date"
+                [(ngModel)]="formData.due_date" 
+                name="due_date"
+                class="form-control">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="estimated_hours">Horas estimadas</label>
+              <input 
+                type="number" 
+                id="estimated_hours"
+                [(ngModel)]="formData.estimated_hours" 
+                name="estimated_hours"
+                class="form-control"
+                [class.error]="formErrors['estimated_hours']"
+                min="0"
+                step="0.5"
+                placeholder="0">
+              <div *ngIf="formErrors['estimated_hours']" class="error-message">{{ formErrors['estimated_hours'] }}</div>
+            </div>
+
+            <div class="form-group">
+              <label for="total_amount">Monto total (€)</label>
+              <input 
+                type="number" 
+                id="total_amount"
+                [(ngModel)]="formData.total_amount" 
+                name="total_amount"
+                class="form-control"
+                [class.error]="formErrors['total_amount']"
+                min="0"
+                step="0.01"
+                placeholder="0.00">
+              <div *ngIf="formErrors['total_amount']" class="error-message">{{ formErrors['total_amount'] }}</div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeForm()">Cancelar</button>
+        <button class="btn btn-primary" (click)="saveTicket()" [disabled]="loading">
+          <i class="fas fa-save"></i>
+          {{ editingTicket ? 'Actualizar' : 'Crear' }} Ticket
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
