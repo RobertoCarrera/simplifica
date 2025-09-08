@@ -35,15 +35,7 @@ import { ToastService } from '../../services/toast.service';
           </div>
           
           <!-- Actions -->
-          <div class="header-actions">
-            <button
-              (click)="openForm()"
-              class="btn btn-primary"
-            >
-              <i class="fas fa-plus"></i>
-              Nuevo Cliente
-            </button>
-            
+          <div class="header-actions">            
             <button
               (click)="exportCustomers()"
               class="btn btn-secondary"
@@ -64,10 +56,22 @@ import { ToastService } from '../../services/toast.service';
               (click)="fileInput.click()"
               class="btn btn-secondary"
               [disabled]="isLoading()"
+              title="Importar clientes desde CSV"
             >
               <i class="fas fa-upload"></i>
               Importar CSV
+              <i class="fas fa-info-circle info-icon" (click)="showImportInfo($event)"></i>
             </button>
+            <div class="search-input-container">
+              <i class="fas fa-search search-icon"></i>
+              <input
+                type="text"
+                [(ngModel)]="searchTerm"
+                (ngModelChange)="onSearchChange($event)"
+                placeholder="Buscar clientes por nombre, email o DNI..."
+                class="search-input-full"
+              >
+            </div>
           </div>
         </div>
       </div>
@@ -86,16 +90,6 @@ import { ToastService } from '../../services/toast.service';
           </div>
           
           <div class="stat-card">
-            <div class="stat-icon active">
-              <i class="fas fa-chart-line"></i>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ stats()?.activeThisMonth || 0 }}</div>
-              <div class="stat-label">Activos este Mes</div>
-            </div>
-          </div>
-          
-          <div class="stat-card">
             <div class="stat-icon new">
               <i class="fas fa-user-plus"></i>
             </div>
@@ -104,76 +98,18 @@ import { ToastService } from '../../services/toast.service';
               <div class="stat-label">Nuevos esta Semana</div>
             </div>
           </div>
-        </div>
-      }
-
-      <!-- Filters and Search -->
-      <div class="filters-section">
-        <div class="filters-card">
-          <div class="filters-grid">
-            
-            <!-- Search -->
-            <div class="search-group">
-              <label class="input-label">
-                <i class="fas fa-search"></i>
-                Buscar clientes
-              </label>
-              <input
-                type="text"
-                [(ngModel)]="searchTerm"
-                (ngModelChange)="onSearchChange($event)"
-                placeholder="Nombre, email, DNI..."
-                class="search-input"
-              >
+          
+          <div class="stat-card">
+            <div class="stat-icon active">
+              <i class="fas fa-calendar-plus"></i>
             </div>
-
-            <!-- Sort -->
-            <div class="filter-group">
-              <label class="input-label">
-                <i class="fas fa-sort"></i>
-                Ordenar por
-              </label>
-              <select
-                [(ngModel)]="sortBy"
-                (ngModelChange)="onFiltersChange()"
-                class="filter-select"
-              >
-                <option value="created_at">Fecha</option>
-                <option value="nombre">Nombre</option>
-                <option value="apellidos">Apellidos</option>
-              </select>
-            </div>
-
-            <!-- Sort Order -->
-            <div class="filter-group">
-              <label class="input-label">
-                <i class="fas fa-arrow-up"></i>
-                Orden
-              </label>
-              <select
-                [(ngModel)]="sortOrder"
-                (ngModelChange)="onFiltersChange()"
-                class="filter-select"
-              >
-                <option value="desc">Desc</option>
-                <option value="asc">Asc</option>
-              </select>
-            </div>
-
-            <!-- Clear Filters Button -->
-            <div class="filter-group">
-              <label class="input-label">&nbsp;</label>
-              <button
-                (click)="clearFilters()"
-                class="btn btn-secondary clear-btn"
-                title="Limpiar filtros"
-              >
-                <i class="fas fa-times"></i>
-              </button>
+            <div class="stat-content">
+              <div class="stat-value">{{ stats()?.newThisMonth || 0 }}</div>
+              <div class="stat-label">Nuevos este Mes</div>
             </div>
           </div>
         </div>
-      </div>
+      }
 
       <!-- Loading State -->
       @if (isLoading() && !customers().length) {
@@ -253,13 +189,6 @@ import { ToastService } from '../../services/toast.service';
 
               <!-- Actions -->
               <div class="customer-actions">
-                <button
-                  (click)="viewCustomer(customer); $event.stopPropagation()"
-                  class="action-btn view"
-                  title="Ver detalles"
-                >
-                  <i class="fas fa-eye"></i>
-                </button>
                 
                 <button
                   (click)="editCustomer(customer); $event.stopPropagation()"
@@ -267,14 +196,6 @@ import { ToastService } from '../../services/toast.service';
                   title="Editar cliente"
                 >
                   <i class="fas fa-edit"></i>
-                </button>
-                
-                <button
-                  (click)="duplicateCustomer(customer); $event.stopPropagation()"
-                  class="action-btn duplicate"
-                  title="Duplicar cliente"
-                >
-                  <i class="fas fa-copy"></i>
                 </button>
                 
                 <button
@@ -485,6 +406,16 @@ import { ToastService } from '../../services/toast.service';
         </div>
       </div>
     }
+
+    <!-- Floating Action Button (FAB) -->
+    <button
+      (click)="openForm()"
+      class="fab-button"
+      title="Nuevo Cliente"
+      [disabled]="isLoading()"
+    >
+      <i class="fas fa-plus"></i>
+    </button>
   `,
   styleUrls: ['./supabase-customers.component.scss']
 })
@@ -789,24 +720,40 @@ export class SupabaseCustomersComponent implements OnInit {
     const file = event.target.files[0];
     if (!file) return;
 
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      this.toastService.error('Error', 'Por favor selecciona un archivo CSV válido');
+      return;
+    }
+
+    this.toastService.info('Procesando...', 'Importando clientes desde CSV');
+
     this.customersService.importFromCSV(file).subscribe({
       next: (customers) => {
-        // Success handled by service
+        this.toastService.success('¡Éxito!', `${customers.length} clientes importados correctamente`);
+        // Limpiar el input para permitir reimportar el mismo archivo
+        event.target.value = '';
       },
       error: (error) => {
         console.error('Error importing customers:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido al importar';
+        this.toastService.error('Error de Importación', errorMessage);
+        // Limpiar el input
+        event.target.value = '';
       }
     });
+  }
 
-    // Reset file input
-    event.target.value = '';
+  showImportInfo(event: Event) {
+    event.stopPropagation(); // Evitar que se abra el selector de archivos
+    
+    const infoMessage = `Formato: Nombre, Apellidos, Email, DNI, Teléfono - Máximo 500 clientes.`;
+    
+    this.toastService.info('CSV requerido', infoMessage, 6000);
   }
 
   clearFilters() {
     this.searchTerm.set('');
-    this.sortBy.set('created_at');
-    this.sortOrder.set('desc');
-    this.onFiltersChange();
+    this.onSearchChange('');
   }
 
   // Utility methods

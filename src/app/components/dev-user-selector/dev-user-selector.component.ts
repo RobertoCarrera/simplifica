@@ -27,7 +27,7 @@ interface SystemUser {
             [(ngModel)]="selectedUserId" 
             (change)="onUserChange()"
             style="padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; min-width: 300px;">
-            <option value="">Seleccionar usuario</option>
+            <option value="">{{ users().length > 0 ? 'Seleccionar usuario' : 'Cargando usuarios...' }}</option>
             <option *ngFor="let user of users()" [value]="user.id">
               {{ user.name }} - {{ user.email }} ({{ user.customerCount || 0 }} clientes)
             </option>
@@ -62,15 +62,8 @@ export class DevUserSelectorComponent implements OnInit {
   public config = getCurrentSupabaseConfig();
   lastDiagnostic = signal<string>('');
   
-  // Usuarios del sistema - los que me pasaste
-  private systemUsers = [
-    {"id":"0c0053d2-5725-406d-b66e-64bf97d43953","company_id":"00000000-0000-4000-8000-000000000001","email":"admin@demo1.com","name":"Admin Demo 1","role":"owner"},
-    {"id":"1e816ec8-4a5d-4e43-806a-6c7cf2ec6950","company_id":"c0976b79-a10a-4e94-9f1d-f78afcdbee2a","email":"alberto@satpcgo.es","name":"Alberto Dominguez","role":"member"},
-    {"id":"2d2bd829-f80f-423e-b944-7bb407c08014","company_id":"1e8ade8f-4267-49fb-ae89-40ee18c8b377","email":"eva@michinanny.es","name":"Eva Marín","role":"member"},
-    {"id":"4ae3c31e-9f5b-487f-81f7-e51432691058","company_id":"1e8ade8f-4267-49fb-ae89-40ee18c8b377","email":"marina@michinanny.es","name":"Marina Casado García","role":"member"},
-    {"id":"667a24d4-2fb7-4f79-a5ac-a2872a30695e","company_id":"00000000-0000-4000-8000-000000000002","email":"admin@demo2.com","name":"Admin Demo 2","role":"owner"},
-    {"id":"bdc51474-9269-4168-b25d-b4eb44b05d69","company_id":"c0159eb0-ecbf-465f-91ba-ee295fdc0f1a","email":"vanesa@liberatuscreencias.com","name":"Vanesa Santa Maria Garibaldi","role":"member"}
-  ];
+  // Array dinámico que se cargará desde la base de datos
+  private systemUsers: SystemUser[] = [];
   
   users = signal<SystemUser[]>([]);
   selectedUserId: string = '';
@@ -89,7 +82,7 @@ export class DevUserSelectorComponent implements OnInit {
     }
     
     devLog('Iniciando DEV User Selector');
-    this.loadUsers();
+    this.loadSystemUsers();
     
     // Activar diagnóstico automáticamente en desarrollo
     if (this.config.enableDiagnosticLogging) {
@@ -144,9 +137,65 @@ export class DevUserSelectorComponent implements OnInit {
     }
   }
 
+  async loadSystemUsers() {
+    try {
+      devLog('Cargando usuarios del sistema desde la base de datos...');
+      
+      // Obtener todos los usuarios activos de la tabla 'users'
+      const { data: usersData, error } = await this.supabase
+        .from('users')
+        .select(`
+          id,
+          name,
+          email,
+          company_id,
+          role,
+          active
+        `)
+        .eq('active', true)
+        .is('deleted_at', null);
+
+      if (error) {
+        devError('Error al cargar usuarios:', error);
+        this.lastDiagnostic.set(`❌ Error al cargar usuarios: ${error.message}`);
+        return;
+      }
+
+      if (!usersData || usersData.length === 0) {
+        devLog('⚠️ No se encontraron usuarios activos en la base de datos');
+        this.lastDiagnostic.set('⚠️ No hay usuarios activos disponibles');
+        return;
+      }
+
+      // Convertir datos a formato SystemUser
+      this.systemUsers = usersData.map(user => ({
+        id: user.id,
+        name: user.name || 'Sin nombre',
+        email: user.email,
+        company_id: user.company_id,
+        role: user.role || 'member'
+      }));
+
+      devLog(`✅ Se cargaron ${this.systemUsers.length} usuarios:`, this.systemUsers);
+      this.lastDiagnostic.set(`✅ Cargados ${this.systemUsers.length} usuarios del sistema`);
+      
+      // Ahora cargar los conteos de clientes
+      await this.loadUsers();
+
+    } catch (error) {
+      devError('Error al cargar usuarios del sistema:', error);
+      this.lastDiagnostic.set(`❌ Error: ${error}`);
+    }
+  }
+
   async loadUsers() {
     try {
-      devLog('Cargando usuarios del sistema...');
+      devLog('Calculando conteos de clientes para usuarios...');
+      
+      if (this.systemUsers.length === 0) {
+        devLog('⚠️ No hay usuarios del sistema cargados');
+        return;
+      }
       
       // Contar clientes por cada usuario del sistema - usando la tabla 'clients' real
       const usersWithCounts: SystemUser[] = [];
@@ -157,7 +206,8 @@ export class DevUserSelectorComponent implements OnInit {
           const { count: directCount } = await this.supabase
             .from('clients')
             .select('*', { count: 'exact', head: true })
-            .eq('company_id', systemUser.company_id);
+            .eq('company_id', systemUser.company_id)
+            .is('deleted_at', null);
           
           usersWithCounts.push({
             id: systemUser.id,
@@ -180,11 +230,13 @@ export class DevUserSelectorComponent implements OnInit {
         }
       }
 
-      console.log('✅ Usuarios cargados:', usersWithCounts);
+      console.log('✅ Usuarios cargados con conteos:', usersWithCounts);
       this.users.set(usersWithCounts);
+      this.lastDiagnostic.set(`✅ ${usersWithCounts.length} usuarios activos con conteos actualizados`);
 
     } catch (error) {
       console.error('❌ Error al cargar usuarios:', error);
+      this.lastDiagnostic.set(`❌ Error al calcular conteos: ${error}`);
     }
   }
 
@@ -203,7 +255,7 @@ export class DevUserSelectorComponent implements OnInit {
 
   async refreshUsers() {
     console.log('🔄 Refrescando lista de usuarios...');
-    await this.loadUsers();
+    await this.loadSystemUsers();
   }
 
   async createTestCustomers() {

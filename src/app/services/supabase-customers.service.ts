@@ -18,8 +18,8 @@ export interface CustomerFilters {
 
 export interface CustomerStats {
   total: number;
-  activeThisMonth: number;
   newThisWeek: number;
+  newThisMonth: number;
   byLocality: { [key: string]: number };
 }
 
@@ -52,6 +52,11 @@ export class SupabaseCustomersService {
       config: this.config,
       environment: environment.production ? 'production' : 'development'
     });
+    
+    // Cargar cache de usuarios al inicializar
+    if (this.config.enableDevUserSelector) {
+      this.loadSystemUsersCache();
+    }
     
     // Escuchar cambios de usuario en DEV mode
     if (this.config.enableDevUserSelector) {
@@ -215,7 +220,7 @@ export class SupabaseCustomersService {
     if (this.currentDevUserId && this.config.isDevelopmentMode) {
       console.log('DEV: Buscando company_id para usuario:', this.currentDevUserId);
       
-      // Buscar la empresa del usuario seleccionado
+      // Buscar la empresa del usuario seleccionado (ahora sincrónico)
       const selectedUser = this.getCurrentUserFromSystemUsers(this.currentDevUserId);
       if (selectedUser) {
         console.log('DEV: Filtrando por company_id:', selectedUser.company_id);
@@ -227,6 +232,10 @@ export class SupabaseCustomersService {
       console.log('DEV: NO se aplica filtro - traerá TODOS los clientes');
     }
 
+    return this.executeCustomersQuery(query, filters);
+  }
+
+  private executeCustomersQuery(query: any, filters: CustomerFilters): Observable<Customer[]> {
     // Aplicar filtros adicionales (adaptados a la estructura real)
     if (filters.search) {
       query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
@@ -246,8 +255,8 @@ export class SupabaseCustomersService {
     }
 
     console.log('DEV: Ejecutando query...');
-    return from(query).pipe(
-      map(({ data, error }) => {
+    return from(query as Promise<{ data: any; error: any }>).pipe(
+      map(({ data, error }: { data: any; error: any }) => {
         console.log('DEV: Respuesta de query:', { data: data?.length || 0, error });
         if (error) {
           console.error('DEV: Error en query:', error);
@@ -255,7 +264,7 @@ export class SupabaseCustomersService {
         }
         
         if (data && data.length > 0) {
-          console.log('DEV: Primeros 3 clientes encontrados:', data.slice(0, 3).map(c => ({
+          console.log('DEV: Primeros 3 clientes encontrados:', data.slice(0, 3).map((c: any) => ({
             name: c.name,
             email: c.email,
             company_id: c.company_id
@@ -263,7 +272,7 @@ export class SupabaseCustomersService {
         }
         
         // Convertir la estructura de 'clients' a 'Customer' esperada por la aplicación
-        const customers = data?.map(client => ({
+        const customers = data?.map((client: any) => ({
           id: client.id,
           nombre: client.name?.split(' ')[0] || '',
           apellidos: client.name?.split(' ').slice(1).join(' ') || '',
@@ -303,18 +312,47 @@ export class SupabaseCustomersService {
     }
   }
 
-  // Método auxiliar para obtener usuario del sistema
+  // Cache de usuarios del sistema cargados dinámicamente
+  private systemUsersCache: Array<{id: string, company_id: string, name: string, email: string, role: string}> = [];
+
+  // Método auxiliar para obtener usuario del sistema (ahora sincrónico usando cache)
   private getCurrentUserFromSystemUsers(userId: string) {
-    const systemUsers = [
-      {"id":"0c0053d2-5725-406d-b66e-64bf97d43953","company_id":"00000000-0000-4000-8000-000000000001","email":"admin@demo1.com","name":"Admin Demo 1","role":"owner"},
-      {"id":"1e816ec8-4a5d-4e43-806a-6c7cf2ec6950","company_id":"c0976b79-a10a-4e94-9f1d-f78afcdbee2a","email":"alberto@satpcgo.es","name":"Alberto Dominguez","role":"member"},
-      {"id":"2d2bd829-f80f-423e-b944-7bb407c08014","company_id":"1e8ade8f-4267-49fb-ae89-40ee18c8b377","email":"eva@michinanny.es","name":"Eva Marín","role":"member"},
-      {"id":"4ae3c31e-9f5b-487f-81f7-e51432691058","company_id":"1e8ade8f-4267-49fb-ae89-40ee18c8b377","email":"marina@michinanny.es","name":"Marina Casado García","role":"member"},
-      {"id":"667a24d4-2fb7-4f79-a5ac-a2872a30695e","company_id":"00000000-0000-4000-8000-000000000002","email":"admin@demo2.com","name":"Admin Demo 2","role":"owner"},
-      {"id":"bdc51474-9269-4168-b25d-b4eb44b05d69","company_id":"c0159eb0-ecbf-465f-91ba-ee295fdc0f1a","email":"vanesa@liberatuscreencias.com","name":"Vanesa Santa Maria Garibaldi","role":"member"}
-    ];
-    
-    return systemUsers.find(user => user.id === userId);
+    return this.systemUsersCache.find(user => user.id === userId);
+  }
+
+  // Cargar usuarios desde la base de datos para el cache
+  private async loadSystemUsersCache() {
+    try {
+      const { data: usersData, error } = await this.supabase
+        .from('users')
+        .select(`
+          id,
+          name,
+          email,
+          company_id,
+          role
+        `)
+        .eq('active', true)
+        .is('deleted_at', null);
+
+      if (error) {
+        devError('Error al cargar cache de usuarios:', error);
+        return;
+      }
+
+      if (usersData) {
+        this.systemUsersCache = usersData.map(user => ({
+          id: user.id,
+          name: user.name || 'Sin nombre',
+          email: user.email,
+          company_id: user.company_id,
+          role: user.role || 'member'
+        }));
+        devLog('Cache de usuarios actualizado:', this.systemUsersCache.length);
+      }
+    } catch (error) {
+      devError('Error al cargar usuarios del sistema:', error);
+    }
   }
 
   /**
@@ -419,14 +457,14 @@ export class SupabaseCustomersService {
    */
   private createCustomerStandard(customer: CreateCustomerDev): Observable<Customer> {
     // Convertir de Customer a estructura de clients
-    const selectedUser = this.getCurrentUserFromSystemUsers(this.currentDevUserId || customer.usuario_id || 'default-user');
+    const selectedUser = this.getCurrentUserFromSystemUsers(this.currentDevUserId || '');
     const clientData = {
       name: customer.nombre || '',
       apellidos: customer.apellidos || '',
       dni: customer.dni || '',
       email: customer.email || '',
       phone: customer.telefono || '',
-      company_id: selectedUser?.company_id || 1,
+      company_id: selectedUser?.company_id || 1, // Empresa por defecto si no se encuentra usuario
       created_at: new Date().toISOString()
     };
     
@@ -758,8 +796,8 @@ export class SupabaseCustomersService {
         
         return {
           total: data.total || 0,
-          activeThisMonth: data.active_this_month || 0,
           newThisWeek: data.new_this_week || 0,
+          newThisMonth: data.new_this_month || 0,
           byLocality: data.by_locality || {}
         } as CustomerStats;
       }),
@@ -800,19 +838,25 @@ export class SupabaseCustomersService {
     devLog('Obteniendo estadísticas via método estándar');
     
     const now = new Date();
+    
+    // Inicio de este mes (día 1 a las 00:00:00)
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    // Inicio de esta semana (lunes a las 00:00:00)
+    const startOfWeek = new Date(now);
+    const dayOfWeek = now.getDay();
+    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Si es domingo (0), restar 6; si no, restar (día - 1)
+    startOfWeek.setDate(now.getDate() - daysToSubtract);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    console.log('📊 Calculando estadísticas:');
+    console.log('   Inicio del mes:', startOfMonth.toLocaleDateString());
+    console.log('   Inicio de la semana:', startOfWeek.toLocaleDateString());
 
     return from(
       Promise.all([
         // Total de clientes
         this.applyDevFilter(this.buildClientQuery().select('id', { count: 'exact', head: true })),
-        
-        // Clientes activos este mes
-        this.applyDevFilter(this.buildClientQuery()
-          .select('id', { count: 'exact', head: true })
-          .gte('created_at', startOfMonth.toISOString())
-          .is('deleted_at', null)),
         
         // Clientes nuevos esta semana
         this.applyDevFilter(this.buildClientQuery()
@@ -820,11 +864,17 @@ export class SupabaseCustomersService {
           .gte('created_at', startOfWeek.toISOString())
           .is('deleted_at', null)),
         
+        // Clientes nuevos este mes
+        this.applyDevFilter(this.buildClientQuery()
+          .select('id', { count: 'exact', head: true })
+          .gte('created_at', startOfMonth.toISOString())
+          .is('deleted_at', null)),
+        
         // Por localidad - simplificado por ahora debido a diferente estructura
         this.applyDevFilter(this.buildClientQuery().select('id'))
       ])
     ).pipe(
-      map(([totalResult, monthResult, weekResult, localityResult]) => {
+      map(([totalResult, weekResult, monthResult, localityResult]) => {
         // Procesar datos de localidad - simplificado por estructura diferente de clients
         const byLocality: { [key: string]: number } = {
           'Total': localityResult.data?.length || 0
@@ -832,11 +882,12 @@ export class SupabaseCustomersService {
 
         const stats: CustomerStats = {
           total: totalResult.count || 0,
-          activeThisMonth: monthResult.count || 0,
           newThisWeek: weekResult.count || 0,
+          newThisMonth: monthResult.count || 0,
           byLocality
         };
 
+        console.log('📈 Estadísticas calculadas:', stats);
         devSuccess('Estadísticas obtenidas via método estándar', stats);
         return stats;
       }),
@@ -846,8 +897,8 @@ export class SupabaseCustomersService {
         // Devolver estadísticas vacías en caso de error
         const emptyStats: CustomerStats = {
           total: 0,
-          activeThisMonth: 0,
           newThisWeek: 0,
+          newThisMonth: 0,
           byLocality: {}
         };
         this.statsSubject.next(emptyStats);
@@ -898,21 +949,47 @@ export class SupabaseCustomersService {
     return this.getCustomers(filters).pipe(
       map(customers => {
         const csvContent = this.generateCSV(customers);
-        return new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        // Agregar BOM (Byte Order Mark) para UTF-8 para mejorar compatibilidad con Excel
+        const csvWithBOM = '\uFEFF' + csvContent;
+        return new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8;' });
       })
     );
   }
 
   /**
    * Importar clientes desde CSV
+   * Límite recomendado: 500 clientes por archivo para evitar timeouts
    */
   importFromCSV(file: File): Observable<Customer[]> {
+    const MAX_RECORDS = 500; // Límite para evitar problemas de rendimiento
+    
     return new Observable(observer => {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const csv = e.target?.result as string;
           const customers = this.parseCSV(csv);
+          
+          // Validar límite de registros
+          if (customers.length > MAX_RECORDS) {
+            observer.error(new Error(`El archivo contiene ${customers.length} registros. El límite máximo es ${MAX_RECORDS} clientes por archivo.`));
+            return;
+          }
+          
+          // Validar que hay datos
+          if (customers.length === 0) {
+            observer.error(new Error('El archivo CSV está vacío o no tiene un formato válido.'));
+            return;
+          }
+          
+          console.log(`📂 Procesando ${customers.length} clientes del CSV...`);
+          
+          // Obtener usuario actual para asignar company_id
+          const selectedUser = this.getCurrentUserFromSystemUsers(this.currentDevUserId || 'default-user');
+          if (!selectedUser) {
+            observer.error(new Error('No se pudo determinar el usuario actual. Por favor, refresca la página.'));
+            return;
+          }
           
           // Crear clientes en lote
           from(
@@ -924,12 +1001,15 @@ export class SupabaseCustomersService {
                 dni: c.dni,
                 email: c.email,
                 phone: c.telefono,
-                company_id: this.getCurrentUserFromSystemUsers(this.currentDevUserId || 'default-user')?.company_id || 1
+                company_id: selectedUser.company_id
               })))
               .select()
           ).pipe(
             map(({ data, error }) => {
-              if (error) throw error;
+              if (error) {
+                console.error('Error en la inserción:', error);
+                throw new Error(`Error al importar clientes: ${error.message}`);
+              }
               
               // Convertir de clients a Customer[]
               return data.map((client: any) => ({
@@ -947,7 +1027,7 @@ export class SupabaseCustomersService {
             tap(newCustomers => {
               const currentCustomers = this.customersSubject.value;
               this.customersSubject.next([...newCustomers, ...currentCustomers]);
-              console.log(`✅ ${newCustomers.length} clientes importados exitosamente`);
+              devSuccess(`Importación completada: ${newCustomers.length} clientes creados`);
               this.updateStats();
             })
           ).subscribe({
@@ -956,10 +1036,17 @@ export class SupabaseCustomersService {
             complete: () => observer.complete()
           });
         } catch (error) {
-          observer.error(error);
+          console.error('Error al procesar CSV:', error);
+          observer.error(new Error('Error al procesar el archivo CSV. Verifica que el formato sea correcto.'));
         }
       };
-      reader.readAsText(file);
+      
+      reader.onerror = () => {
+        observer.error(new Error('Error al leer el archivo.'));
+      };
+      
+      // Leer con encoding UTF-8
+      reader.readAsText(file, 'UTF-8');
     });
   }
 
@@ -996,20 +1083,93 @@ export class SupabaseCustomersService {
   }
 
   private parseCSV(csv: string): Partial<Customer>[] {
-    const lines = csv.split('\n');
-    const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+    const lines = csv.split('\n').filter(line => line.trim());
+    
+    if (lines.length < 2) {
+      throw new Error('El archivo CSV debe contener al menos una fila de cabeceras y una fila de datos.');
+    }
+    
+    // Remover BOM si existe
+    const firstLine = lines[0].replace(/^\uFEFF/, '');
+    const headers = this.parseCSVLine(firstLine).map(h => h.trim().toLowerCase());
+    
+    // Validar headers requeridos
+    const requiredHeaders = ['nombre', 'apellidos', 'email'];
+    const missingHeaders = requiredHeaders.filter(header => 
+      !headers.some(h => h.includes(header))
+    );
+    
+    if (missingHeaders.length > 0) {
+      throw new Error(`Faltan las siguientes columnas requeridas: ${missingHeaders.join(', ')}`);
+    }
     
     return lines.slice(1)
       .filter(line => line.trim())
-      .map(line => {
-        const values = line.split(',').map(v => v.replace(/"/g, '').trim());
-        return {
-          nombre: values[0] || '',
-          apellidos: values[1] || '',
-          email: values[2] || '',
-          dni: values[3] || '',
-          telefono: values[4] || ''
-        };
+      .map((line, index) => {
+        try {
+          const values = this.parseCSVLine(line);
+          
+          // Mapear por posición o nombre de columna
+          const customer: Partial<Customer> = {
+            nombre: this.findValueByHeader(headers, values, ['nombre', 'name']) || '',
+            apellidos: this.findValueByHeader(headers, values, ['apellidos', 'apellido', 'lastname']) || '',
+            email: this.findValueByHeader(headers, values, ['email', 'correo']) || '',
+            dni: this.findValueByHeader(headers, values, ['dni', 'nif', 'documento']) || '',
+            telefono: this.findValueByHeader(headers, values, ['telefono', 'teléfono', 'phone', 'movil']) || ''
+          };
+          
+          // Validar email requerido
+          if (!customer.email || !customer.email.includes('@')) {
+            throw new Error(`Fila ${index + 2}: Email inválido o faltante`);
+          }
+          
+          return customer;
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+          throw new Error(`Error en fila ${index + 2}: ${errorMessage}`);
+        }
       });
+  }
+
+  // Método auxiliar para parsear líneas CSV con comillas
+  private parseCSVLine(line: string): string[] {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          // Doble comilla dentro de comillas = comilla literal
+          current += '"';
+          i++; // saltar la siguiente comilla
+        } else {
+          // Cambiar estado de comillas
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        // Separador fuera de comillas
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    result.push(current);
+    return result.map(value => value.trim());
+  }
+
+  // Método auxiliar para encontrar valores por nombre de cabecera
+  private findValueByHeader(headers: string[], values: string[], possibleNames: string[]): string {
+    for (const name of possibleNames) {
+      const index = headers.findIndex(h => h.includes(name));
+      if (index !== -1 && values[index]) {
+        return values[index];
+      }
+    }
+    return '';
   }
 }
