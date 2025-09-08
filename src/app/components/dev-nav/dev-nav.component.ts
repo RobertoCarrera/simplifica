@@ -20,7 +20,7 @@ import { RouterModule } from '@angular/router';
         <h3>🚀 Demo Navigation</h3>
         <div class="nav-links">
           <a routerLink="/clientes" routerLinkActive="active" class="nav-link">
-            👥 Clientes (Enhanced)
+            👥 Clientes (Supabase)
           </a>
           <a routerLink="/animaciones" routerLinkActive="active" class="nav-link">
             🎬 Animation Showcase
