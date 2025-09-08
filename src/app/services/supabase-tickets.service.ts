@@ -103,6 +103,8 @@ export interface TicketStats {
   overdue: number;
   avgResolutionTime: number;
   totalRevenue: number;
+  totalEstimatedHours: number;
+  totalActualHours: number;
 }
 
 @Injectable({
@@ -285,7 +287,7 @@ export class SupabaseTicketsService {
       estimated_hours: ticket.estimated_hours,
       actual_hours: ticket.actual_hours,
       total_amount: ticket.total_amount,
-      tags: ticket.tags,
+  tags: [],
       company_id: ticket.company_id,
       is_active: ticket.is_active,
       created_at: ticket.created_at,
@@ -445,7 +447,9 @@ export class SupabaseTicketsService {
       completed: tickets.filter(t => t.stage?.name === 'Completado').length,
       overdue: tickets.filter(t => t.due_date && new Date(t.due_date) < new Date()).length,
       avgResolutionTime: 2.5, // Mock data
-      totalRevenue: tickets.reduce((sum, t) => sum + (t.total_amount || 0), 0)
+      totalRevenue: tickets.reduce((sum, t) => sum + (t.total_amount || 0), 0),
+      totalEstimatedHours: tickets.reduce((sum, t) => sum + (t.estimated_hours || 0), 0),
+      totalActualHours: tickets.reduce((sum, t) => sum + (t.actual_hours || 0), 0)
     };
 
     return stats;
