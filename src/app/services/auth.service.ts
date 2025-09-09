@@ -91,6 +91,9 @@ export class AuthService {
     });
   }
 
+  // Exponer cliente supabase directamente para componentes de callback/reset
+  get client() { return this.supabase; }
+
   private async initializeAuth() {
     try {
       const { data: { session } } = await this.supabase.auth.getSession();
@@ -285,7 +288,8 @@ export class AuthService {
         email: registerData.email,
         password: registerData.password,
         options: {
-          data: { full_name: registerData.full_name }
+          data: { full_name: registerData.full_name },
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
       if (error) throw error;
@@ -398,10 +402,6 @@ export class AuthService {
     return this.currentUserSubject.value;
   }
 
-  // Exponer cliente Supabase de forma controlada (solo lectura)
-  get client(): SupabaseClient {
-    return this.supabase;
-  }
 
   get userProfile(): AppUser | null {
     return this.userProfileSubject.value;
