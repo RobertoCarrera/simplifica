@@ -141,13 +141,23 @@ export class AuthService {
   // Obtiene la fila de public.users + compañía
   private async fetchAppUserByAuthId(authId: string): Promise<AppUser | null> {
     try {
+      console.log('🔍 Fetching app user for auth ID:', authId);
       const { data, error } = await this.supabase
         .from('users')
         .select(`id, auth_user_id, email, name, role, active, company_id, permissions, company:companies(id, name, slug, is_active, settings)`) // company join via foreign key name assumption
         .eq('auth_user_id', authId)
         .single();
-      if (error) return null;
-      if (!data) return null;
+      
+      if (error) {
+        console.error('❌ Error fetching app user:', error);
+        return null;
+      }
+      if (!data) {
+        console.warn('⚠️ No app user found for auth ID:', authId);
+        return null;
+      }
+      
+      console.log('✅ App user fetched successfully:', data);
       const company = Array.isArray((data as any).company) ? (data as any).company[0] : (data as any).company;
       const appUser: AppUser = {
         id: (data as any).id,
@@ -169,42 +179,68 @@ export class AuthService {
 
   // Asegura que existe fila en public.users y enlaza auth_user_id
   private async ensureAppUser(authUser: User): Promise<void> {
-    // 1. Buscar por auth_user_id
-    const existing = await this.supabase
-      .from('users')
-      .select('id, auth_user_id, email, role, company_id')
-      .eq('auth_user_id', authUser.id)
-      .maybeSingle();
-    if (existing.data) return; // ya está enlazado
+    try {
+      console.log('🔄 Ensuring app user exists for:', authUser.email);
+      
+      // 1. Buscar por auth_user_id
+      const existing = await this.supabase
+        .from('users')
+        .select('id, auth_user_id, email, role, company_id')
+        .eq('auth_user_id', authUser.id)
+        .maybeSingle();
+      
+      if (existing.error) {
+        console.error('❌ Error checking existing user:', existing.error);
+        throw existing.error;
+      }
+      
+      if (existing.data) {
+        console.log('✅ User already exists in app database');
+        return; // ya está enlazado
+      }
 
-  // (Se eliminó lógica de invitaciones previas: auto-registro solamente)
+      console.log('➕ Creating new app user...');
 
-    // 3. Crear empresa y usuario si es el primer usuario del sistema
-    const { count } = await this.supabase
-      .from('users')
-      .select('id', { count: 'exact', head: true });
-    let companyId: string | null = null;
-    if (!count || count === 0) {
-      // Crear empresa inicial
-      const companyName = (authUser.email || 'Mi Empresa').split('@')[0];
-      const { data: company, error: compErr } = await this.supabase
-        .from('companies')
-        .insert({ name: companyName, slug: this.generateSlug(companyName) })
-        .select()
-        .single();
-      if (!compErr && company) companyId = company.id;
+      // (Se eliminó lógica de invitaciones previas: auto-registro solamente)
+
+      // 3. Crear empresa y usuario si es el primer usuario del sistema
+      const { count } = await this.supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true });
+      let companyId: string | null = null;
+      if (!count || count === 0) {
+        // Crear empresa inicial
+        const companyName = (authUser.email || 'Mi Empresa').split('@')[0];
+        const { data: company, error: compErr } = await this.supabase
+          .from('companies')
+          .insert({ name: companyName, slug: this.generateSlug(companyName) })
+          .select()
+          .single();
+        if (!compErr && company) companyId = company.id;
+      }
+
+      // 4. Crear fila usuario
+      const insertResult = await this.supabase.from('users').insert({
+        email: authUser.email,
+        name: (authUser.user_metadata && (authUser.user_metadata as any)['full_name']) || authUser.email?.split('@')[0] || 'Usuario',
+        role: companyId ? 'owner' : 'member',
+        active: true,
+        company_id: companyId,
+        auth_user_id: authUser.id,
+        permissions: {}
+      });
+      
+      if (insertResult.error) {
+        console.error('❌ Error creating app user:', insertResult.error);
+        throw insertResult.error;
+      }
+      
+      console.log('✅ App user created successfully');
+      
+    } catch (e) {
+      console.error('❌ Error in ensureAppUser:', e);
+      throw e;
     }
-
-    // 4. Crear fila usuario
-    await this.supabase.from('users').insert({
-      email: authUser.email,
-  name: (authUser.user_metadata && (authUser.user_metadata as any)['full_name']) || authUser.email?.split('@')[0] || 'Usuario',
-      role: companyId ? 'owner' : 'member',
-      active: true,
-      company_id: companyId,
-      auth_user_id: authUser.id,
-      permissions: {}
-    });
   }
 
   // ==========================================
@@ -323,20 +359,37 @@ export class AuthService {
 
   private async createCompanyForUser(authUserId: string, companyName: string) {
     try {
+      console.log('🏢 Creating company for user:', companyName);
+      
       const { data: company, error: companyError } = await this.supabase
         .from('companies')
         .insert({ name: companyName, slug: this.generateSlug(companyName) })
         .select()
         .single();
-      if (companyError) throw companyError;
+        
+      if (companyError) {
+        console.error('❌ Error creating company:', companyError);
+        throw companyError;
+      }
+
+      console.log('✅ Company created:', company);
 
       // Actualizar fila de users
-      await this.supabase
+      const updateResult = await this.supabase
         .from('users')
         .update({ company_id: company.id, role: 'owner' })
         .eq('auth_user_id', authUserId);
+        
+      if (updateResult.error) {
+        console.error('❌ Error updating user with company:', updateResult.error);
+        throw updateResult.error;
+      }
+      
+      console.log('✅ User updated with company successfully');
+      
     } catch (e) {
       console.error('Error creating company for user:', e);
+      throw e;
     }
   }
 

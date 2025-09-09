@@ -497,22 +497,38 @@ export class RegisterComponent {
       company_name: formValue.companyName || undefined
     };
 
-    const result = await this.authService.register({...registerData, autoLogin: true});
+    console.log('🚀 Starting registration process...', registerData);
 
-    if (result.success) {
-      if (result.pendingConfirmation) {
-        this.toastService.success(
-          'Cuenta creada. Revisa tu email para confirmar y luego inicia sesión.',
-          'Registro pendiente'
-        );
-        this.router.navigate(['/login']);
+    try {
+      const result = await this.authService.register({...registerData, autoLogin: true});
+
+      if (result.success) {
+        if (result.pendingConfirmation) {
+          this.toastService.success(
+            'Cuenta creada. Revisa tu email para confirmar y luego inicia sesión.',
+            'Registro pendiente'
+          );
+          this.router.navigate(['/login']);
+        } else {
+          this.toastService.success('Bienvenido 👋 Tu cuenta ha sido creada.', 'Registro exitoso');
+          console.log('✅ Registration successful, redirecting to dashboard');
+          // Redirigir directo al dashboard
+          this.router.navigate(['/clientes']);
+        }
       } else {
-        this.toastService.success('Bienvenido 👋 Tu cuenta ha sido creada.', 'Registro exitoso');
-        // Redirigir directo al dashboard
-        this.router.navigate(['/clientes']);
+        console.error('❌ Registration failed:', result.error);
+        let errorMsg = result.error || 'Error al crear la cuenta';
+        
+        // Mensaje específico para problemas de RLS
+        if (errorMsg.includes('infinite recursion') || errorMsg.includes('Internal Server Error')) {
+          errorMsg = '🚨 Error de configuración de base de datos. Por favor, aplica la corrección RLS desde el Dashboard de Supabase. Ver archivo FIX_RLS_URGENTE.md';
+        }
+        
+        this.errorMessage.set(errorMsg);
       }
-    } else {
-      this.errorMessage.set(result.error || 'Error al crear la cuenta');
+    } catch (e: any) {
+      console.error('❌ Unexpected error during registration:', e);
+      this.errorMessage.set('Error inesperado. Revisa la consola y el archivo FIX_RLS_URGENTE.md');
     }
 
     this.loading.set(false);

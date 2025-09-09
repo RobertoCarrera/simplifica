@@ -2,6 +2,7 @@ import { Component, inject, signal, HostListener, computed } from '@angular/core
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { ResponsiveSidebarComponent } from '../responsive-sidebar/responsive-sidebar.component';
+import { RlsWarningBannerComponent } from '../rls-warning-banner/rls-warning-banner.component';
 import { PWAService } from '../../services/pwa.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
 import { AuthService } from '../../services/auth.service';
@@ -9,8 +10,11 @@ import { AuthService } from '../../services/auth.service';
 @Component({
   selector: 'app-responsive-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, ResponsiveSidebarComponent],
+  imports: [CommonModule, RouterModule, ResponsiveSidebarComponent, RlsWarningBannerComponent],
   template: `
+    <!-- RLS Warning Banner (always visible when needed) -->
+    <app-rls-warning-banner></app-rls-warning-banner>
+
     <!-- Layout sin sidebar para login/register O usuarios no autenticados -->
     @if (isAuthPage() || !isAuthenticated()) {
       <div class="min-h-screen">

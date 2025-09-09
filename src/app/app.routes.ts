@@ -25,6 +25,7 @@ import { ConfiguracionComponent } from './components/configuracion/configuracion
 import { SidebarTestComponent } from './components/sidebar-test/sidebar-test.component';
 import { DevSetupComponent } from './components/dev-setup/dev-setup.component';
 import { EmergencyLoginComponent } from './components/emergency-login/emergency-login.component';
+import { DebugDashboardComponent } from './components/debug-dashboard/debug-dashboard.component';
 import { AuthGuard, AdminGuard, GuestGuard } from './guards/auth.guard';
 import { AuthCallbackComponent } from './components/auth-callback/auth-callback.component';
 
@@ -43,6 +44,7 @@ export const routes: Routes = [
     {path: 'register', component: RegisterComponent, canActivate: [GuestGuard]},
     {path: 'emergency-login', component: EmergencyLoginComponent},
     {path: 'auth/callback', component: AuthCallbackComponent}, // Callback de Supabase
+    {path: 'debug', component: DebugDashboardComponent}, // Debug dashboard (temporal)
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [AuthGuard]},

@@ -487,15 +487,31 @@ export class LoginComponent implements OnDestroy {
       password: this.loginForm.value.password!
     };
 
-    const result = await this.authService.login(credentials);
+    console.log('🔐 Starting login process for:', credentials.email);
 
-    if (result.success) {
-      // Redirigir a la página solicitada o dashboard
-      const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/clientes';
-      this.router.navigate([returnUrl]);
-      this.toastService.success('¡Bienvenido!', 'Login exitoso');
-    } else {
-      this.errorMessage.set(result.error || 'Error al iniciar sesión');
+    try {
+      const result = await this.authService.login(credentials);
+
+      if (result.success) {
+        console.log('✅ Login successful');
+        // Redirigir a la página solicitada o dashboard
+        const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/clientes';
+        this.router.navigate([returnUrl]);
+        this.toastService.success('¡Bienvenido!', 'Login exitoso');
+      } else {
+        console.error('❌ Login failed:', result.error);
+        let errorMsg = result.error || 'Error al iniciar sesión';
+        
+        // Mensaje específico para problemas de RLS
+        if (errorMsg.includes('infinite recursion') || errorMsg.includes('Internal Server Error')) {
+          errorMsg = '🚨 Error de configuración de base de datos. Aplica la corrección desde Supabase Dashboard (ver FIX_RLS_URGENTE.md)';
+        }
+        
+        this.errorMessage.set(errorMsg);
+      }
+    } catch (e: any) {
+      console.error('❌ Unexpected error during login:', e);
+      this.errorMessage.set('Error inesperado. Revisa la consola y aplica la corrección RLS.');
     }
 
     this.loading.set(false);
