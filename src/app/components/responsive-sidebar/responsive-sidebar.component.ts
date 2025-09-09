@@ -17,6 +17,12 @@ interface MenuItem {
 @Component({
   selector: 'app-responsive-sidebar',
   standalone: true,
+  host: {
+    '[class.collapsed]': 'isCollapsed()',
+    '[class.expanded]': '!isCollapsed()',
+    '[class.mobile-visible]': 'isOpen() && isMobile()',
+    '[class.mobile-hidden]': '!isOpen() && isMobile()'
+  },
   imports: [CommonModule, RouterModule],
   template: `
     <!-- Mobile overlay -->
@@ -52,23 +58,25 @@ interface MenuItem {
           }
         </div>
 
-        <!-- Toggle button for desktop and mobile -->
-        <button
-          (click)="toggleSidebar()"
-          class="flex items-center justify-center w-8 h-8 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-sm hover:shadow-md"
-          [title]="isOpen() ? 'Cerrar sidebar' : 'Abrir sidebar'"
-        >
-          <svg class="w-4 h-4 transition-transform duration-200" [class.rotate-180]="!isOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-          </svg>
-        </button>
+  <!-- Toggle button (big) : visible when sidebar is expanded (all sizes) -->
+  @if (!isCollapsed()) {
+          <button
+            (click)="toggleSidebar()"
+            class="flex items-center justify-center w-8 h-8 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-sm hover:shadow-md"
+            [title]="isOpen() ? 'Cerrar sidebar' : 'Abrir sidebar'"
+          >
+            <svg class="w-4 h-4 transition-transform duration-200" [class.rotate-180]="!isOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+          </button>
+        }
       </div>
 
-      <!-- Expand button when collapsed (positioned outside) -->
-      @if (isCollapsed() && !isMobile()) {
+  <!-- Expand button when collapsed (positioned outside) - visible in all sizes when collapsed -->
+  @if (isCollapsed()) {
         <button
           (click)="toggleCollapse()"
-          class="absolute top-4 -right-3 z-50 flex items-center justify-center w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-lg"
+          class="sidebar-expand-btn absolute top-4 -right-3 z-50 flex items-center justify-center w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-lg"
           [title]="'Expandir sidebar'"
         >
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,17 +85,21 @@ interface MenuItem {
         </button>
       }
 
-      <!-- Navigation -->
-      <nav class="flex-1 px-2 py-4 space-y-1 bg-white dark:bg-gray-800 overflow-y-auto">
+  <!-- Navigation -->
+  <nav class="flex-1 px-2 py-4 space-y-1 bg-white dark:bg-gray-800 overflow-y-auto overflow-x-hidden">
         @for (item of menuItems; track item.id) {
           <!-- Main menu item -->
           <div class="relative">
-            <a
+              <a
               [routerLink]="item.route"
               routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-r-2 border-blue-500"
               (click)="setActiveItem(item.id); isMobile() && closeSidebar()"
-              class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
+              class="group flex items-center text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
               [class.justify-center]="isCollapsed()"
+              [class.px-3]="!isCollapsed()"
+              [class.px-1]="isCollapsed()"
+              [class.py-2]="!isCollapsed()"
+              [class.py-1]="isCollapsed()"
             >
             <svg class="flex-shrink-0 w-5 h-5" [class.mr-3]="!isCollapsed()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               @switch (item.icon) {
@@ -228,6 +240,7 @@ interface MenuItem {
       height: 100vh !important;
       z-index: 1000 !important;
       transition: width 0.3s ease !important;
+  overflow: visible !important;
     }
     
     :host(.collapsed) {
@@ -244,6 +257,43 @@ interface MenuItem {
     
     :host(.mobile-visible) {
       transform: translateX(0) !important;
+    }
+    
+    /* Prevent horizontal scroll from long labels when collapsed */
+    :host(.collapsed) nav {
+      overflow-x: hidden !important;
+    }
+
+    /* Truncate labels and hide them visually when collapsed */
+    :host(.collapsed) .truncate {
+      max-width: 0 !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      display: inline-block !important;
+      transform: translateX(-4px);
+    }
+
+    /* Ensure collapsed items have reduced padding so no overflow */
+    :host(.collapsed) a {
+      padding-left: 0.5rem !important; /* px-2 */
+      padding-right: 0.5rem !important;
+    }
+
+    /* Small expand button visibility when collapsed */
+    :host(.collapsed) .sidebar-expand-btn {
+      display: flex !important;
+    }
+
+    :host(:not(.collapsed)) .sidebar-expand-btn {
+      display: none !important;
+    }
+
+    /* Make sure the expand button is visible outside the sidebar edge */
+    .sidebar-expand-btn {
+      right: -12px; /* nudge outside the sidebar */
+      top: 50px;
+      box-shadow: 0 6px 16px rgba(15,23,42,0.12);
+      z-index: 1100;
     }
   `]
 })
