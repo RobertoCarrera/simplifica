@@ -10,120 +10,63 @@ import { ToastService } from '../../services/toast.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   template: `
-    <div class="vh-100 d-flex">
-      <!-- Panel izquierdo - Formulario -->
-      <div class="col-md-6 d-flex align-items-center justify-content-center bg-white p-5">
-        <div class="w-100" style="max-width: 400px;">
-          <!-- Logo y título -->
-          <div class="text-center mb-5">
-            <div class="mb-3">
-              <i class="bi bi-gear-fill text-primary" style="font-size: 3rem;"></i>
-            </div>
-            <h1 class="h2 fw-bold text-dark mb-2">Simplifica</h1>
-            <p class="text-muted">Sistema de Gestión Empresarial</p>
+    <div class="login-shell">
+      <div class="brand-side d-none d-lg-flex flex-column text-white">
+        <div class="brand-content">
+          <div class="brand-top">
+            <div class="logo-circle"><i class="bi bi-gear-fill"></i></div>
+            <h1>Simplifica</h1>
+            <p class="subtitle">Gestión moderna de clientes, tickets y servicios</p>
           </div>
-
-          <!-- Formulario de login -->
-          <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-            <div class="mb-4">
-              <label class="form-label fw-medium">Email</label>
-              <input
-                type="email"
-                class="form-control form-control-lg"
-                formControlName="email"
-                placeholder="tu@empresa.com"
-                [class.is-invalid]="emailInvalid()"
-              />
-              @if (emailInvalid()) {
-                <div class="invalid-feedback">Email requerido y válido</div>
-              }
-            </div>
-
-            <div class="mb-4">
-              <label class="form-label fw-medium">Contraseña</label>
-              <input
-                type="password"
-                class="form-control form-control-lg"
-                formControlName="password"
-                placeholder="••••••••"
-                [class.is-invalid]="passwordInvalid()"
-              />
-              @if (passwordInvalid()) {
-                <div class="invalid-feedback">Contraseña requerida</div>
-              }
-            </div>
-
-            <div class="d-grid mb-4">
-              <button
-                type="submit"
-                class="btn btn-primary btn-lg"
-                [disabled]="loginForm.invalid || loading()"
-              >
-                @if (loading()) {
-                  <span class="spinner-border spinner-border-sm me-2"></span>
-                  Iniciando sesión...
-                } @else {
-                  <i class="bi bi-box-arrow-in-right me-2"></i>
-                  Iniciar Sesión
-                }
-              </button>
-            </div>
-
-            @if (errorMessage()) {
-              <div class="alert alert-danger d-flex align-items-center">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                {{ errorMessage() }}
-              </div>
-            }
-          </form>
-
-          <!-- Enlaces adicionales -->
-          <div class="text-center">
-            <a href="#" (click)="showForgotPassword = true" class="text-decoration-none me-3">
-              ¿Olvidaste tu contraseña?
-            </a>
-            <span class="text-muted">•</span>
-            <a routerLink="/register" class="text-decoration-none ms-3">
-              Crear cuenta nueva
-            </a>
-          </div>
+          <ul class="feature-list">
+            <li><i class="bi bi-check2-circle"></i> Multi‑empresa</li>
+            <li><i class="bi bi-check2-circle"></i> Flujo de trabajo claro</li>
+            <li><i class="bi bi-check2-circle"></i> Seguridad y RLS</li>
+            <li><i class="bi bi-check2-circle"></i> Escalable desde el día 1</li>
+          </ul>
+          <div class="footer-note">© {{ currentYear }} Simplifica</div>
         </div>
       </div>
 
-      <!-- Panel derecho - Información -->
-      <div class="col-md-6 bg-primary d-none d-md-flex align-items-center justify-content-center text-white">
-        <div class="text-center px-5">
-          <div class="mb-4">
-            <i class="bi bi-diagram-3-fill" style="font-size: 4rem; opacity: 0.9;"></i>
+      <div class="form-side d-flex flex-column justify-content-center">
+        <div class="form-wrapper mx-auto w-100">
+          <div class="mobile-header text-center d-lg-none">
+            <div class="logo-circle small"><i class="bi bi-gear-fill"></i></div>
+            <h2>Simplifica</h2>
+            <p class="subtitle">Inicia sesión en tu cuenta</p>
           </div>
-          <h2 class="h3 mb-4">¿Nuevo en Simplifica?</h2>
-          <p class="lead mb-4">Gestiona clientes, tickets y servicios de manera eficiente</p>
-          <div class="row text-start">
-            <div class="col-6">
-              <div class="d-flex align-items-center mb-3">
-                <i class="bi bi-check-circle-fill me-2 text-success"></i>
-                <span>Multi-empresa</span>
+          <h3 class="form-title">Accede a tu panel</h3>
+          <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              <div class="input-wrapper" [class.invalid]="emailInvalid()">
+                <i class="bi bi-at"></i>
+                <input type="email" placeholder="tu@empresa.com" formControlName="email" (blur)="loginForm.get('email')?.markAsTouched()" />
               </div>
-              <div class="d-flex align-items-center mb-3">
-                <i class="bi bi-check-circle-fill me-2 text-success"></i>
-                <span>Gestión de equipos</span>
-              </div>
+              @if (emailInvalid()) { <div class="field-error">Email válido requerido</div> }
             </div>
-            <div class="col-6">
-              <div class="d-flex align-items-center mb-3">
-                <i class="bi bi-check-circle-fill me-2 text-success"></i>
-                <span>Reportes en tiempo real</span>
+            <div class="mb-2">
+              <label class="form-label d-flex justify-content-between align-items-center">
+                <span>Contraseña</span>
+                <a href="#" (click)="$event.preventDefault(); showForgotPassword = true" class="link-forgot">¿Olvidaste?</a>
+              </label>
+              <div class="input-wrapper" [class.invalid]="passwordInvalid()">
+                <i class="bi bi-lock"></i>
+                <input [type]="showPassword() ? 'text':'password'" placeholder="••••••••" formControlName="password" (blur)="loginForm.get('password')?.markAsTouched()" />
+                <button type="button" class="toggle-pass" (click)="togglePassword()" [attr.aria-label]="showPassword() ? 'Ocultar contraseña':'Mostrar contraseña'">
+                  <i class="bi" [class.bi-eye]="!showPassword()" [class.bi-eye-slash]="showPassword()"></i>
+                </button>
               </div>
-              <div class="d-flex align-items-center mb-3">
-                <i class="bi bi-check-circle-fill me-2 text-success"></i>
-                <span>Seguridad avanzada</span>
-              </div>
+              @if (passwordInvalid()) { <div class="field-error">Contraseña requerida</div> }
             </div>
-          </div>
-          <a routerLink="/register" class="btn btn-outline-light btn-lg mt-4">
-            <i class="bi bi-person-plus me-2"></i>
-            Crear Cuenta Gratis
-          </a>
+            @if (errorMessage()) {
+              <div class="alert-error mb-3"><i class="bi bi-exclamation-triangle me-1"></i>{{ errorMessage() }}</div>
+            }
+            <button class="btn-primary w-100 mb-3" type="submit" [disabled]="loginForm.invalid || loading()">
+              @if (loading()) { <span class="spinner-border spinner-border-sm me-2"></span> Entrando... } @else { Iniciar Sesión }
+            </button>
+            <div class="text-center small text-muted">¿No tienes cuenta? <a routerLink="/register">Crear una gratis</a></div>
+          </form>
         </div>
       </div>
     </div>
@@ -171,52 +114,317 @@ import { ToastService } from '../../services/toast.service';
     }
   `,
   styles: [`
-    :host {
+    :host { display: block; height: 100vh; width: 100vw; overflow: hidden; }
+    .login-shell { height: 100vh; width: 100%; display: flex; background: #f1f5f9; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    
+    /* Brand Panel */
+    .brand-side { 
+      flex: 1.2; 
+      background: linear-gradient(145deg, #1e40af 0%, #1e3a8a 40%, #1e40af 100%); 
+      position: relative; 
+      overflow: hidden;
+      padding: 3rem 2.5rem;
+    }
+    .brand-side::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -30%;
+      width: 100%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .brand-content { 
+      height: 100%; 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: space-between; 
+      position: relative; 
+      z-index: 1; 
+    }
+    .brand-top { margin-bottom: 2rem; }
+    .logo-circle { 
+      width: 64px; 
+      height: 64px; 
+      border-radius: 16px; 
+      background: rgba(255,255,255,0.15); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-size: 1.75rem; 
+      backdrop-filter: blur(8px); 
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .logo-circle.small { 
+      width: 48px; 
+      height: 48px; 
+      font-size: 1.4rem; 
+      margin-bottom: 1rem;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .brand-side h1 { 
+      font-size: 2.5rem; 
+      font-weight: 700; 
+      letter-spacing: -0.02em; 
+      margin-bottom: 0.75rem; 
+      color: white;
+    }
+    .subtitle { 
+      font-size: 1.05rem; 
+      opacity: 0.9; 
+      line-height: 1.4; 
+      color: rgba(255,255,255,0.9);
+      margin: 0;
+    }
+    .feature-list { 
+      list-style: none; 
+      padding: 0; 
+      margin: 0; 
+      flex: 1; 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: center; 
+      gap: 1rem;
+    }
+    .feature-list li { 
+      display: flex; 
+      align-items: center; 
+      gap: 0.75rem; 
+      font-size: 0.95rem; 
+      opacity: 0.95; 
+      color: white;
+    }
+    .feature-list i { color: #10b981; font-size: 1.1rem; }
+    .footer-note { 
+      font-size: 0.8rem; 
+      opacity: 0.7; 
+      text-align: center; 
+      color: rgba(255,255,255,0.7);
+      margin-top: 1rem;
+    }
+    
+    /* Form Panel */
+    .form-side { 
+      flex: 1; 
+      background: #ffffff; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      padding: 2rem 1.5rem;
+      overflow-y: auto;
+    }
+    .form-wrapper { 
+      width: 100%; 
+      max-width: 400px; 
+      padding: 2.5rem 2rem 2rem;
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 10px 40px -12px rgba(0,0,0,0.15), 0 4px 16px -8px rgba(0,0,0,0.1);
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+    .mobile-header { margin-bottom: 2rem; }
+    .mobile-header h2 { 
+      font-size: 1.75rem; 
+      font-weight: 700; 
+      margin: 0.75rem 0 0.5rem; 
+      color: #1e293b;
+    }
+    .mobile-header .subtitle { 
+      color: #64748b; 
+      font-size: 0.9rem; 
+      margin: 0;
+    }
+    .form-title { 
+      font-size: 1.5rem; 
+      font-weight: 600; 
+      color: #1e293b; 
+      margin-bottom: 1.75rem;
+    }
+    
+    /* Form Elements */
+    .form-label { 
+      font-weight: 600; 
+      font-size: 0.8rem; 
+      text-transform: uppercase; 
+      letter-spacing: 0.5px; 
+      color: #64748b; 
+      margin-bottom: 0.5rem; 
       display: block;
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
     }
-    
-    .vh-100 {
-      height: 100vh !important;
-      overflow: hidden;
+    .input-wrapper { 
+      position: relative; 
+      display: flex; 
+      align-items: center; 
+      background: #fff; 
+      border: 2px solid #e2e8f0; 
+      border-radius: 12px; 
+      padding: 0.875rem 1rem; 
+      gap: 0.75rem; 
+      transition: all 0.2s ease;
+      margin-bottom: 0.5rem;
     }
-    
-    .form-control:focus {
-      border-color: var(--bs-primary);
-      box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+    .input-wrapper.invalid { border-color: #ef4444; background: #fef2f2; }
+    .input-wrapper:focus-within { 
+      border-color: #3b82f6; 
+      background: #f8fafc;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); 
     }
-    
-    .btn-primary {
-      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-      border: none;
-      transition: all 0.3s ease;
+    .input-wrapper i { font-size: 1.1rem; color: #94a3b8; flex-shrink: 0; }
+    .input-wrapper input { 
+      flex: 1; 
+      border: none; 
+      outline: none; 
+      background: transparent; 
+      font-size: 1rem; 
+      font-weight: 500; 
+      color: #1e293b;
     }
-    
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+    .input-wrapper input::placeholder { color: #94a3b8; font-weight: 400; }
+    .toggle-pass { 
+      background: transparent; 
+      border: none; 
+      color: #94a3b8; 
+      cursor: pointer; 
+      padding: 0.25rem; 
+      display: flex; 
+      align-items: center; 
+      border-radius: 6px;
+      transition: color 0.2s ease;
     }
-    
-    .bg-primary {
-      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    .toggle-pass:hover { color: #3b82f6; }
+    .field-error { 
+      font-size: 0.75rem; 
+      color: #ef4444; 
+      margin-top: 0.25rem; 
+      font-weight: 500; 
     }
-    
-    .modal {
-      z-index: 1060;
+    .alert-error { 
+      background: #fef2f2; 
+      color: #dc2626; 
+      border: 1px solid #fecaca; 
+      padding: 0.75rem; 
+      border-radius: 12px; 
+      font-size: 0.85rem; 
+      display: flex; 
+      align-items: center; 
+      gap: 0.5rem;
     }
+    .btn-primary { 
+      width: 100%;
+      border: none; 
+      border-radius: 12px; 
+      padding: 1rem; 
+      font-weight: 600; 
+      font-size: 1rem; 
+      background: linear-gradient(145deg, #3b82f6, #2563eb); 
+      color: white; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 0.5rem; 
+      cursor: pointer; 
+      transition: all 0.2s ease;
+      margin-bottom: 1rem;
+    }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary:not(:disabled):hover { 
+      transform: translateY(-1px); 
+      box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.4); 
+    }
+    .link-forgot { 
+      font-size: 0.75rem; 
+      font-weight: 600; 
+      color: #3b82f6; 
+      text-decoration: none; 
+    }
+    .link-forgot:hover { text-decoration: underline; }
+    .small { font-size: 0.85rem; color: #64748b; }
+    .small a { color: #3b82f6; text-decoration: none; font-weight: 600; }
+    .small a:hover { text-decoration: underline; }
     
-    /* Responsivo para móviles */
-    @media (max-width: 768px) {
-      .col-md-6:first-child {
-        width: 100%;
-        padding: 2rem 1rem;
+    /* PWA & Mobile Optimizations */
+    @media (max-width: 991px) { 
+      .login-shell { flex-direction: column; }
+      .brand-side { display: none !important; }
+      .form-side { 
+        flex: 1; 
+        padding: 1.5rem 1rem; 
+        background: linear-gradient(145deg, #f8fafc 0%, #e2e8f0 100%);
       }
-      
-      .col-md-6:last-child {
-        display: none !important;
+      .form-wrapper { 
+        padding: 2rem 1.5rem; 
+        border-radius: 20px; 
+        max-width: 360px;
+        margin-top: 1rem;
+        margin-bottom: 1rem;
       }
+    }
+    @media (max-width: 480px) {
+      .form-side { padding: 1rem 0.75rem; }
+      .form-wrapper { 
+        padding: 1.75rem 1.25rem; 
+        border-radius: 16px; 
+        box-shadow: 0 4px 20px -8px rgba(0,0,0,0.15);
+      }
+      .form-title { font-size: 1.25rem; }
+      .mobile-header h2 { font-size: 1.5rem; }
+    }
+    
+    /* PWA Enhancements */
+    @media (display-mode: standalone) {
+      :host { padding-top: env(safe-area-inset-top); }
+      .form-side { padding-top: calc(1.5rem + env(safe-area-inset-top)); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { 
+        animation-duration: 0.01ms !important; 
+        transition-duration: 0.01ms !important; 
+      }
+    }
+    
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+      .form-side { background: #0f172a; }
+      .form-wrapper { 
+        background: #1e293b; 
+        border-color: #334155;
+        box-shadow: 0 10px 40px -12px rgba(0,0,0,0.4);
+      }
+      .form-title, .mobile-header h2 { color: #f1f5f9; }
+      .form-label { color: #94a3b8; }
+      .input-wrapper { 
+        background: #334155; 
+        border-color: #475569; 
+      }
+      .input-wrapper:focus-within { 
+        background: #374151; 
+        border-color: #60a5fa; 
+      }
+      .input-wrapper input { color: #f1f5f9; }
+      .small { color: #94a3b8; }
+      .alert-error { 
+        background: #450a0a; 
+        color: #fca5a5; 
+        border-color: #7f1d1d; 
+      }
+    }
+    
+    /* Loading animation */
+    .form-wrapper { 
+      animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+    }
+    @keyframes slideIn { 
+      0% { 
+        transform: translateY(20px) scale(0.98); 
+        opacity: 0; 
+      } 
+      100% { 
+        transform: translateY(0) scale(1); 
+        opacity: 1; 
+      } 
     }
   `]
 })
@@ -232,6 +440,8 @@ export class LoginComponent implements OnDestroy {
   resetting = signal(false);
   errorMessage = signal('');
   showForgotPassword = false;
+  showPassword = signal(false);
+  currentYear = new Date().getFullYear();
 
   constructor() {
     // Agregar clase al body para evitar scroll en login
@@ -263,6 +473,8 @@ export class LoginComponent implements OnDestroy {
     const control = this.loginForm.get('password');
     return control?.invalid && control?.touched;
   };
+
+  togglePassword() { this.showPassword.update(v => !v); }
 
   async onSubmit() {
     if (this.loginForm.invalid) return;

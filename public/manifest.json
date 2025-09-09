@@ -1,8 +1,8 @@
 {
-  "name": "Simplifica CRM - Premium Experience",
+  "name": "Simplifica - Gestión Empresarial",
   "short_name": "Simplifica",
-  "description": "Sistema CRM con experiencia de usuario premium y funcionalidades avanzadas",
-  "theme_color": "#6366f1",
+  "description": "Sistema de gestión moderna para clientes, tickets y servicios empresariales",
+  "theme_color": "#1e40af",
   "background_color": "#ffffff",
   "display": "standalone",
   "scope": "/",
