@@ -29,6 +29,7 @@ import { DebugDashboardComponent } from './components/debug-dashboard/debug-dash
 import { AuthGuard, AdminGuard, GuestGuard } from './guards/auth.guard';
 import { AuthCallbackComponent } from './components/auth-callback/auth-callback.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
+import { AuthDebugComponent } from './components/auth-debug/auth-debug.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -46,6 +47,7 @@ export const routes: Routes = [
     {path: 'emergency-login', component: EmergencyLoginComponent},
     {path: 'auth/callback', component: AuthCallbackComponent}, // Callback de Supabase
     {path: 'reset-password', component: ResetPasswordComponent}, // Recuperación de contraseña
+    {path: 'auth-debug', component: AuthDebugComponent}, // Debug temporal de auth
     {path: 'debug', component: DebugDashboardComponent}, // Debug dashboard (temporal)
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)

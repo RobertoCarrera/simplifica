@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { PWAService } from '../../services/pwa.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
+import { DevRoleService } from '../../services/dev-role.service';
 
 interface MenuItem {
   id: number;
@@ -87,7 +88,7 @@ interface MenuItem {
 
   <!-- Navigation -->
   <nav class="flex-1 px-2 py-4 space-y-1 bg-white dark:bg-gray-800 overflow-y-auto overflow-x-hidden">
-        @for (item of menuItems; track item.id) {
+        @for (item of menuItems(); track item.id) {
           <!-- Main menu item -->
           <div class="relative">
               <a
@@ -301,6 +302,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   pwaService = inject(PWAService);
   sidebarState = inject(SidebarStateService);
   private router = inject(Router);
+  private devRoleService = inject(DevRoleService);
 
   // Local state
   private _activeItem = signal(1);
@@ -310,89 +312,121 @@ export class ResponsiveSidebarComponent implements OnInit {
   readonly isOpen = this.sidebarState.isOpen;
   readonly isCollapsed = this.sidebarState.isCollapsed;
 
-  // Menu items
-  menuItems: MenuItem[] = [
+  // All menu items
+  private allMenuItems: MenuItem[] = [
     {
       id: 1,
       label: 'Inicio',
       icon: 'home',
-      route: '/'
+      route: '/',
+      module: 'core'
     },
     {
       id: 2,
       label: 'Clientes',
       icon: 'people',
-      route: '/clientes'
+      route: '/clientes',
+      module: 'production'
     },
     {
       id: 3,
       label: 'Tickets',
       icon: 'confirmation_number',
       route: '/tickets',
-      badge: 5
+      badge: 5,
+      module: 'production'
     },
     {
       id: 4,
       label: 'Servicios',
       icon: 'build',
-      route: '/servicios'
+      route: '/servicios',
+      module: 'production'
     },
     {
       id: 5,
       label: 'Productos',
       icon: 'inventory_2',
-      route: '/productos'
+      route: '/productos',
+      module: 'development'
     },
     {
       id: 6,
       label: 'Analytics',
       icon: 'trending_up',
-      route: '/analytics'
+      route: '/analytics',
+      module: 'development'
     },
     {
       id: 7,
       label: 'Búsqueda',
       icon: 'search',
-      route: '/search'
+      route: '/search',
+      module: 'development'
     },
     {
       id: 8,
       label: 'Notificaciones',
       icon: 'notifications',
       route: '/notifications',
-      badge: 3
+      badge: 3,
+      module: 'development'
     },
     {
       id: 9,
       label: 'Workflows',
       icon: 'account_tree',
-      route: '/workflows'
+      route: '/workflows',
+      module: 'development'
     },
     {
       id: 10,
       label: 'Export/Import',
       icon: 'sync_alt',
-      route: '/export-import'
+      route: '/export-import',
+      module: 'development'
     },
     {
       id: 11,
       label: 'Dashboard Móvil',
       icon: 'phone_android',
-      route: '/mobile'
+      route: '/mobile',
+      module: 'development'
     },
     {
       id: 12,
       label: 'Funciones Avanzadas',
       icon: 'auto_awesome',
-      route: '/advanced-features'
+      route: '/advanced-features',
+      module: 'development'
     },
     {
       id: 13,
       label: 'Ayuda',
       icon: 'help_outline',
-      route: '/onboarding'
+      route: '/onboarding',
+      module: 'core'
     }
   ];
+
+  // Computed menu items based on user role
+  menuItems = computed(() => {
+    const isAdmin = this.devRoleService.getUserRole() === 'admin';
+    const isDev = this.devRoleService.isDev();
+    
+    return this.allMenuItems.filter(item => {
+      // Core modules always visible
+      if (item.module === 'core') return true;
+      
+      // Production modules for everyone
+      if (item.module === 'production') return true;
+      
+      // Development modules only for admin/dev
+      if (item.module === 'development') return isAdmin || isDev;
+      
+      return false;
+    });
+  });
 
   ngOnInit() {
     // Auto-collapse on mobile

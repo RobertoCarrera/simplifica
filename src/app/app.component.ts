@@ -7,11 +7,13 @@ import { DevNavComponent } from './components/dev-nav/dev-nav.component';
 import { ToastService } from './services/toast.service';
 import { NotificationService } from './services/notification.service';
 import { PWAService } from './services/pwa.service';
+import { DevRoleService } from './services/dev-role.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [ResponsiveLayoutComponent, ToastComponent, PwaInstallComponent, MobileStatusComponent, DevNavComponent],
+  imports: [ResponsiveLayoutComponent, ToastComponent, PwaInstallComponent, MobileStatusComponent, DevNavComponent, CommonModule],
   template: `
     <app-responsive-layout></app-responsive-layout>
     <app-toast></app-toast>
@@ -20,8 +22,10 @@ import { PWAService } from './services/pwa.service';
     @if (pwaService.shouldShowMobileOptimizations()) {
       <app-mobile-status></app-mobile-status>
     }
-    <!-- Navigation de desarrollo -->
-    <app-dev-nav></app-dev-nav>
+    <!-- Navigation de desarrollo - Solo para admin/dev -->
+    @if (devRoleService.canSeeDevTools()) {
+      <app-dev-nav></app-dev-nav>
+    }
   `
 })
 export class AppComponent {
@@ -29,6 +33,7 @@ export class AppComponent {
   private toastService = inject(ToastService);
   private notificationService = inject(NotificationService);
   pwaService = inject(PWAService);
+  devRoleService = inject(DevRoleService);
 
   constructor() {
     // Las notificaciones y toasts se mostrarán solo cuando el usuario esté autenticado
