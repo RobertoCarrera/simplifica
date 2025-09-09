@@ -19,31 +19,34 @@ import { SupabaseCustomersComponent } from './components/supabase-customers/supa
 import { TestSupabaseComponent } from './components/test-supabase/test-supabase.component';
 import { SupabaseServicesComponent } from './components/supabase-services/supabase-services.component';
 import { SupabaseTicketsComponent } from './components/supabase-tickets/supabase-tickets.component';
+import { LoginComponent } from './components/login/login.component';
+import { RegisterComponent } from './components/register/register.component';
+import { ConfiguracionComponent } from './components/configuracion/configuracion.component';
+import { SidebarTestComponent } from './components/sidebar-test/sidebar-test.component';
+import { DevSetupComponent } from './components/dev-setup/dev-setup.component';
+import { AuthGuard, AdminGuard, GuestGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
-    {path: '', component: UltraSimpleComponent}, // Ruta por defecto
-    {path: 'test-supabase', component: TestSupabaseComponent}, // Test de Supabase
-    {path: 'clientes', component: SupabaseCustomersComponent}, // Nueva versión con Supabase
-    {path: 'customers', component: SupabaseCustomersComponent}, // Alias para móvil
-    {path: 'animaciones', component: AnimationShowcaseComponent}, // Demostración de animaciones
-    {path: 'animations', component: AnimationShowcaseComponent}, // Alias para móvil
-    {path: 'tickets', component: SupabaseTicketsComponent}, // Nueva versión con Supabase
-    {path: 'ticket/:id', component: TicketDetailComponent},
-    {path: 'productos', component: ProductsComponent},
-    {path: 'products', component: ProductsComponent}, // Alias para móvil
-    {path: 'servicios', component: SupabaseServicesComponent}, // Nueva versión con Supabase
-    {path: 'services', component: SupabaseServicesComponent}, // Alias para móvil
-    {path: 'works', component: SupabaseServicesComponent}, // Alias para móvil
-    {path: 'mobile', component: MobileDashboardComponent},
-    {path: 'onboarding', component: OnboardingCenterComponent},
-    {path: 'advanced-features', component: AdvancedFeaturesDashboardComponent},
-    {path: 'analytics', component: DashboardAnalyticsComponent},
-    {path: 'search', component: AdvancedSearchComponent},
-    {path: 'notifications', component: NotificationCenterComponent},
-    {path: 'workflows', component: WorkflowBuilderComponent},
-    {path: 'export-import', component: ExportImportManagerComponent},
-    {path: 'demo', component: DemoComponentsComponent},
-    {path: 'notification-demo', component: NotificationDemoComponent},
-    {path: 'setup-db', component: SetupDbComponent},
-    {path: '', redirectTo: '/clientes', pathMatch: 'full'}
+    // Rutas principales con guards apropiados
+    {path: '', redirectTo: '/inicio', pathMatch: 'full'},
+    {path: 'inicio', component: SupabaseCustomersComponent, canActivate: [AuthGuard]},
+    {path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard]},
+    {path: 'taller', component: SupabaseTicketsComponent, canActivate: [AuthGuard]},
+    {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard]},
+    {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard]},
+    
+    // Rutas de autenticación (solo para usuarios no logueados)
+    {path: 'login', component: LoginComponent, canActivate: [GuestGuard]},
+    {path: 'register', component: RegisterComponent, canActivate: [GuestGuard]},
+    
+    // Rutas de desarrollo (requieren autenticación y permisos dev)
+    {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [AuthGuard]},
+    {path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [AuthGuard]},
+    {path: 'advanced-features', component: AdvancedFeaturesDashboardComponent, canActivate: [AuthGuard]},
+    {path: 'workflows', component: WorkflowBuilderComponent, canActivate: [AuthGuard]},
+    {path: 'export-import', component: ExportImportManagerComponent, canActivate: [AuthGuard]},
+    {path: 'demo', component: DemoComponentsComponent, canActivate: [AuthGuard]},
+    {path: 'notification-demo', component: NotificationDemoComponent, canActivate: [AuthGuard]},
+    {path: 'search', component: AdvancedSearchComponent, canActivate: [AuthGuard]},
+    {path: 'notifications', component: NotificationCenterComponent, canActivate: [AuthGuard]}
 ];

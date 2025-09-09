@@ -1,9 +1,12 @@
 import { Component, AfterViewInit, Renderer2, Inject, PLATFORM_ID, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { isPlatformBrowser } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { SidebarService } from '../../services/sidebar.service';
 import { TenantService, TenantConfig } from '../../services/tenant.service';
+import { AuthService } from '../../services/auth.service';
+import { DevRoleService } from '../../services/dev-role.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-sidebar',
@@ -17,21 +20,27 @@ export class SidebarComponent implements AfterViewInit, OnInit {
   private tooltips: any[] = [];
   currentTenant: TenantConfig | null = null;
   isSuperAdmin: boolean = false;
+  isDevelopment: boolean = !environment.production;
 
   constructor(
     private sidebarService: SidebarService,
     private tenantService: TenantService,
+    public authService: AuthService,
+    public devRoleService: DevRoleService,
+    private router: Router,
     private renderer: Renderer2,
     @Inject(PLATFORM_ID) private platformId: Object) {}
 
   ngOnInit(): void {
-    // Suscribirse a cambios de tenant
-    this.tenantService.tenant$.subscribe(tenant => {
-      this.currentTenant = tenant;
-      console.log('🏢 Sidebar loaded for tenant:', tenant?.name);
-    });
+    // Suscribirse a cambios de tenant solo si está disponible
+    if (this.tenantService && this.tenantService.tenant$) {
+      this.tenantService.tenant$.subscribe(tenant => {
+        this.currentTenant = tenant;
+        console.log('🏢 Sidebar loaded for tenant:', tenant?.name);
+      });
+    }
 
-    this.isSuperAdmin = this.tenantService.isSuperAdmin();
+    this.isSuperAdmin = this.tenantService ? this.tenantService.isSuperAdmin() : false;
   }
 
   ngAfterViewInit(): void {
@@ -56,6 +65,16 @@ export class SidebarComponent implements AfterViewInit, OnInit {
   isModuleAllowed(module: keyof TenantConfig['allowedModules']): boolean {
     if (this.isSuperAdmin) return true;
     return this.currentTenant?.allowedModules[module] || false;
+  }
+
+  // Cerrar sesión
+  async logout(): Promise<void> {
+    try {
+      await this.authService.logout();
+      this.router.navigate(['/login']);
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
   }
 
   private async updateTooltips(): Promise<void> {

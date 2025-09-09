@@ -1,0 +1,251 @@
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-md-8 mx-auto">
+      <h2 class="mb-4 text-center">
+        <i class="bi bi-gear me-2"></i>
+        Configuración
+      </h2>
+
+      <!-- Mensaje de estado -->
+      <div *ngIf="message" class="alert" [class.alert-success]="messageType === 'success'" [class.alert-danger]="messageType === 'error'">
+        {{ message }}
+      </div>
+
+      <!-- Información de la empresa -->
+      <div class="card mb-4" *ngIf="userProfile">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-building me-2"></i>
+            Información de la Empresa
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <strong>Empresa:</strong> {{ getCompanyInfo()?.name || 'No asignada' }}
+            </div>
+            <div class="col-md-6">
+              <strong>Plan:</strong> 
+              <span class="badge bg-primary ms-1">{{ getCompanyInfo()?.subscription_tier || 'Básico' }}</span>
+            </div>
+          </div>
+          <div class="row mt-2">
+            <div class="col-md-6">
+              <strong>Tu rol:</strong> 
+              <span class="badge bg-secondary ms-1">{{ getRoleDisplayName(userProfile.role) }}</span>
+            </div>
+            <div class="col-md-6">
+              <strong>Estado:</strong> 
+              <span class="badge bg-success ms-1" *ngIf="userProfile.is_active">Activo</span>
+              <span class="badge bg-danger ms-1" *ngIf="!userProfile.is_active">Inactivo</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Perfil de usuario -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-person me-2"></i>
+            Mi Perfil
+          </h5>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="profileForm" (ngSubmit)="updateProfile()">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="full_name" class="form-label">Nombre completo *</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="full_name"
+                  formControlName="full_name"
+                  [class.is-invalid]="profileForm.get('full_name')?.invalid && profileForm.get('full_name')?.touched">
+                <div class="invalid-feedback" *ngIf="profileForm.get('full_name')?.invalid && profileForm.get('full_name')?.touched">
+                  El nombre es requerido (mínimo 2 caracteres)
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="email" class="form-label">Email *</label>
+                <input 
+                  type="email" 
+                  class="form-control" 
+                  id="email"
+                  formControlName="email"
+                  readonly
+                  [class.is-invalid]="profileForm.get('email')?.invalid && profileForm.get('email')?.touched">
+                <small class="text-muted">El email no se puede modificar</small>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="phone" class="form-label">Teléfono</label>
+                <input 
+                  type="tel" 
+                  class="form-control" 
+                  id="phone"
+                  formControlName="phone">
+              </div>
+            </div>
+            <button 
+              type="submit" 
+              class="btn btn-primary"
+              [disabled]="loading || profileForm.invalid">
+              <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+              <i class="bi bi-check-circle me-2" *ngIf="!loading"></i>
+              Actualizar Perfil
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Cambiar contraseña -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">
+            <i class="bi bi-shield-lock me-2"></i>
+            Cambiar Contraseña
+          </h5>
+        </div>
+        <div class="card-body">
+          <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="currentPassword" class="form-label">Contraseña actual *</label>
+                <input 
+                  type="password" 
+                  class="form-control" 
+                  id="currentPassword"
+                  formControlName="currentPassword"
+                  [class.is-invalid]="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched">
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="newPassword" class="form-label">Nueva contraseña *</label>
+                <input 
+                  type="password" 
+                  class="form-control" 
+                  id="newPassword"
+                  formControlName="newPassword"
+                  [class.is-invalid]="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched">
+                <small class="text-muted">Mínimo 6 caracteres</small>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="confirmPassword" class="form-label">Confirmar contraseña *</label>
+                <input 
+                  type="password" 
+                  class="form-control" 
+                  id="confirmPassword"
+                  formControlName="confirmPassword"
+                  [class.is-invalid]="passwordForm.get('confirmPassword')?.invalid && passwordForm.get('confirmPassword')?.touched">
+                <div class="invalid-feedback" *ngIf="passwordForm.hasError('passwordMismatch') && passwordForm.get('confirmPassword')?.touched">
+                  Las contraseñas no coinciden
+                </div>
+              </div>
+            </div>
+            <button 
+              type="submit" 
+              class="btn btn-warning"
+              [disabled]="loading || passwordForm.invalid">
+              <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+              <i class="bi bi-key me-2" *ngIf="!loading"></i>
+              Cambiar Contraseña
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Zona de peligro -->
+      <div class="card border-danger">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Zona de Peligro
+          </h5>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">
+            Cerrar sesión te desconectará de la aplicación. Tendrás que volver a iniciar sesión.
+          </p>
+          <button 
+            type="button" 
+            class="btn btn-outline-danger"
+            (click)="logout()">
+            <i class="bi bi-door-open me-2"></i>
+            Cerrar Sesión
+          </button>
+        </div>
+      </div>
+
+      <!-- Configuración de Desarrollo (Solo para devs) -->
+      <div class="card mb-4" *ngIf="devRoleService.canSeeDevTools()">
+        <div class="card-header bg-warning text-dark">
+          <h5 class="mb-0">
+            <i class="bi bi-tools me-2"></i>
+            🔧 Configuración de Desarrollo
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Esta sección solo es visible para usuarios de desarrollo.</strong><br>
+            Aquí puedes configurar el sistema para desarrollo local y testing.
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <p><strong>Modo:</strong> 
+                <span class="badge bg-warning text-dark">Desarrollo</span>
+              </p>
+              <p><strong>Usuario Dev:</strong> 
+                <span class="badge" [class.bg-success]="devRoleService.isDev()" [class.bg-secondary]="!devRoleService.isDev()">
+                  {{ devRoleService.isDev() ? 'Activo' : 'No activo' }}
+                </span>
+              </p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>Role actual:</strong> {{ devRoleService.getUserRole() }}</p>
+              <p><strong>Puede ver herramientas dev:</strong> 
+                <span class="badge" [class.bg-success]="devRoleService.canSeeDevTools()" [class.bg-danger]="!devRoleService.canSeeDevTools()">
+                  {{ devRoleService.canSeeDevTools() ? 'Sí' : 'No' }}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 mb-3">
+            <button 
+              class="btn btn-primary"
+              (click)="setupDevSystem()"
+              [disabled]="isSettingUpDev">
+              {{ isSettingUpDev ? 'Configurando...' : '⚙️ Configurar Sistema Dev' }}
+            </button>
+            
+            <button 
+              class="btn btn-success"
+              (click)="testDevUser()"
+              [disabled]="isSettingUpDev">
+              🧪 Probar Usuario Dev
+            </button>
+          </div>
+
+          <!-- Log de operaciones dev -->
+          <div *ngIf="devMessages.length > 0" class="mt-3">
+            <h6>Log de Operaciones:</h6>
+            <div class="dev-log" style="max-height: 300px; overflow-y: auto;">
+              <div 
+                *ngFor="let message of devMessages" 
+                class="alert alert-sm mb-2"
+                [class.alert-success]="message.type === 'success'"
+                [class.alert-danger]="message.type === 'error'"
+                [class.alert-info]="message.type === 'info'">
+                <small class="text-muted">{{ message.timestamp | date:'short' }}</small><br>
+                {{ message.text }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

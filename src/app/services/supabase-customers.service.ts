@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Observable, from, throwError, BehaviorSubject, combineLatest } from 'rxjs';
 import { map, catchError, tap, switchMap } from 'rxjs/operators';
@@ -6,6 +6,7 @@ import { Customer, CreateCustomer, CreateCustomerDev, UpdateCustomer } from '../
 import { Address } from '../models/address';
 import { environment } from '../../environments/environment';
 import { getCurrentSupabaseConfig, devLog, devError, devSuccess } from '../config/supabase.config';
+import { AuthService } from './auth.service';
 
 export interface CustomerFilters {
   search?: string;
@@ -29,6 +30,7 @@ export interface CustomerStats {
 export class SupabaseCustomersService {
   private supabase: SupabaseClient;
   private config = getCurrentSupabaseConfig();
+  private authService = inject(AuthService);
   
   // Estado reactivo
   private customersSubject = new BehaviorSubject<Customer[]>([]);
@@ -149,8 +151,11 @@ export class SupabaseCustomersService {
       .from('clients')
       .select('*');
 
-    // En producción, se debería usar RLS para filtrar automáticamente por usuario autenticado
-    // Por ahora, aplicamos filtros básicos
+    // MULTI-TENANT: Filtrar por company_id del usuario autenticado
+    const companyId = this.authService.companyId();
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
 
     // Aplicar filtros de búsqueda
     if (filters.search) {
@@ -456,15 +461,20 @@ export class SupabaseCustomersService {
    * Crear cliente usando método estándar
    */
   private createCustomerStandard(customer: CreateCustomerDev): Observable<Customer> {
+    // MULTI-TENANT: Usar company_id del usuario autenticado
+    const companyId = this.authService.companyId();
+    if (!companyId) {
+      return throwError(() => new Error('Usuario no tiene empresa asignada'));
+    }
+
     // Convertir de Customer a estructura de clients
-    const selectedUser = this.getCurrentUserFromSystemUsers(this.currentDevUserId || '');
     const clientData = {
       name: customer.nombre || '',
       apellidos: customer.apellidos || '',
       dni: customer.dni || '',
       email: customer.email || '',
       phone: customer.telefono || '',
-      company_id: selectedUser?.company_id || 1, // Empresa por defecto si no se encuentra usuario
+      company_id: companyId, // Usar company_id del usuario autenticado
       created_at: new Date().toISOString()
     };
     

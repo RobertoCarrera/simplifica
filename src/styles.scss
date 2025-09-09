@@ -173,3 +173,17 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Estilos para páginas de autenticación - sin scroll */
+.auth-page {
+  overflow: hidden !important;
+  height: 100vh !important;
+}
+
+.auth-page html,
+.auth-page body {
+  overflow: hidden !important;
+  height: 100vh !important;
+  margin: 0;
+  padding: 0;
+}

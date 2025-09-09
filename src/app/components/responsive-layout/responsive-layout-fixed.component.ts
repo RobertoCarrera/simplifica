@@ -11,8 +11,8 @@ import { AuthService } from '../../services/auth.service';
   standalone: true,
   imports: [CommonModule, RouterModule, ResponsiveSidebarComponent],
   template: `
-    <!-- Layout sin sidebar para login/register O usuarios no autenticados -->
-    @if (isAuthPage() || !isAuthenticated()) {
+    <!-- Layout sin sidebar para login/register -->
+    @if (isAuthPage()) {
       <div class="min-h-screen">
         <router-outlet></router-outlet>
       </div>
@@ -60,11 +60,6 @@ export class ResponsiveLayoutComponent {
   isAuthPage(): boolean {
     const url = this.router.url;
     return url.includes('/login') || url.includes('/register');
-  }
-
-  // Check if user is authenticated
-  isAuthenticated(): boolean {
-    return this.authService.isAuthenticated();
   }
 
   // Mobile detection

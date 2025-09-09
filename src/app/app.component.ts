@@ -31,29 +31,7 @@ export class AppComponent {
   pwaService = inject(PWAService);
 
   constructor() {
-    // Mensaje de bienvenida adaptado al dispositivo
-    setTimeout(() => {
-      const deviceType = this.pwaService.isMobileDevice() ? 'móvil' : 'escritorio';
-      const isPWA = this.pwaService.isInstalled() ? 'PWA' : 'web';
-      
-      this.toastService.info(
-        '¡Bienvenido a Simplifica CRM!', 
-        `Experiencia optimizada para ${deviceType} (${isPWA}) 🎉`
-      );
-    }, 1000);
-    
-    // Initialize notification system
-    setTimeout(() => {
-      this.notificationService.createNotification({
-        type: 'info',
-        title: '🎉 Sistema de Notificaciones Activado',
-        message: 'El nuevo centro de notificaciones está ahora disponible con filtros avanzados y seguimiento en tiempo real.',
-        priority: 'medium',
-        category: 'system',
-        actionUrl: '/notifications',
-        actionLabel: 'Explorar centro',
-        persistent: false
-      });
-    }, 3000);
+    // Las notificaciones y toasts se mostrarán solo cuando el usuario esté autenticado
+    // No mostrar nada en el login
   }
 }

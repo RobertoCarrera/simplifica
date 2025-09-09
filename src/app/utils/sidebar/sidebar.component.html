@@ -6,6 +6,8 @@
             [ngClass]="{'bi-caret-left-fill': !isShrink, 'bi-caret-right-fill': isShrink}"
             (click) = "toggleMenu()">
           </i>
+          
+          <!-- ENLACES DE PRODUCCIÓN -->
           <li (click) = "activeElement(1)"
           [ngClass]="{'elemento-actual-menu': element === 1}">
             <a routerLink="inicio">
@@ -17,6 +19,31 @@
                 <span>Inicio</span>
             </a>
           </li>
+          
+          <li (click) = "activeElement(6)"
+          [ngClass]="{'elemento-actual-menu': element === 6}">
+            <a routerLink="clientes">
+                <i class="bi bi-person-fill"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                data-bs-title="Clientes"
+                data-bs-custom-class="bg-tooltip"></i>
+                <span>Clientes</span>
+            </a>
+          </li>
+          
+          <li (click) = "activeElement(3)"
+          [ngClass]="{'elemento-actual-menu': element === 3}">
+            <a routerLink="taller">
+                <i class="bi bi-person-raised-hand"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                data-bs-title="Tickets"
+                data-bs-custom-class="bg-tooltip"></i>
+                <span>Tickets</span>
+            </a>
+          </li>
+          
           <!-- Servicios - Solo si está permitido -->
           <li *ngIf="isModuleAllowed('servicios')" 
               (click) = "activeElement(2)"
@@ -30,195 +57,148 @@
                 <span>Servicios</span>
             </a>
           </li>
-          
-          <!-- Taller -->
-          <li (click) = "activeElement(3)"
-          [ngClass]="{'elemento-actual-menu': element === 3}">
-            <a routerLink="taller">
-                <i class="bi bi-person-raised-hand"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Taller"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Taller</span>
-            </a>
-          </li>
-          
-          <!-- Presupuestos - Solo si está permitido -->
-          <li *ngIf="isModuleAllowed('presupuestos')" 
-              (click) = "activeElement(4)"
-              [ngClass]="{'elemento-actual-menu': element === 4}">
-            <a routerLink="presupuestos">
-                <i class="bi bi-file-spreadsheet"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Presupuestos"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Presupuestos</span>
-            </a>
-          </li>
-          <!-- <li (click) = "activeElement(5)"
-          [ngClass]="{'elemento-actual-menu': element === 5}">
-            <a routerLink="material">
-                <i class="bi bi-wrench-adjustable-circle"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Material"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Material</span>
-            </a>
-          </li> -->
-          <li (click) = "activeElement(6)"
-          [ngClass]="{'elemento-actual-menu': element === 6}">
-            <a routerLink="clientes">
-                <i class="bi bi-person-fill"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Clientes"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Clientes</span>
-            </a>
-          </li>
-          <!-- Demo Components - Premium UX -->
-          <li (click) = "activeElement(8)"
-          [ngClass]="{'elemento-actual-menu': element === 8}">
-            <a routerLink="demo">
-                <i class="bi bi-magic"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Demo Premium UX"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Demo UX</span>
-            </a>
-          </li>
-          
-          <!-- FUNCIONALIDADES AVANZADAS - DASHBOARD PRINCIPAL -->
-          <li (click) = "activeElement(13)"
-          [ngClass]="{'elemento-actual-menu': element === 13}">
-            <a routerLink="advanced-features">
-                <i class="bi bi-stars"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="✨ Funcionalidades Avanzadas"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>✨ Avanzadas</span>
-            </a>
-          </li>
-          
-          <!-- Separador visual -->
-          <hr class="text-muted my-2" style="opacity: 0.3;">
-          
-          <!-- Workflow Builder - OPCIÓN 2 -->
-          <li (click) = "activeElement(14)"
-          [ngClass]="{'elemento-actual-menu': element === 14}">
-            <a routerLink="workflows">
-                <i class="bi bi-diagram-3"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Constructor de Workflows"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Workflows</span>
-            </a>
-          </li>
-          
-          <!-- Export/Import - OPCIÓN 2 -->
-          <li (click) = "activeElement(15)"
-          [ngClass]="{'elemento-actual-menu': element === 15}">
-            <a routerLink="export-import">
-                <i class="bi bi-arrow-down-up"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Export/Import & Drag Drop"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Export/Import</span>
-            </a>
-          </li>
-          <!-- Notification Demo - OPCIÓN 2 -->
-          <li (click) = "activeElement(12)"
-          [ngClass]="{'elemento-actual-menu': element === 12}">
-            <a routerLink="notification-demo">
-                <i class="bi bi-play-circle"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Demo Notificaciones"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Demo Notif</span>
-            </a>
-          </li>
-          <!-- Analytics Dashboard - OPCIÓN 2 -->
-          <li (click) = "activeElement(9)"
-          [ngClass]="{'elemento-actual-menu': element === 9}">
-            <a routerLink="analytics">
-                <i class="bi bi-graph-up-arrow"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Panel de Análisis"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Analytics</span>
-            </a>
-          </li>
-          <!-- Advanced Search - OPCIÓN 2 -->
-          <li (click) = "activeElement(10)"
-          [ngClass]="{'elemento-actual-menu': element === 10}">
-            <a routerLink="search">
-                <i class="bi bi-search"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Búsqueda Avanzada"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Búsqueda</span>
-            </a>
-          </li>
-          <!-- Notifications - OPCIÓN 2 -->
-          <li (click) = "activeElement(11)"
-          [ngClass]="{'elemento-actual-menu': element === 11}">
-            <a routerLink="notifications">
-                <i class="bi bi-bell-fill"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Centro de Notificaciones"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Notificaciones</span>
-            </a>
-          </li>
-          <!-- Test DB - Solo para Super Admin -->
-          <li *ngIf="isSuperAdmin" 
-              (click) = "activeElement(7)"
-              [ngClass]="{'elemento-actual-menu': element === 7}">
-            <a routerLink="test-multitenant">
-                <i class="bi bi-database-gear"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Test Multi-tenant"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Test DB</span>
-            </a>
-          </li>
-          <!-- <li (click) = "activeElement(7)"
-          [ngClass]="{'elemento-actual-menu': element === 7}">
-            <a routerLink="facturas">
-                <i class="bi bi-file-pdf"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Facturas"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Facturas</span>
-            </a>
-          </li> -->
-          <!-- <li (click) = "activeElement(8)"
-          [ngClass]="{'elemento-actual-menu': element === 8}">
-            <a routerLink="ventas">
-                <i class="bi bi-graph-up-arrow"
-                data-bs-toggle="tooltip"
-                data-bs-placement="right"
-                data-bs-title="Ventas"
-                data-bs-custom-class="bg-tooltip"></i>
-                <span>Ventas</span>
-            </a>
-          </li> -->
+
+          <!-- ENLACES DE DESARROLLO - Solo para usuarios dev -->
+          <div *ngIf="devRoleService.canSeeDevTools()">
+            <!-- Separador visual para desarrollo -->
+            <hr class="text-muted my-2" style="opacity: 0.3;">
+            <small class="text-muted px-2">🔧 Desarrollo</small>
+            
+            <!-- Test Sidebar -->
+            <li (click) = "activeElement(51)"
+                [ngClass]="{'elemento-actual-menu': element === 51}">
+              <a routerLink="sidebar-test">
+                  <i class="bi bi-layout-sidebar"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="right"
+                  data-bs-title="Test Sidebar"
+                  data-bs-custom-class="bg-tooltip"></i>
+                  <span>🧪 Sidebar Test</span>
+              </a>
+            </li>
+            
+            <!-- Demo Components - Premium UX -->
+            <li (click) = "activeElement(8)"
+            [ngClass]="{'elemento-actual-menu': element === 8}">
+              <a routerLink="demo">
+                  <i class="bi bi-magic"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="right"
+                  data-bs-title="Demo Premium UX"
+                  data-bs-custom-class="bg-tooltip"></i>
+                  <span>Demo UX</span>
+              </a>
+            </li>
+            
+            <!-- FUNCIONALIDADES AVANZADAS - DASHBOARD PRINCIPAL -->
+            <li (click) = "activeElement(13)"
+            [ngClass]="{'elemento-actual-menu': element === 13}">
+              <a routerLink="advanced-features">
+                  <i class="bi bi-stars"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="right"
+                  data-bs-title="✨ Funcionalidades Avanzadas"
+                  data-bs-custom-class="bg-tooltip"></i>
+                  <span>✨ Avanzadas</span>
+              </a>
+            </li>
+            
+            <!-- Workflow Builder - OPCIÓN 2 -->
+            <li (click) = "activeElement(14)"
+            [ngClass]="{'elemento-actual-menu': element === 14}">
+              <a routerLink="workflows">
+                  <i class="bi bi-diagram-3"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="right"
+                  data-bs-title="Constructor de Workflows"
+                  data-bs-custom-class="bg-tooltip"></i>
+                  <span>Workflows</span>
+              </a>
+            </li>
+            
+            <!-- Export/Import - OPCIÓN 2 -->
+            <li (click) = "activeElement(15)"
+            [ngClass]="{'elemento-actual-menu': element === 15}">
+              <a routerLink="export-import">
+                  <i class="bi bi-arrow-down-up"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="right"
+                  data-bs-title="Export/Import & Drag Drop"
+                  data-bs-custom-class="bg-tooltip"></i>
+                  <span>Export/Import</span>
+              </a>
+            </li>
+            
+            <!-- Notification Demo - OPCIÓN 2 -->
+            <li (click) = "activeElement(12)"
+            [ngClass]="{'elemento-actual-menu': element === 12}">
+              <a routerLink="notification-demo">
+                  <i class="bi bi-play-circle"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="right"
+                  data-bs-title="Demo Notificaciones"
+                  data-bs-custom-class="bg-tooltip"></i>
+                  <span>Demo Notif</span>
+              </a>
+            </li>
+            
+            <!-- Analytics Dashboard - OPCIÓN 2 -->
+            <li (click) = "activeElement(9)"
+            [ngClass]="{'elemento-actual-menu': element === 9}">
+              <a routerLink="analytics">
+                  <i class="bi bi-graph-up-arrow"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="right"
+                  data-bs-title="Panel de Análisis"
+                  data-bs-custom-class="bg-tooltip"></i>
+                  <span>Analytics</span>
+              </a>
+            </li>
+            
+            <!-- Advanced Search - OPCIÓN 2 -->
+            <li (click) = "activeElement(10)"
+            [ngClass]="{'elemento-actual-menu': element === 10}">
+              <a routerLink="search">
+                  <i class="bi bi-search"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="right"
+                  data-bs-title="Búsqueda Avanzada"
+                  data-bs-custom-class="bg-tooltip"></i>
+                  <span>Búsqueda</span>
+              </a>
+            </li>
+            
+            <!-- Notifications - OPCIÓN 2 -->
+            <li (click) = "activeElement(11)"
+            [ngClass]="{'elemento-actual-menu': element === 11}">
+              <a routerLink="notifications">
+                  <i class="bi bi-bell-fill"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="right"
+                  data-bs-title="Centro de Notificaciones"
+                  data-bs-custom-class="bg-tooltip"></i>
+                  <span>Notificaciones</span>
+              </a>
+            </li>
+            
+            <!-- Test DB - Solo para Super Admin -->
+            <li *ngIf="isSuperAdmin" 
+                (click) = "activeElement(7)"
+                [ngClass]="{'elemento-actual-menu': element === 7}">
+              <a routerLink="test-multitenant">
+                  <i class="bi bi-database-gear"
+                  data-bs-toggle="tooltip"
+                  data-bs-placement="right"
+                  data-bs-title="Test Multi-tenant"
+                  data-bs-custom-class="bg-tooltip"></i>
+                  <span>Test DB</span>
+              </a>
+            </li>
+          </div>
         </ul>
         <ul class="list-unstyled w-100 p-2">
-          <li>
+          <!-- Configuración -->
+          <li (click) = "activeElement(100)">
             <a routerLink="configuracion">
               <i class="bi bi-gear"
               data-bs-toggle="tooltip"
@@ -228,25 +208,26 @@
               <span>Configuración</span>
             </a>
           </li>
-          <!-- <li>
-            <a routerLink="mi-perfil">
-              <i class="bi bi-info-square"
-              data-bs-toggle="tooltip"
-              data-bs-placement="right"
-              data-bs-title="Mi Perfil"
-              data-bs-custom-class="bg-tooltip"></i>
-              <span>Mi Perfil</span>
-            </a>
-          </li> -->
-          <li>
-            <a routerLink="login">
-              <i class="bi bi-door-closed"
+          
+          <!-- Información del usuario y logout -->
+          <li class="user-info-section">
+            <div class="user-info" *ngIf="!isShrink">
+              <div class="user-details">
+                <small class="text-muted d-block">{{ (authService.userProfile$ | async)?.full_name || 'Usuario' }}</small>
+                <small class="text-muted">{{ (authService.userProfile$ | async)?.company?.name || 'Sin empresa' }}</small>
+              </div>
+            </div>
+            <button 
+              class="btn btn-outline-danger btn-sm logout-btn w-100 mt-2"
+              (click)="logout()"
               data-bs-toggle="tooltip"
               data-bs-placement="right"
               data-bs-title="Cerrar Sesión"
-              data-bs-custom-class="bg-tooltip"></i>
-              <span>Cerrar Sesión</span>
-            </a>
+              data-bs-custom-class="bg-tooltip">
+              <i class="bi bi-door-open me-2" *ngIf="!isShrink"></i>
+              <i class="bi bi-door-open" *ngIf="isShrink"></i>
+              <span *ngIf="!isShrink">Cerrar Sesión</span>
+            </button>
           </li>
         </ul>
       </div>
