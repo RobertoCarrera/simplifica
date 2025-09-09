@@ -66,6 +66,16 @@ export class AuthService {
   companyId = signal<string>('');
 
   constructor() {
+    // Validar que las variables de entorno estén configuradas
+    if (!environment.supabase.url || !environment.supabase.anonKey) {
+      console.error('❌ SUPABASE CONFIGURATION ERROR:');
+      console.error('Las variables de entorno de Supabase no están configuradas.');
+      console.error('En Vercel Dashboard, configura:');
+      console.error('- SUPABASE_URL: Tu URL de Supabase');
+      console.error('- SUPABASE_ANON_KEY: Tu Anon Key de Supabase');
+      throw new Error('Supabase configuration missing');
+    }
+
     this.supabase = createClient(
       environment.supabase.url,
       environment.supabase.anonKey

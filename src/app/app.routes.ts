@@ -25,6 +25,7 @@ import { ConfiguracionComponent } from './components/configuracion/configuracion
 import { SidebarTestComponent } from './components/sidebar-test/sidebar-test.component';
 import { DevSetupComponent } from './components/dev-setup/dev-setup.component';
 import { AuthGuard, AdminGuard, GuestGuard } from './guards/auth.guard';
+import { AuthCallbackComponent } from './components/auth-callback/auth-callback.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -35,9 +36,10 @@ export const routes: Routes = [
     {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard]},
     
-    // Rutas de autenticación (solo para usuarios no logueados)
+    // Rutas de autenticación (sin guards)
     {path: 'login', component: LoginComponent, canActivate: [GuestGuard]},
     {path: 'register', component: RegisterComponent, canActivate: [GuestGuard]},
+    {path: 'auth/callback', component: AuthCallbackComponent}, // Callback de Supabase
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [AuthGuard]},

@@ -40,3 +40,13 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Environment variables - NUNCA subir credenciales
+.env
+.env.local
+.env.production
+.env.development
+.vercel
+
+# Logs
+*.log

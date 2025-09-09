@@ -1,8 +1,7 @@
 export const environment = {
   production: true,
   supabase: {
-    // TODO: Reemplazar con tus credenciales reales de Supabase (PRODUCCIÓN)
-    url: 'YOUR_SUPABASE_PROJECT_URL', // https://xxxxx.supabase.co
-    anonKey: 'YOUR_SUPABASE_ANON_KEY'  // Anon key de tu proyecto
+    url: process.env['VITE_SUPABASE_URL'] || process.env['NG_APP_SUPABASE_URL'] || '',
+    anonKey: process.env['VITE_SUPABASE_ANON_KEY'] || process.env['NG_APP_SUPABASE_ANON_KEY'] || ''
   }
 };
