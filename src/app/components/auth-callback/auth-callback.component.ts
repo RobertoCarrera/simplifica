@@ -79,16 +79,33 @@ export class AuthCallbackComponent implements OnInit {
   async ngOnInit() {
     try {
       // Obtener los fragments de la URL (access_token, refresh_token, etc.)
-      const fragment = window.location.hash.substring(1);
+      const rawHash = window.location.hash;
+      const fragment = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
       const params = new URLSearchParams(fragment);
+      // También intentar leer como querystring (algunos proveedores envían ?access_token=)
+      const searchParams = new URLSearchParams(window.location.search);
       
-      const accessToken = params.get('access_token');
-      const refreshToken = params.get('refresh_token');
-      const type = params.get('type');
+      let accessToken = params.get('access_token') || searchParams.get('access_token');
+      let refreshToken = params.get('refresh_token') || searchParams.get('refresh_token');
+      const type = params.get('type') || searchParams.get('type');
+
+      console.log('[AUTH-CALLBACK] rawHash=', rawHash);
+      console.log('[AUTH-CALLBACK] fragment parsed=', fragment);
+      console.log('[AUTH-CALLBACK] location.search=', window.location.search);
+      console.log('[AUTH-CALLBACK] tokens presence:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+
+      // Si los tokens vienen empaquetados en "#access_token=...&refresh_token=..." pero el navegador truncó algo, intentar decode
+      if (!accessToken && fragment.includes('access_token=')) {
+        const possible = fragment.split('&').find(p => p.startsWith('access_token='));
+        if (possible) accessToken = possible.split('=')[1];
+      }
+      if (!refreshToken && fragment.includes('refresh_token=')) {
+        const possible = fragment.split('&').find(p => p.startsWith('refresh_token='));
+        if (possible) refreshToken = possible.split('=')[1];
+      }
+      console.log('[AUTH-CALLBACK] after fallback extraction:', { accessToken: !!accessToken, refreshToken: !!refreshToken });
       
-      console.log('Auth callback params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
-      
-      if (accessToken && refreshToken) {
+  if (accessToken && refreshToken) {
         // Establecer la sesión con los tokens (usando el método de supabase directamente)
   const { error } = await this.authService.client.auth.setSession({
           access_token: accessToken,
@@ -118,14 +135,14 @@ export class AuthCallbackComponent implements OnInit {
         
       } else {
         // No hay tokens válidos
-        console.error('No se encontraron tokens de autenticación válidos');
+        console.error('[AUTH-CALLBACK] No se encontraron tokens de autenticación válidos. URL actual:', window.location.href);
         this.loading = false;
         this.error = true;
         this.errorMessage = 'No se pudieron obtener los tokens de autenticación. Por favor, intenta nuevamente.';
       }
       
     } catch (error) {
-      console.error('Error en auth callback:', error);
+      console.error('[AUTH-CALLBACK] Error en auth callback:', error);
       this.loading = false;
       this.error = true;
       this.errorMessage = 'Ocurrió un error durante la autenticación. Por favor, intenta nuevamente.';
