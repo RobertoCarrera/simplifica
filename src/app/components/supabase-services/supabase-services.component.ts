@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, HostListener, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SupabaseServicesService, Service, ServiceCategory } from '../../services/supabase-services.service';
+import { SupabaseServicesService, Service, ServiceCategory, ServiceTag } from '../../services/supabase-services.service';
 import { SimpleSupabaseService, SimpleCompany } from '../../services/simple-supabase.service';
 
 @Component({
@@ -21,6 +21,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   services: Service[] = [];
   filteredServices: Service[] = [];
   serviceCategories: ServiceCategory[] = [];
+  serviceTags: ServiceTag[] = [];
   loading = false;
   error: string | null = null;
   
@@ -46,6 +47,12 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   categoryFilterText = '';
   filteredCategories: ServiceCategory[] = [];
   
+  // Tag form management
+  showTagInput = false;
+  tagFilterText = '';
+  filteredTags: ServiceTag[] = [];
+  selectedTags: string[] = [];
+  
   // Form validation
   formErrors: Record<string, string> = {};
   
@@ -56,6 +63,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.loadCompanies().then(() => {
       this.loadServices();
       this.loadServiceCategories();
+      this.loadServiceTags();
     });
   }
 
@@ -95,6 +103,17 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     }
   }
 
+  async loadServiceTags() {
+    if (!this.selectedCompanyId) return;
+    
+    try {
+      this.serviceTags = await this.servicesService.getServiceTags(this.selectedCompanyId);
+      this.updateTagFilter();
+    } catch (error: any) {
+      console.error('Error loading service tags:', error);
+    }
+  }
+
   updateCategoryFilter() {
     if (!this.categoryFilterText) {
       this.filteredCategories = this.serviceCategories;
@@ -102,6 +121,17 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       const searchTerm = this.normalizeText(this.categoryFilterText);
       this.filteredCategories = this.serviceCategories.filter(cat =>
         this.normalizeText(cat.name).includes(searchTerm)
+      );
+    }
+  }
+
+  updateTagFilter() {
+    if (!this.tagFilterText) {
+      this.filteredTags = this.serviceTags;
+    } else {
+      const searchTerm = this.normalizeText(this.tagFilterText);
+      this.filteredTags = this.serviceTags.filter(tag =>
+        this.normalizeText(tag.name).includes(searchTerm)
       );
     }
   }
@@ -181,10 +211,78 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Métodos de gestión de tags
+  selectTag(tag: ServiceTag) {
+    if (!this.selectedTags.includes(tag.name)) {
+      this.selectedTags.push(tag.name);
+    }
+    this.showTagInput = false;
+    this.tagFilterText = '';
+  }
+
+  hasExactTagMatch(): boolean {
+    const normalizedSearch = this.normalizeText(this.tagFilterText);
+    return this.serviceTags.some(tag => 
+      this.normalizeText(tag.name) === normalizedSearch
+    );
+  }
+
+  async createNewTag() {
+    if (!this.tagFilterText.trim()) return;
+    
+    try {
+      // Verificar si ya existe una tag similar
+      const normalizedSearch = this.normalizeText(this.tagFilterText);
+      const existingTag = this.serviceTags.find(tag => 
+        this.normalizeText(tag.name) === normalizedSearch
+      );
+
+      if (existingTag) {
+        // Si existe, seleccionarla en lugar de crear una nueva
+        if (!this.selectedTags.includes(existingTag.name)) {
+          this.selectedTags.push(existingTag.name);
+        }
+        this.showTagInput = false;
+        this.tagFilterText = '';
+        return;
+      }
+
+      const newTag = await this.servicesService.createServiceTag({
+        name: this.tagFilterText.trim(),
+        company_id: this.selectedCompanyId,
+        color: '#3B82F6', // Color por defecto
+        description: '',
+        is_active: true
+      });
+      
+      this.serviceTags.push(newTag);
+      this.selectedTags.push(newTag.name);
+      this.showTagInput = false;
+      this.tagFilterText = '';
+      
+    } catch (error: any) {
+      console.error('Error creating tag:', error);
+    }
+  }
+
+  onTagFilterChange() {
+    this.filteredTags = this.serviceTags.filter(tag =>
+      tag.name.toLowerCase().includes(this.tagFilterText.toLowerCase())
+    );
+  }
+
+  removeTag(tag: string) {
+    const index = this.selectedTags.indexOf(tag);
+    if (index > -1) {
+      this.selectedTags.splice(index, 1);
+    }
+  }
+
   onCompanyChange() {
     console.log(`Cambiando a empresa ID: ${this.selectedCompanyId}`);
     this.loadServices();
     this.loadServiceCategories();
+    this.loadServiceTags();
   }
 
   async loadServices() {
@@ -268,8 +366,13 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       can_be_remote: true,
       priority_level: 3
     };
+    
+    // Inicializar tags seleccionados
+    this.selectedTags = service?.tags ? [...service.tags] : [];
+    
     this.formErrors = {};
     this.loadServiceCategories();
+    this.loadServiceTags();
     
     // Bloquear scroll de la página principal de forma más agresiva
     document.body.classList.add('modal-open');
@@ -287,6 +390,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.formErrors = {};
     this.showCategoryInput = false;
     this.categoryFilterText = '';
+    this.showTagInput = false;
+    this.tagFilterText = '';
+    this.selectedTags = [];
     
     // Restaurar scroll de la página principal
     document.body.classList.remove('modal-open');
@@ -357,10 +463,11 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     
     this.loading = true;
     try {
-      // Add company_id to form data
+      // Add company_id and tags to form data
       const dataWithCompany = {
         ...this.formData,
-        company_id: this.selectedCompanyId
+        company_id: this.selectedCompanyId,
+        tags: this.selectedTags
       };
 
       if (this.editingService) {

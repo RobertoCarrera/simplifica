@@ -302,6 +302,75 @@
               </div>
               <div *ngIf="formErrors['category']" class="error-message">{{ formErrors['category'] }}</div>
             </div>
+            
+            <!-- Tags Section -->
+            <div class="form-group">
+              <label for="tags">Tags</label>
+              <div class="tags-container">
+                <!-- Selected Tags Display -->
+                <div class="selected-tags" *ngIf="selectedTags.length > 0">
+                  <span *ngFor="let tag of selectedTags" class="tag-chip">
+                    {{ tag }}
+                    <button type="button" class="tag-remove" (click)="removeTag(tag)">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </span>
+                </div>
+                
+                <!-- Tag Input -->
+                <div class="tag-input-container">
+                  <input 
+                    type="text" 
+                    class="form-control"
+                    (focus)="showTagInput = true"
+                    placeholder="Añadir tags..."
+                    readonly>
+                  
+                  <!-- Tag Dropdown -->
+                  <div *ngIf="showTagInput" class="tag-dropdown">
+                    <div class="tag-search">
+                      <input 
+                        type="text"
+                        class="form-control small"
+                        [(ngModel)]="tagFilterText"
+                        (ngModelChange)="onTagFilterChange()"
+                        placeholder="Buscar o crear tag..."
+                        name="tagFilter">
+                    </div>
+                    
+                    <div class="tag-options">
+                      <div *ngFor="let tag of filteredTags" 
+                           class="tag-option"
+                           [class.selected]="selectedTags.includes(tag.name)"
+                           (click)="selectTag(tag)">
+                        <div class="tag-color" [style.background-color]="tag.color"></div>
+                        <span>{{ tag.name }}</span>
+                        <i *ngIf="selectedTags.includes(tag.name)" class="fas fa-check"></i>
+                      </div>
+                      
+                      <div *ngIf="tagFilterText && filteredTags.length === 0 && !hasExactTagMatch()" 
+                           class="tag-option create-new"
+                           (click)="createNewTag()">
+                        <i class="fas fa-plus" style="color: #10b981;"></i>
+                        <span>Crear "{{ tagFilterText }}"</span>
+                      </div>
+                      
+                      <div *ngIf="tagFilterText && filteredTags.length === 0 && hasExactTagMatch()" 
+                           class="tag-option existing-match">
+                        <i class="fas fa-check" style="color: #3b82f6;"></i>
+                        <span>Tag "{{ tagFilterText }}" ya existe</span>
+                      </div>
+                    </div>
+                    
+                    <div class="tag-actions">
+                      <button type="button" class="btn btn-sm btn-secondary" (click)="showTagInput = false">
+                        Cerrar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           
           <div class="form-group full-width">

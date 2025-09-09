@@ -34,6 +34,9 @@ export interface Service {
   // Campos para ubicación y disponibilidad
   can_be_remote?: boolean;
   priority_level?: number;
+  
+  // Campos para tags
+  tags?: string[];
 }
 
 export interface ServiceCategory {
@@ -45,6 +48,17 @@ export interface ServiceCategory {
   company_id: string;
   is_active: boolean;
   sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceTag {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+  company_id: string;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -413,6 +427,165 @@ export class SupabaseServicesService {
   calculateHourlyRate(basePrice: number, estimatedHours: number): number {
     if (!basePrice || !estimatedHours || estimatedHours === 0) return 0;
     return basePrice / estimatedHours;
+  }
+
+  // ====================================
+  // MÉTODOS PARA GESTIÓN DE TAGS
+  // ====================================
+
+  async getServiceTags(companyId: string): Promise<ServiceTag[]> {
+    try {
+      const client = this.supabase.getClient();
+      const { data, error } = await client
+        .from('service_tags')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error getting service tags:', error);
+      throw error;
+    }
+  }
+
+  async createServiceTag(tag: Partial<ServiceTag>): Promise<ServiceTag> {
+    try {
+      const client = this.supabase.getClient();
+      const { data, error } = await client
+        .from('service_tags')
+        .insert([{
+          name: tag.name,
+          color: tag.color || '#6b7280',
+          description: tag.description,
+          company_id: tag.company_id,
+          is_active: true
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('❌ Error creating service tag:', error);
+      throw error;
+    }
+  }
+
+  async loadServiceTagsForServices(services: Service[]): Promise<Service[]> {
+    try {
+      if (!services || services.length === 0) return services;
+
+      const serviceIds = services.map(s => s.id);
+      const client = this.supabase.getClient();
+
+      const { data: relations, error } = await client
+        .from('service_tag_relations')
+        .select(`
+          service_id,
+          tag:service_tags(id, name, color)
+        `)
+        .in('service_id', serviceIds);
+
+      if (error) throw error;
+
+      // Agrupar tags por servicio
+      const tagsByService: Record<string, string[]> = {};
+      (relations || []).forEach((relation: any) => {
+        const serviceId = relation.service_id;
+        const tagName = relation.tag?.name;
+        
+        if (serviceId && tagName) {
+          if (!tagsByService[serviceId]) {
+            tagsByService[serviceId] = [];
+          }
+          tagsByService[serviceId].push(tagName);
+        }
+      });
+
+      // Asignar tags a servicios
+      return services.map(service => ({
+        ...service,
+        tags: tagsByService[service.id] || []
+      }));
+    } catch (error) {
+      console.error('❌ Error loading tags for services:', error);
+      return services; // Devolver servicios sin tags en caso de error
+    }
+  }
+
+  async syncServiceTags(serviceId: string, tagNames: string[]): Promise<void> {
+    try {
+      const client = this.supabase.getClient();
+      
+      // 1. Obtener company_id del servicio
+      const { data: service, error: serviceError } = await client
+        .from('services')
+        .select('company_id')
+        .eq('id', serviceId)
+        .single();
+
+      if (serviceError || !service) {
+        throw new Error('No se pudo obtener el servicio');
+      }
+
+      const companyId = service.company_id;
+      const uniqueTagNames = Array.from(new Set(tagNames.filter(name => name && name.trim())));
+
+      // 2. Crear tags que no existen
+      for (const tagName of uniqueTagNames) {
+        try {
+          await client
+            .from('service_tags')
+            .insert({
+              name: tagName.trim(),
+              color: '#6b7280',
+              company_id: companyId,
+              is_active: true
+            });
+        } catch (insertError: any) {
+          // Ignorar errores de duplicados (constraint unique)
+          if (!insertError.message?.includes('duplicate') && !insertError.message?.includes('unique')) {
+            console.warn('Error creando tag:', tagName, insertError);
+          }
+        }
+      }
+
+      // 3. Obtener IDs de los tags
+      const { data: tags, error: tagsError } = await client
+        .from('service_tags')
+        .select('id, name')
+        .eq('company_id', companyId)
+        .in('name', uniqueTagNames);
+
+      if (tagsError) throw tagsError;
+
+      const tagIds = (tags || []).map(tag => tag.id);
+
+      // 4. Eliminar relaciones existentes
+      await client
+        .from('service_tag_relations')
+        .delete()
+        .eq('service_id', serviceId);
+
+      // 5. Crear nuevas relaciones
+      if (tagIds.length > 0) {
+        const relations = tagIds.map(tagId => ({
+          service_id: serviceId,
+          tag_id: tagId
+        }));
+
+        await client
+          .from('service_tag_relations')
+          .insert(relations);
+      }
+
+    } catch (error) {
+      console.error('❌ Error syncing service tags:', error);
+      throw error;
+    }
   }
 
   // Dev methods for multi-company support
