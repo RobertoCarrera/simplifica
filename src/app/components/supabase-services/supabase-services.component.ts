@@ -279,7 +279,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   onCompanyChange() {
-    console.log(`Cambiando a empresa ID: ${this.selectedCompanyId}`);
     this.loadServices();
     this.loadServiceCategories();
     this.loadServiceTags();
@@ -290,7 +289,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.error = null;
     
     try {
-  console.log(`Cargando servicios para empresa ID: ${this.selectedCompanyId}`);
   this.services = await this.servicesService.getServices(this.selectedCompanyId || undefined);
       this.updateFilteredServices();
       this.updateStats();

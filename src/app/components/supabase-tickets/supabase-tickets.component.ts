@@ -159,7 +159,6 @@ export class SupabaseTicketsComponent implements OnInit {
       
       if (response.success) {
         this.companies = response.data || [];
-        console.log('Companies loaded:', this.companies.length);
       } else {
         console.error('Error loading companies:', response.error);
         this.companies = [];
@@ -171,7 +170,6 @@ export class SupabaseTicketsComponent implements OnInit {
   }
 
   async onCompanyChange() {
-    console.log(`Cambiando a empresa ID: ${this.selectedCompanyId}`);
     
     // Load in correct order: stages first, then tickets, then attach tags and stats
     await this.loadStages();
@@ -198,7 +196,6 @@ export class SupabaseTicketsComponent implements OnInit {
     }
     
     try {
-      console.log(`Cargando tickets para empresa ID: ${this.selectedCompanyId}`);
       
       // Usar UUID directamente, no convertir a número
       const { data: tickets, error } = await this.simpleSupabase.getClient()
@@ -218,7 +215,6 @@ export class SupabaseTicketsComponent implements OnInit {
       
       this.tickets = tickets || [];
       this.updateFilteredTickets();
-      console.log(`Tickets cargados desde base de datos: ${this.tickets.length}`);
       
     } catch (error) {
       console.error('Error in loadTickets:', error);
@@ -232,7 +228,6 @@ export class SupabaseTicketsComponent implements OnInit {
     if (!this.selectedCompanyId) return;
     
     try {
-      console.log(`Cargando etapas para empresa ID: ${this.selectedCompanyId}`);
       
       // Cargar stages desde la base de datos real
       const { data: stages, error } = await this.simpleSupabase.getClient()
@@ -246,7 +241,6 @@ export class SupabaseTicketsComponent implements OnInit {
       }
       
       this.stages = stages || [];
-      console.log(`Etapas cargadas desde BD: ${this.stages.length}`);
     } catch (error) {
       console.error('Error in loadStages:', error);
     }
@@ -256,7 +250,6 @@ export class SupabaseTicketsComponent implements OnInit {
     if (!this.selectedCompanyId) return;
     
     try {
-      console.log(`Cargando estadísticas para empresa ID: ${this.selectedCompanyId}`);
       
       // Usar la función del backend para calcular estadísticas
       const { data: statsResult, error } = await this.simpleSupabase.getClient()
@@ -282,7 +275,6 @@ export class SupabaseTicketsComponent implements OnInit {
           totalActualHours: statsResult.totalActualHours || 0
         };
         
-        console.log('Estadísticas cargadas desde backend:', this.stats);
       } else {
         // Fallback si no hay datos
         this.calculateStatsInFrontend();
@@ -296,7 +288,6 @@ export class SupabaseTicketsComponent implements OnInit {
   }
   
   private calculateStatsInFrontend() {
-    console.log('Calculando estadísticas en frontend como fallback...');
     
     // Calcular estadísticas desde los tickets reales (fallback)
     const totalTickets = this.tickets.length;
@@ -338,14 +329,12 @@ export class SupabaseTicketsComponent implements OnInit {
       totalActualHours: totalActualHours
     };
     
-    console.log('Estadísticas calculadas en frontend:', this.stats);
   }
 
   async loadServices() {
     if (!this.selectedCompanyId) return;
     
     try {
-      console.log(`Cargando servicios para empresa ID: ${this.selectedCompanyId}`);
       
       const services = await this.servicesService.getServices(this.selectedCompanyId);
       
@@ -358,7 +347,6 @@ export class SupabaseTicketsComponent implements OnInit {
       // Inicialmente mostrar todos los servicios
       this.filteredServices = [...this.availableServices];
       
-      console.log(`Servicios cargados: ${this.availableServices.length}`);
     } catch (error) {
       console.error('Error in loadServices:', error);
       this.availableServices = [];
@@ -381,7 +369,6 @@ export class SupabaseTicketsComponent implements OnInit {
     if (!this.selectedCompanyId) return;
     
     try {
-      console.log(`Cargando clientes para empresa ID: ${this.selectedCompanyId}`);
       
       // Usar SimpleSupabaseService para obtener clientes
       const response = await this.simpleSupabase.getClients();
@@ -393,7 +380,6 @@ export class SupabaseTicketsComponent implements OnInit {
         );
         this.filteredCustomers = [...this.customers];
         
-        console.log(`Clientes cargados: ${this.customers.length}`);
       } else {
         console.error('Error loading customers:', response.error);
         this.customers = [];
@@ -410,12 +396,10 @@ export class SupabaseTicketsComponent implements OnInit {
     if (!this.selectedCompanyId) return;
     
     try {
-      console.log(`Cargando dispositivos para empresa ID: ${this.selectedCompanyId}`);
       
       const devices = await this.devicesService.getDevices(this.selectedCompanyId);
       
       this.availableDevices = devices || [];
-      console.log(`Dispositivos cargados: ${this.availableDevices.length}`);
     } catch (error) {
       console.error('Error in loadDevices:', error);
       this.availableDevices = [];
@@ -427,7 +411,6 @@ export class SupabaseTicketsComponent implements OnInit {
     if (!ticketId) return;
     
     try {
-      console.log(`Cargando servicios para ticket ID: ${ticketId}`);
       
       // Query ticket_services table to get services associated with the ticket
       const { data: ticketServices, error } = await this.simpleSupabase.getClient()
@@ -459,7 +442,6 @@ export class SupabaseTicketsComponent implements OnInit {
         quantity: ts.quantity || 1
       }));
 
-      console.log(`Servicios cargados para edición:`, this.selectedServices);
       
     } catch (error) {
       console.error('Error en loadTicketServicesForEdit:', error);
@@ -467,7 +449,6 @@ export class SupabaseTicketsComponent implements OnInit {
   }
   async loadTags() {
     try {
-      console.log('Cargando tags disponibles desde la base de datos...');
 
       const client = this.simpleSupabase.getClient();
 
@@ -509,7 +490,6 @@ export class SupabaseTicketsComponent implements OnInit {
         company_id: t.company_id
       } as TicketTag));
 
-      console.log(`Tags cargados desde BD: ${this.availableTags.length}`);
     } catch (error) {
       console.error('Error in loadTags:', error);
       this.availableTags = [];
@@ -554,7 +534,6 @@ export class SupabaseTicketsComponent implements OnInit {
 
       // Actualizar la vista filtrada
       this.updateFilteredTickets();
-      console.log('Tags asociados a tickets cargados');
     } catch (error) {
       console.error('Error en loadTicketTagsForTickets:', error);
     }

@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 import { UltraSimpleComponent } from './components/ultra-simple/ultra-simple.component';
 import { SetupDbComponent } from './components/setup-db/setup-db.component';
-import { TicketsComponent } from './components/tickets/tickets.component';
 import { TicketDetailComponent } from './components/ticket-detail/ticket-detail.component';
 import { ProductsComponent } from './components/products/products.component';
 import { WorksComponent } from './components/works/works.component';
@@ -28,14 +27,12 @@ export const routes: Routes = [
     {path: 'customers', component: SupabaseCustomersComponent}, // Alias para móvil
     {path: 'animaciones', component: AnimationShowcaseComponent}, // Demostración de animaciones
     {path: 'animations', component: AnimationShowcaseComponent}, // Alias para móvil
-    {path: 'tickets-old', component: TicketsComponent}, // Versión antigua
     {path: 'tickets', component: SupabaseTicketsComponent}, // Nueva versión con Supabase
     {path: 'ticket/:id', component: TicketDetailComponent},
     {path: 'productos', component: ProductsComponent},
     {path: 'products', component: ProductsComponent}, // Alias para móvil
     {path: 'servicios', component: SupabaseServicesComponent}, // Nueva versión con Supabase
     {path: 'services', component: SupabaseServicesComponent}, // Alias para móvil
-    {path: 'servicios', component: SupabaseServicesComponent}, // Redirección del antiguo nombre
     {path: 'works', component: SupabaseServicesComponent}, // Alias para móvil
     {path: 'mobile', component: MobileDashboardComponent},
     {path: 'onboarding', component: OnboardingCenterComponent},

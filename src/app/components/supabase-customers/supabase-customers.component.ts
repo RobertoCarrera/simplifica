@@ -525,7 +525,6 @@ export class SupabaseCustomersComponent implements OnInit {
   }
 
   openForm() {
-    console.log('Abriendo formulario...');
     this.resetForm();
     this.selectedCustomer.set(null);
     this.showForm.set(true);
@@ -540,7 +539,6 @@ export class SupabaseCustomersComponent implements OnInit {
   }
 
   editCustomer(customer: Customer) {
-    console.log('Editando cliente:', customer);
     this.selectedCustomer.set(customer);
     this.populateForm(customer);
     this.showForm.set(true);
@@ -555,13 +553,11 @@ export class SupabaseCustomersComponent implements OnInit {
   }
 
   viewCustomer(customer: Customer) {
-    console.log('Viendo detalles del cliente:', customer);
     // Implementar vista de detalles
     this.selectCustomer(customer);
   }
 
   duplicateCustomer(customer: Customer) {
-    console.log('Duplicando cliente:', customer);
     this.resetForm();
     this.populateForm({
       ...customer,
@@ -610,7 +606,6 @@ export class SupabaseCustomersComponent implements OnInit {
 
     this.customersService.createCustomer(customerData).subscribe({
       next: (customer) => {
-        console.log('Cliente creado exitosamente:', customer);
         this.closeForm();
         this.toastService.success('Éxito', 'Cliente creado correctamente');
       },
@@ -637,7 +632,6 @@ export class SupabaseCustomersComponent implements OnInit {
 
     this.customersService.updateCustomer(customerId, updates).subscribe({
       next: (customer) => {
-        console.log('Cliente actualizado exitosamente:', customer);
         this.closeForm();
         this.toastService.success('Éxito', 'Cliente actualizado correctamente');
       },
@@ -678,7 +672,6 @@ export class SupabaseCustomersComponent implements OnInit {
   }
 
   testCreateCustomer() {
-    console.log('🧪 Test: Creando cliente...');
     
     const testCustomer = {
       nombre: 'Cliente',
@@ -692,7 +685,6 @@ export class SupabaseCustomersComponent implements OnInit {
 
     this.customersService.createCustomer(testCustomer).subscribe({
       next: (customer) => {
-        console.log('✅ Cliente creado:', customer);
         this.closeForm();
       },
       error: (err) => {
