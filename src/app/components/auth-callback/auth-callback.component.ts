@@ -90,7 +90,7 @@ export class AuthCallbackComponent implements OnInit {
       
       if (accessToken && refreshToken) {
         // Establecer la sesión con los tokens (usando el método de supabase directamente)
-        const { error } = await this.authService['supabase'].auth.setSession({
+  const { error } = await this.authService.client.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken
         });
@@ -100,11 +100,12 @@ export class AuthCallbackComponent implements OnInit {
         }
         
         this.loading = false;
-        this.toastService.success('¡Éxito!', 'Autenticación exitosa');
+  await this.authService.refreshCurrentUser();
+  this.toastService.success('¡Éxito!', 'Autenticación exitosa');
         
         // Redirigir al dashboard después de un breve delay
         setTimeout(() => {
-          this.router.navigate(['/dashboard']);
+          this.router.navigate(['/clientes']);
         }, 1500);
         
       } else if (type === 'signup') {

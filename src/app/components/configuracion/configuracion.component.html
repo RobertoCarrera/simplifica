@@ -36,8 +36,8 @@
             </div>
             <div class="col-md-6">
               <strong>Estado:</strong> 
-              <span class="badge bg-success ms-1" *ngIf="userProfile.is_active">Activo</span>
-              <span class="badge bg-danger ms-1" *ngIf="!userProfile.is_active">Inactivo</span>
+              <span class="badge bg-success ms-1" *ngIf="userProfile.active">Activo</span>
+              <span class="badge bg-danger ms-1" *ngIf="!userProfile.active">Inactivo</span>
             </div>
           </div>
         </div>
@@ -79,14 +79,7 @@
               </div>
             </div>
             <div class="row">
-              <div class="col-md-6 mb-3">
-                <label for="phone" class="form-label">Teléfono</label>
-                <input 
-                  type="tel" 
-                  class="form-control" 
-                  id="phone"
-                  formControlName="phone">
-              </div>
+              <!-- Campo teléfono eliminado (no existe en AppUser) -->
             </div>
             <button 
               type="submit" 

@@ -49,7 +49,7 @@ export class AdminGuard implements CanActivate {
     return this.authService.userProfile$.pipe(
       take(1),
       map(profile => {
-        if (profile && (profile.role === 'admin' || profile.role === 'user' && this.devRoleService.isDev())) {
+  if (profile && (profile.role === 'admin' || profile.role === 'owner' || (this.devRoleService.isDev() && profile.role === 'member'))) {
           return true;
         } else {
           this.router.navigate(['/']);

@@ -238,16 +238,7 @@ export interface Database {
         };
       };
     };
-    Functions: {
-      set_current_company_context: {
-        Args: { company_uuid: string | null };
-        Returns: void;
-      };
-      get_current_company_id: {
-        Args: {};
-        Returns: string | null;
-      };
-    };
+  Functions: { };
   };
 }
 
@@ -312,35 +303,13 @@ export class SupabaseService {
     return this.currentCompany.value;
   }
 
+  // Contexto de compañía ahora sólo se mantiene local (RLS se basa en joins, no en función mutadora)
   async setCompanyContext(companyId: string): Promise<void> {
-    try {
-      // Establecer contexto en Supabase
-      const { error } = await this.supabase.rpc('set_current_company_context', {
-        company_uuid: companyId
-      } as any);
-
-      if (error) throw error;
-
-      // Actualizar estado local
-      this.currentCompany.next(companyId);
-    } catch (error) {
-      console.error('Error setting company context:', error);
-      throw error;
-    }
+    this.currentCompany.next(companyId);
   }
 
   async clearCompanyContext(): Promise<void> {
-    try {
-      const { error } = await this.supabase.rpc('set_current_company_context', {
-        company_uuid: null
-      } as any);
-
-      if (error) throw error;
-      this.currentCompany.next(null);
-    } catch (error) {
-      console.error('Error clearing company context:', error);
-      throw error;
-    }
+    this.currentCompany.next(null);
   }
 
   // === DATABASE METHODS ===

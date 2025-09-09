@@ -1,16 +1,19 @@
-# 🔐 GUÍA DE IMPLEMENTACIÓN - SISTEMA DE AUTENTICACIÓN MULTI-TENANT
+# 🔐 (DEPRECADO) Guía Antigua Autenticación Multi-Tenant
 
-## 📋 **RESUMEN DE IMPLEMENTACIÓN**
+> ESTA GUÍA QUEDA DEPRECADA.
+>
+> El proyecto ahora usa un modelo simplificado descrito en `README.md` (sección "Autenticación (Arquitectura Minimalista Actual)").
+>
+> Ya no se usa la tabla `user_profiles` ni triggers automáticos. Mantengo este archivo sólo como referencia histórica hasta completar limpieza final.
 
-He creado un sistema completo de autenticación multi-tenant con las siguientes características:
+## 📋 (Histórico) Resumen original
 
 ### ✅ **COMPONENTES CREADOS**
 
-1. **Base de Datos** (`database/auth-multitenant-setup.sql`)
-   - Tablas: companies, user_profiles, invitations
-   - Row Level Security (RLS) implementado
-   - Triggers automáticos para gestión de usuarios
-   - Funciones auxiliares para multi-tenancy
+1. (Antiguo) **Base de Datos** (`database/auth-multitenant-setup.sql`)
+   - Tablas: companies, user_profiles, invitations (YA NO RECOMENDADO)
+   - RLS más complejo y mayor superficie de fallo
+   - Reemplazado por `database/base-auth-structure.sql`
 
 2. **Servicios**
    - `AuthService` - Gestión completa de autenticación
@@ -27,7 +30,7 @@ He creado un sistema completo de autenticación multi-tenant con las siguientes 
    - Rutas administrativas con AdminGuard
    - Redirección automática según estado de autenticación
 
-## 🚀 **PASOS PARA COMPLETAR LA IMPLEMENTACIÓN**
+## 🚀 (Histórico) Pasos anteriores
 
 ### **PASO 1: Ejecutar SQL en Supabase**
 
@@ -76,7 +79,7 @@ constructor(private authService: AuthService) {
 }
 ```
 
-## 🔄 **FLUJO DE AUTENTICACIÓN**
+## 🔄 (Histórico) Flujo de autenticación
 
 ### **Registro de Nueva Empresa**
 1. Usuario se registra con "Crear nueva empresa"
@@ -97,7 +100,7 @@ constructor(private authService: AuthService) {
 - Cada consulta limitada a datos de la empresa del usuario
 - Roles granulares: admin, manager, user, viewer
 
-## 🎯 **CARACTERÍSTICAS PRINCIPALES**
+## 🎯 (Histórico) Características principales
 
 ### **🏢 Multi-Tenancy Completo**
 - Cada empresa tiene sus propios datos aislados
@@ -120,7 +123,7 @@ constructor(private authService: AuthService) {
 - Feedback claro al usuario
 - Loading states y error handling
 
-## ⚡ **BENEFICIOS INMEDIATOS**
+## ⚡ (Histórico) Beneficios inmediatos
 
 1. **Seguridad**: Datos completamente aislados por empresa
 2. **Escalabilidad**: Soporte para múltiples empresas
@@ -128,7 +131,7 @@ constructor(private authService: AuthService) {
 4. **UX**: Interfaz moderna y profesional
 5. **Mantenimiento**: Código limpio y bien estructurado
 
-## 🔧 **PRÓXIMOS PASOS RECOMENDADOS**
+## 🔧 (Histórico) Próximos pasos recomendados
 
 1. **Ejecutar el SQL** en Supabase
 2. **Instalar dependencias** de Supabase
@@ -136,4 +139,4 @@ constructor(private authService: AuthService) {
 4. **Probar el flujo** completo de registro/login
 5. **Configurar invitaciones** de usuarios
 
-¿Quieres que proceda con algún paso específico o necesitas ayuda con la implementación?
+Para la versión actual: revisar `README.md` y eliminar dependencias residuales antes de evolucionar invitaciones.

@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { AuthService, UserProfile } from '../../services/auth.service';
+import { AuthService, AppUser } from '../../services/auth.service';
 import { DevRoleService } from '../../services/dev-role.service';
 import { Router } from '@angular/router';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -15,7 +15,7 @@ import { environment } from '../../../environments/environment';
   styleUrls: ['./configuracion.component.scss']
 })
 export class ConfiguracionComponent implements OnInit {
-  userProfile: UserProfile | null = null;
+  userProfile: AppUser | null = null;
   profileForm: FormGroup;
   passwordForm: FormGroup;
   loading = false;
@@ -38,8 +38,7 @@ export class ConfiguracionComponent implements OnInit {
       environment.supabase.anonKey
     );
     this.profileForm = this.fb.group({
-      full_name: ['', [Validators.required, Validators.minLength(2)]],
-      phone: [''],
+  full_name: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]]
     });
 
@@ -56,12 +55,11 @@ export class ConfiguracionComponent implements OnInit {
 
   private loadUserProfile() {
     this.authService.userProfile$.subscribe({
-      next: (profile: UserProfile | null) => {
+  next: (profile: AppUser | null) => {
         if (profile) {
           this.userProfile = profile;
           this.profileForm.patchValue({
             full_name: profile.full_name || '',
-            phone: profile.phone || '',
             email: profile.email
           });
         }
@@ -141,13 +139,12 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   getRoleDisplayName(role: string): string {
-    const roleNames = {
-      'admin': 'Administrador',
-      'manager': 'Gerente',
-      'user': 'Usuario',
-      'viewer': 'Visualizador'
-    };
-    return roleNames[role as keyof typeof roleNames] || role;
+    switch (role) {
+      case 'owner': return 'Propietario';
+      case 'admin': return 'Administrador';
+      case 'member': return 'Miembro';
+      default: return role;
+    }
   }
 
   // ===============================
@@ -191,7 +188,7 @@ export class ConfiguracionComponent implements OnInit {
           '00000000-0000-0000-0000-000000000001',
           'dev@simplifica.com',
           'Developer User',
-          'superadmin',
+          'admin',
           true,
           '{
             "moduloFacturas": true,

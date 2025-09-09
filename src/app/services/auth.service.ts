@@ -5,29 +5,30 @@ import { BehaviorSubject, Observable, from, of } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
-export interface UserProfile {
-  id: string;
-  company_id: string;
+// AppUser refleja la fila de public.users + datos de compañía
+export interface AppUser {
+  id: string;              // id interno de public.users (no auth id)
+  auth_user_id: string;    // id de auth.users
   email: string;
-  full_name?: string;
-  role: 'admin' | 'manager' | 'user' | 'viewer';
-  avatar_url?: string;
-  phone?: string;
-  is_active: boolean;
-  last_login?: string;
-  preferences?: any;
-  company?: Company;
+  name?: string | null;
+  role: 'owner' | 'admin' | 'member';
+  active: boolean;
+  company_id?: string | null;
+  permissions?: any;
+  // Campos derivados
+  full_name?: string | null; // compatibilidad legacy (sidebar, etc.)
+  company?: Company | null;
 }
 
 export interface Company {
   id: string;
   name: string;
-  slug: string;
-  logo_url?: string;
-  subscription_tier: 'basic' | 'premium' | 'enterprise';
-  max_users: number;
+  slug: string | null;
   is_active: boolean;
   settings?: any;
+  subscription_tier?: string | null;
+  max_users?: number | null;
+  logo_url?: string | null;
 }
 
 export interface LoginCredentials {
@@ -40,6 +41,7 @@ export interface RegisterData {
   password: string;
   full_name: string;
   company_name?: string;
+  autoLogin?: boolean; // por si se quiere desactivar en algún flujo futuro
 }
 
 @Injectable({
@@ -51,7 +53,7 @@ export class AuthService {
 
   // Signals para estado reactivo
   private currentUserSubject = new BehaviorSubject<User | null>(null);
-  private userProfileSubject = new BehaviorSubject<UserProfile | null>(null);
+  private userProfileSubject = new BehaviorSubject<AppUser | null>(null);
   private loadingSubject = new BehaviorSubject<boolean>(true);
 
   // Observables públicos
@@ -115,16 +117,15 @@ export class AuthService {
     this.currentUserSubject.next(user);
     this.isAuthenticated.set(true);
 
-    // Cargar perfil del usuario
-    const profile = await this.loadUserProfile(user.id);
-    if (profile) {
-      this.userProfileSubject.next(profile);
-      this.userRole.set(profile.role);
-      this.companyId.set(profile.company_id);
-      this.isAdmin.set(['admin', 'manager'].includes(profile.role));
-
-      // Actualizar last_login
-      await this.updateLastLogin(user.id);
+    // Aseguramos existencia de fila app
+    await this.ensureAppUser(user);
+    // Cargar datos finales
+    const appUser = await this.fetchAppUserByAuthId(user.id);
+    if (appUser) {
+      this.userProfileSubject.next(appUser);
+      this.userRole.set(appUser.role);
+      if (appUser.company_id) this.companyId.set(appUser.company_id);
+      this.isAdmin.set(['owner', 'admin'].includes(appUser.role));
     }
   }
 
@@ -137,34 +138,73 @@ export class AuthService {
     this.companyId.set('');
   }
 
-  private async loadUserProfile(userId: string): Promise<UserProfile | null> {
+  // Obtiene la fila de public.users + compañía
+  private async fetchAppUserByAuthId(authId: string): Promise<AppUser | null> {
     try {
       const { data, error } = await this.supabase
-        .from('user_profiles')
-        .select(`
-          *,
-          company:companies(*)
-        `)
-        .eq('id', userId)
+        .from('users')
+        .select(`id, auth_user_id, email, name, role, active, company_id, permissions, company:companies(id, name, slug, is_active, settings)`) // company join via foreign key name assumption
+        .eq('auth_user_id', authId)
         .single();
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Error loading user profile:', error);
+      if (error) return null;
+      if (!data) return null;
+      const company = Array.isArray((data as any).company) ? (data as any).company[0] : (data as any).company;
+      const appUser: AppUser = {
+        id: (data as any).id,
+        auth_user_id: (data as any).auth_user_id,
+        email: (data as any).email,
+        name: (data as any).name,
+        role: (data as any).role,
+        active: (data as any).active,
+        company_id: (data as any).company_id,
+        permissions: (data as any).permissions,
+        full_name: (data as any).name || (data as any).email,
+        company: company || null
+      };
+      return appUser;
+    } catch (e) {
       return null;
     }
   }
 
-  private async updateLastLogin(userId: string) {
-    try {
-      await this.supabase
-        .from('user_profiles')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', userId);
-    } catch (error) {
-      console.error('Error updating last login:', error);
+  // Asegura que existe fila en public.users y enlaza auth_user_id
+  private async ensureAppUser(authUser: User): Promise<void> {
+    // 1. Buscar por auth_user_id
+    const existing = await this.supabase
+      .from('users')
+      .select('id, auth_user_id, email, role, company_id')
+      .eq('auth_user_id', authUser.id)
+      .maybeSingle();
+    if (existing.data) return; // ya está enlazado
+
+  // (Se eliminó lógica de invitaciones previas: auto-registro solamente)
+
+    // 3. Crear empresa y usuario si es el primer usuario del sistema
+    const { count } = await this.supabase
+      .from('users')
+      .select('id', { count: 'exact', head: true });
+    let companyId: string | null = null;
+    if (!count || count === 0) {
+      // Crear empresa inicial
+      const companyName = (authUser.email || 'Mi Empresa').split('@')[0];
+      const { data: company, error: compErr } = await this.supabase
+        .from('companies')
+        .insert({ name: companyName, slug: this.generateSlug(companyName) })
+        .select()
+        .single();
+      if (!compErr && company) companyId = company.id;
     }
+
+    // 4. Crear fila usuario
+    await this.supabase.from('users').insert({
+      email: authUser.email,
+  name: (authUser.user_metadata && (authUser.user_metadata as any)['full_name']) || authUser.email?.split('@')[0] || 'Usuario',
+      role: companyId ? 'owner' : 'member',
+      active: true,
+      company_id: companyId,
+      auth_user_id: authUser.id,
+      permissions: {}
+    });
   }
 
   // ==========================================
@@ -189,31 +229,48 @@ export class AuthService {
     }
   }
 
-  async register(registerData: RegisterData): Promise<{ success: boolean; error?: string }> {
+  async register(registerData: RegisterData): Promise<{ success: boolean; pendingConfirmation?: boolean; error?: string }> {
     try {
       const { data, error } = await this.supabase.auth.signUp({
         email: registerData.email,
         password: registerData.password,
         options: {
-          data: {
-            full_name: registerData.full_name
-          }
+          data: { full_name: registerData.full_name }
         }
       });
-
       if (error) throw error;
+      const autoLogin = registerData.autoLogin !== false; // por defecto true
 
-      // Si se proporciona company_name, crear nueva empresa
-      if (registerData.company_name && data.user) {
-        await this.createCompanyForUser(data.user.id, registerData.company_name);
+      // Si el proyecto requiere confirmación de email, data.session será null
+      const requiresEmailConfirm = !data.session;
+
+      if (data.user) {
+        // Crear fila app y empresa si procede (aunque no haya sesión todavía)
+        await this.ensureAppUser(data.user);
+        if (registerData.company_name) {
+          await this.createCompanyForUser(data.user.id, registerData.company_name);
+        }
       }
 
-      return { success: true };
-    } catch (error: any) {
-      return { 
-        success: false, 
-        error: this.getErrorMessage(error.message) 
-      };
+      if (requiresEmailConfirm) {
+        return { success: true, pendingConfirmation: true };
+      }
+
+      if (autoLogin) {
+        // Si ya hay sesión onAuthStateChange disparará setCurrentUser
+        // En algunos casos raros: intentar login explícito si no hay session
+        if (!data.session) {
+          const { error: loginErr } = await this.supabase.auth.signInWithPassword({
+            email: registerData.email,
+            password: registerData.password
+          });
+          if (loginErr && loginErr.message !== 'Email not confirmed') throw loginErr;
+        }
+      }
+
+      return { success: true, pendingConfirmation: false };
+    } catch (e: any) {
+      return { success: false, error: this.getErrorMessage(e.message) };
     }
   }
 
@@ -264,34 +321,22 @@ export class AuthService {
   // GESTIÓN DE EMPRESA
   // ==========================================
 
-  private async createCompanyForUser(userId: string, companyName: string) {
+  private async createCompanyForUser(authUserId: string, companyName: string) {
     try {
-      // Crear empresa
       const { data: company, error: companyError } = await this.supabase
         .from('companies')
-        .insert({
-          name: companyName,
-          slug: this.generateSlug(companyName)
-        })
+        .insert({ name: companyName, slug: this.generateSlug(companyName) })
         .select()
         .single();
-
       if (companyError) throw companyError;
 
-      // Actualizar perfil del usuario con la empresa
-      const { error: profileError } = await this.supabase
-        .from('user_profiles')
-        .update({
-          company_id: company.id,
-          role: 'admin' // El creador es admin
-        })
-        .eq('id', userId);
-
-      if (profileError) throw profileError;
-
-    } catch (error) {
-      console.error('Error creating company:', error);
-      throw error;
+      // Actualizar fila de users
+      await this.supabase
+        .from('users')
+        .update({ company_id: company.id, role: 'owner' })
+        .eq('auth_user_id', authUserId);
+    } catch (e) {
+      console.error('Error creating company for user:', e);
     }
   }
 
@@ -313,6 +358,7 @@ export class AuthService {
       'Email not confirmed': 'Email no confirmado',
       'User already registered': 'El usuario ya está registrado',
       'Password should be at least 6 characters': 'La contraseña debe tener al menos 6 caracteres',
+      'Password should be at least 6 characters long': 'La contraseña debe tener al menos 6 caracteres',
       'Invalid email': 'Email inválido'
     };
 
@@ -324,7 +370,12 @@ export class AuthService {
     return this.currentUserSubject.value;
   }
 
-  get userProfile(): UserProfile | null {
+  // Exponer cliente Supabase de forma controlada (solo lectura)
+  get client(): SupabaseClient {
+    return this.supabase;
+  }
+
+  get userProfile(): AppUser | null {
     return this.userProfileSubject.value;
   }
 
@@ -334,10 +385,15 @@ export class AuthService {
 
   // Método para verificar permisos
   hasPermission(requiredRole: string): boolean {
-    const roleHierarchy = ['viewer', 'user', 'manager', 'admin'];
+    const roleHierarchy = ['member', 'admin', 'owner'];
     const userRoleIndex = roleHierarchy.indexOf(this.userRole());
     const requiredRoleIndex = roleHierarchy.indexOf(requiredRole);
-    
     return userRoleIndex >= requiredRoleIndex;
+  }
+
+  // Forzar recarga (callback auth)
+  async refreshCurrentUser() {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (session?.user) await this.setCurrentUser(session.user);
   }
 }

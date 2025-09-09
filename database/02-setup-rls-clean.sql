@@ -1,5 +1,7 @@
--- ==== SCRIPT LIMPIO Y FUNCIONAL PARA RLS ====
--- Este script soluciona todos los problemas encontrados
+-- DEPRECATED: Reemplazado por política minimalista (ver base-auth-structure.sql y scripts 2025-09-09-*).
+-- Mantener sólo como referencia histórica. NO ejecutar en nuevo entorno.
+-- ==== LEGACY RLS SCRIPT (OBSOLETO) ====
+-- (Contenido original debajo)
 
 -- 1) Limpiar completamente el estado anterior
 SELECT 'Limpiando estado anterior...' as step;

@@ -81,71 +81,22 @@ import { ToastService } from '../../services/toast.service';
             </div>
           </div>
 
-          <!-- Datos de la empresa -->
+          <!-- Datos de la empresa (siempre crear nueva) -->
           <div class="form-section">
             <h3>Empresa</h3>
-            
-            <div class="account-type">
-              <label class="radio-option">
-                <input 
-                  type="radio" 
-                  value="new" 
-                  formControlName="accountType"
-                  (change)="onAccountTypeChange('new')"
-                />
-                <span class="radio-custom"></span>
-                <div class="option-content">
-                  <strong>Crear nueva empresa</strong>
-                  <p>Soy el administrador de una nueva empresa</p>
-                </div>
-              </label>
-
-              <label class="radio-option">
-                <input 
-                  type="radio" 
-                  value="existing" 
-                  formControlName="accountType"
-                  (change)="onAccountTypeChange('existing')"
-                />
-                <span class="radio-custom"></span>
-                <div class="option-content">
-                  <strong>Unirse a empresa existente</strong>
-                  <p>Tengo una invitación para unirme a una empresa</p>
-                </div>
-              </label>
+            <div class="form-group">
+              <label for="companyName">Nombre de la Empresa</label>
+              <input
+                type="text"
+                id="companyName"
+                formControlName="companyName"
+                placeholder="Mi Empresa S.L."
+                [class.error]="companyNameInvalid()"
+              />
+              @if (companyNameInvalid()) {
+                <span class="error-message">Nombre de empresa requerido</span>
+              }
             </div>
-
-            @if (showCompanyName()) {
-              <div class="form-group">
-                <label for="companyName">Nombre de la Empresa</label>
-                <input
-                  type="text"
-                  id="companyName"
-                  formControlName="companyName"
-                  placeholder="Mi Empresa S.L."
-                  [class.error]="companyNameInvalid()"
-                />
-                @if (companyNameInvalid()) {
-                  <span class="error-message">Nombre de empresa requerido</span>
-                }
-              </div>
-            }
-
-            @if (showInvitationCode()) {
-              <div class="form-group">
-                <label for="invitationCode">Código de Invitación</label>
-                <input
-                  type="text"
-                  id="invitationCode"
-                  formControlName="invitationCode"
-                  placeholder="Código recibido por email"
-                  [class.error]="invitationCodeInvalid()"
-                />
-                @if (invitationCodeInvalid()) {
-                  <span class="error-message">Código de invitación requerido</span>
-                }
-              </div>
-            }
           </div>
 
           <!-- Términos y condiciones -->
@@ -222,7 +173,8 @@ import { ToastService } from '../../services/toast.service';
     </div>
   `,
   styles: [`
-    @import '../../styles/shared.scss';
+  /* Migrated from @import to @use; define forward in shared.scss if needed */
+  @use '../../styles/shared.scss' as *;
     
     .register-container {
       min-height: 100vh;
@@ -472,7 +424,6 @@ export class RegisterComponent {
   // Signals
   loading = signal(false);
   errorMessage = signal('');
-  accountType = signal<'new' | 'existing'>('new');
 
   // Form
   registerForm = this.fb.group({
@@ -480,9 +431,7 @@ export class RegisterComponent {
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
     confirmPassword: ['', [Validators.required]],
-    accountType: ['new', [Validators.required]],
-    companyName: [''],
-    invitationCode: [''],
+    companyName: ['', [Validators.required]],
     acceptTerms: [false, [Validators.requiredTrue]]
   });
 
@@ -495,10 +444,6 @@ export class RegisterComponent {
       }
     );
 
-    // Validadores condicionales
-    this.registerForm.get('accountType')?.valueChanges.subscribe(type => {
-      this.onAccountTypeChange(type as 'new' | 'existing');
-    });
   }
 
   // Computed properties para validación
@@ -524,12 +469,7 @@ export class RegisterComponent {
 
   companyNameInvalid = () => {
     const control = this.registerForm.get('companyName');
-    return control?.invalid && control?.touched && this.showCompanyName();
-  };
-
-  invitationCodeInvalid = () => {
-    const control = this.registerForm.get('invitationCode');
-    return control?.invalid && control?.touched && this.showInvitationCode();
+    return control?.invalid && control?.touched;
   };
 
   termsInvalid = () => {
@@ -537,26 +477,7 @@ export class RegisterComponent {
     return control?.invalid && control?.touched;
   };
 
-  showCompanyName = () => this.accountType() === 'new';
-  showInvitationCode = () => this.accountType() === 'existing';
-
-  onAccountTypeChange(type: 'new' | 'existing') {
-    this.accountType.set(type);
-    
-    const companyNameControl = this.registerForm.get('companyName');
-    const invitationCodeControl = this.registerForm.get('invitationCode');
-
-    if (type === 'new') {
-      companyNameControl?.setValidators([Validators.required]);
-      invitationCodeControl?.clearValidators();
-    } else {
-      companyNameControl?.clearValidators();
-      invitationCodeControl?.setValidators([Validators.required]);
-    }
-
-    companyNameControl?.updateValueAndValidity();
-    invitationCodeControl?.updateValueAndValidity();
-  }
+  // Eliminado soporte de invitaciones / unirse a empresa existente: siempre crea nueva empresa
 
   async onSubmit() {
     if (this.registerForm.invalid) {
@@ -570,20 +491,26 @@ export class RegisterComponent {
     const formValue = this.registerForm.value;
     
     const registerData: RegisterData = {
-      email: formValue.email!,
+      email: formValue.email! ,
       password: formValue.password!,
       full_name: formValue.fullName!,
-      company_name: formValue.accountType === 'new' ? formValue.companyName || undefined : undefined
+      company_name: formValue.companyName || undefined
     };
 
-    const result = await this.authService.register(registerData);
+    const result = await this.authService.register({...registerData, autoLogin: true});
 
     if (result.success) {
-      this.toastService.success(
-        'Cuenta creada exitosamente. Revisa tu email para confirmar tu cuenta.',
-        'Registro exitoso'
-      );
-      this.router.navigate(['/login']);
+      if (result.pendingConfirmation) {
+        this.toastService.success(
+          'Cuenta creada. Revisa tu email para confirmar y luego inicia sesión.',
+          'Registro pendiente'
+        );
+        this.router.navigate(['/login']);
+      } else {
+        this.toastService.success('Bienvenido 👋 Tu cuenta ha sido creada.', 'Registro exitoso');
+        // Redirigir directo al dashboard
+        this.router.navigate(['/clientes']);
+      }
     } else {
       this.errorMessage.set(result.error || 'Error al crear la cuenta');
     }

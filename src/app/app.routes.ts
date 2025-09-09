@@ -24,6 +24,7 @@ import { RegisterComponent } from './components/register/register.component';
 import { ConfiguracionComponent } from './components/configuracion/configuracion.component';
 import { SidebarTestComponent } from './components/sidebar-test/sidebar-test.component';
 import { DevSetupComponent } from './components/dev-setup/dev-setup.component';
+import { EmergencyLoginComponent } from './components/emergency-login/emergency-login.component';
 import { AuthGuard, AdminGuard, GuestGuard } from './guards/auth.guard';
 import { AuthCallbackComponent } from './components/auth-callback/auth-callback.component';
 
@@ -35,10 +36,12 @@ export const routes: Routes = [
     {path: 'taller', component: SupabaseTicketsComponent, canActivate: [AuthGuard]},
     {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard]},
+    // Ruta de invitaciones eliminada (modelo de auto-registro activo)
     
     // Rutas de autenticación (sin guards)
     {path: 'login', component: LoginComponent, canActivate: [GuestGuard]},
     {path: 'register', component: RegisterComponent, canActivate: [GuestGuard]},
+    {path: 'emergency-login', component: EmergencyLoginComponent},
     {path: 'auth/callback', component: AuthCallbackComponent}, // Callback de Supabase
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)

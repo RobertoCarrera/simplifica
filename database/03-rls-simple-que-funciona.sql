@@ -1,5 +1,7 @@
--- ==== SCRIPT SÚPER SIMPLE QUE SÍ FUNCIONA ====
--- Para personas hartas de errores de sintaxis 😂
+-- DEPRECATED: Este enfoque basado en set_current_company_context ya no se utiliza.
+-- Usar políticas minimalistas y joins (ver scripts 2025-09-09-* y base-auth-structure.sql).
+-- ==== LEGACY (OBSOLETO) ====
+-- (Contenido original debajo)
 
 -- 1) Limpiar todo
 ALTER TABLE IF EXISTS public.companies DISABLE ROW LEVEL SECURITY;

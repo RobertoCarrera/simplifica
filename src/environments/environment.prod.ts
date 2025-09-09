@@ -3,5 +3,6 @@ export const environment = {
   supabase: {
     url: process.env['VITE_SUPABASE_URL'] || process.env['NG_APP_SUPABASE_URL'] || '',
     anonKey: process.env['VITE_SUPABASE_ANON_KEY'] || process.env['NG_APP_SUPABASE_ANON_KEY'] || ''
-  }
+  },
+  siteUrl: 'https://simplifica.digitalizamostupyme.es'
 };

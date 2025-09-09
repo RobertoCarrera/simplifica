@@ -1,3 +1,5 @@
+-- DEPRECATED: Este archivo (auth-multitenant-setup.sql) pertenece al modelo antiguo con user_profiles.
+-- Usar en su lugar: base-auth-structure.sql (modelo minimalista actual). Mantener sólo como referencia temporal.
 -- =============================================
 -- SISTEMA DE AUTENTICACIÓN MULTI-TENANT V2.0
 -- =============================================
@@ -61,8 +63,19 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_companies_updated_at BEFORE UPDATE ON companies FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON user_profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Evitar error si ya existen los triggers
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'update_companies_updated_at'
+    ) THEN
+        CREATE TRIGGER update_companies_updated_at BEFORE UPDATE ON companies FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'update_user_profiles_updated_at'
+    ) THEN
+        CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON user_profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
 -- 6. FUNCIÓN PARA CREAR PERFIL AUTOMÁTICAMENTE
 CREATE OR REPLACE FUNCTION public.handle_new_user()
