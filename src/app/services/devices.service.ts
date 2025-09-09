@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClientService } from './supabase-client.service';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../environments/environment';
 
 export interface Device {
@@ -130,11 +131,8 @@ export interface DeviceWithClientInfo {
 export class DevicesService {
   private supabase: SupabaseClient;
 
-  constructor() {
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
+  constructor(private sbClient: SupabaseClientService) {
+    this.supabase = this.sbClient.instance;
   }
 
   // ================================

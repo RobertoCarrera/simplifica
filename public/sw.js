@@ -68,6 +68,11 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Ignorar esquemas no http/https (evita error chrome-extension)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return; // no procesar extensiones u otros esquemas
+  }
+
   // Skip non-GET requests
   if (request.method !== 'GET') {
     return;

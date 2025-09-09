@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClientService } from './supabase-client.service';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -44,12 +45,9 @@ export class SimpleSupabaseService {
   private supabase: SupabaseClient;
   private currentCompany = new BehaviorSubject<string | null>(null);
 
-  constructor() {
-    // Conexión simple a Supabase
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
+  constructor(private sbClient: SupabaseClientService) {
+    // Reusar instancia compartida
+    this.supabase = this.sbClient.instance;
   }
 
   // === GETTERS ===

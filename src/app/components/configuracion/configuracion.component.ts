@@ -4,7 +4,8 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { AuthService, AppUser } from '../../services/auth.service';
 import { DevRoleService } from '../../services/dev-role.service';
 import { Router } from '@angular/router';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClientService } from '../../services/supabase-client.service';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -31,12 +32,10 @@ export class ConfiguracionComponent implements OnInit {
     private fb: FormBuilder,
     private authService: AuthService,
     public devRoleService: DevRoleService,
-    private router: Router
+    private router: Router,
+    private sbClient: SupabaseClientService
   ) {
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
+    this.supabase = this.sbClient.instance;
     this.profileForm = this.fb.group({
   full_name: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]]

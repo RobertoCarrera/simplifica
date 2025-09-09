@@ -1,9 +1,10 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClientService } from '../../services/supabase-client.service';
 import { environment } from '../../../environments/environment';
 import { getCurrentSupabaseConfig, devLog, devError, devSuccess } from '../../config/supabase.config';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 interface SystemUser {
   id: string;
@@ -68,11 +69,8 @@ export class DevUserSelectorComponent implements OnInit {
   users = signal<SystemUser[]>([]);
   selectedUserId: string = '';
 
-  constructor() {
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
+  constructor(private sbClient: SupabaseClientService) {
+    this.supabase = this.sbClient.instance;
   }
 
   ngOnInit() {
@@ -113,16 +111,16 @@ export class DevUserSelectorComponent implements OnInit {
         devLog('Ejemplos de clientes REALES:', allCustomers.slice(0, 3));
         
         // Ver todas las company_id únicas que existen
-        const uniqueCompanyIds = [...new Set(allCustomers.map(c => c.company_id))];
+        const uniqueCompanyIds = [...new Set(allCustomers.map((c: any) => c.company_id))];
         devLog('Company IDs únicos en clients:', uniqueCompanyIds);
         
         // Verificar si nuestros usuarios del sistema tienen clientes
         devLog('=== CONTEO POR COMPANY DE USUARIO DEL SISTEMA ===');
         for (const systemUser of this.systemUsers) {
-          const clientsForCompany = allCustomers.filter(c => c.company_id === systemUser.company_id);
+          const clientsForCompany = allCustomers.filter((c: any) => c.company_id === systemUser.company_id);
           devLog(`${systemUser.name} (company: ${systemUser.company_id}): ${clientsForCompany.length} clientes`);
           if (clientsForCompany.length > 0) {
-            devLog('  Ejemplos:', clientsForCompany.slice(0, 2).map(c => c.name));
+            devLog('  Ejemplos:', clientsForCompany.slice(0, 2).map((c: any) => c.name));
           }
         }
       } else {

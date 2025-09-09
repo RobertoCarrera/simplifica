@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClientService } from './supabase-client.service';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { Observable, from, throwError, BehaviorSubject, combineLatest } from 'rxjs';
 import { map, catchError, tap, switchMap } from 'rxjs/operators';
 import { Customer, CreateCustomer, CreateCustomerDev, UpdateCustomer } from '../models/customer';
@@ -44,12 +45,9 @@ export class SupabaseCustomersService {
   // Usuario actual para DEV mode
   private currentDevUserId: string | null = null;
 
-  constructor() {
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
-    
+  constructor(private sbClient: SupabaseClientService) {
+    this.supabase = this.sbClient.instance;
+
     devLog('Servicio inicializado', {
       config: this.config,
       environment: environment.production ? 'production' : 'development'

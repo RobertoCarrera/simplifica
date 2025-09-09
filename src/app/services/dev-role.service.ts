@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClientService } from './supabase-client.service';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { BehaviorSubject } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -38,11 +39,8 @@ export class DevRoleService {
 
   currentDevUser$ = this.currentDevUser.asObservable();
 
-  constructor() {
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
+  constructor(private sbClient: SupabaseClientService) {
+    this.supabase = this.sbClient.instance;
     
     // En desarrollo, usar usuario dev automáticamente
     if (!environment.production) {

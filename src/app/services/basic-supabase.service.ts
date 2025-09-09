@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClientService } from './supabase-client.service';
+import { SupabaseClient } from '@supabase/supabase-js';
 import { Observable, from, BehaviorSubject } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
@@ -24,17 +25,14 @@ export class BasicSupabaseService {
   private customersSubject = new BehaviorSubject<BasicCustomer[]>([]);
   public customers$ = this.customersSubject.asObservable();
 
-  constructor() {
-    console.log('🔧 Configurando Supabase...');
+  constructor(private sbClient: SupabaseClientService) {
+    console.log('🔧 Configurando Supabase (singleton)...');
     console.log('URL:', environment.supabase.url);
     console.log('Key (primeros 20 chars):', environment.supabase.anonKey.substring(0, 20) + '...');
-    
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
-    
-    console.log('✅ Cliente Supabase creado');
+
+    this.supabase = this.sbClient.instance;
+
+    console.log('✅ Cliente Supabase (compartido) listo');
     this.testConnection();
   }
 
