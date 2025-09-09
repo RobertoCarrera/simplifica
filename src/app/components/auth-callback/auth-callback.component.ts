@@ -50,13 +50,18 @@ import { ToastService } from '../../services/toast.service';
           </p>
           
           @if (error) {
-            <div class="mt-4">
+            <div class="mt-4 space-y-2">
               <button
                 (click)="redirectToLogin()"
                 class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Volver al login
               </button>
+              @if (showAccountConfirmedHint) {
+                <div class="text-xs text-gray-500 text-center">
+                  Tu cuenta puede estar ya confirmada. Prueba hacer login directamente.
+                </div>
+              }
             </div>
           }
         </div>
@@ -68,6 +73,7 @@ export class AuthCallbackComponent implements OnInit {
   loading = true;
   error = false;
   errorMessage = '';
+  showAccountConfirmedHint = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -104,10 +110,44 @@ export class AuthCallbackComponent implements OnInit {
         if (possible) refreshToken = possible.split('=')[1];
       }
       console.log('[AUTH-CALLBACK] after fallback extraction:', { accessToken: !!accessToken, refreshToken: !!refreshToken });
+
+      // Manejar errores específicos de Supabase antes de procesar tokens
+      const error = params.get('error') || searchParams.get('error');
+      const errorCode = params.get('error_code') || searchParams.get('error_code');
+      const errorDescription = params.get('error_description') || searchParams.get('error_description');
+
+      if (error) {
+        console.error('[AUTH-CALLBACK] Supabase error:', { error, errorCode, errorDescription });
+        
+        if (error === 'server_error' && errorCode === 'unexpected_failure') {
+          // Error específico: usuario ya confirmado o problema interno
+          this.loading = false;
+          this.error = true;
+          this.showAccountConfirmedHint = true;
+          this.errorMessage = 'Error interno del servidor de autenticación. Tu cuenta puede estar ya confirmada. Intenta hacer login directamente.';
+          
+          // Ofrecer redirección automática al login después de mostrar el error
+          setTimeout(() => {
+            this.router.navigate(['/login'], { 
+              queryParams: { 
+                message: 'account_may_be_confirmed',
+                email: 'robertocarreratech@gmail.com' // Del contexto del registro
+              }
+            });
+          }, 5000);
+          return;
+        } else {
+          // Otros errores de Supabase
+          this.loading = false;
+          this.error = true;
+          this.errorMessage = `Error de autenticación: ${decodeURIComponent(errorDescription || error)}`;
+          return;
+        }
+      }
       
-  if (accessToken && refreshToken) {
+      if (accessToken && refreshToken) {
         // Establecer la sesión con los tokens (usando el método de supabase directamente)
-  const { error } = await this.authService.client.auth.setSession({
+        const { error } = await this.authService.client.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken
         });
@@ -117,8 +157,8 @@ export class AuthCallbackComponent implements OnInit {
         }
         
         this.loading = false;
-  await this.authService.refreshCurrentUser();
-  this.toastService.success('¡Éxito!', 'Autenticación exitosa');
+        await this.authService.refreshCurrentUser();
+        this.toastService.success('¡Éxito!', 'Autenticación exitosa');
         
         // Redirigir al dashboard después de un breve delay
         setTimeout(() => {

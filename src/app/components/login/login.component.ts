@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnDestroy } from '@angular/core';
+import { Component, inject, signal, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
@@ -428,7 +428,7 @@ import { ToastService } from '../../services/toast.service';
     }
   `]
 })
-export class LoginComponent implements OnDestroy {
+export class LoginComponent implements OnDestroy, OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -446,6 +446,18 @@ export class LoginComponent implements OnDestroy {
   constructor() {
     // Agregar clase al body para evitar scroll en login
     document.body.classList.add('auth-page');
+  }
+
+  ngOnInit() {
+    // Manejar mensajes del callback de auth (cuenta confirmada, etc.)
+    this.route.queryParams.subscribe(params => {
+      if (params['message'] === 'account_may_be_confirmed') {
+        this.toastService.info('Tu cuenta puede estar ya confirmada', 'Intenta hacer login');
+        if (params['email']) {
+          this.loginForm.patchValue({ email: params['email'] });
+        }
+      }
+    });
   }
 
   ngOnDestroy() {

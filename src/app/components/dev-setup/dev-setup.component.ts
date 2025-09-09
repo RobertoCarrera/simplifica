@@ -1,7 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DevRoleService } from '../../services/dev-role.service';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClientService } from '../../services/supabase-client.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -110,11 +111,11 @@ export class DevSetupComponent implements OnInit {
 
   private supabase: SupabaseClient;
 
-  constructor(public devRoleService: DevRoleService) {
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
+  constructor(
+    public devRoleService: DevRoleService,
+    private supabaseClientService: SupabaseClientService
+  ) {
+    this.supabase = this.supabaseClientService.instance;
   }
 
   ngOnInit() {
