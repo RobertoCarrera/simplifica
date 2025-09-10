@@ -556,8 +556,5 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.showCategoryInput = false;
       this.categoryFilterText = '';
     }
-    if (this.showForm) {
-      this.closeForm();
-    }
   }
 }
