@@ -36,7 +36,7 @@ export const routes: Routes = [
     {path: '', redirectTo: '/inicio', pathMatch: 'full'},
     {path: 'inicio', component: SupabaseCustomersComponent, canActivate: [AuthGuard]},
     {path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard]},
-    {path: 'taller', component: SupabaseTicketsComponent, canActivate: [AuthGuard]},
+    {path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard]},
     {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard]},
     // Ruta de invitaciones eliminada (modelo de auto-registro activo)
@@ -44,11 +44,8 @@ export const routes: Routes = [
     // Rutas de autenticación (sin guards)
     {path: 'login', component: LoginComponent, canActivate: [GuestGuard]},
     {path: 'register', component: RegisterComponent, canActivate: [GuestGuard]},
-    {path: 'emergency-login', component: EmergencyLoginComponent},
     {path: 'auth/callback', component: AuthCallbackComponent}, // Callback de Supabase
     {path: 'reset-password', component: ResetPasswordComponent}, // Recuperación de contraseña
-    {path: 'auth-debug', component: AuthDebugComponent}, // Debug temporal de auth
-    {path: 'debug', component: DebugDashboardComponent}, // Debug dashboard (temporal)
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [DevGuard]},

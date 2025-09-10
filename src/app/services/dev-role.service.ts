@@ -58,12 +58,14 @@ export class DevRoleService {
 
   canSeeDevTools(): boolean {
     const user = this.currentDevUser.value;
-    return user?.permissions?.canSeeDevTools === true || user?.permissions?.isDev === true || !environment.production;
+    // Solo mostrar herramientas dev si hay un usuario dev activo O en modo desarrollo con dev user explícito
+    return user?.permissions?.canSeeDevTools === true || user?.permissions?.isDev === true;
   }
 
   canSeeAllCompanies(): boolean {
     const user = this.currentDevUser.value;
-    return user?.permissions?.canSeeAllCompanies === true || !environment.production;
+    // Solo permitir ver todas las compañías si hay un usuario dev activo
+    return user?.permissions?.canSeeAllCompanies === true;
   }
 
   getUserRole(): string {

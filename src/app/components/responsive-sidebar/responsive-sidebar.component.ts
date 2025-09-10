@@ -218,11 +218,11 @@ interface MenuItem {
         @if (!isCollapsed()) {
           <div class="flex items-center mt-3">
             <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-              <span class="text-white font-medium text-sm">U</span>
+              <span class="text-white font-medium text-sm">{{ getUserInitial() }}</span>
             </div>
             <div class="ml-3">
-              <p class="text-sm font-medium text-gray-900 dark:text-white">Usuario</p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">Admin</p>
+              <p class="text-sm font-medium text-gray-900 dark:text-white">{{ getUserDisplayName() }}</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">{{ getUserRoleDisplay() }}</p>
             </div>
           </div>
         }
@@ -304,7 +304,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   sidebarState = inject(SidebarStateService);
   private router = inject(Router);
   private devRoleService = inject(DevRoleService);
-  private authService = inject(AuthService);
+  authService = inject(AuthService); // Hacer público para usar en template
 
   // Local state
   private _activeItem = signal(1);
@@ -413,12 +413,11 @@ export class ResponsiveSidebarComponent implements OnInit {
 
   // Computed menu items based on user role
   menuItems = computed(() => {
-    const userProfile = this.authService.userProfile;
-    const realUserRole = userProfile?.role || 'member';
-    const isAdmin = realUserRole === 'admin' || realUserRole === 'owner';
+    const userRole = this.authService.userRole();
+    const isAdmin = userRole === 'admin' || userRole === 'owner';
     const isDev = this.devRoleService.isDev();
     
-    console.log('🔍 Menu filtering - Real user role:', realUserRole, 'Is admin:', isAdmin, 'Is dev:', isDev);
+    console.log('🔍 Menu filtering - Real user role:', userRole, 'Is admin:', isAdmin, 'Is dev:', isDev);
     
     return this.allMenuItems.filter(item => {
       // Core modules always visible
@@ -494,5 +493,28 @@ export class ResponsiveSidebarComponent implements OnInit {
     if (success) {
       this.pwaService.vibrate([200, 100, 200]);
     }
+  }
+
+  getRoleDisplayName(role: string): string {
+    switch (role) {
+      case 'owner': return 'Propietario';
+      case 'admin': return 'Administrador';
+      case 'member': return 'Miembro';
+      default: return role;
+    }
+  }
+
+  getUserInitial(): string {
+    const fullName = this.authService.userProfile?.full_name;
+    return fullName ? fullName.charAt(0).toUpperCase() : 'U';
+  }
+
+  getUserDisplayName(): string {
+    return this.authService.userProfile?.full_name || 'Usuario';
+  }
+
+  getUserRoleDisplay(): string {
+    const role = this.authService.userProfile?.role || 'member';
+    return this.getRoleDisplayName(role);
   }
 }
