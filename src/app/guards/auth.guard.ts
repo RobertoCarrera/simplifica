@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, Router, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
-import { Observable, map, take } from 'rxjs';
+import { Observable, map, take, filter, timeout, catchError, of } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { DevRoleService } from '../services/dev-role.service';
 import { environment } from '../../environments/environment';
@@ -20,15 +20,29 @@ export class AuthGuard implements CanActivate {
     state: RouterStateSnapshot
   ): Observable<boolean> | Promise<boolean> | boolean {
     
+    console.log('Ì¥ê AuthGuard: Checking access to:', state.url);
+    
     return this.authService.currentUser$.pipe(
+      filter(user => user !== undefined),
       take(1),
+      timeout(5000),
       map(user => {
+        console.log('Ì¥ê AuthGuard: User state:', user ? 'authenticated' : 'not authenticated');
+        
         if (user) {
           return true;
         } else {
-          this.router.navigate(['/login']);
+          console.log('Ì¥ê AuthGuard: Redirecting to login');
+          this.router.navigate(['/login'], { 
+            queryParams: { returnUrl: state.url }
+          });
           return false;
         }
+      }),
+      catchError(error => {
+        console.error('Ì¥ê AuthGuard: Error checking auth state:', error);
+        this.router.navigate(['/login']);
+        return of(false);
       })
     );
   }
@@ -47,14 +61,21 @@ export class AdminGuard implements CanActivate {
   canActivate(): Observable<boolean> | Promise<boolean> | boolean {
     
     return this.authService.userProfile$.pipe(
+      filter(profile => profile !== undefined),
       take(1),
+      timeout(5000),
       map(profile => {
-  if (profile && (profile.role === 'admin' || profile.role === 'owner' || (this.devRoleService.isDev() && profile.role === 'member'))) {
+        if (profile && (profile.role === 'admin' || profile.role === 'owner' || (this.devRoleService.isDev() && profile.role === 'member'))) {
           return true;
         } else {
           this.router.navigate(['/']);
           return false;
         }
+      }),
+      catchError(error => {
+        console.error('Ì¥ê AdminGuard: Error checking role:', error);
+        this.router.navigate(['/']);
+        return of(false);
       })
     );
   }
@@ -71,7 +92,9 @@ export class GuestGuard implements CanActivate {
 
   canActivate(): Observable<boolean> | Promise<boolean> | boolean {
     return this.authService.currentUser$.pipe(
+      filter(user => user !== undefined),
       take(1),
+      timeout(5000),
       map(user => {
         if (!user) {
           return true;
@@ -79,6 +102,63 @@ export class GuestGuard implements CanActivate {
           this.router.navigate(['/']);
           return false;
         }
+      }),
+      catchError(error => {
+        console.error('Ì¥ê GuestGuard: Error checking auth state:', error);
+        return of(true);
+      })
+    );
+  }
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class DevGuard implements CanActivate {
+  constructor(
+    private authService: AuthService,
+    private devRoleService: DevRoleService,
+    private router: Router
+  ) {}
+
+  canActivate(): Observable<boolean> | Promise<boolean> | boolean {
+    if (!environment.production) {
+      return this.authService.currentUser$.pipe(
+        filter(user => user !== undefined),
+        take(1),
+        timeout(5000),
+        map(user => {
+          if (user) {
+            return true;
+          } else {
+            this.router.navigate(['/login']);
+            return false;
+          }
+        }),
+        catchError(error => {
+          console.error('Ì¥ê DevGuard: Error checking auth state:', error);
+          this.router.navigate(['/login']);
+          return of(false);
+        })
+      );
+    }
+    
+    return this.authService.userProfile$.pipe(
+      filter(profile => profile !== undefined),
+      take(1),
+      timeout(5000),
+      map(profile => {
+        if (profile && (profile.role === 'admin' || profile.role === 'owner')) {
+          return true;
+        } else {
+          this.router.navigate(['/']);
+          return false;
+        }
+      }),
+      catchError(error => {
+        console.error('ÔøΩÔøΩ DevGuard: Error checking role:', error);
+        this.router.navigate(['/']);
+        return of(false);
       })
     );
   }

@@ -26,7 +26,7 @@ import { SidebarTestComponent } from './components/sidebar-test/sidebar-test.com
 import { DevSetupComponent } from './components/dev-setup/dev-setup.component';
 import { EmergencyLoginComponent } from './components/emergency-login/emergency-login.component';
 import { DebugDashboardComponent } from './components/debug-dashboard/debug-dashboard.component';
-import { AuthGuard, AdminGuard, GuestGuard } from './guards/auth.guard';
+import { AuthGuard, AdminGuard, GuestGuard, DevGuard } from './guards/auth.guard';
 import { AuthCallbackComponent } from './components/auth-callback/auth-callback.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 import { AuthDebugComponent } from './components/auth-debug/auth-debug.component';
@@ -51,13 +51,13 @@ export const routes: Routes = [
     {path: 'debug', component: DebugDashboardComponent}, // Debug dashboard (temporal)
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
-    {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [AuthGuard]},
-    {path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [AuthGuard]},
-    {path: 'advanced-features', component: AdvancedFeaturesDashboardComponent, canActivate: [AuthGuard]},
-    {path: 'workflows', component: WorkflowBuilderComponent, canActivate: [AuthGuard]},
-    {path: 'export-import', component: ExportImportManagerComponent, canActivate: [AuthGuard]},
-    {path: 'demo', component: DemoComponentsComponent, canActivate: [AuthGuard]},
-    {path: 'notification-demo', component: NotificationDemoComponent, canActivate: [AuthGuard]},
-    {path: 'search', component: AdvancedSearchComponent, canActivate: [AuthGuard]},
-    {path: 'notifications', component: NotificationCenterComponent, canActivate: [AuthGuard]}
+    {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [DevGuard]},
+    {path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [DevGuard]},
+    {path: 'advanced-features', component: AdvancedFeaturesDashboardComponent, canActivate: [DevGuard]},
+    {path: 'workflows', component: WorkflowBuilderComponent, canActivate: [DevGuard]},
+    {path: 'export-import', component: ExportImportManagerComponent, canActivate: [DevGuard]},
+    {path: 'demo', component: DemoComponentsComponent, canActivate: [DevGuard]},
+    {path: 'notification-demo', component: NotificationDemoComponent, canActivate: [DevGuard]},
+    {path: 'search', component: AdvancedSearchComponent, canActivate: [DevGuard]},
+    {path: 'notifications', component: NotificationCenterComponent, canActivate: [DevGuard]}
 ];

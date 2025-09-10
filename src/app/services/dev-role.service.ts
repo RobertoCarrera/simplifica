@@ -42,10 +42,8 @@ export class DevRoleService {
   constructor(private sbClient: SupabaseClientService) {
     this.supabase = this.sbClient.instance;
     
-    // En desarrollo, usar usuario dev automáticamente
-    if (!environment.production) {
-      this.setDevUser(this.localDevUser);
-    }
+    // No establecer usuario dev automáticamente - solo para desarrollo manual
+    // Si se quiere activar dev, usar el método setDevUser() manualmente
   }
 
   setDevUser(user: DevUser) {

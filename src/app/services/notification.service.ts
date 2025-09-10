@@ -127,7 +127,7 @@ export class NotificationService {
     this.loadFromStorage();
     this.initializeDefaultSettings();
     this.initializeDefaultTemplates();
-    this.generateMockNotifications();
+    // No generateMockNotifications() - solo para demo
   }
   
   // Public methods for notification management

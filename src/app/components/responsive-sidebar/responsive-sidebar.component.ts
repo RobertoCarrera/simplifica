@@ -4,6 +4,7 @@ import { RouterModule, Router } from '@angular/router';
 import { PWAService } from '../../services/pwa.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
 import { DevRoleService } from '../../services/dev-role.service';
+import { AuthService } from '../../services/auth.service';
 
 interface MenuItem {
   id: number;
@@ -303,6 +304,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   sidebarState = inject(SidebarStateService);
   private router = inject(Router);
   private devRoleService = inject(DevRoleService);
+  private authService = inject(AuthService);
 
   // Local state
   private _activeItem = signal(1);
@@ -411,8 +413,12 @@ export class ResponsiveSidebarComponent implements OnInit {
 
   // Computed menu items based on user role
   menuItems = computed(() => {
-    const isAdmin = this.devRoleService.getUserRole() === 'admin';
+    const userProfile = this.authService.userProfile;
+    const realUserRole = userProfile?.role || 'member';
+    const isAdmin = realUserRole === 'admin' || realUserRole === 'owner';
     const isDev = this.devRoleService.isDev();
+    
+    console.log('🔍 Menu filtering - Real user role:', realUserRole, 'Is admin:', isAdmin, 'Is dev:', isDev);
     
     return this.allMenuItems.filter(item => {
       // Core modules always visible
