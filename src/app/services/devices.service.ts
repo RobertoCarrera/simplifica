@@ -131,6 +131,11 @@ export interface DeviceWithClientInfo {
 export class DevicesService {
   private supabase: SupabaseClient;
 
+  private isValidUuid(id: string | null | undefined): boolean {
+    if (!id) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  }
+
   constructor(private sbClient: SupabaseClientService) {
     this.supabase = this.sbClient.instance;
   }
@@ -141,14 +146,21 @@ export class DevicesService {
 
   async getDevices(companyId: string): Promise<Device[]> {
     try {
-      const { data, error } = await this.supabase
-        .from('devices')
-        .select(`
-          *,
-          client:clients(id, name, email, phone)
-        `)
-        .eq('company_id', companyId)
-        .order('received_at', { ascending: false });
+      let query: any = this.supabase
+          .from('devices')
+          .select(`
+            *,
+            client:clients(id, name, email, phone)
+          `)
+          .order('received_at', { ascending: false });
+
+        if (this.isValidUuid(companyId)) {
+          query = query.eq('company_id', companyId);
+        } else if (companyId) {
+          console.warn('DevicesService.getDevices: ignoring non-UUID companyId:', companyId);
+        }
+
+        const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching devices:', error);

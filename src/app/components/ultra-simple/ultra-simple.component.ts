@@ -306,12 +306,15 @@ export class UltraSimpleComponent implements OnInit {
         
         console.log('🏢 Empresa:', companies[0]);
         
-        // Buscar clientes
-        const { data: clients, error: clientsError } = await this.supabase.getClient()
-          .from('clients')
-          .select('*')
-          .eq('company_id', companies[0].id)
-          .is('deleted_at', null);
+        // Buscar clientes (aplicar filtro solo si company id es UUID)
+        const companyId = companies[0].id;
+        let clientsQuery: any = this.supabase.getClient().from('clients').select('*').is('deleted_at', null);
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(companyId)) {
+          clientsQuery = clientsQuery.eq('company_id', companyId);
+        } else {
+          console.warn('ultra-simple: skipping non-UUID company_id filter for tenant company:', companyId);
+        }
+        const { data: clients, error: clientsError } = await clientsQuery;
         
         if (clientsError) throw new Error('Error clientes: ' + clientsError.message);
         

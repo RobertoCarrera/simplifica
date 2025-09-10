@@ -96,13 +96,13 @@ export class BasicSupabaseService {
     console.log('📤 Creando cliente:', customer);
     
     // Convertir de BasicCustomer a estructura de clients
-    const customerData = {
+    const customerData: any = {
       name: customer.nombre,
       apellidos: customer.apellidos,
       email: customer.email,
-      phone: customer.telefono,
-      company_id: 1 // Default company for testing
+      phone: customer.telefono
     };
+    // Do not default to numeric company ids; let DB or caller set company_id
     
     return from(
       this.supabase

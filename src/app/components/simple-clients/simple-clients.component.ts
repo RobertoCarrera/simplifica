@@ -132,11 +132,15 @@ export class SimpleClientsComponent implements OnInit {
 
     console.log('🎯 Empresa encontrada:', companies[0]);
 
-    // Buscar clientes
-    const { data: clients, error: clientsError } = await this.supabase.getClient()
-      .from('clients')
-      .select('*')
-      .eq('company_id', companies[0].id);
+    // Buscar clientes (solo aplicar filtro company_id si la id es un UUID)
+    const companyId = companies[0].id;
+    const clientQuery: any = this.supabase.getClient().from('clients').select('*');
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(companyId)) {
+      clientQuery.eq('company_id', companyId);
+    } else {
+      console.warn('SimpleClientsComponent: skipping non-UUID company_id filter for tenant:', companyId);
+    }
+    const { data: clients, error: clientsError } = await clientQuery;
     
     if (clientsError) {
       throw new Error('Error cargando clientes: ' + clientsError.message);

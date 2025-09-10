@@ -76,7 +76,13 @@ export interface ServiceStats {
 export class SupabaseServicesService {
   
   private supabase = inject(SimpleSupabaseService);
-  private currentCompanyId = '1'; // Default para desarrollo
+  private currentCompanyId = ''; // Default vacío (usar tenant/current_company_id cuando esté disponible)
+
+  // Validar UUID simple
+  private isValidUuid(id: string | undefined | null): boolean {
+    if (!id) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  }
 
   constructor() {
     console.log('🔧 SupabaseServicesService initialized');
@@ -84,12 +90,12 @@ export class SupabaseServicesService {
 
   async getServices(companyId?: string): Promise<Service[]> {
     try {
-      const targetCompanyId = companyId || this.currentCompanyId;
-      console.log(`🔧 Getting services for company ID: ${targetCompanyId}`);
-      
-      // Usar tabla services existente como fuente principal
-      console.log('🔧 Using services table as primary source...');
-      return this.getServicesFromTable(targetCompanyId);
+    const targetCompanyId = companyId || this.currentCompanyId;
+    console.log(`🔧 Getting services for company ID: ${targetCompanyId}`);
+
+    // Usar tabla services existente como fuente principal
+    console.log('🔧 Using services table as primary source...');
+    return this.getServicesFromTable(targetCompanyId);
     } catch (error) {
       console.error('❌ Error getting services:', error);
       throw error;
@@ -99,12 +105,17 @@ export class SupabaseServicesService {
   async getServiceCategories(companyId: string): Promise<ServiceCategory[]> {
     try {
       const client = this.supabase.getClient();
-      const { data, error } = await client
+      let query: any = client
         .from('service_categories')
         .select('*')
-        .eq('company_id', companyId)
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
+
+      if (this.isValidUuid(companyId)) {
+        query = query.eq('company_id', companyId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data || [];
@@ -215,17 +226,24 @@ export class SupabaseServicesService {
   }
 
   private async getServicesFromTable(companyId: string): Promise<Service[]> {
-    const { data: services, error } = await this.supabase.getClient()
+    let query: any = this.supabase.getClient()
       .from('services')
       .select('*')
-      .eq('company_id', companyId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
+
+    if (this.isValidUuid(companyId)) {
+      query = query.eq('company_id', companyId);
+    } else {
+      console.warn('⚠️ Invalid or missing companyId for services query, loading global/untagged services');
+    }
+
+    const { data: services, error } = await query;
 
     if (error) throw error;
 
     // Transform services data to services format
-    return (services || []).map(service => ({
+  return (services || []).map((service: any) => ({
       id: service.id,
       name: service.name,
       description: service.description || '',
@@ -436,12 +454,17 @@ export class SupabaseServicesService {
   async getServiceTags(companyId: string): Promise<ServiceTag[]> {
     try {
       const client = this.supabase.getClient();
-      const { data, error } = await client
+      let query: any = client
         .from('service_tags')
         .select('*')
-        .eq('company_id', companyId)
         .eq('is_active', true)
         .order('name', { ascending: true });
+
+      if (this.isValidUuid(companyId)) {
+        query = query.eq('company_id', companyId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data || [];
@@ -523,7 +546,7 @@ export class SupabaseServicesService {
       // 1. Obtener company_id del servicio
       const { data: service, error: serviceError } = await client
         .from('services')
-        .select('company_id')
+        .select('*')
         .eq('id', serviceId)
         .single();
 

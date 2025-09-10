@@ -113,17 +113,23 @@ export interface TicketStats {
 export class SupabaseTicketsService {
   
   private supabase = inject(SimpleSupabaseService);
-  private currentCompanyId = '1'; // Default para desarrollo
+  private currentCompanyId = ''; // Default vacío; usar tenant/current_company_id cuando esté disponible
+
+  private isValidUuid(id: string | number | undefined | null): boolean {
+    if (!id) return false;
+    const str = String(id);
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+  }
 
   constructor() {
     console.log('🎫 SupabaseTicketsService initialized');
   }
 
-  async getTickets(companyId?: number): Promise<Ticket[]> {
+  async getTickets(companyId?: string): Promise<Ticket[]> {
     try {
-      const targetCompanyId = companyId || parseInt(this.currentCompanyId);
+      const targetCompanyId = companyId || this.currentCompanyId;
       console.log(`🎫 Getting tickets for company ID: ${targetCompanyId}`);
-      
+
       // Usar tabla tickets existente o crear mock data
       return this.getTicketsFromDatabase(targetCompanyId);
     } catch (error) {
@@ -132,19 +138,26 @@ export class SupabaseTicketsService {
     }
   }
 
-  private async getTicketsFromDatabase(companyId: number): Promise<Ticket[]> {
+  private async getTicketsFromDatabase(companyId: string): Promise<Ticket[]> {
     try {
       // Intentar obtener de tabla tickets real
-      const { data: tickets, error } = await this.supabase.getClient()
+      let query: any = this.supabase.getClient()
         .from('tickets')
         .select(`
           *,
           clients(id, name, email, phone),
           ticket_stages(id, name, color, position)
         `)
-        .eq('company_id', companyId)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
+
+      if (this.isValidUuid(companyId)) {
+        query = query.eq('company_id', companyId);
+      } else {
+        console.warn('⚠️ Invalid or missing companyId for tickets query, loading global/mock tickets');
+      }
+
+      const { data: tickets, error } = await query;
 
       if (error && error.code === '42P01') {
         // Tabla no existe, crear mock data
@@ -161,14 +174,14 @@ export class SupabaseTicketsService {
     }
   }
 
-  private getMockTickets(companyId: number): Ticket[] {
-    const companies = {
-      1: 'SatPCGo',
-      2: 'Michinanny', 
-      3: 'Libera Tus Creencias'
+  private getMockTickets(companyId: string): Ticket[] {
+    const companies: Record<string, string> = {
+      '1': 'SatPCGo',
+      '2': 'Michinanny', 
+      '3': 'Libera Tus Creencias'
     };
 
-    const companyName = companies[companyId as keyof typeof companies] || 'Empresa';
+    const companyName = companies[companyId] || 'Empresa';
 
     return [
       {
@@ -361,14 +374,19 @@ export class SupabaseTicketsService {
     }
   }
 
-  async getTicketStages(companyId: number): Promise<TicketStage[]> {
+  async getTicketStages(companyId: string): Promise<TicketStage[]> {
     try {
-      const { data, error } = await this.supabase.getClient()
+      let query: any = this.supabase.getClient()
         .from('ticket_stages')
         .select('*')
-        .eq('company_id', companyId)
         .eq('is_active', true)
         .order('position', { ascending: true });
+
+      if (this.isValidUuid(companyId)) {
+        query = query.eq('company_id', companyId);
+      }
+
+      const { data, error } = await query;
 
       if (error && error.code === '42P01') {
         return this.getMockStages(companyId);
@@ -382,7 +400,7 @@ export class SupabaseTicketsService {
     }
   }
 
-  private getMockStages(companyId: number): TicketStage[] {
+  private getMockStages(companyId: string): TicketStage[] {
     return [
       {
         id: 'stage-001',
@@ -437,7 +455,7 @@ export class SupabaseTicketsService {
     ];
   }
 
-  async getTicketStats(companyId: number): Promise<TicketStats> {
+  async getTicketStats(companyId: string): Promise<TicketStats> {
     const tickets = await this.getTickets(companyId);
     
     const stats: TicketStats = {

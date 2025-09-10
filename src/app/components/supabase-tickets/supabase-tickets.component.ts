@@ -115,6 +115,11 @@ export class SupabaseTicketsComponent implements OnInit {
   private router = inject(Router);
   private devicesService = inject(DevicesService);
 
+  private isValidUuid(id: string | undefined | null): boolean {
+    if (!id) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  }
+
   ngOnInit() {
     this.initializeComponent();
   }
@@ -129,8 +134,14 @@ export class SupabaseTicketsComponent implements OnInit {
         return;
       }
       
-      // Set the first available company as default
-      this.selectedCompanyId = this.companies[0].id;
+      // Set the first available company as default only if it's a valid UUID
+      const candidate = this.companies[0]?.id;
+      if (this.isValidUuid(candidate)) {
+        this.selectedCompanyId = candidate;
+      } else {
+        console.warn('SupabaseTicketsComponent: first company id is not a UUID, leaving selectedCompanyId empty:', candidate);
+        this.selectedCompanyId = '';
+      }
       
   // Load stages first, then tickets, then attach tags and stats (which depend on tickets)
   await this.loadStages();
@@ -200,7 +211,7 @@ export class SupabaseTicketsComponent implements OnInit {
     try {
       
       // Usar UUID directamente, no convertir a número
-      const { data: tickets, error } = await this.simpleSupabase.getClient()
+      let query: any = this.simpleSupabase.getClient()
         .from('tickets')
         .select(`
           *,
@@ -208,8 +219,15 @@ export class SupabaseTicketsComponent implements OnInit {
           stage:ticket_stages(id, name, color, position),
           company:companies(id, name)
         `)
-        .eq('company_id', this.selectedCompanyId)
         .order('created_at', { ascending: false });
+
+      if (this.isValidUuid(this.selectedCompanyId)) {
+        query = query.eq('company_id', this.selectedCompanyId);
+      } else {
+        console.warn('⚠️ Skipping company_id filter for tickets because selectedCompanyId is invalid:', this.selectedCompanyId);
+      }
+
+      const { data: tickets, error } = await query;
       
       if (error) {
         throw new Error(`Error al cargar tickets: ${error.message}`);
@@ -453,26 +471,29 @@ export class SupabaseTicketsComponent implements OnInit {
     try {
 
       const client = this.simpleSupabase.getClient();
-
-      // Intentar cargar tags filtrados por empresa (si la columna existe)
-      let tagsResponse: any = await client
-        .from('ticket_tags')
-        .select('id, name, color, description, company_id')
-        .eq('company_id', this.selectedCompanyId)
-        .order('name', { ascending: true });
-
-      // Si la consulta falla por falta de columna company_id, intentar sin filtro por company
-      if (tagsResponse.error && /company_id/i.test(tagsResponse.error.message || '')) {
-        console.warn('ticket_tags no tiene company_id, cargando tags globales...');
-        tagsResponse = await client
+      // Comprobación segura: intentamos obtener una fila con company_id; si falla, asumimos que la columna no existe
+      let hasCompany = false;
+      try {
+        // Use a full-row sample select to avoid PostgREST rejecting a narrow projection in some setups
+        const { data: sample, error: sampleErr } = await client
           .from('ticket_tags')
-          .select('id, name, color, description')
-          .order('name', { ascending: true }) as any;
+          .select('*')
+          .limit(1);
+
+        if (!sampleErr && sample && sample.length > 0) {
+          hasCompany = Object.prototype.hasOwnProperty.call(sample[0], 'company_id');
+        }
+      } catch (e) {
+        // Si falla la comprobación, no hacer nada especial; se tomará la ruta sin company_id
+        console.warn('Comprobación de company_id en ticket_tags fallida, continuando sin filtro:', e);
       }
 
-      if (tagsResponse.error) {
-        console.error('Error cargando tags desde BD:', tagsResponse.error);
-        // Fallback a tags estáticos si hay error
+      // Primero obtenemos tags generales (sin filtro). Si existe company_id y tenemos company válido, pedimos filtrados.
+      const baseFields = 'id, name, color, description';
+      let baseResponse: any = await client.from('ticket_tags').select(baseFields).order('name', { ascending: true });
+
+      if (baseResponse.error) {
+        console.error('Error cargando tags base desde BD:', baseResponse.error);
         this.availableTags = [
           { id: '1', name: 'Urgente', color: '#ef4444', description: 'Tickets que requieren atención inmediata' },
           { id: '2', name: 'Hardware', color: '#3b82f6', description: 'Problemas relacionados con componentes físicos' },
@@ -481,16 +502,23 @@ export class SupabaseTicketsComponent implements OnInit {
         return;
       }
 
-  const tags = (tagsResponse && tagsResponse.data) ? tagsResponse.data : [];
+      let tags = (baseResponse && baseResponse.data) ? baseResponse.data : [];
 
-      // Filtrar por is_active si la columna existe (algunos despliegues no la tienen)
-      this.availableTags = (tags as any[]).map(t => ({
-        id: t.id,
-        name: t.name,
-        color: t.color || '#6b7280',
-        description: t.description || '',
-        company_id: t.company_id
-      } as TicketTag));
+  // Si la tabla tiene company_id y el companyId es válido, solicitar tags filtrados por company_id
+      if (hasCompany && this.isValidUuid(this.selectedCompanyId)) {
+        const { data: companyTags, error: companyTagsErr } = await client
+          .from('ticket_tags')
+          .select('id, name, color, description, company_id')
+          .eq('company_id', this.selectedCompanyId)
+          .order('name', { ascending: true });
+
+        if (!companyTagsErr && companyTags) {
+          tags = companyTags;
+        }
+      }
+
+  // Assign final tags to availableTags
+  this.availableTags = tags || [];
 
     } catch (error) {
       console.error('Error in loadTags:', error);
@@ -1007,16 +1035,28 @@ export class SupabaseTicketsComponent implements OnInit {
     // Normalize and dedupe
     const uniqueNames = Array.from(new Set((tagNames || []).map(n => (n || '').trim()).filter(Boolean)));
     try {
-      // Detect if ticket_tags has company_id
-      const { data: cols } = await client.from('information_schema.columns').select('column_name').eq('table_name', 'ticket_tags').eq('table_schema', 'public');
-      const hasCompany = (cols || []).some((c: any) => c.column_name === 'company_id');
+      // Detect if ticket_tags has company_id using a safe sample query (some deployments do not expose information_schema via REST)
+      let hasCompany = false;
+      try {
+        // Use a full-row sample select to avoid PostgREST rejecting a narrow projection in some setups
+        const { data: sample, error: sampleErr } = await client
+          .from('ticket_tags')
+          .select('*')
+          .limit(1);
+
+        if (!sampleErr && sample && sample.length > 0) {
+          hasCompany = Object.prototype.hasOwnProperty.call(sample[0], 'company_id');
+        }
+      } catch (e) {
+        console.warn('No se pudo determinar company_id en ticket_tags (sample check failed), assuming no company column', e);
+      }
 
       // 1) Ensure tags exist
       for (const name of uniqueNames) {
         // Check if exists
         let q = client.from('ticket_tags').select('id, name');
         q = q.eq('name', name);
-        if (hasCompany) q = q.eq('company_id', this.selectedCompanyId);
+  if (hasCompany && this.isValidUuid(this.selectedCompanyId)) q = q.eq('company_id', this.selectedCompanyId);
         const { data: exists, error: existsErr } = await q.limit(1);
         if (existsErr) continue;
         if (!exists || exists.length === 0) {
@@ -1033,7 +1073,7 @@ export class SupabaseTicketsComponent implements OnInit {
       // 2) Fetch tag ids for the names (scoped to company if applicable)
       let tagsQuery = client.from('ticket_tags').select('id, name');
       tagsQuery = tagsQuery.in('name', uniqueNames);
-      if (hasCompany) tagsQuery = tagsQuery.eq('company_id', this.selectedCompanyId);
+  if (hasCompany && this.isValidUuid(this.selectedCompanyId)) tagsQuery = tagsQuery.eq('company_id', this.selectedCompanyId);
       const { data: tagsRows, error: fetchErr } = await tagsQuery;
       if (fetchErr) throw fetchErr;
 

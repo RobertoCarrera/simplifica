@@ -201,11 +201,17 @@ export class DevUserSelectorComponent implements OnInit {
       for (const systemUser of this.systemUsers) {
         try {
           // Query a la tabla 'clients' real filtrando por company_id
-          const { count: directCount } = await this.supabase
+          // Only apply company_id filter if it's a UUID to avoid invalid REST filters
+          let countQuery: any = this.supabase
             .from('clients')
             .select('*', { count: 'exact', head: true })
-            .eq('company_id', systemUser.company_id)
             .is('deleted_at', null);
+          if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(systemUser.company_id)) {
+            countQuery = countQuery.eq('company_id', systemUser.company_id);
+          } else {
+            console.warn('dev-user-selector: skipping non-UUID company_id for user count:', systemUser.company_id);
+          }
+          const { count: directCount } = await countQuery;
           
           usersWithCounts.push({
             id: systemUser.id,
@@ -295,14 +301,19 @@ export class DevUserSelectorComponent implements OnInit {
       for (const customer of testCustomers) {
         // Convertir de Customer a estructura de clients
         const selectedUser = this.systemUsers.find(u => u.id === this.selectedUserId);
-        const clientData = {
+        const clientData: any = {
           name: customer.nombre,
           apellidos: customer.apellidos,
           dni: customer.dni,
           email: customer.email,
-          phone: customer.telefono,
-          company_id: selectedUser?.company_id || 1
+          phone: customer.telefono
         };
+        // Only set company_id when it looks like a UUID; avoid numeric '1' defaults
+        if (selectedUser?.company_id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedUser.company_id)) {
+          clientData.company_id = selectedUser.company_id;
+        } else {
+          console.warn('dev-user-selector: not setting company_id for test client because selected user has invalid company_id:', selectedUser?.company_id);
+        }
         
         const { error } = await this.supabase
           .from('clients')

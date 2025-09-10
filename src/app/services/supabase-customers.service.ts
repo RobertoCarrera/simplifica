@@ -74,6 +74,12 @@ export class SupabaseCustomersService {
     this.loadCustomers();
   }
 
+  // Small UUID validator to avoid appending invalid company_id filters
+  private isValidUuid(id: string | null | undefined): boolean {
+    if (!id) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  }
+
   /**
    * Método auxiliar para ejecutar consultas en modo DEV bypaseando RLS
    */
@@ -151,8 +157,10 @@ export class SupabaseCustomersService {
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
     const companyId = this.authService.companyId();
-    if (companyId) {
+    if (this.isValidUuid(companyId)) {
       query = query.eq('company_id', companyId);
+    } else if (companyId) {
+      console.warn('SupabaseCustomersService: ignoring non-UUID companyId from authService:', companyId);
     }
 
     // Aplicar filtros de búsqueda
@@ -220,17 +228,21 @@ export class SupabaseCustomersService {
       .select('*');
 
     // FILTRO POR EMPRESA EN LUGAR DE USUARIO (adaptado a la estructura real)
-    if (this.currentDevUserId && this.config.isDevelopmentMode) {
+  if (this.currentDevUserId && this.config.isDevelopmentMode) {
       console.log('DEV: Buscando company_id para usuario:', this.currentDevUserId);
       
       // Buscar la empresa del usuario seleccionado (ahora sincrónico)
       const selectedUser = this.getCurrentUserFromSystemUsers(this.currentDevUserId);
-      if (selectedUser) {
-        console.log('DEV: Filtrando por company_id:', selectedUser.company_id);
-        query = query.eq('company_id', selectedUser.company_id);
-      } else {
-        console.log('DEV: Usuario no encontrado, no se aplicará filtro');
-      }
+        if (selectedUser) {
+          console.log('DEV: Filtrando por company_id:', selectedUser.company_id);
+          if (this.isValidUuid(selectedUser.company_id)) {
+            query = query.eq('company_id', selectedUser.company_id);
+          } else {
+            console.warn('SupabaseCustomersService: skipping non-UUID company_id from dev user:', selectedUser.company_id);
+          }
+        } else {
+          console.log('DEV: Usuario no encontrado, no se aplicará filtro');
+        }
     } else {
       console.log('DEV: NO se aplica filtro - traerá TODOS los clientes');
     }

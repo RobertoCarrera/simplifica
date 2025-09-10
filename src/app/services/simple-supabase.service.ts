@@ -45,6 +45,12 @@ export class SimpleSupabaseService {
   private supabase: SupabaseClient;
   private currentCompany = new BehaviorSubject<string | null>(null);
 
+  // Simple UUID validator to avoid appending bad filters like company_id=eq.1
+  private isValidUuid(id: string | null | undefined): boolean {
+    if (!id) return false;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  }
+
   constructor(private sbClient: SupabaseClientService) {
     // Reusar instancia compartida
     this.supabase = this.sbClient.instance;
@@ -140,8 +146,11 @@ export class SimpleSupabaseService {
 
       // Si hay empresa seleccionada, filtrar
       const companyId = this.currentCompanyId;
-      if (companyId) {
+      if (this.isValidUuid(companyId)) {
         query = query.eq('company_id', companyId);
+      } else if (companyId) {
+        // If there's a companyId but it's not a UUID, avoid adding the filter which would form invalid REST query
+        console.warn('SimpleSupabaseService: ignoring non-UUID currentCompanyId when filtering clients:', companyId);
       }
 
       const { data, error } = await query;
@@ -219,8 +228,10 @@ export class SimpleSupabaseService {
 
       // Si hay empresa seleccionada, filtrar
       const companyId = this.currentCompanyId;
-      if (companyId) {
+      if (this.isValidUuid(companyId)) {
         query = query.eq('company_id', companyId);
+      } else if (companyId) {
+        console.warn('SimpleSupabaseService: ignoring non-UUID currentCompanyId when searching clients:', companyId);
       }
 
       const { data, error } = await query;
@@ -329,6 +340,10 @@ export class SimpleSupabaseService {
       const currentCompanyId = this.currentCompanyId;
       if (!currentCompanyId) {
         return { success: false, error: 'No hay empresa seleccionada' };
+      }
+
+      if (!this.isValidUuid(currentCompanyId)) {
+        return { success: false, error: 'company_id inválido en contexto' };
       }
 
       const { data, error } = await this.supabase

@@ -493,7 +493,7 @@ export class DevicesManagerComponent implements OnInit {
   deviceFormErrors: Record<string, string> = {};
 
   // Company ID (debería venir del contexto global)
-  selectedCompanyId = '1'; // TODO: Obtener de un servicio global
+  selectedCompanyId = ''; // TODO: Obtener de un servicio global
 
   ngOnInit() {
     this.loadDevices();

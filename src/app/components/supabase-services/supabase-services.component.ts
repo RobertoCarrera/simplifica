@@ -85,7 +85,15 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       if (res.success) {
         this.companies = res.data || [];
         // Default to first company if none selected
-  if (!this.selectedCompanyId && this.companies.length > 0) this.selectedCompanyId = this.companies[0].id;
+        // Only default to first company when its id looks like a UUID to avoid appending invalid filters (e.g. '1')
+        if (!this.selectedCompanyId && this.companies.length > 0) {
+          const candidate = this.companies[0].id;
+          if (candidate && /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}/.test(candidate)) {
+            this.selectedCompanyId = candidate;
+          } else {
+            console.warn('Skipping default company id because it is not a UUID:', candidate);
+          }
+        }
       } else {
         console.warn('No se pudieron cargar companies:', res.error);
       }
