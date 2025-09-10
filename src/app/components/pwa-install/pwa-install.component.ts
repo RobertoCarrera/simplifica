@@ -1,6 +1,6 @@
 import { Component, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { PwaService } from '../../services/pwa/pwa.service';
+import { PWAService } from '../../services/pwa.service';
 import { ToastService } from '../../services/toast.service';
 import { AnimationService } from '../../services/animation.service';
 
@@ -49,7 +49,7 @@ import { AnimationService } from '../../services/animation.service';
       </div>
     }
 
-    @if (pwaService.installed()) {
+  @if (pwaService.isInstalled()) {
       <div class="fixed top-4 right-4 z-50" @fadeInUp>
         <div class="bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3">
           <div class="flex items-center space-x-2">
@@ -66,7 +66,7 @@ import { AnimationService } from '../../services/animation.service';
       </div>
     }
 
-    @if (!pwaService.online()) {
+    @if (!pwaService.isOnline()) {
       <div class="fixed top-4 left-4 right-4 z-50" @fadeInUp>
         <div class="bg-yellow-100 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-lg p-3">
           <div class="flex items-center space-x-2">
@@ -93,17 +93,17 @@ export class PwaInstallComponent {
   private dismissed = false;
 
   constructor(
-    public pwaService: PwaService,
+    public pwaService: PWAService,
     private toastService: ToastService
   ) {}
 
   showInstallPrompt = computed(() => {
-    return this.pwaService.installable() && !this.dismissed && !this.pwaService.installed();
+    return this.pwaService.canInstall() && !this.dismissed && !this.pwaService.isInstalled();
   });
 
   async installApp() {
     try {
-      const success = await this.pwaService.installApp();
+      const success = await this.pwaService.installPWA();
       if (success) {
         this.toastService.success('PWA', 'Aplicación instalada correctamente');
       } else {

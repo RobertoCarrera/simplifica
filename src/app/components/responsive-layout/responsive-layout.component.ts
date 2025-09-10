@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { ResponsiveSidebarComponent } from '../responsive-sidebar/responsive-sidebar.component';
 import { RlsWarningBannerComponent } from '../rls-warning-banner/rls-warning-banner.component';
+import { MobileBottomNavComponent } from '../mobile-bottom-nav/mobile-bottom-nav.component';
 import { PWAService } from '../../services/pwa.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
 import { AuthService } from '../../services/auth.service';
@@ -10,7 +11,7 @@ import { AuthService } from '../../services/auth.service';
 @Component({
   selector: 'app-responsive-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, ResponsiveSidebarComponent, RlsWarningBannerComponent],
+  imports: [CommonModule, RouterModule, ResponsiveSidebarComponent, RlsWarningBannerComponent, MobileBottomNavComponent],
   template: `
     <!-- RLS Warning Banner (always visible when needed) -->
     <app-rls-warning-banner></app-rls-warning-banner>
@@ -23,6 +24,7 @@ import { AuthService } from '../../services/auth.service';
     } @else {
       <!-- Layout normal con sidebar para usuarios autenticados -->
       <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+
         <!-- Sidebar -->
         <app-responsive-sidebar></app-responsive-sidebar>
 
@@ -34,6 +36,9 @@ import { AuthService } from '../../services/auth.service';
               <router-outlet></router-outlet>
             </div>
           </main>
+          
+          <!-- Mobile bottom navigation -->
+          <app-mobile-bottom-nav></app-mobile-bottom-nav>
         </div>
       </div>
     }
@@ -56,7 +61,7 @@ import { AuthService } from '../../services/auth.service';
 })
 export class ResponsiveLayoutComponent {
   private pwaService = inject(PWAService);
-  private sidebarService = inject(SidebarStateService);
+  sidebarService = inject(SidebarStateService); // Hacer público
   private authService = inject(AuthService);
   private router = inject(Router);
 
@@ -96,10 +101,18 @@ export class ResponsiveLayoutComponent {
   });
 
   getMainContentPadding(): string {
-    return this.isMobile() ? 'p-4' : 'p-6';
+    if (this.isMobile()) {
+      // En móvil, añadir padding bottom para el menú inferior
+      return 'p-4 pb-20';
+    }
+    return 'p-6';
   }
 
   getContentWidth(): string {
     return 'max-w-7xl';
+  }
+
+  openSidebar(): void {
+    this.sidebarService.setOpen(true);
   }
 }

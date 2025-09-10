@@ -19,7 +19,7 @@ import { CommonModule } from '@angular/common';
     <app-toast></app-toast>
     <app-pwa-install></app-pwa-install>
     <!-- Solo mostrar mobile status en dispositivos pequeños -->
-    @if (pwaService.shouldShowMobileOptimizations()) {
+    @if (pwaService.shouldShowMobileOptimizations() && devRoleService.isDev()) {
       <app-mobile-status></app-mobile-status>
     }
     <!-- Navigation de desarrollo - Solo para admin/dev -->

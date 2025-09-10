@@ -216,14 +216,39 @@ interface MenuItem {
         
         <!-- User profile -->
         @if (!isCollapsed()) {
-          <div class="flex items-center mt-3">
-            <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-              <span class="text-white font-medium text-sm">{{ getUserInitial() }}</span>
+          <div class="flex items-center justify-between mt-3">
+            <div class="flex items-center">
+              <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                <span class="text-white font-medium text-sm">{{ getUserInitial() }}</span>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ getUserDisplayName() }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ getUserRoleDisplay() }}</p>
+              </div>
             </div>
-            <div class="ml-3">
-              <p class="text-sm font-medium text-gray-900 dark:text-white">{{ getUserDisplayName() }}</p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">{{ getUserRoleDisplay() }}</p>
-            </div>
+            <!-- Logout button -->
+            <button
+              (click)="logout()"
+              class="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+              title="Cerrar sesión"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+            </button>
+          </div>
+        } @else {
+          <!-- Logout button when collapsed -->
+          <div class="flex justify-center">
+            <button
+              (click)="logout()"
+              class="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+              title="Cerrar sesión"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+            </button>
           </div>
         }
       </div>
@@ -404,9 +429,16 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 13,
+      label: 'Configuración',
+      icon: 'settings',
+      route: '/configuracion',
+      module: 'core'
+    },
+    {
+      id: 14,
       label: 'Ayuda',
       icon: 'help_outline',
-      route: '/onboarding',
+      route: '/ayuda',
       module: 'core'
     }
   ];
@@ -516,5 +548,14 @@ export class ResponsiveSidebarComponent implements OnInit {
   getUserRoleDisplay(): string {
     const role = this.authService.userProfile?.role || 'member';
     return this.getRoleDisplayName(role);
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.authService.logout();
+      this.router.navigate(['/login']);
+    } catch (error) {
+      console.error('Error durante logout:', error);
+    }
   }
 }

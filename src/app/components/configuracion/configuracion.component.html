@@ -1,240 +1,298 @@
-<div class="container-fluid py-4">
-  <div class="row">
-    <div class="col-md-8 mx-auto">
-      <h2 class="mb-4 text-center">
-        <i class="bi bi-gear me-2"></i>
-        Configuración
+<div class="max-w-4xl mx-auto p-6 space-y-8">
+  <!-- Header -->
+  <div class="text-center">
+    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+      <i class="fas fa-cog mr-3 text-blue-600"></i>
+      Configuración
+    </h1>
+    <p class="text-gray-600 dark:text-gray-400">
+      Gestiona tu perfil y configuración de la cuenta
+    </p>
+  </div>
+
+  <!-- Mensaje de estado -->
+  <div *ngIf="message" 
+       class="p-4 rounded-lg border-l-4 mb-6"
+       [class]="messageType === 'success' ? 'bg-green-50 border-green-400 text-green-700 dark:bg-green-900/20 dark:border-green-500 dark:text-green-300' : 'bg-red-50 border-red-400 text-red-700 dark:bg-red-900/20 dark:border-red-500 dark:text-red-300'">
+    <div class="flex">
+      <i class="fas fa-check-circle mr-2 mt-0.5" *ngIf="messageType === 'success'"></i>
+      <i class="fas fa-exclamation-circle mr-2 mt-0.5" *ngIf="messageType === 'error'"></i>
+      <span>{{ message }}</span>
+    </div>
+  </div>
+
+  <!-- Información de la empresa -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700" *ngIf="userProfile">
+    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+        <i class="fas fa-building mr-3 text-blue-600"></i>
+        Información de la Empresa
       </h2>
-
-      <!-- Mensaje de estado -->
-      <div *ngIf="message" class="alert" [class.alert-success]="messageType === 'success'" [class.alert-danger]="messageType === 'error'">
-        {{ message }}
-      </div>
-
-      <!-- Información de la empresa -->
-      <div class="card mb-4" *ngIf="userProfile">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="bi bi-building me-2"></i>
-            Información de la Empresa
-          </h5>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-6">
-              <strong>Empresa:</strong> {{ getCompanyInfo()?.name || 'No asignada' }}
-            </div>
-            <div class="col-md-6">
-              <strong>Plan:</strong> 
-              <span class="badge bg-primary ms-1">{{ getCompanyInfo()?.subscription_tier || 'Básico' }}</span>
-            </div>
+    </div>
+    <div class="p-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-4">
+          <div>
+            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Empresa</label>
+            <p class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ getCompanyInfo()?.name || 'No asignada' }}
+            </p>
           </div>
-          <div class="row mt-2">
-            <div class="col-md-6">
-              <strong>Tu rol:</strong> 
-              <span class="badge bg-secondary ms-1">{{ getRoleDisplayName(userProfile.role) }}</span>
-            </div>
-            <div class="col-md-6">
-              <strong>Estado:</strong> 
-              <span class="badge bg-success ms-1" *ngIf="userProfile.active">Activo</span>
-              <span class="badge bg-danger ms-1" *ngIf="!userProfile.active">Inactivo</span>
+          <div>
+            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Tu rol</label>
+            <div class="mt-1">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                {{ getRoleDisplayName(userProfile.role) }}
+              </span>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Perfil de usuario -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="bi bi-person me-2"></i>
-            Mi Perfil
-          </h5>
-        </div>
-        <div class="card-body">
-          <form [formGroup]="profileForm" (ngSubmit)="updateProfile()">
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label for="full_name" class="form-label">Nombre completo *</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  id="full_name"
-                  formControlName="full_name"
-                  [class.is-invalid]="profileForm.get('full_name')?.invalid && profileForm.get('full_name')?.touched">
-                <div class="invalid-feedback" *ngIf="profileForm.get('full_name')?.invalid && profileForm.get('full_name')?.touched">
-                  El nombre es requerido (mínimo 2 caracteres)
-                </div>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label for="email" class="form-label">Email *</label>
-                <input 
-                  type="email" 
-                  class="form-control" 
-                  id="email"
-                  formControlName="email"
-                  readonly
-                  [class.is-invalid]="profileForm.get('email')?.invalid && profileForm.get('email')?.touched">
-                <small class="text-muted">El email no se puede modificar</small>
-              </div>
+        <div class="space-y-4">
+          <div>
+            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Plan</label>
+            <div class="mt-1">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                {{ getCompanyInfo()?.subscription_tier || 'Básico' }}
+              </span>
             </div>
-            <div class="row">
-              <!-- Campo teléfono eliminado (no existe en AppUser) -->
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Estado</label>
+            <div class="mt-1">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium" 
+                    [class]="userProfile.active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'">
+                <i class="fas fa-circle mr-2 text-xs" 
+                   [class]="userProfile.active ? 'text-green-500' : 'text-red-500'"></i>
+                {{ userProfile.active ? 'Activo' : 'Inactivo' }}
+              </span>
             </div>
-            <button 
-              type="submit" 
-              class="btn btn-primary"
-              [disabled]="loading || profileForm.invalid">
-              <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
-              <i class="bi bi-check-circle me-2" *ngIf="!loading"></i>
-              Actualizar Perfil
-            </button>
-          </form>
+          </div>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- Cambiar contraseña -->
-      <div class="card mb-4">
-        <div class="card-header">
-          <h5 class="mb-0">
-            <i class="bi bi-shield-lock me-2"></i>
-            Cambiar Contraseña
-          </h5>
-        </div>
-        <div class="card-body">
-          <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                <label for="currentPassword" class="form-label">Contraseña actual *</label>
-                <input 
-                  type="password" 
-                  class="form-control" 
-                  id="currentPassword"
-                  formControlName="currentPassword"
-                  [class.is-invalid]="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched">
-              </div>
-              <div class="col-md-4 mb-3">
-                <label for="newPassword" class="form-label">Nueva contraseña *</label>
-                <input 
-                  type="password" 
-                  class="form-control" 
-                  id="newPassword"
-                  formControlName="newPassword"
-                  [class.is-invalid]="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched">
-                <small class="text-muted">Mínimo 6 caracteres</small>
-              </div>
-              <div class="col-md-4 mb-3">
-                <label for="confirmPassword" class="form-label">Confirmar contraseña *</label>
-                <input 
-                  type="password" 
-                  class="form-control" 
-                  id="confirmPassword"
-                  formControlName="confirmPassword"
-                  [class.is-invalid]="passwordForm.get('confirmPassword')?.invalid && passwordForm.get('confirmPassword')?.touched">
-                <div class="invalid-feedback" *ngIf="passwordForm.hasError('passwordMismatch') && passwordForm.get('confirmPassword')?.touched">
-                  Las contraseñas no coinciden
-                </div>
-              </div>
+  <!-- Perfil de usuario -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+        <i class="fas fa-user mr-3 text-green-600"></i>
+        Mi Perfil
+      </h2>
+    </div>
+    <div class="p-6">
+      <form [formGroup]="profileForm" (ngSubmit)="updateProfile()" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label for="full_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Nombre completo *
+            </label>
+            <input 
+              type="text" 
+              id="full_name"
+              formControlName="full_name"
+              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+              [class.border-red-500]="profileForm.get('full_name')?.invalid && profileForm.get('full_name')?.touched"
+              placeholder="Ingresa tu nombre completo">
+            <div class="mt-1 text-sm text-red-600 dark:text-red-400" *ngIf="profileForm.get('full_name')?.invalid && profileForm.get('full_name')?.touched">
+              El nombre es requerido (mínimo 2 caracteres)
             </div>
-            <button 
-              type="submit" 
-              class="btn btn-warning"
-              [disabled]="loading || passwordForm.invalid">
-              <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
-              <i class="bi bi-key me-2" *ngIf="!loading"></i>
-              Cambiar Contraseña
-            </button>
-          </form>
+          </div>
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Email *
+            </label>
+            <input 
+              type="email" 
+              id="email"
+              formControlName="email"
+              readonly
+              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400"
+              placeholder="tu@email.com">
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">El email no se puede modificar</p>
+          </div>
         </div>
-      </div>
-
-      <!-- Zona de peligro -->
-      <div class="card border-danger">
-        <div class="card-header bg-danger text-white">
-          <h5 class="mb-0">
-            <i class="bi bi-exclamation-triangle me-2"></i>
-            Zona de Peligro
-          </h5>
-        </div>
-        <div class="card-body">
-          <p class="text-muted">
-            Cerrar sesión te desconectará de la aplicación. Tendrás que volver a iniciar sesión.
-          </p>
+        <div class="flex justify-end">
           <button 
-            type="button" 
-            class="btn btn-outline-danger"
-            (click)="logout()">
-            <i class="bi bi-door-open me-2"></i>
-            Cerrar Sesión
+            type="submit" 
+            class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            [disabled]="loading || profileForm.invalid">
+            <span *ngIf="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+            <i class="fas fa-save mr-2" *ngIf="!loading"></i>
+            {{ loading ? 'Actualizando...' : 'Actualizar Perfil' }}
           </button>
         </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Cambiar contraseña -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+        <i class="fas fa-shield-alt mr-3 text-yellow-600"></i>
+        Cambiar Contraseña
+      </h2>
+    </div>
+    <div class="p-6">
+      <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <label for="currentPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Contraseña actual *
+            </label>
+            <input 
+              type="password" 
+              id="currentPassword"
+              formControlName="currentPassword"
+              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+              [class.border-red-500]="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched"
+              placeholder="••••••••">
+          </div>
+          <div>
+            <label for="newPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Nueva contraseña *
+            </label>
+            <input 
+              type="password" 
+              id="newPassword"
+              formControlName="newPassword"
+              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+              [class.border-red-500]="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched"
+              placeholder="••••••••">
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Mínimo 6 caracteres</p>
+          </div>
+          <div>
+            <label for="confirmPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Confirmar contraseña *
+            </label>
+            <input 
+              type="password" 
+              id="confirmPassword"
+              formControlName="confirmPassword"
+              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
+              [class.border-red-500]="passwordForm.get('confirmPassword')?.invalid && passwordForm.get('confirmPassword')?.touched"
+              placeholder="••••••••">
+            <div class="mt-1 text-sm text-red-600 dark:text-red-400" *ngIf="passwordForm.hasError('passwordMismatch') && passwordForm.get('confirmPassword')?.touched">
+              Las contraseñas no coinciden
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end">
+          <button 
+            type="submit" 
+            class="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            [disabled]="loading || passwordForm.invalid">
+            <span *ngIf="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+            <i class="fas fa-key mr-2" *ngIf="!loading"></i>
+            {{ loading ? 'Cambiando...' : 'Cambiar Contraseña' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Zona de peligro -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-red-200 dark:border-red-700">
+    <div class="px-6 py-4 border-b border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20">
+      <h2 class="text-xl font-semibold text-red-800 dark:text-red-300 flex items-center">
+        <i class="fas fa-exclamation-triangle mr-3 text-red-600"></i>
+        Zona de Peligro
+      </h2>
+    </div>
+    <div class="p-6">
+      <p class="text-gray-600 dark:text-gray-400 mb-4">
+        Cerrar sesión te desconectará de la aplicación. Tendrás que volver a iniciar sesión.
+      </p>
+      <button 
+        type="button" 
+        class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center"
+        (click)="logout()">
+        <i class="fas fa-sign-out-alt mr-2"></i>
+        Cerrar Sesión
+      </button>
+    </div>
+  </div>
+
+  <!-- Configuración de Desarrollo (Solo para devs) -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-orange-200 dark:border-orange-700" *ngIf="devRoleService.canSeeDevTools()">
+    <div class="px-6 py-4 border-b border-orange-200 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20">
+      <h2 class="text-xl font-semibold text-orange-800 dark:text-orange-300 flex items-center">
+        <i class="fas fa-code mr-3 text-orange-600"></i>
+        🔧 Configuración de Desarrollo
+      </h2>
+    </div>
+    <div class="p-6 space-y-6">
+      <div class="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+        <div class="flex items-start">
+          <i class="fas fa-info-circle text-blue-600 mr-3 mt-1"></i>
+          <div>
+            <p class="font-medium text-blue-800 dark:text-blue-300">Esta sección solo es visible para usuarios de desarrollo.</p>
+            <p class="text-blue-700 dark:text-blue-400 text-sm mt-1">Aquí puedes configurar el sistema para desarrollo local y testing.</p>
+          </div>
+        </div>
       </div>
 
-      <!-- Configuración de Desarrollo (Solo para devs) -->
-      <div class="card mb-4" *ngIf="devRoleService.canSeeDevTools()">
-        <div class="card-header bg-warning text-dark">
-          <h5 class="mb-0">
-            <i class="bi bi-tools me-2"></i>
-            🔧 Configuración de Desarrollo
-          </h5>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="space-y-3">
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Modo:</span>
+            <span class="px-3 py-1 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 rounded-full text-sm font-medium">
+              Desarrollo
+            </span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Usuario Dev:</span>
+            <span class="px-3 py-1 rounded-full text-sm font-medium"
+                  [class]="devRoleService.isDev() ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'">
+              {{ devRoleService.isDev() ? 'Activo' : 'No activo' }}
+            </span>
+          </div>
         </div>
-        <div class="card-body">
-          <div class="alert alert-info">
-            <i class="bi bi-info-circle me-2"></i>
-            <strong>Esta sección solo es visible para usuarios de desarrollo.</strong><br>
-            Aquí puedes configurar el sistema para desarrollo local y testing.
+        <div class="space-y-3">
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Role actual:</span>
+            <span class="text-sm text-gray-900 dark:text-white font-medium">{{ devRoleService.getUserRole() }}</span>
           </div>
-
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <p><strong>Modo:</strong> 
-                <span class="badge bg-warning text-dark">Desarrollo</span>
-              </p>
-              <p><strong>Usuario Dev:</strong> 
-                <span class="badge" [class.bg-success]="devRoleService.isDev()" [class.bg-secondary]="!devRoleService.isDev()">
-                  {{ devRoleService.isDev() ? 'Activo' : 'No activo' }}
-                </span>
-              </p>
-            </div>
-            <div class="col-md-6">
-              <p><strong>Role actual:</strong> {{ devRoleService.getUserRole() }}</p>
-              <p><strong>Puede ver herramientas dev:</strong> 
-                <span class="badge" [class.bg-success]="devRoleService.canSeeDevTools()" [class.bg-danger]="!devRoleService.canSeeDevTools()">
-                  {{ devRoleService.canSeeDevTools() ? 'Sí' : 'No' }}
-                </span>
-              </p>
-            </div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Herramientas dev:</span>
+            <span class="px-3 py-1 rounded-full text-sm font-medium"
+                  [class]="devRoleService.canSeeDevTools() ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'">
+              {{ devRoleService.canSeeDevTools() ? 'Disponibles' : 'No disponibles' }}
+            </span>
           </div>
+        </div>
+      </div>
 
-          <div class="d-flex gap-2 mb-3">
-            <button 
-              class="btn btn-primary"
-              (click)="setupDevSystem()"
-              [disabled]="isSettingUpDev">
-              {{ isSettingUpDev ? 'Configurando...' : '⚙️ Configurar Sistema Dev' }}
-            </button>
-            
-            <button 
-              class="btn btn-success"
-              (click)="testDevUser()"
-              [disabled]="isSettingUpDev">
-              🧪 Probar Usuario Dev
-            </button>
-          </div>
+      <div class="flex flex-wrap gap-3">
+        <button 
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          (click)="setupDevSystem()"
+          [disabled]="isSettingUpDev">
+          <i class="fas fa-cog mr-2"></i>
+          {{ isSettingUpDev ? 'Configurando...' : 'Configurar Sistema Dev' }}
+        </button>
+        
+        <button 
+          class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center"
+          (click)="testDevUser()">
+          <i class="fas fa-user-check mr-2"></i>
+          Verificar Usuario Dev
+        </button>
+      </div>
 
-          <!-- Log de operaciones dev -->
-          <div *ngIf="devMessages.length > 0" class="mt-3">
-            <h6>Log de Operaciones:</h6>
-            <div class="dev-log" style="max-height: 300px; overflow-y: auto;">
-              <div 
-                *ngFor="let message of devMessages" 
-                class="alert alert-sm mb-2"
-                [class.alert-success]="message.type === 'success'"
-                [class.alert-danger]="message.type === 'error'"
-                [class.alert-info]="message.type === 'info'">
-                <small class="text-muted">{{ message.timestamp | date:'short' }}</small><br>
-                {{ message.text }}
-              </div>
+      <!-- Mensajes de desarrollo -->
+      <div *ngIf="devMessages.length > 0" class="space-y-2">
+        <h3 class="text-lg font-medium text-gray-900 dark:text-white">Log de Desarrollo:</h3>
+        <div class="max-h-64 overflow-y-auto space-y-2">
+          <div *ngFor="let msg of devMessages" 
+               class="p-3 rounded-lg text-sm border-l-4"
+               [class]="msg.type === 'success' ? 'bg-green-50 border-green-400 text-green-700 dark:bg-green-900/20 dark:border-green-500 dark:text-green-300' : 
+                        msg.type === 'error' ? 'bg-red-50 border-red-400 text-red-700 dark:bg-red-900/20 dark:border-red-500 dark:text-red-300' : 
+                        'bg-blue-50 border-blue-400 text-blue-700 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'">
+            <div class="flex justify-between items-start">
+              <span>{{ msg.text }}</span>
+              <span class="text-xs opacity-75 ml-2">{{ msg.timestamp | date:'short' }}</span>
             </div>
           </div>
         </div>

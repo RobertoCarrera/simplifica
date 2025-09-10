@@ -16,6 +16,8 @@ import { OnboardingCenterComponent } from './components/onboarding-center/onboar
 import { MobileDashboardComponent } from './components/mobile-dashboard/mobile-dashboard.component';
 import { AnimationShowcaseComponent } from './components/animation-showcase/animation-showcase.component';
 import { SupabaseCustomersComponent } from './components/supabase-customers/supabase-customers.component';
+import { HomeComponent } from './components/home/home.component';
+import { HelpComponent } from './components/help/help.component';
 import { TestSupabaseComponent } from './components/test-supabase/test-supabase.component';
 import { SupabaseServicesComponent } from './components/supabase-services/supabase-services.component';
 import { SupabaseTicketsComponent } from './components/supabase-tickets/supabase-tickets.component';
@@ -34,10 +36,11 @@ import { AuthDebugComponent } from './components/auth-debug/auth-debug.component
 export const routes: Routes = [
     // Rutas principales con guards apropiados
     {path: '', redirectTo: '/inicio', pathMatch: 'full'},
-    {path: 'inicio', component: SupabaseCustomersComponent, canActivate: [AuthGuard]},
+    {path: 'inicio', component: HomeComponent, canActivate: [AuthGuard]},
     {path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard]},
     {path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard]},
     {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard]},
+    {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard]},
     // Ruta de invitaciones eliminada (modelo de auto-registro activo)
     
