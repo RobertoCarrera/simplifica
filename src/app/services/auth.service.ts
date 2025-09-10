@@ -51,6 +51,7 @@ export interface RegisterData {
 export class AuthService {
   private supabase: SupabaseClient;
   private router = inject(Router);
+  private static initializationStarted = false; // Guard para evitar múltiples inicializaciones
 
   // Signals para estado reactivo
   private currentUserSubject = new BehaviorSubject<User | null>(null);
@@ -82,13 +83,23 @@ export class AuthService {
     // Usar instancia centralizada en vez de createClient local
     this.supabase = this.sbClient.instance;
 
-    // Inicializar estado de autenticación
-    this.initializeAuth();
+    // Evitar múltiples inicializaciones
+    if (!AuthService.initializationStarted) {
+      AuthService.initializationStarted = true;
+      console.log('🔐 AuthService: Inicializando por primera vez...');
+      
+      // Inicializar estado de autenticación
+      this.initializeAuth();
 
-    // Escuchar cambios de sesión
-    this.supabase.auth.onAuthStateChange((event, session) => {
-      this.handleAuthStateChange(event, session);
-    });
+      // Escuchar cambios de sesión (solo una vez)
+      this.supabase.auth.onAuthStateChange((event, session) => {
+        console.log('🔐 AuthService: Auth state change:', event);
+        this.handleAuthStateChange(event, session);
+      });
+    } else {
+      console.log('🔐 AuthService: Ya inicializado, reutilizando instancia');
+      this.loadingSubject.next(false);
+    }
   }
 
   // Exponer cliente supabase directamente para componentes de callback/reset

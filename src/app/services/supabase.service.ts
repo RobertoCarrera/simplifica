@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { SupabaseClientService } from './supabase-client.service';
 
 export interface Database {
   public: {
@@ -250,17 +251,12 @@ export class SupabaseService {
   private currentUser = new BehaviorSubject<User | null>(null);
   private currentCompany = new BehaviorSubject<string | null>(null);
 
-  constructor() {
-    // Configuración con environment
-    this.supabase = createClient<Database>(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
+  constructor(private sbClient: SupabaseClientService) {
+    // Usar instancia singleton en lugar de crear nueva
+    this.supabase = this.sbClient.instance;
 
-    // Inicializar auth state
-    this.supabase.auth.onAuthStateChange((event: any, session: any) => {
-      this.currentUser.next(session?.user ?? null);
-    });
+    // NO configurar auth state aquí - AuthService se encarga de eso
+    // Solo mantener estado local para compatibilidad
   }
 
   // === AUTH METHODS ===
