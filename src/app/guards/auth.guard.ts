@@ -20,19 +20,19 @@ export class AuthGuard implements CanActivate {
     state: RouterStateSnapshot
   ): Observable<boolean> | Promise<boolean> | boolean {
     
-    console.log('Ì¥ê AuthGuard: Checking access to:', state.url);
+    console.log('ÔøΩÔøΩÔøΩ AuthGuard: Checking access to:', state.url);
     
     return this.authService.currentUser$.pipe(
       filter(user => user !== undefined),
       take(1),
       timeout(5000),
       map(user => {
-        console.log('Ì¥ê AuthGuard: User state:', user ? 'authenticated' : 'not authenticated');
+        console.log('ÔøΩÔøΩÔøΩ AuthGuard: User state:', user ? 'authenticated' : 'not authenticated');
         
         if (user) {
           return true;
         } else {
-          console.log('Ì¥ê AuthGuard: Redirecting to login');
+          console.log('ÔøΩÔøΩÔøΩ AuthGuard: Redirecting to login');
           this.router.navigate(['/login'], { 
             queryParams: { returnUrl: state.url }
           });
@@ -40,7 +40,7 @@ export class AuthGuard implements CanActivate {
         }
       }),
       catchError(error => {
-        console.error('Ì¥ê AuthGuard: Error checking auth state:', error);
+        console.error('ÔøΩÔøΩÔøΩ AuthGuard: Error checking auth state:', error);
         this.router.navigate(['/login']);
         return of(false);
       })
@@ -65,7 +65,7 @@ export class AdminGuard implements CanActivate {
       take(1),
       timeout(5000),
       map(profile => {
-        if (profile && (profile.role === 'admin' || profile.role === 'owner' || (this.devRoleService.isDev() && profile.role === 'member'))) {
+        if (profile && (profile.role === 'admin' || profile.role === 'owner')) {
           return true;
         } else {
           this.router.navigate(['/']);
@@ -73,7 +73,7 @@ export class AdminGuard implements CanActivate {
         }
       }),
       catchError(error => {
-        console.error('Ì¥ê AdminGuard: Error checking role:', error);
+        console.error('‚ö†Ô∏è AdminGuard: Error checking role:', error);
         this.router.navigate(['/']);
         return of(false);
       })
@@ -104,7 +104,7 @@ export class GuestGuard implements CanActivate {
         }
       }),
       catchError(error => {
-        console.error('Ì¥ê GuestGuard: Error checking auth state:', error);
+        console.error('ÔøΩÔøΩÔøΩ GuestGuard: Error checking auth state:', error);
         return of(true);
       })
     );
@@ -136,7 +136,7 @@ export class DevGuard implements CanActivate {
           }
         }),
         catchError(error => {
-          console.error('Ì¥ê DevGuard: Error checking auth state:', error);
+          console.error('ÔøΩÔøΩÔøΩ DevGuard: Error checking auth state:', error);
           this.router.navigate(['/login']);
           return of(false);
         })

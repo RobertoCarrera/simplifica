@@ -220,16 +220,28 @@ export class ConfiguracionComponent implements OnInit {
   async testDevUser() {
     if (!this.devRoleService.canSeeDevTools()) return;
     
-    this.addDevMessage('info', 'Probando usuario dev...');
+    this.addDevMessage('info', 'Verificando permisos de desarrollo del usuario actual...');
     try {
-      const devUser = await this.devRoleService.verifyUserRole('dev@simplifica.com');
-      if (devUser) {
-        this.addDevMessage('success', `✅ Usuario dev verificado: ${devUser.role}`);
+      const currentUser = this.authService.userProfile;
+      if (currentUser) {
+        this.addDevMessage('success', `✅ Usuario: ${currentUser.full_name} (${currentUser.role})`);
+        this.addDevMessage('info', `📧 Email: ${currentUser.email}`);
+        this.addDevMessage('info', `🏢 Empresa: ${currentUser.company?.name || 'No asignada'}`);
+        
+        if (this.devRoleService.canSeeDevTools()) {
+          this.addDevMessage('success', '🛠️ Herramientas de desarrollo disponibles');
+        }
+        if (this.devRoleService.canSeeAllCompanies()) {
+          this.addDevMessage('success', '🏢 Acceso a todas las empresas disponible');
+        }
+        if (this.devRoleService.canManageUsers()) {
+          this.addDevMessage('success', '👥 Gestión de usuarios disponible');
+        }
       } else {
-        this.addDevMessage('error', '❌ Usuario dev no encontrado en la base de datos');
+        this.addDevMessage('error', '❌ No hay usuario autenticado');
       }
     } catch (error) {
-      this.addDevMessage('error', `❌ Error verificando usuario dev: ${error}`);
+      this.addDevMessage('error', `❌ Error verificando usuario: ${error}`);
     }
   }
 

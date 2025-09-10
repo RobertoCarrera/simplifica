@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DevRoleService } from '../../services/dev-role.service';
+import { AuthService } from '../../services/auth.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseClientService } from '../../services/supabase-client.service';
 import { environment } from '../../../environments/environment';
@@ -113,17 +114,17 @@ export class DevSetupComponent implements OnInit {
 
   constructor(
     public devRoleService: DevRoleService,
+    public authService: AuthService,
     private supabaseClientService: SupabaseClientService
   ) {
     this.supabase = this.supabaseClientService.instance;
   }
 
   ngOnInit() {
-    this.devRoleService.currentDevUser$.subscribe(user => {
-      this.isDev = user?.is_dev || false;
-      this.canSeeDevTools = this.devRoleService.canSeeDevTools();
-      this.currentRole = this.devRoleService.getUserRole();
-    });
+    // Usar datos del usuario autenticado directamente
+    this.isDev = this.devRoleService.isDev();
+    this.canSeeDevTools = this.devRoleService.canSeeDevTools();
+    this.currentRole = this.devRoleService.getUserRole();
   }
 
   async setupDatabase() {
@@ -220,16 +221,28 @@ export class DevSetupComponent implements OnInit {
   }
 
   async testDevUser() {
-    this.addMessage('info', 'Probando usuario dev...');
+    this.addMessage('info', 'Verificando permisos de desarrollo del usuario actual...');
     try {
-      const devUser = await this.devRoleService.verifyUserRole('dev@simplifica.com');
-      if (devUser) {
-        this.addMessage('success', `✅ Usuario dev verificado: ${devUser.role}`);
+      const currentUser = this.authService.userProfile;
+      if (currentUser) {
+        this.addMessage('success', `✅ Usuario: ${currentUser.full_name} (${currentUser.role})`);
+        this.addMessage('info', `📧 Email: ${currentUser.email}`);
+        this.addMessage('info', `🏢 Empresa: ${currentUser.company?.name || 'No asignada'}`);
+        
+        if (this.devRoleService.canSeeDevTools()) {
+          this.addMessage('success', '🛠️ Herramientas de desarrollo disponibles');
+        }
+        if (this.devRoleService.canSeeAllCompanies()) {
+          this.addMessage('success', '🏢 Acceso a todas las empresas disponible');
+        }
+        if (this.devRoleService.canManageUsers()) {
+          this.addMessage('success', '👥 Gestión de usuarios disponible');
+        }
       } else {
-        this.addMessage('error', '❌ Usuario dev no encontrado en la base de datos');
+        this.addMessage('error', '❌ No hay usuario autenticado');
       }
     } catch (error) {
-      this.addMessage('error', `❌ Error verificando usuario dev: ${error}`);
+      this.addMessage('error', `❌ Error verificando usuario: ${error}`);
     }
   }
 
