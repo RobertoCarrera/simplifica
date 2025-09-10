@@ -14,7 +14,7 @@ export interface Customer {
   avatar_url?: string;
   usuario_id: string;
   // Campos adicionales para funcionalidad extendida
-  notas?: string;
+  address?: string;
   activo?: boolean;
   fecha_nacimiento?: string;
   profesion?: string;

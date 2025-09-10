@@ -181,12 +181,7 @@ import { DevRoleService } from '../../services/dev-role.service';
                   </div>
                 </div>
 
-                @if (customer.notas) {
-                  <div class="customer-notes">
-                    <i class="fas fa-sticky-note"></i>
-                    {{ customer.notas }}
-                  </div>
-                }
+                
               </div>
 
               <!-- Actions -->
@@ -363,30 +358,18 @@ import { DevRoleService } from '../../services/dev-role.service';
               </div>
 
               <div class="form-group">
-                <label for="notas" class="form-label">
-                  <i class="fas fa-sticky-note"></i>
-                  Notas
+                <label for="address" class="form-label">
+                  <i class="fas fa-map-marker-alt"></i>
+                  Dirección
                 </label>
-                <textarea
-                  id="notas"
-                  name="notas"
-                  [(ngModel)]="formData.notas"
-                  rows="3"
-                  class="form-textarea"
-                  placeholder="Notas adicionales sobre el cliente..."
-                ></textarea>
-              </div>
-
-              <div class="form-group">
-                <label class="checkbox-label">
-                  <input
-                    type="checkbox"
-                    [(ngModel)]="formData.activo"
-                    name="activo"
-                    class="form-checkbox"
-                  >
-                  <span class="checkbox-text">Cliente activo</span>
-                </label>
+                <input
+                  type="text"
+                  id="address"
+                  name="address"
+                  [(ngModel)]="formData.address"
+                  class="form-input"
+                  placeholder="Calle, número, piso..."
+                >
               </div>
               
               <div class="modal-actions">
@@ -446,8 +429,7 @@ export class SupabaseCustomersComponent implements OnInit {
     email: '',
     telefono: '',
     dni: '',
-    notas: '',
-    activo: true
+  address: ''
   };
 
   devRoleService = inject(DevRoleService);
@@ -588,7 +570,7 @@ export class SupabaseCustomersComponent implements OnInit {
   }
 
   saveCustomer() {
-    if (this.selectedCustomer()) {
+  if (this.selectedCustomer()) {
       // Actualizar cliente existente
       this.updateExistingCustomer();
     } else {
@@ -604,8 +586,8 @@ export class SupabaseCustomersComponent implements OnInit {
       email: this.formData.email,
       telefono: this.formData.telefono,
       dni: this.formData.dni,
-      notas: this.formData.notas,
-      activo: this.formData.activo
+  // map simple address text to 'address' field (DB may use address/jsonb or direccion_id)
+  address: this.formData.address
     };
 
     this.customersService.createCustomer(customerData).subscribe({
@@ -630,8 +612,7 @@ export class SupabaseCustomersComponent implements OnInit {
       email: this.formData.email,
       telefono: this.formData.telefono,
       dni: this.formData.dni,
-      notas: this.formData.notas,
-      activo: this.formData.activo
+  address: this.formData.address
     };
 
     this.customersService.updateCustomer(customerId, updates).subscribe({
@@ -653,8 +634,7 @@ export class SupabaseCustomersComponent implements OnInit {
       email: '',
       telefono: '',
       dni: '',
-      notas: '',
-      activo: true
+  address: ''
     };
   }
 
@@ -665,8 +645,7 @@ export class SupabaseCustomersComponent implements OnInit {
       email: customer.email || '',
       telefono: customer.telefono || '',
       dni: customer.dni || '',
-      notas: customer.notas || '',
-      activo: customer.activo !== undefined ? customer.activo : true
+  address: customer.address || ''
     };
   }
 
@@ -683,7 +662,7 @@ export class SupabaseCustomersComponent implements OnInit {
       email: `test.${Date.now()}@ejemplo.com`,
       telefono: '666123456',
       dni: '12345678Z',
-      activo: true
+  address: 'Calle Test 1'
       // El usuario_id se asignará automáticamente según el usuario seleccionado
     };
 

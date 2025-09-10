@@ -437,9 +437,9 @@ export class SupabaseCustomersService {
       p_fecha_nacimiento: customer.fecha_nacimiento || null,
       p_profesion: customer.profesion || null,
       p_empresa: customer.empresa || null,
-      p_notas: customer.notas || null,
       p_avatar_url: customer.avatar_url || null,
       p_direccion_id: customer.direccion_id || null
+      // notas and activo fields removed per UI change; free-text address handled separately
     });
     
     return from(rpcCall).pipe(
@@ -478,7 +478,7 @@ export class SupabaseCustomersService {
     }
 
     // Convertir de Customer a estructura de clients
-    const clientData = {
+    const clientData: any = {
       name: customer.nombre || '',
       apellidos: customer.apellidos || '',
       dni: customer.dni || '',
@@ -487,6 +487,11 @@ export class SupabaseCustomersService {
       company_id: companyId, // Usar company_id del usuario autenticado
       created_at: new Date().toISOString()
     };
+
+    // Soporte para dirección en texto libre
+    if ((customer as any).address) {
+      clientData.address = (customer as any).address;
+    }
     
     devLog('Creando cliente via método estándar', { companyId: clientData.company_id });
     
@@ -563,10 +568,10 @@ export class SupabaseCustomersService {
       p_fecha_nacimiento: updates.fecha_nacimiento || null,
       p_profesion: updates.profesion || null,
       p_empresa: updates.empresa || null,
-      p_notas: updates.notas || null,
+      // p_notas removed
       p_avatar_url: updates.avatar_url || null,
       p_direccion_id: updates.direccion_id || null,
-      p_activo: updates.activo !== undefined ? updates.activo : true
+      // p_activo removed - active state handled by default/deleted_at
     });
     
     return from(rpcCall).pipe(

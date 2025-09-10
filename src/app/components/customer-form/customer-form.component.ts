@@ -271,19 +271,19 @@ import { SmoothTransitionDirective } from '../../directives/smooth-transition.di
 
         <!-- Notes -->
         <div class="form-section" appSmoothTransition="slideIn" [transitionDelay]="700">
-          <h4 class="section-title">📝 Notas Adicionales</h4>
+            <h4 class="section-title">� Dirección</h4>
           
           <div class="form-group">
-            <label for="notas" class="form-label">Notas</label>
-            <textarea
-              id="notas"
-              formControlName="notas"
-              class="form-textarea"
-              rows="4"
-              placeholder="Información adicional sobre el cliente..."
+            <label for="address" class="form-label">Dirección</label>
+            <input
+              id="address"
+              type="text"
+              formControlName="address"
+              class="form-input"
+              placeholder="Calle, número, piso"
               appSmoothTransition="fadeIn"
               [hoverEffect]="true"
-            ></textarea>
+            />
           </div>
         </div>
 
@@ -392,8 +392,7 @@ export class CustomerFormComponent implements OnDestroy {
       fecha_nacimiento: [''],
       profesion: [''],
       empresa: [''],
-      notas: [''],
-      activo: [true]
+  address: ['']
     });
   }
 
@@ -410,8 +409,7 @@ export class CustomerFormComponent implements OnDestroy {
         fecha_nacimiento: customer.fecha_nacimiento || '',
         profesion: customer.profesion || '',
         empresa: customer.empresa || '',
-        notas: customer.notas || '',
-        activo: customer.activo ?? true
+  address: customer.address || ''
       });
       
       if (customer.avatar_url) {
