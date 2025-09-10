@@ -138,7 +138,8 @@ export class AuthService {
       this.userProfileSubject.next(appUser);
       this.userRole.set(appUser.role);
       if (appUser.company_id) this.companyId.set(appUser.company_id);
-      this.isAdmin.set(['owner', 'admin'].includes(appUser.role));
+  // Sólo admin es considerado admin; owner es rol de negocio sin privilegios dev
+  this.isAdmin.set(appUser.role === 'admin');
     }
   }
 

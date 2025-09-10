@@ -65,12 +65,11 @@ export class AdminGuard implements CanActivate {
       take(1),
       timeout(5000),
       map(profile => {
-        if (profile && (profile.role === 'admin' || profile.role === 'owner')) {
+        if (profile && profile.role === 'admin') {
           return true;
-        } else {
-          this.router.navigate(['/']);
-          return false;
         }
+        this.router.navigate(['/']);
+        return false;
       }),
       catchError(error => {
         console.error('⚠️ AdminGuard: Error checking role:', error);
@@ -148,12 +147,11 @@ export class DevGuard implements CanActivate {
       take(1),
       timeout(5000),
       map(profile => {
-        if (profile && (profile.role === 'admin' || profile.role === 'owner')) {
+        if (profile && profile.role === 'admin') {
           return true;
-        } else {
-          this.router.navigate(['/']);
-          return false;
         }
+        this.router.navigate(['/']);
+        return false;
       }),
       catchError(error => {
         console.error('�� DevGuard: Error checking role:', error);

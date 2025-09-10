@@ -9,6 +9,7 @@ import { DevUserSelectorComponent } from '../dev-user-selector/dev-user-selector
 import { Customer, CreateCustomerDev } from '../../models/customer';
 import { SupabaseCustomersService, CustomerFilters, CustomerStats } from '../../services/supabase-customers.service';
 import { ToastService } from '../../services/toast.service';
+import { DevRoleService } from '../../services/dev-role.service';
 
 @Component({
   selector: 'app-supabase-customers',
@@ -23,8 +24,9 @@ import { ToastService } from '../../services/toast.service';
   template: `
     <div class="customers-container">
       
-      <!-- DEV: Selector de Usuario -->
+    @if (devRoleService.canSeeDevTools()) {
       <app-dev-user-selector></app-dev-user-selector>
+    }
       
       <!-- Header -->
       <div class="header-section">
@@ -447,6 +449,8 @@ export class SupabaseCustomersComponent implements OnInit {
     notas: '',
     activo: true
   };
+
+  devRoleService = inject(DevRoleService);
 
   // Computed
   filteredCustomers = computed(() => {

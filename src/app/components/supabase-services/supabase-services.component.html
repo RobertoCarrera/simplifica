@@ -10,13 +10,13 @@
         <p class="page-subtitle">Gestiona los servicios técnicos disponibles</p>
       </div>
       <div class="header-actions">
-        <!-- Company Selector for Development -->
+        @if (devRoleService.isDev()){
         <div class="company-selector">
           <label for="companySelect">Empresa:</label>
           <select id="companySelect" class="form-control" [(ngModel)]="selectedCompanyId" (change)="onCompanyChange()">
             <option *ngFor="let c of companies" [value]="c.id">{{ c.name }} ({{ c.id }})</option>
           </select>
-        </div>
+        </div> }
         <div class="search-input-container">
           <i class="fas fa-search search-icon"></i>
           <input 

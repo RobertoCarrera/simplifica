@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseServicesService, Service, ServiceCategory, ServiceTag } from '../../services/supabase-services.service';
 import { SimpleSupabaseService, SimpleCompany } from '../../services/simple-supabase.service';
+import { DevRoleService } from '../../services/dev-role.service';
 
 @Component({
   selector: 'app-supabase-services',
@@ -24,6 +25,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   serviceTags: ServiceTag[] = [];
   loading = false;
   error: string | null = null;
+  devRoleService = inject(DevRoleService);
   
   // Statistics
   stats = {

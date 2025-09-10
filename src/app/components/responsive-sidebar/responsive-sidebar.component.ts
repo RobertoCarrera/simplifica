@@ -414,10 +414,10 @@ export class ResponsiveSidebarComponent implements OnInit {
   // Computed menu items based on user role
   menuItems = computed(() => {
     const userRole = this.authService.userRole();
-    const isAdmin = userRole === 'admin' || userRole === 'owner';
-    const isDev = this.devRoleService.isDev();
+  const isAdmin = userRole === 'admin';
+  const isDev = this.devRoleService.isDev();
     
-    console.log('🔍 Menu filtering - Real user role:', userRole, 'Is admin:', isAdmin, 'Is dev:', isDev);
+  console.log('🔍 Menu filtering - Real user role:', userRole, 'Is adminOnly:', isAdmin, 'Is dev:', isDev);
     
     return this.allMenuItems.filter(item => {
       // Core modules always visible
@@ -426,8 +426,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       // Production modules for everyone
       if (item.module === 'production') return true;
       
-      // Development modules only for admin/dev
-      if (item.module === 'development') return isAdmin || isDev;
+  // Development modules only for admin (o señal dev explícita)
+  if (item.module === 'development') return isAdmin || isDev;
       
       return false;
     });

@@ -6,6 +6,7 @@ import { SupabaseTicketsService, Ticket, TicketStage, TicketStats } from '../../
 import { SupabaseServicesService, Service } from '../../services/supabase-services.service';
 import { SimpleSupabaseService, SimpleClient } from '../../services/simple-supabase.service';
 import { DevicesService, Device } from '../../services/devices.service';
+import { DevRoleService } from '../../services/dev-role.service';
 
 // Interfaces para tags
 export interface TicketTag {
@@ -32,6 +33,7 @@ export class SupabaseTicketsComponent implements OnInit {
   // Company selector for development
   selectedCompanyId: string = ''; // Will be set from first available company
   companies: any[] = [];
+  devRoleService = inject(DevRoleService);
   
   // Core data
   tickets: Ticket[] = [];

@@ -10,7 +10,7 @@
         <p class="page-subtitle">Gestión completa de tickets y reparaciones - {{ getCompanyName() }}</p>
       </div>
       <div class="header-actions">
-        <!-- Company Selector for Development -->
+        @if(devRoleService.isDev()){
         <div class="company-selector">
           <label for="companySelect">Empresa:</label>
           <select 
@@ -23,6 +23,7 @@
             <option *ngFor="let company of companies" [value]="company.id">{{ company.name }}</option>
           </select>
         </div>
+      }
         <!-- View Mode Toggle -->
         <button class="btn btn-secondary" (click)="toggleViewMode()">
           <i class="fas" [class.fa-list]="viewMode === 'board'" [class.fa-th-large]="viewMode === 'list'"></i>
