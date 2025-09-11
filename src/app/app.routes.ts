@@ -27,7 +27,7 @@ import { SidebarTestComponent } from './components/sidebar-test/sidebar-test.com
 import { DevSetupComponent } from './components/dev-setup/dev-setup.component';
 import { EmergencyLoginComponent } from './components/emergency-login/emergency-login.component';
 import { DebugDashboardComponent } from './components/debug-dashboard/debug-dashboard.component';
-import { AuthGuard, AdminGuard, GuestGuard, DevGuard } from './guards/auth.guard';
+import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard } from './guards/auth.guard';
 import { AuthCallbackComponent } from './components/auth-callback/auth-callback.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 import { AuthDebugComponent } from './components/auth-debug/auth-debug.component';
@@ -43,7 +43,7 @@ export const routes: Routes = [
     {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard]},
     {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard]},
-    {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard]},
+    {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     // Ruta de invitaciones eliminada (modelo de auto-registro activo)
     
     // Rutas de autenticación (sin guards)

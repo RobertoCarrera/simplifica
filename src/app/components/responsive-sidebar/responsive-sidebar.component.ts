@@ -14,6 +14,7 @@ interface MenuItem {
   badge?: number;
   children?: MenuItem[];
   module?: string;
+  roleOnly?: 'ownerAdmin';
 }
 
 @Component({
@@ -435,6 +436,14 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'core'
     },
     {
+      id: 101,
+      label: 'Empresa',
+      icon: 'business',
+      route: '/empresa',
+      module: 'core',
+      roleOnly: 'ownerAdmin'
+    },
+    {
       id: 14,
       label: 'Ayuda',
       icon: 'help_outline',
@@ -453,7 +462,12 @@ export class ResponsiveSidebarComponent implements OnInit {
     
     return this.allMenuItems.filter(item => {
       // Core modules always visible
-      if (item.module === 'core') return true;
+      if (item.module === 'core') {
+        if (item.roleOnly === 'ownerAdmin') {
+          return userRole === 'owner' || userRole === 'admin';
+        }
+        return true;
+      }
       
       // Production modules for everyone
       if (item.module === 'production') return true;
