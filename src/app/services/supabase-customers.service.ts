@@ -12,7 +12,7 @@ import { AuthService } from './auth.service';
 export interface CustomerFilters {
   search?: string;
   locality?: string;
-  sortBy?: 'nombre' | 'apellidos' | 'created_at';
+  sortBy?: 'name' | 'apellidos' | 'created_at';
   sortOrder?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
@@ -188,10 +188,10 @@ export class SupabaseCustomersService {
         // Convertir estructura de 'clients' a 'Customer'
         const customers = data?.map(client => ({
           id: client.id,
-          nombre: client.name?.split(' ')[0] || '',
+          name: client.name?.split(' ')[0] || '',
           apellidos: client.name?.split(' ').slice(1).join(' ') || '',
           email: client.email,
-          telefono: client.phone,
+          phone: client.phone,
           dni: this.extractFromMetadata(client.metadata, 'dni') || '',
           usuario_id: client.company_id,
           created_at: client.created_at,
@@ -289,10 +289,10 @@ export class SupabaseCustomersService {
         // Convertir la estructura de 'clients' a 'Customer' esperada por la aplicación
         const customers = data?.map((client: any) => ({
           id: client.id,
-          nombre: client.name?.split(' ')[0] || '',
+          name: client.name?.split(' ')[0] || '',
           apellidos: client.name?.split(' ').slice(1).join(' ') || '',
           email: client.email,
-          telefono: client.phone,
+          phone: client.phone,
           dni: this.extractFromMetadata(client.metadata, 'dni') || '',
           usuario_id: client.company_id, // Mapear company_id a usuario_id temporalmente
           created_at: client.created_at,
@@ -358,7 +358,7 @@ export class SupabaseCustomersService {
       if (usersData) {
         this.systemUsersCache = usersData.map(user => ({
           id: user.id,
-          name: user.name || 'Sin nombre',
+          name: user.name || 'Sin name',
           email: user.email,
           company_id: user.company_id,
           role: user.role || 'member'
@@ -387,11 +387,11 @@ export class SupabaseCustomersService {
         // Convertir de clients a Customer
         const convertedCustomer: Customer = {
           id: data.id,
-          nombre: data.name,
+          name: data.name,
           apellidos: data.apellidos || '',
           dni: data.dni || '',
           email: data.email || '',
-          telefono: data.phone || '',
+          phone: data.phone || '',
           usuario_id: this.currentDevUserId || 'default-user',
           created_at: data.created_at,
           updated_at: data.updated_at
@@ -429,10 +429,10 @@ export class SupabaseCustomersService {
     
     const rpcCall = this.supabase.rpc('create_customer_dev', {
       target_user_id: this.currentDevUserId,
-      p_nombre: customer.nombre,
+      p_nombre: customer.name,
       p_apellidos: customer.apellidos,
       p_email: customer.email,
-      p_telefono: customer.telefono || null,
+      p_telefono: customer.phone || null,
       p_dni: customer.dni || null,
       p_fecha_nacimiento: customer.fecha_nacimiento || null,
       p_profesion: customer.profesion || null,
@@ -479,11 +479,11 @@ export class SupabaseCustomersService {
 
     // Convertir de Customer a estructura de clients
     const clientData: any = {
-      name: customer.nombre || '',
+      name: customer.name || '',
       apellidos: customer.apellidos || '',
       dni: customer.dni || '',
       email: customer.email || '',
-      phone: customer.telefono || '',
+      phone: customer.phone || '',
       company_id: companyId, // Usar company_id del usuario autenticado
       created_at: new Date().toISOString()
     };
@@ -508,11 +508,11 @@ export class SupabaseCustomersService {
         // Convertir de clients a Customer
         const convertedCustomer: Customer = {
           id: data.id,
-          nombre: data.name,
+          name: data.name,
           apellidos: data.apellidos || '',
           dni: data.dni || '',
           email: data.email || '',
-          telefono: data.phone || '',
+          phone: data.phone || '',
           usuario_id: customer.usuario_id || this.currentDevUserId || 'default-user',
           created_at: data.created_at,
           updated_at: data.updated_at
@@ -560,10 +560,10 @@ export class SupabaseCustomersService {
     const rpcCall = this.supabase.rpc('update_customer_dev', {
       customer_id: id,
       target_user_id: this.currentDevUserId,
-      p_nombre: updates.nombre,
+      p_nombre: updates.name,
       p_apellidos: updates.apellidos,
       p_email: updates.email,
-      p_telefono: updates.telefono || null,
+      p_telefono: updates.phone || null,
       p_dni: updates.dni || null,
       p_fecha_nacimiento: updates.fecha_nacimiento || null,
       p_profesion: updates.profesion || null,
@@ -612,11 +612,11 @@ export class SupabaseCustomersService {
       updated_at: new Date().toISOString()
     };
     
-    if (updates.nombre) clientUpdates.name = updates.nombre;
+    if (updates.name) clientUpdates.name = updates.name;
     if (updates.apellidos) clientUpdates.apellidos = updates.apellidos;
     if (updates.dni) clientUpdates.dni = updates.dni;
     if (updates.email) clientUpdates.email = updates.email;
-    if (updates.telefono) clientUpdates.phone = updates.telefono;
+    if (updates.phone) clientUpdates.phone = updates.phone;
     
     return from(
       this.supabase
@@ -632,11 +632,11 @@ export class SupabaseCustomersService {
         // Convertir de clients a Customer
         const convertedCustomer: Customer = {
           id: data.id,
-          nombre: data.name,
+          name: data.name,
           apellidos: data.apellidos || '',
           dni: data.dni || '',
           email: data.email || '',
-          telefono: data.phone || '',
+          phone: data.phone || '',
           usuario_id: this.currentDevUserId || 'default-user',
           created_at: data.created_at,
           updated_at: data.updated_at
@@ -770,11 +770,11 @@ export class SupabaseCustomersService {
         // Convertir de clients a Customer[]
         return data.map((client: any) => ({
           id: client.id,
-          nombre: client.name,
+          name: client.name,
           apellidos: client.apellidos || '',
           dni: client.dni || '',
           email: client.email || '',
-          telefono: client.phone || '',
+          phone: client.phone || '',
           usuario_id: this.currentDevUserId || 'default-user',
           created_at: client.created_at,
           updated_at: client.updated_at
@@ -1021,11 +1021,11 @@ export class SupabaseCustomersService {
             this.supabase
               .from('clients')
               .insert(customers.map(c => ({
-                name: c.nombre,
+                name: c.name,
                 apellidos: c.apellidos,
                 dni: c.dni,
                 email: c.email,
-                phone: c.telefono,
+                phone: c.phone,
                 company_id: selectedUser.company_id
               })))
               .select()
@@ -1039,11 +1039,11 @@ export class SupabaseCustomersService {
               // Convertir de clients a Customer[]
               return data.map((client: any) => ({
                 id: client.id,
-                nombre: client.name,
+                name: client.name,
                 apellidos: client.apellidos || '',
                 dni: client.dni || '',
                 email: client.email || '',
-                telefono: client.phone || '',
+                phone: client.phone || '',
                 usuario_id: this.currentDevUserId || 'default-user',
                 created_at: client.created_at,
                 updated_at: client.updated_at
@@ -1094,11 +1094,11 @@ export class SupabaseCustomersService {
   private generateCSV(customers: Customer[]): string {
     const headers = ['Nombre', 'Apellidos', 'Email', 'DNI', 'Teléfono', 'Fecha Creación'];
     const rows = customers.map(customer => [
-      customer.nombre,
+      customer.name,
       customer.apellidos,
       customer.email,
       customer.dni,
-      customer.telefono,
+      customer.phone,
       new Date(customer.created_at).toLocaleDateString()
     ]);
 
@@ -1119,7 +1119,7 @@ export class SupabaseCustomersService {
     const headers = this.parseCSVLine(firstLine).map(h => h.trim().toLowerCase());
     
     // Validar headers requeridos
-    const requiredHeaders = ['nombre', 'apellidos', 'email'];
+    const requiredHeaders = ['name', 'apellidos', 'email'];
     const missingHeaders = requiredHeaders.filter(header => 
       !headers.some(h => h.includes(header))
     );
@@ -1134,13 +1134,13 @@ export class SupabaseCustomersService {
         try {
           const values = this.parseCSVLine(line);
           
-          // Mapear por posición o nombre de columna
+          // Mapear por posición o name de columna
           const customer: Partial<Customer> = {
-            nombre: this.findValueByHeader(headers, values, ['nombre', 'name']) || '',
+            name: this.findValueByHeader(headers, values, ['name', 'name']) || '',
             apellidos: this.findValueByHeader(headers, values, ['apellidos', 'apellido', 'lastname']) || '',
             email: this.findValueByHeader(headers, values, ['email', 'correo']) || '',
             dni: this.findValueByHeader(headers, values, ['dni', 'nif', 'documento']) || '',
-            telefono: this.findValueByHeader(headers, values, ['telefono', 'teléfono', 'phone', 'movil']) || ''
+            phone: this.findValueByHeader(headers, values, ['phone', 'teléfono', 'phone', 'movil']) || ''
           };
           
           // Validar email requerido
@@ -1187,7 +1187,7 @@ export class SupabaseCustomersService {
     return result.map(value => value.trim());
   }
 
-  // Método auxiliar para encontrar valores por nombre de cabecera
+  // Método auxiliar para encontrar valores por name de cabecera
   private findValueByHeader(headers: string[], values: string[], possibleNames: string[]): string {
     for (const name of possibleNames) {
       const index = headers.findIndex(h => h.includes(name));

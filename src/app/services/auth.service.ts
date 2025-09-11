@@ -105,6 +105,34 @@ export class AuthService {
   // Exponer cliente supabase directamente para componentes de callback/reset
   get client() { return this.supabase; }
 
+  // Método auxiliar para reintentar operaciones que fallan por NavigatorLockAcquireTimeoutError
+  private async retryWithBackoff<T>(
+    operation: () => Promise<T>, 
+    maxRetries: number = 3, 
+    baseDelay: number = 1000
+  ): Promise<T> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        const isLockError = error?.message?.includes('NavigatorLockAcquireTimeoutError') ||
+                           error?.name?.includes('NavigatorLockAcquireTimeoutError');
+        
+        if (isLockError && attempt < maxRetries) {
+          console.warn(`🔄 Lock error on attempt ${attempt}, retrying in ${baseDelay * attempt}ms...`);
+          await new Promise(resolve => setTimeout(resolve, baseDelay * attempt));
+          continue;
+        }
+        
+        // Si no es error de lock o se agotaron los reintentos, re-lanzar el error
+        throw error;
+      }
+    }
+    
+    // Esto nunca debería ejecutarse, pero TypeScript lo requiere
+    throw new Error('Unexpected error in retryWithBackoff');
+  }
+
   private async initializeAuth() {
     try {
       const { data: { session } } = await this.supabase.auth.getSession();
@@ -221,15 +249,24 @@ export class AuthService {
       
       console.log('🏢 Creating company:', finalCompanyName);
       
-      const { data: company, error: compErr } = await this.supabase
-        .from('companies')
-        .insert({ name: finalCompanyName, slug: this.generateSlug(finalCompanyName) })
-        .select()
-        .single();
+      // Usar retry para operaciones críticas que pueden fallar por locks
+      const company = await this.retryWithBackoff(async () => {
+        const { data, error } = await this.supabase
+          .from('companies')
+          .insert({ name: finalCompanyName, slug: this.generateSlug(finalCompanyName) })
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('❌ Error creating company:', error);
+          throw error;
+        }
+        
+        return data;
+      });
       
-      if (compErr) {
-        console.error('❌ Error creating company:', compErr);
-        throw compErr; // Si no puede crear empresa, fallar todo el proceso
+      if (!company) {
+        throw new Error('Company creation returned no data');
       }
       
       if (!company) {
@@ -246,20 +283,25 @@ export class AuthService {
       
       console.log('👤 Creating user with company_id:', companyId);
       
-      const insertResult = await this.supabase.from('users').insert({
-        email: authUser.email,
-        name: (authUser.user_metadata && (authUser.user_metadata as any)['full_name']) || authUser.email?.split('@')[0] || 'Usuario',
-        role: 'owner', // Siempre owner ya que cada usuario crea su propia empresa
-        active: true,
-        company_id: companyId, // Garantizado que no es null
-        auth_user_id: authUser.id,
-        permissions: {}
+      // Usar retry para la creación del usuario también
+      await this.retryWithBackoff(async () => {
+        const insertResult = await this.supabase.from('users').insert({
+          email: authUser.email,
+          name: (authUser.user_metadata && (authUser.user_metadata as any)['full_name']) || authUser.email?.split('@')[0] || 'Usuario',
+          role: 'owner', // Siempre owner ya que cada usuario crea su propia empresa
+          active: true,
+          company_id: companyId, // Garantizado que no es null
+          auth_user_id: authUser.id,
+          permissions: {}
+        });
+        
+        if (insertResult.error) {
+          console.error('❌ Error creating app user:', insertResult.error);
+          throw insertResult.error;
+        }
+        
+        return insertResult;
       });
-      
-      if (insertResult.error) {
-        console.error('❌ Error creating app user:', insertResult.error);
-        throw insertResult.error;
-      }
       
       console.log('✅ App user created successfully');
       
@@ -296,14 +338,20 @@ export class AuthService {
 
   async register(registerData: RegisterData): Promise<{ success: boolean; pendingConfirmation?: boolean; error?: string }> {
     try {
-      const { data, error } = await this.supabase.auth.signUp({
-        email: registerData.email,
-        password: registerData.password,
-        options: {
-          data: { full_name: registerData.full_name },
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
+      console.log('🚀 Starting registration process...', { email: registerData.email, company: registerData.company_name });
+      
+      // Usar retry para el signup también
+      const { data, error } = await this.retryWithBackoff(async () => {
+        return await this.supabase.auth.signUp({
+          email: registerData.email,
+          password: registerData.password,
+          options: {
+            data: { full_name: registerData.full_name },
+            emailRedirectTo: `${window.location.origin}/auth/callback`
+          }
+        });
       });
+      
       if (error) throw error;
       const autoLogin = registerData.autoLogin !== false; // por defecto true
 
@@ -311,8 +359,10 @@ export class AuthService {
       const requiresEmailConfirm = !data.session;
 
       if (data.user) {
+        console.log('✅ Auth user created, now creating app user...');
         // Crear fila app con empresa (si se proporciona nombre)
         await this.ensureAppUser(data.user, registerData.company_name);
+        console.log('✅ App user created successfully');
       }
 
       if (requiresEmailConfirm) {

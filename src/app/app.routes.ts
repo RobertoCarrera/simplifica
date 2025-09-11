@@ -18,7 +18,6 @@ import { AnimationShowcaseComponent } from './components/animation-showcase/anim
 import { SupabaseCustomersComponent } from './components/supabase-customers/supabase-customers.component';
 import { HomeComponent } from './components/home/home.component';
 import { HelpComponent } from './components/help/help.component';
-import { TestSupabaseComponent } from './components/test-supabase/test-supabase.component';
 import { SupabaseServicesComponent } from './components/supabase-services/supabase-services.component';
 import { SupabaseTicketsComponent } from './components/supabase-tickets/supabase-tickets.component';
 import { LoginComponent } from './components/login/login.component';

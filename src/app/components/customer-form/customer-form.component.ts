@@ -401,11 +401,11 @@ export class CustomerFormComponent implements OnDestroy {
     const customer = this.customer();
     if (customer) {
       this.customerForm.patchValue({
-        nombre: customer.nombre,
+        nombre: customer.name,
         apellidos: customer.apellidos,
         dni: customer.dni,
         email: customer.email,
-        telefono: customer.telefono,
+        telefono: customer.phone,
         fecha_nacimiento: customer.fecha_nacimiento || '',
         profesion: customer.profesion || '',
         empresa: customer.empresa || '',

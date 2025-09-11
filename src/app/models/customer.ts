@@ -4,10 +4,10 @@ export interface Customer {
   id: string;
   created_at: string;
   updated_at?: string;
-  nombre: string;
+  name: string;
   apellidos: string;
   dni: string;
-  telefono: string;
+  phone: string;
   email: string;
   direccion_id?: string;
   direccion?: Address;
@@ -19,6 +19,26 @@ export interface Customer {
   fecha_nacimiento?: string;
   profesion?: string;
   empresa?: string;
+  
+  // GDPR Compliance Fields
+  marketing_consent?: boolean;
+  marketing_consent_date?: string;
+  marketing_consent_method?: string;
+  data_processing_consent?: boolean;
+  data_processing_consent_date?: string;
+  data_processing_legal_basis?: string;
+  data_retention_until?: string;
+  deletion_requested_at?: string;
+  deletion_reason?: string;
+  anonymized_at?: string;
+  is_minor?: boolean;
+  parental_consent_verified?: boolean;
+  parental_consent_date?: string;
+  data_minimization_applied?: boolean;
+  last_data_review_date?: string;
+  access_restrictions?: any;
+  last_accessed_at?: string;
+  access_count?: number;
 }
 
 // Interface para crear cliente (sin ID)
