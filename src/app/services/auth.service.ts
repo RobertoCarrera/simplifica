@@ -633,7 +633,15 @@ export class AuthService {
   /**
    * Confirma el email del usuario usando el token de confirmación
    */
-  async confirmEmail(fragmentOrParams: string): Promise<{ success: boolean; error?: string }> {
+  async confirmEmail(fragmentOrParams: string): Promise<{ 
+    success: boolean; 
+    error?: string;
+    requiresInvitationApproval?: boolean;
+    companyName?: string;
+    ownerEmail?: string;
+    message?: string;
+    isOwner?: boolean;
+  }> {
     try {
       console.log('📧 Confirming email with params:', fragmentOrParams);
       
@@ -682,10 +690,21 @@ export class AuthService {
       
       console.log('✅ Registration confirmed successfully:', result);
       
+      // Verificar si requiere aprobación de invitación
+      if (result.requires_invitation_approval) {
+        return { 
+          success: true, 
+          requiresInvitationApproval: true,
+          companyName: result.company_name,
+          ownerEmail: result.owner_email,
+          message: result.message
+        };
+      }
+      
       // Actualizar el estado de autenticación
       await this.setCurrentUser(data.user);
       
-      return { success: true };
+      return { success: true, isOwner: result.is_owner || false };
       
     } catch (error: any) {
       console.error('❌ Unexpected error during email confirmation:', error);
@@ -751,6 +770,173 @@ export class AuthService {
     } catch (error) {
       console.error('❌ Failed to create pending user:', error);
       throw error;
+    }
+  }
+
+  // ========================================
+  // GESTIÓN DE INVITACIONES A EMPRESAS
+  // ========================================
+
+  /**
+   * Verificar si una empresa existe por nombre
+   */
+  async checkCompanyExists(companyName: string): Promise<{
+    exists: boolean;
+    company?: {
+      id: string;
+      name: string;
+      owner_email: string;
+      owner_name: string;
+    };
+  }> {
+    try {
+      const { data, error } = await this.supabase
+        .rpc('check_company_exists', {
+          p_company_name: companyName
+        });
+
+      if (error) {
+        console.error('❌ Error checking company:', error);
+        return { exists: false };
+      }
+
+      const result = data?.[0];
+      if (result?.company_exists) {
+        return {
+          exists: true,
+          company: {
+            id: result.company_id,
+            name: result.company_name,
+            owner_email: result.owner_email,
+            owner_name: result.owner_name
+          }
+        };
+      }
+
+      return { exists: false };
+    } catch (error) {
+      console.error('❌ Error checking company existence:', error);
+      return { exists: false };
+    }
+  }
+
+  /**
+   * Invitar usuario a una empresa
+   */
+  async inviteUserToCompany(data: {
+    companyId: string;
+    email: string;
+    role?: string;
+    message?: string;
+  }): Promise<{ success: boolean; error?: string; invitationId?: string }> {
+    try {
+      const { data: result, error } = await this.supabase
+        .rpc('invite_user_to_company', {
+          p_company_id: data.companyId,
+          p_email: data.email,
+          p_role: data.role || 'member',
+          p_message: data.message
+        });
+
+      if (error) {
+        console.error('❌ Error inviting user:', error);
+        return { success: false, error: error.message };
+      }
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      return { 
+        success: true, 
+        invitationId: result.invitation_id 
+      };
+    } catch (error: any) {
+      console.error('❌ Error inviting user:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Aceptar invitación a una empresa
+   */
+  async acceptInvitation(invitationToken: string): Promise<{
+    success: boolean;
+    error?: string;
+    company?: {
+      id: string;
+      name: string;
+    };
+    role?: string;
+  }> {
+    try {
+      // Obtener el usuario actual
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) {
+        return { success: false, error: 'Usuario no autenticado' };
+      }
+
+      const { data: result, error } = await this.supabase
+        .rpc('accept_company_invitation', {
+          p_invitation_token: invitationToken,
+          p_auth_user_id: user.id
+        });
+
+      if (error) {
+        console.error('❌ Error accepting invitation:', error);
+        return { success: false, error: error.message };
+      }
+
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      // Actualizar el estado del usuario actual
+      await this.refreshCurrentUser();
+
+      return {
+        success: true,
+        company: {
+          id: result.company_id,
+          name: result.company_name
+        },
+        role: result.role
+      };
+    } catch (error: any) {
+      console.error('❌ Error accepting invitation:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Obtener invitaciones pendientes para la empresa actual
+   */
+  async getCompanyInvitations(): Promise<{
+    success: boolean;
+    invitations?: any[];
+    error?: string;
+  }> {
+    try {
+      const userProfile = this.userProfile;
+      if (!userProfile?.company_id) {
+        return { success: false, error: 'Usuario sin empresa asignada' };
+      }
+
+      const { data, error } = await this.supabase
+        .from('admin_company_invitations')
+        .select('*')
+        .eq('company_id', userProfile.company_id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error fetching invitations:', error);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, invitations: data || [] };
+    } catch (error: any) {
+      console.error('❌ Error fetching invitations:', error);
+      return { success: false, error: error.message };
     }
   }
 }

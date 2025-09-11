@@ -1,7 +1,21 @@
 -- ========================================
 -- CONFIGURACIÓN ROBUSTA DE EMAIL CONFIRMACIÓN
--- ========================================
-
+-- ==========================      -- Verificar si la empresa ya existe (solo si se proporcionó company_name)
+      IF pending_user_data.company_name IS NOT NULL AND TRIM(pending_user_data.company_name) != '' THEN
+        SELECT 
+            EXISTS(SELECT 1 FROM public.companies WHERE LOWER(name) = LOWER(pending_user_data.company_name)) as company_exists,
+            c.id as company_id,
+            c.name as company_name,
+            u.email as owner_email,
+            u.name as owner_name,
+            u.id as owner_user_id
+        INTO existing_company_info
+        FROM public.companies c
+        LEFT JOIN public.users u ON u.company_id = c.id AND u.role = 'owner' AND u.active = true
+        WHERE LOWER(c.name) = LOWER(pending_user_data.company_name)
+        LIMIT 1;
+        
+        IF existing_company_info.company_exists THEN
 -- Este script configura el sistema para usar confirmación de email de forma segura
 
 -- 1. CONFIGURACIÓN DE SUPABASE AUTH (hacer manualmente en Dashboard)
@@ -86,7 +100,9 @@ BEGIN
 END;
 $$;
 
--- 5. Función para confirmar usuario y crear empresa
+-- 5. Función para confirmar usuario y crear empresa (ACTUALIZADA)
+-- NOTA: Esta función fue reemplazada por una versión mejorada en fix-company-management.sql
+-- que incluye gestión de empresas duplicadas y sistema de invitaciones
 CREATE OR REPLACE FUNCTION confirm_user_registration(
     p_auth_user_id UUID,
     p_confirmation_token TEXT DEFAULT NULL
@@ -97,8 +113,10 @@ SECURITY DEFINER
 AS $$
 DECLARE
     pending_user_data public.pending_users;
+    existing_company_info RECORD;
     new_company_id UUID;
     new_user_id UUID;
+    invitation_id UUID;
     result JSON;
 BEGIN
     -- Buscar usuario pendiente
@@ -116,16 +134,73 @@ BEGIN
         );
     END IF;
     
-    -- Crear empresa
+    -- Verificar si la empresa ya existe (solo si se proporcionó company_name)
+    IF pending_user_data.company_name IS NOT NULL AND TRIM(pending_user_data.company_name) != '' THEN
+        SELECT 
+            EXISTS(SELECT 1 FROM public.companies WHERE LOWER(name) = LOWER(pending_user_data.company_name)) as exists,
+            c.id as company_id,
+            c.name as company_name,
+            u.email as owner_email,
+            u.name as owner_name,
+            u.id as owner_user_id
+        INTO existing_company_info
+        FROM public.companies c
+        LEFT JOIN public.users u ON u.company_id = c.id AND u.role = 'owner' AND u.active = true
+        WHERE LOWER(c.name) = LOWER(pending_user_data.company_name)
+        LIMIT 1;
+        
+        IF existing_company_info.exists THEN
+            -- La empresa existe, crear invitación automática
+            IF existing_company_info.owner_user_id IS NOT NULL THEN
+                -- Crear invitación automática
+                INSERT INTO public.company_invitations (
+                    company_id,
+                    email,
+                    invited_by_user_id,
+                    role,
+                    status,
+                    message
+                ) VALUES (
+                    existing_company_info.company_id,
+                    pending_user_data.email,
+                    existing_company_info.owner_user_id,
+                    'member',
+                    'pending',
+                    'Solicitud automática generada durante el registro'
+                );
+                
+                -- Marcar como confirmado pero sin crear usuario aún
+                UPDATE public.pending_users
+                SET confirmed_at = NOW()
+                WHERE auth_user_id = p_auth_user_id;
+                
+                RETURN json_build_object(
+                    'success', true,
+                    'requires_invitation_approval', true,
+                    'company_name', existing_company_info.company_name,
+                    'owner_email', existing_company_info.owner_email,
+                    'message', 'Company already exists. Invitation sent to company owner for approval.'
+                );
+            END IF;
+        END IF;
+    END IF;
+    
+    -- Si llegamos aquí, crear nueva empresa
     INSERT INTO public.companies (name, slug, is_active)
     VALUES (
-        COALESCE(pending_user_data.company_name, split_part(pending_user_data.email, '@', 1)),
-        LOWER(COALESCE(pending_user_data.company_name, split_part(pending_user_data.email, '@', 1))) || '-' || EXTRACT(EPOCH FROM NOW())::BIGINT,
+        COALESCE(
+            NULLIF(TRIM(pending_user_data.company_name), ''), -- Usar company_name si no está vacío
+            SPLIT_PART(pending_user_data.email, '@', 1)       -- Fallback al email
+        ),
+        LOWER(COALESCE(
+            NULLIF(TRIM(pending_user_data.company_name), ''),
+            SPLIT_PART(pending_user_data.email, '@', 1)
+        )) || '-' || EXTRACT(EPOCH FROM NOW())::BIGINT,
         true
     )
     RETURNING id INTO new_company_id;
     
-    -- Crear usuario en app
+    -- Crear usuario como owner
     INSERT INTO public.users (
         email,
         name, 
@@ -155,7 +230,8 @@ BEGIN
         'success', true,
         'company_id', new_company_id,
         'user_id', new_user_id,
-        'message', 'Registration confirmed successfully'
+        'is_owner', true,
+        'message', 'Registration confirmed successfully. New company created.'
     );
     
 EXCEPTION WHEN OTHERS THEN

@@ -2,11 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
+import { InvitationPendingComponent } from '../invitation-pending/invitation-pending.component';
 
 @Component({
   selector: 'app-email-confirmation',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, InvitationPendingComponent],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div class="max-w-md w-full space-y-8">
@@ -23,7 +24,7 @@ import { AuthService } from '../../services/auth.service';
         </div>
         
         <!-- Éxito -->
-        <div *ngIf="isSuccess" class="text-center">
+        <div *ngIf="isSuccess && !requiresInvitationApproval" class="text-center">
           <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
             <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -41,6 +42,15 @@ import { AuthService } from '../../services/auth.service';
               Ir al Dashboard
             </button>
           </div>
+        </div>
+
+        <!-- Invitación Pendiente -->
+        <div *ngIf="requiresInvitationApproval">
+          <app-invitation-pending
+            [companyName]="invitationCompanyName"
+            [ownerEmail]="invitationOwnerEmail"
+            [message]="invitationMessage">
+          </app-invitation-pending>
         </div>
         
         <!-- Error -->
@@ -97,6 +107,12 @@ export class EmailConfirmationComponent implements OnInit {
   hasToken = false;
   errorMessage = '';
   
+  // Nuevas propiedades para invitaciones
+  requiresInvitationApproval = false;
+  invitationCompanyName = '';
+  invitationOwnerEmail = '';
+  invitationMessage = '';
+  
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -131,8 +147,17 @@ export class EmailConfirmationComponent implements OnInit {
       const result = await this.authService.confirmEmail(fragmentOrParams);
       
       if (result.success) {
-        this.isSuccess = true;
-        console.log('✅ Email confirmed successfully');
+        // Verificar si requiere aprobación de invitación
+        if (result.requiresInvitationApproval) {
+          this.requiresInvitationApproval = true;
+          this.invitationCompanyName = result.companyName || '';
+          this.invitationOwnerEmail = result.ownerEmail || '';
+          this.invitationMessage = result.message || '';
+          console.log('✅ Email confirmed, invitation pending approval');
+        } else {
+          this.isSuccess = true;
+          console.log('✅ Email confirmed successfully, access granted');
+        }
       } else {
         this.isError = true;
         this.errorMessage = result.error || 'Error desconocido durante la confirmación';
