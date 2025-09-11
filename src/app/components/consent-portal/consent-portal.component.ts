@@ -24,6 +24,9 @@ import { FormsModule } from '@angular/forms';
               <div class="text-sm text-gray-600">Empresa: <strong>{{ companyName }}</strong></div>
               <div class="text-sm text-gray-600">Para: <strong>{{ email }}</strong></div>
               <div class="text-sm text-gray-600" *ngIf="purpose">Propósito: {{ purpose }}</div>
+              <div class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2" *ngIf="!linkedToClient">
+                Nota: esta solicitud no está vinculada a un cliente interno. Se registrará el consentimiento por email, pero los campos rápidos del cliente no se actualizarán automáticamente.
+              </div>
             </div>
 
             <div class="border-t pt-4">
@@ -62,6 +65,7 @@ export class ConsentPortalComponent implements OnInit {
   companyName = '';
   purpose = '';
   done = false;
+  linkedToClient = false;
   prefs: any = { data_processing: false, marketing: false, analytics: false };
 
   ngOnInit() {
@@ -75,6 +79,7 @@ export class ConsentPortalComponent implements OnInit {
         this.email = data.subject_email;
         this.companyName = data.company_name;
         this.purpose = data.purpose || '';
+        this.linkedToClient = !!data.client_id;
         // default: data_processing true if requested
         if ((data.consent_types as string[]).includes('data_processing')) this.prefs.data_processing = true;
       }
@@ -83,21 +88,31 @@ export class ConsentPortalComponent implements OnInit {
   }
 
   async accept() {
-    const { error } = await this.sb.rpc('gdpr_accept_consent', {
+    const { data, error } = await this.sb.rpc('gdpr_accept_consent', {
       p_token: this.token,
       p_preferences: this.prefs,
       p_evidence: { user_agent: navigator.userAgent }
     });
-    this.done = !error;
-    if (error) this.error = 'No se pudo guardar el consentimiento';
+    if (error || !data?.success) {
+      this.done = false;
+      this.error = 'No se pudo guardar el consentimiento';
+    } else {
+      this.done = true;
+      this.error = '';
+    }
   }
 
   async decline() {
-    const { error } = await this.sb.rpc('gdpr_decline_consent', {
+    const { data, error } = await this.sb.rpc('gdpr_decline_consent', {
       p_token: this.token,
       p_evidence: { user_agent: navigator.userAgent }
     });
-    this.done = !error;
-    if (error) this.error = 'No se pudo registrar el rechazo';
+    if (error || !data?.success) {
+      this.done = false;
+      this.error = 'No se pudo registrar el rechazo';
+    } else {
+      this.done = true;
+      this.error = '';
+    }
   }
 }
