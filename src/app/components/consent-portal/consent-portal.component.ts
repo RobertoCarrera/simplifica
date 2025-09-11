@@ -1,8 +1,8 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
-import { SupabaseClientService } from '../../services/supabase-client.service';
 import { FormsModule } from '@angular/forms';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-consent-portal',
@@ -48,6 +48,11 @@ import { FormsModule } from '@angular/forms';
             </div>
 
             <div *ngIf="done" class="p-3 bg-green-50 text-green-700 rounded">Preferencias guardadas. Ya puedes cerrar esta página.</div>
+
+            <div *ngIf="lastRpcResponse" class="mt-4 p-3 bg-gray-50 border rounded text-xs text-gray-700">
+              <div class="font-medium">Debug RPC:</div>
+              <pre class="mt-2 text-xs">{{ lastRpcResponse | json }}</pre>
+            </div>
           </ng-container>
         </ng-container>
       </div>
@@ -56,11 +61,12 @@ import { FormsModule } from '@angular/forms';
 })
 export class ConsentPortalComponent implements OnInit {
   private route = inject(ActivatedRoute);
-  private sb = inject(SupabaseClientService).instance;
 
   token = '';
   loaded = false;
   error = '';
+  // Capture last RPC response for debugging in UI
+  lastRpcResponse: any = null;
   email = '';
   companyName = '';
   purpose = '';
@@ -72,30 +78,63 @@ export class ConsentPortalComponent implements OnInit {
     this.route.queryParams.subscribe(async params => {
       this.token = params['t'] || '';
       if (!this.token) { this.error = 'Enlace inválido'; this.loaded = true; return; }
-      const { data, error } = await this.sb.rpc('gdpr_get_consent_request', { p_token: this.token });
-      if (error || !data?.success) {
+      // Diagnostic: only log navigator.locks availability here.
+      // Avoid touching the Supabase auth client from the public portal because
+      // calling auth.getSession() can trigger navigator.lock acquisitions and
+      // produce LockAcquireTimeoutError when a Service Worker or another
+      // context holds the lock (this was causing intermittent failures).
+      try {
+        console.log('ConsentPortal: navigator.locks available?', !!(navigator as any).locks);
+      } catch (diagErr) {
+        console.warn('ConsentPortal: error leyendo estado de locks', diagErr);
+      }
+
+      const { data, error } = await this.doRpcWithRetries('gdpr_get_consent_request', { p_token: this.token });
+      const normalized = this.normalizeRpcPayload(data);
+      this.lastRpcResponse = { fn: 'gdpr_get_consent_request', raw: { data, error }, normalized };
+      if (error || !normalized?.success) {
+        console.error('ConsentPortal: gdpr_get_consent_request failed', { error, data, normalized });
         this.error = 'Solicitud no válida o expirada';
       } else {
-        this.email = data.subject_email;
-        this.companyName = data.company_name;
-        this.purpose = data.purpose || '';
-        this.linkedToClient = !!data.client_id;
+        this.email = normalized.subject_email;
+        this.companyName = normalized.company_name;
+        this.purpose = normalized.purpose || '';
+        this.linkedToClient = !!normalized.client_id;
         // default: data_processing true if requested
-        if ((data.consent_types as string[]).includes('data_processing')) this.prefs.data_processing = true;
+        if ((normalized.consent_types as string[]).includes('data_processing')) this.prefs.data_processing = true;
       }
       this.loaded = true;
     });
   }
 
   async accept() {
-    const { data, error } = await this.sb.rpc('gdpr_accept_consent', {
+    const payload = {
       p_token: this.token,
       p_preferences: this.prefs,
       p_evidence: { user_agent: navigator.userAgent }
-    });
-    if (error || !data?.success) {
+    };
+
+    const { data, error } = await this.doRpcWithRetries('gdpr_accept_consent', payload);
+    const normalized = this.normalizeRpcPayload(data);
+    this.lastRpcResponse = { fn: 'gdpr_accept_consent', raw: { data, error }, normalized };
+    console.log('ConsentPortal: gdpr_accept_consent response', { data, error, normalized });
+    
+    // Only treat as failure if there's an explicit error or explicit failure indication
+    const hasExplicitFailure = normalized && (
+      normalized.success === false || 
+      (normalized.error != null) ||
+      ['error','failed','invalid','expired','rejected'].includes(String((normalized.status || '')).toLowerCase())
+    );
+
+    if (error || hasExplicitFailure) {
+      console.error('ConsentPortal: gdpr_accept_consent failed', { error, data, normalized, hasExplicitFailure });
       this.done = false;
-      this.error = 'No se pudo guardar el consentimiento';
+      const errMsg = (error && (error.message || (error as any).msg || (error as any).error)) || '';
+      if (String(errMsg).includes('LockAcquireTimeoutError') || String(errMsg).includes('lock:sb-main-auth-token')) {
+        this.error = 'Problema temporal con el token de sesión (navigator.lock). Intenta recargar la página en unos segundos.';
+      } else {
+        this.error = 'No se pudo guardar el consentimiento';
+      }
     } else {
       this.done = true;
       this.error = '';
@@ -103,16 +142,130 @@ export class ConsentPortalComponent implements OnInit {
   }
 
   async decline() {
-    const { data, error } = await this.sb.rpc('gdpr_decline_consent', {
-      p_token: this.token,
-      p_evidence: { user_agent: navigator.userAgent }
-    });
-    if (error || !data?.success) {
+    const payload = { p_token: this.token, p_evidence: { user_agent: navigator.userAgent } };
+  const { data, error } = await this.doRpcWithRetries('gdpr_decline_consent', payload);
+    const normalized = this.normalizeRpcPayload(data);
+    this.lastRpcResponse = { fn: 'gdpr_decline_consent', raw: { data, error }, normalized };
+    console.log('ConsentPortal: gdpr_decline_consent response', { data, error, normalized });
+    
+    // Only treat as failure if there's an explicit error or explicit failure indication
+    const hasExplicitFailureDecline = normalized && (
+      normalized.success === false || 
+      (normalized.error != null) ||
+      ['error','failed','invalid','expired','rejected'].includes(String((normalized.status || '')).toLowerCase())
+    );
+
+    if (error || hasExplicitFailureDecline) {
+      console.error('ConsentPortal: gdpr_decline_consent failed', { error, data, normalized, hasExplicitFailureDecline });
       this.done = false;
-      this.error = 'No se pudo registrar el rechazo';
+      const errMsg = (error && (error.message || (error as any).msg || (error as any).error)) || '';
+      if (String(errMsg).includes('LockAcquireTimeoutError') || String(errMsg).includes('lock:sb-main-auth-token')) {
+        this.error = 'Problema temporal con el token de sesión (navigator.lock). Intenta recargar la página en unos segundos.';
+      } else {
+        this.error = 'No se pudo registrar el rechazo';
+      }
     } else {
       this.done = true;
       this.error = '';
+    }
+  }
+
+  // Normalize and detect success across common RPC response shapes
+  private isRpcFailure(data: any): boolean {
+    // Treat as failure only when explicit signals indicate it.
+    // Accept common nested shapes returned by RPC endpoints, for example:
+    // - { success: true, ... }
+    // - { status: 'accepted' }
+    // - { data: {...}, error: null }
+    // - [{ ... }]
+    if (data == null) return false; // assume success if backend didn't return explicit result
+
+    // If wrapper with explicit 'error' key
+    if (typeof data === 'object' && 'error' in data) {
+      if (data.error) return true;
+      // if there's nested `.data` and that contains an explicit error
+      if (data.data && typeof data.data === 'object' && ('error' in data.data) && data.data.error) return true;
+      // otherwise treat as success
+      return false;
+    }
+
+    if (typeof data === 'boolean') return data === false;
+
+    if (Array.isArray(data)) {
+      // Failure if any element explicitly says failure
+      return data.some(d => d && (
+        (d.success === false) ||
+        (typeof d.error !== 'undefined' && d.error != null) ||
+        ['error','failed','invalid','expired','rejected'].includes(String((d.status || '')).toLowerCase())
+      ));
+    }
+
+    // Plain object: check explicit flags
+    if ((data as any).success === false) return true;
+    const status = String((data && (data.status || '')) || '').toLowerCase();
+    if (['error','failed','invalid','expired','rejected'].includes(status)) return true;
+
+    // No explicit failure detected -> assume success
+    return false;
+  }
+
+  // Unwrap common RPC wrapper shapes and return the inner payload used by our functions
+  private normalizeRpcPayload(payload: any): any {
+    if (payload == null) return payload;
+    // If it's an object with { data, error }
+    if (typeof payload === 'object' && ('data' in payload || 'error' in payload)) {
+      if (payload.data !== undefined) return payload.data;
+      // nothing in data -> return payload as-is
+      return payload;
+    }
+    // If an array with single element, return that element
+    if (Array.isArray(payload) && payload.length === 1) return payload[0];
+    return payload;
+  }
+
+  // Helper: attempt rpc calls with retries when navigator lock acquisition fails (common in auth token refresh race)
+  private async doRpcWithRetries(fnName: string, payload: any, retries = 3, delayMs = 400): Promise<any> {
+    let lastErr: any = null;
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const result = await this.restRpc(fnName, payload);
+        // rest rpc returns { data, error }
+        if (result && result.error) {
+          lastErr = result.error;
+          return result;
+        }
+        return result;
+      } catch (err: any) {
+        lastErr = err;
+  console.error(`ConsentPortal: rpc ${fnName} threw`, err);
+  return { data: null, error: err };
+      }
+    }
+    return { data: null, error: lastErr };
+  }
+
+  private async restRpc(fnName: string, payload: any): Promise<{ data: any; error: any }> {
+    const url = `${environment.supabase.url}/rest/v1/rpc/${fnName}`;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'apikey': environment.supabase.anonKey,
+          'Authorization': `Bearer ${environment.supabase.anonKey}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const contentType = res.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+      const body = isJson ? await res.json() : await res.text();
+      if (!res.ok) {
+        return { data: null, error: body || res.statusText };
+      }
+      return { data: body, error: null };
+    } catch (e) {
+      return { data: null, error: e };
     }
   }
 }

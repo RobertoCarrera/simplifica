@@ -508,7 +508,19 @@ export class LoginComponent implements OnDestroy, OnInit {
         console.log('✅ Login successful');
         // Redirigir a la página solicitada o dashboard
         const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/clientes';
-        this.router.navigate([returnUrl]);
+        // If returnUrl contains a query string, hash, or is an absolute URL, use navigateByUrl
+        try {
+          if (typeof returnUrl === 'string' && (returnUrl.includes('?') || returnUrl.includes('#') || returnUrl.startsWith('http')) ) {
+            this.router.navigateByUrl(returnUrl);
+          } else {
+            this.router.navigate([returnUrl]);
+          }
+        } catch (navErr) {
+          // Fallback to safe navigation to '/clientes'
+          console.error('Navigation error, falling back to /clientes', navErr);
+          this.router.navigate(['/clientes']);
+        }
+
         this.toastService.success('¡Bienvenido!', 'Login exitoso');
       } else {
         console.error('❌ Login failed:', result.error);

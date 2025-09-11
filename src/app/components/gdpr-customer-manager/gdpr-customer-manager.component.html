@@ -1,0 +1,506 @@
+<div class="p-6 bg-gray-50 min-h-screen">
+  <!-- Header Section with Actions -->
+  <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Gestión RGPD de Clientes</h1>
+        <p class="text-gray-600 mt-1">Gestión completa de clientes con cumplimiento RGPD</p>
+      </div>
+      
+      <div class="flex flex-wrap gap-3">
+        <button
+          (click)="backToCustomers()"
+          class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2"
+          title="Volver a Clientes">
+          <i class="fas fa-arrow-left"></i>
+          Volver a Clientes
+        </button>
+        <button
+          (click)="addCustomer()"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
+          <i class="fas fa-plus"></i>
+          Nuevo Cliente
+        </button>
+        
+        <button
+          (click)="exportCustomers()"
+          class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+          <i class="fas fa-download"></i>
+          Exportar
+        </button>
+        
+        <label class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 cursor-pointer">
+          <i class="fas fa-upload"></i>
+          Importar CSV
+          <input
+            type="file"
+            accept=".csv"
+            (change)="importCustomers($event)"
+            class="hidden">
+          <button
+            type="button"
+            (click)="showImportInfo($event)"
+            class="ml-1 text-purple-200 hover:text-white">
+            <i class="fas fa-info-circle text-xs"></i>
+          </button>
+        </label>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    @if (stats(); as currentStats) {
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+        <div class="bg-blue-50 rounded-lg p-4">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <i class="fas fa-users text-blue-600 text-xl"></i>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-blue-600">Total Clientes</p>
+              <p class="text-2xl font-semibold text-blue-900">{{ currentStats.total }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-green-50 rounded-lg p-4">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <i class="fas fa-check-circle text-green-600 text-xl"></i>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-green-600">Con Consentimiento</p>
+              <p class="text-2xl font-semibold text-green-900">{{ customersWithConsent().length }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-yellow-50 rounded-lg p-4">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <i class="fas fa-clock text-yellow-600 text-xl"></i>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-yellow-600">Pendientes</p>
+              <p class="text-2xl font-semibold text-yellow-900">{{ customersWithoutConsent().length }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-purple-50 rounded-lg p-4">
+          <div class="flex items-center">
+            <div class="flex-shrink-0">
+              <i class="fas fa-shield-alt text-purple-600 text-xl"></i>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-purple-600">% Cumplimiento</p>
+              <p class="text-2xl font-semibold text-purple-900">{{ compliancePercentage() }}%</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Search and Filters -->
+  <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <div class="flex flex-col sm:flex-row gap-4">
+      <div class="flex-1">
+        <div class="relative">
+          <input
+            type="text"
+            [value]="searchTerm()"
+            (input)="searchTerm.set($any($event.target).value)"
+            placeholder="Buscar clientes por nombre, apellidos, email..."
+            class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+        </div>
+      </div>
+      <button
+        (click)="clearSearch()"
+        class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+        <i class="fas fa-times mr-2"></i>
+        Limpiar
+      </button>
+    </div>
+  </div>
+
+  <!-- Customers Table -->
+  <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-200">
+      <h2 class="text-lg font-semibold text-gray-900">Lista de Clientes</h2>
+    </div>
+
+    @if (isLoading()) {
+      <div class="p-8 text-center">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p class="mt-2 text-gray-500">Cargando...</p>
+      </div>
+    } @else if (filteredCustomers().length === 0) {
+      <div class="p-8 text-center">
+        <i class="fas fa-users text-gray-300 text-4xl mb-4"></i>
+        <p class="text-gray-500">No se encontraron clientes</p>
+      </div>
+    } @else {
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contacto</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado RGPD</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Última Actividad</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            @for (customer of filteredCustomers(); track customer.id) {
+              <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <div class="flex-shrink-0 h-10 w-10">
+                      <div class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                        <span class="text-sm font-medium text-gray-700">
+                          {{ customer.name.charAt(0) }}{{ customer.apellidos.charAt(0) }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="ml-4">
+                      <div class="text-sm font-medium text-gray-900 flex items-center gap-2">
+                        <!-- Consent status icon: green check if compliant, yellow if partial, red if pending -->
+                        <span [class]="getGdprStatusClass(customer) + ' inline-flex items-center justify-center h-5 w-5 rounded-full text-xs'" title="{{ getGdprStatusText(customer) }}">
+                          <i *ngIf="getGdprComplianceStatus(customer) === 'compliant'" class="fas fa-check text-white text-xs"></i>
+                          <i *ngIf="getGdprComplianceStatus(customer) === 'partial'" class="fas fa-exclamation text-white text-xs"></i>
+                          <i *ngIf="getGdprComplianceStatus(customer) === 'pending'" class="fas fa-clock text-white text-xs"></i>
+                        </span>
+                        <span>{{ customer.name }} {{ customer.apellidos }}</span>
+                      </div>
+                      @if (customer.dni) {
+                        <div class="text-sm text-gray-500">{{ customer.dni }}</div>
+                      }
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="text-sm text-gray-900">{{ customer.email }}</div>
+                  @if (customer.phone) {
+                    <div class="text-sm text-gray-500">{{ customer.phone }}</div>
+                  }
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + getGdprStatusClass(customer)">
+                    {{ getGdprStatusText(customer) }}
+                  </span>
+                  @if (customer.marketing_consent_date) {
+                    <div class="text-xs text-gray-500 mt-1">
+                      Consentimiento: {{ formatDate(customer.marketing_consent_date) }}
+                    </div>
+                  }
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  @if (customer.last_accessed_at) {
+                    {{ formatDate(customer.last_accessed_at) }}
+                  } @else {
+                    Sin actividad
+                  }
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div class="flex items-center gap-2">
+                    <button
+                      (click)="editCustomer(customer)"
+                      class="text-blue-600 hover:text-blue-900 p-1"
+                      title="Editar cliente">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    
+                    <!-- Always-visible: copiar enlace de consentimiento -->
+                    <button
+                      (click)="sendConsentRequest(customer)"
+                      class="text-green-600 hover:text-green-900 p-1"
+                      title="Copiar enlace de consentimiento"
+                      aria-label="Copiar enlace de consentimiento">
+                      <i class="fas fa-link"></i>
+                    </button>
+                    
+                    <button
+                      (click)="exportCustomerData(customer)"
+                      class="text-purple-600 hover:text-purple-900 p-1"
+                      title="Exportar datos RGPD">
+                      <i class="fas fa-download"></i>
+                    </button>
+                    
+                    <button
+                      (click)="createAccessRequest(customer)"
+                      class="text-orange-600 hover:text-orange-900 p-1"
+                      title="Crear solicitud de acceso">
+                      <i class="fas fa-clipboard-list"></i>
+                    </button>
+                    
+                    <button
+                      (click)="confirmAnonymizeCustomer(customer)"
+                      class="text-red-600 hover:text-red-900 p-1"
+                      title="Anonimizar cliente">
+                      <i class="fas fa-user-slash"></i>
+                    </button>
+                    
+                    <button
+                      (click)="deleteCustomer(customer)"
+                      class="text-red-600 hover:text-red-900 p-1"
+                      title="Eliminar cliente">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <!-- GDPR Compliance Section -->
+  <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Access Requests -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Solicitudes de Acceso RGPD</h3>
+      
+      <button
+        (click)="showAccessRequestForm = true"
+        class="w-full mb-4 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+        <i class="fas fa-plus mr-2"></i>
+        Nueva Solicitud de Acceso
+      </button>
+
+      @if (auditEntries().length === 0) {
+        <p class="text-gray-500 text-sm">No hay solicitudes de acceso recientes</p>
+      } @else {
+        <div class="space-y-3">
+          @for (entry of auditEntries().slice(0, 5); track entry.id) {
+            <div class="border border-gray-200 rounded-lg p-3">
+              <div class="flex justify-between items-start">
+                <div>
+                  <p class="text-sm font-medium text-gray-900">{{ entry.action }}</p>
+                  <p class="text-xs text-gray-500">{{ entry.details }}</p>
+                </div>
+                <span class="text-xs text-gray-400">{{ formatDate(entry.created_at) }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Compliance Stats -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Estadísticas de Cumplimiento</h3>
+      
+      @if (complianceStats(); as stats) {
+        <div class="space-y-4">
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-600">Solicitudes de Acceso</span>
+            <span class="text-sm font-medium">{{ stats.accessRequests || 0 }}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-600">Datos Exportados</span>
+            <span class="text-sm font-medium">{{ stats.dataExports || 0 }}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-600">Anonimizaciones</span>
+            <span class="text-sm font-medium">{{ stats.anonymizations || 0 }}</span>
+          </div>
+        </div>
+      }
+      
+      <button
+        (click)="exportComplianceReport()"
+        class="w-full mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+        <i class="fas fa-file-export mr-2"></i>
+        Exportar Informe de Cumplimiento
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Customer Form Modal -->
+@if (showCustomerForm) {
+  <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+      <div class="mt-3">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-medium text-gray-900">
+            {{ selectedCustomer() ? 'Editar Cliente' : 'Nuevo Cliente' }}
+          </h3>
+          <button
+            (click)="closeForm()"
+            class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <form (ngSubmit)="saveCustomer()" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Nombre *</label>
+              <input
+                type="text"
+                [(ngModel)]="customerForm.name"
+                name="name"
+                required
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Apellidos *</label>
+              <input
+                type="text"
+                [(ngModel)]="customerForm.apellidos"
+                name="apellidos"
+                required
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Email *</label>
+            <input
+              type="email"
+              [(ngModel)]="customerForm.email"
+              name="email"
+              required
+              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Teléfono</label>
+              <input
+                type="tel"
+                [(ngModel)]="customerForm.phone"
+                name="phone"
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700">DNI/NIE</label>
+              <input
+                type="text"
+                [(ngModel)]="customerForm.dni"
+                name="dni"
+                class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Dirección</label>
+            <textarea
+              [(ngModel)]="customerForm.address"
+              name="address"
+              rows="3"
+              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </textarea>
+          </div>
+          
+          <div class="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              (click)="closeForm()"
+              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              [disabled]="isLoading()"
+              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
+              {{ isLoading() ? 'Guardando...' : 'Guardar' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Access Request Form Modal -->
+@if (showAccessRequestForm) {
+  <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+      <div class="mt-3">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-medium text-gray-900">Nueva Solicitud de Acceso RGPD</h3>
+          <button
+            (click)="showAccessRequestForm = false"
+            class="text-gray-400 hover:text-gray-600">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <form [formGroup]="accessRequestForm" (ngSubmit)="submitAccessRequest()" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Email del solicitante *</label>
+            <input
+              type="email"
+              formControlName="subjectEmail"
+              required
+              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Nombre completo</label>
+            <input
+              type="text"
+              formControlName="subjectName"
+              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Identificador (DNI/NIE)</label>
+            <input
+              type="text"
+              formControlName="subjectIdentifier"
+              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Tipo de solicitud *</label>
+            <select
+              formControlName="requestType"
+              required
+              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+              <option value="">Seleccionar tipo</option>
+              <option value="access">Acceso a datos personales</option>
+              <option value="rectification">Rectificación de datos</option>
+              <option value="erasure">Supresión de datos</option>
+              <option value="portability">Portabilidad de datos</option>
+              <option value="restriction">Limitación del tratamiento</option>
+            </select>
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Descripción</label>
+            <textarea
+              formControlName="description"
+              rows="4"
+              placeholder="Describa detalladamente su solicitud..."
+              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </textarea>
+          </div>
+          
+          <div class="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              (click)="showAccessRequestForm = false"
+              class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              [disabled]="!accessRequestForm.valid || isLoading()"
+              class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50">
+              {{ isLoading() ? 'Creando...' : 'Crear Solicitud' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+}

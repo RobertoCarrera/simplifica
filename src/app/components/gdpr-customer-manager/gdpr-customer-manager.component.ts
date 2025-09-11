@@ -1,404 +1,18 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Customer } from '../../models/customer';
-import { SupabaseCustomersService } from '../../services/supabase-customers.service';
+import { Customer, CreateCustomerDev } from '../../models/customer';
+import { SupabaseCustomersService, CustomerFilters, CustomerStats } from '../../services/supabase-customers.service';
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../services/gdpr-compliance.service';
 import { ToastService } from '../../services/toast.service';
+import { DevRoleService } from '../../services/dev-role.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-gdpr-customer-manager',
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule],
-  template: `
-    <div class="gdpr-customer-manager">
-      <!-- GDPR Compliance Dashboard -->
-      <div class="gdpr-dashboard mb-6">
-        <div class="dashboard-header">
-          <h2 class="text-2xl font-bold text-gray-900 flex items-center">
-            <i class="fas fa-shield-alt mr-2 text-blue-600"></i>
-            Panel de Cumplimiento RGPD
-          </h2>
-          <p class="text-gray-600 mt-1">Gestión de datos conforme al Reglamento General de Protección de Datos</p>
-        </div>
-
-        <!-- Compliance Stats -->
-        @if (complianceStats()) {
-          <div class="stats-grid grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-            <div class="stat-card bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div class="flex items-center">
-                <i class="fas fa-file-alt text-blue-600 text-2xl mr-3"></i>
-                <div>
-                  <div class="text-2xl font-bold text-blue-900">{{ complianceStats()?.accessRequestsCount || 0 }}</div>
-                  <div class="text-sm text-blue-600">Solicitudes RGPD</div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="stat-card bg-green-50 border border-green-200 rounded-lg p-4">
-              <div class="flex items-center">
-                <i class="fas fa-check-circle text-green-600 text-2xl mr-3"></i>
-                <div>
-                  <div class="text-2xl font-bold text-green-900">{{ complianceStats()?.activeConsentsCount || 0 }}</div>
-                  <div class="text-sm text-green-600">Consentimientos Activos</div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="stat-card bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div class="flex items-center">
-                <i class="fas fa-clock text-yellow-600 text-2xl mr-3"></i>
-                <div>
-                  <div class="text-2xl font-bold text-yellow-900">{{ complianceStats()?.pendingAccessRequests || 0 }}</div>
-                  <div class="text-sm text-yellow-600">Solicitudes Pendientes</div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="stat-card bg-red-50 border border-red-200 rounded-lg p-4">
-              <div class="flex items-center">
-                <i class="fas fa-exclamation-triangle text-red-600 text-2xl mr-3"></i>
-                <div>
-                  <div class="text-2xl font-bold text-red-900">{{ complianceStats()?.overdueAccessRequests || 0 }}</div>
-                  <div class="text-sm text-red-600">Solicitudes Vencidas</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        }
-      </div>
-
-      <!-- GDPR Actions Toolbar -->
-      <div class="gdpr-actions bg-white border rounded-lg p-4 mb-6">
-        <div class="flex flex-wrap gap-3">
-          <button
-            (click)="showAccessRequestForm = true"
-            class="btn btn-primary"
-          >
-            <i class="fas fa-file-plus mr-2"></i>
-            Nueva Solicitud RGPD
-          </button>
-          
-          <button
-            (click)="showConsentForm = true"
-            class="btn btn-secondary"
-          >
-            <i class="fas fa-handshake mr-2"></i>
-            Gestionar Consentimientos
-          </button>
-          
-          <button
-            (click)="exportComplianceReport()"
-            class="btn btn-outline"
-            [disabled]="isLoading()"
-          >
-            <i class="fas fa-download mr-2"></i>
-            Exportar Informe Cumplimiento
-          </button>
-          
-          <button
-            (click)="showAuditLog = !showAuditLog"
-            class="btn btn-outline"
-            [class.active]="showAuditLog"
-          >
-            <i class="fas fa-history mr-2"></i>
-            {{ showAuditLog ? 'Ocultar' : 'Ver' }} Registro de Auditoría
-          </button>
-        </div>
-      </div>
-
-      <!-- Customer Search with GDPR Context -->
-      <div class="customer-search bg-white border rounded-lg p-4 mb-6">
-        <div class="search-header flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-900">Búsqueda de Clientes</h3>
-          <div class="gdpr-indicators flex items-center space-x-2">
-            <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-              <i class="fas fa-shield-alt mr-1"></i>
-              Protegido RGPD
-            </span>
-          </div>
-        </div>
-        
-        <div class="search-input-group flex gap-3">
-          <div class="flex-1">
-            <input
-              type="text"
-              [(ngModel)]="searchTerm"
-              (ngModelChange)="onSearchChange($event)"
-              placeholder="Buscar por nombre, email o DNI (datos protegidos)..."
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-          </div>
-          <button
-            (click)="clearSearch()"
-            class="btn btn-outline"
-            [disabled]="!searchTerm"
-          >
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        
-        <div class="mt-2 text-xs text-gray-500">
-          <i class="fas fa-info-circle mr-1"></i>
-          Todas las búsquedas quedan registradas en el log de auditoría conforme al RGPD
-        </div>
-      </div>
-
-      <!-- Customer List with GDPR Information -->
-      @if (customers() && customers().length > 0) {
-        <div class="customers-list">
-          @for (customer of customers(); track customer.id) {
-            <div class="customer-card bg-white border rounded-lg p-4 mb-4 hover:shadow-md transition-shadow">
-              <div class="customer-header flex items-start justify-between">
-                <div class="customer-info flex-1">
-                  <div class="flex items-center mb-2">
-                    <h3 class="text-lg font-semibold text-gray-900 mr-3">
-                      {{ customer.name }} {{ customer.apellidos }}
-                    </h3>
-                    @if (getCustomerGdprStatus(customer)) {
-                      <div class="gdpr-badges flex space-x-1">
-                        @if (getCustomerGdprStatus(customer)?.hasValidConsent) {
-                          <span class="badge badge-success">
-                            <i class="fas fa-check mr-1"></i>Consentimiento
-                          </span>
-                        }
-                        @if (getCustomerGdprStatus(customer)?.hasActiveRequests) {
-                          <span class="badge badge-warning">
-                            <i class="fas fa-clock mr-1"></i>Solicitud Activa
-                          </span>
-                        }
-                        @if (customer.is_minor) {
-                          <span class="badge badge-info">
-                            <i class="fas fa-child mr-1"></i>Menor
-                          </span>
-                        }
-                      </div>
-                    }
-                  </div>
-                  
-                  <div class="customer-details text-sm text-gray-600 space-y-1">
-                    <div class="flex items-center">
-                      <i class="fas fa-envelope w-4 mr-2"></i>
-                      <span class="data-protected">{{ customer.email }}</span>
-                    </div>
-                    @if (customer.phone) {
-                      <div class="flex items-center">
-                        <i class="fas fa-phone w-4 mr-2"></i>
-                        <span class="data-protected">{{ customer.phone }}</span>
-                      </div>
-                    }
-                    @if (customer.dni) {
-                      <div class="flex items-center">
-                        <i class="fas fa-id-card w-4 mr-2"></i>
-                        <span class="data-protected">{{ customer.dni }}</span>
-                      </div>
-                    }
-                    <div class="flex items-center text-xs">
-                      <i class="fas fa-calendar w-4 mr-2"></i>
-                      <span>Creado: {{ formatDate(customer.created_at) }}</span>
-                      @if (customer.last_accessed_at) {
-                        <span class="ml-3">
-                          <i class="fas fa-eye w-4 mr-1"></i>
-                          Último acceso: {{ formatDate(customer.last_accessed_at) }}
-                        </span>
-                      }
-                    </div>
-                  </div>
-                </div>
-                
-                <div class="customer-actions flex space-x-2">
-                  <button
-                    (click)="viewCustomerGdprInfo(customer)"
-                    class="btn btn-sm btn-outline"
-                    title="Ver información RGPD"
-                  >
-                    <i class="fas fa-shield-alt"></i>
-                  </button>
-                  
-                  <button
-                    (click)="editCustomer(customer)"
-                    class="btn btn-sm btn-primary"
-                    title="Editar cliente"
-                  >
-                    <i class="fas fa-edit"></i>
-                  </button>
-                  
-                  <div class="dropdown">
-                    <button class="btn btn-sm btn-outline dropdown-toggle" title="Más acciones">
-                      <i class="fas fa-ellipsis-v"></i>
-                    </button>
-                    <div class="dropdown-menu">
-                      <button (click)="exportCustomerData(customer)" class="dropdown-item">
-                        <i class="fas fa-download mr-2"></i>Exportar Datos
-                      </button>
-                      <button (click)="manageConsent(customer)" class="dropdown-item">
-                        <i class="fas fa-handshake mr-2"></i>Gestionar Consentimiento
-                      </button>
-                      <button (click)="createAccessRequest(customer)" class="dropdown-item">
-                        <i class="fas fa-file-alt mr-2"></i>Solicitud RGPD
-                      </button>
-                      <div class="dropdown-divider"></div>
-                      <button 
-                        (click)="confirmAnonymizeCustomer(customer)" 
-                        class="dropdown-item text-red-600 hover:bg-red-50"
-                      >
-                        <i class="fas fa-user-slash mr-2"></i>Anonimizar Datos
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          }
-        </div>
-      }
-
-      <!-- Audit Log Panel -->
-      @if (showAuditLog) {
-        <div class="audit-log bg-white border rounded-lg p-4 mt-6">
-          <div class="audit-header flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">
-              <i class="fas fa-history mr-2"></i>
-              Registro de Auditoría RGPD
-            </h3>
-            <div class="audit-filters flex space-x-2">
-              <select [(ngModel)]="auditFilters.actionType" (ngModelChange)="loadAuditLog()" class="form-select">
-                <option value="">Todas las acciones</option>
-                <option value="create">Crear</option>
-                <option value="read">Leer</option>
-                <option value="update">Actualizar</option>
-                <option value="delete">Eliminar</option>
-                <option value="export">Exportar</option>
-                <option value="anonymize">Anonimizar</option>
-              </select>
-              <input
-                type="date"
-                [(ngModel)]="auditFilters.fromDate"
-                (ngModelChange)="loadAuditLog()"
-                class="form-input"
-              >
-            </div>
-          </div>
-          
-          @if (auditEntries() && auditEntries().length > 0) {
-            <div class="audit-entries space-y-2">
-              @for (entry of auditEntries(); track entry.id) {
-                <div class="audit-entry bg-gray-50 border border-gray-200 rounded p-3">
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                      <div class="action-icon">
-                        @switch (entry.action_type) {
-                          @case ('create') {
-                            <i class="fas fa-plus text-green-600"></i>
-                          }
-                          @case ('read') {
-                            <i class="fas fa-eye text-blue-600"></i>
-                          }
-                          @case ('update') {
-                            <i class="fas fa-edit text-yellow-600"></i>
-                          }
-                          @case ('delete') {
-                            <i class="fas fa-trash text-red-600"></i>
-                          }
-                          @case ('export') {
-                            <i class="fas fa-download text-purple-600"></i>
-                          }
-                          @case ('anonymize') {
-                            <i class="fas fa-user-slash text-orange-600"></i>
-                          }
-                          @default {
-                            <i class="fas fa-info text-gray-600"></i>
-                          }
-                        }
-                      </div>
-                      <div>
-                        <div class="font-medium">{{ entry.action_type.toUpperCase() }} - {{ entry.table_name }}</div>
-                        @if (entry.subject_email) {
-                          <div class="text-sm text-gray-600">Sujeto: {{ entry.subject_email }}</div>
-                        }
-                        @if (entry.purpose) {
-                          <div class="text-sm text-gray-600">Propósito: {{ entry.purpose }}</div>
-                        }
-                      </div>
-                    </div>
-                    <div class="text-sm text-gray-500">
-                      {{ formatDate(entry.created_at) }}
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
-          } @else {
-            <div class="text-center py-8 text-gray-500">
-              <i class="fas fa-history text-4xl mb-2"></i>
-              <p>No hay entradas de auditoría disponibles</p>
-            </div>
-          }
-        </div>
-      }
-    </div>
-
-    <!-- Access Request Modal -->
-    @if (showAccessRequestForm) {
-      <div class="modal-overlay" (click)="showAccessRequestForm = false">
-        <div class="modal-content" (click)="$event.stopPropagation()">
-          <div class="modal-header">
-            <h2 class="modal-title">Nueva Solicitud de Derechos RGPD</h2>
-            <button (click)="showAccessRequestForm = false" class="modal-close">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          
-          <div class="modal-body">
-            <form [formGroup]="accessRequestForm" (ngSubmit)="submitAccessRequest()">
-              <div class="form-group">
-                <label for="requestType" class="form-label required">Tipo de Solicitud</label>
-                <select formControlName="requestType" class="form-select">
-                  <option value="access">Acceso a datos (Art. 15)</option>
-                  <option value="rectification">Rectificación (Art. 16)</option>
-                  <option value="erasure">Supresión/Olvido (Art. 17)</option>
-                  <option value="portability">Portabilidad (Art. 20)</option>
-                  <option value="restriction">Limitación del tratamiento (Art. 18)</option>
-                  <option value="objection">Oposición (Art. 21)</option>
-                </select>
-              </div>
-              
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="subjectEmail" class="form-label required">Email del Interesado</label>
-                  <input type="email" formControlName="subjectEmail" class="form-input">
-                </div>
-                <div class="form-group">
-                  <label for="subjectName" class="form-label">Nombre del Interesado</label>
-                  <input type="text" formControlName="subjectName" class="form-input">
-                </div>
-              </div>
-              
-              <div class="form-group">
-                <label for="subjectIdentifier" class="form-label">DNI/Identificador</label>
-                <input type="text" formControlName="subjectIdentifier" class="form-input">
-              </div>
-              
-              <div class="form-group">
-                <label for="requestDetails" class="form-label">Detalles de la Solicitud</label>
-                <textarea formControlName="requestDetails" rows="3" class="form-textarea"></textarea>
-              </div>
-              
-              <div class="modal-actions">
-                <button type="button" (click)="showAccessRequestForm = false" class="btn btn-secondary">
-                  Cancelar
-                </button>
-                <button type="submit" class="btn btn-primary" [disabled]="!accessRequestForm.valid || isLoading()">
-                  <i class="fas fa-paper-plane mr-2"></i>
-                  Crear Solicitud
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    }
-  `,
+  templateUrl: './gdpr-customer-manager.component.html',
   styleUrls: ['./gdpr-customer-manager.component.scss']
 })
 export class GdprCustomerManagerComponent implements OnInit {
@@ -407,58 +21,104 @@ export class GdprCustomerManagerComponent implements OnInit {
   private gdprService = inject(GdprComplianceService);
   private toastService = inject(ToastService);
   private fb = inject(FormBuilder);
+  private devRoleService = inject(DevRoleService);
 
   // State signals
   customers = signal<Customer[]>([]);
+  stats = signal<CustomerStats | null>(null);
   complianceStats = signal<any>(null);
   auditEntries = signal<any[]>([]);
   isLoading = signal(false);
-
-  // UI state
+  selectedCustomer = signal<Customer | null>(null);
   searchTerm = signal('');
-  showAuditLog = false;
+
+  // Form properties
+  showCustomerForm = false;
   showAccessRequestForm = false;
-  showConsentForm = false;
-
-  // Forms
   accessRequestForm: FormGroup;
-
-  // Filters
-  auditFilters = {
-    actionType: '',
-    fromDate: '',
-    tableName: 'clients'
+  customerForm = {
+    name: '',
+    apellidos: '',
+    email: '',
+    phone: '',
+    dni: '',
+    address: ''
   };
+
+  // Computed properties
+  filteredCustomers = computed(() => {
+    const customers = this.customers();
+    const search = this.searchTerm().toLowerCase();
+    
+    if (!search) return customers;
+    
+    return customers.filter(customer => 
+      customer.name?.toLowerCase().includes(search) ||
+      customer.apellidos?.toLowerCase().includes(search) ||
+      customer.email?.toLowerCase().includes(search) ||
+      customer.phone?.includes(search) ||
+      customer.dni?.toLowerCase().includes(search)
+    );
+  });
+
+  customersWithConsent = computed(() => 
+    this.customers().filter(customer => customer.marketing_consent)
+  );
+
+  customersWithoutConsent = computed(() => 
+    this.customers().filter(customer => !customer.marketing_consent)
+  );
+
+  compliancePercentage = computed(() => {
+    const total = this.customers().length;
+    const withConsent = this.customersWithConsent().length;
+    return total > 0 ? Math.round((withConsent / total) * 100) : 0;
+  });
 
   constructor() {
     this.accessRequestForm = this.fb.group({
-      requestType: ['access', Validators.required],
       subjectEmail: ['', [Validators.required, Validators.email]],
       subjectName: [''],
       subjectIdentifier: [''],
-      requestDetails: ['']
+      requestType: ['', Validators.required],
+      description: ['']
     });
   }
 
-  ngOnInit() {
-    this.loadData();
+  // Router injection for navigation back to customers list
+  private router = inject(Router);
+
+  backToCustomers() {
+    try {
+      this.router.navigate(['/clientes']);
+    } catch (e) {
+      console.error('Navigation back to customers failed', e);
+    }
   }
 
-  private loadData() {
+  ngOnInit() {
     this.loadCustomers();
     this.loadComplianceStats();
-    this.loadAuditLog();
+    this.loadAuditEntries();
   }
 
   private loadCustomers() {
+    this.isLoading.set(true);
+    
+    // Subscribe to stats
+    this.customersService.getCustomerStats().subscribe({
+      next: (stats) => this.stats.set(stats),
+      error: (error) => console.error('Error loading stats:', error)
+    });
+
     this.customersService.getCustomers().subscribe({
       next: (customers) => {
         this.customers.set(customers);
-        // Log access for audit purposes
-        this.gdprService['logGdprEvent']('read', 'clients', undefined, undefined, 'customer_list_access');
+        this.isLoading.set(false);
       },
       error: (error) => {
         console.error('Error loading customers:', error);
+        this.isLoading.set(false);
         this.toastService.error('Error', 'No se pudieron cargar los clientes');
       }
     });
@@ -466,43 +126,282 @@ export class GdprCustomerManagerComponent implements OnInit {
 
   private loadComplianceStats() {
     this.gdprService.getComplianceDashboard().subscribe({
-      next: (stats) => {
-        this.complianceStats.set(stats);
-      },
-      error: (error) => {
-        console.error('Error loading compliance stats:', error);
-      }
+      next: (stats: any) => this.complianceStats.set(stats),
+      error: (error: any) => console.error('Error loading compliance stats:', error)
     });
   }
 
-  loadAuditLog() {
-    const filters = {
-      ...this.auditFilters,
-      limit: 50
-    };
-
-    this.gdprService.getAuditLog(filters).subscribe({
-      next: (entries) => {
-        this.auditEntries.set(entries);
-      },
-      error: (error) => {
-        console.error('Error loading audit log:', error);
-      }
+  private loadAuditEntries() {
+    this.gdprService.getAuditLog({ limit: 10 }).subscribe({
+      next: (entries: any[]) => this.auditEntries.set(entries),
+      error: (error: any) => console.error('Error loading audit entries:', error)
     });
-  }
-
-  onSearchChange(term: string) {
-    this.searchTerm.set(term);
-    // Log search for audit
-    if (term.length > 2) {
-      this.gdprService['logGdprEvent']('read', 'clients', undefined, undefined, `customer_search: ${term}`);
-    }
-    this.loadCustomers();
   }
 
   clearSearch() {
     this.searchTerm.set('');
     this.loadCustomers();
+  }
+
+  // Customer CRUD Operations
+  addCustomer() {
+    this.selectedCustomer.set(null);
+    this.resetForm();
+    this.showCustomerForm = true;
+  }
+
+  editCustomer(customer: Customer) {
+    this.selectedCustomer.set(customer);
+    this.populateForm(customer);
+    this.showCustomerForm = true;
+  }
+
+  private resetForm() {
+    this.customerForm = {
+      name: '',
+      apellidos: '',
+      email: '',
+      phone: '',
+      dni: '',
+      address: ''
+    };
+  }
+
+  private populateForm(customer: Customer) {
+    this.customerForm = {
+      name: customer.name || '',
+      apellidos: customer.apellidos || '',
+      email: customer.email || '',
+      phone: customer.phone || '',
+      dni: customer.dni || '',
+      address: customer.address || ''
+    };
+  }
+
+  saveCustomer() {
+    if (!this.isFormValid()) {
+      this.toastService.error('Error', 'Por favor completa todos los campos obligatorios');
+      return;
+    }
+
+    this.isLoading.set(true);
+
+    if (this.selectedCustomer()) {
+      // Update existing customer
+      this.updateCustomer();
+    } else {
+      // Create new customer
+      this.createCustomer();
+    }
+  }
+
+  private isFormValid(): boolean {
+    return !!(this.customerForm.name && this.customerForm.apellidos && this.customerForm.email);
+  }
+
+  private createCustomer() {
+    const customerData: CreateCustomerDev = {
+      name: this.customerForm.name,
+      apellidos: this.customerForm.apellidos,
+      email: this.customerForm.email,
+      phone: this.customerForm.phone,
+      dni: this.customerForm.dni,
+      address: this.customerForm.address,
+      activo: true,
+      usuario_id: ''
+    };
+
+    this.customersService.createCustomer(customerData).subscribe({
+      next: (customer) => {
+        this.toastService.success('Éxito', 'Cliente creado correctamente');
+        this.closeForm();
+        this.loadCustomers();
+      },
+      error: (error) => {
+        console.error('Error creating customer:', error);
+        this.toastService.error('Error', 'No se pudo crear el cliente');
+      },
+      complete: () => {
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  private updateCustomer() {
+    const selectedCustomer = this.selectedCustomer();
+    if (!selectedCustomer) return;
+
+    const updates = {
+      name: this.customerForm.name,
+      apellidos: this.customerForm.apellidos,
+      email: this.customerForm.email,
+      phone: this.customerForm.phone,
+      dni: this.customerForm.dni,
+      address: this.customerForm.address
+    };
+
+    this.customersService.updateCustomer(selectedCustomer.id, updates).subscribe({
+      next: (customer) => {
+        this.toastService.success('Éxito', 'Cliente actualizado correctamente');
+        this.closeForm();
+        this.loadCustomers();
+      },
+      error: (error) => {
+        console.error('Error updating customer:', error);
+        this.toastService.error('Error', 'No se pudo actualizar el cliente');
+      },
+      complete: () => {
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  closeForm() {
+    this.showCustomerForm = false;
+    this.selectedCustomer.set(null);
+    this.resetForm();
+  }
+
+  deleteCustomer(customer: Customer) {
+    if (!confirm(`¿Estás seguro de que quieres eliminar a ${customer.name} ${customer.apellidos}?`)) {
+      return;
+    }
+
+    this.customersService.deleteCustomer(customer.id).subscribe({
+      next: () => {
+        this.toastService.success('Éxito', 'Cliente eliminado correctamente');
+        this.loadCustomers();
+      },
+      error: (error) => {
+        console.error('Error deleting customer:', error);
+        this.toastService.error('Error', 'No se pudo eliminar el cliente');
+      }
+    });
+  }
+
+  // Import/Export functionality
+  exportCustomers() {
+    const filters: CustomerFilters = {
+      search: this.searchTerm()
+    };
+
+    this.customersService.exportToCSV(filters).subscribe({
+      next: (csvData) => {
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `clientes-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+        this.toastService.success('Éxito', 'Clientes exportados correctamente');
+      },
+      error: (error) => {
+        console.error('Error exporting customers:', error);
+        this.toastService.error('Error', 'No se pudieron exportar los clientes');
+      }
+    });
+  }
+
+  importCustomers(event: any) {
+    const file = event.target.files[0];
+    
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      this.toastService.error('Error', 'Por favor selecciona un archivo CSV válido');
+      return;
+    }
+
+    this.toastService.info('Procesando...', 'Importando clientes desde CSV');
+
+    this.customersService.importFromCSV(file).subscribe({
+      next: (result) => {
+        const importedCount = Array.isArray(result) ? result.length : 0;
+        this.toastService.success('Éxito', `${importedCount} clientes importados correctamente`);
+        this.loadCustomers();
+        // Reset file input
+        event.target.value = '';
+      },
+      error: (error) => {
+        console.error('Error importing customers:', error);
+        this.toastService.error('Error', 'No se pudieron importar los clientes');
+        event.target.value = '';
+      }
+    });
+  }
+
+  showImportInfo(event: Event) {
+    event.stopPropagation();
+    const infoMessage = `
+      El archivo CSV debe tener las siguientes columnas:
+      - name (obligatorio)
+      - apellidos (obligatorio)  
+      - email (obligatorio)
+      - phone (opcional)
+      - dni (opcional)
+      - address (opcional)
+    `;
+    this.toastService.info('CSV requerido', infoMessage, 6000);
+  }
+
+  // GDPR specific methods
+  sendConsentRequest(customer: Customer) {
+    if (!customer.email) {
+      this.toastService.error('Error', 'El cliente debe tener un email para solicitar consentimiento');
+      return;
+    }
+    
+    this.gdprService.createConsentRequest(customer.id, customer.email, ['data_processing','marketing','analytics'], 'Gestión de consentimiento')
+      .subscribe({
+        next: ({ path }) => {
+          const url = `${window.location.origin}${path}`;
+          navigator.clipboard?.writeText(url);
+          this.toastService.success('Enlace de consentimiento copiado al portapapeles', 'Consentimiento');
+        },
+        error: (err) => {
+          console.error('Error creating consent request', err);
+          this.toastService.error('No se pudo crear la solicitud de consentimiento', 'Error');
+        }
+      });
+  }
+
+  getGdprComplianceStatus(customer: Customer): string {
+    if (customer.marketing_consent && customer.data_processing_consent) {
+      return 'compliant';
+    } else if (customer.data_processing_consent) {
+      return 'partial';
+    } else {
+      return 'pending';
+    }
+  }
+
+  getGdprStatusClass(customer: Customer): string {
+    const status = this.getGdprComplianceStatus(customer);
+    switch (status) {
+      case 'compliant': return 'text-green-600 bg-green-100';
+      case 'partial': return 'text-yellow-600 bg-yellow-100';
+      case 'pending': return 'text-red-600 bg-red-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  }
+
+  getGdprStatusText(customer: Customer): string {
+    const status = this.getGdprComplianceStatus(customer);
+    switch (status) {
+      case 'compliant': return 'Cumple RGPD';
+      case 'partial': return 'Parcial';
+      case 'pending': return 'Pendiente consentimiento';
+      default: return 'Estado desconocido';
+    }
+  }
+
+  formatDate(dateString: string): string {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
   }
 
   // GDPR Actions
@@ -605,11 +504,6 @@ export class GdprCustomerManagerComponent implements OnInit {
     this.toastService.info('Funcionalidad', 'Vista detallada de RGPD próximamente');
   }
 
-  editCustomer(customer: Customer) {
-    // Implementation for customer editing
-    this.toastService.info('Funcionalidad', 'Edición de cliente próximamente');
-  }
-
   exportComplianceReport() {
     this.isLoading.set(true);
     
@@ -644,15 +538,5 @@ export class GdprCustomerManagerComponent implements OnInit {
       dataRetentionValid: true,
       lastAccessDate: customer.last_accessed_at
     };
-  }
-
-  formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   }
 }

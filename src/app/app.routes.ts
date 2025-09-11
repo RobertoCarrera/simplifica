@@ -34,12 +34,14 @@ import { AuthDebugComponent } from './components/auth-debug/auth-debug.component
 import { EmailConfirmationComponent } from './components/email-confirmation/email-confirmation.component';
 import { CompanyAdminComponent } from './components/company-admin/company-admin.component';
 import { ConsentPortalComponent } from './components/consent-portal/consent-portal.component';
+import { GdprCustomerManagerComponent } from './components/gdpr-customer-manager/gdpr-customer-manager.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
     {path: '', redirectTo: '/inicio', pathMatch: 'full'},
     {path: 'inicio', component: HomeComponent, canActivate: [AuthGuard]},
     {path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard]},
+    {path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard]},
     {path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard]},
     {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard]},
     {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
