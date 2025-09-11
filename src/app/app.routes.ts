@@ -33,6 +33,7 @@ import { ResetPasswordComponent } from './components/reset-password/reset-passwo
 import { AuthDebugComponent } from './components/auth-debug/auth-debug.component';
 import { EmailConfirmationComponent } from './components/email-confirmation/email-confirmation.component';
 import { CompanyAdminComponent } from './components/company-admin/company-admin.component';
+import { ConsentPortalComponent } from './components/consent-portal/consent-portal.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -52,6 +53,8 @@ export const routes: Routes = [
     {path: 'auth/callback', component: AuthCallbackComponent}, // Callback de Supabase
     {path: 'auth/confirm', component: EmailConfirmationComponent}, // Confirmación de email
     {path: 'reset-password', component: ResetPasswordComponent}, // Recuperación de contraseña
+    // Public GDPR consent portal (no guard)
+    {path: 'consent', component: ConsentPortalComponent},
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [DevGuard]},

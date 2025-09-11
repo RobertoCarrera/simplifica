@@ -40,7 +40,9 @@ export interface LoginCredentials {
 export interface RegisterData {
   email: string;
   password: string;
-  full_name: string;
+  given_name: string;
+  surname?: string;
+  full_name?: string; // backward compatibility
   company_name?: string;
   autoLogin?: boolean; // por si se quiere desactivar en algún flujo futuro
 }
@@ -359,7 +361,8 @@ export class AuthService {
           await this.retryWithBackoff(async () => {
             const insertResult = await this.supabase.from('users').insert({
               email: authUser.email,
-              name: (authUser.user_metadata && (authUser.user_metadata as any)['full_name']) || authUser.email?.split('@')[0] || 'Usuario',
+              name: (authUser.user_metadata && (authUser.user_metadata as any)['given_name']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ')[0] : null) || authUser.email?.split('@')[0] || 'Usuario',
+              surname: (authUser.user_metadata && (authUser.user_metadata as any)['surname']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ').slice(1).join(' ') : null) || null,
               role: 'member',
               active: true,
               company_id: companyId,
@@ -402,7 +405,8 @@ export class AuthService {
         await this.retryWithBackoff(async () => {
           const insertResult = await this.supabase.from('users').insert({
             email: authUser.email,
-            name: (authUser.user_metadata && (authUser.user_metadata as any)['full_name']) || authUser.email?.split('@')[0] || 'Usuario',
+            name: (authUser.user_metadata && (authUser.user_metadata as any)['given_name']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ')[0] : null) || authUser.email?.split('@')[0] || 'Usuario',
+            surname: (authUser.user_metadata && (authUser.user_metadata as any)['surname']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ').slice(1).join(' ') : null) || null,
             role: 'owner',
             active: true,
             company_id: companyId,
@@ -785,7 +789,9 @@ export class AuthService {
         .from('pending_users')
         .insert({
           email: registerData.email,
-          full_name: registerData.full_name,
+          full_name: registerData.full_name || `${registerData.given_name || ''} ${registerData.surname || ''}`.trim(),
+          given_name: registerData.given_name,
+          surname: registerData.surname || null,
           company_name: registerData.company_name,
           auth_user_id: authUser.id,
           confirmation_token: crypto.randomUUID()

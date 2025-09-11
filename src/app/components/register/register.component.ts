@@ -25,16 +25,30 @@ import { ToastService } from '../../services/toast.service';
             <h3>Datos Personales</h3>
             
             <div class="form-group">
-              <label for="fullName">Nombre Completo</label>
+              <label for="givenName">Nombre</label>
               <input
                 type="text"
-                id="fullName"
-                formControlName="fullName"
-                placeholder="Juan Pérez"
-                [class.error]="fullNameInvalid()"
+                id="givenName"
+                formControlName="given_name"
+                placeholder="Juan"
+                [class.error]="givenNameInvalid()"
               />
-              @if (fullNameInvalid()) {
-                <span class="error-message">Nombre completo requerido</span>
+              @if (givenNameInvalid()) {
+                <span class="error-message">Nombre requerido</span>
+              }
+            </div>
+
+            <div class="form-group">
+              <label for="surname">Apellidos</label>
+              <input
+                type="text"
+                id="surname"
+                formControlName="surname"
+                placeholder="Pérez"
+                [class.error]="surnameInvalid()"
+              />
+              @if (surnameInvalid()) {
+                <span class="error-message">Apellidos requeridos</span>
               }
             </div>
 
@@ -427,7 +441,8 @@ export class RegisterComponent {
 
   // Form
   registerForm = this.fb.group({
-    fullName: ['', [Validators.required, Validators.minLength(2)]],
+  given_name: ['', [Validators.required, Validators.minLength(2)]],
+  surname: ['', [Validators.required, Validators.minLength(2)]],
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
     confirmPassword: ['', [Validators.required]],
@@ -448,7 +463,17 @@ export class RegisterComponent {
 
   // Computed properties para validación
   fullNameInvalid = () => {
-    const control = this.registerForm.get('fullName');
+    const control = this.registerForm.get('given_name');
+    return control?.invalid && control?.touched;
+  };
+
+  givenNameInvalid = () => {
+    const control = this.registerForm.get('given_name');
+    return control?.invalid && control?.touched;
+  };
+
+  surnameInvalid = () => {
+    const control = this.registerForm.get('surname');
     return control?.invalid && control?.touched;
   };
 
@@ -489,11 +514,13 @@ export class RegisterComponent {
     this.errorMessage.set('');
 
     const formValue = this.registerForm.value;
-    
+
     const registerData: RegisterData = {
-      email: formValue.email! ,
+      email: formValue.email!,
       password: formValue.password!,
-      full_name: formValue.fullName!,
+      given_name: formValue.given_name!,
+      surname: formValue.surname!,
+      full_name: `${formValue.given_name} ${formValue.surname}`,
       company_name: formValue.companyName || undefined
     };
 

@@ -322,6 +322,14 @@ import { DevRoleService } from '../../services/dev-role.service';
                       class="gdpr-dropdown hidden absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10"
                     >
                       <button
+                        (click)="sendConsentRequest(customer); $event.stopPropagation()"
+                        class="block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
+                      >
+                        <i class="fas fa-envelope-open-text mr-2"></i>
+                        Solicitar Consentimiento
+                      </button>
+
+                      <button
                         (click)="requestDataAccess(customer); $event.stopPropagation()"
                         class="block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
                       >
@@ -985,6 +993,26 @@ export class SupabaseCustomersComponent implements OnInit {
         this.toastService.error('Error RGPD', 'No se pudieron exportar los datos del cliente');
       }
     });
+  }
+
+  // Create a consent request and show a shareable link
+  sendConsentRequest(customer: Customer) {
+    if (!customer.email) {
+      this.toastService.error('Error', 'El cliente debe tener un email para solicitar consentimiento');
+      return;
+    }
+    this.gdprService.createConsentRequest(customer.id, customer.email, ['data_processing','marketing','analytics'], 'Gestión de consentimiento')
+      .subscribe({
+        next: ({ path }) => {
+          const url = `${window.location.origin}${path}`;
+          navigator.clipboard?.writeText(url);
+          this.toastService.success('Enlace de consentimiento copiado al portapapeles', 'Consentimiento');
+        },
+        error: (err) => {
+          console.error('Error creating consent request', err);
+          this.toastService.error('No se pudo crear la solicitud de consentimiento', 'Error');
+        }
+      });
   }
 
   // Anonymize customer data (GDPR erasure)

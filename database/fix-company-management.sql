@@ -15,6 +15,26 @@
 -- Asegurar extensión para gen_random_uuid()
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- Añadir columna surname a public.users y backfill desde name (split)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'surname'
+    ) THEN
+        ALTER TABLE public.users ADD COLUMN surname TEXT;
+
+        -- Backfill: mover la parte después del primer espacio a surname, dejar el primer token en name
+        UPDATE public.users
+        SET surname = NULLIF(regexp_replace(name, '^[^\s]+\s*', ''), '')
+        WHERE surname IS NULL;
+
+        UPDATE public.users
+        SET name = split_part(name, ' ', 1)
+        WHERE name IS NOT NULL;
+    END IF;
+END$$;
+
 CREATE TABLE IF NOT EXISTS public.company_invitations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,

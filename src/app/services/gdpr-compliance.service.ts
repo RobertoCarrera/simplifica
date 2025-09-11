@@ -468,6 +468,30 @@ export class GdprComplianceService {
     });
   }
 
+  // ========================================
+  // CONSENT PORTAL HELPERS
+  // ========================================
+
+  /**
+   * Create a tokenized consent request for a client and return a shareable URL path
+   */
+  createConsentRequest(clientId: string | null, email: string, consentTypes: string[] = ['data_processing','marketing','analytics'], purpose?: string): Observable<{ path: string; token: string; }>
+  {
+    const sb = this.supabase;
+    return from(sb.rpc('gdpr_create_consent_request', {
+      p_client_id: clientId,
+      p_subject_email: email,
+      p_consent_types: consentTypes,
+      p_purpose: purpose || 'Consent management'
+    })).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        if (!data?.success) throw new Error(data?.error || 'Failed to create consent request');
+        return { path: data.path as string, token: data.token as string };
+      })
+    );
+  }
+
   /**
    * Get audit log entries
    */
