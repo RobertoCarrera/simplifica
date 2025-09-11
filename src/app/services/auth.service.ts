@@ -105,6 +105,44 @@ export class AuthService {
   // Exponer cliente supabase directamente para componentes de callback/reset
   get client() { return this.supabase; }
 
+  // Método auxiliar para operaciones que requieren sesión válida
+  private async retryWithSession<T>(
+    operation: () => Promise<T>, 
+    maxRetries: number = 3
+  ): Promise<T> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Verificar sesión antes de cada intento
+        const { data: { session } } = await this.supabase.auth.getSession();
+        
+        if (!session || !session.access_token) {
+          console.warn(`🔄 No valid session on attempt ${attempt}, waiting...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          
+          // Intentar refrescar la sesión
+          await this.supabase.auth.refreshSession();
+          continue;
+        }
+        
+        return await operation();
+      } catch (error: any) {
+        const isAuthError = error?.message?.includes('JWT') || 
+                           error?.message?.includes('authorization') ||
+                           error?.code === '401';
+        
+        if (isAuthError && attempt < maxRetries) {
+          console.warn(`🔄 Auth error on attempt ${attempt}, retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          continue;
+        }
+        
+        throw error;
+      }
+    }
+    
+    throw new Error('Failed to execute operation with valid session after retries');
+  }
+
   // Método auxiliar para reintentar operaciones que fallan por NavigatorLockAcquireTimeoutError
   private async retryWithBackoff<T>(
     operation: () => Promise<T>, 
@@ -249,8 +287,33 @@ export class AuthService {
       
       console.log('🏢 Creating company:', finalCompanyName);
       
-      // Usar retry para operaciones críticas que pueden fallar por locks
-      const company = await this.retryWithBackoff(async () => {
+      // DIAGNÓSTICO: Verificar estado de autenticación antes de crear empresa
+      // Dar tiempo a que la sesión se establezca
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const { data: { session } } = await this.supabase.auth.getSession();
+      console.log('🔍 Session before company creation:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        email: session?.user?.email,
+        accessToken: session?.access_token ? 'present' : 'missing'
+      });
+      
+      if (!session || !session.access_token) {
+        console.error('🚨 No valid session - attempting to refresh...');
+        
+        // Intentar refrescar la sesión
+        const { data: refreshData, error: refreshError } = await this.supabase.auth.refreshSession();
+        
+        if (refreshError || !refreshData.session) {
+          throw new Error('No valid session found when trying to create company and refresh failed');
+        }
+        
+        console.log('✅ Session refreshed successfully');
+      }
+      
+      // Usar retry con validación de sesión para operaciones críticas
+      const company = await this.retryWithSession(async () => {
         const { data, error } = await this.supabase
           .from('companies')
           .insert({ name: finalCompanyName, slug: this.generateSlug(finalCompanyName) })
@@ -259,6 +322,17 @@ export class AuthService {
         
         if (error) {
           console.error('❌ Error creating company:', error);
+          
+          // Diagnóstico específico para errores RLS
+          if (error.code === '42501') {
+            console.error('🚨 RLS POLICY VIOLATION: Las políticas RLS están bloqueando la creación de empresa');
+            console.error('Ejecuta el script database/fix-rls-simple.sql en Supabase Dashboard');
+          }
+          
+          if (error.message?.includes('JWT') || error.message?.includes('authorization')) {
+            console.error('🚨 AUTH TOKEN ISSUE: Problema con el token de autenticación');
+          }
+          
           throw error;
         }
         
@@ -360,6 +434,29 @@ export class AuthService {
 
       if (data.user) {
         console.log('✅ Auth user created, now creating app user...');
+        
+        // Si no hay sesión automática, necesitamos establecer una manualmente para crear la empresa
+        if (!data.session) {
+          console.log('⚠️ No automatic session, attempting manual login...');
+          
+          // Intentar hacer login automático para establecer la sesión
+          const { data: loginData, error: loginError } = await this.retryWithBackoff(async () => {
+            return await this.supabase.auth.signInWithPassword({
+              email: registerData.email,
+              password: registerData.password
+            });
+          });
+          
+          if (loginError) {
+            console.error('❌ Failed to establish session after registration:', loginError);
+            throw loginError;
+          }
+          
+          if (loginData.session) {
+            console.log('✅ Session established after manual login');
+          }
+        }
+        
         // Crear fila app con empresa (si se proporciona nombre)
         await this.ensureAppUser(data.user, registerData.company_name);
         console.log('✅ App user created successfully');
