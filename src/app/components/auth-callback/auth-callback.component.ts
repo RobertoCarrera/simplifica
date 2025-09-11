@@ -84,11 +84,21 @@ export class AuthCallbackComponent implements OnInit {
 
   async ngOnInit() {
     try {
-      // Obtener los fragments de la URL (access_token, refresh_token, etc.)
+      // PRIMERO: Verificar si el usuario ya está autenticado
+      const { data: { session } } = await this.authService.client.auth.getSession();
+      
+      if (session && session.user) {
+        console.log('[AUTH-CALLBACK] User already authenticated, redirecting...');
+        this.loading = false;
+        this.error = false;
+        await this.redirectToMainApp();
+        return;
+      }
+
+      // SEGUNDO: Procesar tokens de confirmación de email
       const rawHash = window.location.hash;
       const fragment = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
       const params = new URLSearchParams(fragment);
-      // También intentar leer como querystring (algunos proveedores envían ?access_token=)
       const searchParams = new URLSearchParams(window.location.search);
       
       let accessToken = params.get('access_token') || searchParams.get('access_token');
@@ -100,7 +110,7 @@ export class AuthCallbackComponent implements OnInit {
       console.log('[AUTH-CALLBACK] location.search=', window.location.search);
       console.log('[AUTH-CALLBACK] tokens presence:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
 
-      // Si los tokens vienen empaquetados en "#access_token=...&refresh_token=..." pero el navegador truncó algo, intentar decode
+      // Fallback para extraer tokens si están mal parseados
       if (!accessToken && fragment.includes('access_token=')) {
         const possible = fragment.split('&').find(p => p.startsWith('access_token='));
         if (possible) accessToken = possible.split('=')[1];
@@ -111,82 +121,85 @@ export class AuthCallbackComponent implements OnInit {
       }
       console.log('[AUTH-CALLBACK] after fallback extraction:', { accessToken: !!accessToken, refreshToken: !!refreshToken });
 
-      // Manejar errores específicos de Supabase antes de procesar tokens
-      const error = params.get('error') || searchParams.get('error');
+      // Manejar errores específicos de Supabase
+      const authError = params.get('error') || searchParams.get('error');
       const errorCode = params.get('error_code') || searchParams.get('error_code');
       const errorDescription = params.get('error_description') || searchParams.get('error_description');
 
-      if (error) {
-        console.error('[AUTH-CALLBACK] Supabase error:', { error, errorCode, errorDescription });
-        
-        if (error === 'server_error' && errorCode === 'unexpected_failure') {
-          // Error específico: usuario ya confirmado o problema interno
-          this.loading = false;
-          this.error = true;
-          this.showAccountConfirmedHint = true;
-          this.errorMessage = 'Error interno del servidor de autenticación. Tu cuenta puede estar ya confirmada. Intenta hacer login directamente.';
-          
-          // Ofrecer redirección automática al login después de mostrar el error
-          setTimeout(() => {
-            this.router.navigate(['/login'], { 
-              queryParams: { 
-                message: 'account_may_be_confirmed',
-                email: 'robertocarreratech@gmail.com' // Del contexto del registro
-              }
-            });
-          }, 5000);
-          return;
-        } else {
-          // Otros errores de Supabase
-          this.loading = false;
-          this.error = true;
-          this.errorMessage = `Error de autenticación: ${decodeURIComponent(errorDescription || error)}`;
-          return;
-        }
+      if (authError) {
+        console.error('[AUTH-CALLBACK] Supabase error:', { authError, errorCode, errorDescription });
+        this.handleAuthError(authError, errorCode, errorDescription);
+        return;
       }
       
-      if (accessToken && refreshToken) {
-        // Establecer la sesión con los tokens (usando el método de supabase directamente)
-        const { error } = await this.authService.client.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken
-        });
-        
-        if (error) {
-          throw error;
-        }
-        
-        this.loading = false;
-        await this.authService.refreshCurrentUser();
-        this.toastService.success('¡Éxito!', 'Autenticación exitosa');
-        
-        // Redirigir al dashboard después de un breve delay
-        setTimeout(() => {
-          this.router.navigate(['/clientes']);
-        }, 1500);
-        
-      } else if (type === 'signup') {
-        // Manejar confirmación de registro
-        this.loading = false;
-        this.toastService.success('¡Registro exitoso!', 'Ya puedes iniciar sesión');
-        setTimeout(() => {
-          this.router.navigate(['/login']);
-        }, 2000);
-        
-      } else {
-        // No hay tokens válidos
-        console.error('[AUTH-CALLBACK] No se encontraron tokens de autenticación válidos. URL actual:', window.location.href);
-        this.loading = false;
-        this.error = true;
-        this.errorMessage = 'No se pudieron obtener los tokens de autenticación. Por favor, intenta nuevamente.';
+      // Si no hay tokens válidos, pero tampoco errores, puede ser una navegación directa
+      if (!accessToken || !refreshToken) {
+        console.log('[AUTH-CALLBACK] No se encontraron tokens de autenticación válidos. URL actual:', window.location.href);
+        this.handleNoTokens();
+        return;
+      }
+
+      // Establecer la sesión con los tokens
+      const { error: sessionError } = await this.authService.client.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken
+      });
+      
+      if (sessionError) {
+        throw sessionError;
       }
       
-    } catch (error) {
+      this.loading = false;
+      await this.authService.refreshCurrentUser();
+      this.toastService.success('¡Éxito!', 'Autenticación exitosa');
+      
+      // Redirigir al dashboard después de un breve delay
+      setTimeout(() => {
+        this.router.navigate(['/clientes']);
+      }, 1500);
+      
+    } catch (error: any) {
       console.error('[AUTH-CALLBACK] Error en auth callback:', error);
       this.loading = false;
       this.error = true;
       this.errorMessage = 'Ocurrió un error durante la autenticación. Por favor, intenta nuevamente.';
     }
+  }
+
+  private async redirectToMainApp() {
+    // Esperar un momento para que la UI se actualice
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    this.router.navigate(['/clientes']);
+  }
+
+  private handleAuthError(authError: string, errorCode: string | null, errorDescription: string | null) {
+    if (authError === 'server_error' && errorCode === 'unexpected_failure') {
+      // Error específico: usuario ya confirmado o problema interno
+      this.loading = false;
+      this.error = true;
+      this.showAccountConfirmedHint = true;
+      this.errorMessage = 'Error interno del servidor de autenticación. Tu cuenta puede estar ya confirmada. Intenta hacer login directamente.';
+      
+      // Ofrecer redirección automática al login después de mostrar el error
+      setTimeout(() => {
+        this.router.navigate(['/login'], { 
+          queryParams: { 
+            message: 'account_may_be_confirmed'
+          }
+        });
+      }, 5000);
+    } else {
+      // Otros errores de Supabase
+      this.loading = false;
+      this.error = true;
+      this.errorMessage = `Error de autenticación: ${decodeURIComponent(errorDescription || authError)}`;
+    }
+  }
+
+  private handleNoTokens() {
+    this.loading = false;
+    this.error = true;
+    this.errorMessage = 'No se pudieron obtener los tokens de autenticación. Por favor, intenta nuevamente.';
   }
 
   redirectToLogin() {
