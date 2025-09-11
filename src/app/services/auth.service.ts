@@ -197,16 +197,27 @@ export class AuthService {
     this.currentUserSubject.next(user);
     this.isAuthenticated.set(true);
 
-    // Aseguramos existencia de fila app (sin crear empresa, ya existe)
-    await this.ensureAppUser(user);
+    // Verificar si ya existe el usuario antes de llamar ensureAppUser
+    const existingAppUser = await this.fetchAppUserByAuthId(user.id);
+    
+    if (!existingAppUser) {
+      console.log('🔄 User not found in app database, creating...');
+      try {
+        await this.ensureAppUser(user);
+      } catch (error) {
+        console.error('❌ Error ensuring app user exists:', error);
+        // No propagar el error para evitar bloqueos en login
+      }
+    }
+    
     // Cargar datos finales
-    const appUser = await this.fetchAppUserByAuthId(user.id);
+    const appUser = existingAppUser || await this.fetchAppUserByAuthId(user.id);
     if (appUser) {
       this.userProfileSubject.next(appUser);
       this.userRole.set(appUser.role);
       if (appUser.company_id) this.companyId.set(appUser.company_id);
-  // Sólo admin es considerado admin; owner es rol de negocio sin privilegios dev
-  this.isAdmin.set(appUser.role === 'admin');
+      // Sólo admin es considerado admin; owner es rol de negocio sin privilegios dev
+      this.isAdmin.set(appUser.role === 'admin');
     }
   }
 
