@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { SimpleSupabaseService } from './simple-supabase.service';
+import { environment } from '../../environments/environment';
 
 export interface Service {
   id: string;
@@ -243,23 +244,41 @@ export class SupabaseServicesService {
     if (error) throw error;
 
     // Transform services data to services format
-  return (services || []).map((service: any) => ({
+    const mapped = (services || []).map((service: any) => ({
       id: service.id,
       name: service.name,
       description: service.description || '',
       base_price: service.base_price || 0,
       estimated_hours: service.estimated_hours || 0,
-      category: service.category || 'Servicio Técnico',
-      is_active: service.is_active !== undefined ? service.is_active : true, // Usar campo is_active de la BD
+  category: service.category || 'Servicio Técnico',
+  is_active: service.is_active !== undefined ? service.is_active : true, // Usar campo is_active de la BD
+  // Additional management fields
+  tax_rate: service.tax_rate !== undefined && service.tax_rate !== null ? Number(service.tax_rate) : undefined,
+  unit_type: service.unit_type || undefined,
+  min_quantity: service.min_quantity !== undefined && service.min_quantity !== null ? Number(service.min_quantity) : undefined,
+  max_quantity: service.max_quantity !== undefined && service.max_quantity !== null ? Number(service.max_quantity) : undefined,
+  difficulty_level: service.difficulty_level !== undefined && service.difficulty_level !== null ? Number(service.difficulty_level) : undefined,
+  profit_margin: service.profit_margin !== undefined && service.profit_margin !== null ? Number(service.profit_margin) : undefined,
+  cost_price: service.cost_price !== undefined && service.cost_price !== null ? Number(service.cost_price) : undefined,
+  requires_parts: !!service.requires_parts,
+  requires_diagnosis: !!service.requires_diagnosis,
+  warranty_days: service.warranty_days !== undefined && service.warranty_days !== null ? Number(service.warranty_days) : undefined,
+  skill_requirements: service.skill_requirements || [],
+  tools_required: service.tools_required || [],
+  can_be_remote: !!service.can_be_remote,
+  priority_level: service.priority_level !== undefined && service.priority_level !== null ? Number(service.priority_level) : undefined,
       // Preferir company_id almacenado en service cuando exista
       company_id: service.company_id ? service.company_id : companyId.toString(),
       created_at: service.created_at,
       updated_at: service.updated_at || service.created_at
     }));
+
+    // Load tags relations from service_tag_relations -> service_tags
+    return await this.loadServiceTagsForServices(mapped);
   }
 
   async createService(serviceData: Partial<Service>): Promise<Service> {
-    // Usar tabla services para la persistencia
+    // Prepare payload for DB insert
     const serviceDataForDB: any = {
       name: serviceData.name,
       description: serviceData.description,
@@ -269,6 +288,38 @@ export class SupabaseServicesService {
 
     if (serviceData.company_id) serviceDataForDB.company_id = serviceData.company_id;
 
+  // Management fields
+  if (serviceData.tax_rate !== undefined) serviceDataForDB.tax_rate = serviceData.tax_rate;
+  if (serviceData.unit_type !== undefined) serviceDataForDB.unit_type = serviceData.unit_type;
+  if (serviceData.min_quantity !== undefined) serviceDataForDB.min_quantity = serviceData.min_quantity;
+  if (serviceData.max_quantity !== undefined) serviceDataForDB.max_quantity = serviceData.max_quantity;
+  if (serviceData.difficulty_level !== undefined) serviceDataForDB.difficulty_level = serviceData.difficulty_level;
+  if (serviceData.profit_margin !== undefined) serviceDataForDB.profit_margin = serviceData.profit_margin;
+  if (serviceData.cost_price !== undefined) serviceDataForDB.cost_price = serviceData.cost_price;
+  if (serviceData.requires_parts !== undefined) serviceDataForDB.requires_parts = serviceData.requires_parts;
+  if (serviceData.requires_diagnosis !== undefined) serviceDataForDB.requires_diagnosis = serviceData.requires_diagnosis;
+  if (serviceData.warranty_days !== undefined) serviceDataForDB.warranty_days = serviceData.warranty_days;
+  if (serviceData.skill_requirements !== undefined) serviceDataForDB.skill_requirements = serviceData.skill_requirements;
+  if (serviceData.tools_required !== undefined) serviceDataForDB.tools_required = serviceData.tools_required;
+  if (serviceData.can_be_remote !== undefined) serviceDataForDB.can_be_remote = serviceData.can_be_remote;
+  if (serviceData.priority_level !== undefined) serviceDataForDB.priority_level = serviceData.priority_level;
+
+    // If a category is provided, try to resolve it to a category id
+    if (serviceData.category) {
+      try {
+        if (this.isValidUuid(serviceData.category)) {
+          serviceDataForDB.category = serviceData.category;
+        } else {
+          const companyId = serviceData.company_id || this.currentCompanyId;
+          const category = await this.findOrCreateCategory(serviceData.category as string, companyId);
+          serviceDataForDB.category = category.id;
+        }
+      } catch (err) {
+        console.warn('Warning: could not resolve category to id on createService, storing raw value', err);
+        serviceDataForDB.category = serviceData.category;
+      }
+    }
+
     const { data, error } = await this.supabase.getClient()
       .from('services')
       .insert([serviceDataForDB])
@@ -277,15 +328,24 @@ export class SupabaseServicesService {
 
     if (error) throw error;
 
+    // If tags were provided, sync them to relations
+    if (serviceData.tags && Array.isArray(serviceData.tags) && data?.id) {
+      try {
+        await this.syncServiceTags(data.id, serviceData.tags as string[]);
+      } catch (e) {
+        console.warn('Could not sync tags on createService:', e);
+      }
+    }
+
     return {
       id: data.id,
       name: data.name,
       description: data.description || '',
       base_price: data.base_price || 0,
       estimated_hours: data.estimated_hours || 0,
-      category: serviceData.category || 'Servicio Técnico',
+      category: data.category || serviceData.category || 'Servicio Técnico',
       is_active: true,
-      company_id: serviceData.company_id || this.currentCompanyId,
+      company_id: data.company_id || serviceData.company_id || this.currentCompanyId,
       created_at: data.created_at,
       updated_at: data.updated_at || data.created_at
     };
@@ -300,6 +360,36 @@ export class SupabaseServicesService {
       updated_at: new Date().toISOString()
     };
     if (updates.company_id) serviceData.company_id = updates.company_id;
+  // Management fields
+  if (updates.tax_rate !== undefined) serviceData.tax_rate = updates.tax_rate;
+  if (updates.unit_type !== undefined) serviceData.unit_type = updates.unit_type;
+  if (updates.min_quantity !== undefined) serviceData.min_quantity = updates.min_quantity;
+  if (updates.max_quantity !== undefined) serviceData.max_quantity = updates.max_quantity;
+  if (updates.difficulty_level !== undefined) serviceData.difficulty_level = updates.difficulty_level;
+  if (updates.profit_margin !== undefined) serviceData.profit_margin = updates.profit_margin;
+  if (updates.cost_price !== undefined) serviceData.cost_price = updates.cost_price;
+  if (updates.requires_parts !== undefined) serviceData.requires_parts = updates.requires_parts;
+  if (updates.requires_diagnosis !== undefined) serviceData.requires_diagnosis = updates.requires_diagnosis;
+  if (updates.warranty_days !== undefined) serviceData.warranty_days = updates.warranty_days;
+  if (updates.skill_requirements !== undefined) serviceData.skill_requirements = updates.skill_requirements;
+  if (updates.tools_required !== undefined) serviceData.tools_required = updates.tools_required;
+  if (updates.can_be_remote !== undefined) serviceData.can_be_remote = updates.can_be_remote;
+  if (updates.priority_level !== undefined) serviceData.priority_level = updates.priority_level;
+    // Resolve category name to id if needed
+    if (updates.category) {
+      try {
+        if (this.isValidUuid(updates.category)) {
+          serviceData.category = updates.category;
+        } else {
+          const companyId = updates.company_id || this.currentCompanyId;
+          const category = await this.findOrCreateCategory(updates.category as string, companyId);
+          serviceData.category = category.id;
+        }
+      } catch (err) {
+        console.warn('Warning: could not resolve category to id on updateService', err);
+        serviceData.category = updates.category;
+      }
+    }
 
     const { data, error } = await this.supabase.getClient()
       .from('services')
@@ -309,6 +399,14 @@ export class SupabaseServicesService {
       .single();
 
     if (error) throw error;
+    // If tags were provided, sync them to relations
+    if (updates.tags && Array.isArray(updates.tags)) {
+      try {
+        await this.syncServiceTags(id, updates.tags as string[]);
+      } catch (e) {
+        console.warn('Could not sync tags on updateService:', e);
+      }
+    }
 
     return {
       id: data.id,
@@ -316,7 +414,7 @@ export class SupabaseServicesService {
       description: data.description || '',
       base_price: data.base_price || 0,
       estimated_hours: data.estimated_hours || 0,
-      category: updates.category || 'Servicio Técnico',
+      category: data.category || updates.category || 'Servicio Técnico',
       is_active: updates.is_active !== false,
       company_id: updates.company_id || this.currentCompanyId,
       created_at: data.created_at,
@@ -379,13 +477,27 @@ export class SupabaseServicesService {
     const service = services.find(s => s.id === id);
     if (!service) throw new Error('Service not found');
 
-    const duplicatedService = {
+    const duplicatedService: any = {
       name: `${service.name} (Copia)`,
       description: service.description,
       base_price: service.base_price,
       estimated_hours: service.estimated_hours,
-      category: service.category
+      company_id: service.company_id
     };
+
+    // Preserve category: if it's already an id, keep it; if it's a name, try to resolve
+    if (service.category) {
+      if (this.isValidUuid(service.category)) {
+        duplicatedService.category = service.category;
+      } else {
+        try {
+          const category = await this.findOrCreateCategory(service.category as string, service.company_id);
+          duplicatedService.category = category.id;
+        } catch (err) {
+          console.warn('Could not resolve category when duplicating service:', err);
+        }
+      }
+    }
 
     return this.createService(duplicatedService);
   }
@@ -619,5 +731,291 @@ export class SupabaseServicesService {
 
   getCurrentCompanyId(): string {
     return this.currentCompanyId;
+  }
+
+  /**
+   * Importar services desde CSV. Se insertan usando createService para resolver categoría/tags.
+   * Formato esperado (columnas flexibles, se intentan mapear por nombre):
+   * name,description,base_price,estimated_hours,category,tags (tags separados por |)
+   */
+  importFromCSV(file: File): Promise<Service[]> {
+    const MAX = 1000;
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const csv = String(e.target?.result || '');
+          const lines = csv.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+          if (lines.length === 0) return reject(new Error('CSV vacío'));
+
+          const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+          const rows = lines.slice(1).map(line => line.split(',').map(c => c.trim()));
+
+          if (rows.length > MAX) return reject(new Error(`Máximo ${MAX} filas permitidas`));
+
+          const created: Service[] = [];
+
+          // Try batch import via Edge Function first
+          const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-services`;
+          try {
+            const payloadRows = rows.map(cols => {
+              const obj: any = {};
+              header.forEach((h, i) => obj[h] = cols[i] ?? '');
+              const tags = (obj['tags'] || obj['tag'] || '').split('|').map((t: string) => t.trim()).filter(Boolean);
+              const companyId = this.currentCompanyId || obj['company_id'] || undefined;
+              return {
+                name: obj['name'] || obj['nombre'] || 'Servicio importado',
+                description: obj['description'] || obj['descripcion'] || '',
+                base_price: obj['base_price'] ? Number(obj['base_price']) : 0,
+                estimated_hours: obj['estimated_hours'] ? Number(obj['estimated_hours']) : 0,
+                company_id: companyId,
+                category_name: obj['category'] || obj['categoria'] || undefined,
+                tags
+              };
+            });
+
+            const resp = await fetch(functionUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
+            });
+
+            if (resp.ok) {
+              const json = await resp.json();
+              const insertedRows = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+              for (const svcRow of insertedRows) {
+                const svc: Service = {
+                  id: svcRow.id,
+                  name: svcRow.name,
+                  description: svcRow.description || '',
+                  base_price: svcRow.base_price || 0,
+                  estimated_hours: svcRow.estimated_hours || 0,
+                  category: svcRow.category || 'Servicio Técnico',
+                  is_active: svcRow.is_active !== undefined ? svcRow.is_active : true,
+                  company_id: svcRow.company_id || this.currentCompanyId || '',
+                  created_at: svcRow.created_at,
+                  updated_at: svcRow.updated_at || svcRow.created_at
+                };
+                created.push(svc);
+              }
+              resolve(created);
+              return;
+            } else {
+              console.warn('Edge function import failed, falling back to per-row import', resp.status, await resp.text());
+            }
+          } catch (err) {
+            console.warn('Edge function call error, falling back to per-row import', err);
+          }
+
+          // Helper to perform REST calls with anon key
+          const restFetch = async (path: string, options: RequestInit = {}) => {
+            const url = `${environment.supabase.url}/rest/v1/${path}`;
+            const defaultHeaders: Record<string, string> = {
+              'Content-Type': 'application/json',
+              'apikey': environment.supabase.anonKey,
+              'Authorization': `Bearer ${environment.supabase.anonKey}`
+            };
+            options.headers = Object.assign({}, defaultHeaders, options.headers || {});
+            const res = await fetch(url, options as any);
+            const contentType = res.headers.get('content-type') || '';
+            const body = contentType.includes('application/json') ? await res.json() : await res.text();
+            if (res.status === 401) {
+              // Fallback: try using the Supabase client (might have a valid session)
+              try {
+                const client = this.supabase.getClient();
+                // Map REST path to client calls for simple cases used here
+                if (path.startsWith('service_categories')) {
+                  // If it's a filter query like service_categories?name=eq.X&company_id=eq.Y
+                  if (path.includes('?')) {
+                    const table = 'service_categories';
+                    const q = client.from(table).select('*');
+                    // We won't parse filters here; just return all for company if provided
+                    const companyParam = path.match(/company_id=eq.([^&]+)/);
+                    if (companyParam && companyParam[1]) {
+                      q.eq('company_id', decodeURIComponent(companyParam[1]));
+                    }
+                    const { data, error } = await q;
+                    if (error) throw error;
+                    return data || [];
+                  }
+                  // create
+                  const { data: createdCat, error: createErr } = await client
+                    .from('service_categories')
+                    .insert(JSON.parse(options.body as string))
+                    .select();
+                  if (createErr) throw createErr;
+                  return createdCat;
+                }
+
+                if (path === 'services') {
+                  if (options.method === 'POST') {
+                    const bodyObj = JSON.parse(options.body as string);
+                    const { data, error } = await client.from('services').insert(bodyObj).select();
+                    if (error) throw error;
+                    return data;
+                  }
+                }
+
+                if (path.startsWith('service_tags')) {
+                  if (options.method === 'POST') {
+                    const bodyObj = JSON.parse(options.body as string);
+                    const { data, error } = await client.from('service_tags').insert(bodyObj).select();
+                    if (error) throw error;
+                    return data;
+                  } else {
+                    // select by company
+                    const companyParam = path.match(/company_id=eq.([^&]+)/);
+                    const q = client.from('service_tags').select('*');
+                    if (companyParam && companyParam[1]) q.eq('company_id', decodeURIComponent(companyParam[1]));
+                    const { data, error } = await q;
+                    if (error) throw error;
+                    return data || [];
+                  }
+                }
+
+                if (path === 'service_tag_relations' && options.method === 'POST') {
+                  const bodyObj = JSON.parse(options.body as string);
+                  const { data, error } = await client.from('service_tag_relations').insert(bodyObj).select();
+                  if (error) throw error;
+                  return data;
+                }
+
+              } catch (clientErr) {
+                throw { status: 401, body: clientErr };
+              }
+            }
+
+            if (!res.ok) throw { status: res.status, body };
+            return body;
+          };
+
+          for (const cols of rows) {
+            const obj: any = {};
+            header.forEach((h, i) => obj[h] = cols[i] ?? '');
+
+            const tags = (obj['tags'] || obj['tag'] || '').split('|').map((t: string) => t.trim()).filter(Boolean);
+            const companyId = this.currentCompanyId || obj['company_id'] || undefined;
+
+            const payloadForInsert: any = {
+              name: obj['name'] || obj['nombre'] || 'Servicio importado',
+              description: obj['description'] || obj['descripcion'] || '',
+              base_price: obj['base_price'] ? Number(obj['base_price']) : 0,
+              estimated_hours: obj['estimated_hours'] ? Number(obj['estimated_hours']) : 0,
+              company_id: companyId
+            };
+
+            // Resolve or create category via REST if provided
+            if (obj['category'] || obj['categoria']) {
+              const catName = obj['category'] || obj['categoria'];
+              try {
+                // Try to find existing category
+                const encodedName = encodeURIComponent(catName);
+                let cats: any[] = [];
+                try {
+                  cats = await restFetch(`service_categories?name=eq.${encodedName}&company_id=eq.${encodeURIComponent(companyId || '')}`);
+                } catch (e) {
+                  // ignore
+                }
+                if (Array.isArray(cats) && cats.length > 0 && cats[0].id) {
+                  payloadForInsert.category = cats[0].id;
+                } else {
+                  // create category
+                  try {
+                    const createdCat = await restFetch('service_categories', {
+                      method: 'POST',
+                      headers: { Prefer: 'return=representation' },
+                      body: JSON.stringify([{ name: catName, company_id: companyId, color: '#6b7280', is_active: true }])
+                    });
+                    if (Array.isArray(createdCat) && createdCat[0]?.id) payloadForInsert.category = createdCat[0].id;
+                  } catch (e) {
+                    console.warn('No se pudo crear categoría por REST, guardando nombre bruto:', e);
+                    payloadForInsert.category = catName;
+                  }
+                }
+              } catch (err) {
+                console.warn('Error resolviendo categoría por REST:', err);
+                payloadForInsert.category = obj['category'] || obj['categoria'];
+              }
+            }
+
+            try {
+              // Insert service via REST and get representation
+              const inserted = await restFetch('services', {
+                method: 'POST',
+                headers: { Prefer: 'return=representation' },
+                body: JSON.stringify([payloadForInsert])
+              });
+
+              const svcRow = Array.isArray(inserted) ? inserted[0] : inserted;
+              const svc: Service = {
+                id: svcRow.id,
+                name: svcRow.name,
+                description: svcRow.description || '',
+                base_price: svcRow.base_price || 0,
+                estimated_hours: svcRow.estimated_hours || 0,
+                category: svcRow.category || payloadForInsert.category || 'Servicio Técnico',
+                is_active: svcRow.is_active !== undefined ? svcRow.is_active : true,
+                company_id: svcRow.company_id || companyId || this.currentCompanyId || '',
+                created_at: svcRow.created_at,
+                updated_at: svcRow.updated_at || svcRow.created_at
+              };
+
+              // Sync tags via REST (create tags if needed and create relations)
+              if (tags.length > 0) {
+                // Fetch existing tags for company
+                const existingTags: any[] = await (async () => {
+                  try {
+                    const resp = await restFetch(`service_tags?company_id=eq.${encodeURIComponent(svc.company_id)}`);
+                    return Array.isArray(resp) ? resp : [];
+                  } catch (e) { return []; }
+                })();
+
+                const tagIds: string[] = [];
+                for (const tname of tags) {
+                  let found = existingTags.find(et => String(et.name).toLowerCase() === String(tname).toLowerCase());
+                  if (!found) {
+                    try {
+                      const createdTag = await restFetch('service_tags', {
+                        method: 'POST',
+                        headers: { Prefer: 'return=representation' },
+                        body: JSON.stringify([{ name: tname, color: '#6b7280', company_id: svc.company_id, is_active: true }])
+                      });
+                      found = Array.isArray(createdTag) ? createdTag[0] : createdTag;
+                      existingTags.push(found);
+                    } catch (e) {
+                      console.warn('Error creando tag por REST, intentando continuar:', e);
+                    }
+                  }
+                  if (found && found.id) tagIds.push(found.id);
+                }
+
+                if (tagIds.length > 0) {
+                  const relations = tagIds.map(tid => ({ service_id: svc.id, tag_id: tid }));
+                  try {
+                    await restFetch('service_tag_relations', {
+                      method: 'POST',
+                      headers: { Prefer: 'resolution=merge-duplicates' },
+                      body: JSON.stringify(relations)
+                    });
+                  } catch (e) {
+                    console.warn('Error creando relaciones tags por REST:', e);
+                  }
+                }
+              }
+
+              created.push(svc);
+            } catch (e) {
+              console.warn('Error importing row, skipping:', e);
+            }
+          }
+
+          resolve(created);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsText(file, 'utf-8');
+    });
   }
 }

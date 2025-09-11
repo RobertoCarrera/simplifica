@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
+  "import-server": "node scripts/import-server.js",
     "start": "ng serve",
     "build": "ng build",
     "build:vercel": "ng build --configuration production",

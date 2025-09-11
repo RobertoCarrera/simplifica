@@ -17,6 +17,22 @@
             <option *ngFor="let c of companies" [value]="c.id">{{ c.name }} ({{ c.id }})</option>
           </select>
         </div> }
+        <input
+          #serviceFileInput
+          type="file"
+          accept=".csv"
+          (change)="importServices($event)"
+          class="hidden"
+        >
+        <button
+          (click)="serviceFileInput.click()"
+          class="btn btn-secondary"
+          [disabled]="loading"
+          title="Importar servicios desde CSV"
+        >
+          <i class="fas fa-upload"></i>
+          Importar CSV
+        </button>
         <div class="search-input-container">
           <i class="fas fa-search search-icon"></i>
           <input 
@@ -100,7 +116,7 @@
           <div class="service-info">
             <h3 class="service-name">{{ service.name }}</h3>
             <div class="service-category" [style.background-color]="getCategoryColor(service.category || '')">
-              {{ service.category }}
+              {{ getCategoryLabel(service.category) }}
             </div>
           </div>
           <div class="service-actions">
@@ -168,7 +184,7 @@
           <div class="service-info">
             <h3 class="service-name">{{ service.name }}</h3>
             <div class="service-category inactive" [style.background-color]="getCategoryColor(service.category || '')">
-              {{ service.category }}
+              {{ getCategoryLabel(service.category) }}
             </div>
           </div>
           <div class="service-actions">
@@ -252,7 +268,8 @@
                   type="text" 
                   id="category"
                   class="form-control"
-                  [(ngModel)]="formData.category"
+                  [value]="$any(formData).category_name || formData.category"
+                  (input)="formData.category = $any($event.target).value; $any(formData).category_name = undefined"
                   name="category"
                   [class.error]="formErrors['category']"
                   (focus)="showCategoryInput = true"
