@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, Router, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
-import { Observable, map, take, filter, timeout, catchError, of, switchMap } from 'rxjs';
+import { Observable, map, take, filter, timeout, catchError, of, switchMap, combineLatest } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { DevRoleService } from '../services/dev-role.service';
 import { environment } from '../../environments/environment';
@@ -33,12 +33,15 @@ export class AuthGuard implements CanActivate {
           return of(false);
         }
 
-        // Requerir perfil de app activo para acceder a rutas protegidas
-        return this.authService.userProfile$.pipe(
-          filter(profile => profile !== undefined),
+        // Esperar a que termine la carga del perfil antes de decidir
+        return combineLatest([
+          this.authService.userProfile$,
+          this.authService.loading$
+        ]).pipe(
+          filter(([_, loading]) => !loading),
           take(1),
           timeout(5000),
-          map(profile => {
+          map(([profile]) => {
             if (profile && profile.active) {
               return true;
             }

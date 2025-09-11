@@ -455,11 +455,20 @@ export class ResponsiveSidebarComponent implements OnInit {
   // Computed menu items based on user role
   menuItems = computed(() => {
     const userRole = this.authService.userRole();
-  const isAdmin = userRole === 'admin';
-  const isDev = this.devRoleService.isDev();
-    
-  console.log('🔍 Menu filtering - Real user role:', userRole, 'Is adminOnly:', isAdmin, 'Is dev:', isDev);
-    
+    const profile = this.authService.userProfile;
+    const isAdmin = userRole === 'admin';
+    const isDev = this.devRoleService.isDev();
+
+    console.log('🔍 Menu filtering - Real user role:', userRole, 'Is adminOnly:', isAdmin, 'Is dev:', isDev);
+
+    // Si no hay perfil de app (usuario pendiente/invitado): menú mínimo
+    if (!profile) {
+      return [
+        { id: 1001, label: 'Confirmación', icon: 'auto_awesome', route: '/auth/confirm?pending=1', module: 'core' },
+        { id: 14, label: 'Ayuda', icon: 'help_outline', route: '/ayuda', module: 'core' }
+      ];
+    }
+
     return this.allMenuItems.filter(item => {
       // Core modules always visible
       if (item.module === 'core') {

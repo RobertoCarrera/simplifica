@@ -194,6 +194,8 @@ export class AuthService {
   }
 
   private async setCurrentUser(user: User) {
+  // Marcar carga mientras resolvemos el perfil de app
+  this.loadingSubject.next(true);
     this.currentUserSubject.next(user);
     this.isAuthenticated.set(true);
 
@@ -212,13 +214,15 @@ export class AuthService {
     
     // Cargar datos finales
     const appUser = existingAppUser || await this.fetchAppUserByAuthId(user.id);
-    if (appUser) {
+  if (appUser) {
       this.userProfileSubject.next(appUser);
       this.userRole.set(appUser.role);
       if (appUser.company_id) this.companyId.set(appUser.company_id);
       // Sólo admin es considerado admin; owner es rol de negocio sin privilegios dev
       this.isAdmin.set(appUser.role === 'admin');
     }
+  // Finalizar carga
+  this.loadingSubject.next(false);
   }
 
   private clearUserData() {

@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
 import { InvitationPendingComponent } from '../invitation-pending/invitation-pending.component';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-email-confirmation',
@@ -112,6 +113,7 @@ export class EmailConfirmationComponent implements OnInit {
   invitationCompanyName = '';
   invitationOwnerEmail = '';
   invitationMessage = '';
+  private sub?: Subscription;
   
   constructor(
     private route: ActivatedRoute,
@@ -120,6 +122,17 @@ export class EmailConfirmationComponent implements OnInit {
   ) {}
   
   ngOnInit() {
+    // Si ya hay perfil de app activo, no permanecer en esta página
+    this.sub = this.authService.userProfile$.subscribe(profile => {
+      if (profile && profile.active) {
+        // Si vino con ?pending=1 pero ya tiene perfil, redirigir a inicio
+        const hasPending = this.route.snapshot.queryParamMap.get('pending') === '1';
+        if (hasPending || !this.hasToken) {
+          this.router.navigate(['/inicio']);
+        }
+      }
+    });
+
     // Verificar si hay tokens en la URL
     this.route.fragment.subscribe(fragment => {
       if (fragment) {
