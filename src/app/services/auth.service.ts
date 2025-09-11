@@ -52,6 +52,7 @@ export class AuthService {
   private supabase: SupabaseClient;
   private router = inject(Router);
   private static initializationStarted = false; // Guard para evitar múltiples inicializaciones
+  private registrationInProgress = new Set<string>(); // Para evitar registros duplicados
 
   // Signals para estado reactivo
   private currentUserSubject = new BehaviorSubject<User | null>(null);
@@ -262,12 +263,22 @@ export class AuthService {
     try {
       console.log('🔄 Ensuring app user exists for:', authUser.email);
       
-      // 1. Buscar por auth_user_id
-      const existing = await this.supabase
-        .from('users')
-        .select('id, auth_user_id, email, role, company_id')
-        .eq('auth_user_id', authUser.id)
-        .maybeSingle();
+      // PROTECCIÓN: Verificar si ya hay un registro en progreso para este usuario
+      if (this.registrationInProgress.has(authUser.id)) {
+        console.log('⏳ Registration already in progress for this user, skipping...');
+        return;
+      }
+      
+      // Marcar como en progreso
+      this.registrationInProgress.add(authUser.id);
+      
+      try {
+        // 1. Buscar por auth_user_id
+        const existing = await this.supabase
+          .from('users')
+          .select('id, auth_user_id, email, role, company_id')
+          .eq('auth_user_id', authUser.id)
+          .maybeSingle();
       
       if (existing.error) {
         console.error('❌ Error checking existing user:', existing.error);
@@ -276,6 +287,7 @@ export class AuthService {
       
       if (existing.data) {
         console.log('✅ User already exists in app database');
+        this.registrationInProgress.delete(authUser.id);
         return; // ya está enlazado
       }
 
@@ -377,10 +389,17 @@ export class AuthService {
         return insertResult;
       });
       
-      console.log('✅ App user created successfully');
+        console.log('✅ App user created successfully');
+        
+      } finally {
+        // Remover la marca de progreso
+        this.registrationInProgress.delete(authUser.id);
+      }
       
     } catch (e) {
       console.error('❌ Error in ensureAppUser:', e);
+      // Remover la marca de progreso también en caso de error
+      this.registrationInProgress.delete(authUser.id);
       throw e;
     }
   }
@@ -414,7 +433,17 @@ export class AuthService {
     try {
       console.log('🚀 Starting registration process...', { email: registerData.email, company: registerData.company_name });
       
-      // Usar retry para el signup también
+      // PROTECCIÓN: Verificar si ya hay un registro en progreso para este email
+      if (this.registrationInProgress.has(registerData.email)) {
+        console.log('⏳ Registration already in progress for this email, skipping...');
+        return { success: false, error: 'Registration already in progress for this email' };
+      }
+      
+      // Marcar como en progreso
+      this.registrationInProgress.add(registerData.email);
+      
+      try {
+        // Usar retry para el signup también
       const { data, error } = await this.retryWithBackoff(async () => {
         return await this.supabase.auth.signUp({
           email: registerData.email,
@@ -435,6 +464,15 @@ export class AuthService {
       if (data.user) {
         console.log('✅ Auth user created, now creating app user...');
         
+        // Si requiere confirmación de email, crear registro pendiente
+        if (requiresEmailConfirm) {
+          console.log('📧 Email confirmation required, creating pending user record...');
+          await this.createPendingUser(data.user, registerData);
+          console.log('✅ Pending user record created, waiting for email confirmation...');
+          return { success: true, pendingConfirmation: true };
+        }
+        
+        // Si no requiere confirmación, proceder con el flujo normal
         // Si no hay sesión automática, necesitamos establecer una manualmente para crear la empresa
         if (!data.session) {
           console.log('⚠️ No automatic session, attempting manual login...');
@@ -462,9 +500,7 @@ export class AuthService {
         console.log('✅ App user created successfully');
       }
 
-      if (requiresEmailConfirm) {
-        return { success: true, pendingConfirmation: true };
-      }
+      // Si llegamos aquí, el registro se completó sin confirmación de email
 
       if (autoLogin) {
         // Si ya hay sesión onAuthStateChange disparará setCurrentUser
@@ -478,8 +514,14 @@ export class AuthService {
         }
       }
 
-      return { success: true, pendingConfirmation: false };
+        return { success: true, pendingConfirmation: false };
+      } finally {
+        // Remover la marca de progreso
+        this.registrationInProgress.delete(registerData.email);
+      }
     } catch (e: any) {
+      // Remover la marca de progreso también en caso de error
+      this.registrationInProgress.delete(registerData.email);
       return { success: false, error: this.getErrorMessage(e.message) };
     }
   }
@@ -582,5 +624,133 @@ export class AuthService {
   async refreshCurrentUser() {
     const { data: { session } } = await this.supabase.auth.getSession();
     if (session?.user) await this.setCurrentUser(session.user);
+  }
+
+  // ==========================================
+  // MÉTODOS DE CONFIRMACIÓN DE EMAIL
+  // ==========================================
+
+  /**
+   * Confirma el email del usuario usando el token de confirmación
+   */
+  async confirmEmail(fragmentOrParams: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('📧 Confirming email with params:', fragmentOrParams);
+      
+      // Extraer parámetros del fragment o query string
+      const params = new URLSearchParams(fragmentOrParams);
+      const token = params.get('token');
+      const type = params.get('type');
+      
+      if (type !== 'signup' || !token) {
+        return { success: false, error: 'Token de confirmación inválido o faltante' };
+      }
+      
+      // Verificar el token con Supabase Auth
+      const { data, error } = await this.supabase.auth.verifyOtp({
+        token_hash: token,
+        type: 'signup'
+      });
+      
+      if (error) {
+        console.error('❌ Email confirmation error:', error);
+        return { success: false, error: this.getErrorMessage(error.message) };
+      }
+      
+      if (!data.user) {
+        return { success: false, error: 'No se pudo verificar el usuario' };
+      }
+      
+      console.log('✅ Email confirmed, user:', data.user.id);
+      
+      // Ahora confirmar la registración completa usando nuestra función de base de datos
+      const { data: confirmResult, error: confirmError } = await this.supabase
+        .rpc('confirm_user_registration', {
+          p_auth_user_id: data.user.id
+        });
+      
+      if (confirmError) {
+        console.error('❌ Error confirming registration:', confirmError);
+        return { success: false, error: 'Error al completar el registro: ' + confirmError.message };
+      }
+      
+      const result = confirmResult as any;
+      
+      if (!result.success) {
+        return { success: false, error: result.error || 'Error desconocido al confirmar registro' };
+      }
+      
+      console.log('✅ Registration confirmed successfully:', result);
+      
+      // Actualizar el estado de autenticación
+      await this.setCurrentUser(data.user);
+      
+      return { success: true };
+      
+    } catch (error: any) {
+      console.error('❌ Unexpected error during email confirmation:', error);
+      return { success: false, error: error.message || 'Error inesperado' };
+    }
+  }
+
+  /**
+   * Reenvía el email de confirmación
+   */
+  async resendConfirmation(email?: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Si no se proporciona email, intentar obtenerlo del usuario actual
+      const targetEmail = email || this.currentUser?.email;
+      
+      if (!targetEmail) {
+        return { success: false, error: 'Email requerido para reenviar confirmación' };
+      }
+      
+      const { error } = await this.supabase.auth.resend({
+        type: 'signup',
+        email: targetEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/confirm`
+        }
+      });
+      
+      if (error) {
+        console.error('❌ Error resending confirmation:', error);
+        return { success: false, error: this.getErrorMessage(error.message) };
+      }
+      
+      console.log('✅ Confirmation email resent to:', targetEmail);
+      return { success: true };
+      
+    } catch (error: any) {
+      console.error('❌ Unexpected error resending confirmation:', error);
+      return { success: false, error: error.message || 'Error inesperado' };
+    }
+  }
+
+  /**
+   * Crea un registro pendiente de confirmación
+   */
+  private async createPendingUser(authUser: any, registerData: RegisterData): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('pending_users')
+        .insert({
+          email: registerData.email,
+          full_name: registerData.full_name,
+          company_name: registerData.company_name,
+          auth_user_id: authUser.id,
+          confirmation_token: crypto.randomUUID()
+        });
+      
+      if (error) {
+        console.error('❌ Error creating pending user:', error);
+        throw error;
+      }
+      
+      console.log('✅ Pending user record created');
+    } catch (error) {
+      console.error('❌ Failed to create pending user:', error);
+      throw error;
+    }
   }
 }

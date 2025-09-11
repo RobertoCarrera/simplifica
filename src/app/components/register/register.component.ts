@@ -505,10 +505,11 @@ export class RegisterComponent {
       if (result.success) {
         if (result.pendingConfirmation) {
           this.toastService.success(
-            'Cuenta creada. Revisa tu email para confirmar y luego inicia sesión.',
-            'Registro pendiente'
+            '📧 Te hemos enviado un email de confirmación. Revisa tu bandeja de entrada.',
+            'Confirma tu email'
           );
-          this.router.navigate(['/login']);
+          // Navegar a la página de confirmación para mostrar instrucciones
+          this.router.navigate(['/auth/confirm']);
         } else {
           this.toastService.success('Bienvenido 👋 Tu cuenta ha sido creada.', 'Registro exitoso');
           console.log('✅ Registration successful, redirecting to dashboard');

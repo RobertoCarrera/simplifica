@@ -31,6 +31,7 @@ import { AuthGuard, AdminGuard, GuestGuard, DevGuard } from './guards/auth.guard
 import { AuthCallbackComponent } from './components/auth-callback/auth-callback.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 import { AuthDebugComponent } from './components/auth-debug/auth-debug.component';
+import { EmailConfirmationComponent } from './components/email-confirmation/email-confirmation.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -47,6 +48,7 @@ export const routes: Routes = [
     {path: 'login', component: LoginComponent, canActivate: [GuestGuard]},
     {path: 'register', component: RegisterComponent, canActivate: [GuestGuard]},
     {path: 'auth/callback', component: AuthCallbackComponent}, // Callback de Supabase
+    {path: 'auth/confirm', component: EmailConfirmationComponent}, // Confirmación de email
     {path: 'reset-password', component: ResetPasswordComponent}, // Recuperación de contraseña
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
