@@ -238,7 +238,7 @@ export class AuthService {
         .from('users')
         .select(`id, auth_user_id, email, name, role, active, company_id, permissions, company:companies(id, name, slug, is_active, settings)`) // company join via foreign key name assumption
         .eq('auth_user_id', authId)
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error('❌ Error fetching app user:', error);
@@ -304,103 +304,118 @@ export class AuthService {
 
       console.log('➕ Creating new app user...');
 
-      // 2. Crear empresa con el nombre proporcionado o uno por defecto
-      let companyId: string | null = null;
-      const finalCompanyName = companyName || (authUser.email || 'Mi Empresa').split('@')[0];
-      
-      console.log('🏢 Creating company:', finalCompanyName);
-      
-      // DIAGNÓSTICO: Verificar estado de autenticación antes de crear empresa
-      // Dar tiempo a que la sesión se establezca
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const { data: { session } } = await this.supabase.auth.getSession();
-      console.log('🔍 Session before company creation:', {
-        hasSession: !!session,
-        userId: session?.user?.id,
-        email: session?.user?.email,
-        accessToken: session?.access_token ? 'present' : 'missing'
-      });
-      
-      if (!session || !session.access_token) {
-        console.error('🚨 No valid session - attempting to refresh...');
-        
-        // Intentar refrescar la sesión
-        const { data: refreshData, error: refreshError } = await this.supabase.auth.refreshSession();
-        
-        if (refreshError || !refreshData.session) {
-          throw new Error('No valid session found when trying to create company and refresh failed');
-        }
-        
-        console.log('✅ Session refreshed successfully');
-      }
-      
-      // Usar retry con validación de sesión para operaciones críticas
-      const company = await this.retryWithSession(async () => {
-        const { data, error } = await this.supabase
-          .from('companies')
-          .insert({ name: finalCompanyName, slug: this.generateSlug(finalCompanyName) })
-          .select()
-          .single();
-        
-        if (error) {
-          console.error('❌ Error creating company:', error);
-          
-          // Diagnóstico específico para errores RLS
-          if (error.code === '42501') {
-            console.error('🚨 RLS POLICY VIOLATION: Las políticas RLS están bloqueando la creación de empresa');
-            console.error('Ejecuta el script database/fix-rls-simple.sql en Supabase Dashboard');
-          }
-          
-          if (error.message?.includes('JWT') || error.message?.includes('authorization')) {
-            console.error('🚨 AUTH TOKEN ISSUE: Problema con el token de autenticación');
-          }
-          
-          throw error;
-        }
-        
-        return data;
-      });
-      
-      if (!company) {
-        throw new Error('Company creation returned no data');
-      }
-      
-      if (!company) {
-        throw new Error('Company creation returned no data');
-      }
-      
-      companyId = company.id;
-      console.log('✅ Company created with ID:', companyId);
+      // 2. Si existe un registro pendiente, delegar en la función de confirmación (backend decide)
+      const pendingRes = await this.supabase
+        .from('pending_users')
+        .select('company_name, confirmed_at, expires_at')
+        .eq('auth_user_id', authUser.id)
+        .order('created_at', { ascending: false })
+        .maybeSingle();
 
-      // 4. Crear fila usuario (companyId ya tiene valor garantizado)
-      if (!companyId) {
-        throw new Error('Company ID is required but was not created');
-      }
-      
-      console.log('👤 Creating user with company_id:', companyId);
-      
-      // Usar retry para la creación del usuario también
-      await this.retryWithBackoff(async () => {
-        const insertResult = await this.supabase.from('users').insert({
-          email: authUser.email,
-          name: (authUser.user_metadata && (authUser.user_metadata as any)['full_name']) || authUser.email?.split('@')[0] || 'Usuario',
-          role: 'owner', // Siempre owner ya que cada usuario crea su propia empresa
-          active: true,
-          company_id: companyId, // Garantizado que no es null
-          auth_user_id: authUser.id,
-          permissions: {}
+      if (pendingRes.data && !pendingRes.error) {
+        console.log('📨 Pending registration found, confirming via RPC...');
+        const { data: confirmData, error: confirmErr } = await this.supabase.rpc('confirm_user_registration', {
+          p_auth_user_id: authUser.id
         });
-        
-        if (insertResult.error) {
-          console.error('❌ Error creating app user:', insertResult.error);
-          throw insertResult.error;
+
+        if (confirmErr) {
+          console.error('❌ Error in confirm_user_registration:', confirmErr);
+        } else if (confirmData?.requires_invitation_approval) {
+          console.log('� Invitation approval required. Not creating user/company client-side.');
+          return; // Esperar aprobación del owner
+        } else if (confirmData?.success) {
+          console.log('✅ Registration completed via RPC');
+          return; // El backend ya creó la empresa y el usuario
         }
-        
-        return insertResult;
-      });
-      
+        // Si falla, continuamos con la lógica local como fallback
+      }
+
+      // 3. Determinar el nombre de empresa deseado (respetar el del formulario si existe)
+      const desiredCompanyName = (companyName ?? pendingRes.data?.company_name ?? '').trim();
+
+      // Si tenemos nombre de empresa, comprobar si ya existe para unir como miembro
+      if (desiredCompanyName) {
+        console.log('🔎 Checking company existence for:', desiredCompanyName);
+        const { data: existsData, error: existsError } = await this.supabase.rpc('check_company_exists', {
+          p_company_name: desiredCompanyName
+        });
+
+        if (existsError) {
+          console.error('❌ Error checking company existence:', existsError);
+          throw existsError;
+        }
+
+        const existsRow = Array.isArray(existsData) ? existsData[0] : existsData;
+
+        if (existsRow?.company_exists && existsRow.company_id) {
+          // La empresa ya existe: crear usuario como member
+          const companyId = existsRow.company_id as string;
+          console.log('🤝 Company exists. Linking user as member to:', companyId);
+
+          await this.retryWithBackoff(async () => {
+            const insertResult = await this.supabase.from('users').insert({
+              email: authUser.email,
+              name: (authUser.user_metadata && (authUser.user_metadata as any)['full_name']) || authUser.email?.split('@')[0] || 'Usuario',
+              role: 'member',
+              active: true,
+              company_id: companyId,
+              auth_user_id: authUser.id,
+              permissions: {}
+            });
+            if (insertResult.error) throw insertResult.error;
+            return insertResult;
+          });
+
+          console.log('✅ App user created as member');
+          return;
+        }
+
+        // La empresa no existe: crearla con el nombre indicado y asignar owner
+        console.log('🏢 Creating company (from form):', desiredCompanyName);
+
+        // Verificar sesión válida antes de inserts
+        await new Promise(resolve => setTimeout(resolve, 300));
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session?.access_token) {
+          await this.supabase.auth.refreshSession();
+        }
+
+        const company = await this.retryWithSession(async () => {
+          const { data, error } = await this.supabase
+            .from('companies')
+            .insert({ name: desiredCompanyName, slug: this.generateSlug(desiredCompanyName) })
+            .select()
+            .single();
+          if (error) throw error;
+          return data;
+        });
+
+        const companyId = company?.id as string;
+        if (!companyId) throw new Error('Company creation returned no id');
+
+        console.log('✅ Company created with ID:', companyId);
+
+        await this.retryWithBackoff(async () => {
+          const insertResult = await this.supabase.from('users').insert({
+            email: authUser.email,
+            name: (authUser.user_metadata && (authUser.user_metadata as any)['full_name']) || authUser.email?.split('@')[0] || 'Usuario',
+            role: 'owner',
+            active: true,
+            company_id: companyId,
+            auth_user_id: authUser.id,
+            permissions: {}
+          });
+          if (insertResult.error) throw insertResult.error;
+          return insertResult;
+        });
+
         console.log('✅ App user created successfully');
+        return;
+      }
+
+      // 4. Sin nombre de empresa disponible: no crear empresa por defecto para evitar duplicados erróneos
+      console.warn('⚠️ No company name provided. Skipping automatic company creation to avoid wrong data.');
+      return;
         
       } finally {
         // Remover la marca de progreso

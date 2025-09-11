@@ -208,6 +208,19 @@
               <span>Configuración</span>
             </a>
           </li>
+
+          <!-- Empresa (gestión de invitaciones) solo para owner/admin -->
+          <li *ngIf="(authService.userProfile$ | async)?.role === 'owner' || (authService.userProfile$ | async)?.role === 'admin'"
+              (click) = "activeElement(101)">
+            <a routerLink="empresa">
+              <i class="bi bi-building"
+              data-bs-toggle="tooltip"
+              data-bs-placement="right"
+              data-bs-title="Empresa"
+              data-bs-custom-class="bg-tooltip"></i>
+              <span>Empresa</span>
+            </a>
+          </li>
           
           <!-- Invitaciones eliminadas (auto-registro activo) -->
           

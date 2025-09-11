@@ -32,6 +32,7 @@ import { AuthCallbackComponent } from './components/auth-callback/auth-callback.
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 import { AuthDebugComponent } from './components/auth-debug/auth-debug.component';
 import { EmailConfirmationComponent } from './components/email-confirmation/email-confirmation.component';
+import { CompanyAdminComponent } from './components/company-admin/company-admin.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -42,6 +43,7 @@ export const routes: Routes = [
     {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard]},
     {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard]},
+    {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard]},
     // Ruta de invitaciones eliminada (modelo de auto-registro activo)
     
     // Rutas de autenticación (sin guards)
