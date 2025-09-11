@@ -47,8 +47,12 @@ BEGIN
   LIMIT 1;
 
   IF FOUND AND pending_data.auth_user_id IS NOT NULL THEN
-    INSERT INTO public.users (email, name, role, active, company_id, auth_user_id, permissions)
-    VALUES (inv.email, COALESCE(pending_data.full_name, split_part(inv.email, '@', 1)), inv.role, true, inv.company_id, pending_data.auth_user_id, '{}'::jsonb)
+    INSERT INTO public.users (email, name, surname, role, active, company_id, auth_user_id, permissions)
+    VALUES (
+      inv.email,
+      COALESCE(NULLIF(pending_data.given_name, ''), split_part(COALESCE(pending_data.full_name, inv.email), ' ', 1), split_part(inv.email, '@', 1)),
+      COALESCE(NULLIF(pending_data.surname, ''), NULLIF(regexp_replace(COALESCE(pending_data.full_name, ''), '^[^\s]+\s*', ''), '')),
+      inv.role, true, inv.company_id, pending_data.auth_user_id, '{}'::jsonb)
     ON CONFLICT DO NOTHING
     RETURNING id INTO new_user_id;
 

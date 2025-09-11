@@ -249,10 +249,11 @@ BEGIN
     )
     RETURNING id INTO new_company_id;
     
-    -- Crear usuario como owner
+    -- Crear usuario como owner (name + surname normalizados)
     INSERT INTO public.users (
         email,
-        name, 
+        name,
+        surname,
         role,
         active,
         company_id,
@@ -261,7 +262,8 @@ BEGIN
     )
     VALUES (
         pending_user_data.email,
-        pending_user_data.full_name,
+        COALESCE(NULLIF(pending_user_data.given_name, ''), split_part(pending_user_data.full_name, ' ', 1), split_part(pending_user_data.email, '@', 1)),
+        COALESCE(NULLIF(pending_user_data.surname, ''), NULLIF(regexp_replace(pending_user_data.full_name, '^[^\s]+\s*', ''), '')),
         'owner',
         true,
         new_company_id,
@@ -429,10 +431,11 @@ BEGIN
     FROM public.companies
     WHERE id = invitation_data.company_id;
     
-    -- Crear usuario en la empresa
+    -- Crear usuario en la empresa (name + surname normalizados)
     INSERT INTO public.users (
         email,
         name,
+        surname,
         role,
         active,
         company_id,
@@ -441,7 +444,8 @@ BEGIN
     )
     VALUES (
         pending_user_data.email,
-        pending_user_data.full_name,
+        COALESCE(NULLIF(pending_user_data.given_name, ''), split_part(pending_user_data.full_name, ' ', 1), split_part(pending_user_data.email, '@', 1)),
+        COALESCE(NULLIF(pending_user_data.surname, ''), NULLIF(regexp_replace(pending_user_data.full_name, '^[^\s]+\s*', ''), '')),
         invitation_data.role,
         true,
         invitation_data.company_id,
@@ -663,10 +667,11 @@ BEGIN
         SELECT 1 FROM public.users WHERE email = inv.email AND company_id = inv.company_id AND active = true
     ) THEN
         INSERT INTO public.users (
-            email, name, role, active, company_id, auth_user_id, permissions
+            email, name, surname, role, active, company_id, auth_user_id, permissions
         ) VALUES (
             inv.email,
-            COALESCE(pend.full_name, split_part(inv.email, '@', 1)),
+            COALESCE(NULLIF(pend.given_name, ''), split_part(COALESCE(pend.full_name, inv.email), ' ', 1), split_part(inv.email, '@', 1)),
+            COALESCE(NULLIF(pend.surname, ''), NULLIF(regexp_replace(COALESCE(pend.full_name, ''), '^[^\s]+\s*', ''), '')),
             inv.role,
             true,
             inv.company_id,

@@ -12,7 +12,7 @@ RETURNS TABLE(
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+AS $qfcsr$
 BEGIN
     RETURN QUERY
     SELECT 
@@ -26,7 +26,7 @@ BEGIN
     WHERE LOWER(c.name) = LOWER(p_company_name)
     LIMIT 1;
 END;
-$$;
+$qfcsr$;
 
 -- 2. Función para crear o unirse a empresa
 CREATE OR REPLACE FUNCTION handle_company_registration(
@@ -38,7 +38,7 @@ CREATE OR REPLACE FUNCTION handle_company_registration(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+AS $qfcsr$
 DECLARE
     company_info RECORD;
     new_company_id UUID;
@@ -83,6 +83,7 @@ BEGIN
     INSERT INTO public.users (
         email,
         name,
+        surname,
         role,
         active,
         company_id,
@@ -91,7 +92,8 @@ BEGIN
     )
     VALUES (
         p_email,
-        p_full_name,
+        split_part(p_full_name, ' ', 1),
+        NULLIF(regexp_replace(p_full_name, '^[^\s]+\s*', ''), ''),
         user_role,
         true,
         new_company_id,
@@ -117,7 +119,7 @@ EXCEPTION WHEN OTHERS THEN
         'error', SQLERRM
     );
 END;
-$$;
+$qfcsr$;
 
 -- 3. Función mejorada para confirmar registro
 CREATE OR REPLACE FUNCTION confirm_user_registration(
@@ -127,7 +129,7 @@ CREATE OR REPLACE FUNCTION confirm_user_registration(
 RETURNS JSON
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+AS $qfcsr$
 DECLARE
     pending_user_data public.pending_users;
     registration_result JSON;
@@ -170,14 +172,14 @@ EXCEPTION WHEN OTHERS THEN
         'error', SQLERRM
     );
 END;
-$$;
+$qfcsr$;
 
 -- 4. Limpiar empresas duplicadas actuales
 CREATE OR REPLACE FUNCTION cleanup_current_duplicates()
 RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+AS $qfcsr$
 DECLARE
     duplicate_count INTEGER := 0;
     company_record RECORD;
@@ -211,4 +213,4 @@ BEGIN
     
     RETURN FORMAT('Cleaned up %s duplicate companies', duplicate_count);
 END;
-$$;
+$qfcsr$;

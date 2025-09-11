@@ -1,21 +1,4 @@
 -- ========================================
--- CONFIGURACIÓN ROBUSTA DE EMAIL CONFIRMACIÓN
--- ==========================      -- Verificar si la empresa ya existe (solo si se proporcionó company_name)
-      IF pending_user_data.company_name IS NOT NULL AND TRIM(pending_user_data.company_name) != '' THEN
-        SELECT 
-            EXISTS(SELECT 1 FROM public.companies WHERE LOWER(name) = LOWER(pending_user_data.company_name)) as company_exists,
-            c.id as company_id,
-            c.name as company_name,
-            u.email as owner_email,
-            u.name as owner_name,
-            u.id as owner_user_id
-        INTO existing_company_info
-        FROM public.companies c
-        LEFT JOIN public.users u ON u.company_id = c.id AND u.role = 'owner' AND u.active = true
-        WHERE LOWER(c.name) = LOWER(pending_user_data.company_name)
-        LIMIT 1;
-        
-        IF existing_company_info.company_exists THEN
 -- Este script configura el sistema para usar confirmación de email de forma segura
 
 -- 1. CONFIGURACIÓN DE SUPABASE AUTH (hacer manualmente en Dashboard)
@@ -46,6 +29,9 @@ CREATE TABLE IF NOT EXISTS public.pending_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT NOT NULL UNIQUE,
     full_name TEXT NOT NULL,
+    -- Campos normalizados (opcionalmente rellenados desde el frontend)
+    given_name TEXT,
+    surname TEXT,
     company_name TEXT,
     auth_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     confirmation_token TEXT,
@@ -58,6 +44,23 @@ CREATE TABLE IF NOT EXISTS public.pending_users (
 CREATE INDEX IF NOT EXISTS idx_pending_users_email ON public.pending_users(email);
 CREATE INDEX IF NOT EXISTS idx_pending_users_auth_id ON public.pending_users(auth_user_id);
 CREATE INDEX IF NOT EXISTS idx_pending_users_token ON public.pending_users(confirmation_token);
+
+-- En bases de datos donde la tabla ya existía, añadir columnas si faltan
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='pending_users' AND column_name='given_name'
+    ) THEN
+        ALTER TABLE public.pending_users ADD COLUMN given_name TEXT;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='pending_users' AND column_name='surname'
+    ) THEN
+        ALTER TABLE public.pending_users ADD COLUMN surname TEXT;
+    END IF;
+END$$;
 
 -- 3. RLS para pending_users (solo el propio usuario puede ver sus datos)
 ALTER TABLE public.pending_users ENABLE ROW LEVEL SECURITY;
@@ -200,10 +203,11 @@ BEGIN
     )
     RETURNING id INTO new_company_id;
     
-    -- Crear usuario como owner
+    -- Crear usuario como owner (name + surname normalizados)
     INSERT INTO public.users (
         email,
-        name, 
+        name,
+        surname,
         role,
         active,
         company_id,
@@ -212,7 +216,8 @@ BEGIN
     )
     VALUES (
         pending_user_data.email,
-        pending_user_data.full_name,
+        COALESCE(NULLIF(pending_user_data.given_name, ''), split_part(pending_user_data.full_name, ' ', 1), split_part(pending_user_data.email, '@', 1)),
+        COALESCE(NULLIF(pending_user_data.surname, ''), NULLIF(regexp_replace(pending_user_data.full_name, '^[^\s]+\s*', ''), '')),
         'owner',
         true,
         new_company_id,

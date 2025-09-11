@@ -249,6 +249,16 @@ import { DevRoleService } from '../../services/dev-role.service';
                     <i class="fas fa-shield-alt mr-1"></i>
                     {{ getGdprStatusText(customer) }}
                   </span>
+                  @if (getGdprComplianceStatus(customer) === 'pending' && customer.email) {
+                    <button
+                      class="ml-2 inline-flex items-center text-xs px-2 py-1 rounded border border-blue-300 text-blue-700 hover:bg-blue-50"
+                      title="Obtener enlace de consentimiento (copiar al portapapeles)"
+                      (click)="sendConsentRequest(customer); $event.stopPropagation()"
+                    >
+                      <i class="fas fa-link mr-1"></i>
+                      Obtener enlace
+                    </button>
+                  }
                 </div>
                 
                 <div class="customer-details">
