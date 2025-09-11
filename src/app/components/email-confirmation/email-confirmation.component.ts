@@ -80,8 +80,16 @@ import { Subscription } from 'rxjs';
           </div>
         </div>
         
-        <!-- Instrucciones iniciales -->
-        <div *ngIf="!isLoading && !isSuccess && !isError && !hasToken" class="text-center">
+        <!-- Instrucciones iniciales: mostrar mensaje especial si viene como pendiente sin token -->
+        <div *ngIf="!isLoading && !isSuccess && !isError && !hasToken && pendingByGuard" class="text-center">
+          <app-invitation-pending
+            [companyName]="''"
+            [ownerEmail]="''"
+            [message]="'Dile al propietario de tu empresa que acepte tu invitación para poder acceder.'">
+          </app-invitation-pending>
+        </div>
+
+        <div *ngIf="!isLoading && !isSuccess && !isError && !hasToken && !pendingByGuard" class="text-center">
           <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
             <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
@@ -106,6 +114,7 @@ export class EmailConfirmationComponent implements OnInit {
   isError = false;
   isResending = false;
   hasToken = false;
+  pendingByGuard = false;
   errorMessage = '';
   
   // Nuevas propiedades para invitaciones
@@ -132,6 +141,9 @@ export class EmailConfirmationComponent implements OnInit {
         }
       }
     });
+
+  // Detectar si el guard nos envió aquí como pendiente
+  this.pendingByGuard = this.route.snapshot.queryParamMap.get('pending') === '1' && !this.hasToken;
 
     // Verificar si hay tokens en la URL
     this.route.fragment.subscribe(fragment => {

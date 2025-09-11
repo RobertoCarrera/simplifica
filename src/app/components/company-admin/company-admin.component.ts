@@ -66,7 +66,10 @@ export class CompanyAdminComponent implements OnInit {
     try {
       const { data, error } = await this.auth.client.rpc('approve_company_invitation', { p_invitation_id: id });
       if (error) throw error;
-      await this.loadInvitations();
+  // Optimistic update: remove from list immediately
+  this.invitations = this.invitations.filter(inv => inv.id !== id);
+  // Background refresh to keep in sync
+  await this.loadInvitations();
     } catch (e) {
       console.error('approve error', e);
     } finally {
@@ -79,7 +82,10 @@ export class CompanyAdminComponent implements OnInit {
     try {
       const { data, error } = await this.auth.client.rpc('reject_company_invitation', { p_invitation_id: id });
       if (error) throw error;
-      await this.loadInvitations();
+  // Optimistic update: remove from list immediately
+  this.invitations = this.invitations.filter(inv => inv.id !== id);
+  // Background refresh to keep in sync
+  await this.loadInvitations();
     } catch (e) {
       console.error('reject error', e);
     } finally {
