@@ -71,16 +71,32 @@ export default async (req: Request) => {
 
     const inserted: any[] = [];
     for (const r of rows) {
+      // Normalize required fields. Support 'surname' as incoming header which maps to 'apellidos'
+      const name = r.name || r.nombre || '';
+      const surname = r.surname || r.apellidos || r.last_name || '';
+      const email = r.email || r.correo || null;
+
       const row: any = {
-        name: r.name || r.nombre || 'Cliente importado',
-        email: r.email || r.correo || null,
+        name: name || 'Cliente importado',
+        apellidos: surname || undefined,
+        email,
         phone: r.phone || r.telefono || null,
         dni: r.dni || r.nif || null,
         company_id: authoritativeCompanyId || r.company_id || null,
         created_at: new Date().toISOString()
       };
 
-      if (!row.email) {
+      // Attach metadata column if provided (string or object)
+      if (r.metadata) {
+        try {
+          row.metadata = typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata;
+        } catch (e) {
+          // If parsing fails, store raw string under metadata_raw
+          row.metadata_raw = r.metadata;
+        }
+      }
+
+      if (!email) {
         inserted.push({ error: 'missing email', row });
         continue;
       }

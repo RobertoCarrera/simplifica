@@ -1183,17 +1183,30 @@ export class SupabaseCustomersService {
     // Remover BOM si existe
     const firstLine = lines[0].replace(/^\uFEFF/, '');
     const headers = this.parseCSVLine(firstLine).map(h => h.trim().toLowerCase());
-    
-    // Validar headers requeridos
-    const requiredHeaders = ['name', 'apellidos', 'email'];
-    const missingHeaders = requiredHeaders.filter(header => 
-      !headers.some(h => h.includes(header))
-    );
-    
-    if (missingHeaders.length > 0) {
-      throw new Error(`Faltan las siguientes columnas requeridas: ${missingHeaders.join(', ')}`);
+
+    // Configurable header aliases for required fields. Edit these arrays to accept different header names.
+    // You can add variants such as 'name','nombre','bill_to:name' etc.
+    const headerAliases: Record<string, string[]> = {
+      name: ['name', 'nombre', 'first_name', 'bill_to:first_name', 'bill_to_name'],
+      surname: ['surname', 'last_name', 'lastname', 'apellidos', 'bill_to:last_name', 'bill_to_last_name'],
+      email: ['email', 'correo', 'bill_to:email', 'bill_to_email']
+    };
+
+    // Verify required aliases exist in headers
+    const missingReq = Object.keys(headerAliases).filter(key => {
+      const aliases = headerAliases[key];
+      return !aliases.some(a => headers.some(h => h === a || h.includes(a)));
+    });
+    if (missingReq.length > 0) {
+      throw new Error(`Faltan las siguientes columnas requeridas: ${missingReq.join(', ')}`);
     }
-    
+
+    // We'll build a metadata object with any extra columns (not required) so it's preserved
+    const isRequiredHeader = (h: string) => {
+      const lh = h.toLowerCase();
+      return Object.values(headerAliases).some(arr => arr.some(a => lh === a || lh.includes(a)));
+    };
+
     return lines.slice(1)
       .filter(line => line.trim())
       .map((line, index) => {
@@ -1201,12 +1214,25 @@ export class SupabaseCustomersService {
           const values = this.parseCSVLine(line);
           
           // Mapear por posición o name de columna
+          // Map required fields using headerAliases
+          const name = this.findValueByHeader(headers, values, headerAliases['name']) || '';
+          const surname = this.findValueByHeader(headers, values, headerAliases['surname']) || '';
+          const email = this.findValueByHeader(headers, values, headerAliases['email']) || '';
+
+          // Collect remaining columns into metadata
+          const metadata: Record<string, any> = {};
+          headers.forEach((h, i) => {
+            if (!isRequiredHeader(h) && !['dni', 'nif', 'documento', 'phone', 'telefono', 'movil'].some(k => h.includes(k))) {
+              metadata[h] = values[i] ?? '';
+            }
+          });
+
           const customer: Partial<Customer> = {
-            name: this.findValueByHeader(headers, values, ['name', 'name']) || '',
-            apellidos: this.findValueByHeader(headers, values, ['apellidos', 'apellido', 'lastname']) || '',
-            email: this.findValueByHeader(headers, values, ['email', 'correo']) || '',
+            name,
+            apellidos: surname,
+            email,
             dni: this.findValueByHeader(headers, values, ['dni', 'nif', 'documento']) || '',
-            phone: this.findValueByHeader(headers, values, ['phone', 'teléfono', 'phone', 'movil']) || ''
+            phone: this.findValueByHeader(headers, values, ['phone', 'teléfono', 'movil']) || ''
           };
           
           // Validar email requerido
@@ -1214,6 +1240,10 @@ export class SupabaseCustomersService {
             throw new Error(`Fila ${index + 2}: Email inválido o faltante`);
           }
           
+          // attach metadata (as JSON string) for server-side insertion if there are any extra fields
+          if (Object.keys(metadata).length) {
+            (customer as any).metadata = JSON.stringify(metadata);
+          }
           return customer;
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
