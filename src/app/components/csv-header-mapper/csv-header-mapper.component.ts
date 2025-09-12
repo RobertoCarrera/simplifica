@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, Output, EventEmitter, signal } from '@angular/core';
+import { Component, OnInit, OnChanges, Input, Output, EventEmitter, signal, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -144,7 +144,7 @@ export interface CsvMappingResult {
   `,
   styleUrls: ['./csv-header-mapper.component.scss']
 })
-export class CsvHeaderMapperComponent implements OnInit {
+export class CsvHeaderMapperComponent implements OnInit, OnChanges {
   @Input() visible = false;
   @Input() csvHeaders: string[] = [];
   @Input() csvData: string[][] = [];
@@ -162,6 +162,16 @@ export class CsvHeaderMapperComponent implements OnInit {
     this.initializeMappings();
     this.preparePreviewData();
     this.autoMapHeaders();
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    // If headers or data change after init, rebuild mappings and preview
+    if ((changes['csvHeaders'] && !changes['csvHeaders'].firstChange) ||
+        (changes['csvData'] && !changes['csvData'].firstChange)) {
+      this.initializeMappings();
+      this.preparePreviewData();
+      this.autoMapHeaders();
+    }
   }
 
   private initializeMappings() {
@@ -184,33 +194,58 @@ export class CsvHeaderMapperComponent implements OnInit {
     return sampleValue.length > 20 ? sampleValue.substring(0, 20) + '...' : sampleValue;
   }
 
+  private normalizeHeader(h: string): string {
+    // Lowercase, trim, replace non-alphanumerics with single space, collapse spaces
+    return h
+      .toLowerCase()
+      .trim()
+      .replace(/[_:.-]+/g, ' ') // unify common separators
+      .replace(/[^\p{L}\p{N} ]+/gu, ' ') // strip other punctuation
+      .replace(/\s+/g, ' ');
+  }
+
   autoMapHeaders() {
+    // Aliases list expanded and normalized variants included
     const autoMappings: Record<string, string[]> = {
-      name: ['name', 'nombre', 'first_name', 'firstname', 'bill_to:first_name'],
-      surname: ['surname', 'last_name', 'lastname', 'apellidos', 'bill_to:last_name'],
-      email: ['email', 'correo', 'e-mail', 'bill_to:email'],
-      phone: ['phone', 'telefono', 'tel', 'mobile', 'movil', 'bill_to:phone'],
-      dni: ['dni', 'nif', 'documento', 'id', 'bill_to:legal'],
-      address: ['address', 'direccion', 'domicilio', 'bill_to:address'],
-      company: ['company', 'empresa', 'bill_to:company']
+      name: ['name', 'nombre', 'first_name', 'firstname', 'first name', 'bill_to:first_name', 'bill to first name', 'billto:first_name'],
+      surname: ['surname', 'last_name', 'lastname', 'last name', 'apellidos', 'bill_to:last_name', 'bill to last name', 'billto:last_name'],
+      email: ['email', 'correo', 'e-mail', 'mail', 'bill_to:email', 'bill to email', 'billto:email'],
+      phone: ['phone', 'telefono', 'teléfono', 'tel', 'mobile', 'movil', 'móvil', 'bill_to:phone', 'bill to phone', 'billto:phone'],
+      dni: ['dni', 'nif', 'documento', 'id', 'legal', 'bill_to:legal', 'bill to legal', 'billto:legal'],
+      address: ['address', 'direccion', 'dirección', 'domicilio', 'bill_to:address', 'bill to address', 'billto:address'],
+      company: ['company', 'empresa', 'bill_to:company', 'bill to company', 'billto:company']
     };
 
+    const normalizedAliases: Record<string, string[]> = {};
+    for (const [field, aliases] of Object.entries(autoMappings)) {
+      normalizedAliases[field] = aliases.map(a => this.normalizeHeader(a));
+    }
+
     this.fieldMappings.forEach(mapping => {
-      const headerLower = mapping.csvHeader.toLowerCase();
-      
-      // Find best match
-      for (const [targetField, aliases] of Object.entries(autoMappings)) {
-        if (aliases.some(alias => headerLower.includes(alias) || alias.includes(headerLower))) {
-          // Check if this target field is already mapped
-          const alreadyMapped = this.fieldMappings.some(m => 
-            m !== mapping && m.targetField === targetField
-          );
-          
-          if (!alreadyMapped) {
-            mapping.targetField = targetField;
+      const normHeader = this.normalizeHeader(mapping.csvHeader);
+
+      // 1) Try exact normalized match
+      let matchedField: string | null = null;
+      for (const [targetField, aliases] of Object.entries(normalizedAliases)) {
+        if (aliases.includes(normHeader)) {
+          matchedField = targetField;
+          break;
+        }
+      }
+
+      // 2) Fallback: contains match on tokens
+      if (!matchedField) {
+        for (const [targetField, aliases] of Object.entries(normalizedAliases)) {
+          if (aliases.some(alias => normHeader.includes(alias) || alias.includes(normHeader))) {
+            matchedField = targetField;
             break;
           }
         }
+      }
+
+      if (matchedField) {
+        const alreadyMapped = this.fieldMappings.some(m => m !== mapping && m.targetField === matchedField);
+        if (!alreadyMapped) mapping.targetField = matchedField;
       }
     });
 

@@ -1231,14 +1231,14 @@ export class SupabaseCustomersService {
     
     // Remover BOM si existe
     const firstLine = lines[0].replace(/^\uFEFF/, '');
-    const headers = this.parseCSVLine(firstLine).map(h => h.trim().toLowerCase());
+  const headers = this.parseCSVLine(firstLine).map(h => h.trim().toLowerCase());
 
     // Configurable header aliases for required fields. Edit these arrays to accept different header names.
     // You can add variants such as 'name','nombre','bill_to:name' etc.
     const headerAliases: Record<string, string[]> = {
-      name: ['name', 'nombre', 'first_name', 'bill_to:first_name', 'bill_to_name'],
-      surname: ['surname', 'last_name', 'lastname', 'apellidos', 'bill_to:last_name', 'bill_to_last_name'],
-      email: ['email', 'correo', 'bill_to:email', 'bill_to_email']
+      name: ['name', 'nombre', 'first_name', 'firstname', 'first name', 'bill_to:first_name', 'bill to first name', 'billto:first_name', 'bill_to_name', 'bill to name'],
+      surname: ['surname', 'last_name', 'lastname', 'last name', 'apellidos', 'bill_to:last_name', 'bill to last name', 'billto:last_name', 'bill_to_last_name'],
+      email: ['email', 'correo', 'e-mail', 'mail', 'bill_to:email', 'bill to email', 'billto:email', 'bill_to_email']
     };
 
     // Verify required aliases exist in headers
@@ -1251,9 +1251,17 @@ export class SupabaseCustomersService {
     }
 
     // We'll build a metadata object with any extra columns (not required) so it's preserved
+    const normalize = (s: string) => s
+      .toLowerCase().trim()
+      .replace(/[_:.-]+/g, ' ')
+      .replace(/[^\p{L}\p{N} ]+/gu, ' ')
+      .replace(/\s+/g, ' ');
+
+    const normalizedHeaders = headers.map(h => normalize(h));
+
     const isRequiredHeader = (h: string) => {
-      const lh = h.toLowerCase();
-      return Object.values(headerAliases).some(arr => arr.some(a => lh === a || lh.includes(a)));
+      const lh = normalize(h);
+      return Object.values(headerAliases).some(arr => arr.some(a => lh === normalize(a) || lh.includes(normalize(a))));
     };
 
     return lines.slice(1)
@@ -1545,10 +1553,29 @@ export class SupabaseCustomersService {
 
   // Método auxiliar para encontrar valores por name de cabecera
   private findValueByHeader(headers: string[], values: string[], possibleNames: string[]): string {
-    for (const name of possibleNames) {
-      const index = headers.findIndex(h => h.includes(name));
-      if (index !== -1 && values[index]) {
-        return values[index];
+    const normalize = (s: string) => s
+      .toLowerCase().trim()
+      .replace(/[_:.-]+/g, ' ')
+      .replace(/[^\p{L}\p{N} ]+/gu, ' ')
+      .replace(/\s+/g, ' ');
+
+    const normalizedHeaders = headers.map(h => normalize(h));
+    const normalizedNames = possibleNames.map(n => normalize(n));
+
+    // Prefer exact normalized match, then contains
+    for (let i = 0; i < normalizedHeaders.length; i++) {
+      const h = normalizedHeaders[i];
+      if (normalizedNames.includes(h)) {
+        const val = values[i];
+        if (val != null && val !== '') return val;
+      }
+    }
+
+    for (let i = 0; i < normalizedHeaders.length; i++) {
+      const h = normalizedHeaders[i];
+      if (normalizedNames.some(n => h.includes(n) || n.includes(h))) {
+        const val = values[i];
+        if (val != null && val !== '') return val;
       }
     }
     return '';
