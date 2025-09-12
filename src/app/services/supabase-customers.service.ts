@@ -1020,6 +1020,53 @@ export class SupabaseCustomersService {
   }
 
   /**
+   * Parse CSV file and return headers and data for mapping
+   */
+  parseCSVForMapping(file: File): Observable<{headers: string[], data: string[][]}> {
+    return new Observable(observer => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const csv = e.target?.result as string;
+          const lines = csv.split('\n').filter(line => line.trim());
+          
+          if (lines.length === 0) {
+            observer.error(new Error('El archivo CSV está vacío.'));
+            return;
+          }
+
+          const firstLine = lines[0].replace(/^\uFEFF/, '');
+          const headers = this.parseCSVLine(firstLine);
+          const dataRows = lines.slice(1).map(line => this.parseCSVLine(line));
+
+          observer.next({ headers, data: [headers, ...dataRows] });
+          observer.complete();
+        } catch (error) {
+          observer.error(new Error('Error al procesar el archivo CSV.'));
+        }
+      };
+      
+      reader.onerror = () => {
+        observer.error(new Error('Error al leer el archivo.'));
+      };
+      
+      reader.readAsText(file, 'UTF-8');
+    });
+  }
+
+  /**
+   * Import customers with field mappings
+   */
+  importFromCSVWithMapping(file: File, fieldMappings: any[]): Observable<Customer[]> {
+    return this.parseCSVForMapping(file).pipe(
+      switchMap(({ headers, data }) => {
+        const customers = this.parseCSVWithMappings(headers, data.slice(1), fieldMappings);
+        return this.processBatchImport(customers);
+      })
+    );
+  }
+
+  /**
    * Importar clientes desde CSV
    * Límite recomendado: 500 clientes por archivo para evitar timeouts
    */
@@ -1250,6 +1297,177 @@ export class SupabaseCustomersService {
           throw new Error(`Error en fila ${index + 2}: ${errorMessage}`);
         }
       });
+  }
+
+  /**
+   * Parse CSV with custom field mappings
+   */
+  private parseCSVWithMappings(headers: string[], dataRows: string[][], fieldMappings: any[]): Partial<Customer>[] {
+    const MAX_RECORDS = 500;
+    
+    if (dataRows.length > MAX_RECORDS) {
+      throw new Error(`El archivo contiene ${dataRows.length} registros. El límite máximo es ${MAX_RECORDS} clientes por archivo.`);
+    }
+
+    // Create mapping lookup
+    const mappingLookup = new Map<string, string>();
+    fieldMappings.forEach(mapping => {
+      if (mapping.targetField) {
+        mappingLookup.set(mapping.csvHeader, mapping.targetField);
+      }
+    });
+
+    return dataRows.filter(row => row.some(cell => cell.trim())).map((row, index) => {
+      try {
+        const customer: Partial<Customer> = {};
+        const metadata: Record<string, any> = {};
+
+        headers.forEach((header, i) => {
+          const value = row[i]?.trim() || '';
+          const targetField = mappingLookup.get(header);
+
+          if (targetField) {
+            switch (targetField) {
+              case 'name':
+                customer.name = value;
+                break;
+              case 'surname':
+                customer.apellidos = value;
+                break;
+              case 'email':
+                customer.email = value;
+                break;
+              case 'phone':
+                customer.phone = value;
+                break;
+              case 'dni':
+                customer.dni = value;
+                break;
+              case 'address':
+                (customer as any).address = value;
+                break;
+              case 'metadata':
+              default:
+                metadata[header] = value;
+                break;
+            }
+          } else {
+            // Unmapped fields go to metadata
+            metadata[header] = value;
+          }
+        });
+
+        // Validate required fields
+        if (!customer.email || !customer.email.includes('@')) {
+          throw new Error(`Fila ${index + 2}: Email inválido o faltante`);
+        }
+
+        if (!customer.name?.trim()) {
+          throw new Error(`Fila ${index + 2}: Nombre es requerido`);
+        }
+
+        // Attach metadata if there are any extra fields
+        if (Object.keys(metadata).length) {
+          (customer as any).metadata = JSON.stringify(metadata);
+        }
+
+        return customer;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        throw new Error(`Error en fila ${index + 2}: ${errorMessage}`);
+      }
+    });
+  }
+
+  /**
+   * Process batch import with server-side function
+   */
+  private processBatchImport(customers: Partial<Customer>[]): Observable<Customer[]> {
+    return new Observable(observer => {
+      if (customers.length === 0) {
+        observer.error(new Error('No hay clientes válidos para importar.'));
+        return;
+      }
+
+      console.log(`📂 Procesando ${customers.length} clientes del CSV...`);
+
+      // Build payload and call server-side batch importer
+      const payloadRows = customers.map(c => ({
+        name: c.name,
+        surname: c.apellidos, // Map apellidos to surname for server
+        email: c.email,
+        phone: c.phone,
+        dni: c.dni,
+        metadata: (c as any).metadata,
+        address: (c as any).address,
+        company_id: (this.getCurrentUserFromSystemUsers(this.currentDevUserId || 'default-user')?.company_id) || this.authService.companyId() || undefined
+      }));
+
+      const proxyUrl = '/api/import-customers';
+      const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
+
+      (async () => {
+        try {
+          // Try to get access token from supabase client session
+          let accessToken: string | undefined;
+          try {
+            const session = (this.supabase as any)?.auth?.session?.() || (this.supabase as any)?.getSession?.() || null;
+            accessToken = session?.access_token || session?.accessToken || undefined;
+          } catch (e) {
+            // ignore
+          }
+
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+          let resp = await fetch(proxyUrl, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ rows: payloadRows })
+          });
+
+          if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
+            resp = await fetch(functionUrl, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ rows: payloadRows })
+            });
+          }
+
+          if (!resp.ok) {
+            const text = await resp.text().catch(() => null);
+            throw new Error(`Batch import failed: ${resp.status} ${text || ''}`);
+          }
+
+          const json = await resp.json();
+          const inserted = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+
+          const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
+            id: row.id,
+            name: row.name || '',
+            apellidos: row.apellidos || '',
+            dni: row.dni || '',
+            email: row.email || '',
+            phone: row.phone || '',
+            usuario_id: row.company_id || this.currentDevUserId || '',
+            created_at: row.created_at,
+            updated_at: row.updated_at || row.created_at,
+            activo: true
+          })) as Customer[];
+
+          // Update local cache and finish
+          const currentCustomers = this.customersSubject.value;
+          this.customersSubject.next([...newCustomers, ...currentCustomers]);
+          devSuccess(`Importación completada: ${newCustomers.length} clientes creados`);
+          this.updateStats();
+
+          observer.next(newCustomers);
+          observer.complete();
+        } catch (err) {
+          observer.error(new Error('Batch import failed: ' + String(err)));
+        }
+      })();
+    });
   }
 
   // Método auxiliar para parsear líneas CSV con comillas

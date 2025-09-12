@@ -5,6 +5,7 @@ import { SkeletonComponent } from '../skeleton/skeleton.component';
 import { LoadingComponent } from '../loading/loading.component';
 import { AnimationService } from '../../services/animation.service';
 import { DevUserSelectorComponent } from '../dev-user-selector/dev-user-selector.component';
+import { CsvHeaderMapperComponent, CsvMappingResult } from '../csv-header-mapper/csv-header-mapper.component';
 import { Customer, CreateCustomerDev } from '../../models/customer';
 import { SupabaseCustomersService, CustomerFilters, CustomerStats } from '../../services/supabase-customers.service';
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../services/gdpr-compliance.service';
@@ -20,7 +21,8 @@ import { Router } from '@angular/router';
     FormsModule, 
     SkeletonComponent, 
     LoadingComponent,
-    DevUserSelectorComponent
+    DevUserSelectorComponent,
+    CsvHeaderMapperComponent
   ],
   template: `
     <div class="customers-container">
@@ -566,6 +568,16 @@ import { Router } from '@angular/router';
       </div>
     }
 
+    <!-- CSV Header Mapper Modal -->
+    @if (showCsvMapper()) {
+      <app-csv-header-mapper
+        [csvHeaders]="csvHeaders()"
+        [csvData]="csvData()"
+        (mappingConfirmed)="onCsvMappingConfirmed($event)"
+        (mappingCancelled)="onCsvMappingCancelled()"
+      ></app-csv-header-mapper>
+    }
+
     <!-- Floating Action Button (FAB) -->
     <button
       (click)="openForm()"
@@ -602,6 +614,12 @@ export class SupabaseCustomersComponent implements OnInit {
   searchTerm = signal('');
   sortBy = signal<'name' | 'apellidos' | 'created_at'>('created_at');
   sortOrder = signal<'asc' | 'desc'>('desc');
+
+  // CSV Mapper signals
+  showCsvMapper = signal(false);
+  csvHeaders = signal<string[]>([]);
+  csvData = signal<string[][]>([]);
+  pendingCsvFile: File | null = null;
 
   // Form data
   formData = {
@@ -896,16 +914,44 @@ export class SupabaseCustomersComponent implements OnInit {
       return;
     }
 
-    this.toastService.info('Procesando...', 'Importando clientes desde CSV');
+    this.toastService.info('Procesando...', 'Analizando estructura del CSV');
+    this.pendingCsvFile = file;
 
-    this.customersService.importFromCSV(file).subscribe({
-      next: (customers) => {
-        this.toastService.success('¡Éxito!', `${customers.length} clientes importados correctamente`);
-        // Limpiar el input para permitir reimportar el mismo archivo
+    // Parse CSV to show mapping interface
+    this.customersService.parseCSVForMapping(file).subscribe({
+      next: ({ headers, data }) => {
+        this.csvHeaders.set(headers);
+        this.csvData.set(data);
+        this.showCsvMapper.set(true);
+        // Limpiar el input
         event.target.value = '';
       },
+      error: (error) => {
+        console.error('Error parsing CSV for mapping:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Error al analizar el archivo CSV';
+        this.toastService.error('Error al Procesar CSV', errorMessage);
+        // Limpiar el input
+        event.target.value = '';
+      }
+    });
+  }
+
+  onCsvMappingConfirmed(result: CsvMappingResult) {
+    if (!this.pendingCsvFile) {
+      this.toastService.error('Error', 'No hay archivo CSV pendiente');
+      return;
+    }
+
+    this.showCsvMapper.set(false);
+    this.toastService.info('Procesando...', 'Importando clientes con el mapeo configurado');
+
+    this.customersService.importFromCSVWithMapping(this.pendingCsvFile, result.mappings).subscribe({
+      next: (customers) => {
+        this.toastService.success('¡Éxito!', `${customers.length} clientes importados correctamente`);
+        this.pendingCsvFile = null;
+      },
       error: (error: any) => {
-        console.error('Error importing customers:', error);
+        console.error('Error importing customers with mapping:', error);
 
         // Build a user-friendly message from different possible error shapes
         let errorTitle = 'Error de Importación';
@@ -914,7 +960,6 @@ export class SupabaseCustomersComponent implements OnInit {
         if (!error) {
           userMessage = 'Respuesta vacía del servidor';
         } else if (error instanceof Error) {
-          // The service often throws JS Error with a message containing HTTP status and body
           userMessage = error.message || userMessage;
 
           // Try to pull JSON body from the message if present
@@ -930,7 +975,6 @@ export class SupabaseCustomersComponent implements OnInit {
             }
           }
         } else if (typeof error === 'object') {
-          // Possible shapes: { status, error }, { status, message }, or fetch Response-like
           const status = error.status || error.statusCode || null;
           const body = error.error || error.message || error.body || error.response || null;
 
@@ -938,7 +982,6 @@ export class SupabaseCustomersComponent implements OnInit {
 
           if (body) {
             if (typeof body === 'string') {
-              // try parse JSON
               try {
                 const parsed = JSON.parse(body);
                 userMessage = parsed.error || parsed.message || parsed.detail || body;
@@ -953,13 +996,16 @@ export class SupabaseCustomersComponent implements OnInit {
           userMessage = error;
         }
 
-        // Show toast with the composed message
         this.toastService.error(errorTitle, userMessage);
-
-        // Limpiar el input
-        event.target.value = '';
+        this.pendingCsvFile = null;
       }
     });
+  }
+
+  onCsvMappingCancelled() {
+    this.showCsvMapper.set(false);
+    this.pendingCsvFile = null;
+    this.toastService.info('Cancelado', 'Importación CSV cancelada');
   }
 
   showImportInfo(event: Event) {
