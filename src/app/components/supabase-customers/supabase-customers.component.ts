@@ -904,10 +904,58 @@ export class SupabaseCustomersComponent implements OnInit {
         // Limpiar el input para permitir reimportar el mismo archivo
         event.target.value = '';
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Error importing customers:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Error desconocido al importar';
-        this.toastService.error('Error de Importación', errorMessage);
+
+        // Build a user-friendly message from different possible error shapes
+        let errorTitle = 'Error de Importación';
+        let userMessage = 'Error desconocido al importar';
+
+        if (!error) {
+          userMessage = 'Respuesta vacía del servidor';
+        } else if (error instanceof Error) {
+          // The service often throws JS Error with a message containing HTTP status and body
+          userMessage = error.message || userMessage;
+
+          // Try to pull JSON body from the message if present
+          const maybeJson = error.message?.match(/\{[\s\S]*\}$/);
+          if (maybeJson && maybeJson[0]) {
+            try {
+              const parsed = JSON.parse(maybeJson[0]);
+              if (parsed && (parsed.error || parsed.message || parsed.detail)) {
+                userMessage = parsed.error || parsed.message || parsed.detail;
+              }
+            } catch (e) {
+              // ignore parse errors
+            }
+          }
+        } else if (typeof error === 'object') {
+          // Possible shapes: { status, error }, { status, message }, or fetch Response-like
+          const status = error.status || error.statusCode || null;
+          const body = error.error || error.message || error.body || error.response || null;
+
+          if (status) userMessage = `HTTP ${status}`;
+
+          if (body) {
+            if (typeof body === 'string') {
+              // try parse JSON
+              try {
+                const parsed = JSON.parse(body);
+                userMessage = parsed.error || parsed.message || parsed.detail || body;
+              } catch (e) {
+                userMessage = body;
+              }
+            } else if (typeof body === 'object') {
+              userMessage = body.error || body.message || body.detail || JSON.stringify(body);
+            }
+          }
+        } else if (typeof error === 'string') {
+          userMessage = error;
+        }
+
+        // Show toast with the composed message
+        this.toastService.error(errorTitle, userMessage);
+
         // Limpiar el input
         event.target.value = '';
       }

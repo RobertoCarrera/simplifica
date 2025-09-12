@@ -1047,57 +1047,85 @@ export class SupabaseCustomersService {
           
           console.log(`📂 Procesando ${customers.length} clientes del CSV...`);
           
-          // Obtener usuario actual para asignar company_id
-          const selectedUser = this.getCurrentUserFromSystemUsers(this.currentDevUserId || 'default-user');
-          if (!selectedUser) {
-            observer.error(new Error('No se pudo determinar el usuario actual. Por favor, refresca la página.'));
-            return;
-          }
-          
-          // Crear clientes en lote
-          from(
-            this.supabase
-              .from('clients')
-              .insert(customers.map(c => ({
-                name: c.name,
-                apellidos: c.apellidos,
-                dni: c.dni,
-                email: c.email,
-                phone: c.phone,
-                company_id: selectedUser.company_id
-              })))
-              .select()
-          ).pipe(
-            map(({ data, error }) => {
-              if (error) {
-                console.error('Error en la inserción:', error);
-                throw new Error(`Error al importar clientes: ${error.message}`);
+          // Build payload and call server-side batch importer (same-origin proxy -> Supabase Function).
+          const payloadRows = customers.map(c => ({
+            name: c.name,
+            apellidos: c.apellidos,
+            email: c.email,
+            phone: c.phone,
+            dni: c.dni,
+            // Prefer authoritative company from current dev user cache, otherwise use authService
+            company_id: (this.getCurrentUserFromSystemUsers(this.currentDevUserId || 'default-user')?.company_id) || this.authService.companyId() || undefined
+          }));
+
+          const proxyUrl = '/api/import-customers';
+          const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
+
+          try {
+            // Wrap async fetch usage in an async IIFE so 'await' is valid
+            (async () => {
+              // Try to get access token from supabase client session
+              let accessToken: string | undefined;
+              try {
+                const session = (this.supabase as any)?.auth?.session?.() || (this.supabase as any)?.getSession?.() || null;
+                accessToken = session?.access_token || session?.accessToken || undefined;
+              } catch (e) {
+                // ignore
               }
-              
-              // Convertir de clients a Customer[]
-              return data.map((client: any) => ({
-                id: client.id,
-                name: client.name,
-                apellidos: client.apellidos || '',
-                dni: client.dni || '',
-                email: client.email || '',
-                phone: client.phone || '',
-                usuario_id: this.currentDevUserId || 'default-user',
-                created_at: client.created_at,
-                updated_at: client.updated_at
+
+              const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+              if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+              let resp = await fetch(proxyUrl, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ rows: payloadRows })
+              });
+
+              if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
+                resp = await fetch(functionUrl, {
+                  method: 'POST',
+                  headers,
+                  body: JSON.stringify({ rows: payloadRows })
+                });
+              }
+
+              if (!resp.ok) {
+                const text = await resp.text().catch(() => null);
+                throw new Error(`Batch import failed: ${resp.status} ${text || ''}`);
+              }
+
+              const json = await resp.json();
+              const inserted = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+
+              const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
+                id: row.id,
+                name: row.name || '',
+                apellidos: row.apellidos || '',
+                dni: row.dni || '',
+                email: row.email || '',
+                phone: row.phone || '',
+                usuario_id: row.company_id || this.currentDevUserId || '',
+                created_at: row.created_at,
+                updated_at: row.updated_at || row.created_at,
+                activo: true
               })) as Customer[];
-            }),
-            tap(newCustomers => {
+
+              // Update local cache and finish
               const currentCustomers = this.customersSubject.value;
               this.customersSubject.next([...newCustomers, ...currentCustomers]);
               devSuccess(`Importación completada: ${newCustomers.length} clientes creados`);
               this.updateStats();
-            })
-          ).subscribe({
-            next: (result) => observer.next(result),
-            error: (error) => observer.error(error),
-            complete: () => observer.complete()
-          });
+
+              observer.next(newCustomers);
+              observer.complete();
+            })().catch(err => {
+              observer.error(new Error('Batch import failed: ' + String(err)));
+            });
+            return;
+          } catch (err) {
+            return observer.error(new Error('Batch import failed: ' + String(err)));
+          }
         } catch (error) {
           console.error('Error al procesar CSV:', error);
           observer.error(new Error('Error al procesar el archivo CSV. Verifica que el formato sea correcto.'));
