@@ -27,26 +27,23 @@ import { SidebarTestComponent } from './components/sidebar-test/sidebar-test.com
 import { DevSetupComponent } from './components/dev-setup/dev-setup.component';
 import { EmergencyLoginComponent } from './components/emergency-login/emergency-login.component';
 import { DebugDashboardComponent } from './components/debug-dashboard/debug-dashboard.component';
-import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard } from './guards/auth.guard';
+import { AuthGuard, AdminGuard, GuestGuard, DevGuard } from './guards/auth.guard';
 import { AuthCallbackComponent } from './components/auth-callback/auth-callback.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 import { AuthDebugComponent } from './components/auth-debug/auth-debug.component';
 import { EmailConfirmationComponent } from './components/email-confirmation/email-confirmation.component';
 import { CompanyAdminComponent } from './components/company-admin/company-admin.component';
-import { ConsentPortalComponent } from './components/consent-portal/consent-portal.component';
-import { GdprCustomerManagerComponent } from './components/gdpr-customer-manager/gdpr-customer-manager.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
     {path: '', redirectTo: '/inicio', pathMatch: 'full'},
     {path: 'inicio', component: HomeComponent, canActivate: [AuthGuard]},
     {path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard]},
-    {path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard]},
     {path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard]},
     {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard]},
     {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard]},
-    {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard]},
     // Ruta de invitaciones eliminada (modelo de auto-registro activo)
     
     // Rutas de autenticación (sin guards)
@@ -55,8 +52,6 @@ export const routes: Routes = [
     {path: 'auth/callback', component: AuthCallbackComponent}, // Callback de Supabase
     {path: 'auth/confirm', component: EmailConfirmationComponent}, // Confirmación de email
     {path: 'reset-password', component: ResetPasswordComponent}, // Recuperación de contraseña
-    // Public GDPR consent portal (no guard)
-    {path: 'consent', component: ConsentPortalComponent},
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [DevGuard]},

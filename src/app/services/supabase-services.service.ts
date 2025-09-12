@@ -53,23 +53,17 @@ export interface ServiceCategory {
   updated_at: string;
 }
 
-              if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
-                resp = await fetch(functionUrl, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  // forward Authorization header if Supabase client has a session
-                  body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
-                });
-              }
-
-              // If batch import fails, do NOT fallback to per-row REST inserts (avoids RLS violations and silent insecurity)
-              if (!resp.ok) {
-                const text = await resp.text().catch(() => '');
-                return reject(new Error(`Batch import failed with status ${resp.status}: ${text}`));
-              }
-
-              if (resp.ok) {
+export interface ServiceTag {
+  id: string;
+  name: string;
+  color?: string;
+  description?: string;
+  company_id: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
+
 
 export interface ServiceStats {
   total: number;
