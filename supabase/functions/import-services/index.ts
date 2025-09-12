@@ -10,28 +10,50 @@
 
 declare const Deno: any;
 
+function getCorsHeaders(origin?: string) {
+  const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+  const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+  const isAllowed = allowAll || (origin && allowedOrigins.includes(origin));
+  return {
+    'Access-Control-Allow-Origin': isAllowed && origin ? origin : (allowAll ? '*' : ''),
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
+    'Vary': 'Origin'
+  } as Record<string, string>;
+}
+
+function isAllowedOrigin(origin?: string) {
+  const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+  if (allowAll) return true;
+  // Allow server-to-server calls where Origin is absent
+  if (!origin) return true;
+  const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+  return allowedOrigins.includes(origin!);
+}
+
 export default async (req: Request) => {
   try {
-    // Handle CORS preflight
+    const origin = req.headers.get('Origin');
+    const corsHeaders = getCorsHeaders(origin ?? undefined);
+
+    // Handle CORS preflight (enforce allowed origin)
     if (req.method === 'OPTIONS') {
-      return new Response(null, {
-        status: 204,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-        }
-      });
+      if (!isAllowedOrigin(origin ?? undefined)) {
+        return new Response(JSON.stringify({ error: 'Origin not allowed' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
 
-    if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    if (req.method !== 'POST') {
+      return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
 
     // Read URL and service role key secrets. Accept both the explicit names used in this file
     // and the common secret names shown in the dashboard (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).
     const URL_SUPABASE = Deno.env.get('URL_SUPABASE') || Deno.env.get('SUPABASE_URL');
     const SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!URL_SUPABASE || !SERVICE_ROLE_KEY) {
-      return new Response(JSON.stringify({ error: 'Missing supabase URL or service_role key in env. Set either URL_SUPABASE & SERVICE_ROLE_KEY or SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY as function secrets.' }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      return new Response(JSON.stringify({ error: 'Missing supabase URL or service_role key in env. Set either URL_SUPABASE & SERVICE_ROLE_KEY or SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY as function secrets.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Lazy import to keep bundle small
@@ -42,7 +64,7 @@ export default async (req: Request) => {
     const rows = Array.isArray(payload.rows) ? payload.rows : [];
     const upsertCategory = !!payload.upsertCategory;
 
-  if (rows.length === 0) return new Response(JSON.stringify({ inserted: [] }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+  if (rows.length === 0) return new Response(JSON.stringify({ inserted: [] }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     const inserted: any[] = [];
 
@@ -130,9 +152,9 @@ export default async (req: Request) => {
       inserted.push(svc);
     }
 
-  return new Response(JSON.stringify({ inserted }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+  return new Response(JSON.stringify({ inserted }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err: any) {
     console.error('Function error', err);
-  return new Response(JSON.stringify({ error: err && err.message ? err.message : String(err) }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+  return new Response(JSON.stringify({ error: err && err.message ? err.message : String(err) }), { status: 500, headers: { ...getCorsHeaders((req.headers.get('Origin') ?? undefined)), 'Content-Type': 'application/json' } });
   }
 };

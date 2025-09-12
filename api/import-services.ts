@@ -6,29 +6,46 @@ const TARGET_URL = process.env['SUPABASE_FUNCTIONS_URL'] ||
   'https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1/import-services';
 const SUPABASE_ANON_KEY = process.env['SUPABASE_ANON_KEY'];
 
-function cors(res: any, origin?: string) {
-  res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Vary', 'Origin');
+function getCorsHeaders(origin?: string) {
+  const allowAll = (process.env['ALLOW_ALL_ORIGINS'] || 'false').toLowerCase() === 'true';
+  const allowedOrigins = (process.env['ALLOWED_ORIGINS'] || '').split(',').map(s => s.trim()).filter(Boolean);
+  const isAllowed = allowAll || (origin && allowedOrigins.includes(origin));
+  return {
+    'Access-Control-Allow-Origin': isAllowed && origin ? origin : (allowAll ? '*' : ''),
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
+    'Vary': 'Origin'
+  } as Record<string, string>;
+}
+
+function isAllowedOrigin(origin?: string) {
+  const allowAll = (process.env['ALLOW_ALL_ORIGINS'] || 'false').toLowerCase() === 'true';
+  if (allowAll) return true;
+  const allowedOrigins = (process.env['ALLOWED_ORIGINS'] || '').split(',').map(s => s.trim()).filter(Boolean);
+  return !!origin && allowedOrigins.includes(origin!);
 }
 
 export default async function handler(req: any, res: any) {
   try {
     const origin = req.headers?.origin as string | undefined;
+    const corsHeaders = getCorsHeaders(origin);
+
     if (req.method === 'OPTIONS') {
-      cors(res, origin);
+      Object.entries(corsHeaders).forEach(([k, v]) => res.setHeader(k, v));
       res.status(204).end();
       return;
     }
 
-    // Allow POST and other methods; mirror the incoming method to upstream
-    const method = req.method || 'POST';
+    // Enforce allowed origin
+    if (!isAllowedOrigin(origin)) {
+      Object.entries(corsHeaders).forEach(([k, v]) => res.setHeader(k, v));
+      res.status(403).json({ error: 'Origin not allowed' });
+      return;
+    }
 
-    // Prepare body: for GET/HEAD there is no body
+    const method = req.method || 'POST';
     const body = method === 'GET' || method === 'HEAD' ? undefined : (typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {}));
 
-    // Forward headers (only essentials)
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const auth = req.headers?.authorization as string | undefined;
     if (auth) {
@@ -37,9 +54,8 @@ export default async function handler(req: any, res: any) {
       headers['Authorization'] = `Bearer ${SUPABASE_ANON_KEY}`;
     }
 
-    // Use Node 18+ global fetch on Vercel runtime
-    // Forward the original HTTP method to upstream and add debug header
     headers['x-forwarded-method'] = method;
+    console.log('Proxy import-services forwarding', { method, target: TARGET_URL, origin });
 
     const upstream = await fetch(TARGET_URL, {
       method,
@@ -49,13 +65,14 @@ export default async function handler(req: any, res: any) {
 
     const text = await upstream.text();
 
-    cors(res, origin);
-    // Mirror status and content-type if present
+    Object.entries(corsHeaders).forEach(([k, v]) => res.setHeader(k, v));
     const ct = upstream.headers.get('content-type') || 'application/json; charset=utf-8';
     res.setHeader('Content-Type', ct);
     res.status(upstream.status).send(text);
   } catch (err: any) {
-    cors(res);
+    const origin = req.headers?.origin as string | undefined;
+    const corsHeaders = getCorsHeaders(origin);
+    Object.entries(corsHeaders).forEach(([k, v]) => res.setHeader(k, v));
     res.status(502).json({ error: 'Proxy error', detail: err?.message || String(err) });
   }
 }
