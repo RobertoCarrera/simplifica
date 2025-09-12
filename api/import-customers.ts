@@ -67,8 +67,11 @@ export default async function handler(req: any, res: any) {
     const auth = req.headers?.authorization as string | undefined;
     if (auth) {
       headers['Authorization'] = auth;
-    } else if (SUPABASE_ANON_KEY) {
-      headers['Authorization'] = `Bearer ${SUPABASE_ANON_KEY}`;
+    } else {
+      // Do not forward anon key for privileged import; require user token
+      Object.entries(corsHeaders).forEach(([k, v]) => res.setHeader(k, v));
+      res.status(401).json({ error: 'Authorization Bearer token required' });
+      return;
     }
 
     headers['x-forwarded-method'] = method;

@@ -29,6 +29,7 @@ export default async (req: Request) => {
   try {
   const origin = req.headers.get('Origin');
   const corsHeaders = getCorsHeaders(origin ?? undefined);
+  console.log('import-customers function invoked');
 
     // Handle CORS preflight (enforce allowed origin)
     if (req.method === 'OPTIONS') {
@@ -49,7 +50,8 @@ export default async (req: Request) => {
       return new Response(JSON.stringify({ error: 'Missing supabase URL or service_role key in env.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { createClient } = await import('@supabase/supabase-js');
+  // Import Supabase client (Edge Functions support npm packages)
+  const { createClient } = await import('@supabase/supabase-js');
     const supabaseAdmin = createClient(URL_SUPABASE, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
     // Enforce allowed origin for actual calls
@@ -60,28 +62,27 @@ export default async (req: Request) => {
     const payload = await req.json().catch(() => ({}));
     const rows = Array.isArray(payload.rows) ? payload.rows : [];
 
-    if (rows.length === 0) return new Response(JSON.stringify({ inserted: [] }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+  if (rows.length === 0) return new Response(JSON.stringify({ inserted: [] }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     // Require Authorization Bearer token in production: validate token and derive auth_user_id
     const authHeader = (req.headers.get('authorization') || '').trim();
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Authorization Bearer token required' }), { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      return new Response(JSON.stringify({ error: 'Authorization Bearer token required' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     let authUserId: string | null = null;
     let authoritativeCompanyId: string | null = null;
     try {
       const token = authHeader.split(' ')[1];
-      const userResp = await fetch(`${URL_SUPABASE.replace(/\/$/, '')}/auth/v1/user`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!userResp.ok) {
-        return new Response(JSON.stringify({ error: 'Invalid or expired token' }), { status: 403, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+      if (userErr || !userData?.user) {
+        return new Response(JSON.stringify({ error: 'Invalid or expired token' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
-      const userJson = await userResp.json().catch(() => ({}));
-      authUserId = userJson?.id || null;
+      authUserId = userData.user.id;
     } catch (e) {
-      return new Response(JSON.stringify({ error: 'Token validation failed' }), { status: 403, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      const msg = (e && typeof e === 'object' && 'message' in e) ? (e as any).message : String(e);
+      console.error('Token validation exception', msg);
+      return new Response(JSON.stringify({ error: 'Token validation failed' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Map auth_user_id to application user and get company_id. If no mapping, reject (403)
