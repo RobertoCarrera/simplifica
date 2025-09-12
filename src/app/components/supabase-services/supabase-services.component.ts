@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { SupabaseServicesService, Service, ServiceCategory, ServiceTag } from '../../services/supabase-services.service';
 import { SimpleSupabaseService, SimpleCompany } from '../../services/simple-supabase.service';
 import { DevRoleService } from '../../services/dev-role.service';
-import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-supabase-services',
@@ -61,7 +60,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   
   private servicesService = inject(SupabaseServicesService);
   private simpleSupabase = inject(SimpleSupabaseService);
-  private toastService = inject(ToastService);
 
   ngOnInit() {
     this.loadCompanies().then(() => {
@@ -185,9 +183,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   selectCategory(category: ServiceCategory) {
-  // store id for persistence, keep name for display
-  (this.formData as any).category = category.id;
-  (this.formData as any).category_name = category.name;
+    this.formData.category = category.name;
     this.showCategoryInput = false;
     this.categoryFilterText = '';
   }
@@ -204,12 +200,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
       if (existingCategory) {
         // Si existe, seleccionarla en lugar de crear una nueva
-  // store id and display name (use table values)
-  (this.formData as any).category = existingCategory.id;
-  (this.formData as any).category_name = existingCategory.name;
-  this.showCategoryInput = false;
-  this.categoryFilterText = '';
-  return;
+        this.formData.category = existingCategory.name;
+        this.showCategoryInput = false;
+        this.categoryFilterText = '';
+        return;
       }
 
       const newCategory = await this.servicesService.findOrCreateCategory(
@@ -217,10 +211,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         this.selectedCompanyId
       );
       
-  this.serviceCategories.push(newCategory);
-  // store category id and name
-  (this.formData as any).category = newCategory.id;
-  (this.formData as any).category_name = newCategory.name;
+      this.serviceCategories.push(newCategory);
+      this.formData.category = newCategory.name;
       this.showCategoryInput = false;
       this.categoryFilterText = '';
       
@@ -302,31 +294,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.loadServiceTags();
   }
 
-  async importServices(event: any) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      this.toastService.error('Error', 'Por favor selecciona un archivo CSV válido');
-      event.target.value = '';
-      return;
-    }
-
-    this.toastService.info('Procesando...', 'Importando servicios desde CSV');
-
-    try {
-      const created = await this.servicesService.importFromCSV(file);
-      this.toastService.success('¡Éxito!', `${created.length} servicios importados correctamente`);
-      event.target.value = '';
-      await this.loadServices();
-    } catch (error: any) {
-      console.error('Error importing services:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido al importar';
-      this.toastService.error('Error de Importación', errorMessage);
-      event.target.value = '';
-    }
-  }
-
   async loadServices() {
     this.loading = true;
     this.error = null;
@@ -375,9 +342,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   extractCategories() {
-  const labels = this.services.map(s => this.getCategoryLabel(s.category)).filter(Boolean) as string[];
-  const unique = Array.from(new Set(labels));
-  this.categories = unique.sort();
+    const uniqueCategories = [...new Set(this.services.map(s => s.category).filter(Boolean))] as string[];
+    this.categories = uniqueCategories.sort();
   }
 
   onSearch() {
@@ -410,19 +376,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     };
     
     // Inicializar tags seleccionados
-    // Support both string[] and { name }[] shapes coming from API
-    if (service?.tags) {
-      this.selectedTags = (service.tags as any[]).map(t => typeof t === 'string' ? t : (t && t.name) ? t.name : String(t));
-    } else {
-      this.selectedTags = [];
-    }
-
-    // Ensure input shows human-friendly category name when editing
-    if (service && service.category) {
-      (this.formData as any).category_name = this.getCategoryLabel(service.category as any);
-    } else {
-      (this.formData as any).category_name = '';
-    }
+    this.selectedTags = service?.tags ? [...service.tags] : [];
     
     this.formErrors = {};
     this.loadServiceCategories();
@@ -442,8 +396,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.editingService = null;
     this.formData = {};
     this.formErrors = {};
-  // clear category_name when closing
-  (this.formData as any).category_name = undefined;
     this.showCategoryInput = false;
     this.categoryFilterText = '';
     this.showTagInput = false;
@@ -574,7 +526,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   getCategoryColor(category: string): string {
-    const resolved = this.getCategoryLabel(category);
     const colors = {
       'Diagnóstico': '#3b82f6',
       'Software': '#059669',
@@ -584,23 +535,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       'Hardware': '#f59e0b',
       'Redes': '#10b981'
     };
-    return colors[resolved as keyof typeof colors] || '#6b7280';
-  }
-
-  // Helper: check simple UUID pattern
-  private isUuid(value: string | undefined | null): boolean {
-    if (!value) return false;
-    return /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/.test(value);
-  }
-
-  // Resolve a category id to its display name; if input is already a name, return it
-  getCategoryLabel(category?: string | null): string {
-    if (!category) return '';
-    if (this.isUuid(category)) {
-      const found = this.serviceCategories.find(c => c.id === category);
-      return found ? found.name : category;
-    }
-    return category;
+    return colors[category as keyof typeof colors] || '#6b7280';
   }
 
   @HostListener('document:click', ['$event'])

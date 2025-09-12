@@ -1,0 +1,78 @@
+Resumen del problema: Import CSV en producción falla
+
+Síntomas principales:
+- Al intentar importar CSV desde la UI, el navegador hace POST a /api/import-services y recibe "405 Method Not Allowed" (net::ERR_ABORTED 405).
+- Al caer el proxy, la app hace inserts por fila a PostgREST (/rest/v1/services) y obtiene 401/403 y logs Postgres 42501 (RLS denied).
+- Consola muestra avisos de navigator lock/GoTrue al iniciar Auth, pero no queremos tocar flujos de invitación/autenticación.
+
+Evidencias relevantes (resumen):
+- Supabase logs: múltiples POST a /rest/v1/services respondiendo 401/403 (anon o JWT no aceptado por RLS).
+- El Supabase Edge Function `supabase/functions/import-services/index.ts` fue creado para hacer batch-insert con service_role (lee URL_SUPABASE/SERVICE_ROLE_KEY o SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY). Maneja creación/upssert de categorías y tags, y relaciones.
+- Se añadió una proxy misma-origen en Vercel `api/import-services.ts` para evitar CORS (la proxy agrega Authorization: Bearer <anon> si el cliente no lo envia).
+- `vercel.json` actualizado: se añadió build rule para `api/**/*.ts` usando `@vercel/node` y la ruta `/api/(.*)` antes del fallback SPA.
+- Frontend (`src/app/services/supabase-services.service.ts`) modificado para intentar en orden: 1) `/api/import-services` (proxy), 2) direct Supabase Function URL, 3) per-row REST fallback.
+- Se añadió GET healthcheck en la proxy para verificar despliegue rápido.
+
+Estado actual:
+- En Postman GET a https://simplifica.digitalizamostupyme.es/api/import-services devuelve 200 pero con HTML (index.html), lo que indica que la petición a ese hostname está sirviendo la SPA (fallback) y no la función.
+- Vercel Deployment: build report muestra compilación exitosa del proyecto; la función `api/import-services` aparece listada en la sección Functions del deployment, pero no hay logs registrados cuando se invoca vía el dominio custom (la UI/POST recibe 405 y el custom domain retorna index.html en algunos tests).
+- Cuando la proxy no responde correctamente, la app cae en el path per-row y falla por RLS (401/403) en PostgREST.
+
+Hipótesis y causas probables:
+1) La función está desplegada en Vercel (aparece en la lista) pero las invocaciones desde el dominio custom caen antes (CDN/route/static fallback) y retornan index.html o 405; es decir, routing conflict entre las reglas estáticas y la función.
+2) Alternativamente, la función existe pero no recibe invocaciones porque la ruta en `vercel.json` o el orden de rutas no coincide con el dominio custom, o el commit desplegado difiere del repo (vercel.json no incluido en el build desplegado).
+3) Falta de logs en Vercel: si la función no se ejecuta (petición no llega), no habrá trazas.
+
+Comprobaciones realizadas / instrucciones a replicar (comandos copy-paste)
+- Healthcheck invocation URL (desde Vercel Functions panel, preferible):
+  curl --ssl-no-revoke -v -X GET 'PASTE_INVOCATION_URL_AQUI'
+  curl --ssl-no-revoke -v -X POST 'PASTE_INVOCATION_URL_AQUI' -H 'Content-Type: application/json' -d '{"rows":[]}'
+
+- Prueba por custom domain (puede fallar con TLS en Windows; usar --ssl-no-revoke):
+  curl --ssl-no-revoke -v -X GET 'https://simplifica.digitalizamostupyme.es/api/import-services'
+  curl --ssl-no-revoke -v -X POST 'https://simplifica.digitalizamostupyme.es/api/import-services' -H 'Content-Type: application/json' -d '{"rows":[]}'
+
+- Comprobar que `api/import-services.ts` está en el commit desplegado:
+  git ls-files | grep '^api/import-services' || true
+  git show --name-only --pretty=format:%H -1
+
+- Comprobar .vercelignore:
+  cat .vercelignore || true
+
+Qué mirar en Vercel Dashboard:
+- En Deployments -> seleccionar el despliegue -> pestaña "Functions": confirmar que `/api/import-services` aparece y copiar su "Invocation URL".
+- Revisar logs de la función: invocaciones recientes y errores. Si no hay logs, la petición no llegó a la función.
+- Revisar que el build usado por el deployment contiene el `vercel.json` y el archivo `api/import-services.ts` (ver list of files/changed files en la UI o comparar commit hash).
+
+Variables y secretos a confirmar:
+- Vercel env: SUPABASE_ANON_KEY (proxy añade Authorization con esta si cliente no la envía), opcional SUPABASE_FUNCTIONS_URL.
+- Supabase Function secrets: URL_SUPABASE or SUPABASE_URL and SERVICE_ROLE_KEY or SUPABASE_SERVICE_ROLE_KEY.
+
+Sugerencias de corrección y next steps:
+1) Probar directamente la Invocation URL mostrada en Vercel. Si devuelve JSON correcto, el problema es routing/custom-domain. Si devuelve HTML OR 405, la función no está ejecutándose correctamente.
+2) Si invocation URL funciona pero `https://simplifica.digitalizamostupyme.es/api/import-services` devuelve index.html: revisar `vercel.json` y el orden de routes; asegurarse que la entrada {
+   "src": "/api/(.*)", "dest": "/api/$1" 
+} esté presente y antes del fallback al SPA. Confirmar commit desplegado contenga este `vercel.json`.
+3) Forzar logging: añadir un console.log al inicio de `api/import-services.ts` y redeploy para verificar invocaciones desde el dominio (ver logs Vercel).
+4) Asegurar que Vercel env `SUPABASE_ANON_KEY` esté configurada; si la proxy reenvía Authorization vacío la función de Supabase puede rechazar o requerir no-verify-jwt.
+5) Si todo lo anterior falla, usar Invocation URL directamente desde la UI (temporal) o configurar un CNAME alternativo que apunte al dominio vercel.app subdominio que sí resuelva rutas a funciones.
+
+Qué información recopilar y compartir con Perplexity (o conmigo) para diagnóstico inmediato:
+- Salida completa de `curl -v` para Invocation URL y para el custom domain (incluyendo headers, status, body).
+- Captura de pantalla/texto del panel Functions en Vercel mostrando Invocation URL y que la función existe.
+- Build logs del deployment que incluyan el listado de archivos desplegados o el commit hash.
+- En caso de 405 desde el navegador, copia del Request/Response headers desde DevTools Network.
+
+Contacto / archivo en repo:
+- Archivo de la Edge Function: `supabase/functions/import-services/index.ts`
+- Proxy Vercel: `api/import-services.ts`
+- Frontend: `src/app/services/supabase-services.service.ts`
+- Config: `vercel.json`
+- Resumen guardado en: f:\simplifica\bug-report-import-services-for-perplexity.txt
+
+Notas finales (contexto breve):
+- Objetivo: permitir import CSV desde la UI sin cambiar flujos de auth/invitación; usar la Edge Function con service_role para evitar RLS y la proxy para evitar CORS.
+- Estado: la función existe en Vercel, pero las invocaciones desde el dominio custom parecen caer en la SPA o no alcanzan la función; falta una verificación final del routing/Invocation URL y/o añadir logs para confirmar la llegada de peticiones.
+
+---
+Generado automáticamente para enviar a Perplexity. Si quieres, puedo modificar el archivo (idioma, nivel de detalle) antes de que lo envíes.

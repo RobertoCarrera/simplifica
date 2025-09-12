@@ -36,7 +36,42 @@ export default async (req: Request) => {
 
     // Lazy import to keep bundle small
     const { createClient } = await import('@supabase/supabase-js');
+    // Ensure we use the service_role key (admin) for all DB ops
     const supabaseAdmin = createClient(URL_SUPABASE, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+
+    // Security: determine company_id from the authenticated user token passed by the client.
+    // Don't trust client-provided company_id.
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization') || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Missing Authorization Bearer token in request. Batch import requires authenticated user token.' }), { status: 403, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    }
+
+    // Fetch user from Supabase Auth endpoint using the provided token
+    const userResp = await fetch(`${URL_SUPABASE.replace(/\/$/, '')}/auth/v1/user`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (!userResp.ok) {
+      const txt = await userResp.text().catch(() => '');
+      return new Response(JSON.stringify({ error: 'Unable to validate user token', detail: txt }), { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    }
+    const userJson = await userResp.json().catch(() => ({}));
+    const authUserId = (userJson && (userJson.id || userJson.user && userJson.user.id)) || null;
+    if (!authUserId) {
+      return new Response(JSON.stringify({ error: 'Invalid user token; no user id found' }), { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    }
+
+    // Lookup application user to get the authoritative company_id
+    const { data: appUsers, error: appUserErr } = await supabaseAdmin
+      .from('users')
+      .select('company_id')
+      .eq('auth_user_id', authUserId)
+      .limit(1);
+    if (appUserErr) {
+      return new Response(JSON.stringify({ error: 'Error looking up app user', detail: appUserErr.message || appUserErr }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    }
+    const companyIdFromUser = Array.isArray(appUsers) && appUsers.length ? appUsers[0].company_id : null;
+    if (!companyIdFromUser) {
+      return new Response(JSON.stringify({ error: 'Authenticated user has no company_id associated' }), { status: 403, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    }
 
     const payload = await req.json().catch(() => ({}));
     const rows = Array.isArray(payload.rows) ? payload.rows : [];
@@ -47,13 +82,13 @@ export default async (req: Request) => {
     const inserted: any[] = [];
 
     for (const r of rows) {
-      // Basic normalization
+      // Basic normalization; ignore any client-supplied company_id and use the server-side company
       const row: any = {
         name: r.name || r.nombre || 'Servicio importado',
         description: r.description || r.descripcion || '',
         base_price: r.base_price != null ? Number(r.base_price) : 0,
         estimated_hours: r.estimated_hours != null ? Number(r.estimated_hours) : 0,
-        company_id: r.company_id || r.company || null,
+        company_id: companyIdFromUser,
         tax_rate: r.tax_rate != null ? Number(r.tax_rate) : null
       };
 

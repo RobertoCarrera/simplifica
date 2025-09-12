@@ -4,13 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { SkeletonComponent } from '../skeleton/skeleton.component';
 import { LoadingComponent } from '../loading/loading.component';
 import { AnimationService } from '../../services/animation.service';
+import { CustomerFormComponent } from '../customer-form/customer-form.component';
 import { DevUserSelectorComponent } from '../dev-user-selector/dev-user-selector.component';
 import { Customer, CreateCustomerDev } from '../../models/customer';
 import { SupabaseCustomersService, CustomerFilters, CustomerStats } from '../../services/supabase-customers.service';
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../services/gdpr-compliance.service';
 import { ToastService } from '../../services/toast.service';
 import { DevRoleService } from '../../services/dev-role.service';
-import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-supabase-customers',
@@ -29,86 +29,27 @@ import { Router } from '@angular/router';
       <app-dev-user-selector></app-dev-user-selector>
     }
       
-      <!-- Header -->
-      <div class="header-section">
-        <div class="header-content">
-          <div class="title-section">
-            <h1 class="page-title">Gestión de Clientes</h1>
-            <p class="page-subtitle">Administra toda la información de tus clientes</p>
-          </div>
-          
-          <!-- Actions -->
-          <div class="header-actions">
-            <!-- GDPR Toggle Button -->
-            <button
-              (click)="goToGdpr()"
-              class="btn"
-              [class.btn-primary]="!gdprPanelVisible()"
-              [class.btn-secondary]="gdprPanelVisible()"
-              title="Mostrar/Ocultar panel GDPR"
-            >
-              <i class="fas fa-shield-alt"></i>
-              GDPR
-            </button>            
-            <button
-              (click)="exportCustomers()"
-              class="btn btn-secondary"
-              [disabled]="isLoading()"
-            >
-              <i class="fas fa-download"></i>
-              Exportar
-            </button>
-            
-            <input
-              #fileInput
-              type="file"
-              accept=".csv"
-              (change)="importCustomers($event)"
-              class="hidden"
-            >
-            <button
-              (click)="fileInput.click()"
-              class="btn btn-secondary"
-              [disabled]="isLoading()"
-              title="Importar clientes desde CSV"
-            >
-              <i class="fas fa-upload"></i>
-              Importar CSV
-              <i class="fas fa-info-circle info-icon" (click)="showImportInfo($event)"></i>
-            </button>
-            <div class="search-input-container">
-              <i class="fas fa-search search-icon"></i>
-              <input
-                type="text"
-                [(ngModel)]="searchTerm"
-                (ngModelChange)="onSearchChange($event)"
-                placeholder="Buscar clientes por nombre, email o DNI..."
-                class="search-input-full"
-              >
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- GDPR Panel (Collapsible) -->
-      @if (devRoleService.canSeeDevTools() && gdprPanelVisible()) {
-        <div class="gdpr-panel mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <!-- GDPR Compliance Dashboard (Admin Only) -->
+      @if (devRoleService.canSeeDevTools() && complianceStats()) {
+        <div class="gdpr-dashboard mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center">
               <i class="fas fa-shield-alt text-blue-600 text-xl mr-2"></i>
               <h3 class="text-lg font-semibold text-blue-900">Panel de Cumplimiento RGPD</h3>
             </div>
             <button
-              (click)="toggleGdprPanel()"
-              class="btn btn-sm btn-outline"
+              (click)="toggleGdprDashboard()"
+              class="btn btn-sm"
+              [class.btn-primary]="!gdprDashboardVisible()"
+              [class.btn-secondary]="gdprDashboardVisible()"
             >
-              <i class="fas fa-times"></i>
-              Cerrar
+              <i class="fas" [class.fa-chevron-down]="!gdprDashboardVisible()" [class.fa-chevron-up]="gdprDashboardVisible()"></i>
+              {{ gdprDashboardVisible() ? 'Ocultar' : 'Ver' }} Detalles
             </button>
           </div>
           
-          @if (complianceStats()) {
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          @if (gdprDashboardVisible()) {
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div class="bg-white rounded-lg p-3 border border-blue-200">
                 <div class="flex items-center">
                   <i class="fas fa-file-alt text-blue-600 text-lg mr-2"></i>
@@ -151,18 +92,76 @@ import { Router } from '@angular/router';
             </div>
             
             <!-- GDPR Quick Actions -->
-            <div class="flex flex-wrap gap-2">
+            <div class="mt-4 flex flex-wrap gap-2">
               <button
-                (click)="exportComplianceReport()"
+                (click)="toggleGdprActions()"
                 class="btn btn-sm btn-outline"
               >
-                <i class="fas fa-file-export mr-1"></i>
-                Exportar Informe RGPD
+                <i class="fas fa-cogs mr-1"></i>
+                Acciones RGPD
               </button>
             </div>
           }
         </div>
       }
+
+      <!-- Header -->
+      <div class="header-section">
+        <div class="header-content">
+          <div class="title-section">
+            <h1 class="page-title">Gestión de Clientes</h1>
+            <p class="page-subtitle">Administra toda la información de tus clientes</p>
+            @if (devRoleService.canSeeDevTools()) {
+              <div class="mt-2">
+                <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                  <i class="fas fa-shield-alt mr-1"></i>
+                  Sistema compatible con RGPD
+                </span>
+              </div>
+            }
+          </div>
+          
+          <!-- Actions -->
+          <div class="header-actions">            
+            <button
+              (click)="exportCustomers()"
+              class="btn btn-secondary"
+              [disabled]="isLoading()"
+            >
+              <i class="fas fa-download"></i>
+              Exportar
+            </button>
+            
+            <input
+              #fileInput
+              type="file"
+              accept=".csv"
+              (change)="importCustomers($event)"
+              class="hidden"
+            >
+            <button
+              (click)="fileInput.click()"
+              class="btn btn-secondary"
+              [disabled]="isLoading()"
+              title="Importar clientes desde CSV"
+            >
+              <i class="fas fa-upload"></i>
+              Importar CSV
+              <i class="fas fa-info-circle info-icon" (click)="showImportInfo($event)"></i>
+            </button>
+            <div class="search-input-container">
+              <i class="fas fa-search search-icon"></i>
+              <input
+                type="text"
+                [(ngModel)]="searchTerm"
+                (ngModelChange)="onSearchChange($event)"
+                placeholder="Buscar clientes por nombre, email o DNI..."
+                class="search-input-full"
+              >
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Stats Cards -->
       @if (stats()) {
@@ -250,16 +249,6 @@ import { Router } from '@angular/router';
                     <i class="fas fa-shield-alt mr-1"></i>
                     {{ getGdprStatusText(customer) }}
                   </span>
-                  @if (getGdprComplianceStatus(customer) === 'pending' && customer.email) {
-                    <button
-                      class="ml-2 inline-flex items-center text-xs px-2 py-1 rounded border border-blue-300 text-blue-700 hover:bg-blue-50"
-                      title="Obtener enlace de consentimiento (copiar al portapapeles)"
-                      (click)="sendConsentRequest(customer); $event.stopPropagation()"
-                    >
-                      <i class="fas fa-link mr-1"></i>
-                      Obtener enlace
-                    </button>
-                  }
                 </div>
                 
                 <div class="customer-details">
@@ -332,14 +321,6 @@ import { Router } from '@angular/router';
                       [id]="'gdpr-menu-' + customer.id"
                       class="gdpr-dropdown hidden absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10"
                     >
-                      <button
-                        (click)="sendConsentRequest(customer); $event.stopPropagation()"
-                        class="block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
-                      >
-                        <i class="fas fa-envelope-open-text mr-2"></i>
-                        Solicitar Consentimiento
-                      </button>
-
                       <button
                         (click)="requestDataAccess(customer); $event.stopPropagation()"
                         class="block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
@@ -584,7 +565,6 @@ export class SupabaseCustomersComponent implements OnInit {
   private gdprService = inject(GdprComplianceService);
   private animationService = inject(AnimationService);
   private toastService = inject(ToastService);
-  private router = inject(Router);
   devRoleService = inject(DevRoleService);
 
   // State signals
@@ -595,8 +575,9 @@ export class SupabaseCustomersComponent implements OnInit {
   selectedCustomer = signal<Customer | null>(null);
   
   // GDPR signals
-  gdprPanelVisible = signal(false);
+  gdprDashboardVisible = signal(false);
   complianceStats = signal<any>(null);
+  showGdprActions = signal(false);
 
   // Filter signals
   searchTerm = signal('');
@@ -944,21 +925,12 @@ export class SupabaseCustomersComponent implements OnInit {
   // GDPR METHODS
   // ========================================
 
-  toggleGdprPanel() {
-    this.gdprPanelVisible.set(!this.gdprPanelVisible());
-    if (this.gdprPanelVisible()) {
-      this.loadComplianceStats();
-    }
+  toggleGdprDashboard() {
+    this.gdprDashboardVisible.set(!this.gdprDashboardVisible());
   }
 
-  goToGdpr() {
-    // Navigate to the dedicated GDPR manager route (same app) with a query param
-    // so users can access the full GDPR interface if they prefer.
-    try {
-      this.router.navigate(['/clientes-gdpr'], { queryParams: { gdpr: '1' } });
-    } catch (e) {
-      console.error('Navigation to GDPR manager failed', e);
-    }
+  toggleGdprActions() {
+    this.showGdprActions.set(!this.showGdprActions());
   }
 
   // Handle GDPR access request for a customer
@@ -1013,26 +985,6 @@ export class SupabaseCustomersComponent implements OnInit {
         this.toastService.error('Error RGPD', 'No se pudieron exportar los datos del cliente');
       }
     });
-  }
-
-  // Create a consent request and show a shareable link
-  sendConsentRequest(customer: Customer) {
-    if (!customer.email) {
-      this.toastService.error('Error', 'El cliente debe tener un email para solicitar consentimiento');
-      return;
-    }
-    this.gdprService.createConsentRequest(customer.id, customer.email, ['data_processing','marketing','analytics'], 'Gestión de consentimiento')
-      .subscribe({
-        next: ({ path }) => {
-          const url = `${window.location.origin}${path}`;
-          navigator.clipboard?.writeText(url);
-          this.toastService.success('Enlace de consentimiento copiado al portapapeles', 'Consentimiento');
-        },
-        error: (err) => {
-          console.error('Error creating consent request', err);
-          this.toastService.error('No se pudo crear la solicitud de consentimiento', 'Error');
-        }
-      });
   }
 
   // Anonymize customer data (GDPR erasure)
@@ -1109,47 +1061,6 @@ export class SupabaseCustomersComponent implements OnInit {
     if (!target.closest('.gdpr-actions-menu')) {
       const allMenus = document.querySelectorAll('.gdpr-dropdown');
       allMenus.forEach(menu => menu.classList.add('hidden'));
-    }
-  }
-
-  // Load GDPR compliance statistics
-  async loadComplianceStats() {
-    try {
-      // Simple mock stats for now - can be enhanced later
-      this.complianceStats.set({
-        accessRequestsCount: 5,
-        activeConsentsCount: this.customers().filter(c => c.marketing_consent_date).length,
-        pendingRequestsCount: 2,
-        overdueRequestsCount: 0
-      });
-    } catch (error) {
-      console.error('Error loading compliance stats:', error);
-    }
-  }
-
-  // Export compliance report
-  async exportComplianceReport() {
-    try {
-      const stats = this.complianceStats();
-      const reportData = {
-        generatedAt: new Date().toISOString(),
-        totalCustomers: this.customers().length,
-        customersWithConsent: this.customers().filter(c => c.marketing_consent_date).length,
-        complianceStats: stats
-      };
-
-      const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `gdpr-compliance-report-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-
-      this.toastService.success('Éxito', 'Informe de cumplimiento GDPR exportado');
-    } catch (error) {
-      console.error('Error exporting compliance report:', error);
-      this.toastService.error('Error', 'No se pudo exportar el informe');
     }
   }
 

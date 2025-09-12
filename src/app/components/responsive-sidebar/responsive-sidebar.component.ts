@@ -14,7 +14,6 @@ interface MenuItem {
   badge?: number;
   children?: MenuItem[];
   module?: string;
-  roleOnly?: 'ownerAdmin';
 }
 
 @Component({
@@ -436,14 +435,6 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'core'
     },
     {
-      id: 101,
-      label: 'Empresa',
-      icon: 'business',
-      route: '/empresa',
-      module: 'core',
-      roleOnly: 'ownerAdmin'
-    },
-    {
       id: 14,
       label: 'Ayuda',
       icon: 'help_outline',
@@ -455,28 +446,14 @@ export class ResponsiveSidebarComponent implements OnInit {
   // Computed menu items based on user role
   menuItems = computed(() => {
     const userRole = this.authService.userRole();
-    const profile = this.authService.userProfile;
-    const isAdmin = userRole === 'admin';
-    const isDev = this.devRoleService.isDev();
-
-    console.log('🔍 Menu filtering - Real user role:', userRole, 'Is adminOnly:', isAdmin, 'Is dev:', isDev);
-
-    // Si no hay perfil de app (usuario pendiente/invitado): menú mínimo
-    if (!profile) {
-      return [
-        { id: 1001, label: 'Confirmación', icon: 'auto_awesome', route: '/auth/confirm?pending=1', module: 'core' },
-        { id: 14, label: 'Ayuda', icon: 'help_outline', route: '/ayuda', module: 'core' }
-      ];
-    }
-
+  const isAdmin = userRole === 'admin';
+  const isDev = this.devRoleService.isDev();
+    
+  console.log('🔍 Menu filtering - Real user role:', userRole, 'Is adminOnly:', isAdmin, 'Is dev:', isDev);
+    
     return this.allMenuItems.filter(item => {
       // Core modules always visible
-      if (item.module === 'core') {
-        if (item.roleOnly === 'ownerAdmin') {
-          return userRole === 'owner' || userRole === 'admin';
-        }
-        return true;
-      }
+      if (item.module === 'core') return true;
       
       // Production modules for everyone
       if (item.module === 'production') return true;

@@ -11,18 +11,12 @@ export class SupabaseClientService {
   private client: SupabaseClient;
 
   constructor() {
-    const defaultKey = 'sb-main-auth-token';
-    // Use a hostname-scoped storage key in browser to avoid Navigator Lock name collisions
-    const storageKey = (typeof window !== 'undefined' && window.location && window.location.hostname)
-      ? `${defaultKey}-${window.location.hostname}`
-      : defaultKey;
-
     this.client = createClient(
       environment.supabase.url,
       environment.supabase.anonKey,
       {
         auth: {
-          storageKey
+          storageKey: 'sb-main-auth-token'
         }
       }
     );

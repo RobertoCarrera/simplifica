@@ -12,29 +12,6 @@
 -- 1. CREAR TABLA DE INVITACIONES
 -- ========================================
 
--- Asegurar extensión para gen_random_uuid()
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
--- Añadir columna surname a public.users y backfill desde name (split)
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'surname'
-    ) THEN
-        ALTER TABLE public.users ADD COLUMN surname TEXT;
-
-        -- Backfill: mover la parte después del primer espacio a surname, dejar el primer token en name
-        UPDATE public.users
-        SET surname = NULLIF(regexp_replace(name, '^[^\s]+\s*', ''), '')
-        WHERE surname IS NULL;
-
-        UPDATE public.users
-        SET name = split_part(name, ' ', 1)
-        WHERE name IS NOT NULL;
-    END IF;
-END$$;
-
 CREATE TABLE IF NOT EXISTS public.company_invitations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
@@ -57,26 +34,6 @@ CREATE INDEX IF NOT EXISTS idx_company_invitations_company ON public.company_inv
 CREATE INDEX IF NOT EXISTS idx_company_invitations_email ON public.company_invitations(email);
 CREATE INDEX IF NOT EXISTS idx_company_invitations_token ON public.company_invitations(token);
 CREATE INDEX IF NOT EXISTS idx_company_invitations_status ON public.company_invitations(status);
-
--- Reglas de unicidad: permitir histórico de invitaciones pero solo 1 PENDING por (company_id, email)
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM information_schema.table_constraints
-        WHERE table_schema = 'public'
-            AND table_name = 'company_invitations'
-            AND constraint_type = 'UNIQUE'
-            AND constraint_name = 'company_invitations_company_id_email_status_key'
-    ) THEN
-        ALTER TABLE public.company_invitations
-            DROP CONSTRAINT company_invitations_company_id_email_status_key;
-    END IF;
-END$$;
-
-CREATE UNIQUE INDEX IF NOT EXISTS uq_company_invitations_pending_one_per_email_company
-ON public.company_invitations(company_id, email)
-WHERE status = 'pending';
 
 -- RLS para invitaciones
 ALTER TABLE public.company_invitations ENABLE ROW LEVEL SECURITY;
@@ -165,11 +122,6 @@ DECLARE
     invitation_id UUID;
     result JSON;
 BEGIN
-    -- Validar que el usuario autenticado coincide con el p_auth_user_id
-    IF auth.uid() IS DISTINCT FROM p_auth_user_id THEN
-        RETURN json_build_object('success', false, 'error', 'Unauthorized');
-    END IF;
-
     -- Buscar usuario pendiente
     SELECT * INTO pending_user_data
     FROM public.pending_users
@@ -249,11 +201,10 @@ BEGIN
     )
     RETURNING id INTO new_company_id;
     
-    -- Crear usuario como owner (name + surname normalizados)
+    -- Crear usuario como owner
     INSERT INTO public.users (
         email,
-        name,
-        surname,
+        name, 
         role,
         active,
         company_id,
@@ -262,8 +213,7 @@ BEGIN
     )
     VALUES (
         pending_user_data.email,
-        COALESCE(NULLIF(pending_user_data.given_name, ''), split_part(pending_user_data.full_name, ' ', 1), split_part(pending_user_data.email, '@', 1)),
-        COALESCE(NULLIF(pending_user_data.surname, ''), NULLIF(regexp_replace(pending_user_data.full_name, '^[^\s]+\s*', ''), '')),
+        pending_user_data.full_name,
         'owner',
         true,
         new_company_id,
@@ -394,11 +344,6 @@ DECLARE
     new_user_id UUID;
     company_name TEXT;
 BEGIN
-    -- Validar que el usuario autenticado coincide con el p_auth_user_id
-    IF auth.uid() IS DISTINCT FROM p_auth_user_id THEN
-        RETURN json_build_object('success', false, 'error', 'Unauthorized');
-    END IF;
-
     -- Buscar invitación válida
     SELECT * INTO invitation_data
     FROM public.company_invitations
@@ -431,11 +376,10 @@ BEGIN
     FROM public.companies
     WHERE id = invitation_data.company_id;
     
-    -- Crear usuario en la empresa (name + surname normalizados)
+    -- Crear usuario en la empresa
     INSERT INTO public.users (
         email,
         name,
-        surname,
         role,
         active,
         company_id,
@@ -444,8 +388,7 @@ BEGIN
     )
     VALUES (
         pending_user_data.email,
-        COALESCE(NULLIF(pending_user_data.given_name, ''), split_part(pending_user_data.full_name, ' ', 1), split_part(pending_user_data.email, '@', 1)),
-        COALESCE(NULLIF(pending_user_data.surname, ''), NULLIF(regexp_replace(pending_user_data.full_name, '^[^\s]+\s*', ''), '')),
+        pending_user_data.full_name,
         invitation_data.role,
         true,
         invitation_data.company_id,
@@ -558,12 +501,9 @@ $$;
 -- ========================================
 
 -- Vista para gestión de invitaciones
--- Para evitar errores al cambiar nombres/orden de columnas, forzamos drop y recreate
-DROP VIEW IF EXISTS admin_company_invitations;
-CREATE VIEW admin_company_invitations AS
+CREATE OR REPLACE VIEW admin_company_invitations AS
 SELECT 
     ci.id,
-    ci.company_id,
     ci.email,
     ci.role,
     ci.status,
@@ -616,144 +556,3 @@ SELECT 'Next steps:' as info;
 SELECT '1. Update frontend to handle invitation flow' as step1;
 SELECT '2. Add company invitation UI components' as step2;
 SELECT '3. Configure email notifications for invitations' as step3;
-
--- ========================================
--- 6. ACCIONES DE APROBACIÓN/RECHAZO PARA INVITACIONES (OWNER/ADMIN)
--- ========================================
-
--- Aprobar invitación: crea el usuario inmediatamente usando pending_users
-CREATE OR REPLACE FUNCTION approve_company_invitation(
-    p_invitation_id UUID
-)
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-    inv public.company_invitations;
-    approver public.users;
-    pend public.pending_users;
-    new_user_id UUID;
-    company_name TEXT;
-BEGIN
-    -- Obtener invitación
-    SELECT * INTO inv FROM public.company_invitations WHERE id = p_invitation_id;
-    IF NOT FOUND THEN
-        RETURN json_build_object('success', false, 'error', 'Invitation not found');
-    END IF;
-
-    -- Validar permisos: el caller debe ser owner/admin de esa empresa
-    SELECT u.* INTO approver
-    FROM public.users u
-    WHERE u.auth_user_id = auth.uid()
-      AND u.company_id = inv.company_id
-      AND u.active = true
-      AND u.role IN ('owner','admin')
-    LIMIT 1;
-
-    IF NOT FOUND THEN
-        RETURN json_build_object('success', false, 'error', 'Unauthorized');
-    END IF;
-
-    -- Obtener pending user por email (confirmado o no)
-    SELECT * INTO pend
-    FROM public.pending_users
-    WHERE email = inv.email
-    ORDER BY created_at DESC
-    LIMIT 1;
-
-    -- Crear usuario si aún no existe
-    IF NOT EXISTS (
-        SELECT 1 FROM public.users WHERE email = inv.email AND company_id = inv.company_id AND active = true
-    ) THEN
-        INSERT INTO public.users (
-            email, name, surname, role, active, company_id, auth_user_id, permissions
-        ) VALUES (
-            inv.email,
-            COALESCE(NULLIF(pend.given_name, ''), split_part(COALESCE(pend.full_name, inv.email), ' ', 1), split_part(inv.email, '@', 1)),
-            COALESCE(NULLIF(pend.surname, ''), NULLIF(regexp_replace(COALESCE(pend.full_name, ''), '^[^\s]+\s*', ''), '')),
-            inv.role,
-            true,
-            inv.company_id,
-            pend.auth_user_id,
-            '{}'::jsonb
-        ) RETURNING id INTO new_user_id;
-    END IF;
-
-    -- Marcar invitación y pending_user
-    UPDATE public.company_invitations
-    SET status = 'accepted', responded_at = NOW()
-    WHERE id = inv.id;
-
-    IF pend.id IS NOT NULL THEN
-      UPDATE public.pending_users
-      SET confirmed_at = COALESCE(confirmed_at, NOW()), status = 'confirmed'
-      WHERE id = pend.id;
-    END IF;
-
-    SELECT name INTO company_name FROM public.companies WHERE id = inv.company_id;
-
-    RETURN json_build_object(
-        'success', true,
-        'company_id', inv.company_id,
-        'company_name', company_name,
-        'user_id', new_user_id
-    );
-EXCEPTION WHEN OTHERS THEN
-    RETURN json_build_object('success', false, 'error', SQLERRM);
-END;
-$$;
-
--- Rechazar invitación
-CREATE OR REPLACE FUNCTION reject_company_invitation(
-    p_invitation_id UUID
-)
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-    inv public.company_invitations;
-    approver public.users;
-BEGIN
-    SELECT * INTO inv FROM public.company_invitations WHERE id = p_invitation_id;
-    IF NOT FOUND THEN
-        RETURN json_build_object('success', false, 'error', 'Invitation not found');
-    END IF;
-
-    -- Validar permisos: owner/admin de la empresa
-    SELECT u.* INTO approver
-    FROM public.users u
-    WHERE u.auth_user_id = auth.uid()
-      AND u.company_id = inv.company_id
-      AND u.active = true
-      AND u.role IN ('owner','admin')
-    LIMIT 1;
-
-    IF NOT FOUND THEN
-        RETURN json_build_object('success', false, 'error', 'Unauthorized');
-    END IF;
-
-    UPDATE public.company_invitations
-    SET status = 'rejected', responded_at = NOW()
-    WHERE id = inv.id;
-
-    RETURN json_build_object('success', true);
-EXCEPTION WHEN OTHERS THEN
-    RETURN json_build_object('success', false, 'error', SQLERRM);
-END;
-$$;
-
--- ========================================
--- 7. GRANTS PARA RPCs (exposición vía PostgREST)
--- ========================================
-GRANT EXECUTE ON FUNCTION check_company_exists(TEXT) TO authenticated, anon;
-GRANT EXECUTE ON FUNCTION confirm_user_registration(UUID, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION invite_user_to_company(UUID, TEXT, TEXT, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION accept_company_invitation(TEXT, UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION approve_company_invitation(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION reject_company_invitation(UUID) TO authenticated;
-
--- Dar permisos de lectura a vistas administrativas necesarias en frontend
-GRANT SELECT ON admin_company_invitations TO authenticated;
-GRANT SELECT ON admin_company_analysis TO authenticated;
