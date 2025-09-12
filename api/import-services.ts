@@ -22,14 +22,11 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    if (req.method !== 'POST') {
-      cors(res, origin);
-      res.status(405).json({ error: 'Method Not Allowed' });
-      return;
-    }
+    // Allow POST and other methods; mirror the incoming method to upstream
+    const method = req.method || 'POST';
 
-    // Prepare body as JSON string
-    const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+    // Prepare body: for GET/HEAD there is no body
+    const body = method === 'GET' || method === 'HEAD' ? undefined : (typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {}));
 
     // Forward headers (only essentials)
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -41,8 +38,11 @@ export default async function handler(req: any, res: any) {
     }
 
     // Use Node 18+ global fetch on Vercel runtime
+    // Forward the original HTTP method to upstream and add debug header
+    headers['x-forwarded-method'] = method;
+
     const upstream = await fetch(TARGET_URL, {
-      method: 'POST',
+      method,
       headers,
       body,
     });

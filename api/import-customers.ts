@@ -22,13 +22,8 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    if (req.method !== 'POST') {
-      cors(res, origin);
-      res.status(405).json({ error: 'Method Not Allowed' });
-      return;
-    }
-
-    const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+    const method = req.method || 'POST';
+    const body = method === 'GET' || method === 'HEAD' ? undefined : (typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {}));
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     const auth = req.headers?.authorization as string | undefined;
@@ -38,8 +33,9 @@ export default async function handler(req: any, res: any) {
       headers['Authorization'] = `Bearer ${SUPABASE_ANON_KEY}`;
     }
 
+    headers['x-forwarded-method'] = method;
     const upstream = await fetch(TARGET_URL, {
-      method: 'POST',
+      method,
       headers,
       body,
     });
