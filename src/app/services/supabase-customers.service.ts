@@ -1272,17 +1272,32 @@ export class SupabaseCustomersService {
           
           // Mapear por posición o name de columna
           // Map required fields using headerAliases
-          const name = this.findValueByHeader(headers, values, headerAliases['name']) || '';
-          const surname = this.findValueByHeader(headers, values, headerAliases['surname']) || '';
-          const email = this.findValueByHeader(headers, values, headerAliases['email']) || '';
+          let name = this.findValueByHeader(headers, values, headerAliases['name']) || '';
+          let surname = this.findValueByHeader(headers, values, headerAliases['surname']) || '';
+          let email = this.findValueByHeader(headers, values, headerAliases['email']) || '';
 
           // Collect remaining columns into metadata
-          const metadata: Record<string, any> = {};
+          const metaObj: Record<string, any> = {};
           headers.forEach((h, i) => {
             if (!isRequiredHeader(h) && !['dni', 'nif', 'documento', 'phone', 'telefono', 'movil'].some(k => h.includes(k))) {
-              metadata[h] = values[i] ?? '';
+              metaObj[h] = values[i] ?? '';
             }
           });
+
+          // Graceful defaults and attention flags
+          const attentionReasons: string[] = [];
+          if (!email || !email.includes('@')) {
+            email = 'corre@tudominio.es';
+            attentionReasons.push('email_missing_or_invalid');
+          }
+          if (!name || !name.trim()) {
+            name = 'Cliente';
+            attentionReasons.push('name_missing');
+          }
+          if (!surname || !surname.trim()) {
+            surname = 'Apellidos';
+            attentionReasons.push('surname_missing');
+          }
 
           const customer: Partial<Customer> = {
             name,
@@ -1292,14 +1307,14 @@ export class SupabaseCustomersService {
             phone: this.findValueByHeader(headers, values, ['phone', 'teléfono', 'movil']) || ''
           };
           
-          // Validar email requerido
-          if (!customer.email || !customer.email.includes('@')) {
-            throw new Error(`Fila ${index + 2}: Email inválido o faltante`);
-          }
-          
           // attach metadata (as JSON string) for server-side insertion if there are any extra fields
-          if (Object.keys(metadata).length) {
-            (customer as any).metadata = JSON.stringify(metadata);
+          if (attentionReasons.length) {
+            metaObj['needs_attention'] = true;
+            metaObj['attention_reasons'] = attentionReasons;
+          }
+
+          if (Object.keys(metaObj).length) {
+            (customer as any).metadata = JSON.stringify(metaObj);
           }
           return customer;
         } catch (error) {
@@ -1367,24 +1382,38 @@ export class SupabaseCustomersService {
           }
         });
 
-        // Validate required fields
+        // Graceful defaults and attention flags for required fields
+        const meta2: Record<string, any> = (customer as any).metadata ? JSON.parse((customer as any).metadata) : {};
+        const attentionReasons: string[] = Array.isArray(meta2['attention_reasons']) ? meta2['attention_reasons'] : [];
         if (!customer.email || !customer.email.includes('@')) {
-          throw new Error(`Fila ${index + 2}: Email inválido o faltante`);
+          customer.email = 'corre@tudominio.es';
+          attentionReasons.push('email_missing_or_invalid');
+        }
+        if (!customer.name || !customer.name.trim()) {
+          customer.name = 'Cliente';
+          attentionReasons.push('name_missing');
+        }
+        if (!customer.apellidos || !customer.apellidos.trim()) {
+          customer.apellidos = 'Apellidos';
+          attentionReasons.push('apellidos_missing');
+        }
+        if (attentionReasons.length) {
+          meta2['needs_attention'] = true;
+          meta2['attention_reasons'] = attentionReasons;
         }
 
-        if (!customer.name?.trim()) {
-          throw new Error(`Fila ${index + 2}: Nombre es requerido`);
-        }
-
-        // Attach metadata if there are any extra fields
-        if (Object.keys(metadata).length) {
-          (customer as any).metadata = JSON.stringify(metadata);
+        // Merge metadata from unmapped fields and attention meta (preserve attention)
+        const finalMeta = Object.assign({}, metadata, meta2);
+        if (Object.keys(finalMeta).length) {
+          (customer as any).metadata = JSON.stringify(finalMeta);
         }
 
         return customer;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-        throw new Error(`Error en fila ${index + 2}: ${errorMessage}`);
+        const rowText = Array.isArray(row) ? row.join(',') : String(row || '');
+        const displayRow = rowText && rowText.trim() ? rowText : '<vacío>';
+        throw new Error(`Error en fila ${index + 2}: ${errorMessage} | Contenido fila: ${displayRow}`);
       }
     });
   }

@@ -2,7 +2,7 @@
 // Purpose: avoid browser CORS by proxying POST /api/import-services -> Supabase functions/v1/import-services
 // Optionally set env SUPABASE_FUNCTIONS_URL to override the default target URL
 
-const TARGET_URL = process.env['SUPABASE_FUNCTIONS_URL'] ||
+const TARGET_URL = process.env['SUPABASE_IMPORT_SERVICES_URL'] || process.env['SUPABASE_FUNCTIONS_URL'] ||
   'https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1/import-services';
 const SUPABASE_ANON_KEY = process.env['SUPABASE_ANON_KEY'];
 
@@ -21,8 +21,10 @@ function getCorsHeaders(origin?: string) {
 function isAllowedOrigin(origin?: string) {
   const allowAll = (process.env['ALLOW_ALL_ORIGINS'] || 'false').toLowerCase() === 'true';
   if (allowAll) return true;
+  // Allow server-to-server calls where Origin is absent
+  if (!origin) return true;
   const allowedOrigins = (process.env['ALLOWED_ORIGINS'] || '').split(',').map(s => s.trim()).filter(Boolean);
-  return !!origin && allowedOrigins.includes(origin!);
+  return allowedOrigins.includes(origin!);
 }
 
 export default async function handler(req: any, res: any) {
@@ -32,6 +34,10 @@ export default async function handler(req: any, res: any) {
 
     if (req.method === 'OPTIONS') {
       Object.entries(corsHeaders).forEach(([k, v]) => res.setHeader(k, v));
+      if (!isAllowedOrigin(origin)) {
+        res.status(403).json({ error: 'Origin not allowed' });
+        return;
+      }
       res.status(204).end();
       return;
     }
