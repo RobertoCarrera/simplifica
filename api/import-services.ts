@@ -8,7 +8,7 @@ const SUPABASE_ANON_KEY = process.env['SUPABASE_ANON_KEY'];
 
 function cors(res: any, origin?: string) {
   res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Vary', 'Origin');
 }
@@ -19,6 +19,12 @@ export default async function handler(req: any, res: any) {
     if (req.method === 'OPTIONS') {
       cors(res, origin);
       res.status(204).end();
+      return;
+    }
+
+    if (req.method === 'GET') {
+      cors(res, origin);
+      res.status(200).json({ ok: true, target: TARGET_URL });
       return;
     }
 
