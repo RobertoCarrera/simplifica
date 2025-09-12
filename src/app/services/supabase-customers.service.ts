@@ -1027,6 +1027,7 @@ export class SupabaseCustomersService {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
+          console.log('FileReader.onload fired for CSV file');
           const csv = e.target?.result as string;
           const lines = csv.split('\n').filter(line => line.trim());
           
@@ -1047,6 +1048,7 @@ export class SupabaseCustomersService {
       };
       
       reader.onerror = () => {
+        console.error('FileReader.onerror fired while reading CSV file');
         observer.error(new Error('Error al leer el archivo.'));
       };
       
@@ -1468,6 +1470,46 @@ export class SupabaseCustomersService {
         }
       })();
     });
+  }
+
+  /**
+   * Dev helper: Test the import endpoints (proxy and direct function) to verify availability.
+   * Returns a Promise resolving with the two fetch results (proxy, direct) for easier UI debugging.
+   */
+  async testImportEndpoints(): Promise<{ proxy?: { status: number; text: string }, direct?: { status: number; text: string }, errors?: any[] }> {
+    const proxyUrl = '/api/import-customers';
+    const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
+    const samplePayload = { rows: [{ name: 'DEBUG', surname: 'USER', email: 'debug@example.com' }] };
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+    // Try to include auth if available
+    try {
+      const session = (this.supabase as any)?.auth?.session?.() || (this.supabase as any)?.getSession?.() || null;
+      const accessToken = session?.access_token || session?.accessToken || undefined;
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+    } catch (e) {
+      // ignore
+    }
+
+    const result: any = { errors: [] };
+
+    try {
+      const resp = await fetch(proxyUrl, { method: 'POST', headers, body: JSON.stringify(samplePayload) });
+      const text = await resp.text().catch(() => '');
+      result.proxy = { status: resp.status, text };
+    } catch (err) {
+      result.errors.push({ proxy: String(err) });
+    }
+
+    try {
+      const resp2 = await fetch(functionUrl, { method: 'POST', headers, body: JSON.stringify(samplePayload) });
+      const text2 = await resp2.text().catch(() => '');
+      result.direct = { status: resp2.status, text: text2 };
+    } catch (err) {
+      result.errors.push({ direct: String(err) });
+    }
+
+    return result;
   }
 
   // Método auxiliar para parsear líneas CSV con comillas

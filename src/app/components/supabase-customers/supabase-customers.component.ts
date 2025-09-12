@@ -78,6 +78,17 @@ import { Router } from '@angular/router';
               Importar CSV
               <i class="fas fa-info-circle info-icon" (click)="showImportInfo($event)"></i>
             </button>
+            <!-- Dev-only: Test import endpoints -->
+            @if (devRoleService.canSeeDevTools()) {
+              <button
+                class="btn btn-ghost ml-2"
+                (click)="testImportEndpoints()"
+                title="Test endpoints de importación"
+              >
+                <i class="fas fa-bug"></i>
+                Test Import Endpoints
+              </button>
+            }
             <div class="search-input-container">
               <i class="fas fa-search search-icon"></i>
               <input
@@ -569,14 +580,13 @@ import { Router } from '@angular/router';
     }
 
     <!-- CSV Header Mapper Modal -->
-    @if (showCsvMapper()) {
-      <app-csv-header-mapper
-        [csvHeaders]="csvHeaders()"
-        [csvData]="csvData()"
-        (mappingConfirmed)="onCsvMappingConfirmed($event)"
-        (mappingCancelled)="onCsvMappingCancelled()"
-      ></app-csv-header-mapper>
-    }
+    <app-csv-header-mapper
+      [visible]="showCsvMapper()"
+      [csvHeaders]="csvHeaders()"
+      [csvData]="csvData()"
+      (mappingConfirmed)="onCsvMappingConfirmed($event)"
+      (cancelled)="onCsvMappingCancelled()"
+    ></app-csv-header-mapper>
 
     <!-- Floating Action Button (FAB) -->
     <button
@@ -914,12 +924,14 @@ export class SupabaseCustomersComponent implements OnInit {
       return;
     }
 
-    this.toastService.info('Procesando...', 'Analizando estructura del CSV');
+  console.log('CSV import selected, starting parse for mapping...');
+  this.toastService.info('Procesando...', 'Analizando estructura del CSV');
     this.pendingCsvFile = file;
 
     // Parse CSV to show mapping interface
     this.customersService.parseCSVForMapping(file).subscribe({
       next: ({ headers, data }) => {
+        console.log('CSV parsed for mapping:', { headers, previewRows: data.slice(0, 3) });
         this.csvHeaders.set(headers);
         this.csvData.set(data);
         this.showCsvMapper.set(true);
@@ -937,6 +949,7 @@ export class SupabaseCustomersComponent implements OnInit {
   }
 
   onCsvMappingConfirmed(result: CsvMappingResult) {
+    console.log('CSV mapping confirmed by user:', result);
     if (!this.pendingCsvFile) {
       this.toastService.error('Error', 'No hay archivo CSV pendiente');
       return;
@@ -1003,9 +1016,33 @@ export class SupabaseCustomersComponent implements OnInit {
   }
 
   onCsvMappingCancelled() {
+    console.log('CSV mapping cancelled by user');
     this.showCsvMapper.set(false);
     this.pendingCsvFile = null;
     this.toastService.info('Cancelado', 'Importación CSV cancelada');
+  }
+
+  async testImportEndpoints() {
+    if (!this.devRoleService.canSeeDevTools()) {
+      this.toastService.error('No autorizado', 'Herramientas de desarrollador no disponibles');
+      return;
+    }
+
+    this.toastService.info('Probando endpoints', 'Llamando a proxy y al function directo...');
+    try {
+      const res = await this.customersService.testImportEndpoints();
+      console.log('Test import endpoints result:', res);
+
+      const messages: string[] = [];
+      if (res.proxy) messages.push(`Proxy: ${res.proxy.status} ${res.proxy.text}`);
+      if (res.direct) messages.push(`Direct: ${res.direct.status} ${res.direct.text}`);
+      if (res.errors && res.errors.length) messages.push(`Errors: ${JSON.stringify(res.errors)}`);
+
+      this.toastService.success('Test completado', messages.slice(0,2).join(' | '));
+    } catch (err) {
+      console.error('Error testing import endpoints:', err);
+      this.toastService.error('Test fallido', String(err));
+    }
   }
 
   showImportInfo(event: Event) {
