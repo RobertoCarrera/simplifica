@@ -24,7 +24,15 @@ export default async (req: Request) => {
       });
     }
 
-    if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+  // Normalize method to avoid narrow literal type comparisons in this environment
+  const method = String(req.method || '').toUpperCase();
+
+  // Allow GET healthcheck to confirm function presence
+  if (method === 'GET') {
+      return new Response(JSON.stringify({ ok: true, message: 'import-services function' }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    }
+
+  if (method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
     // Read URL and service role key secrets. Accept both the explicit names used in this file
     // and the common secret names shown in the dashboard (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).
@@ -39,6 +47,11 @@ export default async (req: Request) => {
     // Ensure we use the service_role key (admin) for all DB ops
     const supabaseAdmin = createClient(URL_SUPABASE, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
+    // Basic healthcheck for GET (helps proxy/domains verifying function presence)
+    if (req.method === 'GET') {
+      return new Response(JSON.stringify({ ok: true, message: 'import-services function' }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    }
+
     // Security: determine company_id from the authenticated user token passed by the client.
     // Don't trust client-provided company_id.
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization') || '';
@@ -47,14 +60,14 @@ export default async (req: Request) => {
       return new Response(JSON.stringify({ error: 'Missing Authorization Bearer token in request. Batch import requires authenticated user token.' }), { status: 403, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     }
 
-    // Fetch user from Supabase Auth endpoint using the provided token
+    // Validate token against Supabase Auth endpoint
     const userResp = await fetch(`${URL_SUPABASE.replace(/\/$/, '')}/auth/v1/user`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!userResp.ok) {
       const txt = await userResp.text().catch(() => '');
       return new Response(JSON.stringify({ error: 'Unable to validate user token', detail: txt }), { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     }
     const userJson = await userResp.json().catch(() => ({}));
-    const authUserId = (userJson && (userJson.id || userJson.user && userJson.user.id)) || null;
+    const authUserId = (userJson && (userJson.id || (userJson.user && userJson.user.id))) || null;
     if (!authUserId) {
       return new Response(JSON.stringify({ error: 'Invalid user token; no user id found' }), { status: 401, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     }
@@ -88,7 +101,7 @@ export default async (req: Request) => {
         description: r.description || r.descripcion || '',
         base_price: r.base_price != null ? Number(r.base_price) : 0,
         estimated_hours: r.estimated_hours != null ? Number(r.estimated_hours) : 0,
-        company_id: companyIdFromUser,
+        company_id: r.company_id || r.company || null,
         tax_rate: r.tax_rate != null ? Number(r.tax_rate) : null
       };
 
@@ -98,19 +111,19 @@ export default async (req: Request) => {
         // If client provided uuid, use it directly
         if (/^[0-9a-fA-F-]{36}$/.test(String(catName))) {
           row.category = catName;
-        } else if (upsertCategory && row.company_id) {
+        } else if (upsertCategory && companyIdFromUser) {
           // Try to find
           const { data: foundCats, error: findErr } = await supabaseAdmin
             .from('service_categories')
             .select('id')
-            .eq('company_id', row.company_id)
+            .eq('company_id', companyIdFromUser)
             .ilike('name', catName)
             .limit(1);
           if (!findErr && foundCats && foundCats.length) row.category = foundCats[0].id;
           else {
             const { data: newCat, error: createCatErr } = await supabaseAdmin
               .from('service_categories')
-              .insert({ name: catName, company_id: row.company_id, is_active: true })
+              .insert({ name: catName, company_id: companyIdFromUser, is_active: true })
               .select()
               .limit(1);
             if (!createCatErr && newCat && newCat.length) row.category = newCat[0].id;

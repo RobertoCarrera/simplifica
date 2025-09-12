@@ -186,7 +186,7 @@ export class SupabaseCustomersService {
         if (error) throw error;
         
         // Convertir estructura de 'clients' a 'Customer'
-        const customers = data?.map((client: any) => ({
+        const customers = data?.map(client => ({
           id: client.id,
           name: client.name?.split(' ')[0] || '',
           apellidos: client.name?.split(' ').slice(1).join(' ') || '',
@@ -196,26 +196,7 @@ export class SupabaseCustomersService {
           usuario_id: client.company_id,
           created_at: client.created_at,
           updated_at: client.updated_at,
-          activo: !client.deleted_at,
-          // GDPR fields
-          marketing_consent: client.marketing_consent ?? undefined,
-          marketing_consent_date: client.marketing_consent_date ?? undefined,
-          marketing_consent_method: client.marketing_consent_method ?? undefined,
-          data_processing_consent: client.data_processing_consent ?? undefined,
-          data_processing_consent_date: client.data_processing_consent_date ?? undefined,
-          data_processing_legal_basis: client.data_processing_legal_basis ?? undefined,
-          data_retention_until: client.data_retention_until ?? undefined,
-          deletion_requested_at: client.deletion_requested_at ?? undefined,
-          deletion_reason: client.deletion_reason ?? undefined,
-          anonymized_at: client.anonymized_at ?? undefined,
-          is_minor: client.is_minor ?? undefined,
-          parental_consent_verified: client.parental_consent_verified ?? undefined,
-          parental_consent_date: client.parental_consent_date ?? undefined,
-          data_minimization_applied: client.data_minimization_applied ?? undefined,
-          last_data_review_date: client.last_data_review_date ?? undefined,
-          access_restrictions: client.access_restrictions ?? undefined,
-          last_accessed_at: client.last_accessed_at ?? undefined,
-          access_count: client.access_count ?? undefined
+          activo: !client.deleted_at
         })) || [];
         
         devSuccess('Clientes obtenidos via consulta estándar', customers.length);
@@ -316,26 +297,7 @@ export class SupabaseCustomersService {
           usuario_id: client.company_id, // Mapear company_id a usuario_id temporalmente
           created_at: client.created_at,
           updated_at: client.updated_at,
-          activo: !client.deleted_at,
-          // GDPR fields
-          marketing_consent: client.marketing_consent ?? undefined,
-          marketing_consent_date: client.marketing_consent_date ?? undefined,
-          marketing_consent_method: client.marketing_consent_method ?? undefined,
-          data_processing_consent: client.data_processing_consent ?? undefined,
-          data_processing_consent_date: client.data_processing_consent_date ?? undefined,
-          data_processing_legal_basis: client.data_processing_legal_basis ?? undefined,
-          data_retention_until: client.data_retention_until ?? undefined,
-          deletion_requested_at: client.deletion_requested_at ?? undefined,
-          deletion_reason: client.deletion_reason ?? undefined,
-          anonymized_at: client.anonymized_at ?? undefined,
-          is_minor: client.is_minor ?? undefined,
-          parental_consent_verified: client.parental_consent_verified ?? undefined,
-          parental_consent_date: client.parental_consent_date ?? undefined,
-          data_minimization_applied: client.data_minimization_applied ?? undefined,
-          last_data_review_date: client.last_data_review_date ?? undefined,
-          access_restrictions: client.access_restrictions ?? undefined,
-          last_accessed_at: client.last_accessed_at ?? undefined,
-          access_count: client.access_count ?? undefined
+          activo: !client.deleted_at
         })) || [];
         
         devSuccess('Clientes obtenidos via fallback', customers.length);

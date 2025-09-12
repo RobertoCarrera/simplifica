@@ -90,6 +90,22 @@ export class SupabaseServicesService {
     console.log('🔧 SupabaseServicesService initialized');
   }
 
+  // Helper to map inserted DB row to Service model
+  private mapInsertedRowToService(svcRow: any): Service {
+    return {
+      id: svcRow.id,
+      name: svcRow.name,
+      description: svcRow.description || '',
+      base_price: svcRow.base_price || 0,
+      estimated_hours: svcRow.estimated_hours || 0,
+      category: svcRow.category || 'Servicio Técnico',
+      is_active: svcRow.is_active !== undefined ? svcRow.is_active : true,
+      company_id: svcRow.company_id || this.currentCompanyId || '',
+      created_at: svcRow.created_at,
+      updated_at: svcRow.updated_at || svcRow.created_at
+    };
+  }
+
   async getServices(companyId?: string): Promise<Service[]> {
     try {
     const targetCompanyId = companyId || this.currentCompanyId;
@@ -776,10 +792,15 @@ export class SupabaseServicesService {
               };
             });
 
-            // First try same-origin proxy
-            let resp = await fetch(proxyUrl, {
+            // First try same-origin proxy and forward Authorization if available
+            const client = this.supabase.getClient();
+            const session = (client.auth as any)?.session?.() || undefined;
+            const headers: Record<string,string> = { 'Content-Type': 'application/json' };
+            if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+            const resp = await fetch(proxyUrl, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers,
               body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
             });
 
@@ -787,36 +808,33 @@ export class SupabaseServicesService {
             if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
               resp = await fetch(functionUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
               });
+              if (resp2.ok) {
+                const json = await resp2.json();
+                const insertedRows = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+                for (const svcRow of insertedRows) created.push(this.mapInsertedRowToService(svcRow));
+                resolve(created);
+                return;
+              }
             }
 
+            // If initial proxy call succeeded, process results
             if (resp.ok) {
               const json = await resp.json();
               const insertedRows = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
-              for (const svcRow of insertedRows) {
-                const svc: Service = {
-                  id: svcRow.id,
-                  name: svcRow.name,
-                  description: svcRow.description || '',
-                  base_price: svcRow.base_price || 0,
-                  estimated_hours: svcRow.estimated_hours || 0,
-                  category: svcRow.category || 'Servicio Técnico',
-                  is_active: svcRow.is_active !== undefined ? svcRow.is_active : true,
-                  company_id: svcRow.company_id || this.currentCompanyId || '',
-                  created_at: svcRow.created_at,
-                  updated_at: svcRow.updated_at || svcRow.created_at
-                };
-                created.push(svc);
-              }
+              for (const svcRow of insertedRows) created.push(this.mapInsertedRowToService(svcRow));
               resolve(created);
               return;
-            } else {
-              console.warn('Edge function import failed, falling back to per-row import', resp.status, await resp.text());
             }
+
+            // Fail-fast: do not fallback to per-row REST inserts (avoids RLS/security issues)
+            const errText = await resp.text().catch(() => '');
+            return reject(new Error(`Batch import failed with status ${resp.status}: ${errText}`));
           } catch (err) {
-            console.warn('Edge function call error, falling back to per-row import', err);
+            console.warn('Edge function call error', err);
+            return reject(err);
           }
 
           // Helper to perform REST calls with anon key
