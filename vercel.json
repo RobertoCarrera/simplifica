@@ -16,6 +16,16 @@
   ],
   "routes": [
     {
+      "src": "/api/import-services",
+      "methods": ["OPTIONS", "POST", "GET"],
+      "dest": "/api/import-services.ts"
+    },
+    {
+      "src": "/api/import-customers",
+      "methods": ["OPTIONS", "POST", "GET"],
+      "dest": "/api/import-customers.ts"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/$1"
     },

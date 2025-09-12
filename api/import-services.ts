@@ -32,6 +32,16 @@ export default async function handler(req: any, res: any) {
     const origin = req.headers?.origin as string | undefined;
     const corsHeaders = getCorsHeaders(origin);
 
+    // Lightweight health-check so a deployed function responds to GET (helps detect SPA/static fallback)
+    if (req.method === 'GET') {
+      Object.entries(corsHeaders).forEach(([k, v]) => res.setHeader(k, v));
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('X-Proxy-Info', 'import-services-proxy');
+      console.log('Proxy import-services: health-check GET received', { origin });
+      res.status(200).json({ ok: true, proxy: 'import-services', origin: origin || null });
+      return;
+    }
+
     if (req.method === 'OPTIONS') {
       Object.entries(corsHeaders).forEach(([k, v]) => res.setHeader(k, v));
       if (!isAllowedOrigin(origin)) {
@@ -49,7 +59,7 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    const method = req.method || 'POST';
+  const method = req.method || 'POST';
     const body = method === 'GET' || method === 'HEAD' ? undefined : (typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {}));
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -61,7 +71,9 @@ export default async function handler(req: any, res: any) {
     }
 
     headers['x-forwarded-method'] = method;
-    console.log('Proxy import-services forwarding', { method, target: TARGET_URL, origin });
+  console.log('Proxy import-services forwarding', { method, target: TARGET_URL, origin });
+  // Add a debug header so deployed proxies are easy to spot in responses
+  res.setHeader('X-Proxy-Forwarding-To', TARGET_URL);
 
     const upstream = await fetch(TARGET_URL, {
       method,
