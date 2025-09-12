@@ -8,6 +8,10 @@
       "config": {
         "distDir": "dist/simplifica/browser"
       }
+    },
+    {
+      "src": "api/**/*.ts",
+      "use": "@vercel/node"
     }
   ],
   "routes": [

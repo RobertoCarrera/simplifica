@@ -782,8 +782,8 @@ export class SupabaseServicesService {
               body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
             });
 
-            // If proxy not available on local/dev or returns 404, try direct function URL
-            if (!resp.ok && resp.status === 404) {
+            // If proxy not available or not allowed (404/405), try direct function URL
+            if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
               resp = await fetch(functionUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
