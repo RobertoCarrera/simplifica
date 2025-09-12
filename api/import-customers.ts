@@ -21,8 +21,10 @@ function getCorsHeaders(origin?: string) {
 function isAllowedOrigin(origin?: string) {
   const allowAll = (process.env['ALLOW_ALL_ORIGINS'] || 'false').toLowerCase() === 'true';
   if (allowAll) return true;
+  // Allow server-to-server calls where Origin is absent
+  if (!origin) return true;
   const allowedOrigins = (process.env['ALLOWED_ORIGINS'] || '').split(',').map(s => s.trim()).filter(Boolean);
-  return !!origin && allowedOrigins.includes(origin!);
+  return allowedOrigins.includes(origin!);
 }
 
 export default async function handler(req: any, res: any) {
@@ -30,9 +32,23 @@ export default async function handler(req: any, res: any) {
     const origin = req.headers?.origin as string | undefined;
     const corsHeaders = getCorsHeaders(origin);
 
+    // Lightweight health-check so a deployed function responds to GET (helps detect SPA/static fallback)
+    if (req.method === 'GET') {
+      Object.entries(corsHeaders).forEach(([k, v]) => res.setHeader(k, v));
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('X-Proxy-Info', 'import-customers-proxy');
+      console.log('Proxy import-customers: health-check GET received', { origin });
+      res.status(200).json({ ok: true, proxy: 'import-customers', origin: origin || null });
+      return;
+    }
+
     // Preflight
     if (req.method === 'OPTIONS') {
       Object.entries(corsHeaders).forEach(([k, v]) => res.setHeader(k, v));
+      if (!isAllowedOrigin(origin)) {
+        res.status(403).json({ error: 'Origin not allowed' });
+        return;
+      }
       res.status(204).end();
       return;
     }
@@ -57,8 +73,10 @@ export default async function handler(req: any, res: any) {
 
     headers['x-forwarded-method'] = method;
 
-    // Debug log for Vercel logs
-    console.log('Proxy: forwarding', { method, target: TARGET_URL, origin });
+  // Debug log for Vercel logs
+  console.log('Proxy import-customers forwarding', { method, target: TARGET_URL, origin });
+  // Add a debug header so deployed proxies are easy to spot in responses
+  res.setHeader('X-Proxy-Forwarding-To', TARGET_URL);
 
     const upstream = await fetch(TARGET_URL, {
       method,
