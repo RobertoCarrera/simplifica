@@ -86,19 +86,26 @@ export default async (req: Request) => {
 
     // Map auth_user_id to application user and get company_id. If no mapping, reject (403)
     if (authUserId) {
-      const { data: appUsers } = await supabaseAdmin
+      console.log('Validating auth user id, looking up app user', { authUserId });
+      const { data: appUsers, error: appUsersErr } = await supabaseAdmin
         .from('users')
         .select('company_id')
         .eq('auth_user_id', authUserId)
         .limit(1);
-      if (appUsers && appUsers.length) authoritativeCompanyId = appUsers[0].company_id || null;
+      if (appUsersErr) {
+        console.error('Error querying users table for auth mapping', appUsersErr);
+      }
+      if (appUsers && appUsers.length) {
+        authoritativeCompanyId = appUsers[0].company_id || null;
+      }
     }
 
     if (!authoritativeCompanyId) {
       return new Response(JSON.stringify({ error: 'Authenticated user has no associated company (forbidden)' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const inserted: any[] = [];
+  console.log('Beginning import of rows', { count: rows.length, companyId: authoritativeCompanyId });
+  const inserted: any[] = [];
     for (const r of rows) {
       // Normalize required fields. Support 'surname' as incoming header which maps to 'apellidos'
       const name = r.name || r.nombre || '';
@@ -131,6 +138,7 @@ export default async (req: Request) => {
       }
 
       try {
+        // Insert row using service_role client
         const { data: created, error } = await supabaseAdmin
           .from('clients')
           .insert([row])
@@ -138,6 +146,7 @@ export default async (req: Request) => {
           .limit(1);
 
         if (error) {
+          console.error('Insert error for row', { row, error });
           inserted.push({ error: error.message || error, row });
           continue;
         }
@@ -145,13 +154,17 @@ export default async (req: Request) => {
         const svc = Array.isArray(created) ? created[0] : created;
         inserted.push(svc);
       } catch (err: any) {
+        console.error('Exception inserting row', { row, err: err?.message || String(err), stack: err?.stack });
         inserted.push({ error: err?.message || String(err), row });
       }
     }
 
     return new Response(JSON.stringify({ inserted }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err: any) {
-    console.error('Function error', err);
-    return new Response(JSON.stringify({ error: err && err.message ? err.message : String(err) }), { status: 500, headers: { ...getCorsHeaders(req.headers.get('Origin') ?? undefined), 'Content-Type': 'application/json' } });
+    console.error('Function error', err, err?.stack);
+    const body = { error: err && err.message ? err.message : String(err) } as any;
+    // Include stack for debugging (remove in production)
+    if (err?.stack) body.stack = err.stack;
+    return new Response(JSON.stringify(body), { status: 500, headers: { ...getCorsHeaders(req.headers.get('Origin') ?? undefined), 'Content-Type': 'application/json' } });
   }
 };

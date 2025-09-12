@@ -93,11 +93,14 @@ export class DashboardWorkshopComponent implements OnInit{
 
   newCustomer: Customer = {
     _id: '',
-    created_at: new Date,
+    id: '',
+    created_at: new Date(),
+    name: '',
     nombre: '',
     apellidos: '',
     dni: '',
     direccion_id: '',
+    phone: '',
     telefono: '',
     email: '',
     favicon: null,
@@ -154,10 +157,10 @@ export class DashboardWorkshopComponent implements OnInit{
 
   selectCustomer(customer: Customer) {
     this.selectedCustomerDNI = customer.dni; // Muestra el nombre de la marca seleccionada en el input
-    this.selectedCustomerTelefono = customer.telefono;
+  this.selectedCustomerTelefono = customer.telefono ?? '';
     this.selectedCustomerApellidos= customer.apellidos;
     this.selectedCustomerEmail= customer.email;
-    this.selectedCustomerNombre= customer.nombre;
+  this.selectedCustomerNombre= customer.nombre ?? '';
     this.selectedCustomerEmail= customer.email;
     this.selectedCustomerCP = customer.direccion?.localidad?.CP || '';
     this.selectedCustomerLocality = customer.direccion?.localidad?.nombre || '';

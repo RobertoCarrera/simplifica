@@ -12,8 +12,9 @@ export class CustomersService {
 
   constructor(private http: HttpClient){}
 
-  getCustomers(userId: string): Observable<Customer[]>{
-    let params = new HttpParams().set('usuario_id', userId);
+  getCustomers(userId?: string): Observable<Customer[]>{
+    let params = new HttpParams();
+    if (userId) params = params.set('usuario_id', userId);
 
     return this.http.get<Customer[]>(this.apiUrl, {params});
   }
@@ -30,7 +31,12 @@ export class CustomersService {
     return this.http.patch(`${this.apiUrl}/${customerId}`, updateData);
   }
 
-  deleteCustomer(customerId: string): Observable<void>{
+  deleteCustomer(customerId: string | number): Observable<void>{
     return this.http.delete<void>(`${this.apiUrl}/${customerId}`);
+  }
+
+  searchCustomers(query: string): Observable<Customer[]> {
+    const params = new HttpParams().set('q', query);
+    return this.http.get<Customer[]>(`${this.apiUrl}/search`, { params });
   }
 }

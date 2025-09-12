@@ -1,17 +1,22 @@
 import { Address } from "./address";
 
 export interface Customer {
+  _id?: string;
   id: string;
-  created_at: string;
+  created_at: string | Date;
   updated_at?: string;
   name: string;
   apellidos: string;
   dni: string;
   phone: string;
+  // Legacy/localized aliases used across older components
+  nombre?: string;
+  telefono?: string;
   email: string;
   direccion_id?: string;
   direccion?: Address;
   avatar_url?: string;
+  favicon?: string | null;
   usuario_id: string;
   // Campos adicionales para funcionalidad extendida
   address?: string;

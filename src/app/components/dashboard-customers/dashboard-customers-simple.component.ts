@@ -197,7 +197,7 @@ export class DashboardCustomersComponent implements OnInit {
     if (confirm('¿Estás seguro de eliminar este cliente?')) {
       this.customerService.deleteCustomer(customerId).subscribe({
         next: () => {
-          this.customers = this.customers.filter(c => c.id !== customerId);
+          this.customers = this.customers.filter(c => c.id !== String(customerId));
         },
         error: (error) => {
           console.error('Error eliminando cliente:', error);

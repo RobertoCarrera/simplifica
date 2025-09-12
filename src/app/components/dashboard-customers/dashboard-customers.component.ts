@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SimpleSupabaseService, SimpleClient } from '../../services/simple-supabase.service';
 import { TenantService } from '../../services/tenant.service';
+import { Customer } from '../../models/customer';
 import { SkeletonComponent } from '../skeleton/skeleton.component';
 import { LoadingComponent } from '../loading/loading.component';
 import { SmoothTransitionDirective } from '../../directives/smooth-transition.directive';
@@ -163,6 +164,16 @@ export class DashboardCustomersComponent implements OnInit {
   error: string | null = null;
   currentTenant: any = null;
 
+  // Properties used by legacy/multi-tenant methods
+  searchCustomer: string = '';
+  customers: Customer[] = [];
+  selectedCustomer: Customer | null = null;
+  modalCustomer = false;
+  customerInEdition: Customer | null = null;
+  isModalVisible = false;
+  changeEditionCustomer = false;
+  isShrink = false;
+
   constructor(
     private supabase: SimpleSupabaseService,
     private tenantService: TenantService
@@ -171,11 +182,13 @@ export class DashboardCustomersComponent implements OnInit {
   ngOnInit(): void {
     console.log('🔄 Dashboard customers iniciado');
     
-    // Obtener tenant actual
-    this.tenantService.getCurrentTenant().subscribe(tenant => {
+    // Obtener tenant actual (observable)
+    this.tenantService.tenant$.subscribe(tenant => {
       console.log('🏢 Tenant actual:', tenant);
       this.currentTenant = tenant;
       this.loadClients();
+      // also load multi-tenant data helper
+      this.loadMultiTenantData();
     });
   }
 
@@ -218,12 +231,7 @@ export class DashboardCustomersComponent implements OnInit {
       this.loading = false;
     }
   }
-}
-
-    // Cargar datos multi-tenant
-    this.loadMultiTenantData();
-  }
-
+  
   // === NUEVOS MÉTODOS MULTI-TENANT ===
 
   async loadMultiTenantData(): Promise<void> {
@@ -325,8 +333,8 @@ export class DashboardCustomersComponent implements OnInit {
 
   filterCustomers(): Customer[] {
     return this.customers.filter(c => 
-      c.nombre?.toLowerCase().includes(this.searchCustomer.toLowerCase()) ||
-      c.email?.toLowerCase().includes(this.searchCustomer.toLowerCase())
+      (c.name || '').toLowerCase().includes(this.searchCustomer.toLowerCase()) ||
+      (c.email || '').toLowerCase().includes(this.searchCustomer.toLowerCase())
     );
   }
 

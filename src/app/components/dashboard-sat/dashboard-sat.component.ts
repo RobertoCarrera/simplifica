@@ -82,7 +82,7 @@ export class DashboardSatComponent implements OnInit{
         normalize(ticket.created_at.toString()).startsWith(searchTerm) ||
         normalize(ticket.contador.toString()).startsWith(searchTerm) ||
         normalize(ticket.cliente.dni.toLowerCase()).startsWith(searchTerm) ||
-        normalize(ticket.cliente.nombre.toLowerCase()).startsWith(searchTerm) ||
+  normalize((ticket.cliente.nombre ?? '').toLowerCase()).startsWith(searchTerm) ||
         normalize(ticket.cliente.apellidos.toLowerCase()).includes(searchTerm) ||
         normalize(ticket.fecha_vencimiento.toString()).startsWith(searchTerm) ||
         normalize(ticket.estado.nombre.toLowerCase()).startsWith(searchTerm) ||

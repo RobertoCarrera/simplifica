@@ -16,7 +16,7 @@ function getCorsHeaders(origin?: string) {
   const isAllowed = allowAll || (origin && allowedOrigins.includes(origin));
   return {
     'Access-Control-Allow-Origin': isAllowed && origin ? origin : (allowAll ? '*' : ''),
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
     'Vary': 'Origin'
   } as Record<string, string>;
@@ -44,6 +44,15 @@ export default async (req: Request) => {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
 
+    // Lightweight health-check for GET so we can detect deployed function presence
+    if (req.method === 'GET') {
+      if (!isAllowedOrigin(origin ?? undefined)) {
+        return new Response(JSON.stringify({ error: 'Origin not allowed' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const info = { ok: true, function: 'import-services', origin: origin ?? null };
+      return new Response(JSON.stringify(info), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Function-Info': 'import-services' } });
+    }
+
     if (req.method !== 'POST') {
       return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -66,7 +75,8 @@ export default async (req: Request) => {
 
   if (rows.length === 0) return new Response(JSON.stringify({ inserted: [] }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
-    const inserted: any[] = [];
+  console.log('import-services: payload rows=', rows.length, 'upsertCategory=', upsertCategory);
+  const inserted: any[] = [];
 
     for (const r of rows) {
       // Basic normalization
@@ -106,26 +116,34 @@ export default async (req: Request) => {
       }
 
       // Insert service
-      const { data: createdSvc, error: svcErr } = await supabaseAdmin
-        .from('services')
-        .insert([row])
-        .select()
-        .limit(1);
+      let svc: any = null;
+      try {
+        const { data: createdSvc, error: svcErr } = await supabaseAdmin
+          .from('services')
+          .insert([row])
+          .select()
+          .limit(1);
 
-      if (svcErr) {
-        // return error for this row but continue with others
-        inserted.push({ error: svcErr.message || svcErr, row });
+        if (svcErr) {
+          // return error for this row but continue with others
+          console.warn('import-services: insert error for row', row, svcErr);
+          inserted.push({ error: svcErr.message || svcErr, row });
+          continue;
+        }
+
+        svc = Array.isArray(createdSvc) ? createdSvc[0] : createdSvc;
+      } catch (rowErr) {
+        console.error('import-services: exception inserting row', row, rowErr);
+        inserted.push({ error: String(rowErr), row });
         continue;
       }
-
-      const svc = Array.isArray(createdSvc) ? createdSvc[0] : createdSvc;
 
       // Handle tags if provided (array or pipe-separated string)
       const tagNames: string[] = [];
       if (Array.isArray(r.tags)) tagNames.push(...r.tags.map(String));
       else if (typeof r.tags === 'string') tagNames.push(...r.tags.split('|').map((s: string) => s.trim()).filter(Boolean));
 
-      if (tagNames.length > 0 && svc && svc.id && svc.company_id) {
+  if (tagNames.length > 0 && svc && svc.id && svc.company_id) {
         // create missing tags
         const uniqueNames = Array.from(new Set(tagNames.map(n => n.toLowerCase())));
         // fetch existing
@@ -145,7 +163,11 @@ export default async (req: Request) => {
         const tagIds = uniqueNames.map(n => existingMap.get(n)).filter(Boolean);
         if (tagIds.length) {
           const relations = tagIds.map((tid: string) => ({ service_id: svc.id, tag_id: tid }));
-          await supabaseAdmin.from('service_tag_relations').insert(relations).select();
+          try {
+            await supabaseAdmin.from('service_tag_relations').insert(relations).select();
+          } catch (relErr) {
+            console.warn('import-services: failed to insert tag relations', relErr, relations);
+          }
         }
       }
 
@@ -155,6 +177,9 @@ export default async (req: Request) => {
   return new Response(JSON.stringify({ inserted }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err: any) {
     console.error('Function error', err);
-  return new Response(JSON.stringify({ error: err && err.message ? err.message : String(err) }), { status: 500, headers: { ...getCorsHeaders((req.headers.get('Origin') ?? undefined)), 'Content-Type': 'application/json' } });
+    const stack = err && err.stack ? String(err.stack) : undefined;
+    const body: any = { error: err && err.message ? err.message : String(err) };
+    if (stack) body.stack = stack;
+    return new Response(JSON.stringify(body), { status: 500, headers: { ...getCorsHeaders((req.headers.get('Origin') ?? undefined)), 'Content-Type': 'application/json' } });
   }
 };

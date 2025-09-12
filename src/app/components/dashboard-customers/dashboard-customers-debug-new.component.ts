@@ -1,7 +1,9 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
-import { SimpleSupabaseService, SimpleClient } from '../../services/simple-supabase.service';
+import { SimpleSupabaseService, SimpleClient, SimpleCompany } from '../../services/simple-supabase.service';
 
 @Component({
   selector: 'app-dashboard-customers-debug-new',
@@ -18,7 +20,7 @@ import { SimpleSupabaseService, SimpleClient } from '../../services/simple-supab
           <p><strong>loading:</strong> {{ loading }}</p>
           <p><strong>error:</strong> {{ error }}</p>
           <p><strong>clients (length):</strong> {{ clients?.length || 'null' }}</p>
-          <p><strong>availableCompanies (length):</strong> {{ availableCompanies?.length || 0 }}</p>
+          <p><strong>availableCompanies (length):</strong> {{ availableCompanies.length || 0 }}</p>
           <p><strong>tenantParam:</strong> {{ tenantParam }}</p>
           <p><strong>currentCompanyName:</strong> {{ currentCompanyName }}</p>
         </div>

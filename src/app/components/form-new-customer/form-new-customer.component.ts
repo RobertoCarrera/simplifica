@@ -101,9 +101,12 @@ export class FormNewCustomerComponent  implements OnInit{
   getCustomerData(direccion_id: string): Customer {
     return{
       _id: '',
+      id: '',
       created_at: new Date(),
+      name: this.selectedCustomerName,
       nombre: this.selectedCustomerName,
       direccion_id: direccion_id,
+      phone: this.selectedCustomerTelephone,
       telefono: this.selectedCustomerTelephone,
       email: `${this.selectedCustomerEmail}@${this.selectedCustomerDomain}`,
       favicon: null,
@@ -144,11 +147,14 @@ export class FormNewCustomerComponent  implements OnInit{
   createCliente(direccion_id: string) {
     const cliente: Customer = {
       _id: '',
+      id: '',
       created_at: new Date(),
+      name: this.selectedCustomerName,
       nombre: this.selectedCustomerName,
       apellidos: '', // podrías capturarlo en el formulario si quieres
       direccion_id: direccion_id,
       dni: this.selectedCustomerDNI,
+      phone: this.selectedCustomerTelephone,
       telefono: this.selectedCustomerTelephone,
       email: `${this.selectedCustomerEmail}@${this.selectedCustomerDomain}`,
       favicon: null,
@@ -229,8 +235,8 @@ export class FormNewCustomerComponent  implements OnInit{
   selectCustomer(cliente: Customer) {
 
     this.selectedCustomerDNI = cliente.dni; // Muestra el nombre de la marca seleccionada en el input
-    this.selectedCustomerTelephone = cliente.telefono;
-    this.selectedCustomerName= cliente.nombre +" "+ cliente.apellidos;
+  this.selectedCustomerTelephone = cliente.telefono ?? '';
+  this.selectedCustomerName= (cliente.nombre ?? cliente.name ?? '') +" "+ (cliente.apellidos ?? '');
     this.customerFoundChanged = true;
     this.checkCustomerFound();
     this.filteredCustomersByDNI = []; // Limpia la lista tras la selección
@@ -285,9 +291,9 @@ export class FormNewCustomerComponent  implements OnInit{
       return;
     }
 
-    this.filteredCustomersByName = this.customers.filter(customer => 
-        normalize(customer.nombre).startsWith(name) || 
-        normalize(customer.apellidos).includes(name));
+  this.filteredCustomersByName = this.customers.filter(customer => 
+    normalize((customer.nombre ?? customer.name ?? '')).startsWith(name) || 
+    normalize(customer.apellidos).includes(name));
 
     this.searchValidName = this.filteredCustomersByName.length > 0;
   }
@@ -311,7 +317,7 @@ export class FormNewCustomerComponent  implements OnInit{
     }
 
     this.filteredCustomersByTelephone = this.customers.filter(customer =>
-      customer.telefono.startsWith(telephone)
+      (customer.telefono ?? '').startsWith(telephone)
     );
     
     this.searchValidTelephone = this.filteredCustomersByTelephone.length > 0;
