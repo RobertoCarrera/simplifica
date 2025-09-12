@@ -755,7 +755,8 @@ export class SupabaseServicesService {
 
           const created: Service[] = [];
 
-          // Try batch import via Edge Function first
+          // Try batch import via same-origin Vercel proxy first (avoids CORS), then fall back to direct Supabase function
+          const proxyUrl = `/api/import-services`;
           const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-services`;
           try {
             const payloadRows = rows.map(cols => {
@@ -774,11 +775,21 @@ export class SupabaseServicesService {
               };
             });
 
-            const resp = await fetch(functionUrl, {
+            // First try same-origin proxy
+            let resp = await fetch(proxyUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
             });
+
+            // If proxy not available on local/dev or returns 404, try direct function URL
+            if (!resp.ok && resp.status === 404) {
+              resp = await fetch(functionUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
+              });
+            }
 
             if (resp.ok) {
               const json = await resp.json();

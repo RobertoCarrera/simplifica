@@ -12,24 +12,37 @@ declare const Deno: any;
 
 export default async (req: Request) => {
   try {
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
+      });
+    }
+
     if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
-  // Read URL secret set in Supabase (secret name should be URL_SUPABASE per project settings)
-  const SUPABASE_URL = Deno.env.get('URL_SUPABASE') || Deno.env.get('SUPABASE_URL');
-    const SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY');
-    if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-      return new Response(JSON.stringify({ error: 'Missing SUPABASE_URL or SERVICE_ROLE_KEY in env' }), { status: 500 });
+    // Read URL and service role key secrets. Accept both the explicit names used in this file
+    // and the common secret names shown in the dashboard (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).
+    const URL_SUPABASE = Deno.env.get('URL_SUPABASE') || Deno.env.get('SUPABASE_URL');
+    const SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!URL_SUPABASE || !SERVICE_ROLE_KEY) {
+      return new Response(JSON.stringify({ error: 'Missing supabase URL or service_role key in env. Set either URL_SUPABASE & SERVICE_ROLE_KEY or SUPABASE_URL & SUPABASE_SERVICE_ROLE_KEY as function secrets.' }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     }
 
     // Lazy import to keep bundle small
     const { createClient } = await import('@supabase/supabase-js');
-    const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+    const supabaseAdmin = createClient(URL_SUPABASE, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
     const payload = await req.json().catch(() => ({}));
     const rows = Array.isArray(payload.rows) ? payload.rows : [];
     const upsertCategory = !!payload.upsertCategory;
 
-    if (rows.length === 0) return new Response(JSON.stringify({ inserted: [] }), { status: 200 });
+  if (rows.length === 0) return new Response(JSON.stringify({ inserted: [] }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
 
     const inserted: any[] = [];
 
@@ -117,9 +130,9 @@ export default async (req: Request) => {
       inserted.push(svc);
     }
 
-    return new Response(JSON.stringify({ inserted }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify({ inserted }), { status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
   } catch (err: any) {
     console.error('Function error', err);
-    return new Response(JSON.stringify({ error: err && err.message ? err.message : String(err) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify({ error: err && err.message ? err.message : String(err) }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
   }
 };
