@@ -105,62 +105,82 @@ export default async (req: Request) => {
       return new Response(JSON.stringify({ error: 'Authenticated user has no associated company (forbidden)' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-  console.log('Beginning import of rows', { count: rows.length, companyId: authoritativeCompanyId });
-  const inserted: any[] = [];
+    console.log('Beginning import of rows', { count: rows.length, companyId: authoritativeCompanyId });
+    const prepared: any[] = [];
+    const errors: any[] = [];
+
     for (const r of rows) {
-      // Normalize required fields. Support 'surname' as incoming header which maps to 'apellidos'
       const name = r.name || r.nombre || '';
       const surname = r.surname || r.apellidos || r.last_name || '';
       const email = r.email || r.correo || null;
-
       const row: any = {
         name: name || 'Cliente importado',
         apellidos: surname || undefined,
         email,
         phone: r.phone || r.telefono || null,
         dni: r.dni || r.nif || null,
-        company_id: authoritativeCompanyId || r.company_id || null,
+        company_id: authoritativeCompanyId,
         created_at: new Date().toISOString()
       };
-
-      // Attach metadata column if provided (string or object)
       if (r.metadata) {
         try {
           row.metadata = typeof r.metadata === 'string' ? JSON.parse(r.metadata) : r.metadata;
         } catch (e) {
-          // If parsing fails, store raw string under metadata_raw
           row.metadata_raw = r.metadata;
         }
       }
-
       if (!email) {
-        inserted.push({ error: 'missing email', row });
+        errors.push({ error: 'missing email', row });
         continue;
       }
+      prepared.push(row);
+    }
 
+    const inserted: any[] = [];
+    // Insert in chunks to reduce roundtrips and avoid payload/timeouts
+    const chunkSize = 100;
+    for (let i = 0; i < prepared.length; i += chunkSize) {
+      const chunk = prepared.slice(i, i + chunkSize);
       try {
-        // Insert row using service_role client
-        const { data: created, error } = await supabaseAdmin
-          .from('clients')
-          .insert([row])
-          .select()
-          .limit(1);
-
+        const { data, error } = await supabaseAdmin.from('clients').insert(chunk).select();
         if (error) {
-          console.error('Insert error for row', { row, error });
-          inserted.push({ error: error.message || error, row });
-          continue;
+          console.warn('Batch insert failed, falling back to per-row', { i, count: chunk.length, error: error.message || error });
+          // Per-row fallback for this chunk
+          for (const row of chunk) {
+            try {
+              const { data: one, error: oneErr } = await supabaseAdmin.from('clients').insert([row]).select().limit(1);
+              if (oneErr) {
+                errors.push({ error: oneErr.message || oneErr, row });
+              } else {
+                const created = Array.isArray(one) ? one[0] : one;
+                inserted.push(created);
+              }
+            } catch (e: any) {
+              errors.push({ error: e?.message || String(e), row });
+            }
+          }
+        } else {
+          if (Array.isArray(data)) inserted.push(...data); else if (data) inserted.push(data);
         }
-
-        const svc = Array.isArray(created) ? created[0] : created;
-        inserted.push(svc);
-      } catch (err: any) {
-        console.error('Exception inserting row', { row, err: err?.message || String(err), stack: err?.stack });
-        inserted.push({ error: err?.message || String(err), row });
+      } catch (e: any) {
+        console.warn('Chunk insert exception, falling back to per-row', { i, count: chunk.length, err: e?.message || String(e) });
+        for (const row of chunk) {
+          try {
+            const { data: one, error: oneErr } = await supabaseAdmin.from('clients').insert([row]).select().limit(1);
+            if (oneErr) {
+              errors.push({ error: oneErr.message || oneErr, row });
+            } else {
+              const created = Array.isArray(one) ? one[0] : one;
+              inserted.push(created);
+            }
+          } catch (ee: any) {
+            errors.push({ error: ee?.message || String(ee), row });
+          }
+        }
       }
     }
 
-    return new Response(JSON.stringify({ inserted }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ inserted, errors }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err: any) {
     console.error('Function error', err, err?.stack);
     const body = { error: err && err.message ? err.message : String(err) } as any;
