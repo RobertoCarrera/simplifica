@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Observable, from, throwError, BehaviorSubject, combineLatest } from 'rxjs';
-import { map, catchError, tap, switchMap } from 'rxjs/operators';
+import { Observable, from, throwError, BehaviorSubject, combineLatest, Subject, of } from 'rxjs';
+import { map, catchError, tap, switchMap, concatMap } from 'rxjs/operators';
 import { Customer, CreateCustomer, CreateCustomerDev, UpdateCustomer } from '../models/customer';
 import { Address } from '../models/address';
 import { environment } from '../../environments/environment';
@@ -1637,5 +1637,123 @@ importFromCSV(file: File): Observable<Customer[]> {
       }
     }
     return '';
+  }
+
+  // ============================
+  // Batch import with progress
+  // ============================
+
+  /**
+   * Construye clientes parciales a partir de headers/datos + mappings del CSV
+   */
+  public buildPayloadRowsFromMapping(
+    csvHeaders: string[],
+    csvData: string[][],
+    mappings: { field: string; csvHeader: string }[]
+  ): Partial<Customer>[] {
+    if (!Array.isArray(csvHeaders) || !Array.isArray(csvData) || !Array.isArray(mappings)) return [];
+
+    const norm = (s: string) => (s || '').trim().toLowerCase();
+    const headerIndex = new Map<string, number>(csvHeaders.map((h, i) => [norm(h), i]));
+
+    const fieldToIndex = new Map<string, number>();
+    for (const m of mappings) {
+      const idx = headerIndex.get(norm(m.csvHeader));
+      if (typeof idx === 'number') fieldToIndex.set(m.field, idx);
+    }
+
+    const rows: Partial<Customer>[] = csvData
+      .filter(r => Array.isArray(r) && r.some(c => (c || '').trim()))
+      .map(row => {
+        const pick = (field: string) => {
+          const i = fieldToIndex.get(field);
+          return typeof i === 'number' ? (row[i] ?? '').toString().trim() : '';
+        };
+
+        const item: Partial<Customer> = {
+          name: pick('name'),
+          apellidos: pick('apellidos') || pick('surname'),
+          email: pick('email'),
+          phone: pick('phone') || pick('telefono'),
+          dni: pick('dni') || pick('nif') || pick('documento')
+        };
+
+        const address = pick('address') || pick('direccion');
+        if (address) (item as any).address = address;
+        return item;
+      });
+
+    return rows.filter(r => (r.name && r.name.trim()) || (r.email && r.email.trim()));
+  }
+
+  /**
+   * Importa clientes en lotes con feedback de progreso.
+   */
+  public importCustomersInBatches(
+    allCustomers: Partial<Customer>[],
+    batchSize = 5
+  ): Observable<{
+    importedCount: number;
+    totalCount: number;
+    batchNumber: number;
+    batchSize: number;
+    latestImported: Customer[] | null;
+    error?: any;
+  }> {
+    const totalCount = allCustomers.length;
+    let importedCount = 0;
+
+    const batches: Partial<Customer>[][] = [];
+    for (let i = 0; i < totalCount; i += batchSize) {
+      batches.push(allCustomers.slice(i, i + batchSize));
+    }
+
+    const progress$ = new Subject<{
+      importedCount: number;
+      totalCount: number;
+      batchNumber: number;
+      batchSize: number;
+      latestImported: Customer[] | null;
+      error?: any;
+    }>();
+
+    from(batches)
+      .pipe(
+        concatMap((batch, index) =>
+          this.callImportBatch(batch).pipe(
+            tap(imported => {
+              importedCount += imported.length;
+              progress$.next({
+                importedCount,
+                totalCount,
+                batchNumber: index + 1,
+                batchSize: batch.length,
+                latestImported: imported
+              });
+            }),
+            catchError(error => {
+              progress$.next({
+                importedCount,
+                totalCount,
+                batchNumber: index + 1,
+                batchSize: batch.length,
+                latestImported: null,
+                error
+              });
+              return of([] as Customer[]);
+            })
+          )
+        )
+      )
+      .subscribe({ complete: () => progress$.complete() });
+
+    return progress$.asObservable();
+  }
+
+  /**
+   * Llama a la importación de un lote usando el mismo camino que processBatchImport
+   */
+  private callImportBatch(batch: Partial<Customer>[]): Observable<Customer[]> {
+    return this.processBatchImport(batch);
   }
 }

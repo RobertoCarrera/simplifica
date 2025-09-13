@@ -1029,58 +1029,38 @@ onMappingConfirmed(mappings: any[]): void {
     this.showCsvMapper.set(false);
     this.toastService.info('Procesando...', 'Importando clientes con el mapeo configurado');
 
-    this.customersService.importFromCSVWithMapping(this.pendingCsvFile, result.mappings).subscribe({
-      next: (customers) => {
-        this.toastService.success('¡Éxito!', `${customers.length} clientes importados correctamente`);
-        this.pendingCsvFile = null;
+    // Construir array de clientes a partir del mapeo
+    const mappedCustomers = this.customersService.buildPayloadRowsFromMapping(
+      this.csvHeaders(),
+      this.csvData().slice(1), // omitir cabecera si está incluida en data
+      result.mappings as any
+    );
+
+    if (!mappedCustomers.length) {
+      this.toastService.error('Error', 'No se encontraron filas válidas en el CSV');
+      this.pendingCsvFile = null;
+      return;
+    }
+
+    const total = mappedCustomers.length;
+    const batchSize = 5;
+    let lastToast: any = null;
+
+    this.customersService.importCustomersInBatches(mappedCustomers, batchSize).subscribe({
+      next: (p) => {
+        const msg = `Importados ${p.importedCount}/${p.totalCount} (lote ${p.batchNumber}, tamaño ${p.batchSize})`;
+        console.log('[Import progreso]', p);
+        this.toastService.info('Progreso', msg, 2500);
       },
-      error: (error: any) => {
-        console.error('Error importing customers with mapping:', error);
-
-        // Build a user-friendly message from different possible error shapes
-        let errorTitle = 'Error de Importación';
-        let userMessage = 'Error desconocido al importar';
-
-        if (!error) {
-          userMessage = 'Respuesta vacía del servidor';
-        } else if (error instanceof Error) {
-          userMessage = error.message || userMessage;
-
-          // Try to pull JSON body from the message if present
-          const maybeJson = error.message?.match(/\{[\s\S]*\}$/);
-          if (maybeJson && maybeJson[0]) {
-            try {
-              const parsed = JSON.parse(maybeJson[0]);
-              if (parsed && (parsed.error || parsed.message || parsed.detail)) {
-                userMessage = parsed.error || parsed.message || parsed.detail;
-              }
-            } catch (e) {
-              // ignore parse errors
-            }
-          }
-        } else if (typeof error === 'object') {
-          const status = error.status || error.statusCode || null;
-          const body = error.error || error.message || error.body || error.response || null;
-
-          if (status) userMessage = `HTTP ${status}`;
-
-          if (body) {
-            if (typeof body === 'string') {
-              try {
-                const parsed = JSON.parse(body);
-                userMessage = parsed.error || parsed.message || parsed.detail || body;
-              } catch (e) {
-                userMessage = body;
-              }
-            } else if (typeof body === 'object') {
-              userMessage = body.error || body.message || body.detail || JSON.stringify(body);
-            }
-          }
-        } else if (typeof error === 'string') {
-          userMessage = error;
-        }
-
-        this.toastService.error(errorTitle, userMessage);
+      complete: () => {
+        this.toastService.success('¡Éxito!', `Importación completada (${total} clientes)`);
+        this.pendingCsvFile = null;
+        // refrescar datos visibles
+        this.customersService.getCustomers({ sortBy: this.sortBy(), sortOrder: this.sortOrder() }).subscribe();
+      },
+      error: (err) => {
+        console.error('Error importando por lotes:', err);
+        this.toastService.error('Error de Importación', String(err?.message || err));
         this.pendingCsvFile = null;
       }
     });
