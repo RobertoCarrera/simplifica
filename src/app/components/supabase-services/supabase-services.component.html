@@ -24,6 +24,7 @@
           (change)="importServices($event)"
           class="hidden"
         >
+        @if (devRoleService.canSeeDevTools()) {
         <button
           (click)="serviceFileInput.click()"
           class="btn btn-secondary"
@@ -32,7 +33,7 @@
         >
           <i class="fas fa-upload"></i>
           Importar CSV
-        </button>
+        </button>}
         <div class="search-input-container">
           <i class="fas fa-search search-icon"></i>
           <input 

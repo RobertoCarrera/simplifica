@@ -7,6 +7,7 @@ import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../
 import { ToastService } from '../../services/toast.service';
 import { DevRoleService } from '../../services/dev-role.service';
 import { Router } from '@angular/router';
+import { AddressesService } from '../../services/addresses.service';
 
 @Component({
   selector: 'app-gdpr-customer-manager',
@@ -22,6 +23,7 @@ export class GdprCustomerManagerComponent implements OnInit {
   private toastService = inject(ToastService);
   private fb = inject(FormBuilder);
   private devRoleService = inject(DevRoleService);
+  private addressesService = inject(AddressesService);
 
   // State signals
   customers = signal<Customer[]>([]);
@@ -143,13 +145,6 @@ export class GdprCustomerManagerComponent implements OnInit {
     this.loadCustomers();
   }
 
-  // Customer CRUD Operations
-  addCustomer() {
-    this.selectedCustomer.set(null);
-    this.resetForm();
-    this.showCustomerForm = true;
-  }
-
   editCustomer(customer: Customer) {
     this.selectedCustomer.set(customer);
     this.populateForm(customer);
@@ -174,7 +169,7 @@ export class GdprCustomerManagerComponent implements OnInit {
       email: customer.email || '',
       phone: customer.phone || '',
       dni: customer.dni || '',
-      address: customer.address || ''
+      address: (customer.direccion && (customer.direccion as any).nombre) ? (customer.direccion as any).nombre : (customer.address || '')
     };
   }
 
@@ -200,60 +195,114 @@ export class GdprCustomerManagerComponent implements OnInit {
   }
 
   private createCustomer() {
-    const customerData: CreateCustomerDev = {
-      name: this.customerForm.name,
-      apellidos: this.customerForm.apellidos,
-      email: this.customerForm.email,
-      phone: this.customerForm.phone,
-      dni: this.customerForm.dni,
-      address: this.customerForm.address,
-      activo: true,
-      usuario_id: ''
+    const createWithDireccion = (direccion_id?: string) => {
+      const customerData: CreateCustomerDev = {
+        name: this.customerForm.name,
+        apellidos: this.customerForm.apellidos,
+        email: this.customerForm.email,
+        phone: this.customerForm.phone,
+        dni: this.customerForm.dni,
+        direccion_id: direccion_id,
+        activo: true,
+        usuario_id: ''
+      };
+
+      this.customersService.createCustomer(customerData).subscribe({
+        next: (customer) => {
+          this.toastService.success('Éxito', 'Cliente creado correctamente');
+          this.closeForm();
+          this.loadCustomers();
+        },
+        error: (error) => {
+          console.error('Error creating customer:', error);
+          this.toastService.error('Error', 'No se pudo crear el cliente');
+        },
+        complete: () => {
+          this.isLoading.set(false);
+        }
+      });
     };
 
-    this.customersService.createCustomer(customerData).subscribe({
-      next: (customer) => {
-        this.toastService.success('Éxito', 'Cliente creado correctamente');
-        this.closeForm();
-        this.loadCustomers();
-      },
-      error: (error) => {
-        console.error('Error creating customer:', error);
-        this.toastService.error('Error', 'No se pudo crear el cliente');
-      },
-      complete: () => {
-        this.isLoading.set(false);
-      }
-    });
+    if (this.customerForm.address && this.customerForm.address.trim()) {
+      const newAddress: any = {
+        _id: '',
+        created_at: new Date(),
+        tipo_via: '',
+        nombre: this.customerForm.address,
+        numero: '',
+        localidad_id: ''
+      };
+      this.addressesService.createAddress(newAddress).subscribe({
+        next: (addr: any) => createWithDireccion(addr._id || ''),
+        error: (err: any) => {
+          console.error('Error creando dirección:', err);
+          this.toastService.error('Error', 'No se pudo crear la dirección');
+        }
+      });
+    } else {
+      createWithDireccion(undefined);
+    }
   }
 
   private updateCustomer() {
     const selectedCustomer = this.selectedCustomer();
     if (!selectedCustomer) return;
+    const applyUpdate = (direccion_id?: string) => {
+      const updates: any = {
+        name: this.customerForm.name,
+        apellidos: this.customerForm.apellidos,
+        email: this.customerForm.email,
+        phone: this.customerForm.phone,
+        dni: this.customerForm.dni
+      };
+      if (direccion_id !== undefined) updates.direccion_id = direccion_id;
 
-    const updates = {
-      name: this.customerForm.name,
-      apellidos: this.customerForm.apellidos,
-      email: this.customerForm.email,
-      phone: this.customerForm.phone,
-      dni: this.customerForm.dni,
-      address: this.customerForm.address
+      this.customersService.updateCustomer(selectedCustomer.id, updates).subscribe({
+        next: (customer) => {
+          this.toastService.success('Éxito', 'Cliente actualizado correctamente');
+          this.closeForm();
+          this.loadCustomers();
+        },
+        error: (error) => {
+          console.error('Error updating customer:', error);
+          this.toastService.error('Error', 'No se pudo actualizar el cliente');
+        },
+        complete: () => {
+          this.isLoading.set(false);
+        }
+      });
     };
 
-    this.customersService.updateCustomer(selectedCustomer.id, updates).subscribe({
-      next: (customer) => {
-        this.toastService.success('Éxito', 'Cliente actualizado correctamente');
-        this.closeForm();
-        this.loadCustomers();
-      },
-      error: (error) => {
-        console.error('Error updating customer:', error);
-        this.toastService.error('Error', 'No se pudo actualizar el cliente');
-      },
-      complete: () => {
-        this.isLoading.set(false);
+    const existingDireccionId = (selectedCustomer as any).direccion_id || '';
+    if (this.customerForm.address && this.customerForm.address.trim()) {
+      if (existingDireccionId) {
+        this.addressesService.updateAddress(existingDireccionId, { nombre: this.customerForm.address }).subscribe({
+          next: () => applyUpdate(existingDireccionId),
+          error: (err: any) => {
+            console.error('Error actualizando dirección:', err);
+            this.toastService.error('Error', 'No se pudo actualizar la dirección');
+          }
+        });
+      } else {
+        const newAddress: any = {
+          _id: '',
+          created_at: new Date(),
+          tipo_via: '',
+          nombre: this.customerForm.address,
+          numero: '',
+          localidad_id: ''
+        };
+        this.addressesService.createAddress(newAddress).subscribe({
+          next: (addr: any) => applyUpdate(addr._id || ''),
+          error: (err: any) => {
+            console.error('Error creando dirección:', err);
+            this.toastService.error('Error', 'No se pudo crear la dirección');
+          }
+        });
       }
-    });
+    } else {
+      applyUpdate(undefined);
+    }
   }
 
   closeForm() {

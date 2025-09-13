@@ -930,8 +930,10 @@ export class SupabaseCustomersComponent implements OnInit {
     return `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
   }
 
-  formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('es-ES', {
+  formatDate(date: string | Date | null | undefined): string {
+    if (!date) return '';
+    const d = (typeof date === 'string') ? new Date(date) : date;
+    return new Date(d).toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'

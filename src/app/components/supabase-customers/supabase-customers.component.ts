@@ -7,6 +7,9 @@ import { AnimationService } from '../../services/animation.service';
 import { DevUserSelectorComponent } from '../dev-user-selector/dev-user-selector.component';
 import { CsvHeaderMapperComponent, CsvMappingResult } from '../csv-header-mapper/csv-header-mapper.component';
 import { Customer, CreateCustomerDev } from '../../models/customer';
+import { AddressesService } from '../../services/addresses.service';
+import { LocalitiesService } from '../../services/localities.service';
+import { Locality } from '../../models/locality';
 import { SupabaseCustomersService, CustomerFilters, CustomerStats } from '../../services/supabase-customers.service';
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../services/gdpr-compliance.service';
 import { ToastService } from '../../services/toast.service';
@@ -42,6 +45,7 @@ import { Router } from '@angular/router';
           <!-- Actions -->
           <div class="header-actions">
             <!-- GDPR Toggle Button -->
+            @if (devRoleService.canSeeDevTools()) {
             <button
               (click)="goToGdpr()"
               class="btn"
@@ -51,7 +55,7 @@ import { Router } from '@angular/router';
             >
               <i class="fas fa-shield-alt"></i>
               GDPR
-            </button>            
+            </button>      }      
             <button
               (click)="exportCustomers()"
               class="btn btn-secondary"
@@ -68,6 +72,8 @@ import { Router } from '@angular/router';
               (change)="onFileInputChange($event)"
               class="hidden"
             >
+            <!-- Dev-only: Test import endpoints -->
+            @if (devRoleService.canSeeDevTools()) {
             <button
               (click)="fileInput.click()"
               class="btn btn-secondary"
@@ -78,8 +84,6 @@ import { Router } from '@angular/router';
               Importar CSV
               <i class="fas fa-info-circle info-icon" (click)="showImportInfo($event)"></i>
             </button>
-            <!-- Dev-only: Test import endpoints -->
-            @if (devRoleService.canSeeDevTools()) {
               <button
                 class="btn btn-ghost ml-2"
                 (click)="testImportEndpoints()"
@@ -544,19 +548,32 @@ import { Router } from '@angular/router';
                 >
               </div>
 
-              <div class="form-group">
-                <label for="address" class="form-label">
-                  <i class="fas fa-map-marker-alt"></i>
-                  Dirección
-                </label>
-                <input
-                  type="text"
-                  id="address"
-                  name="address"
-                  [(ngModel)]="formData.address"
-                  class="form-input"
-                  placeholder="Calle, número, piso..."
-                >
+              <div class="form-row">
+                <div class="form-group relative">
+                  <label for="addressTipoVia" class="form-label">Tipo Vía</label>
+                  <input id="addressTipoVia" name="addressTipoVia" [(ngModel)]="formData.addressTipoVia" (input)="onAddressViaInput($event)" class="form-input" placeholder="Escribe para buscar tipo vía">
+                  <ul *ngIf="filteredVias.length && formData.addressTipoVia" class="absolute z-50 bg-white border rounded mt-1 w-full max-h-40 overflow-auto">
+                    <li *ngFor="let via of filteredVias" (click)="formData.addressTipoVia = via; filteredVias = []" class="px-2 py-1 hover:bg-gray-100 cursor-pointer">{{ via }}</li>
+                  </ul>
+                </div>
+
+                <div class="form-group">
+                  <label for="addressNombre" class="form-label">Nombre Calle</label>
+                  <input type="text" id="addressNombre" name="addressNombre" [(ngModel)]="formData.addressNombre" class="form-input" placeholder="Calle, Avenida...">
+                </div>
+
+                <div class="form-group">
+                  <label for="addressNumero" class="form-label">Número</label>
+                  <input type="text" id="addressNumero" name="addressNumero" [(ngModel)]="formData.addressNumero" class="form-input" placeholder="Número">
+                </div>
+              </div>
+
+              <div class="form-group relative">
+                <label for="addressLocalidadId" class="form-label">Localidad</label>
+                <input id="addressLocalidadId" name="addressLocalidadId" [(ngModel)]="addressLocalityName" (input)="onLocalityInput($event)" class="form-input" placeholder="Buscar por nombre o código postal">
+                <ul *ngIf="filteredLocalities.length && addressLocalityName" class="absolute z-50 bg-white border rounded mt-1 w-full max-h-48 overflow-auto">
+                  <li *ngFor="let loc of filteredLocalities" (click)="selectLocality(loc)" class="px-2 py-1 hover:bg-gray-100 cursor-pointer">{{ loc.nombre }} - {{ loc.provincia }} (CP: {{ loc.CP }})</li>
+                </ul>
               </div>
               
               <div class="modal-actions">
@@ -607,6 +624,8 @@ export class SupabaseCustomersComponent implements OnInit {
   private gdprService = inject(GdprComplianceService);
   private animationService = inject(AnimationService);
   private toastService = inject(ToastService);
+  private addressesService = inject(AddressesService);
+  private localitiesService = inject(LocalitiesService);
   private router = inject(Router);
   devRoleService = inject(DevRoleService);
 
@@ -639,8 +658,23 @@ export class SupabaseCustomersComponent implements OnInit {
     email: '',
     phone: '',
     dni: '',
-  address: ''
+    // structured address fields
+    addressTipoVia: '',
+    addressNombre: '',
+    addressNumero: '',
+    addressLocalidadId: ''
   };
+
+  // Localities cache for selector
+  localities: Locality[] = [];
+
+  // Common via types (can be extended)
+  addressVias: string[] = ['Calle', 'Avenida', 'Plaza', 'Paseo', 'Camino', 'Carretera', 'Barrio', 'Ronda'];
+  // Filtered suggestions
+  filteredLocalities: Locality[] = [];
+  filteredVias: string[] = [...this.addressVias];
+  // visible typed locality name (search input)
+  addressLocalityName: string = '';
 
   onFileInputChange(event: Event): void {
   const input = event.target as HTMLInputElement | null;
@@ -768,6 +802,58 @@ onMappingConfirmed(mappings: any[]): void {
     this.customersService.stats$.subscribe(stats => {
       this.stats.set(stats);
     });
+
+    // Load localities for address selector
+    this.localitiesService.getLocalities().subscribe({
+      next: (locs: Locality[]) => {
+        this.localities = locs || [];
+        this.filteredLocalities = [...this.localities];
+        this.filteredVias = [...this.addressVias];
+
+        // If editing a customer, try to set the addressLocalityName for the existing direccion
+        const sel = this.selectedCustomer();
+        if (sel?.direccion?.localidad_id) {
+          const match = this.localities.find(l => l._id === sel.direccion!.localidad_id);
+          if (match) this.addressLocalityName = match.nombre;
+        }
+      },
+      error: (err: any) => {
+        console.error('Error loading localities:', err);
+      }
+    });
+  }
+
+  // Via suggestions handler
+  onAddressViaInput(event: Event) {
+    const q = (event.target as HTMLInputElement).value || '';
+    const s = q.trim().toLowerCase();
+    if (!s) {
+      this.filteredVias = [...this.addressVias];
+      return;
+    }
+    this.filteredVias = this.addressVias.filter(v => v.toLowerCase().includes(s));
+  }
+
+  // Locality search handler (by name or postal code CP)
+  onLocalityInput(event: Event) {
+    const q = (event.target as HTMLInputElement).value || '';
+    const s = q.trim().toLowerCase();
+    if (!s) {
+      this.filteredLocalities = [...this.localities];
+      this.formData.addressLocalidadId = '';
+      return;
+    }
+    this.filteredLocalities = this.localities.filter(loc => {
+      const nameMatch = loc.nombre && loc.nombre.toLowerCase().includes(s);
+      const cpMatch = loc.CP && loc.CP.toString().toLowerCase().includes(s);
+      return nameMatch || cpMatch;
+    });
+  }
+
+  selectLocality(loc: Locality) {
+    this.formData.addressLocalidadId = loc._id;
+    this.addressLocalityName = loc.nombre;
+    this.filteredLocalities = [];
   }
 
   private loadGdprData() {
@@ -873,51 +959,127 @@ onMappingConfirmed(mappings: any[]): void {
   }
 
   private createNewCustomer() {
-    const customerData: CreateCustomerDev = {
-      name: this.formData.name,
-      apellidos: this.formData.apellidos,
-      email: this.formData.email,
-      phone: this.formData.phone,
-      dni: this.formData.dni,
-  // map simple address text to 'address' field (DB may use address/jsonb or direccion_id)
-  address: this.formData.address
+    // If there is address text, create an Address record first and then create customer with direccion_id
+    const createCustomerWithDireccion = (direccion_id?: string) => {
+      const customerData: CreateCustomerDev = {
+        name: this.formData.name,
+        apellidos: this.formData.apellidos,
+        email: this.formData.email,
+        phone: this.formData.phone,
+        dni: this.formData.dni,
+        direccion_id: direccion_id
+      };
+
+      this.customersService.createCustomer(customerData).subscribe({
+        next: (customer) => {
+          this.closeForm();
+          this.toastService.success('Éxito', 'Cliente creado correctamente');
+        },
+        error: (error) => {
+          console.error('Error al crear cliente:', error);
+          this.toastService.error('Error', 'No se pudo crear el cliente');
+        }
+      });
     };
 
-    this.customersService.createCustomer(customerData).subscribe({
-      next: (customer) => {
-        this.closeForm();
-        this.toastService.success('Éxito', 'Cliente creado correctamente');
-      },
-      error: (error) => {
-        console.error('Error al crear cliente:', error);
-        this.toastService.error('Error', 'No se pudo crear el cliente');
-      }
-    });
+    // If any address field is provided, create Address first
+    const hasAddressData = (this.formData.addressNombre && this.formData.addressNombre.trim()) ||
+      (this.formData.addressNumero && this.formData.addressNumero.trim());
+
+    if (hasAddressData) {
+      const newAddress: any = {
+        _id: '',
+        created_at: new Date(),
+        tipo_via: this.formData.addressTipoVia || '',
+        nombre: this.formData.addressNombre || '',
+        numero: this.formData.addressNumero || '',
+        localidad_id: this.formData.addressLocalidadId || ''
+      };
+
+      this.addressesService.createAddress(newAddress).subscribe({
+        next: (addr: any) => {
+          createCustomerWithDireccion(addr._id || '');
+        },
+        error: (err: any) => {
+          console.error('Error creando dirección:', err);
+          this.toastService.error('Error', 'No se pudo crear la dirección');
+        }
+      });
+    } else {
+      createCustomerWithDireccion(undefined);
+    }
   }
 
   private updateExistingCustomer() {
     const customerId = this.selectedCustomer()?.id;
     if (!customerId) return;
 
-    const updates = {
-      name: this.formData.name,
-      apellidos: this.formData.apellidos,
-      email: this.formData.email,
-      phone: this.formData.phone,
-      dni: this.formData.dni,
-  address: this.formData.address
+    const applyUpdate = (direccion_id?: string) => {
+      const updates: any = {
+        name: this.formData.name,
+        apellidos: this.formData.apellidos,
+        email: this.formData.email,
+        phone: this.formData.phone,
+        dni: this.formData.dni,
+      };
+
+      if (direccion_id !== undefined) updates.direccion_id = direccion_id;
+
+      this.customersService.updateCustomer(customerId, updates).subscribe({
+        next: (customer) => {
+          this.closeForm();
+          this.toastService.success('Éxito', 'Cliente actualizado correctamente');
+        },
+        error: (error) => {
+          console.error('Error al actualizar cliente:', error);
+          this.toastService.error('Error', 'No se pudo actualizar el cliente');
+        }
+      });
     };
 
-    this.customersService.updateCustomer(customerId, updates).subscribe({
-      next: (customer) => {
-        this.closeForm();
-        this.toastService.success('Éxito', 'Cliente actualizado correctamente');
-      },
-      error: (error) => {
-        console.error('Error al actualizar cliente:', error);
-        this.toastService.error('Error', 'No se pudo actualizar el cliente');
+    // If the customer already has a direccion_id, update it; otherwise create a new address if provided
+    const existingDireccionId = this.selectedCustomer()?.direccion_id || '';
+    const hasAddressData = (this.formData.addressNombre && this.formData.addressNombre.trim()) ||
+      (this.formData.addressNumero && this.formData.addressNumero.trim());
+
+    if (hasAddressData) {
+      if (existingDireccionId) {
+        // update existing address
+        const updatePayload: any = {
+          nombre: this.formData.addressNombre || ''
+        };
+        if (this.formData.addressTipoVia) updatePayload.tipo_via = this.formData.addressTipoVia;
+        if (this.formData.addressNumero) updatePayload.numero = this.formData.addressNumero;
+        if (this.formData.addressLocalidadId) updatePayload.localidad_id = this.formData.addressLocalidadId;
+
+        this.addressesService.updateAddress(existingDireccionId, updatePayload).subscribe({
+          next: () => applyUpdate(existingDireccionId),
+          error: (err) => {
+            console.error('Error actualizando dirección:', err);
+            this.toastService.error('Error', 'No se pudo actualizar la dirección');
+          }
+        });
+      } else {
+        const newAddress: any = {
+          _id: '',
+          created_at: new Date(),
+          tipo_via: this.formData.addressTipoVia || '',
+          nombre: this.formData.addressNombre || '',
+          numero: this.formData.addressNumero || '',
+          localidad_id: this.formData.addressLocalidadId || ''
+        };
+        this.addressesService.createAddress(newAddress).subscribe({
+          next: (addr: any) => applyUpdate(addr._id || ''),
+          error: (err: any) => {
+            console.error('Error creando dirección:', err);
+            this.toastService.error('Error', 'No se pudo crear la dirección');
+          }
+        });
       }
-    });
+    } else {
+      // No address provided - leave direccion_id unchanged
+      applyUpdate(undefined);
+    }
   }
 
   private resetForm() {
@@ -927,7 +1089,10 @@ onMappingConfirmed(mappings: any[]): void {
       email: '',
       phone: '',
       dni: '',
-  address: ''
+      addressTipoVia: '',
+      addressNombre: '',
+      addressNumero: '',
+      addressLocalidadId: ''
     };
   }
 
@@ -938,7 +1103,12 @@ onMappingConfirmed(mappings: any[]): void {
       email: customer.email || '',
       phone: customer.phone || '',
       dni: customer.dni || '',
-  address: customer.address || ''
+  // try to show an address string if the customer has a direccion relation
+  // populate structured address fields from the direccion relation if available
+  addressTipoVia: customer.direccion?.tipo_via || '',
+  addressNombre: (customer.direccion && customer.direccion.nombre) ? customer.direccion.nombre : (customer.address || ''),
+  addressNumero: customer.direccion?.numero || '',
+  addressLocalidadId: customer.direccion?.localidad_id || ''
     };
   }
 

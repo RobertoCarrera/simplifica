@@ -151,9 +151,10 @@ export class SupabaseCustomersService {
    * Método estándar para producción - usa autenticación normal
    */
   private getCustomersStandard(filters: CustomerFilters = {}): Observable<Customer[]> {
+    // Include direccion (addresses) relation so UI can display address data
     let query = this.supabase
       .from('clients')
-      .select('*');
+      .select('*, direccion:addresses(*)');
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
     const companyId = this.authService.companyId();
@@ -197,6 +198,9 @@ export class SupabaseCustomersService {
           created_at: client.created_at,
           updated_at: client.updated_at,
           activo: !client.deleted_at,
+          // direccion relation comes from select('*, direccion:addresses(*)')
+          direccion_id: client.direccion_id || null,
+          direccion: client.direccion || null,
           // GDPR fields
           marketing_consent: client.marketing_consent ?? undefined,
           marketing_consent_date: client.marketing_consent_date ?? undefined,
@@ -242,9 +246,10 @@ export class SupabaseCustomersService {
     console.log('DEV: isDevelopmentMode:', this.config.isDevelopmentMode);
     console.log('DEV: filters:', filters);
     
+    // Include direccion (addresses) relation
     let query = this.supabase
       .from('clients')
-      .select('*');
+      .select('*, direccion:addresses(*)');
 
     // FILTRO POR EMPRESA EN LUGAR DE USUARIO (adaptado a la estructura real)
   if (this.currentDevUserId && this.config.isDevelopmentMode) {
@@ -317,6 +322,8 @@ export class SupabaseCustomersService {
           created_at: client.created_at,
           updated_at: client.updated_at,
           activo: !client.deleted_at,
+          direccion_id: client.direccion_id || null,
+          direccion: client.direccion || null,
           // GDPR fields
           marketing_consent: client.marketing_consent ?? undefined,
           marketing_consent_date: client.marketing_consent_date ?? undefined,
@@ -415,7 +422,7 @@ export class SupabaseCustomersService {
     return from(
       this.supabase
         .from('clients')
-        .select('*')
+        .select('*, direccion:addresses(*)')
         .eq('id', id)
         .single()
     ).pipe(
@@ -527,8 +534,9 @@ export class SupabaseCustomersService {
     };
 
     // Soporte para dirección en texto libre
-    if ((customer as any).address) {
-      clientData.address = (customer as any).address;
+    // Preferir direccion_id FK when esté presente
+    if ((customer as any).direccion_id) {
+      clientData.direccion_id = (customer as any).direccion_id;
     }
     
     devLog('Creando cliente via método estándar', { companyId: clientData.company_id });
@@ -655,6 +663,8 @@ export class SupabaseCustomersService {
     if (updates.dni) clientUpdates.dni = updates.dni;
     if (updates.email) clientUpdates.email = updates.email;
     if (updates.phone) clientUpdates.phone = updates.phone;
+  // Map direccion_id if provided (leave unchanged when undefined)
+  if ('direccion_id' in updates) clientUpdates.direccion_id = (updates as any).direccion_id || null;
     
     return from(
       this.supabase
@@ -1422,7 +1432,7 @@ importFromCSV(file: File): Observable<Customer[]> {
 
       console.log(`📂 Procesando ${customers.length} clientes del CSV...`);
 
-      // Build payload and call server-side batch importer
+      // Build payload and call server-side batch importer. Use direccion_id (foreign key) instead of free-text address
       const payloadRows = customers.map(c => ({
         name: c.name,
         surname: c.apellidos, // Map apellidos to surname for server
@@ -1430,7 +1440,7 @@ importFromCSV(file: File): Observable<Customer[]> {
         phone: c.phone,
         dni: c.dni,
         metadata: (c as any).metadata,
-        address: (c as any).address,
+        direccion_id: (c as any).direccion_id || null,
         company_id: (this.getCurrentUserFromSystemUsers(this.currentDevUserId || 'default-user')?.company_id) || this.authService.companyId() || undefined
       }));
 
