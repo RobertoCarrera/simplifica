@@ -65,7 +65,7 @@ import { Router } from '@angular/router';
               #fileInput
               type="file"
               accept=".csv"
-              (change)="importCustomers($event)"
+              (change)="onFileInputChange($event)"
               class="hidden"
             >
             <button
@@ -601,6 +601,7 @@ import { Router } from '@angular/router';
   styleUrls: ['./supabase-customers.component.scss']
 })
 export class SupabaseCustomersComponent implements OnInit {
+  
   // Services
   private customersService = inject(SupabaseCustomersService);
   private gdprService = inject(GdprComplianceService);
@@ -640,6 +641,26 @@ export class SupabaseCustomersComponent implements OnInit {
     dni: '',
   address: ''
   };
+
+  onFileInputChange(event: Event): void {
+  const input = event.target as HTMLInputElement | null;
+  if (!input?.files || input.files.length === 0) {
+    this.toastService.error('Por favor selecciona un archivo CSV válido.', 'Error');
+    return;
+  }
+  const file = input.files[0];
+
+  this.customersService.importFromCSV(file).subscribe({
+    next: (importedCustomers) => {
+      this.toastService.success(`${importedCustomers.length} clientes importados correctamente.`, 'Éxito');
+      // Aquí puedes poner lógica extra para actualizar la UI si es necesario
+      // Por ejemplo, recargar la lista de clientes si no se actualiza automáticamente
+    },
+    error: (error) => {
+      this.toastService.error(`Error importando clientes: ${error.message || error}`, 'Error');
+    }
+  });
+}
 
   // Computed
   filteredCustomers = computed(() => {

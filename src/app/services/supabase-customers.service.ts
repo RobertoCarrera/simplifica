@@ -1068,127 +1068,119 @@ export class SupabaseCustomersService {
     );
   }
 
-  /**
-   * Importar clientes desde CSV
-   * Límite recomendado: 500 clientes por archivo para evitar timeouts
-   */
-  importFromCSV(file: File): Observable<Customer[]> {
-    const MAX_RECORDS = 500; // Límite para evitar problemas de rendimiento
-    
-    return new Observable(observer => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const csv = e.target?.result as string;
-          const customers = this.parseCSV(csv);
-          
-          // Validar límite de registros
-          if (customers.length > MAX_RECORDS) {
-            observer.error(new Error(`El archivo contiene ${customers.length} registros. El límite máximo es ${MAX_RECORDS} clientes por archivo.`));
-            return;
-          }
-          
-          // Validar que hay datos
-          if (customers.length === 0) {
-            observer.error(new Error('El archivo CSV está vacío o no tiene un formato válido.'));
-            return;
-          }
-          
-          console.log(`📂 Procesando ${customers.length} clientes del CSV...`);
-          
-          // Build payload and call server-side batch importer (same-origin proxy -> Supabase Function).
-          const payloadRows = customers.map(c => ({
-            name: c.name,
-            apellidos: c.apellidos,
-            email: c.email,
-            phone: c.phone,
-            dni: c.dni,
-            // Prefer authoritative company from current dev user cache, otherwise use authService
-            company_id: (this.getCurrentUserFromSystemUsers(this.currentDevUserId || 'default-user')?.company_id) || this.authService.companyId() || undefined
-          }));
+/**
+ * Importar clientes desde CSV
+ * Maneja v2 de Supabase y obtiene el bearer token correctamente
+ */
+importFromCSV(file: File): Observable<Customer[]> {
+  const MAX_RECORDS = 500;
 
-          const proxyUrl = '/api/import-customers';
-          const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
-
-          try {
-            // Wrap async fetch usage in an async IIFE so 'await' is valid
-            (async () => {
-              // Try to get access token from supabase client session
-              let accessToken: string | undefined;
-              try {
-                const session = (this.supabase as any)?.auth?.session?.() || (this.supabase as any)?.getSession?.() || null;
-                accessToken = session?.access_token || session?.accessToken || undefined;
-              } catch (e) {
-                // ignore
-              }
-
-              const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-              if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-
-              let resp = await fetch(proxyUrl, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ rows: payloadRows })
-              });
-
-              if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
-                resp = await fetch(functionUrl, {
-                  method: 'POST',
-                  headers,
-                  body: JSON.stringify({ rows: payloadRows })
-                });
-              }
-
-              if (!resp.ok) {
-                const text = await resp.text().catch(() => null);
-                throw new Error(`Batch import failed: ${resp.status} ${text || ''}`);
-              }
-
-              const json = await resp.json();
-              const inserted = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
-
-              const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
-                id: row.id,
-                name: row.name || '',
-                apellidos: row.apellidos || '',
-                dni: row.dni || '',
-                email: row.email || '',
-                phone: row.phone || '',
-                usuario_id: row.company_id || this.currentDevUserId || '',
-                created_at: row.created_at,
-                updated_at: row.updated_at || row.created_at,
-                activo: true
-              })) as Customer[];
-
-              // Update local cache and finish
-              const currentCustomers = this.customersSubject.value;
-              this.customersSubject.next([...newCustomers, ...currentCustomers]);
-              devSuccess(`Importación completada: ${newCustomers.length} clientes creados`);
-              this.updateStats();
-
-              observer.next(newCustomers);
-              observer.complete();
-            })().catch(err => {
-              observer.error(new Error('Batch import failed: ' + String(err)));
-            });
-            return;
-          } catch (err) {
-            return observer.error(new Error('Batch import failed: ' + String(err)));
-          }
-        } catch (error) {
-          console.error('Error al procesar CSV:', error);
-          observer.error(new Error('Error al procesar el archivo CSV. Verifica que el formato sea correcto.'));
+  return new Observable(observer => {
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        const csv = e.target?.result as string;
+        const customers = this.parseCSV(csv);
+        if (!customers.length) {
+          observer.error(new Error('El archivo CSV está vacío o no tiene un formato válido.'));
+          return;
         }
-      };
-      
-      reader.onerror = () => {
-        observer.error(new Error('Error al leer el archivo.'));
-      };
-      
-      // Leer con encoding UTF-8
-      reader.readAsText(file, 'UTF-8');
-    });
-  }
+        if (customers.length > MAX_RECORDS) {
+          observer.error(new Error(`El archivo contiene ${customers.length} registros. El límite máximo es ${MAX_RECORDS} clientes por archivo.`));
+          return;
+        }
+
+        // Construcción de payload y token
+        const payloadRows = customers.map(c => ({
+          name: c.name,
+          apellidos: c.apellidos,
+          email: c.email,
+          phone: c.phone,
+          dni: c.dni,
+          company_id: (this.getCurrentUserFromSystemUsers?.(this.currentDevUserId || 'default-user')?.company_id) || this.authService.companyId() || undefined
+        }));
+
+        // Obtención del acceso (Supabase v2)
+        let accessToken: string | undefined;
+        try {
+          const sessionRes: any = await this.authService.client.auth.getSession();
+          const session = sessionRes?.data?.session || null;
+          accessToken = session?.access_token || session?.accessToken || undefined;
+        } catch (_) { /* Ignorar */ }
+
+        // RefreshSession si no hubiese acceso
+        if (!accessToken) {
+          try {
+            await this.authService.client.auth.refreshSession();
+            const sessionRes2: any = await this.authService.client.auth.getSession();
+            const session2 = sessionRes2?.data?.session || null;
+            accessToken = session2?.access_token || session2?.accessToken || undefined;
+          } catch (_) { /* Ignorar */ }
+        }
+
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (!accessToken) {
+          observer.error(new Error('No se pudo obtener un token válido de sesión. Inicia sesión antes de importar.'));
+          return;
+        }
+        headers['Authorization'] = `Bearer ${accessToken}`;
+
+        const proxyUrl = '/api/import-customers';
+        const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
+
+        let resp = await fetch(proxyUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ rows: payloadRows })
+        });
+
+        // Soporte fallback directo si el proxy no responde correctamente
+        if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
+          resp = await fetch(functionUrl, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ rows: payloadRows })
+          });
+        }
+
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => null);
+          throw new Error(`Error en importación masiva: ${resp.status} ${text || ''}`);
+        }
+
+        const json = await resp.json();
+        const inserted = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+        const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
+          id: row.id,
+          name: row.name || '',
+          apellidos: row.apellidos || '',
+          dni: row.dni || '',
+          email: row.email || '',
+          phone: row.phone || '',
+          usuario_id: row.company_id || this.currentDevUserId || '',
+          created_at: row.created_at,
+          updated_at: row.updated_at || row.created_at,
+          activo: true
+        })) as Customer[];
+
+        // Actualizar caché local y finalizar
+        const currentCustomers = this.customersSubject.value;
+        this.customersSubject.next([...newCustomers, ...currentCustomers]);
+        this.updateStats?.();
+
+        observer.next(newCustomers);
+        observer.complete();
+      } catch (err) {
+        observer.error(new Error('Error en la importación masiva: ' + String(err)));
+      }
+    };
+    reader.onerror = () => {
+      observer.error(new Error('Error al leer el archivo.'));
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+
 
   // Métodos públicos para testing
 
@@ -1446,18 +1438,35 @@ export class SupabaseCustomersService {
       const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
 
       (async () => {
-        try {
-          // Try to get access token from supabase client session
+          try {
+          // Try to get access token from AuthService-managed supabase client session
           let accessToken: string | undefined;
           try {
-            const session = (this.supabase as any)?.auth?.session?.() || (this.supabase as any)?.getSession?.() || null;
+            const sessionRes: any = await this.authService.client.auth.getSession();
+            const session = sessionRes?.data?.session || null;
             accessToken = session?.access_token || session?.accessToken || undefined;
           } catch (e) {
             // ignore
           }
 
+          // Try refresh if we didn't get a token
+          if (!accessToken) {
+            try {
+              console.warn('No access token found for import; attempting refreshSession...');
+              await this.authService.client.auth.refreshSession();
+              const sessionRes2: any = await this.authService.client.auth.getSession();
+              const session2 = sessionRes2?.data?.session || null;
+              accessToken = session2?.access_token || session2?.accessToken || undefined;
+            } catch (err) {
+              // ignore
+            }
+          }
+
           const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-          if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+          if (!accessToken) {
+            throw new Error('No active session found. Please sign in before importing CSV files.');
+          }
+          headers['Authorization'] = `Bearer ${accessToken}`;
 
           let resp = await fetch(proxyUrl, {
             method: 'POST',
@@ -1518,17 +1527,37 @@ export class SupabaseCustomersService {
     const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
     const samplePayload = { rows: [{ name: 'DEBUG', surname: 'USER', email: 'debug@example.com' }] };
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-
-    // Try to include auth if available
+    // Try to include auth if available using AuthService-managed client
+    let accessToken: string | undefined;
     try {
-      const session = (this.supabase as any)?.auth?.session?.() || (this.supabase as any)?.getSession?.() || null;
-      const accessToken = session?.access_token || session?.accessToken || undefined;
-      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+      const sessionRes: any = await this.authService.client.auth.getSession();
+      const session = sessionRes?.data?.session || null;
+      accessToken = session?.access_token || session?.accessToken || undefined;
+      if (!accessToken) {
+        try {
+          console.warn('No access token found for testImportEndpoints; attempting refreshSession...');
+          await this.authService.client.auth.refreshSession();
+          const sessionRes2: any = await this.authService.client.auth.getSession();
+          const session2 = sessionRes2?.data?.session || null;
+          accessToken = session2?.access_token || session2?.accessToken || undefined;
+        } catch (err) {
+          // ignore
+        }
+      }
     } catch (e) {
       // ignore
     }
 
     const result: any = { errors: [] };
+    // If there's no access token we return an early diagnostic result instead of making unauthenticated calls
+    if (!accessToken) {
+      result.errors.push('No active session or access token found. Please sign in and retry.');
+      result.proxy = { status: 401, text: 'No active session. Authorization required.' };
+      result.direct = { status: 401, text: 'No active session. Authorization required.' };
+      return result;
+    }
+
+    headers['Authorization'] = `Bearer ${accessToken}`;
 
     try {
       const resp = await fetch(proxyUrl, { method: 'POST', headers, body: JSON.stringify(samplePayload) });
