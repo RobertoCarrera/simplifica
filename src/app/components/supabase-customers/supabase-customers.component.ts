@@ -662,6 +662,56 @@ export class SupabaseCustomersComponent implements OnInit {
   });
 }
 
+// Método manejador de selección de archivo CSV
+onCsvFileSelected(event: Event): void {
+  const input = event.target as HTMLInputElement | null;
+  if (!input?.files || input.files.length === 0) {
+    this.toastService.error('Por favor selecciona un archivo CSV válido.', 'Error');
+    return;
+  }
+
+  const file = input.files[0];
+  this.pendingCsvFile = file;
+
+  this.customersService.parseCSVForMapping(file).subscribe({
+    next: ({ headers, data }) => {
+      this.csvHeaders.set(headers);
+      this.csvData.set(data.slice(0, 10)); // preview solo primeros 10 datos
+      this.showCsvMapper.set(true); // muestra el modal
+    },
+    error: (err) => {
+      this.toastService.error('Error leyendo CSV: ' + (err.message || err), 'Error');
+    }
+  });
+}
+
+// Método que se llama cuando el usuario confirma el mapeo de columnas en el modal
+onMappingConfirmed(mappings: any[]): void {
+  this.showCsvMapper.set(false);
+
+  if (!this.pendingCsvFile) {
+    this.toastService.error('No hay archivo CSV pendiente para importar.', 'Error');
+    return;
+  }
+
+  // Llamar a función del servicio que importa con mapeos y en lotes
+  this.customersService.importFromCSVWithMapping(this.pendingCsvFile, mappings).subscribe({
+    next: (importedCustomers) => {
+      this.toastService.success(`${importedCustomers.length} clientes importados correctamente.`, 'Éxito');
+      this.customersService.customers$.subscribe(customers => {
+      this.customers.set(customers);
+    });
+    },
+    error: (error) => {
+      this.toastService.error('Error importando CSV: ' + (error.message || error), 'Error');
+    }
+  });
+
+  // Limpiar archivo pendiente
+  this.pendingCsvFile = null;
+}
+
+
   // Computed
   filteredCustomers = computed(() => {
     let filtered = this.customers();
