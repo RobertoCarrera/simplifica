@@ -1,99 +1,131 @@
-// Supabase Edge Function: create-locality
+// Edge Function: create-locality (Deno serve pattern)
 // Deploy path: functions/v1/create-locality
-// Secrets required: SERVICE_ROLE_KEY and SUPABASE_URL
+// Env required: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+// CORS controlled by: ALLOW_ALL_ORIGINS (true/false), ALLOWED_ORIGINS (comma-separated)
 
-declare const Deno: any;
+// @ts-nocheck
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 function getCorsHeaders(origin?: string) {
-  const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
-  const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
+  const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
   const isAllowed = allowAll || (origin && allowedOrigins.includes(origin));
   return {
-    'Access-Control-Allow-Origin': isAllowed && origin ? origin : (allowAll ? '*' : ''),
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
-    'Vary': 'Origin'
+    "Access-Control-Allow-Origin": isAllowed && origin ? origin : (allowAll ? "*" : ""),
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
   } as Record<string, string>;
 }
 
 function isAllowedOrigin(origin?: string) {
-  const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
+  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
   if (allowAll) return true;
-  if (!origin) return true; // allow server-to-server
-  const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s: string) => s.trim()).filter(Boolean);
-  return allowedOrigins.includes(origin!);
+  // If no origin (server-to-server), allow
+  if (!origin) return true;
+  const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
+  return allowedOrigins.includes(origin);
 }
 
-export default async (req: Request) => {
-  const origin = req.headers.get('Origin');
+serve(async (req: Request) => {
+  const origin = req.headers.get("Origin") || undefined;
+  const corsHeaders = getCorsHeaders(origin);
 
-  // Fast-path OPTIONS preflight: respond immediately with permissive CORS headers
-  if (req.method === 'OPTIONS') {
-    // Log arrival of preflight so we can see it in function logs (fast and synchronous)
-    try {
-      console.log('EdgeFn OPTIONS preflight received', { origin });
-    } catch (e) {
-      // ignore logging failures
-    }
-    const preflightHeaders: Record<string, string> = {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-client-info, apikey',
-      'Vary': 'Origin'
-    };
-    return new Response(null, { status: 204, headers: preflightHeaders });
+  // OPTIONS preflight
+  if (req.method === "OPTIONS") {
+    try { console.log("Create-locality OPTIONS preflight received", { origin }); } catch {}
+    return new Response("ok", { headers: { ...corsHeaders, "Content-Type": "text/plain" } });
   }
 
-  const corsHeaders = getCorsHeaders(origin ?? undefined);
+  // Enforce allowed origins
+  if (!isAllowedOrigin(origin)) {
+    return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed", allowed: ["POST", "OPTIONS"] }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
   try {
-    if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
-    const URL_SUPABASE = Deno.env.get('URL_SUPABASE') || Deno.env.get('SUPABASE_URL');
-    const SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (!URL_SUPABASE || !SERVICE_ROLE_KEY) {
-      return new Response(JSON.stringify({ error: 'Missing supabase URL or service_role key in env.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || Deno.env.get("URL_SUPABASE") || "";
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SERVICE_ROLE_KEY") || "";
+    if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+      return new Response(JSON.stringify({ error: "Missing Supabase env configuration" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabaseAdmin = createClient(URL_SUPABASE, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+    // Admin client (Service Role)
+    const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 
-    if (!isAllowedOrigin(origin ?? undefined)) return new Response(JSON.stringify({ error: 'Origin not allowed' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
-    // Expect Authorization: Bearer <jwt> - we will validate caller and optionally enforce access
-    const authHeader = (req.headers.get('authorization') || '').trim();
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Authorization Bearer token required' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // Require Authorization: Bearer <jwt>
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization") || "";
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Authorization Bearer token required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-  const payload = await req.json().catch(() => ({}));
-  const { p_name, p_province, p_country, p_postal_code } = payload;
-  console.log('EdgeFn POST invoked', { origin, pathname: '/functions/v1/create-locality', receivedAt: new Date().toISOString() });
-  console.log('Auth header present?', !!(req.headers.get('authorization') || '').trim());
-  console.log('Payload', { p_name, p_province, p_country, p_postal_code });
-    if (!p_name || !p_postal_code) {
-      return new Response(JSON.stringify({ error: 'Missing required fields p_name or p_postal_code' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const body = await req.json().catch(() => ({} as any));
+    // Strict input: accept ONLY canonical p_* fields
+    const receivedKeys = Object.keys(body || {});
+    const name = typeof body?.p_name === "string" ? body.p_name.trim() : "";
+    const province = body?.p_province != null ? String(body.p_province).trim() : null;
+    const country = body?.p_country != null ? String(body.p_country).trim() : null;
+    const postalRaw = typeof body?.p_postal_code === "string" || typeof body?.p_postal_code === "number" ? String(body.p_postal_code) : "";
+    // Normalize postal code: keep digits only
+    const normalized_cp = postalRaw.replace(/\D+/g, "").trim();
+
+    if (!name || !normalized_cp) {
+      return new Response(
+        JSON.stringify({
+          error: "Missing required fields: p_name and p_postal_code",
+          details: {
+            required: ["p_name", "p_postal_code"],
+            optional: ["p_province", "p_country"],
+            received_keys: receivedKeys,
+          },
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Optionally: validate token and map to app user/company as in import-customers
-    // For now enforce presence only
+    console.log("Create-locality POST", { origin, name, postal_code: normalized_cp });
 
-    const start = Date.now();
+    // Try RPC first
+    let row: any = null;
     try {
-      console.log('Calling RPC insert_or_get_locality');
-      const { data, error } = await supabaseAdmin.rpc('insert_or_get_locality', { p_name, p_province, p_country, p_postal_code });
-      const duration = Date.now() - start;
-      if (error) {
-        console.error('RPC error', error);
-        return new Response(JSON.stringify({ error: error.message || error }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { data, error } = await supabaseAdmin.rpc("insert_or_get_locality", { p_name: name, p_province: province, p_country: country, p_postal_code: normalized_cp });
+      if (!error && data) {
+        row = Array.isArray(data) ? data[0] : data;
+      } else if (error) {
+        console.warn("RPC insert_or_get_locality failed, will fallback to upsert:", error.message || String(error));
       }
-      console.log('RPC succeeded', { duration, resultSample: Array.isArray(data) ? data[0] : data });
-      return new Response(JSON.stringify({ result: data }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    } catch (rpcEx: any) {
-      console.error('RPC exception', rpcEx);
-      return new Response(JSON.stringify({ error: rpcEx?.message || String(rpcEx) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    } catch (rpcErr) {
+      console.warn("RPC threw exception, fallback to upsert:", (rpcErr as any)?.message || String(rpcErr));
     }
-  } catch (err: any) {
-    console.error('Function exception', err);
-    return new Response(JSON.stringify({ error: err?.message || String(err) }), { status: 500, headers: { ...getCorsHeaders(req.headers.get('Origin') ?? undefined), 'Content-Type': 'application/json' } });
+
+    // Fallback: upsert with onConflict postal_code using service_role (bypasses RLS)
+    if (!row) {
+      const payload = {
+        name,
+        province,
+        country,
+        postal_code: normalized_cp,
+      } as any;
+      const { data: upsertData, error: upsertError } = await supabaseAdmin
+        .from("localities")
+        .upsert(payload, { onConflict: "postal_code" })
+        .select()
+        .single();
+
+      if (upsertError) {
+        console.error("Upsert localities failed:", upsertError);
+        return new Response(JSON.stringify({ error: upsertError.message || String(upsertError) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      row = upsertData;
+    }
+
+    return new Response(JSON.stringify({ result: row }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  } catch (e: any) {
+    console.error("Create-locality exception", e);
+    return new Response(JSON.stringify({ error: e?.message || String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
-};
+});

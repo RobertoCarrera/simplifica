@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Locality } from '../models/locality';
-import { Observable, from, of } from 'rxjs';
+import { Observable, from, of, throwError } from 'rxjs';
 import { map, switchMap, catchError } from 'rxjs/operators';
 import { SupabaseClientService } from './supabase-client.service';
 import { environment } from '../../environments/environment';
@@ -30,15 +30,30 @@ export class LocalitiesService {
     );
   }
 
-  createLocality(locality: Locality): Observable<Locality> {
-    // Normalize postal code (strip non-digits)
-    const normalizedCP = (locality.CP || '').toString().replace(/\D+/g, '').trim();
+  createLocality(locality: Partial<Locality> | any): Observable<Locality> {
+    // Accept both app-model keys and DB-style keys from caller
+    const nameRaw = (locality as any)?.nombre ?? (locality as any)?.name ?? '';
+    const provinceRaw = (locality as any)?.provincia ?? (locality as any)?.province ?? '';
+    const countryRaw = (locality as any)?.comarca ?? (locality as any)?.country ?? '';
+    const cpRaw = (locality as any)?.CP ?? (locality as any)?.postal_code ?? (locality as any)?.cp ?? '';
+
+    const name = (nameRaw || '').toString().trim();
+    const province = (provinceRaw || '').toString().trim();
+    const country = (countryRaw || '').toString().trim();
+    const normalizedCP = (cpRaw || '').toString().replace(/\D+/g, '').trim();
+
+    // Quick client-side validation to match Edge Function strict contract
+    if (!name || !normalizedCP) {
+      return throwError(() => ({ type: 'VALIDATION_ERROR', message: 'Faltan campos obligatorios: nombre y CP', details: { required: ['nombre', 'CP'] } }));
+    }
+
     const payload: any = {
-      name: locality.nombre,
-      province: locality.provincia,
-      country: locality.comarca,
+      name: name,
+      province: province || null,
+      country: country || null,
       postal_code: normalizedCP
     };
+
     // Option A: If configured, call server-side Edge Function which uses service_role
     if (environment.useEdgeCreateLocality) {
       const url = (environment.edgeFunctionsBaseUrl || '').replace(/\/+$/, '') + '/create-locality';
@@ -56,8 +71,8 @@ export class LocalitiesService {
           const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
           const json = await resp.json().catch(() => ({}));
           if (!resp.ok) {
-            const err = json?.error || json;
-            throw { type: 'EDGE_ERROR', message: 'Edge function error', original: err };
+            const msg = json?.error || json?.message || 'Edge function error';
+            throw { type: 'EDGE_ERROR', message: msg, original: json, status: resp.status };
           }
           const row = json?.result || json?.data || json;
           const picked = Array.isArray(row) ? row[0] : row;

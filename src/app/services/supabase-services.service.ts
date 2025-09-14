@@ -744,280 +744,154 @@ export class SupabaseServicesService {
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
-          const csv = String(e.target?.result || '');
-          const lines = csv.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-          if (lines.length === 0) return reject(new Error('CSV vacío'));
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          if (!arrayBuffer) return reject(new Error('CSV vacío'));
 
-          const header = lines[0].split(',').map(h => h.trim().toLowerCase());
-          const rows = lines.slice(1).map(line => line.split(',').map(c => c.trim()));
-
-          if (rows.length > MAX) return reject(new Error(`Máximo ${MAX} filas permitidas`));
-
-          const created: Service[] = [];
-
-          // Try batch import via same-origin Vercel proxy first (avoids CORS), then fall back to direct Supabase function
-          const proxyUrl = `/api/import-services`;
-          const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-services`;
-          try {
-            const payloadRows = rows.map(cols => {
-              const obj: any = {};
-              header.forEach((h, i) => obj[h] = cols[i] ?? '');
-              const tags = (obj['tags'] || obj['tag'] || '').split('|').map((t: string) => t.trim()).filter(Boolean);
-              const companyId = this.currentCompanyId || obj['company_id'] || undefined;
-              return {
-                name: obj['name'] || obj['nombre'] || 'Servicio importado',
-                description: obj['description'] || obj['descripcion'] || '',
-                base_price: obj['base_price'] ? Number(obj['base_price']) : 0,
-                estimated_hours: obj['estimated_hours'] ? Number(obj['estimated_hours']) : 0,
-                company_id: companyId,
-                category_name: obj['category'] || obj['categoria'] || undefined,
-                tags
-              };
-            });
-
-            // First try same-origin proxy
-            let resp = await fetch(proxyUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
-            });
-
-            // If proxy not available or not allowed (404/405), try direct function URL
-            if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
-              resp = await fetch(functionUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
-              });
+          // Try decode heuristics: prefer UTF-8, fallback to windows-1252 if text looks mojibake
+          const tryDecode = (enc: string) => {
+            try {
+              // TextDecoder supports many labels in modern browsers
+              return new TextDecoder(enc).decode(arrayBuffer);
+            } catch (_err) {
+              return null;
             }
-
-            if (resp.ok) {
-              const json = await resp.json();
-              const insertedRows = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
-              for (const svcRow of insertedRows) {
-                const svc: Service = {
-                  id: svcRow.id,
-                  name: svcRow.name,
-                  description: svcRow.description || '',
-                  base_price: svcRow.base_price || 0,
-                  estimated_hours: svcRow.estimated_hours || 0,
-                  category: svcRow.category || 'Servicio Técnico',
-                  is_active: svcRow.is_active !== undefined ? svcRow.is_active : true,
-                  company_id: svcRow.company_id || this.currentCompanyId || '',
-                  created_at: svcRow.created_at,
-                  updated_at: svcRow.updated_at || svcRow.created_at
-                };
-                created.push(svc);
-              }
-              resolve(created);
-              return;
-            } else {
-              console.warn('Edge function import failed, falling back to per-row import', resp.status, await resp.text());
-            }
-          } catch (err) {
-            console.warn('Edge function call error, falling back to per-row import', err);
-          }
-
-          // Helper to perform REST calls with anon key
-          const restFetch = async (path: string, options: RequestInit = {}) => {
-            const url = `${environment.supabase.url}/rest/v1/${path}`;
-            const defaultHeaders: Record<string, string> = {
-              'Content-Type': 'application/json',
-              'apikey': environment.supabase.anonKey,
-              'Authorization': `Bearer ${environment.supabase.anonKey}`
-            };
-            options.headers = Object.assign({}, defaultHeaders, options.headers || {});
-            const res = await fetch(url, options as any);
-            const contentType = res.headers.get('content-type') || '';
-            const body = contentType.includes('application/json') ? await res.json() : await res.text();
-            if (res.status === 401) {
-              // Fallback: try using the Supabase client (might have a valid session)
-              try {
-                const client = this.supabase.getClient();
-                // Map REST path to client calls for simple cases used here
-                if (path.startsWith('service_categories')) {
-                  // If it's a filter query like service_categories?name=eq.X&company_id=eq.Y
-                  if (path.includes('?')) {
-                    const table = 'service_categories';
-                    const q = client.from(table).select('*');
-                    // We won't parse filters here; just return all for company if provided
-                    const companyParam = path.match(/company_id=eq.([^&]+)/);
-                    if (companyParam && companyParam[1]) {
-                      q.eq('company_id', decodeURIComponent(companyParam[1]));
-                    }
-                    const { data, error } = await q;
-                    if (error) throw error;
-                    return data || [];
-                  }
-                  // create
-                  const { data: createdCat, error: createErr } = await client
-                    .from('service_categories')
-                    .insert(JSON.parse(options.body as string))
-                    .select();
-                  if (createErr) throw createErr;
-                  return createdCat;
-                }
-
-                if (path === 'services') {
-                  if (options.method === 'POST') {
-                    const bodyObj = JSON.parse(options.body as string);
-                    const { data, error } = await client.from('services').insert(bodyObj).select();
-                    if (error) throw error;
-                    return data;
-                  }
-                }
-
-                if (path.startsWith('service_tags')) {
-                  if (options.method === 'POST') {
-                    const bodyObj = JSON.parse(options.body as string);
-                    const { data, error } = await client.from('service_tags').insert(bodyObj).select();
-                    if (error) throw error;
-                    return data;
-                  } else {
-                    // select by company
-                    const companyParam = path.match(/company_id=eq.([^&]+)/);
-                    const q = client.from('service_tags').select('*');
-                    if (companyParam && companyParam[1]) q.eq('company_id', decodeURIComponent(companyParam[1]));
-                    const { data, error } = await q;
-                    if (error) throw error;
-                    return data || [];
-                  }
-                }
-
-                if (path === 'service_tag_relations' && options.method === 'POST') {
-                  const bodyObj = JSON.parse(options.body as string);
-                  const { data, error } = await client.from('service_tag_relations').insert(bodyObj).select();
-                  if (error) throw error;
-                  return data;
-                }
-
-              } catch (clientErr) {
-                throw { status: 401, body: clientErr };
-              }
-            }
-
-            if (!res.ok) throw { status: res.status, body };
-            return body;
           };
 
-          for (const cols of rows) {
+          let text = tryDecode('utf-8');
+          const looksMojibake = (t: string | null) => {
+            if (!t) return false;
+            // common mojibake indicators: sequences like Ã©, Ã³, â, Â, replacement char �
+            const m = t.match(/Ã[\x80-\xBF]|â|Â|�/g);
+            return !!(m && m.length > 2);
+          };
+
+          if (looksMojibake(text)) {
+            const alt = tryDecode('windows-1252') || tryDecode('iso-8859-1');
+            if (alt && !looksMojibake(alt)) text = alt;
+          }
+
+          if (!text) return reject(new Error('No se pudo decodificar el CSV. Asegúrate de que esté en UTF-8 o Windows-1252.'));
+
+          // Robust CSV parser: supports quoted fields, embedded commas and newlines, and double quotes escaping
+          const parseCSV = (input: string) => {
+            const rows: string[][] = [];
+            let cur = '';
+            let row: string[] = [];
+            let inQuotes = false;
+            for (let i = 0; i < input.length; i++) {
+              const ch = input[i];
+              if (inQuotes) {
+                if (ch === '"') {
+                  if (input[i + 1] === '"') { cur += '"'; i++; }
+                  else { inQuotes = false; }
+                } else {
+                  cur += ch;
+                }
+              } else {
+                if (ch === '"') { inQuotes = true; }
+                else if (ch === ',') { row.push(cur); cur = ''; }
+                else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+                else if (ch === '\r') { /* skip, handled by \n */ }
+                else { cur += ch; }
+              }
+            }
+            // push last
+            row.push(cur);
+            rows.push(row);
+            return rows;
+          };
+
+          const allRows = parseCSV(text);
+          if (!allRows || allRows.length === 0) return reject(new Error('CSV vacío o formato inválido'));
+
+          // Trim header & rows and remove empty trailing rows
+          const header = allRows[0].map(h => (h || '').toString().trim().toLowerCase());
+          const dataRows = allRows.slice(1).filter(r => r.some(cell => (cell || '').toString().trim() !== ''));
+
+          if (dataRows.length === 0) return reject(new Error('CSV sin filas de datos'));
+          if (dataRows.length > MAX) return reject(new Error(`Máximo ${MAX} filas permitidas`));
+
+          // Heuristic: if decoded text still looks mojibake, abort rather than import garbage
+          if (looksMojibake(text)) return reject(new Error('El archivo parece tener problemas de codificación (mojibake). Guarda el CSV en UTF-8 y vuelve a intentarlo.'));
+
+          const created: Service[] = [];
+          const payloadRows = dataRows.map(cols => {
             const obj: any = {};
             header.forEach((h, i) => obj[h] = cols[i] ?? '');
-
-            const tags = (obj['tags'] || obj['tag'] || '').split('|').map((t: string) => t.trim()).filter(Boolean);
+            const tags = (obj['tags'] || obj['tag'] || '').toString().split('|').map((t: string) => t.trim()).filter(Boolean);
             const companyId = this.currentCompanyId || obj['company_id'] || undefined;
-
-            const payloadForInsert: any = {
-              name: obj['name'] || obj['nombre'] || 'Servicio importado',
-              description: obj['description'] || obj['descripcion'] || '',
-              base_price: obj['base_price'] ? Number(obj['base_price']) : 0,
+            return {
+              // send empty name when missing so the server can generate unique fallback names
+              name: (obj['name'] || obj['nombre'] || '').toString().trim(),
+              description: (obj['description'] || obj['descripcion'] || '').toString().trim(),
+              base_price: obj['price'] || obj['base_price'] ? Number(obj['price'] || obj['base_price']) : 0,
               estimated_hours: obj['estimated_hours'] ? Number(obj['estimated_hours']) : 0,
-              company_id: companyId
+              company_id: companyId,
+              category_name: obj['category'] || obj['categoria'] || undefined,
+              tags
             };
+          });
 
-            // Resolve or create category via REST if provided
-            if (obj['category'] || obj['categoria']) {
-              const catName = obj['category'] || obj['categoria'];
-              try {
-                // Try to find existing category
-                const encodedName = encodeURIComponent(catName);
-                let cats: any[] = [];
-                try {
-                  cats = await restFetch(`service_categories?name=eq.${encodedName}&company_id=eq.${encodeURIComponent(companyId || '')}`);
-                } catch (e) {
-                  // ignore
-                }
-                if (Array.isArray(cats) && cats.length > 0 && cats[0].id) {
-                  payloadForInsert.category = cats[0].id;
-                } else {
-                  // create category
-                  try {
-                    const createdCat = await restFetch('service_categories', {
-                      method: 'POST',
-                      headers: { Prefer: 'return=representation' },
-                      body: JSON.stringify([{ name: catName, company_id: companyId, color: '#6b7280', is_active: true }])
-                    });
-                    if (Array.isArray(createdCat) && createdCat[0]?.id) payloadForInsert.category = createdCat[0].id;
-                  } catch (e) {
-                    console.warn('No se pudo crear categoría por REST, guardando nombre bruto:', e);
-                    payloadForInsert.category = catName;
-                  }
-                }
-              } catch (err) {
-                console.warn('Error resolviendo categoría por REST:', err);
-                payloadForInsert.category = obj['category'] || obj['categoria'];
-              }
-            }
+          // Acquire current session token for Authorization header
+          const client = this.supabase.getClient();
+          const { data: sessionData } = await client.auth.getSession();
+          const accessToken = sessionData?.session?.access_token;
+          if (!accessToken) {
+            console.warn('importFromCSV: no access token found in sessionData', sessionData);
+            throw new Error('No hay sesión activa. Inicia sesión para importar servicios.');
+          }
 
-            try {
-              // Insert service via REST and get representation
-              const inserted = await restFetch('services', {
-                method: 'POST',
-                headers: { Prefer: 'return=representation' },
-                body: JSON.stringify([payloadForInsert])
-              });
+          const proxyUrl = `/api/import-services`;
+          const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-services`;
 
-              const svcRow = Array.isArray(inserted) ? inserted[0] : inserted;
-              const svc: Service = {
-                id: svcRow.id,
-                name: svcRow.name,
-                description: svcRow.description || '',
-                base_price: svcRow.base_price || 0,
-                estimated_hours: svcRow.estimated_hours || 0,
-                category: svcRow.category || payloadForInsert.category || 'Servicio Técnico',
-                is_active: svcRow.is_active !== undefined ? svcRow.is_active : true,
-                company_id: svcRow.company_id || companyId || this.currentCompanyId || '',
-                created_at: svcRow.created_at,
-                updated_at: svcRow.updated_at || svcRow.created_at
-              };
+          // Debug logs to ensure UI triggered import
+          console.log('importFromCSV: parsed', dataRows.length, 'data rows -> payloadRows length=', payloadRows.length);
+          console.log('importFromCSV: attempting fetch. proxyUrl=', proxyUrl, 'functionUrl=', functionUrl);
+          console.log('importFromCSV: accessToken exists?', !!accessToken);
 
-              // Sync tags via REST (create tags if needed and create relations)
-              if (tags.length > 0) {
-                // Fetch existing tags for company
-                const existingTags: any[] = await (async () => {
-                  try {
-                    const resp = await restFetch(`service_tags?company_id=eq.${encodeURIComponent(svc.company_id)}`);
-                    return Array.isArray(resp) ? resp : [];
-                  } catch (e) { return []; }
-                })();
+          // Try same-origin proxy first (if configured), then direct Edge Function URL
+          let resp = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
+          });
 
-                const tagIds: string[] = [];
-                for (const tname of tags) {
-                  let found = existingTags.find(et => String(et.name).toLowerCase() === String(tname).toLowerCase());
-                  if (!found) {
-                    try {
-                      const createdTag = await restFetch('service_tags', {
-                        method: 'POST',
-                        headers: { Prefer: 'return=representation' },
-                        body: JSON.stringify([{ name: tname, color: '#6b7280', company_id: svc.company_id, is_active: true }])
-                      });
-                      found = Array.isArray(createdTag) ? createdTag[0] : createdTag;
-                      existingTags.push(found);
-                    } catch (e) {
-                      console.warn('Error creando tag por REST, intentando continuar:', e);
-                    }
-                  }
-                  if (found && found.id) tagIds.push(found.id);
-                }
+          if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
+            console.warn('importFromCSV: proxy returned', resp.status, 'falling back to direct function URL');
+            resp = await fetch(functionUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+              },
+              body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
+            });
+          }
 
-                if (tagIds.length > 0) {
-                  const relations = tagIds.map(tid => ({ service_id: svc.id, tag_id: tid }));
-                  try {
-                    await restFetch('service_tag_relations', {
-                      method: 'POST',
-                      headers: { Prefer: 'resolution=merge-duplicates' },
-                      body: JSON.stringify(relations)
-                    });
-                  } catch (e) {
-                    console.warn('Error creando relaciones tags por REST:', e);
-                  }
-                }
-              }
+          if (!resp.ok) {
+            const errText = await resp.text().catch(() => '');
+            throw new Error(`Fallo al importar servicios (${resp.status}): ${errText}`);
+          }
 
-              created.push(svc);
-            } catch (e) {
-              console.warn('Error importing row, skipping:', e);
-            }
+          const json = await resp.json();
+          const insertedRows = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+          for (const svcRow of insertedRows) {
+            const svc: Service = {
+              id: svcRow.id,
+              name: svcRow.name,
+              description: svcRow.description || '',
+              base_price: svcRow.base_price || 0,
+              estimated_hours: svcRow.estimated_hours || 0,
+              category: svcRow.category || 'Servicio Técnico',
+              is_active: svcRow.is_active !== undefined ? svcRow.is_active : true,
+              company_id: svcRow.company_id || this.currentCompanyId || '',
+              created_at: svcRow.created_at,
+              updated_at: svcRow.updated_at || svcRow.created_at
+            };
+            created.push(svc);
           }
 
           resolve(created);
@@ -1026,7 +900,151 @@ export class SupabaseServicesService {
         }
       };
       reader.onerror = (err) => reject(err);
-      reader.readAsText(file, 'utf-8');
+      // Use readAsArrayBuffer so we can decode with different encodings if needed
+      reader.readAsArrayBuffer(file);
     });
+  }
+
+  // =============================
+  // CSV Mapper helpers (Services)
+  // =============================
+  async parseCSVFileForServices(file: File): Promise<{ headers: string[]; data: string[][] }> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          if (!arrayBuffer) return reject(new Error('CSV vacío'));
+
+          const tryDecode = (enc: string) => {
+            try { return new TextDecoder(enc).decode(arrayBuffer); } catch { return null; }
+          };
+
+          let text = tryDecode('utf-8');
+          const looksMojibake = (t: string | null) => !!(t && t.match(/Ã[\x80-\xBF]|â|Â|�/g)?.length && t.match(/Ã[\x80-\xBF]|â|Â|�/g)!.length > 2);
+          if (looksMojibake(text)) {
+            const alt = tryDecode('windows-1252') || tryDecode('iso-8859-1');
+            if (alt && !looksMojibake(alt)) text = alt;
+          }
+          if (!text) return reject(new Error('No se pudo decodificar el CSV. Asegúrate de que esté en UTF-8 o Windows-1252.'));
+
+          const parseCSV = (input: string) => {
+            const rows: string[][] = [];
+            let cur = '';
+            let row: string[] = [];
+            let inQuotes = false;
+            for (let i = 0; i < input.length; i++) {
+              const ch = input[i];
+              if (inQuotes) {
+                if (ch === '"') {
+                  if (input[i + 1] === '"') { cur += '"'; i++; }
+                  else { inQuotes = false; }
+                } else { cur += ch; }
+              } else {
+                if (ch === '"') { inQuotes = true; }
+                else if (ch === ',') { row.push(cur); cur = ''; }
+                else if (ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+                else if (ch === '\r') { /* skip */ }
+                else { cur += ch; }
+              }
+            }
+            row.push(cur);
+            rows.push(row);
+            return rows;
+          };
+
+          const allRows = parseCSV(text);
+          if (!allRows || allRows.length < 1) return reject(new Error('CSV vacío o formato inválido'));
+
+          const header = allRows[0].map(h => (h || '').toString().trim());
+          const data = allRows.filter(r => r.some(cell => (cell || '').toString().trim() !== ''));
+          resolve({ headers: header, data });
+        } catch (err) { reject(err); }
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  async mapAndUploadServicesCsv(
+    file: File,
+    mappings: Array<{ csvHeader: string; targetField: string | null }>,
+    companyId?: string | null
+  ): Promise<number> {
+    // 1) Parse file to get headers and rows
+    const { headers, data } = await this.parseCSVFileForServices(file);
+    if (!headers || headers.length === 0) throw new Error('CSV sin cabecera');
+    if (!data || data.length < 2) throw new Error('CSV sin filas de datos');
+
+    // 2) Build a lookup from header name to index
+    const headerIndex: Record<string, number> = {};
+    headers.forEach((h, i) => { headerIndex[h] = i; });
+
+    // 3) Build a lookup from target field to header index (only mapped ones)
+    const fieldToIndex: Record<string, number> = {};
+    mappings.forEach(m => {
+      if (m.targetField && typeof m.csvHeader === 'string') {
+        const idx = headerIndex[m.csvHeader];
+        if (idx !== undefined) fieldToIndex[m.targetField] = idx;
+      }
+    });
+
+    // Helper to get a cell by target name
+    const getVal = (row: string[], field: string): string => {
+      const idx = fieldToIndex[field];
+      if (idx === undefined) return '';
+      return (row[idx] ?? '').toString().trim();
+    };
+
+    // 4) Map rows to payload expected by Edge Function
+    const dataRows = data.slice(1).filter(r => r.some(cell => (cell || '').toString().trim() !== ''));
+    const payloadRows = dataRows.map(row => {
+      const name = getVal(row, 'name');
+      const description = getVal(row, 'description');
+      const priceStr = getVal(row, 'base_price') || getVal(row, 'price');
+      const hoursStr = getVal(row, 'estimated_hours') || getVal(row, 'hours');
+      const category = getVal(row, 'category');
+      const tagsStr = getVal(row, 'tags');
+      const tags = tagsStr ? tagsStr.split('|').map(t => t.trim()).filter(Boolean) : [];
+
+      return {
+        name: name, // empty allowed: server will generate fallback unique names
+        description: description,
+        base_price: priceStr ? Number(priceStr.replace(',', '.')) : 0,
+        estimated_hours: hoursStr ? Number(hoursStr.replace(',', '.')) : 0,
+        company_id: companyId || this.currentCompanyId || undefined,
+        category_name: category || undefined,
+        tags
+      };
+    });
+
+    // 5) Acquire token and call Edge Function
+    const client = this.supabase.getClient();
+    const { data: sessionData } = await client.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) throw new Error('No hay sesión activa. Inicia sesión para importar servicios.');
+
+    const proxyUrl = `/api/import-services`;
+    const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-services`;
+
+    let resp = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+      body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
+    });
+    if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
+      resp = await fetch(functionUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+        body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
+      });
+    }
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '');
+      throw new Error(`Fallo al importar servicios (${resp.status}): ${errText}`);
+    }
+    const json = await resp.json();
+    const insertedRows = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+    return insertedRows.length || 0;
   }
 }

@@ -58,7 +58,7 @@ export interface CsvMappingResult {
           <div class="mapping-section">
             <h4>Mapear Campos</h4>
             <p class="mapping-help">
-              Asigna cada columna del CSV a un campo del cliente. Los campos marcados con * son obligatorios.
+              Asigna cada columna del CSV a un campo de destino. Los campos marcados con * son obligatorios.
             </p>
 
             <div class="mapping-grid">
@@ -82,18 +82,15 @@ export interface CsvMappingResult {
                     [class.required]="isRequiredField(mapping.targetField)"
                   >
                     <option value="">-- No mapear --</option>
-                    <optgroup label="Campos Obligatorios">
-                      <option value="name">Nombre *</option>
-                      <option value="surname">Apellidos *</option>
-                      <option value="email">Email *</option>
+                    <optgroup *ngIf="requiredOptionList.length" label="Campos Obligatorios">
+                      <option *ngFor="let opt of requiredOptionList" [value]="opt.value">
+                        {{ opt.label }}
+                      </option>
                     </optgroup>
-                    <optgroup label="Campos Opcionales">
-                      <option value="phone">Teléfono</option>
-                      <option value="dni">DNI/NIF</option>
-                      <option value="address">Dirección</option>
-                      <option value="company">Empresa</option>
-                      <option value="notes">Notas</option>
-                      <option value="metadata">Metadata (otros datos)</option>
+                    <optgroup *ngIf="optionalOptionList.length" label="Campos Opcionales">
+                      <option *ngFor="let opt of optionalOptionList" [value]="opt.value">
+                        {{ opt.label }}
+                      </option>
                     </optgroup>
                   </select>
                 </div>
@@ -148,6 +145,11 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges {
   @Input() visible = false;
   @Input() csvHeaders: string[] = [];
   @Input() csvData: string[][] = [];
+  // Generic configuration for consumers (services/customers/others)
+  @Input() fieldOptions: { value: string; label: string; required?: boolean }[] | null = null;
+  @Input() requiredFields: string[] = ['name', 'surname', 'email'];
+  // Optional alias map to improve auto-mapping: { targetField: [aliases...] }
+  @Input() aliasMap: Record<string, string[]> | null = null;
   
   @Output() mappingConfirmed = new EventEmitter<CsvMappingResult>();
   @Output() cancelled = new EventEmitter<void>();
@@ -155,12 +157,15 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges {
   fieldMappings: FieldMapping[] = [];
   previewRows: string[][] = [];
   validationErrors = signal<string[]>([]);
+  requiredOptionList: { value: string; label: string }[] = [];
+  optionalOptionList: { value: string; label: string }[] = [];
 
-  private requiredFields = ['name', 'surname', 'email'];
+  private defaultCustomerRequiredFields = ['name', 'surname', 'email'];
 
   ngOnInit() {
     this.initializeMappings();
     this.preparePreviewData();
+    this.refreshOptionLists();
     this.autoMapHeaders();
   }
 
@@ -170,6 +175,7 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges {
         (changes['csvData'] && !changes['csvData'].firstChange)) {
       this.initializeMappings();
       this.preparePreviewData();
+      this.refreshOptionLists();
       this.autoMapHeaders();
     }
   }
@@ -205,8 +211,8 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges {
   }
 
   autoMapHeaders() {
-    // Aliases list expanded and normalized variants included
-    const autoMappings: Record<string, string[]> = {
+    // Choose alias map: provided by consumer or default for customers
+    const autoMappings: Record<string, string[]> = this.aliasMap || {
       name: ['name', 'nombre', 'first_name', 'firstname', 'first name', 'bill_to:first_name', 'bill to first name', 'billto:first_name'],
       surname: ['surname', 'last_name', 'lastname', 'last name', 'apellidos', 'bill_to:last_name', 'bill to last name', 'billto:last_name'],
       email: ['email', 'correo', 'e-mail', 'mail', 'bill_to:email', 'bill to email', 'billto:email'],
@@ -263,10 +269,19 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges {
       .map(m => m.targetField!);
 
     // Check required fields
-    this.requiredFields.forEach(required => {
+    const requiredList = (this.requiredFields && this.requiredFields.length)
+      ? this.requiredFields
+      : this.defaultCustomerRequiredFields;
+    requiredList.forEach(required => {
       if (!mappedFields.includes(required)) {
-        const fieldName = required === 'surname' ? 'Apellidos' : 
-                         required === 'name' ? 'Nombre' : 'Email';
+        // Find label in fieldOptions if provided, else fallback to generic
+        let fieldName = required;
+        if (this.fieldOptions) {
+          const opt = this.fieldOptions.find(o => o.value === required);
+          if (opt?.label) fieldName = opt.label.replace(/\s*\*?$/, '');
+        } else {
+          fieldName = required === 'surname' ? 'Apellidos' : required === 'name' ? 'Nombre' : required === 'email' ? 'Email' : required;
+        }
         errors.push(`El campo obligatorio "${fieldName}" debe estar mapeado`);
       }
     });
@@ -305,5 +320,29 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges {
 
   cancel() {
     this.cancelled.emit();
+  }
+
+  private refreshOptionLists() {
+    // Build option lists from provided fieldOptions if any, else fallback to default customer fields
+    const defaults = [
+      { value: 'name', label: 'Nombre *', required: true },
+      { value: 'surname', label: 'Apellidos *', required: true },
+      { value: 'email', label: 'Email *', required: true },
+      { value: 'phone', label: 'Teléfono' },
+      { value: 'dni', label: 'DNI/NIF' },
+      { value: 'address', label: 'Dirección' },
+      { value: 'company', label: 'Empresa' },
+      { value: 'notes', label: 'Notas' },
+      { value: 'metadata', label: 'Metadata (otros datos)' }
+    ];
+
+    const opts = (this.fieldOptions && this.fieldOptions.length ? this.fieldOptions : defaults).map(o => ({
+      value: o.value,
+      label: o.label,
+      required: !!(o.required || (this.requiredFields?.includes(o.value)))
+    }));
+
+    this.requiredOptionList = opts.filter(o => o.required).map(o => ({ value: o.value, label: o.label }));
+    this.optionalOptionList = opts.filter(o => !o.required).map(o => ({ value: o.value, label: o.label }));
   }
 }

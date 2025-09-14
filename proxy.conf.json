@@ -1,0 +1,14 @@
+{
+  "/api": {
+    "target": "https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "pathRewrite": {
+      "^/api": ""
+    },
+    "headers": {
+      "x-proxy-by": "angular-dev-server"
+    }
+  }
+}

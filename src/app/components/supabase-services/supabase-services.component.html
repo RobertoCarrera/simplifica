@@ -17,23 +17,6 @@
             <option *ngFor="let c of companies" [value]="c.id">{{ c.name }} ({{ c.id }})</option>
           </select>
         </div> }
-        <input
-          #serviceFileInput
-          type="file"
-          accept=".csv"
-          (change)="importServices($event)"
-          class="hidden"
-        >
-        @if (devRoleService.canSeeDevTools()) {
-        <button
-          (click)="serviceFileInput.click()"
-          class="btn btn-secondary"
-          [disabled]="loading"
-          title="Importar servicios desde CSV"
-        >
-          <i class="fas fa-upload"></i>
-          Importar CSV
-        </button>}
         <div class="search-input-container">
           <i class="fas fa-search search-icon"></i>
           <input 
@@ -43,6 +26,19 @@
             [(ngModel)]="searchTerm"
             (input)="onSearch()">
         </div>
+
+        <!-- Simple CSV import (direct) -->
+        <input
+          #svcFileInput
+          type="file"
+          accept=".csv"
+          (change)="onServicesCsvSelected($event)"
+          class="hidden"
+        >
+        <button class="btn btn-secondary" (click)="svcFileInput.click()" title="Importar servicios desde CSV">
+          <i class="fas fa-upload"></i>
+          Importar CSV
+        </button>
       </div>
     </div>
   </div>
@@ -117,7 +113,7 @@
           <div class="service-info">
             <h3 class="service-name">{{ service.name }}</h3>
             <div class="service-category" [style.background-color]="getCategoryColor(service.category || '')">
-              {{ getCategoryLabel(service.category) }}
+              {{ service.category }}
             </div>
           </div>
           <div class="service-actions">
@@ -185,7 +181,7 @@
           <div class="service-info">
             <h3 class="service-name">{{ service.name }}</h3>
             <div class="service-category inactive" [style.background-color]="getCategoryColor(service.category || '')">
-              {{ getCategoryLabel(service.category) }}
+              {{ service.category }}
             </div>
           </div>
           <div class="service-actions">
@@ -269,8 +265,7 @@
                   type="text" 
                   id="category"
                   class="form-control"
-                  [value]="$any(formData).category_name || formData.category"
-                  (input)="formData.category = $any($event.target).value; $any(formData).category_name = undefined"
+                  [(ngModel)]="formData.category"
                   name="category"
                   [class.error]="formErrors['category']"
                   (focus)="showCategoryInput = true"
@@ -653,4 +648,16 @@
   >
     <i class="fas fa-plus"></i>
   </button>
+
+  <!-- CSV Mapper Modal for Services -->
+  <app-csv-header-mapper
+    [visible]="showCsvMapper"
+    [csvHeaders]="csvHeaders"
+    [csvData]="csvData"
+    [fieldOptions]="mapperFieldOptions"
+    [requiredFields]="mapperRequiredFields"
+    [aliasMap]="mapperAliasMap"
+    (mappingConfirmed)="onServicesCsvMappingConfirmed($event)"
+    (cancelled)="onServicesCsvMappingCancelled()"
+  ></app-csv-header-mapper>
 </div>

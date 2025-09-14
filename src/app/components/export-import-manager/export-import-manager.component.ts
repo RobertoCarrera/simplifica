@@ -652,7 +652,29 @@ export class ExportImportManagerComponent implements OnInit {
 
   // File Upload
   triggerFileInput() {
-    this.fileInput.nativeElement.click();
+    try {
+      console.log('export-import: triggerFileInput called, activeTab=', this.activeTab());
+      // Ensure import tab is active so the file input is present in DOM
+      if (this.activeTab() !== 'import') {
+        console.log('export-import: switching to import tab before opening file input');
+        this.activeTab.set('import');
+        // Give Angular a tick to render the import tab DOM
+        setTimeout(() => {
+          try {
+            console.log('export-import: clicking file input after tab switch', this.fileInput?.nativeElement);
+            this.fileInput.nativeElement.click();
+          } catch (err2) {
+            console.error('export-import: failed clicking file input after tab switch', err2);
+          }
+        }, 50);
+        return;
+      }
+
+      console.log('export-import: clicking file input directly', this.fileInput?.nativeElement);
+      this.fileInput.nativeElement.click();
+    } catch (err) {
+      console.error('export-import: triggerFileInput failed', err);
+    }
   }
 
   onFileSelect(event: Event) {

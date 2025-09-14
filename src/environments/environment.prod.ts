@@ -7,6 +7,6 @@ export const environment = {
   },
   siteUrl: 'https://simplifica.digitalizamostupyme.es'
   ,
-  useEdgeCreateLocality: false,
-  edgeFunctionsBaseUrl: ''
+  useEdgeCreateLocality: true,
+  edgeFunctionsBaseUrl: 'https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1'
 };
