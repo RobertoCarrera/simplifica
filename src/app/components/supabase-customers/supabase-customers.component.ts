@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, HostListener, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SkeletonComponent } from '../skeleton/skeleton.component';
@@ -14,6 +14,7 @@ import { SupabaseCustomersService, CustomerFilters, CustomerStats } from '../../
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../services/gdpr-compliance.service';
 import { ToastService } from '../../services/toast.service';
 import { DevRoleService } from '../../services/dev-role.service';
+import { AppModalComponent } from '../app-modal/app-modal.component';
 import { Router } from '@angular/router';
 
 @Component({
@@ -25,7 +26,8 @@ import { Router } from '@angular/router';
     SkeletonComponent, 
     LoadingComponent,
     DevUserSelectorComponent,
-    CsvHeaderMapperComponent
+  CsvHeaderMapperComponent,
+  AppModalComponent,
   ],
   template: `
     <div class="customers-container">
@@ -548,13 +550,20 @@ import { Router } from '@angular/router';
                 >
               </div>
 
-              <div class="form-row">
+              <!-- Responsive address row: desktop -> four columns; mobile -> stacked -->
+              <div class="form-row grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="form-group relative">
                   <label for="addressTipoVia" class="form-label">Tipo Vía</label>
                   <input id="addressTipoVia" name="addressTipoVia" [(ngModel)]="formData.addressTipoVia" (input)="onAddressViaInput($event)" class="form-input" placeholder="Escribe para buscar tipo vía">
-                  <ul *ngIf="filteredVias.length && formData.addressTipoVia" class="absolute z-50 bg-white border rounded mt-1 w-full max-h-40 overflow-auto">
-                    <li *ngFor="let via of filteredVias" (click)="formData.addressTipoVia = via; filteredVias = []" class="px-2 py-1 hover:bg-gray-100 cursor-pointer">{{ via }}</li>
-                  </ul>
+                  <div class="category-input-container">
+                    <div *ngIf="filteredVias.length && formData.addressTipoVia" class="category-dropdown">
+                      <div class="category-options">
+                        <div *ngFor="let via of filteredVias" class="category-option" (click)="formData.addressTipoVia = via; filteredVias = []">
+                          <span>{{ via }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="form-group">
@@ -566,14 +575,27 @@ import { Router } from '@angular/router';
                   <label for="addressNumero" class="form-label">Número</label>
                   <input type="text" id="addressNumero" name="addressNumero" [(ngModel)]="formData.addressNumero" class="form-input" placeholder="Número">
                 </div>
-              </div>
 
-              <div class="form-group relative">
-                <label for="addressLocalidadId" class="form-label">Localidad</label>
-                <input id="addressLocalidadId" name="addressLocalidadId" [(ngModel)]="addressLocalityName" (input)="onLocalityInput($event)" class="form-input" placeholder="Buscar por nombre o código postal">
-                <ul *ngIf="filteredLocalities.length && addressLocalityName" class="absolute z-50 bg-white border rounded mt-1 w-full max-h-48 overflow-auto">
-                  <li *ngFor="let loc of filteredLocalities" (click)="selectLocality(loc)" class="px-2 py-1 hover:bg-gray-100 cursor-pointer">{{ loc.nombre }} - {{ loc.provincia }} (CP: {{ loc.CP }})</li>
-                </ul>
+                <div class="form-group relative">
+                  <label for="addressLocalidadId" class="form-label">Localidad</label>
+                  <input id="addressLocalidadId" name="addressLocalidadId" [(ngModel)]="addressLocalityName" (input)="onLocalityInput($event)" class="form-input" placeholder="Buscar por nombre o código postal">
+                  <div class="category-input-container">
+                    <div *ngIf="filteredLocalities.length && addressLocalityName" class="category-dropdown">
+                      <div class="category-options">
+                        <div *ngFor="let loc of filteredLocalities" class="category-option" (click)="selectLocality(loc)">
+                          <span>{{ loc.nombre }} - {{ loc.provincia }} (CP: {{ loc.CP }})</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div *ngIf="addressLocalityName" class="mt-2">
+                    <button type="button" class="btn btn-sm btn-outline" (click)="openCreateLocality()">
+                      <i class="fas fa-plus mr-1"></i> Crear nueva localidad
+                    </button>
+                  </div>
+                </div>
+
+                <!-- create-locality modal moved below the form to avoid nested form/ngModel issues -->
               </div>
               
               <div class="modal-actions">
@@ -591,6 +613,54 @@ import { Router } from '@angular/router';
                 </button>
               </div>
             </form>
+
+            <!-- create-locality modal (moved out of the parent <form> to avoid ngModel inside a form) -->
+            <app-modal [visible]="showCreateLocalityModal" (close)="closeCreateLocality()">
+              <h3 class="text-lg font-semibold mb-2">Crear nueva localidad</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="form-group">
+                  <label class="form-label">Nombre</label>
+                  <input #newLocalityNameInput name="newLocalityName" type="text" class="form-input" [(ngModel)]="newLocalityName" (input)="onNewLocalityNameInput($event)" placeholder="Nombre de la localidad">
+                  <ul *ngIf="filteredNameSuggestions.length" class="absolute bg-white border rounded mt-1 w-full max-h-40 overflow-auto">
+                    <li *ngFor="let s of filteredNameSuggestions" (click)="selectNameSuggestion(s)" class="px-2 py-1 hover:bg-gray-100 cursor-pointer">{{ s }}</li>
+                  </ul>
+                  <div *ngIf="nameMatchesList.length" class="mt-2 border rounded p-2 bg-gray-50">
+                    <div class="text-sm text-gray-600 mb-1">Localidades existentes con ese nombre (elige por CP si corresponde):</div>
+                    <ul class="max-h-32 overflow-auto">
+                      <li *ngFor="let m of nameMatchesList" (click)="selectExistingFromName(m)" class="px-2 py-1 hover:bg-gray-100 cursor-pointer">{{ m.nombre }} (CP: {{ m.CP }})</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Provincia</label>
+                  <input name="newLocalityProvince" type="text" class="form-input" [(ngModel)]="newLocalityProvince" placeholder="Provincia">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Código Postal</label>
+                  <input #newLocalityCPInput name="newLocalityCP" type="text" class="form-input" [(ngModel)]="newLocalityCP" (input)="onNewLocalityCPInput($event)" placeholder="Código Postal">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">País</label>
+                  <input name="newLocalityCountry" type="text" class="form-input" [value]="newLocalityCountry || 'España'" placeholder="España" readonly tabindex="-1" aria-readonly="true">
+                </div>
+              </div>
+              <div style="height:12px"></div>
+              <div class="modal-actions mt-3 flex justify-end gap-2">
+                <button class="btn btn-secondary" type="button" (click)="closeCreateLocality()">Cancelar</button>
+                <button class="btn btn-primary" type="button" (click)="createLocalityFromInput()" [disabled]="cpExists">Crear localidad</button>
+              </div>
+              <div *ngIf="cpExists" class="mt-3 p-3 border-l-4 border-yellow-300 bg-yellow-50 rounded">
+                <div class="text-sm">Ya existe una localidad con ese <strong>Código Postal</strong>:</div>
+                <div class="mt-1 font-medium">{{ existingLocalityByCP?.nombre }} (CP: {{ existingLocalityByCP?.CP }})</div>
+                <div class="mt-2">
+                  <button class="btn btn-outline btn-sm mr-2" (click)="selectExistingFromName(existingLocalityByCP!)">Seleccionar esta localidad</button>
+                  <button class="btn btn-ghost btn-sm" (click)="closeCreateLocality()">Cancelar</button>
+                </div>
+              </div>
+            </app-modal>
           </div>
         </div>
       </div>
@@ -675,6 +745,21 @@ export class SupabaseCustomersComponent implements OnInit {
   filteredVias: string[] = [...this.addressVias];
   // visible typed locality name (search input)
   addressLocalityName: string = '';
+
+  // Create locality modal state
+  showCreateLocalityModal: boolean = false;
+  newLocalityName: string = '';
+  newLocalityCP: string = '';
+  newLocalityProvince: string = '';
+  // País por defecto: España (no editable por ahora)
+  newLocalityCountry: string = 'España';
+  @ViewChild('newLocalityNameInput') newLocalityNameInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('newLocalityCPInput') newLocalityCPInput!: ElementRef<HTMLInputElement>;
+  // Suggestions and duplicate detection
+  filteredNameSuggestions: string[] = [];
+  nameMatchesList: Locality[] = [];
+  cpExists: boolean = false;
+  existingLocalityByCP: Locality | null = null;
 
   onFileInputChange(event: Event): void {
   const input = event.target as HTMLInputElement | null;
@@ -854,6 +939,177 @@ onMappingConfirmed(mappings: any[]): void {
     this.formData.addressLocalidadId = loc._id;
     this.addressLocalityName = loc.nombre;
     this.filteredLocalities = [];
+  }
+
+  // Open the create-locality modal (can be used even when matches exist)
+  openCreateLocality() {
+    this.newLocalityName = this.addressLocalityName || '';
+    this.newLocalityCP = '';
+  this.showCreateLocalityModal = true;
+    // focus behavior could be implemented with ViewChild if needed
+    // default country to Spain and clear other fields
+  // keep País as default (España) and do not allow modifications
+  this.newLocalityCountry = 'España';
+    this.newLocalityProvince = '';
+    this.filteredNameSuggestions = [];
+    this.nameMatchesList = [];
+    this.cpExists = false;
+    this.existingLocalityByCP = null;
+
+    // focus the name input on next tick
+    setTimeout(() => {
+      try { this.newLocalityNameInput?.nativeElement?.focus(); } catch(e){}
+    }, 50);
+  }
+
+  closeCreateLocality() {
+    this.showCreateLocalityModal = false;
+    this.newLocalityName = '';
+    this.newLocalityCP = '';
+    this.newLocalityProvince = '';
+    // preserve default país value
+    this.newLocalityCountry = 'España';
+    this.filteredNameSuggestions = [];
+    this.nameMatchesList = [];
+    this.cpExists = false;
+    this.existingLocalityByCP = null;
+  }
+
+  createLocalityFromInput() {
+  console.log('[DEBUG] createLocalityFromInput called', { newLocalityName: this.newLocalityName, addressLocalityName: this.addressLocalityName, newLocalityCP: this.newLocalityCP });
+  const name = (this.newLocalityName || this.addressLocalityName || '').trim();
+  const cpRaw = (this.newLocalityCP || '').trim();
+  // normalize CP (digits only)
+  const cp = cpRaw.replace(/\D+/g, '').trim();
+    // Validate required fields
+    if (!name || !this.newLocalityProvince.trim() || !this.newLocalityCountry.trim() || !cp) {
+      this.toastService.error('Campos requeridos', 'Nombre, Provincia, País y Código Postal son obligatorios.');
+      return;
+    }
+
+    // Normalize CP for comparison
+    const normalizedCP = cp.trim();
+
+    // If postal code already exists, do not allow creating a new locality with same CP
+    // Server-side check for existing postal code
+    console.log('[DEBUG] checking existing locality for CP', cp);
+    this.localitiesService.findByPostalCode(cp).subscribe({
+      next: (existing) => {
+        console.log('[DEBUG] findByPostalCode result', existing);
+        if (existing) {
+          this.existingLocalityByCP = existing;
+          this.cpExists = true;
+          this.toastService.info('Código postal existente', `Ya existe una localidad con CP ${cp}: ${existing.nombre}`);
+          return;
+        }
+
+        const payload: any = {
+          name: name,
+          province: this.newLocalityProvince.trim(),
+          country: this.newLocalityCountry.trim() || 'España',
+          postal_code: cp
+        } as any;
+        console.log('[DEBUG] creating locality with payload', payload);
+
+        this.localitiesService.createLocality(payload as any).subscribe({
+          next: (created: any) => {
+            console.log('[DEBUG] createLocality succeeded', created);
+            // Refresh localities cache
+            this.reloadLocalities();
+            // Select the newly created locality (support various id keys)
+            const newId = created.id || created._id || created.ID || null;
+            if (newId) {
+              this.formData.addressLocalidadId = newId;
+            }
+            this.addressLocalityName = created.name || created.nombre || name;
+            this.toastService.success('Localidad creada', `${this.addressLocalityName} creada correctamente`);
+            this.closeCreateLocality();
+          },
+          error: (err: any) => {
+            console.error('Error creating locality:', err);
+            this.toastService.error('Error', 'No se pudo crear la localidad');
+          }
+        });
+      },
+      error: (err) => {
+        console.error('Error checking postal code:', err);
+        this.toastService.error('Error', 'Error al verificar código postal');
+      }
+    });
+    // server-side path handles creation or returns existing
+  }
+
+  // Handle live suggestions for the 'Nombre' input
+  onNewLocalityNameInput(event: Event) {
+    const q = (event.target as HTMLInputElement).value || '';
+    const s = q.trim().toLowerCase();
+    if (!s) {
+      this.filteredNameSuggestions = [];
+      this.nameMatchesList = [];
+      return;
+    }
+    // unique names
+    const names = Array.from(new Set(this.localities.map(l => l.nombre || '').filter(n => n)));
+    this.filteredNameSuggestions = names.filter(n => n.toLowerCase().includes(s));
+  }
+
+  // When user chooses a suggested name, show existing localities with that name so they can pick by CP
+  selectNameSuggestion(name: string) {
+    this.newLocalityName = name;
+    this.filteredNameSuggestions = [];
+    this.nameMatchesList = this.localities.filter(l => (l.nombre || '').toLowerCase() === name.toLowerCase());
+  }
+
+  // If the user picks an existing locality from the name matches, select it and close modal
+  selectExistingFromName(loc: Locality) {
+    this.formData.addressLocalidadId = loc._id;
+    this.addressLocalityName = loc.nombre;
+    this.toastService.info('Localidad seleccionada', `Seleccionada: ${loc.nombre} (CP ${loc.CP})`);
+    this.closeCreateLocality();
+  }
+
+  // Watch CP changes inside modal to detect duplicates live
+  onNewLocalityCPInput(event: Event) {
+    const cpRaw = (event.target as HTMLInputElement).value || '';
+    const normalized = cpRaw.replace(/\D+/g, '').trim();
+    if (!normalized) {
+      this.cpExists = false;
+      this.existingLocalityByCP = null;
+      return;
+    }
+
+    // Use server-side check
+    this.localitiesService.findByPostalCode(normalized).subscribe({
+      next: (existing) => {
+        if (existing) {
+          this.cpExists = true;
+          this.existingLocalityByCP = existing;
+          // focus CP input for quick action
+          setTimeout(() => { try { this.newLocalityCPInput?.nativeElement?.focus(); } catch(e){} }, 10);
+        } else {
+          this.cpExists = false;
+          this.existingLocalityByCP = null;
+        }
+      },
+      error: (err) => {
+        console.error('Error finding CP on server:', err);
+        this.cpExists = false;
+        this.existingLocalityByCP = null;
+      }
+    });
+  }
+
+  // Reload localities from the service and refresh filtered lists
+  reloadLocalities() {
+    this.localitiesService.getLocalities().subscribe({
+      next: (locals: Locality[]) => {
+        this.localities = locals || [];
+        this.filteredLocalities = [...this.localities];
+      },
+      error: (err: any) => {
+        console.error('Error reloading localities:', err);
+      }
+    });
   }
 
   private loadGdprData() {
@@ -1468,6 +1724,13 @@ onMappingConfirmed(mappings: any[]): void {
     if (!target.closest('.gdpr-actions-menu')) {
       const allMenus = document.querySelectorAll('.gdpr-dropdown');
       allMenus.forEach(menu => menu.classList.add('hidden'));
+    }
+    // Close locality suggestion lists when clicking outside the locality selector
+    if (!target.closest('.locality-selector') && !target.closest('.create-locality-modal')) {
+      // clear filtered results
+      this.filteredLocalities = [];
+      this.filteredNameSuggestions = [];
+      this.nameMatchesList = [];
     }
   }
 

@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { Locality } from '../models/locality';
-import { Observable, from } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, from, of } from 'rxjs';
+import { map, switchMap, catchError } from 'rxjs/operators';
 import { SupabaseClientService } from './supabase-client.service';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -30,17 +31,183 @@ export class LocalitiesService {
   }
 
   createLocality(locality: Locality): Observable<Locality> {
-    // Map app Locality -> DB columns
+    // Normalize postal code (strip non-digits)
+    const normalizedCP = (locality.CP || '').toString().replace(/\D+/g, '').trim();
     const payload: any = {
       name: locality.nombre,
       province: locality.provincia,
       country: locality.comarca,
-      postal_code: locality.CP
+      postal_code: normalizedCP
     };
-    return from(this.sbClient.instance.from('localities').insert(payload).select().single()).pipe(
+    // Option A: If configured, call server-side Edge Function which uses service_role
+    if (environment.useEdgeCreateLocality) {
+      const url = (environment.edgeFunctionsBaseUrl || '').replace(/\/+$/, '') + '/create-locality';
+      const body = {
+        p_name: payload.name,
+        p_province: payload.province,
+        p_country: payload.country,
+        p_postal_code: payload.postal_code
+      };
+      return from(this.sbClient.instance.auth.getSession()).pipe(
+        switchMap(async (sessionRes: any) => {
+          const accessToken = sessionRes?.data?.session?.access_token || null;
+          const headers: any = { 'Content-Type': 'application/json' };
+          if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+          const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+          const json = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            const err = json?.error || json;
+            throw { type: 'EDGE_ERROR', message: 'Edge function error', original: err };
+          }
+          const row = json?.result || json?.data || json;
+          const picked = Array.isArray(row) ? row[0] : row;
+          return {
+            _id: picked.id,
+            created_at: picked.created_at,
+            nombre: picked.name,
+            comarca: picked.country || '',
+            provincia: picked.province || '',
+            CP: picked.postal_code || ''
+          } as Locality;
+        })
+      );
+    }
+
+    // First attempt: call RPC `insert_or_get_locality` if available (preferred)
+    return from(this.sbClient.instance.rpc('insert_or_get_locality', {
+      p_name: payload.name,
+      p_province: payload.province,
+      p_country: payload.country,
+      p_postal_code: payload.postal_code
+    })).pipe(
+      switchMap((rpcRes: any) => {
+        // Supabase rpc returns { data, error } depending on client version
+        if (rpcRes && !rpcRes.error) {
+          const r = rpcRes.data || rpcRes; // older clients sometimes return data directly
+          // If RPC returned an array (unknown shape) attempt to pick first
+          const row = Array.isArray(r) ? r[0] : r;
+          if (row) {
+            return of({
+              _id: row.id,
+              created_at: row.created_at,
+              nombre: row.name,
+              comarca: row.country || '',
+              provincia: row.province || '',
+              CP: row.postal_code || ''
+            } as Locality);
+          }
+        }
+
+        // If RPC returned an error, inspect it. If it's a 404 the function likely isn't deployed.
+        const rpcErr = rpcRes && rpcRes.error ? rpcRes.error : null;
+        if (rpcErr) {
+          const m = (rpcErr.message || '').toLowerCase();
+          // RPC not found (404) -> inform developer to run migration
+          const isNotFound = rpcErr.status === 404 || m.includes('not found') || m.includes('could not find');
+          if (isNotFound) {
+            throw {
+              type: 'RPC_NOT_FOUND',
+              message: 'RPC insert_or_get_locality not found in the database. Run the migration `database/06-insert-or-get-locality.sql` in your Supabase project to create it.',
+              original: rpcErr
+            };
+          }
+
+          // If RPC error looks like RLS/permission denial, propagate an actionable RLS error
+          const isRls = m.includes('row-level security') || m.includes('forbidden') || rpcErr.status === 403 || rpcErr.code === '42501';
+          if (isRls) {
+            throw {
+              type: 'RLS_ERROR',
+              message: 'RPC call denied due to row-level security or permissions. Ensure the RPC exists and is granted to authenticated, or call it from a server-side function. See SUPABASE_RLS_LOCALITIES.md',
+              original: rpcErr
+            };
+          }
+        }
+
+        // RPC didn't give us a result; fall back to direct insert (keeps previous behavior)
+        return from(this.sbClient.instance.from('localities').insert(payload).select().single()).pipe(
+          switchMap((res: any) => {
+            if (!res.error) {
+              const r = res.data;
+              return of({
+                _id: r.id,
+                created_at: r.created_at,
+                nombre: r.name,
+                comarca: r.country || '',
+                provincia: r.province || '',
+                CP: r.postal_code || ''
+              } as Locality);
+            }
+            const err = res.error || {};
+            const message = (err.message || '').toLowerCase();
+            const isRls = message.includes('row-level security') || message.includes('forbidden') || err.status === 403 || err.code === '42501';
+            if (isRls) {
+              throw {
+                type: 'RLS_ERROR',
+                message: 'Row-level security or permission prevented creating a locality. Create the locality from a server-side RPC/Edge Function or relax RLS for this operation. See SUPABASE_RLS_LOCALITIES.md for steps.',
+                original: err
+              };
+            }
+
+            // fallback to search by postal_code
+            return from(this.sbClient.instance.from('localities').select('*').eq('postal_code', normalizedCP).maybeSingle()).pipe(
+              map((r2: any) => {
+                if (r2.error) throw r2.error;
+                const row = r2.data;
+                if (!row) throw res.error;
+                return {
+                  _id: row.id,
+                  created_at: row.created_at,
+                  nombre: row.name,
+                  comarca: row.country || '',
+                  provincia: row.province || '',
+                  CP: row.postal_code || ''
+                } as Locality;
+              })
+            );
+          }),
+          catchError((err: any) => {
+            if (err && err.type === 'RLS_ERROR') throw err;
+            return from(this.sbClient.instance.from('localities').select('*').eq('postal_code', normalizedCP).maybeSingle()).pipe(
+              map((r2: any) => {
+                if (r2.error) throw r2.error;
+                const row = r2.data;
+                if (!row) throw err;
+                return {
+                  _id: row.id,
+                  created_at: row.created_at,
+                  nombre: row.name,
+                  comarca: row.country || '',
+                  provincia: row.province || '',
+                  CP: row.postal_code || ''
+                } as Locality;
+              }),
+              catchError((finalErr: any) => {
+                const isRls = finalErr && ((finalErr.message || '').toLowerCase().includes('row-level security') || finalErr.code === '42501' || finalErr.status === 403);
+                if (isRls) {
+                  throw {
+                    type: 'RLS_ERROR',
+                    message: 'Row-level security prevented creating locality. Use a server-side RPC/Edge Function with service_role or add an RPC with SECURITY DEFINER. See SUPABASE_RLS_LOCALITIES.md in the project root for exact SQL and examples.',
+                    original: finalErr
+                  };
+                }
+                throw finalErr;
+              })
+            );
+          })
+        );
+      })
+    );
+  }
+
+  // Helper to find locality by postal code (server-side check)
+  findByPostalCode(postalCode: string): Observable<Locality | null> {
+    const normalized = (postalCode || '').toString().replace(/\D+/g, '').trim();
+    if (!normalized) return of(null);
+    return from(this.sbClient.instance.from('localities').select('*').eq('postal_code', normalized).maybeSingle()).pipe(
       map((res: any) => {
         if (res.error) throw res.error;
         const r = res.data;
+        if (!r) return null;
         return {
           _id: r.id,
           created_at: r.created_at,
@@ -49,7 +216,8 @@ export class LocalitiesService {
           provincia: r.province || '',
           CP: r.postal_code || ''
         } as Locality;
-      })
+      }),
+      catchError(() => of(null))
     );
   }
 

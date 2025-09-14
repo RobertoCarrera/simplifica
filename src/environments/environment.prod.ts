@@ -6,4 +6,7 @@ export const environment = {
     anonKey: process.env['SUPABASE_ANON_KEY'] || process.env['VITE_SUPABASE_ANON_KEY'] || process.env['NG_APP_SUPABASE_ANON_KEY'] || ''
   },
   siteUrl: 'https://simplifica.digitalizamostupyme.es'
+  ,
+  useEdgeCreateLocality: false,
+  edgeFunctionsBaseUrl: ''
 };
