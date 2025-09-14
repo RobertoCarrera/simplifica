@@ -71,7 +71,7 @@ import { Router } from '@angular/router';
               #fileInput
               type="file"
               accept=".csv"
-              (change)="onFileInputChange($event)"
+              (change)="onCsvFileSelected($event)"
               class="hidden"
             >
             <!-- Dev-only: Test import endpoints -->
@@ -105,6 +105,10 @@ import { Router } from '@angular/router';
                 class="search-input-full"
               >
             </div>
+            <label class="ml-3 inline-flex items-center text-sm cursor-pointer" title="Mostrar solo clientes incompletos o inactivos por importar">
+              <input type="checkbox" [(ngModel)]="onlyIncomplete" (ngModelChange)="onOnlyIncompleteChange($event)" class="mr-2">
+              Sólo incompletos
+            </label>
           </div>
         </div>
       </div>
@@ -259,6 +263,16 @@ import { Router } from '@angular/router';
                 <h3 class="customer-name">
                   {{ customer.name }} {{ customer.apellidos }}
                 </h3>
+
+                <!-- Incomplete/Needs Attention Chip -->
+                @if (customer?.metadata?.needs_attention || customer?.metadata?.inactive_on_import) {
+                  <div class="mb-2">
+                    <span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 border border-red-200" [title]="formatAttentionReasons(customer)">
+                      <i class="fas fa-exclamation-circle mr-1"></i>
+                      Incompleto
+                    </span>
+                  </div>
+                }
                 
                 <!-- GDPR Status Indicator -->
                 <div class="gdpr-status mb-2">
@@ -341,6 +355,8 @@ import { Router } from '@angular/router';
                   <div class="gdpr-actions-menu relative inline-block">
                     <button
                       class="action-btn gdpr"
+                      [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                      [disabled]="customer?.metadata?.inactive_on_import"
                       title="Acciones RGPD"
                       (click)="toggleGdprMenu($event, customer.id)"
                     >
@@ -391,6 +407,8 @@ import { Router } from '@angular/router';
                 <button
                   (click)="deleteCustomer(customer); $event.stopPropagation()"
                   class="action-btn delete"
+                  [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                  [disabled]="customer?.metadata?.inactive_on_import"
                   title="Eliminar cliente"
                 >
                   <i class="fas fa-trash"></i>
@@ -671,6 +689,9 @@ import { Router } from '@angular/router';
       [visible]="showCsvMapper()"
       [csvHeaders]="csvHeaders()"
       [csvData]="csvData()"
+      [fieldOptions]="customerFieldOptions"
+      [requiredFields]="customerRequiredFields"
+      [aliasMap]="customerAliasMap"
       (mappingConfirmed)="onCsvMappingConfirmed($event)"
       (cancelled)="onCsvMappingCancelled()"
     ></app-csv-header-mapper>
@@ -720,6 +741,33 @@ export class SupabaseCustomersComponent implements OnInit {
   csvHeaders = signal<string[]>([]);
   csvData = signal<string[][]>([]);
   pendingCsvFile: File | null = null;
+  // UI filter toggle for incomplete imports
+  onlyIncomplete: boolean = false;
+
+  // Customers CSV mapper config
+  customerFieldOptions = [
+    { value: 'name', label: 'Nombre *', required: true },
+    { value: 'surname', label: 'Apellidos *', required: true },
+    { value: 'email', label: 'Email *', required: true },
+    { value: 'phone', label: 'Teléfono' },
+    { value: 'dni', label: 'DNI/NIF' },
+    { value: 'address', label: 'Dirección' },
+    { value: 'company', label: 'Empresa' },
+    { value: 'notes', label: 'Notas' },
+    { value: 'metadata', label: 'Metadata (otros datos)' }
+  ];
+  customerRequiredFields = ['name', 'surname', 'email'];
+  customerAliasMap: Record<string, string[]> = {
+    name: ['name', 'nombre', 'first_name', 'firstname', 'first name', 'bill_to:first_name', 'bill to first name', 'billto:first_name', 'ship_to:first_name', 'ship to first name', 'shipto:first_name'],
+    surname: ['surname', 'last_name', 'lastname', 'last name', 'apellidos', 'bill_to:last_name', 'bill to last name', 'billto:last_name', 'ship_to:last_name', 'ship to last name', 'shipto:last_name'],
+    email: ['email', 'correo', 'e-mail', 'mail', 'bill_to:email', 'bill to email', 'billto:email', 'ship_to:email', 'ship to email', 'shipto:email'],
+    phone: ['phone', 'telefono', 'teléfono', 'tel', 'mobile', 'movil', 'móvil', 'bill_to:phone', 'bill to phone', 'billto:phone', 'ship_to:phone', 'ship to phone', 'shipto:phone'],
+    dni: ['dni', 'nif', 'documento', 'id', 'legal', 'bill_to:legal', 'bill to legal', 'billto:legal', 'ship_to:legal', 'ship to legal', 'shipto:legal'],
+    address: ['address', 'direccion', 'dirección', 'domicilio', 'bill_to:address', 'bill to address', 'billto:address', 'ship_to:address', 'ship to address', 'shipto:address'],
+    company: ['company', 'empresa', 'bill_to:company', 'bill to company', 'billto:company', 'ship_to:company', 'ship to company', 'shipto:company'],
+    notes: ['notes', 'notas', 'observaciones'],
+    metadata: ['metadata', 'metadatos']
+  };
 
   // Form data
   formData = {
@@ -847,6 +895,11 @@ onMappingConfirmed(mappings: any[]): void {
       );
     }
     
+    // Filter only incomplete if toggled
+    if (this.onlyIncomplete) {
+      filtered = filtered.filter((c: any) => c?.metadata?.needs_attention || c?.metadata?.inactive_on_import);
+    }
+
     // Apply sorting
     const sortBy = this.sortBy();
     const sortOrder = this.sortOrder();
@@ -866,6 +919,23 @@ onMappingConfirmed(mappings: any[]): void {
     
     return filtered;
   });
+
+  onOnlyIncompleteChange(_val: any) {
+    // Trigger recompute; searchTerm is a signal, resetting to same value is enough for change detection in computed
+    this.searchTerm.set(this.searchTerm());
+  }
+
+  formatAttentionReasons(c: any): string {
+    const md = (c && c.metadata) || {};
+    const reasons: string[] = Array.isArray(md.attention_reasons) ? md.attention_reasons : [];
+    if (!reasons.length) return 'Marcado para revisión';
+    const map: Record<string, string> = {
+      email_missing_or_invalid: 'Email faltante o inválido',
+      name_missing: 'Nombre faltante',
+      surname_missing: 'Apellidos faltantes',
+    };
+    return 'Revisar: ' + reasons.map(r => map[r] || r).join(', ');
+  }
 
   ngOnInit() {
     this.loadData();
@@ -1279,6 +1349,17 @@ onMappingConfirmed(mappings: any[]): void {
         dni: this.formData.dni,
       };
 
+      // If customer had inactive_on_import or needs_attention, clear them on save
+      const sel: any = this.selectedCustomer();
+      if (sel && sel.metadata) {
+        const md = { ...sel.metadata };
+        if (md.inactive_on_import || md.needs_attention) {
+          md.inactive_on_import = false;
+          md.needs_attention = false;
+          updates.metadata = md;
+        }
+      }
+
       if (direccion_id !== undefined) updates.direccion_id = direccion_id;
 
       this.customersService.updateCustomer(customerId, updates).subscribe({
@@ -1469,6 +1550,8 @@ onMappingConfirmed(mappings: any[]): void {
     }
 
     const total = mappedCustomers.length;
+    console.log('[CSV-MAP] Mapped customers ready to import:', total);
+    this.toastService.info('Listo para importar', `Se importarán ${total} filas`, 2000);
     const batchSize = 5;
     let lastToast: any = null;
 

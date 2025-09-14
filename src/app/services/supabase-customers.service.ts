@@ -169,10 +169,8 @@ export class SupabaseCustomersService {
       query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
     }
 
-    // Ordenamiento
-    const sortBy = filters.sortBy || 'created_at';
-    const sortOrder = filters.sortOrder || 'desc';
-    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+  // Ordenamiento: activos primero, luego fecha
+  query = query.order('is_active', { ascending: false, nullsFirst: false }).order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
 
     // Paginación
     if (filters.limit) {
@@ -197,10 +195,11 @@ export class SupabaseCustomersService {
           usuario_id: client.company_id,
           created_at: client.created_at,
           updated_at: client.updated_at,
-          activo: !client.deleted_at,
+          activo: client.is_active === false ? false : !client.deleted_at,
           // direccion relation comes from select('*, direccion:addresses(*)')
           direccion_id: client.direccion_id || null,
           direccion: client.direccion || null,
+          metadata: client.metadata || undefined,
           // GDPR fields
           marketing_consent: client.marketing_consent ?? undefined,
           marketing_consent_date: client.marketing_consent_date ?? undefined,
@@ -280,10 +279,8 @@ export class SupabaseCustomersService {
       query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
     }
 
-    // Ordenamiento
-    const sortBy = filters.sortBy || 'created_at';
-    const sortOrder = filters.sortOrder || 'desc';
-    query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+  // Ordenamiento: activos primero, luego fecha
+  query = query.order('is_active', { ascending: false, nullsFirst: false }).order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
 
     // Paginación
     if (filters.limit) {
@@ -321,9 +318,10 @@ export class SupabaseCustomersService {
           usuario_id: client.company_id, // Mapear company_id a usuario_id temporalmente
           created_at: client.created_at,
           updated_at: client.updated_at,
-          activo: !client.deleted_at,
+          activo: client.is_active === false ? false : !client.deleted_at,
           direccion_id: client.direccion_id || null,
           direccion: client.direccion || null,
+          metadata: client.metadata || undefined,
           // GDPR fields
           marketing_consent: client.marketing_consent ?? undefined,
           marketing_consent_date: client.marketing_consent_date ?? undefined,
@@ -1038,30 +1036,63 @@ export class SupabaseCustomersService {
       reader.onload = (e) => {
         try {
           console.log('FileReader.onload fired for CSV file');
-          const csv = e.target?.result as string;
-          const lines = csv.split('\n').filter(line => line.trim());
-          
-          if (lines.length === 0) {
-            observer.error(new Error('El archivo CSV está vacío.'));
-            return;
+          let text = e.target?.result as string;
+          const self = this;
+          // Remove BOM if present
+          if (text.charCodeAt(0) === 0xFEFF) {
+            text = text.slice(1);
           }
+          // If mojibake detected (Ã, Â, etc.), attempt Windows-1252 decode fallback using TextDecoder if ArrayBuffer available
+          const looksMojibake = /Ã.|Â./.test(text);
+          if (looksMojibake) {
+            try {
+              const reader2 = new FileReader();
+              reader2.onload = (ee) => {
+                try {
+                  const buf = ee.target?.result as ArrayBuffer;
+                  const decoder = new TextDecoder('windows-1252');
+                  text = decoder.decode(buf);
+                  console.debug('[CSV] Decoded using windows-1252 fallback');
+                  safeProcess(text);
+                } catch {
+                  console.warn('[CSV] windows-1252 decode failed, using UTF-8 text');
+                  safeProcess(text);
+                }
+              };
+              reader2.onerror = () => safeProcess(text);
+              reader2.readAsArrayBuffer(file);
+              return; // we'll call observer in process()
+            } catch {
+              // ignore; proceed with UTF-8 text
+            }
+          }
+          safeProcess(text);
 
-          const firstLine = lines[0].replace(/^\uFEFF/, '');
-          const headers = this.parseCSVLine(firstLine);
-          const dataRows = lines.slice(1).map(line => this.parseCSVLine(line));
-
-          observer.next({ headers, data: [headers, ...dataRows] });
-          observer.complete();
+          function safeProcess(csv: string) {
+            try {
+              // Use robust CSV-to-rows parser to support multi-line quoted fields
+              const rows = self.parseCSVToRows(csv.replace(/^\uFEFF/, ''));
+              if (!rows.length) {
+                observer.error(new Error('El archivo CSV está vacío.'));
+                return;
+              }
+              const headers = rows[0].map(h => self.cleanCellValue(h));
+              const dataRows = rows.slice(1).map(r => r.map(c => self.cleanCellValue(c)));
+              observer.next({ headers, data: [headers, ...dataRows] });
+              observer.complete();
+            } catch (err) {
+              console.error('[CSV] Error parsing CSV', err);
+              observer.error(new Error('Error al procesar el archivo CSV.'));
+            }
+          }
         } catch (error) {
           observer.error(new Error('Error al procesar el archivo CSV.'));
         }
       };
-      
       reader.onerror = () => {
         console.error('FileReader.onerror fired while reading CSV file');
         observer.error(new Error('Error al leer el archivo.'));
       };
-      
       reader.readAsText(file, 'UTF-8');
     });
   }
@@ -1225,15 +1256,16 @@ importFromCSV(file: File): Observable<Customer[]> {
   }
 
   private parseCSV(csv: string): Partial<Customer>[] {
-    const lines = csv.split('\n').filter(line => line.trim());
-    
-    if (lines.length < 2) {
+    // Use robust parser to support multiline quoted fields
+    const rows = this.parseCSVToRows(csv);
+    const lines = rows.map(r => r.join(','));
+
+    if (rows.length < 2) {
       throw new Error('El archivo CSV debe contener al menos una fila de cabeceras y una fila de datos.');
     }
     
-    // Remover BOM si existe
-    const firstLine = lines[0].replace(/^\uFEFF/, '');
-  const headers = this.parseCSVLine(firstLine).map(h => h.trim().toLowerCase());
+    // Headers from first row
+    const headers = rows[0].map(h => this.cleanCellValue(h)).map(h => h.trim().toLowerCase());
 
     // Configurable header aliases for required fields. Edit these arrays to accept different header names.
     // You can add variants such as 'name','nombre','bill_to:name' etc.
@@ -1266,11 +1298,11 @@ importFromCSV(file: File): Observable<Customer[]> {
       return Object.values(headerAliases).some(arr => arr.some(a => lh === normalize(a) || lh.includes(normalize(a))));
     };
 
-    return lines.slice(1)
-      .filter(line => line.trim())
-      .map((line, index) => {
+    return rows.slice(1)
+      .filter(row => Array.isArray(row) && row.some(c => (c ?? '').trim().length))
+      .map((row, index) => {
         try {
-          const values = this.parseCSVLine(line);
+          const values = row.map(c => this.cleanCellValue(c));
           
           // Mapear por posición o name de columna
           // Map required fields using headerAliases
@@ -1350,7 +1382,8 @@ importFromCSV(file: File): Observable<Customer[]> {
         const metadata: Record<string, any> = {};
 
         headers.forEach((header, i) => {
-          const value = row[i]?.trim() || '';
+          const raw = row[i];
+          const value = this.cleanCellValue(raw);
           const targetField = mappingLookup.get(header);
 
           if (targetField) {
@@ -1413,7 +1446,7 @@ importFromCSV(file: File): Observable<Customer[]> {
         return customer;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-        const rowText = Array.isArray(row) ? row.join(',') : String(row || '');
+          const rowText = Array.isArray(row) ? row.join(',') : String(row || '');
         const displayRow = rowText && rowText.trim() ? rowText : '<vacío>';
         throw new Error(`Error en fila ${index + 2}: ${errorMessage} | Contenido fila: ${displayRow}`);
       }
@@ -1619,6 +1652,74 @@ importFromCSV(file: File): Observable<Customer[]> {
     return result.map(value => value.trim());
   }
 
+  // Clean a parsed CSV cell: trim, remove surrounding quotes (ASCII and common unicode), unescape doubled quotes
+  private cleanCellValue(input: string | undefined | null): string {
+    if (input == null) return '';
+    let v = String(input).trim();
+    // Replace common unicode quotes with ASCII for convenience
+    v = v.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+    // Remove surrounding quotes if present
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+      v = v.substring(1, v.length - 1);
+    }
+    // Unescape doubled quotes produced by some CSV exporters
+    v = v.replace(/""/g, '"');
+    // Trim again after cleaning
+    return v.trim();
+  }
+
+  // Robust CSV parser that supports quoted fields with embedded commas and newlines
+  // Returns an array of rows, each row is an array of cell strings (raw, not yet cleaned)
+  private parseCSVToRows(csv: string): string[][] {
+    const rows: string[][] = [];
+    let currentRow: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    let i = 0;
+    while (i < csv.length) {
+      const char = csv[i];
+      if (char === '"') {
+        if (inQuotes && csv[i + 1] === '"') {
+          // Escaped quote inside quoted field
+          current += '"';
+          i += 2;
+          continue;
+        }
+        inQuotes = !inQuotes;
+        i++;
+        continue;
+      }
+      if (!inQuotes && char === ',') {
+        currentRow.push(current);
+        current = '';
+        i++;
+        continue;
+      }
+      if (!inQuotes && (char === '\n' || char === '\r')) {
+        // Handle CRLF or lone CR/LF
+        // If CRLF, skip the next \n
+        // Push cell and row
+        currentRow.push(current);
+        current = '';
+        // Only commit non-empty rows (at least one non-empty cell)
+        if (currentRow.some(c => (c ?? '').trim().length > 0)) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        // consume \r\n pair
+        if (char === '\r' && csv[i + 1] === '\n') i += 2; else i++;
+        continue;
+      }
+      // Regular char
+      current += char;
+      i++;
+    }
+    // Push last cell/row
+    currentRow.push(current);
+    if (currentRow.some(c => (c ?? '').trim().length > 0)) rows.push(currentRow);
+    return rows;
+  }
+
   // Método auxiliar para encontrar valores por name de cabecera
   private findValueByHeader(headers: string[], values: string[], possibleNames: string[]): string {
     const normalize = (s: string) => s
@@ -1659,7 +1760,7 @@ importFromCSV(file: File): Observable<Customer[]> {
   public buildPayloadRowsFromMapping(
     csvHeaders: string[],
     csvData: string[][],
-    mappings: { field: string; csvHeader: string }[]
+    mappings: { field?: string; targetField?: string; csvHeader: string }[]
   ): Partial<Customer>[] {
     if (!Array.isArray(csvHeaders) || !Array.isArray(csvData) || !Array.isArray(mappings)) return [];
 
@@ -1669,15 +1770,21 @@ importFromCSV(file: File): Observable<Customer[]> {
     const fieldToIndex = new Map<string, number>();
     for (const m of mappings) {
       const idx = headerIndex.get(norm(m.csvHeader));
-      if (typeof idx === 'number') fieldToIndex.set(m.field, idx);
+      const fieldName = (m.field || m.targetField || '').trim();
+      if (!fieldName) continue;
+      if (typeof idx === 'number') fieldToIndex.set(fieldName, idx);
     }
 
-    const rows: Partial<Customer>[] = csvData
-      .filter(r => Array.isArray(r) && r.some(c => (c || '').trim()))
+    const totalCsvRows = csvData.length;
+    const nonEmptyRowsArr = csvData.filter(r => Array.isArray(r) && r.some(c => (c || '').trim()));
+    const nonEmptyCount = nonEmptyRowsArr.length;
+    try { console.log('[CSV-MAP] Rows received:', totalCsvRows, 'non-empty:', nonEmptyCount, 'mappings:', mappings.length); } catch {}
+
+    const rows: Partial<Customer>[] = nonEmptyRowsArr
       .map(row => {
         const pick = (field: string) => {
           const i = fieldToIndex.get(field);
-          return typeof i === 'number' ? (row[i] ?? '').toString().trim() : '';
+          return typeof i === 'number' ? this.cleanCellValue(row[i]) : '';
         };
 
         const item: Partial<Customer> = {
@@ -1693,7 +1800,17 @@ importFromCSV(file: File): Observable<Customer[]> {
         return item;
       });
 
-    return rows.filter(r => (r.name && r.name.trim()) || (r.email && r.email.trim()));
+    // Apply sensible defaults so required fields don’t drop the row silently; server still validates
+    const normalized = rows.map(r => {
+      const copy = { ...r } as any;
+      if (!copy.email || !copy.email.includes('@')) copy.email = 'corre@tudominio.es';
+      if (!copy.name || !copy.name.trim()) copy.name = 'Cliente';
+      if (!copy.apellidos || !copy.apellidos.trim()) copy.apellidos = 'Apellidos';
+      return copy as Partial<Customer>;
+    });
+    const mapped = normalized.filter(r => (r.name && r.name.trim()) || (r.email && r.email.trim()));
+    try { console.log('[CSV-MAP] After mapping defaults -> candidates:', rows.length, 'kept:', mapped.length); } catch {}
+    return mapped;
   }
 
   /**
@@ -1710,7 +1827,8 @@ importFromCSV(file: File): Observable<Customer[]> {
     latestImported: Customer[] | null;
     error?: any;
   }> {
-    const totalCount = allCustomers.length;
+  const totalCount = allCustomers.length;
+  try { console.log('[IMPORT] Starting batch import. totalCount:', totalCount, 'batchSize:', batchSize); } catch {}
     let importedCount = 0;
 
     const batches: Partial<Customer>[][] = [];

@@ -37,13 +37,19 @@ serve(async (req: Request) => {
     return new Response("ok", { headers: { ...corsHeaders, "Content-Type": "text/plain" } });
   }
 
+  // Simple GET health check
+  if (req.method === "GET") {
+    try { console.log("import-customers GET health", { origin }); } catch {}
+    return new Response(JSON.stringify({ ok: true, name: "import-customers" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
   // Enforce allowed origins
   if (!isAllowedOrigin(origin)) {
     return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed", allowed: ["POST", "OPTIONS"] }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Method not allowed", allowed: ["GET", "POST", "OPTIONS"] }), { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   try {
@@ -96,24 +102,82 @@ serve(async (req: Request) => {
     const prepared: any[] = [];
     const errors: any[] = [];
 
+    // Helper: try to extract a value from row by checking common variants
+    const findAnyField = (obj: any, patterns: RegExp[]) => {
+      if (!obj || typeof obj !== 'object') return null;
+      // direct keys first
+      for (const p of patterns) {
+        for (const k of Object.keys(obj)) {
+          if (p.test(k) && obj[k] != null && String(obj[k]).toString().trim() !== '') return obj[k];
+        }
+      }
+      // also try lowercased keys
+      const lowMap: Record<string, any> = {};
+      for (const k of Object.keys(obj)) lowMap[k.toLowerCase()] = obj[k];
+      for (const p of patterns) {
+        for (const k of Object.keys(lowMap)) {
+          if (p.test(k) && lowMap[k] != null && String(lowMap[k]).toString().trim() !== '') return lowMap[k];
+        }
+      }
+      return null;
+    };
+
     for (const r of rows) {
-      const name = r.name || r.nombre || "";
-      const surname = r.surname || r.apellidos || r.last_name || "";
-      const email = r.email || r.correo || null;
+      // tolerant lookup: accept keys like 'bill_to:email', 'ship_to:email', 'bill_to:first_name', etc.
+      let email = r.email || r.correo || findAnyField(r, [/(:|\b)email$/i, /^email$/i, /:correo$/i, /correo$/i]) || null;
+      let name = r.name || r.nombre || findAnyField(r, [/(:|\b)first_name$/i, /(:|\b)name$/i, /first_name$/i, /name$/i]) || "";
+      let surname = r.surname || r.apellidos || r.last_name || findAnyField(r, [/(:|\b)last_name$/i, /(:|\b)last$/i, /last_name$/i, /apellidos$/i]) || "";
+      const phone = r.phone || r.telefono || findAnyField(r, [/(:|\b)phone$/i, /telefono$/i, /tel$/i]) || null;
+      const dni = r.dni || r.nif || findAnyField(r, [/\b(dni|nif|document)/i]) || null;
+
+      // Prepare metadata and defaults for incomplete rows
+      const attention_reasons: string[] = [];
+      if (!email || typeof email !== 'string' || !email.includes('@')) {
+        // generate placeholder email unique-ish per row
+        const ts = Date.now();
+        const rand = Math.random().toString(36).slice(2, 8);
+        email = `incomplete-${ts}-${rand}@placeholder.invalid`;
+        attention_reasons.push('email_missing_or_invalid');
+      }
+      if (!name || String(name).trim() === '') {
+        name = 'Cliente';
+        attention_reasons.push('name_missing');
+      }
+      if (!surname || String(surname).trim() === '') {
+        surname = 'Apellidos';
+        attention_reasons.push('surname_missing');
+      }
       const row: any = {
         name: name || "Cliente importado",
         apellidos: surname || undefined,
         email,
-        phone: r.phone || r.telefono || null,
-        dni: r.dni || r.nif || null,
+        phone: phone,
+        dni: dni,
         company_id: authoritativeCompanyId,
         created_at: new Date().toISOString(),
       };
+      // Prefer provided FK if present, otherwise leave null (address creation is handled elsewhere)
+      if (r.direccion_id || r.address_id) {
+        row.direccion_id = r.direccion_id || r.address_id;
+      }
+      // Merge/prepare metadata with needs_attention + reasons; also mark inactive_on_import
+      let meta: Record<string, any> = {};
       if (r.metadata) {
-        try { row.metadata = typeof r.metadata === "string" ? JSON.parse(r.metadata) : r.metadata; }
+        try { meta = typeof r.metadata === "string" ? JSON.parse(r.metadata) : (r.metadata || {}); }
         catch { row.metadata_raw = r.metadata; }
       }
-      if (!email) { errors.push({ error: "missing email", row }); continue; }
+      if (attention_reasons.length) {
+        meta.needs_attention = true;
+        meta.attention_reasons = Array.isArray(meta.attention_reasons)
+          ? [...new Set([...meta.attention_reasons, ...attention_reasons])]
+          : attention_reasons;
+        meta.inactive_on_import = true;
+        // Mark record as inactive so UI can show it but place at bottom
+        (row as any).is_active = false;
+      }
+      if (Object.keys(meta).length) row.metadata = meta;
+
+      // Do NOT skip: we now always prepare the row, even if it had missing required fields
       prepared.push(row);
     }
 
@@ -128,8 +192,22 @@ serve(async (req: Request) => {
           for (const row of chunk) {
             try {
               const { data: one, error: oneErr } = await supabaseAdmin.from("clients").insert([row]).select().limit(1);
-              if (oneErr) errors.push({ error: oneErr.message || oneErr, row });
-              else inserted.push(Array.isArray(one) ? one[0] : one);
+              if (oneErr) {
+                // Handle duplicates gracefully (e.g., unique email constraint)
+                const code = (oneErr as any)?.code || (oneErr as any)?.details || (oneErr as any)?.message || "";
+                const msg = (oneErr as any)?.message || String(oneErr);
+                const isDup = typeof code === "string" && code.includes("23505") || typeof msg === "string" && msg.toLowerCase().includes("duplicate") || msg.toLowerCase().includes("unique");
+                if (isDup && row.email) {
+                  const { data: existing, error: fetchErr } = await supabaseAdmin.from("clients").select("*").eq("email", row.email).eq("company_id", row.company_id).limit(1);
+                  if (!fetchErr && Array.isArray(existing) && existing.length) {
+                    inserted.push(existing[0]);
+                  } else {
+                    errors.push({ error: oneErr.message || oneErr, row });
+                  }
+                } else {
+                  errors.push({ error: oneErr.message || oneErr, row });
+                }
+              } else inserted.push(Array.isArray(one) ? one[0] : one);
             } catch (e: any) {
               errors.push({ error: e?.message || String(e), row });
             }
@@ -142,8 +220,21 @@ serve(async (req: Request) => {
         for (const row of chunk) {
           try {
             const { data: one, error: oneErr } = await supabaseAdmin.from("clients").insert([row]).select().limit(1);
-            if (oneErr) errors.push({ error: oneErr.message || oneErr, row });
-            else inserted.push(Array.isArray(one) ? one[0] : one);
+            if (oneErr) {
+              const code = (oneErr as any)?.code || (oneErr as any)?.details || (oneErr as any)?.message || "";
+              const msg = (oneErr as any)?.message || String(oneErr);
+              const isDup = typeof code === "string" && code.includes("23505") || typeof msg === "string" && msg.toLowerCase().includes("duplicate") || msg.toLowerCase().includes("unique");
+              if (isDup && row.email) {
+                const { data: existing, error: fetchErr } = await supabaseAdmin.from("clients").select("*").eq("email", row.email).eq("company_id", row.company_id).limit(1);
+                if (!fetchErr && Array.isArray(existing) && existing.length) {
+                  inserted.push(existing[0]);
+                } else {
+                  errors.push({ error: oneErr.message || oneErr, row });
+                }
+              } else {
+                errors.push({ error: oneErr.message || oneErr, row });
+              }
+            } else inserted.push(Array.isArray(one) ? one[0] : one);
           } catch (ee: any) {
             errors.push({ error: ee?.message || String(ee), row });
           }
@@ -151,6 +242,7 @@ serve(async (req: Request) => {
       }
     }
 
+    try { console.log("import-customers: done", { inserted: inserted.length, errors: errors.length }); } catch {}
     return new Response(JSON.stringify({ inserted, errors }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     console.error("import-customers exception", e);

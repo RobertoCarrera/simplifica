@@ -83,12 +83,20 @@ export interface CsvMappingResult {
                   >
                     <option value="">-- No mapear --</option>
                     <optgroup *ngIf="requiredOptionList.length" label="Campos Obligatorios">
-                      <option *ngFor="let opt of requiredOptionList" [value]="opt.value">
+                      <option 
+                        *ngFor="let opt of requiredOptionList; let oi = index" 
+                        [value]="opt.value"
+                        [disabled]="isFieldDisabled(opt.value, i)"
+                      >
                         {{ opt.label }}
                       </option>
                     </optgroup>
                     <optgroup *ngIf="optionalOptionList.length" label="Campos Opcionales">
-                      <option *ngFor="let opt of optionalOptionList" [value]="opt.value">
+                      <option 
+                        *ngFor="let opt of optionalOptionList; let oi = index" 
+                        [value]="opt.value"
+                        [disabled]="isFieldDisabled(opt.value, i)"
+                      >
                         {{ opt.label }}
                       </option>
                     </optgroup>
@@ -344,5 +352,13 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges {
 
     this.requiredOptionList = opts.filter(o => o.required).map(o => ({ value: o.value, label: o.label }));
     this.optionalOptionList = opts.filter(o => !o.required).map(o => ({ value: o.value, label: o.label }));
+  }
+
+  // Disable an option if it is already mapped in another row
+  isFieldDisabled(fieldValue: string, rowIndex: number): boolean {
+    if (!fieldValue) return false;
+    // Allow keeping the same value for the current row (do not disable its current selection)
+    const selectedElsewhere = this.fieldMappings.some((m, idx) => idx !== rowIndex && m.targetField === fieldValue);
+    return selectedElsewhere;
   }
 }

@@ -115,16 +115,36 @@ serve(async (req: Request) => {
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       const providedName = (r.name || r.nombre || '').toString().trim();
-      const effectiveName = providedName || `Servicio importado ${i + 1}`;
+      const rawPrice = (r.base_price ?? r.price ?? r.precio);
+      const hasName = providedName.length > 0;
+      const hasPrice = rawPrice !== undefined && rawPrice !== null && !Number.isNaN(Number(rawPrice));
+      const effectiveName = hasName ? providedName : `Servicio`;
+      const effectivePrice = hasPrice ? Number(rawPrice) : 0;
+
       const row: any = {
         name: effectiveName,
         description: r.description || r.descripcion || "",
-        base_price: r.base_price != null ? Number(r.base_price) : 0,
+        base_price: effectivePrice,
         estimated_hours: r.estimated_hours != null ? Number(r.estimated_hours) : 0,
         // Enforce tenant company from JWT, ignore payload-provided company
         company_id: tenantCompanyId,
         tax_rate: r.tax_rate != null ? Number(r.tax_rate) : null,
       };
+
+      // Metadata flags for incomplete rows
+      const attention_reasons: string[] = [];
+      if (!hasName) attention_reasons.push('name_missing');
+      if (!hasPrice) attention_reasons.push('price_missing');
+      if (attention_reasons.length) {
+        row.metadata = {
+          ...(r.metadata && (typeof r.metadata === 'object' ? r.metadata : {})),
+          needs_attention: true,
+          attention_reasons,
+          inactive_on_import: true,
+        };
+        // Mark inactive service for review
+        row.active = false;
+      }
 
       if (r.category_name || r.category) {
         const catName = r.category_name || r.category;
@@ -151,14 +171,25 @@ serve(async (req: Request) => {
 
       let svc: any = null;
       try {
-        const { data: createdSvc, error: svcErr } = await supabaseAdmin
+        let insertRow: any = { ...row };
+        let { data: createdSvc, error: svcErr } = await supabaseAdmin
           .from("services")
-          .insert([row])
+          .insert([insertRow])
           .select()
           .limit(1);
         if (svcErr) {
+          const msg = String((svcErr as any)?.message || svcErr);
+          // If metadata column doesn't exist, retry without metadata
+          if (msg.toLowerCase().includes('column') && msg.toLowerCase().includes('metadata') && msg.toLowerCase().includes('does not exist')) {
+            try {
+              delete insertRow.metadata;
+              const retry = await supabaseAdmin.from("services").insert([insertRow]).select().limit(1);
+              createdSvc = retry.data as any;
+              svcErr = retry.error as any;
+            } catch (_) { /* ignore */ }
+          }
           // Handle unique constraint (name, company_id)
-          if (String(svcErr.code) === '23505') {
+          if (String((svcErr as any)?.code) === '23505') {
             try {
               const { data: existing } = await supabaseAdmin
                 .from("services")
@@ -170,17 +201,17 @@ serve(async (req: Request) => {
                 svc = existing[0];
               } else {
                 console.warn("import-services: duplicate reported but existing not found", row);
-                inserted.push({ error: svcErr.message || svcErr, row });
+                inserted.push({ error: (svcErr as any).message || svcErr, row });
                 continue;
               }
             } catch (fetchErr) {
               console.warn("import-services: failed to fetch existing after duplicate", fetchErr);
-              inserted.push({ error: svcErr.message || svcErr, row });
+              inserted.push({ error: (svcErr as any).message || svcErr, row });
               continue;
             }
           } else {
             console.warn("import-services: insert error for row", row, svcErr);
-            inserted.push({ error: svcErr.message || svcErr, row });
+            inserted.push({ error: (svcErr as any).message || svcErr, row });
             continue;
           }
         } else {

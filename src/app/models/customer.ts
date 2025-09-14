@@ -18,6 +18,8 @@ export interface Customer {
   avatar_url?: string;
   favicon?: string | null;
   usuario_id: string;
+  // Arbitrary metadata (JSONB) from server imports and flags like needs_attention/inactive_on_import
+  metadata?: any;
   // Campos adicionales para funcionalidad extendida
   address?: string;
   activo?: boolean;
