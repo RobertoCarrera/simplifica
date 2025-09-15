@@ -133,14 +133,70 @@ export class SupabaseTicketsComponent implements OnInit {
         this.error = 'No hay compañías disponibles. Por favor, ejecute el script de configuración de la base de datos.';
         return;
       }
-      
-      // Set the first available company as default only if it's a valid UUID
-      const candidate = this.companies[0]?.id;
-      if (this.isValidUuid(candidate)) {
-        this.selectedCompanyId = candidate;
-      } else {
-        console.warn('SupabaseTicketsComponent: first company id is not a UUID, leaving selectedCompanyId empty:', candidate);
-        this.selectedCompanyId = '';
+      // Intentar resolver la empresa por defecto a partir del usuario autenticado
+      try {
+        const client = this.simpleSupabase.getClient();
+        const { data: userRes, error: userErr } = await client.auth.getUser();
+        if (!userErr && userRes?.user?.id) {
+          const authUid = userRes.user.id;
+          // 1) Intentar user_companies
+          let resolvedCompany: string | null = null;
+          try {
+            const { data: ucRows } = await client
+              .from('user_companies')
+              .select('company_id')
+              .eq('user_id', authUid)
+              .limit(1);
+            if (ucRows && ucRows.length > 0 && this.isValidUuid(ucRows[0].company_id)) {
+              resolvedCompany = ucRows[0].company_id;
+            }
+          } catch (e) {
+            console.warn('No se pudo consultar user_companies, intentando fallback a users:', e);
+          }
+
+          // 2) Fallback: tabla users por auth_user_id
+          if (!resolvedCompany) {
+            try {
+              const { data: uRow } = await client
+                .from('users')
+                .select('company_id')
+                .eq('auth_user_id', authUid)
+                .limit(1)
+                .single();
+              if (uRow && this.isValidUuid(uRow.company_id)) {
+                resolvedCompany = uRow.company_id;
+              }
+            } catch (e) {
+              console.warn('No se pudo resolver company_id desde users:', e);
+            }
+          }
+
+          if (resolvedCompany && this.isValidUuid(resolvedCompany)) {
+            this.selectedCompanyId = resolvedCompany;
+          }
+        }
+      } catch (e) {
+        console.warn('No se pudo resolver la empresa por defecto desde el usuario, se usará fallback al primer registro:', e);
+      }
+
+      // Fallback: primera empresa válida si aún no se ha seleccionado
+      if (!this.selectedCompanyId) {
+        const candidate = this.companies[0]?.id;
+        if (this.isValidUuid(candidate)) {
+          this.selectedCompanyId = candidate;
+        } else {
+          console.warn('SupabaseTicketsComponent: first company id is not a UUID, leaving selectedCompanyId empty:', candidate);
+          this.selectedCompanyId = '';
+        }
+      }
+
+      // Establecer el contexto de compañía en el servicio para que RLS y filtros funcionen para todos los usuarios
+      if (this.selectedCompanyId) {
+        try {
+          await this.simpleSupabase.setCurrentCompany(this.selectedCompanyId);
+        } catch (e) {
+          console.warn('No se pudo establecer el contexto de compañía (setCurrentCompany). Continuando...', e);
+        }
       }
       
   // Load stages first, then tickets, then attach tags and stats (which depend on tickets)
@@ -183,7 +239,15 @@ export class SupabaseTicketsComponent implements OnInit {
   }
 
   async onCompanyChange() {
-    
+    // Actualizar el contexto de compañía antes de recargar datos para que RLS aplique correctamente
+    if (this.isValidUuid(this.selectedCompanyId)) {
+      try {
+        await this.simpleSupabase.setCurrentCompany(this.selectedCompanyId);
+      } catch (e) {
+        console.warn('No se pudo establecer el contexto de compañía al cambiarla:', e);
+      }
+    }
+
     // Load in correct order: stages first, then tickets, then attach tags and stats
     await this.loadStages();
     await this.loadTickets();
@@ -389,15 +453,12 @@ export class SupabaseTicketsComponent implements OnInit {
     if (!this.selectedCompanyId) return;
     
     try {
-      
-      // Usar SimpleSupabaseService para obtener clientes
-      const response = await this.simpleSupabase.getClients();
+      // Obtener clientes filtrando explícitamente por company_id para evitar depender del estado local
+      const response = await this.simpleSupabase.getClientsForCompany(this.selectedCompanyId);
       
       if (response.success && response.data) {
-        // Filtrar clientes por empresa si es necesario
-        this.customers = response.data.filter(client => 
-          client.company_id === this.selectedCompanyId
-        );
+        // Ya vienen filtrados por empresa
+        this.customers = response.data;
         this.filteredCustomers = [...this.customers];
         
       } else {

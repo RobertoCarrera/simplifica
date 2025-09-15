@@ -167,6 +167,32 @@ export class SimpleSupabaseService {
   }
 
   /**
+   * Obtener clientes para una company específica (filtra explícitamente por company_id)
+   * Útil cuando queremos evitar depender del estado local de currentCompany
+   */
+  async getClientsForCompany(companyId: string): Promise<{ success: boolean; data?: SimpleClient[]; error?: string }> {
+    try {
+      if (!this.isValidUuid(companyId)) {
+        return { success: false, error: 'company_id inválido' };
+      }
+
+      const { data, error } = await this.supabase
+        .from('clients')
+        .select('*')
+        .eq('company_id', companyId)
+        .is('deleted_at', null);
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Crear cliente - súper simple
    */
   async createClient(name: string, email?: string): Promise<{ success: boolean; data?: SimpleClient; error?: string }> {
