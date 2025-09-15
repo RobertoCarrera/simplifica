@@ -5,6 +5,7 @@ import { SupabaseServicesService, Service, ServiceCategory, ServiceTag } from '.
 import { SimpleSupabaseService, SimpleCompany } from '../../services/simple-supabase.service';
 import { DevRoleService } from '../../services/dev-role.service';
 import { CsvHeaderMapperComponent, CsvMappingResult } from '../csv-header-mapper/csv-header-mapper.component';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-supabase-services',
@@ -61,6 +62,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   
   private servicesService = inject(SupabaseServicesService);
   private simpleSupabase = inject(SimpleSupabaseService);
+  private toastService = inject(ToastService);
   @ViewChild(CsvHeaderMapperComponent) private csvMapperCmp?: CsvHeaderMapperComponent;
 
   // CSV Mapper state for services
@@ -93,6 +95,17 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.loadServiceCategories();
       this.loadServiceTags();
     });
+  }
+
+  showServicesImportInfo(event: Event) {
+    event.stopPropagation();
+    const infoMessage = `Formato: Nombre, Descripción, Precio base, Horas estimadas, Categoría, Tags.`;
+    try { console.log('services import info clicked'); } catch {}
+    // Try to use a toastService if available, otherwise console
+    // The component doesn't inject a toastService; fallback to console.log
+    // If your app uses a global toast service available via window, you may adapt here.
+    (window as any)?.toastService?.info?.('CSV requerido', infoMessage, 6000);
+    console.info('[CSV-INFO]', infoMessage);
   }
 
   ngOnDestroy() {

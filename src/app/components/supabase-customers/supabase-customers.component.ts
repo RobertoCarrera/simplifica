@@ -74,8 +74,6 @@ import { Router } from '@angular/router';
               (change)="onCsvFileSelected($event)"
               class="hidden"
             >
-            <!-- Dev-only: Test import endpoints -->
-            @if (devRoleService.canSeeDevTools()) {
             <button
               (click)="fileInput.click()"
               class="btn btn-secondary"
@@ -86,15 +84,6 @@ import { Router } from '@angular/router';
               Importar CSV
               <i class="fas fa-info-circle info-icon" (click)="showImportInfo($event)"></i>
             </button>
-              <button
-                class="btn btn-ghost ml-2"
-                (click)="testImportEndpoints()"
-                title="Test endpoints de importación"
-              >
-                <i class="fas fa-bug"></i>
-                Test Import Endpoints
-              </button>
-            }
             <div class="search-input-container">
               <i class="fas fa-search search-icon"></i>
               <input
@@ -105,10 +94,6 @@ import { Router } from '@angular/router';
                 class="search-input-full"
               >
             </div>
-            <label class="ml-3 inline-flex items-center text-sm cursor-pointer" title="Mostrar solo clientes incompletos o inactivos por importar">
-              <input type="checkbox" [(ngModel)]="onlyIncomplete" (ngModelChange)="onOnlyIncompleteChange($event)" class="mr-2">
-              Sólo incompletos
-            </label>
           </div>
         </div>
       </div>

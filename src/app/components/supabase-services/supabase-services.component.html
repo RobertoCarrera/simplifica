@@ -35,9 +35,15 @@
           (change)="onServicesCsvSelected($event)"
           class="hidden"
         >
-        <button class="btn btn-secondary" (click)="svcFileInput.click()" title="Importar servicios desde CSV">
+        <button
+          (click)="svcFileInput.click()"
+          class="btn btn-secondary"
+          [disabled]="loading"
+          title="Importar servicios desde CSV"
+        >
           <i class="fas fa-upload"></i>
           Importar CSV
+          <i class="fas fa-info-circle info-icon" (click)="showServicesImportInfo($event)"></i>
         </button>
       </div>
     </div>
