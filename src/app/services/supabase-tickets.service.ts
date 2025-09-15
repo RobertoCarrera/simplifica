@@ -148,7 +148,7 @@ export class SupabaseTicketsService {
           clients(id, name, email, phone),
           ticket_stages(id, name, color, position)
         `)
-        .eq('is_active', true)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (this.isValidUuid(companyId)) {
@@ -302,7 +302,8 @@ export class SupabaseTicketsService {
       total_amount: ticket.total_amount,
   tags: [],
       company_id: ticket.company_id,
-      is_active: ticket.is_active,
+      // derive is_active from deleted_at for backward-compat in UI
+      is_active: ticket.deleted_at ? false : true,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at,
       client: ticket.clients,
@@ -312,17 +313,74 @@ export class SupabaseTicketsService {
 
   async createTicket(ticketData: Partial<Ticket>): Promise<Ticket> {
     try {
-      // Generar número de ticket automático
-      const ticketNumber = await this.generateTicketNumber(ticketData.company_id!);
-      
-      const newTicketData = {
-        ...ticketData,
-        ticket_number: ticketNumber,
+      // Prefer Edge Function to bypass RLS safely and validate membership
+      const client = this.supabase.getClient();
+      const base: string | undefined = (await import('../../environments/environment')).environment.edgeFunctionsBaseUrl as any;
+
+      if (base) {
+        try {
+          const funcUrl = base.replace(/\/+$/, '') + '/create-ticket';
+          const sess = await client.auth.getSession();
+          const accessToken = (sess as any)?.data?.session?.access_token || null;
+          const headers: any = { 'Content-Type': 'application/json' };
+          if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+          const body: any = {
+            p_company_id: ticketData.company_id,
+            p_client_id: ticketData.client_id,
+            p_title: ticketData.title,
+            p_description: ticketData.description,
+            p_stage_id: ticketData.stage_id,
+            p_priority: ticketData.priority || 'normal',
+            p_due_date: ticketData.due_date,
+            p_estimated_hours: ticketData.estimated_hours,
+            p_total_amount: ticketData.total_amount
+          };
+
+          const resp = await fetch(funcUrl, { method: 'POST', headers, body: JSON.stringify(body) });
+          let json: any = {};
+          try { json = await resp.json(); } catch { json = {}; }
+          if (!resp.ok) {
+            if (resp.status === 404) {
+              console.warn('Edge create-ticket not deployed (404), falling back to direct insert');
+            } else {
+              console.error('Edge create-ticket error', json);
+              throw new Error(json?.error || 'Error creando ticket');
+            }
+          } else {
+            const r = Array.isArray(json) ? json[0] : (json?.result || json?.data || json);
+            if (r && r.id) {
+              return this.transformTicketData(r);
+            }
+          }
+        } catch (edgeErr: any) {
+          // Only fallback when the function is missing; otherwise bubble up
+          const msg = typeof edgeErr === 'object' && edgeErr && 'message' in edgeErr
+            ? String((edgeErr as any).message)
+            : String(edgeErr || '');
+          if (/404/.test(msg) || /not deployed/i.test(msg)) {
+            console.warn('Edge create-ticket not available, using direct insert');
+          } else {
+            throw edgeErr;
+          }
+        }
+      }
+
+      // Fallback: client-side insert (subject to RLS) - aligned with current tickets schema
+      const newTicketData: any = {
+        company_id: ticketData.company_id,
+        client_id: ticketData.client_id,
+        title: ticketData.title,
+        description: ticketData.description,
+        stage_id: ticketData.stage_id,
+        priority: ticketData.priority || 'normal',
+        due_date: ticketData.due_date || null,
+        total_amount: ticketData.total_amount ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
 
-      const { data, error } = await this.supabase.getClient()
+      const { data, error } = await client
         .from('tickets')
         .insert(newTicketData)
         .select()
@@ -364,7 +422,8 @@ export class SupabaseTicketsService {
     try {
       const { error } = await this.supabase.getClient()
         .from('tickets')
-        .update({ is_active: false, updated_at: new Date().toISOString() })
+        // Soft delete: set deleted_at timestamp
+        .update({ deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq('id', ticketId);
 
       if (error) throw error;
@@ -379,7 +438,7 @@ export class SupabaseTicketsService {
       let query: any = this.supabase.getClient()
         .from('ticket_stages')
         .select('*')
-        .eq('is_active', true)
+        .is('deleted_at', null)
         .order('position', { ascending: true });
 
       if (this.isValidUuid(companyId)) {

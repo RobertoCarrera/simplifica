@@ -222,31 +222,30 @@ import { DevicesService, Device } from '../../services/devices.service';
               </div>
             </div>
 
-            <!-- Devices -->
-            <div *ngIf="ticketDevices.length > 0" class="bg-white shadow rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Dispositivos</h3>
+            <!-- Devices: show devices that belong to the ticket's company -->
+            <div *ngIf="companyDevices.length > 0" class="bg-white shadow rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Dispositivos de la Empresa</h3>
               <div class="space-y-4">
-                <div *ngFor="let device of ticketDevices" 
-                     class="border border-gray-200 rounded-lg p-4">
-                  <div class="flex justify-between items-start">
-                    <div class="flex-1">
+                <div *ngFor="let device of companyDevices" 
+                     class="border border-gray-200 rounded-lg p-4 flex justify-between items-start">
+                  <div class="flex-1">
+                    <div class="flex items-center space-x-2">
                       <h4 class="font-medium text-gray-900">{{ device.brand }} {{ device.model }}</h4>
-                      <p class="text-sm text-gray-600 mt-1">{{ device.device_type }}</p>
-                      <p *ngIf="device.imei" class="text-sm text-gray-600">IMEI: {{ device.imei }}</p>
-                      <p *ngIf="device.color" class="text-sm text-gray-600">Color: {{ device.color }}</p>
-                      <p class="text-sm text-gray-600 mt-2">
-                        <span class="font-medium">Problema reportado:</span> {{ device.reported_issue }}
-                      </p>
+                      <span *ngIf="isDeviceLinked(device.id)" class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">Vinculado</span>
                     </div>
-                    <div class="text-right">
-                      <span [class]="getDeviceStatusClass(device.status)"
-                            class="inline-block px-2 py-1 text-xs font-medium rounded">
-                        {{ getDeviceStatusLabel(device.status) }}
-                      </span>
-                      <p class="text-xs text-gray-500 mt-1">
-                        {{ formatDate(device.received_at) }}
-                      </p>
-                    </div>
+                    <p class="text-sm text-gray-600 mt-1">{{ device.device_type }}</p>
+                    <p *ngIf="device.imei" class="text-sm text-gray-600">IMEI: {{ device.imei }}</p>
+                    <p *ngIf="device.color" class="text-sm text-gray-600">Color: {{ device.color }}</p>
+                    <p class="text-sm text-gray-600 mt-2">
+                      <span class="font-medium">Problema reportado:</span> {{ device.reported_issue }}
+                    </p>
+                  </div>
+                  <div class="text-right">
+                    <span [class]="getDeviceStatusClass(device.status)"
+                          class="inline-block px-2 py-1 text-xs font-medium rounded">
+                      {{ getDeviceStatusLabel(device.status) }}
+                    </span>
+                    <p class="text-xs text-gray-500 mt-1">{{ formatDate(device.received_at) }}</p>
                   </div>
                 </div>
               </div>
@@ -559,6 +558,10 @@ export class TicketDetailComponent implements OnInit {
   ticket: Ticket | null = null;
   ticketServices: any[] = [];
   ticketDevices: Device[] = [];
+  // All devices for the ticket's company (authoritative)
+  companyDevices: Device[] = [];
+  // Set of linked device ids (from ticket_devices)
+  linkedDeviceIds: Set<string> = new Set();
   ticketTags: string[] = [];
   availableTags: any[] = [];
   allStages: TicketStage[] = [];
@@ -693,6 +696,8 @@ export class TicketDetailComponent implements OnInit {
 
       if (error) {
         console.warn('Error cargando tags del ticket:', error);
+        this.ticketTags = [];
+        this.availableTags = [];
         return;
       }
 
@@ -700,21 +705,46 @@ export class TicketDetailComponent implements OnInit {
       this.availableTags = (tagRelations || []).map((rel: any) => rel.tag).filter(Boolean);
     } catch (error) {
       console.error('Error en loadTicketTags:', error);
+      this.ticketTags = [];
+      this.availableTags = [];
     }
   }
 
   async loadTicketDevices() {
     try {
-      // Cargar dispositivos vinculados al ticket (si existe tabla device_tickets o similar)
-      // Por ahora, cargar dispositivos del cliente
-      if (this.ticket?.client?.id) {
-        const devices = await this.devicesService.getDevices(this.ticket.company_id);
-        this.ticketDevices = devices.filter(device => device.client_id === this.ticket?.client?.id);
+      // Load linked devices and build set of linked IDs
+      this.linkedDeviceIds = new Set();
+      if (this.ticketId) {
+        const linked = await this.devicesService.getTicketDevices(this.ticketId);
+        if (linked && linked.length > 0) {
+          this.ticketDevices = linked;
+          linked.forEach(d => this.linkedDeviceIds.add(d.id));
+        } else {
+          this.ticketDevices = [];
+        }
+      }
+
+      // Load all devices for the ticket's company (company is authoritative)
+      if (this.ticket?.company_id) {
+        try {
+          const devices = await this.devicesService.getDevices(this.ticket.company_id);
+          this.companyDevices = devices || [];
+        } catch (err) {
+          console.warn('Error cargando dispositivos de la empresa:', err);
+          this.companyDevices = [];
+        }
+      } else {
+        this.companyDevices = [];
       }
     } catch (error) {
       console.error('Error cargando dispositivos:', error);
       this.ticketDevices = [];
+      this.companyDevices = [];
     }
+  }
+
+  isDeviceLinked(deviceId: string): boolean {
+    return this.linkedDeviceIds.has(deviceId);
   }
 
   async loadComments() {
@@ -750,8 +780,7 @@ export class TicketDetailComponent implements OnInit {
         .insert({
           ticket_id: this.ticketId,
           comment: this.newComment.trim(),
-          is_internal: this.isInternalComment,
-          user_id: 'current-user-id' // TODO: obtener del contexto de usuario
+          is_internal: this.isInternalComment
         })
         .select(`
           *,
@@ -924,7 +953,7 @@ export class TicketDetailComponent implements OnInit {
         .from('ticket_comments')
         .insert({
           ticket_id: this.ticketId,
-          content: content,
+          comment: content,
           is_internal: true,
           created_at: new Date().toISOString()
         });

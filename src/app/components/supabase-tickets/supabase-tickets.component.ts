@@ -139,36 +139,20 @@ export class SupabaseTicketsComponent implements OnInit {
         const { data: userRes, error: userErr } = await client.auth.getUser();
         if (!userErr && userRes?.user?.id) {
           const authUid = userRes.user.id;
-          // 1) Intentar user_companies
+          // Resolver company por tabla users
           let resolvedCompany: string | null = null;
           try {
-            const { data: ucRows } = await client
-              .from('user_companies')
+            const { data: uRow } = await client
+              .from('users')
               .select('company_id')
-              .eq('user_id', authUid)
-              .limit(1);
-            if (ucRows && ucRows.length > 0 && this.isValidUuid(ucRows[0].company_id)) {
-              resolvedCompany = ucRows[0].company_id;
+              .eq('auth_user_id', authUid)
+              .limit(1)
+              .single();
+            if (uRow && this.isValidUuid(uRow.company_id)) {
+              resolvedCompany = uRow.company_id;
             }
           } catch (e) {
-            console.warn('No se pudo consultar user_companies, intentando fallback a users:', e);
-          }
-
-          // 2) Fallback: tabla users por auth_user_id
-          if (!resolvedCompany) {
-            try {
-              const { data: uRow } = await client
-                .from('users')
-                .select('company_id')
-                .eq('auth_user_id', authUid)
-                .limit(1)
-                .single();
-              if (uRow && this.isValidUuid(uRow.company_id)) {
-                resolvedCompany = uRow.company_id;
-              }
-            } catch (e) {
-              console.warn('No se pudo resolver company_id desde users:', e);
-            }
+            console.warn('No se pudo resolver company_id desde users:', e);
           }
 
           if (resolvedCompany && this.isValidUuid(resolvedCompany)) {
@@ -283,6 +267,7 @@ export class SupabaseTicketsComponent implements OnInit {
           stage:ticket_stages(id, name, color, position),
           company:companies(id, name)
         `)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (this.isValidUuid(this.selectedCompanyId)) {
@@ -881,9 +866,19 @@ export class SupabaseTicketsComponent implements OnInit {
     this.formData.client_id = customer.id;
     this.customerSearchText = customer.name;
     this.showCustomerDropdown = false;
-    
-    // Load customer devices
-    this.loadCustomerDevices();
+
+    // If customer has a company_id, set company context so RLS-scoped queries use the right company
+    const customerCompanyId = customer.company_id;
+    if (customerCompanyId && this.isValidUuid(customerCompanyId)) {
+      // Fire and forget, then load devices
+      this.simpleSupabase.setCurrentCompany(customerCompanyId).finally(() => {
+        this.selectedCompanyId = customerCompanyId!;
+        this.loadCustomerDevices();
+      });
+    } else {
+      // Load customer devices with current selected company as fallback
+      this.loadCustomerDevices();
+    }
   }
 
   clearCustomerSelection() {
@@ -917,7 +912,8 @@ export class SupabaseTicketsComponent implements OnInit {
 
   openDeviceForm() {
     this.deviceFormData = {
-      company_id: this.selectedCompanyId,
+      // Prefer the customer's company_id when available (company authoritative)
+      company_id: this.selectedCustomer?.company_id || this.selectedCompanyId,
       client_id: this.selectedCustomer?.id || '',
       status: 'received',
       priority: 'normal',
@@ -1070,10 +1066,14 @@ export class SupabaseTicketsComponent implements OnInit {
         console.warn('Error sincronizando tags del ticket:', err);
       }
 
-      // Vincular dispositivos al ticket si hay dispositivos seleccionados
+      // Vincular dispositivos al ticket si hay dispositivos seleccionados (no bloquear guardado)
       if (this.selectedDevices.length > 0 && savedTicket) {
-        for (const device of this.selectedDevices) {
-          await this.devicesService.linkDeviceToTicket(savedTicket.id, device.id, 'repair');
+        const results = await Promise.allSettled(
+          this.selectedDevices.map((device) => this.devicesService.linkDeviceToTicket(savedTicket.id, device.id, 'repair'))
+        );
+        const failed = results.filter(r => r.status === 'rejected');
+        if (failed.length > 0) {
+          console.warn(`Algunos dispositivos no se pudieron vincular (${failed.length}/${results.length}). Revisa RLS y permisos.`);
         }
       }
       
@@ -1188,7 +1188,12 @@ export class SupabaseTicketsComponent implements OnInit {
 
   // Navigation
   viewTicketDetail(ticket: Ticket) {
-    this.router.navigate(['/ticket', ticket.id]);
+    // Navigate to the new ticket detail route; ensure id exists
+    if (!ticket?.id) {
+      console.warn('viewTicketDetail: ticket without id');
+      return;
+    }
+    this.router.navigate(['ticket', ticket.id]);
   }
 
   // Utility methods
@@ -1246,12 +1251,23 @@ export class SupabaseTicketsComponent implements OnInit {
     }
 
     try {
-      // Get all devices for the company and filter by client
-      const allDevices = await this.devicesService.getDevices(this.selectedCompanyId);
-      this.customerDevices = allDevices.filter(device => device.client_id === this.selectedCustomer!.id);
+      // Determine authoritative company id from the selected customer (fallback to selectedCompanyId)
+      const companyId = this.selectedCustomer?.company_id || this.selectedCompanyId;
+  console.log('[Tickets] Loading customer devices. customer=', this.selectedCustomer?.id, 'companyId=', companyId);
+      const allDevices = await this.devicesService.getDevices(companyId);
+  console.log('[Tickets] Devices fetched for company:', companyId, 'count=', allDevices?.length || 0);
+
+      // Show devices for the customer's company. Prefer client's own devices first for convenience.
+      const clientId = this.selectedCustomer!.id;
+      this.customerDevices = (allDevices || []).slice().sort((a, b) => {
+        const aClient = a.client_id === clientId ? 0 : 1;
+        const bClient = b.client_id === clientId ? 0 : 1;
+        return aClient - bClient;
+      });
+
       this.filteredCustomerDevices = [...this.customerDevices];
     } catch (error) {
-      console.error('Error loading customer devices:', error);
+      console.error('[Tickets] Error loading customer devices:', error);
       this.customerDevices = [];
       this.filteredCustomerDevices = [];
     }
@@ -1310,7 +1326,8 @@ export class SupabaseTicketsComponent implements OnInit {
       const deviceData = {
         ...this.deviceFormData,
         client_id: this.selectedCustomer.id,
-        company_id: this.selectedCompanyId,
+        // Ensure the device is created under the customer's company (company authoritative)
+        company_id: this.selectedCustomer?.company_id || this.selectedCompanyId,
         status: 'received',
         priority: 'normal',
         received_at: new Date().toISOString()
@@ -1385,30 +1402,30 @@ export class SupabaseTicketsComponent implements OnInit {
     }
 
     try {
-      // Create a new customer with complete data
-      const newCustomer = {
-        ...this.customerFormData,
-        company_id: this.selectedCompanyId
-      };
+      // Persist client using service (RLS-aware)
+      const { success, data, error } = await this.simpleSupabase.createClientFull({
+        name: this.customerFormData.name.trim(),
+        email: this.customerFormData.email?.trim() || undefined,
+        phone: this.customerFormData.phone?.trim() || undefined,
+        company_id: this.selectedCompanyId,
+        address: this.customerFormData.address ? { raw: this.customerFormData.address, city: this.customerFormData.city, postal_code: this.customerFormData.postal_code } : undefined
+      });
 
-      // In a real implementation, you'd call your customers service here
-      // const createdCustomer = await this.customersService.createCustomer(newCustomer);
-      
-      // For now, create a mock customer object with complete data
-      const mockCustomer: SimpleClient = {
-        id: 'temp-' + Date.now(),
-        name: newCustomer.name,
-        email: newCustomer.email,
-        phone: newCustomer.phone
-      };
+      if (!success || !data) {
+        console.error('Error creando cliente:', error);
+        alert('No se pudo crear el cliente.');
+        return;
+      }
 
-      // Add to customers list and select it
-      this.customers.push(mockCustomer);
-      this.selectCustomer(mockCustomer);
+      // Update in-memory lists and selection
+  this.customers.push(data);
+      this.selectCustomer(data);
+  this.filteredCustomers = [...this.customers];
       this.closeCustomerForm();
       
     } catch (error) {
       console.error('Error creating customer:', error);
+      alert('Error inesperado al crear el cliente');
     }
   }
 

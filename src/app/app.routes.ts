@@ -43,6 +43,7 @@ export const routes: Routes = [
     {path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard]},
     {path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard]},
     {path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard]},
+    {path: 'ticket/:id', component: TicketDetailComponent, canActivate: [AuthGuard]},
     {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard]},
     {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard]},

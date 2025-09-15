@@ -58,10 +58,10 @@ import { SupabaseServicesService } from '../../services/supabase-services.servic
         <section class="recent">
           <h4><i class="fas fa-clock"></i> Últimos tickets</h4>
           <div class="tickets-list">
-            <div *ngFor="let t of recentTickets" class="ticket-item">
+            <a *ngFor="let t of recentTickets" class="ticket-item" [routerLink]="['/ticket', t.id]">
               <span class="ticket-number">#{{ t.ticket_number }}</span>
               <span class="ticket-title">{{ t.title }}</span>
-            </div>
+            </a>
           </div>
         </section>
       }

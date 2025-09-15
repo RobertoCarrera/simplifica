@@ -151,10 +151,10 @@ export class SupabaseCustomersService {
    * Método estándar para producción - usa autenticación normal
    */
   private getCustomersStandard(filters: CustomerFilters = {}): Observable<Customer[]> {
-    // Include direccion (addresses) relation so UI can display address data
+    // Include direccion (addresses) relation when available; fallback handled below
     let query = this.supabase
       .from('clients')
-      .select('*, direccion:addresses(*)');
+      .select('*, direccion:addresses!clients_direccion_id_fkey(*)');
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
     const companyId = this.authService.companyId();
@@ -181,48 +181,32 @@ export class SupabaseCustomersService {
     }
 
     return from(query).pipe(
-      map(({ data, error }) => {
-        if (error) throw error;
-        
-        // Convertir estructura de 'clients' a 'Customer'
-        const customers = data?.map((client: any) => ({
-          id: client.id,
-          name: client.name?.split(' ')[0] || '',
-          apellidos: client.name?.split(' ').slice(1).join(' ') || '',
-          email: client.email,
-          phone: client.phone,
-          dni: this.extractFromMetadata(client.metadata, 'dni') || '',
-          usuario_id: client.company_id,
-          created_at: client.created_at,
-          updated_at: client.updated_at,
-          activo: client.is_active === false ? false : !client.deleted_at,
-          // direccion relation comes from select('*, direccion:addresses(*)')
-          direccion_id: client.direccion_id || null,
-          direccion: client.direccion || null,
-          metadata: client.metadata || undefined,
-          // GDPR fields
-          marketing_consent: client.marketing_consent ?? undefined,
-          marketing_consent_date: client.marketing_consent_date ?? undefined,
-          marketing_consent_method: client.marketing_consent_method ?? undefined,
-          data_processing_consent: client.data_processing_consent ?? undefined,
-          data_processing_consent_date: client.data_processing_consent_date ?? undefined,
-          data_processing_legal_basis: client.data_processing_legal_basis ?? undefined,
-          data_retention_until: client.data_retention_until ?? undefined,
-          deletion_requested_at: client.deletion_requested_at ?? undefined,
-          deletion_reason: client.deletion_reason ?? undefined,
-          anonymized_at: client.anonymized_at ?? undefined,
-          is_minor: client.is_minor ?? undefined,
-          parental_consent_verified: client.parental_consent_verified ?? undefined,
-          parental_consent_date: client.parental_consent_date ?? undefined,
-          data_minimization_applied: client.data_minimization_applied ?? undefined,
-          last_data_review_date: client.last_data_review_date ?? undefined,
-          access_restrictions: client.access_restrictions ?? undefined,
-          last_accessed_at: client.last_accessed_at ?? undefined,
-          access_count: client.access_count ?? undefined
-        })) || [];
-        
-        devSuccess('Clientes obtenidos via consulta estándar', customers.length);
-        return customers;
+      switchMap(({ data, error }) => {
+        if (!error) {
+          const customers = (data || []).map((client: any) => this.toCustomerFromClient(client));
+          devSuccess('Clientes obtenidos via consulta estándar', customers.length);
+          return of(customers);
+        }
+        // Schema cache may lack relation: fallback without embed
+        if ((error as any)?.code === 'PGRST200') {
+          let q2 = this.supabase.from('clients').select('*');
+          if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
+          if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+          q2 = q2
+            .order('is_active', { ascending: false, nullsFirst: false })
+            .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
+          if (filters.limit) {
+            q2 = q2.limit(filters.limit);
+            if (filters.offset) q2 = q2.range(filters.offset, filters.offset + filters.limit - 1);
+          }
+          return from(q2).pipe(
+            map(({ data: d2, error: e2 }) => {
+              if (e2) throw e2;
+              return (d2 || []).map((client: any) => this.toCustomerFromClient({ ...client, direccion: null }));
+            })
+          );
+        }
+        return throwError(() => error);
       }),
       tap(customers => {
         this.customersSubject.next(customers);
@@ -236,53 +220,65 @@ export class SupabaseCustomersService {
     );
   }
 
-  /**
-   * Método fallback si las funciones RPC no están disponibles
-   */
-  private getCustomersWithFallback(filters: CustomerFilters = {}): Observable<Customer[]> {
-    console.log('DEV: Entrando en getCustomersWithFallback');
-    console.log('DEV: currentDevUserId:', this.currentDevUserId);
-    console.log('DEV: isDevelopmentMode:', this.config.isDevelopmentMode);
-    console.log('DEV: filters:', filters);
-    
-    // Include direccion (addresses) relation
-    let query = this.supabase
-      .from('clients')
-      .select('*, direccion:addresses(*)');
-
-    // FILTRO POR EMPRESA EN LUGAR DE USUARIO (adaptado a la estructura real)
-  if (this.currentDevUserId && this.config.isDevelopmentMode) {
-      console.log('DEV: Buscando company_id para usuario:', this.currentDevUserId);
-      
-      // Buscar la empresa del usuario seleccionado (ahora sincrónico)
-      const selectedUser = this.getCurrentUserFromSystemUsers(this.currentDevUserId);
-        if (selectedUser) {
-          console.log('DEV: Filtrando por company_id:', selectedUser.company_id);
-          if (this.isValidUuid(selectedUser.company_id)) {
-            query = query.eq('company_id', selectedUser.company_id);
-          } else {
-            console.warn('SupabaseCustomersService: skipping non-UUID company_id from dev user:', selectedUser.company_id);
-          }
-        } else {
-          console.log('DEV: Usuario no encontrado, no se aplicará filtro');
-        }
-    } else {
-      console.log('DEV: NO se aplica filtro - traerá TODOS los clientes');
+    // Helper to convert clients row -> Customer
+    private toCustomerFromClient(client: any): Customer {
+      return {
+        id: client.id,
+        name: client.name?.split(' ')[0] || '',
+        apellidos: client.name?.split(' ').slice(1).join(' ') || '',
+        email: client.email,
+        phone: client.phone,
+        dni: this.extractFromMetadata(client.metadata, 'dni') || '',
+        usuario_id: client.company_id,
+        created_at: client.created_at,
+        updated_at: client.updated_at,
+        activo: client.is_active === false ? false : !client.deleted_at,
+        direccion_id: client.direccion_id || null,
+        direccion: client.direccion || null,
+        metadata: client.metadata || undefined,
+        // GDPR fields
+        marketing_consent: client.marketing_consent ?? undefined,
+        marketing_consent_date: client.marketing_consent_date ?? undefined,
+        marketing_consent_method: client.marketing_consent_method ?? undefined,
+        data_processing_consent: client.data_processing_consent ?? undefined,
+        data_processing_consent_date: client.data_processing_consent_date ?? undefined,
+        data_processing_legal_basis: client.data_processing_legal_basis ?? undefined,
+        data_retention_until: client.data_retention_until ?? undefined,
+        deletion_requested_at: client.deletion_requested_at ?? undefined,
+        deletion_reason: client.deletion_reason ?? undefined,
+        anonymized_at: client.anonymized_at ?? undefined,
+        is_minor: client.is_minor ?? undefined,
+        parental_consent_verified: client.parental_consent_verified ?? undefined,
+        parental_consent_date: client.parental_consent_date ?? undefined,
+        data_minimization_applied: client.data_minimization_applied ?? undefined,
+        last_data_review_date: client.last_data_review_date ?? undefined,
+        access_restrictions: client.access_restrictions ?? undefined,
+        last_accessed_at: client.last_accessed_at ?? undefined,
+        access_count: client.access_count ?? undefined
+      };
     }
 
-    return this.executeCustomersQuery(query, filters);
-  }
+  /**
+   * Método fallback (desarrollo) sin embed explícito
+   */
+  private getCustomersWithFallback(filters: CustomerFilters = {}): Observable<Customer[]> {
+    let query = this.supabase.from('clients').select('*');
 
-  private executeCustomersQuery(query: any, filters: CustomerFilters): Observable<Customer[]> {
-    // Aplicar filtros adicionales (adaptados a la estructura real)
+    const companyId = this.authService.companyId();
+    if (this.isValidUuid(companyId)) {
+      query = query.eq('company_id', companyId);
+    } else if (companyId) {
+      console.warn('SupabaseCustomersService: ignoring non-UUID companyId from authService:', companyId);
+    }
+
     if (filters.search) {
       query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
     }
 
-  // Ordenamiento: activos primero, luego fecha
-  query = query.order('is_active', { ascending: false, nullsFirst: false }).order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
+    query = query
+      .order('is_active', { ascending: false, nullsFirst: false })
+      .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
 
-    // Paginación
     if (filters.limit) {
       query = query.limit(filters.limit);
       if (filters.offset) {
@@ -290,70 +286,19 @@ export class SupabaseCustomersService {
       }
     }
 
-    console.log('DEV: Ejecutando query...');
-    return from(query as Promise<{ data: any; error: any }>).pipe(
+    return from(query).pipe(
       map(({ data, error }: { data: any; error: any }) => {
-        console.log('DEV: Respuesta de query:', { data: data?.length || 0, error });
-        if (error) {
-          console.error('DEV: Error en query:', error);
-          throw error;
-        }
-        
-        if (data && data.length > 0) {
-          console.log('DEV: Primeros 3 clientes encontrados:', data.slice(0, 3).map((c: any) => ({
-            name: c.name,
-            email: c.email,
-            company_id: c.company_id
-          })));
-        }
-        
-        // Convertir la estructura de 'clients' a 'Customer' esperada por la aplicación
-        const customers = data?.map((client: any) => ({
-          id: client.id,
-          name: client.name?.split(' ')[0] || '',
-          apellidos: client.name?.split(' ').slice(1).join(' ') || '',
-          email: client.email,
-          phone: client.phone,
-          dni: this.extractFromMetadata(client.metadata, 'dni') || '',
-          usuario_id: client.company_id, // Mapear company_id a usuario_id temporalmente
-          created_at: client.created_at,
-          updated_at: client.updated_at,
-          activo: client.is_active === false ? false : !client.deleted_at,
-          direccion_id: client.direccion_id || null,
-          direccion: client.direccion || null,
-          metadata: client.metadata || undefined,
-          // GDPR fields
-          marketing_consent: client.marketing_consent ?? undefined,
-          marketing_consent_date: client.marketing_consent_date ?? undefined,
-          marketing_consent_method: client.marketing_consent_method ?? undefined,
-          data_processing_consent: client.data_processing_consent ?? undefined,
-          data_processing_consent_date: client.data_processing_consent_date ?? undefined,
-          data_processing_legal_basis: client.data_processing_legal_basis ?? undefined,
-          data_retention_until: client.data_retention_until ?? undefined,
-          deletion_requested_at: client.deletion_requested_at ?? undefined,
-          deletion_reason: client.deletion_reason ?? undefined,
-          anonymized_at: client.anonymized_at ?? undefined,
-          is_minor: client.is_minor ?? undefined,
-          parental_consent_verified: client.parental_consent_verified ?? undefined,
-          parental_consent_date: client.parental_consent_date ?? undefined,
-          data_minimization_applied: client.data_minimization_applied ?? undefined,
-          last_data_review_date: client.last_data_review_date ?? undefined,
-          access_restrictions: client.access_restrictions ?? undefined,
-          last_accessed_at: client.last_accessed_at ?? undefined,
-          access_count: client.access_count ?? undefined
-        })) || [];
-        
+        if (error) throw error;
+        const customers = (data || []).map((client: any) => this.toCustomerFromClient({ ...client, direccion: null }));
         devSuccess('Clientes obtenidos via fallback', customers.length);
         return customers as Customer[];
       }),
       tap(customers => {
-        console.log('DEV: Actualizando customersSubject con', customers.length, 'clientes');
         this.customersSubject.next(customers);
         this.loadingSubject.next(false);
       }),
       catchError(error => {
         this.loadingSubject.next(false);
-        console.error('DEV: Error en getCustomersWithFallback:', error);
         devError('Error en método fallback', error);
         return throwError(() => error);
       })
@@ -420,7 +365,7 @@ export class SupabaseCustomersService {
     return from(
       this.supabase
         .from('clients')
-        .select('*, direccion:addresses(*)')
+        .select('*, direccion:addresses!clients_direccion_id_fkey(*)')
         .eq('id', id)
         .single()
     ).pipe(

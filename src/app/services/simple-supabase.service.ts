@@ -223,6 +223,50 @@ export class SimpleSupabaseService {
   }
 
   /**
+   * Crear cliente con más campos (name, email, phone) y company_id explícito
+   */
+  async createClientFull(newClient: { 
+    name: string; 
+    email?: string; 
+    phone?: string; 
+    company_id?: string;
+    address?: any; // JSON serializable
+    metadata?: any; // JSON serializable
+  }): Promise<{ success: boolean; data?: SimpleClient; error?: string }> {
+    try {
+      const desiredCompany = newClient.company_id;
+      const companyId = this.isValidUuid(desiredCompany) ? desiredCompany : this.currentCompanyId;
+      if (!this.isValidUuid(companyId || '')) {
+        return { success: false, error: 'company_id inválido o no establecido' };
+      }
+
+      const payload: any = {
+        name: newClient.name,
+        email: newClient.email,
+        phone: newClient.phone,
+        company_id: companyId
+      };
+
+      if (newClient.address !== undefined) payload.address = newClient.address;
+      if (newClient.metadata !== undefined) payload.metadata = newClient.metadata;
+
+      const { data, error } = await this.supabase
+        .from('clients')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, data };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Eliminar cliente (soft delete) - súper simple
    */
   async deleteClient(clientId: string): Promise<{ success: boolean; error?: string }> {
