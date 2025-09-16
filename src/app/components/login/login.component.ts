@@ -458,6 +458,19 @@ export class LoginComponent implements OnDestroy, OnInit {
         }
       }
     });
+    // If the guard navigated here with navigation state, capture the intended return path
+    // history.state is populated by Angular router when using `router.navigate(..., { state })`.
+    const navState: any = history.state || {};
+    if (navState && navState.returnTo) {
+      // Store it on the component (non-reactive) for use after login
+      (this as any)._returnTo = navState.returnTo;
+    } else {
+      // Backwards compatibility: if an older flow used ?returnUrl=... keep it until we've consumed it
+      const qp = this.route.snapshot.queryParams['returnUrl'] as string | undefined;
+      if (qp) {
+        (this as any)._returnTo = qp;
+      }
+    }
   }
 
   ngOnDestroy() {
@@ -506,19 +519,24 @@ export class LoginComponent implements OnDestroy, OnInit {
 
       if (result.success) {
         console.log('✅ Login successful');
-        // Redirigir a la página solicitada o dashboard
-        const returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/clientes';
-        // If returnUrl contains a query string, hash, or is an absolute URL, use navigateByUrl
+        // Navigate to the intended return path when present (clean, not via query param)
+        const returnTo = (this as any)._returnTo as string | undefined;
         try {
-          if (typeof returnUrl === 'string' && (returnUrl.includes('?') || returnUrl.includes('#') || returnUrl.startsWith('http')) ) {
-            this.router.navigateByUrl(returnUrl);
+          if (returnTo) {
+            // Normalize simple relative paths and avoid double-encoding
+            const normalized = decodeURIComponent(returnTo).startsWith('/') ? decodeURIComponent(returnTo) : `/${decodeURIComponent(returnTo)}`;
+            // Replace the current history entry to clear any legacy query params from the URL
+            // This keeps the URL clean (no ?returnUrl=... lingering)
+            history.replaceState({}, '', normalized);
+            this.router.navigateByUrl(normalized);
           } else {
-            this.router.navigate([returnUrl]);
+            // Default behavior: go to Inicio
+            this.router.navigate(['/inicio']);
           }
         } catch (navErr) {
-          // Fallback to safe navigation to '/clientes'
-          console.error('Navigation error, falling back to /clientes', navErr);
-          this.router.navigate(['/clientes']);
+          // Fallback to root route if navigation fails
+          console.error('Navigation error, falling back to /', navErr);
+          this.router.navigate(['/']);
         }
 
         this.toastService.success('¡Bienvenido!', 'Login exitoso');

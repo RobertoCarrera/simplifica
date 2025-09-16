@@ -225,7 +225,7 @@ export class SupabaseCustomersService {
       return {
         id: client.id,
         name: client.name?.split(' ')[0] || '',
-        apellidos: client.name?.split(' ').slice(1).join(' ') || '',
+        apellidos: client.apellidos || '',
         email: client.email,
         phone: client.phone,
         dni: this.extractFromMetadata(client.metadata, 'dni') || '',

@@ -99,10 +99,33 @@ export class AuthService {
         console.log('🔐 AuthService: Auth state change:', event);
         this.handleAuthStateChange(event, session);
       });
+      // Setup inactivity timeout to auto-signout after configurable period
+      this.setupInactivityTimeout();
     } else {
       console.log('🔐 AuthService: Ya inicializado, reutilizando instancia');
       this.loadingSubject.next(false);
     }
+  }
+
+  // Inactivity timeout: default to 30 minutes (in ms). Reset on user interactions.
+  private inactivityTimeoutMs = 30 * 60 * 1000;
+  private inactivityTimer: any = null;
+
+  private setupInactivityTimeout() {
+    const reset = () => {
+      try { if (this.inactivityTimer) clearTimeout(this.inactivityTimer); } catch(e){}
+      this.inactivityTimer = setTimeout(async () => {
+        try { await this.logout(); } catch(e){}
+      }, this.inactivityTimeoutMs);
+    };
+
+    // Reset on user interactions
+    ['click', 'mousemove', 'keydown', 'touchstart'].forEach(evt => {
+      window.addEventListener(evt, reset, { passive: true });
+    });
+
+    // Initialize timer
+    reset();
   }
 
   // Exponer cliente supabase directamente para componentes de callback/reset
@@ -176,6 +199,13 @@ export class AuthService {
 
   private async initializeAuth() {
     try {
+      // Try to refresh session first (in case tokens need refresh after a reload)
+      try {
+        await this.supabase.auth.refreshSession();
+      } catch (refreshErr) {
+        // ignore refresh errors — we'll still try to read any existing session
+      }
+
       const { data: { session } } = await this.supabase.auth.getSession();
       if (session?.user) {
         await this.setCurrentUser(session.user);

@@ -154,7 +154,7 @@ export class SupabaseTicketsService {
       if (this.isValidUuid(companyId)) {
         query = query.eq('company_id', companyId);
       } else {
-        console.warn('⚠️ Invalid or missing companyId for tickets query, loading global/mock tickets');
+        // Invalid or missing companyId: proceed with global/untagged query (no warning to avoid noisy logs)
       }
 
       const { data: tickets, error } = await query;

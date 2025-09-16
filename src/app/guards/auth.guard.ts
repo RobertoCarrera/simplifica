@@ -21,15 +21,22 @@ export class AuthGuard implements CanActivate {
   ): Observable<boolean> | Promise<boolean> | boolean {
     console.log('��� AuthGuard: Checking access to:', state.url);
 
-    return this.authService.currentUser$.pipe(
-      filter(user => user !== undefined),
-      take(1),
-      timeout(5000),
-      switchMap(user => {
+    return combineLatest([
+      this.authService.currentUser$,
+      this.authService.loading$
+    ]).pipe(
+      // Wait until the auth service finished initializing/restoring session
+      filter(([_, loading]) => !loading),
+  take(1),
+  timeout(15000),
+      switchMap(([user]) => {
         console.log('��� AuthGuard: User state:', user ? 'authenticated' : 'not authenticated');
         if (!user) {
           console.log('��� AuthGuard: Redirecting to login');
-          this.router.navigate(['/login'], { queryParams: { returnUrl: state.url } });
+          // Use navigation state to pass the original destination so the URL stays clean
+          // (avoids ugly encoded `?returnUrl=...` query strings). The Login component
+          // will read history.state.returnTo and fall back to the legacy query param.
+          this.router.navigate(['/login'], { state: { returnTo: state.url } });
           return of(false);
         }
 
@@ -40,7 +47,7 @@ export class AuthGuard implements CanActivate {
         ]).pipe(
           filter(([_, loading]) => !loading),
           take(1),
-          timeout(5000),
+          timeout(15000),
           map(([profile]) => {
             if (profile && profile.active) {
               return true;
@@ -58,8 +65,19 @@ export class AuthGuard implements CanActivate {
       }),
       catchError(error => {
         console.error('��� AuthGuard: Error checking auth state:', error);
-        this.router.navigate(['/login']);
-        return of(false);
+        // Before redirecting, perform a last synchronous session check
+        return this.authService.client.auth.getSession()
+          .then(({ data }) => {
+            if (data?.session?.user) {
+              return true;
+            }
+            this.router.navigate(['/login']);
+            return false;
+          })
+          .catch(() => {
+            this.router.navigate(['/login']);
+            return false;
+          });
       })
     );
   }

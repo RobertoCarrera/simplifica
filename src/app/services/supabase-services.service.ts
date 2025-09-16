@@ -236,7 +236,7 @@ export class SupabaseServicesService {
     if (this.isValidUuid(companyId)) {
       query = query.eq('company_id', companyId);
     } else {
-      console.warn('⚠️ Invalid or missing companyId for services query, loading global/untagged services');
+      // Invalid or missing companyId: proceed with global/untagged query (suppress warning)
     }
 
     const { data: services, error } = await query;
