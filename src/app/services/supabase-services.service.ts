@@ -227,6 +227,7 @@ export class SupabaseServicesService {
   }
 
   private async getServicesFromTable(companyId: string): Promise<Service[]> {
+    // Fetch services first (no PostgREST join because there's no FK between services.category and service_categories)
     let query: any = this.supabase.getClient()
       .from('services')
       .select('*')
@@ -243,14 +244,36 @@ export class SupabaseServicesService {
 
     if (error) throw error;
 
-    // Transform services data to services format
+    // If services reference category as UUIDs, fetch those categories and map names client-side
+    const categoryIds = Array.from(new Set((services || [])
+      .map((s: any) => s?.category)
+      .filter((id: any) => typeof id === 'string' && this.isValidUuid(id))));
+
+    let categoriesById: Record<string, { id: string; name: string; color?: string; icon?: string }> = {};
+    if (categoryIds.length > 0) {
+      const { data: cats, error: catErr } = await this.supabase.getClient()
+        .from('service_categories')
+        .select('id, name, color, icon')
+        .in('id', categoryIds);
+      if (!catErr && Array.isArray(cats)) {
+        categoriesById = cats.reduce((acc: any, c: any) => {
+          acc[c.id] = c;
+          return acc;
+        }, {} as Record<string, { id: string; name: string; color?: string; icon?: string }>);
+      }
+    }
+
+    // Transform services data to services format and map category id -> name
     const mapped = (services || []).map((service: any) => ({
       id: service.id,
       name: service.name,
       description: service.description || '',
       base_price: service.base_price || 0,
       estimated_hours: service.estimated_hours || 0,
-  category: service.category || 'Servicio Técnico',
+      // Map category UUID to its name if available; otherwise keep original string or fallback
+      category: (typeof service.category === 'string' && this.isValidUuid(service.category) && categoriesById[service.category])
+        ? categoriesById[service.category].name
+        : (service.category || 'Servicio Técnico'),
   is_active: service.is_active !== undefined ? service.is_active : true, // Usar campo is_active de la BD
   // Additional management fields
   tax_rate: service.tax_rate !== undefined && service.tax_rate !== null ? Number(service.tax_rate) : undefined,
@@ -589,20 +612,42 @@ export class SupabaseServicesService {
   async createServiceTag(tag: Partial<ServiceTag>): Promise<ServiceTag> {
     try {
       const client = this.supabase.getClient();
+      const payload = [{
+        name: (tag.name || '').trim(),
+        color: tag.color || '#6b7280',
+        description: tag.description,
+        company_id: tag.company_id,
+        is_active: true
+      }];
+
+      // Use upsert to avoid unique constraint conflicts when the tag already exists
+      // on (company_id, name). upsert will insert or update the existing row.
       const { data, error } = await client
         .from('service_tags')
-        .insert([{
-          name: tag.name,
-          color: tag.color || '#6b7280',
-          description: tag.description,
-          company_id: tag.company_id,
-          is_active: true
-        }])
+        .upsert(payload, { onConflict: 'company_id,name' })
         .select()
+        .limit(1)
         .single();
 
-      if (error) throw error;
-      return data;
+      // If the driver returns a 409 or similar for race conditions, try a read fallback
+      if (error) {
+        // If it's a conflict-like error, attempt to fetch the existing tag
+        try {
+          const { data: existing, error: fetchErr } = await client
+            .from('service_tags')
+            .select('*')
+            .eq('company_id', tag.company_id)
+            .eq('name', (tag.name || '').trim())
+            .maybeSingle();
+          if (fetchErr) throw fetchErr;
+          if (existing) return existing as ServiceTag;
+        } catch (e) {
+          // Fall through to throwing the original error
+        }
+        throw error;
+      }
+
+      return data as ServiceTag;
     } catch (error) {
       console.error('❌ Error creating service tag:', error);
       throw error;
@@ -669,22 +714,30 @@ export class SupabaseServicesService {
       const companyId = service.company_id;
       const uniqueTagNames = Array.from(new Set(tagNames.filter(name => name && name.trim())));
 
-      // 2. Crear tags que no existen
-      for (const tagName of uniqueTagNames) {
+      // 2. Create or update tags in a single upsert to avoid unique constraint errors
+      const tagPayload = uniqueTagNames.map(n => ({
+        name: n.trim(),
+        color: '#6b7280',
+        company_id: companyId,
+        is_active: true
+      }));
+
+      if (tagPayload.length > 0) {
         try {
-          await client
+          // upsert on (company_id, name) so concurrent creations don't fail
+          const { error: upsertErr } = await client
             .from('service_tags')
-            .insert({
-              name: tagName.trim(),
-              color: '#6b7280',
-              company_id: companyId,
-              is_active: true
-            });
-        } catch (insertError: any) {
-          // Ignorar errores de duplicados (constraint unique)
-          if (!insertError.message?.includes('duplicate') && !insertError.message?.includes('unique')) {
-            console.warn('Error creando tag:', tagName, insertError);
+            .upsert(tagPayload, { onConflict: 'company_id,name' });
+          if (upsertErr) {
+            // If it's a conflict or similar, ignore; otherwise log
+            const msg = String(upsertErr.message || upsertErr.code || '');
+            if (!msg.includes('duplicate') && !msg.includes('unique') && !msg.includes('conflict')) {
+              console.warn('Warning upserting tags:', upsertErr);
+            }
           }
+        } catch (e: any) {
+          // In case the driver throws, try to continue — we'll fetch existing tags later
+          console.warn('Warning: unexpected error during tags upsert, continuing to fetch existing tags', e);
         }
       }
 

@@ -94,12 +94,15 @@ export class AdminGuard implements CanActivate {
   ) {}
 
   canActivate(): Observable<boolean> | Promise<boolean> | boolean {
-    
-    return this.authService.userProfile$.pipe(
-      filter(profile => profile !== undefined),
+    // Esperar a que termine la carga de auth antes de evaluar el perfil
+    return combineLatest([
+      this.authService.userProfile$,
+      this.authService.loading$
+    ]).pipe(
+      filter(([_, loading]) => !loading),
       take(1),
-      timeout(5000),
-      map(profile => {
+      timeout(15000),
+      map(([profile]) => {
         if (profile && profile.role === 'admin') {
           return true;
         }
@@ -125,11 +128,15 @@ export class GuestGuard implements CanActivate {
   ) {}
 
   canActivate(): Observable<boolean> | Promise<boolean> | boolean {
-    return this.authService.currentUser$.pipe(
-      filter(user => user !== undefined),
+    // Esperar a que termine la carga de auth antes de decidir
+    return combineLatest([
+      this.authService.currentUser$,
+      this.authService.loading$
+    ]).pipe(
+      filter(([_, loading]) => !loading),
       take(1),
-      timeout(5000),
-      map(user => {
+      timeout(15000),
+      map(([user]) => {
         if (!user) {
           return true;
         } else {
@@ -157,11 +164,15 @@ export class DevGuard implements CanActivate {
 
   canActivate(): Observable<boolean> | Promise<boolean> | boolean {
     if (!environment.production) {
-      return this.authService.currentUser$.pipe(
-        filter(user => user !== undefined),
+      // En desarrollo: permitir si hay usuario, pero esperar loading=false
+      return combineLatest([
+        this.authService.currentUser$,
+        this.authService.loading$
+      ]).pipe(
+        filter(([_, loading]) => !loading),
         take(1),
-        timeout(5000),
-        map(user => {
+        timeout(15000),
+        map(([user]) => {
           if (user) {
             return true;
           } else {
@@ -176,12 +187,15 @@ export class DevGuard implements CanActivate {
         })
       );
     }
-    
-    return this.authService.userProfile$.pipe(
-      filter(profile => profile !== undefined),
+    // En producción: sólo admins, esperar loading=false
+    return combineLatest([
+      this.authService.userProfile$,
+      this.authService.loading$
+    ]).pipe(
+      filter(([_, loading]) => !loading),
       take(1),
-      timeout(5000),
-      map(profile => {
+      timeout(15000),
+      map(([profile]) => {
         if (profile && profile.role === 'admin') {
           return true;
         }
@@ -204,11 +218,14 @@ export class OwnerAdminGuard implements CanActivate {
   constructor(private authService: AuthService, private router: Router) {}
 
   canActivate(): Observable<boolean> | Promise<boolean> | boolean {
-    return this.authService.userProfile$.pipe(
-      filter(profile => profile !== undefined),
+    return combineLatest([
+      this.authService.userProfile$,
+      this.authService.loading$
+    ]).pipe(
+      filter(([_, loading]) => !loading),
       take(1),
-      timeout(5000),
-      map(profile => {
+      timeout(15000),
+      map(([profile]) => {
         const allowed = !!profile && (profile.role === 'owner' || profile.role === 'admin');
         if (!allowed) {
           this.router.navigate(['/']);

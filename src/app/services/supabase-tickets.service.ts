@@ -343,6 +343,8 @@ export class SupabaseTicketsService {
           if (!resp.ok) {
             if (resp.status === 404) {
               console.warn('Edge create-ticket not deployed (404), falling back to direct insert');
+            } else if (resp.status >= 500) {
+              console.warn('Edge create-ticket returned 5xx, falling back to direct insert', json);
             } else {
               console.error('Edge create-ticket error', json);
               throw new Error(json?.error || 'Error creando ticket');
@@ -395,6 +397,108 @@ export class SupabaseTicketsService {
     }
   }
 
+  // Create a ticket and assign its services atomically (via Edge Function when available)
+  async createTicketWithServices(
+    ticketData: Partial<Ticket>,
+    items: Array<{ service_id: string; quantity: number; unit_price?: number }>
+  ): Promise<Ticket> {
+    // Normalize items
+    const normalized = (items || [])
+      .map(it => ({
+        service_id: it.service_id,
+        quantity: Math.max(1, Number(it.quantity || 1)),
+        unit_price: typeof it.unit_price === 'number' ? it.unit_price : undefined
+      }))
+      .filter(it => typeof it.service_id === 'string' && it.service_id.length > 0);
+
+    // If no services, we still create the ticket but UI should have prevented this
+    try {
+      const client = this.supabase.getClient();
+      const base: string | undefined = (await import('../../environments/environment')).environment.edgeFunctionsBaseUrl as any;
+
+      if (base) {
+        try {
+          const funcUrl = base.replace(/\/+$/, '') + '/create-ticket';
+          const sess = await client.auth.getSession();
+          const accessToken = (sess as any)?.data?.session?.access_token || null;
+          const headers: any = { 'Content-Type': 'application/json' };
+          if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+          const body: any = {
+            p_company_id: ticketData.company_id,
+            p_client_id: ticketData.client_id,
+            p_title: ticketData.title,
+            p_description: ticketData.description,
+            p_stage_id: ticketData.stage_id,
+            p_priority: ticketData.priority || 'normal',
+            p_due_date: ticketData.due_date,
+            p_estimated_hours: ticketData.estimated_hours,
+            p_total_amount: ticketData.total_amount,
+            p_services: normalized
+          };
+
+          const resp = await fetch(funcUrl, { method: 'POST', headers, body: JSON.stringify(body) });
+          let json: any = {};
+          try { json = await resp.json(); } catch { json = {}; }
+          if (!resp.ok) {
+            if (resp.status === 404) {
+              console.warn('Edge create-ticket not deployed (404), falling back to direct insert');
+            } else {
+              console.error('Edge create-ticket error', json);
+              throw new Error(json?.error || 'Error creando ticket');
+            }
+          } else {
+            const r = Array.isArray(json) ? json[0] : (json?.result || json?.data || json);
+            if (r && r.id) {
+              return this.transformTicketData(r);
+            }
+          }
+        } catch (edgeErr: any) {
+          const msg = typeof edgeErr === 'object' && edgeErr && 'message' in edgeErr
+            ? String((edgeErr as any).message)
+            : String(edgeErr || '');
+          if (/404/.test(msg) || /not deployed/i.test(msg)) {
+            console.warn('Edge create-ticket not available, using direct insert');
+          } else {
+            throw edgeErr;
+          }
+        }
+      }
+
+      // Fallback: direct insert into tickets (bypass edge) and then replace services
+      const nowIso = new Date().toISOString();
+      const directTicket: any = {
+        company_id: ticketData.company_id,
+        client_id: ticketData.client_id,
+        title: ticketData.title,
+        description: ticketData.description,
+        stage_id: ticketData.stage_id,
+        priority: ticketData.priority || 'normal',
+        due_date: ticketData.due_date || null,
+        total_amount: ticketData.total_amount ?? null,
+        created_at: nowIso,
+        updated_at: nowIso
+      };
+      const { data: createdRow, error: createErr } = await this.supabase.getClient()
+        .from('tickets')
+        .insert(directTicket)
+        .select('*')
+        .single();
+      if (createErr) throw createErr;
+      const created = this.transformTicketData(createdRow);
+
+      try {
+        await this.replaceTicketServices(created.id, String(ticketData.company_id || ''), normalized);
+      } catch (svcErr) {
+        console.warn('Fallback path: failed to insert ticket_services after ticket creation', svcErr);
+      }
+      return created;
+    } catch (err) {
+      console.error('❌ Error createTicketWithServices:', err);
+      throw err;
+    }
+  }
+
   async updateTicket(ticketId: string, ticketData: Partial<Ticket>): Promise<Ticket> {
     try {
       const updateData = {
@@ -430,6 +534,101 @@ export class SupabaseTicketsService {
     } catch (error) {
       console.error('❌ Error deleting ticket:', error);
       throw error;
+    }
+  }
+
+  // Replace all services for a ticket in ticket_services table.
+  // This approach is simple and idempotent for small lists: delete existing, then insert current selection.
+  async replaceTicketServices(ticketId: string, companyId: string, items: Array<{ service_id: string; quantity: number; unit_price?: number }>): Promise<void> {
+    if (!ticketId) return;
+    const client = this.supabase.getClient();
+
+    // Normalize payload and compute totals
+    const rows = (items || []).map(it => {
+      const price = typeof it.unit_price === 'number' ? it.unit_price : 0;
+      const qty = Math.max(1, Number(it.quantity || 1));
+      return {
+        ticket_id: ticketId,
+        service_id: it.service_id,
+        quantity: qty,
+        price_per_unit: price,
+        total_price: Number((price * qty).toFixed(2)),
+        company_id: companyId
+      } as any;
+    });
+
+    // Delete existing relations for this ticket
+    const { error: delErr } = await client
+      .from('ticket_services')
+      .delete()
+      .eq('ticket_id', ticketId);
+    if (delErr) {
+      // If delete fails (RLS, etc.), log and stop to avoid duplicates
+      console.warn('replaceTicketServices: delete failed, aborting insert', delErr);
+      return;
+    }
+
+    if (rows.length === 0) return; // nothing to insert
+
+    const { error: insErr } = await client
+      .from('ticket_services')
+      .insert(rows);
+    if (insErr) {
+      const msg = (insErr && (insErr.message || '')).toString();
+      // 1) company_id missing -> retry without it
+      if ((insErr.code === 'PGRST204' || msg.includes("Could not find the 'company_id' column"))) {
+        try {
+          const rowsNoCompany = rows.map(r => {
+            const { company_id, ...rest } = r as any;
+            return rest;
+          });
+          const { error: insErr2 } = await client.from('ticket_services').insert(rowsNoCompany);
+          if (!insErr2) return;
+          // 2) If still failing due to price_per_unit undefined, try unit_price naming
+          const msg2 = (insErr2 && (insErr2.message || '')).toString();
+          const undefinedCol2 = insErr2.code === '42703' || /price_per_unit.*does not exist/i.test(msg2) || /column\s+"?price_per_unit"?/i.test(msg2);
+          if (undefinedCol2) {
+            const rowsUnitNoCompany = (rowsNoCompany as any[]).map(r => {
+              const { price_per_unit, ...rest } = r;
+              return { ...rest, unit_price: price_per_unit };
+            });
+            const { error: insErr3 } = await client.from('ticket_services').insert(rowsUnitNoCompany);
+            if (insErr3) throw insErr3;
+            return;
+          }
+          throw insErr2;
+        } catch (e) {
+          throw e;
+        }
+      }
+
+      // 2) undefined_column for price_per_unit -> try with unit_price key (keeping company_id)
+      const undefinedCol = insErr.code === '42703' || /price_per_unit.*does not exist/i.test(msg) || /column\s+"?price_per_unit"?/i.test(msg);
+      if (undefinedCol) {
+        try {
+          const rowsUnit = rows.map((r: any) => {
+            const { price_per_unit, ...rest } = r;
+            return { ...rest, unit_price: price_per_unit };
+          });
+          const { error: e2 } = await client.from('ticket_services').insert(rowsUnit);
+          if (!e2) return;
+          // If company_id missing in this branch
+          const msg2 = (e2 && (e2.message || '')).toString();
+          if ((e2.code === 'PGRST204' || msg2.includes("Could not find the 'company_id' column"))) {
+            const rowsUnitNoCompany = rowsUnit.map((r: any) => { const { company_id, ...rest } = r; return rest; });
+            const { error: e3 } = await client.from('ticket_services').insert(rowsUnitNoCompany);
+            if (e3) throw e3;
+            return;
+          }
+          throw e2;
+        } catch (e) {
+          throw e;
+        }
+      }
+
+      // If it's some other error, throw as before
+      console.error('replaceTicketServices: insert error', insErr);
+      throw insErr;
     }
   }
 

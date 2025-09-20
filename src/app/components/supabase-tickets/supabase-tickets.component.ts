@@ -1,7 +1,9 @@
-import { Component, OnInit, inject, HostListener } from '@angular/core';
+import { Component, OnInit, inject, HostListener, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
+import { TicketModalService } from '../../services/ticket-modal.service';
 import { SupabaseTicketsService, Ticket, TicketStage, TicketStats } from '../../services/supabase-tickets.service';
 import { SupabaseServicesService, Service } from '../../services/supabase-services.service';
 import { SimpleSupabaseService, SimpleClient } from '../../services/simple-supabase.service';
@@ -29,6 +31,8 @@ export interface TagWithCount extends TicketTag {
   styleUrl: './supabase-tickets.component.scss'
 })
 export class SupabaseTicketsComponent implements OnInit {
+  // Emit when the internal modal is closed so dynamic hosts can cleanup
+  modalClosed: EventEmitter<void> = new EventEmitter<void>();
   
   // Company selector for development
   selectedCompanyId: string = ''; // Will be set from first available company
@@ -113,6 +117,8 @@ export class SupabaseTicketsComponent implements OnInit {
   private servicesService = inject(SupabaseServicesService);
   private simpleSupabase = inject(SimpleSupabaseService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private ticketModalService = inject(TicketModalService);
   private devicesService = inject(DevicesService);
 
   private isValidUuid(id: string | undefined | null): boolean {
@@ -122,6 +128,32 @@ export class SupabaseTicketsComponent implements OnInit {
 
   ngOnInit() {
     this.initializeComponent();
+  }
+
+  // Listen to programmatic modal open requests from other components
+  ngAfterViewInit() {
+    this.ticketModalService.open$.subscribe(async (ticket) => {
+      console.debug('[SupabaseTickets] ticketModalService.open$ event received', ticket && (ticket.id || ticket));
+      // If we received an id, load the ticket first
+      let toOpen = ticket;
+      if (typeof ticket === 'string') {
+        try {
+          const { data: ticketData, error } = await this.simpleSupabase.getClient()
+            .from('tickets')
+            .select(`*, client:clients(id, name, email, phone), stage:ticket_stages(id, name, color, position), company:companies(id, name)`)
+            .eq('id', ticket)
+            .single();
+          if (!error) toOpen = ticketData;
+        } catch (e) {
+          console.warn('No se pudo cargar ticket para editar:', e);
+          return;
+        }
+      }
+
+      if (toOpen) {
+        this.openForm(toOpen as any);
+      }
+    });
   }
 
   private async initializeComponent() {
@@ -1046,17 +1078,53 @@ export class SupabaseTicketsComponent implements OnInit {
       const totalHours = this.getTotalEstimatedHours();
       
       // Add company_id to form data
+      // Compute total amount from selected services (unit price * quantity)
+      const servicesTotal = (this.selectedServices || []).reduce((sum, s) => {
+        const unit = typeof s.service.base_price === 'number' ? s.service.base_price : 0;
+        const qty = Math.max(1, Number(s.quantity || 1));
+        return sum + (unit * qty);
+      }, 0);
+
       const dataWithCompany = {
         ...this.formData,
         company_id: this.selectedCompanyId,
-        estimated_hours: totalHours > 0 ? totalHours : this.formData.estimated_hours
+        estimated_hours: totalHours > 0 ? totalHours : this.formData.estimated_hours,
+        total_amount: Number(servicesTotal.toFixed(2))
       };
 
       let savedTicket;
       if (this.editingTicket) {
         savedTicket = await this.ticketsService.updateTicket(this.editingTicket.id, dataWithCompany);
       } else {
-        savedTicket = await this.ticketsService.createTicket(dataWithCompany);
+        // Build service items payload
+        const items = (this.selectedServices || []).map(s => ({
+          service_id: s.service.id,
+          quantity: s.quantity || 1,
+          unit_price: typeof s.service.base_price === 'number' ? s.service.base_price : 0
+        }));
+        savedTicket = await this.ticketsService.createTicketWithServices(dataWithCompany, items);
+      }
+
+      // If updateTicket/createTicket returned an object but didn't include total_amount,
+      // ensure local reference has the amount we computed so subsequent operations use it.
+      if (savedTicket && typeof savedTicket === 'object') {
+        try {
+          (savedTicket as any).total_amount = (savedTicket as any).total_amount ?? dataWithCompany.total_amount;
+        } catch {}
+      }
+
+      // Persist selected services into ticket_services only when updating an existing ticket
+      if (this.editingTicket) {
+        try {
+          const items = (this.selectedServices || []).map(s => ({
+            service_id: s.service.id,
+            quantity: s.quantity || 1,
+            unit_price: typeof s.service.base_price === 'number' ? s.service.base_price : 0
+          }));
+          await this.ticketsService.replaceTicketServices(savedTicket.id, this.selectedCompanyId, items);
+        } catch (svcErr) {
+          console.warn('No se pudieron guardar los servicios del ticket:', svcErr);
+        }
       }
 
       // Sincronizar tags seleccionadas con la relación ticket_tag_relations

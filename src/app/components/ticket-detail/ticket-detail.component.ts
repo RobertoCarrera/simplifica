@@ -1,10 +1,12 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ViewChild, ViewContainerRef, ComponentRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SimpleSupabaseService } from '../../services/simple-supabase.service';
 import { SupabaseTicketsService, Ticket, TicketStage } from '../../services/supabase-tickets.service';
+import { SupabaseTicketsComponent } from '../supabase-tickets/supabase-tickets.component';
 import { DevicesService, Device } from '../../services/devices.service';
+import { TicketModalService } from '../../services/ticket-modal.service';
 
 @Component({
   selector: 'app-ticket-detail',
@@ -54,26 +56,22 @@ import { DevicesService, Device } from '../../services/devices.service';
           </div>
         </div>
 
-        <!-- Ticket Detail -->
-        <div *ngIf="!loading && !error && ticket" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <!-- Ticket Detail -->
+  <div *ngIf="!loading && !error && ticket" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
           
           <!-- Main Content (Left Side) -->
-          <div class="lg:col-span-2 space-y-6">
+          <div class="space-y-6 lg:col-span-3">
             
             <!-- Ticket Header -->
             <div class="bg-white shadow rounded-lg p-6">
               <div class="flex justify-between items-start mb-4">
                 <div>
                   <h1 class="text-2xl font-bold text-gray-900">
-                    🎫 Ticket #{{ ticket.ticket_number }}
+                    🎫 #{{ ticket.ticket_number }} - {{ ticket.title }}
                   </h1>
-                  <h2 class="text-xl text-gray-700 mt-1">{{ ticket.title }}</h2>
+                  <div class="prose prose-sm text-gray-700 mt-2" [innerHTML]="formatDescription(ticket.description)"></div>
                 </div>
                 <div class="flex flex-col items-end space-y-2">
-                  <span [style.background-color]="ticket.stage?.color || '#6b7280'"
-                        class="px-3 py-1 rounded-full text-sm font-medium text-white">
-                    {{ ticket.stage?.name || 'Sin estado' }}
-                  </span>
                   <span [class]="getPriorityClasses(ticket.priority)"
                         class="px-2 py-1 rounded text-xs font-medium">
                     {{ getPriorityLabel(ticket.priority) }}
@@ -93,65 +91,12 @@ import { DevicesService, Device } from '../../services/devices.service';
                 </div>
               </div>
               
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <span class="text-sm font-medium text-gray-500">Cliente</span>
-                  <p class="mt-1 text-sm text-gray-900">{{ ticket.client?.name || 'N/A' }}</p>
-                  <p class="text-sm text-gray-600">{{ ticket.client?.email || '' }}</p>
-                  <p *ngIf="ticket.client?.phone" class="text-sm text-gray-600">{{ ticket.client?.phone }}</p>
-                </div>
-                <div>
-                  <span class="text-sm font-medium text-gray-500">Fechas</span>
-                  <p class="mt-1 text-sm text-gray-900">
-                    <span class="font-medium">Creado:</span> {{ formatDate(ticket.created_at) }}
-                  </p>
-                  <p *ngIf="ticket.due_date" class="text-sm text-gray-900">
-                    <span class="font-medium">Vencimiento:</span> {{ formatDate(ticket.due_date) }}
-                    <span *ngIf="isOverdue()" class="text-red-600 ml-1">⚠️ Vencido</span>
-                  </p>
-                </div>
-                <div>
-                  <span class="text-sm font-medium text-gray-500">Horas</span>
-                  <p class="mt-1 text-sm text-gray-900">
-                    <span class="font-medium">Estimadas:</span> {{ getEstimatedHours() }}h
-                  </p>
-                  <p class="text-sm text-gray-900">
-                    <span class="font-medium">Reales:</span> {{ getActualHours() }}h
-                  </p>
-                </div>
+              <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+              <div class="flex justify-between text-sm text-gray-600">
+                <span>Progreso</span>
+                <span>{{ getProgressPercentage() }}%</span>
               </div>
-            </div>
-
-            <!-- Progress Bar -->
-            <div class="bg-white shadow rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Estado del Ticket</h3>
-              
-              <!-- Current Stage Display -->
-              <div class="flex items-center justify-between mb-4 p-4 bg-gray-50 rounded-lg">
-                <div class="flex items-center space-x-3">
-                  <div [class]="'w-4 h-4 rounded-full ' + (ticket.stage?.color || 'bg-blue-500')"></div>
-                  <div>
-                    <p class="font-medium text-gray-900">{{ ticket.stage?.name || 'Sin estado' }}</p>
-                    <p class="text-sm text-gray-500">Estado actual</p>
-                  </div>
-                </div>
-                <button 
-                  (click)="changeStage()" 
-                  class="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
-                >
-                  Cambiar
-                </button>
-              </div>
-
-              <!-- Progress Indicator (Simple) -->
-              <div class="space-y-4">
-                <div class="flex justify-between text-sm text-gray-600">
-                  <span>Progreso</span>
-                  <span>{{ getProgressPercentage() }}%</span>
-                </div>
-                
-                <!-- Progress Bar with Stage Markers -->
-                <div class="relative">
+              <div class="relative">
                   <!-- Progress Bar Background -->
                   <div class="w-full bg-gray-200 rounded-full h-3 relative">
                     <div 
@@ -186,12 +131,6 @@ import { DevicesService, Device } from '../../services/devices.service';
               </div>
             </div>
 
-            <!-- Description -->
-            <div *ngIf="ticket.description" class="bg-white shadow rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-3">Descripción</h3>
-              <div class="prose prose-sm text-gray-700" [innerHTML]="formatDescription(ticket.description)"></div>
-            </div>
-
             <!-- Services -->
             <div class="bg-white shadow rounded-lg p-6">
               <h3 class="text-lg font-medium text-gray-900 mb-4">Servicios Asignados</h3>
@@ -214,8 +153,8 @@ import { DevicesService, Device } from '../../services/devices.service';
                       </div>
                     </div>
                     <div class="text-right">
-                      <p class="font-medium text-gray-900">{{ formatPrice(serviceItem.service?.base_price || 0) }}</p>
-                      <p class="text-sm text-gray-600">Total: {{ formatPrice((serviceItem.service?.base_price || 0) * (serviceItem.quantity || 1)) }}</p>
+                      <p class="font-medium text-gray-900">{{ formatPrice(getUnitPrice(serviceItem)) }}</p>
+                      <p class="text-sm text-gray-600">Total: {{ formatPrice(getLineTotal(serviceItem)) }}</p>
                     </div>
                   </div>
                 </div>
@@ -297,9 +236,10 @@ import { DevicesService, Device } from '../../services/devices.service';
               </div>
             </div>
           </div>
+          
 
           <!-- Sidebar (Right Side) -->
-          <div class="space-y-6">
+          <div class="space-y-6 lg:col-span-1">
             
             <!-- Quick Stats -->
             <div class="bg-white shadow rounded-lg p-6">
@@ -550,6 +490,9 @@ import { DevicesService, Device } from '../../services/devices.service';
         </div>
       }
     </div>
+
+      <!-- Dynamic modal host: used to instantiate the central tickets modal in-place when needed -->
+      <ng-template #modalHost></ng-template>
   `
 })
 export class TicketDetailComponent implements OnInit {
@@ -577,17 +520,21 @@ export class TicketDetailComponent implements OnInit {
   showChangeStageModal = false;
   showUpdateHoursModal = false;
   showAttachmentModal = false;
-  
+
   // Modal form data
   selectedStageId: string = '';
   newHoursValue: number = 0;
   selectedFile: File | null = null;
+  // Edit modal form data (handled by central modal)
   
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private supabase = inject(SimpleSupabaseService);
   private ticketsService = inject(SupabaseTicketsService);
   private devicesService = inject(DevicesService);
+  private ticketModalService = inject(TicketModalService);
+  @ViewChild('modalHost', { read: ViewContainerRef, static: true }) modalHost!: ViewContainerRef;
+  private modalComponentRef: ComponentRef<SupabaseTicketsComponent> | null = null;
 
   ngOnInit() {
     this.route.params.subscribe(params => {
@@ -806,9 +753,62 @@ export class TicketDetailComponent implements OnInit {
   }
 
   editTicket() {
-    // TODO: abrir modal de edición o navegar a página de edición
-    console.log('Editar ticket:', this.ticketId);
+    // Request the centralized tickets modal to open for editing this ticket.
+    if (!this.ticket) return;
+
+    // Quick debug log so we can see the click fired
+    try { console.debug('[TicketDetail] editTicket clicked', this.ticket.id); } catch (e) {}
+
+    // If someone is subscribed to the modal service, request open; otherwise fallback to navigate
+    try {
+      if (this.ticketModalService.hasSubscribers && this.ticketModalService.hasSubscribers()) {
+        console.debug('[TicketDetail] Found modal subscribers, requesting open via service');
+        this.ticketModalService.requestOpen(this.ticket);
+      } else {
+        console.warn('[TicketDetail] No modal subscribers detected — instantiating modal in-place');
+        try {
+          this.openModalInPlace(this.ticket);
+        } catch (e) {
+          console.error('[TicketDetail] Failed to open modal in-place, falling back to navigation', e);
+          this.router.navigate(['/tickets'], { queryParams: { edit: this.ticket.id } });
+        }
+      }
+    } catch (e) {
+      console.error('[TicketDetail] Error while requesting modal open, falling back to navigation', e);
+      this.router.navigate(['/tickets'], { queryParams: { edit: this.ticket.id } });
+    }
   }
+
+  openModalInPlace(ticket: Ticket) {
+    // Clear previous if any
+    if (this.modalComponentRef) {
+      this.modalComponentRef.instance.closeForm();
+      this.modalComponentRef.destroy();
+      this.modalComponentRef = null;
+    }
+
+    // Create component dynamically inside this view
+    this.modalHost.clear();
+    const compRef = this.modalHost.createComponent(SupabaseTicketsComponent as any);
+    this.modalComponentRef = compRef as ComponentRef<SupabaseTicketsComponent>;
+
+    // Wait a tick and call openForm
+    setTimeout(async () => {
+      try {
+        await this.modalComponentRef!.instance.openForm(ticket as any);
+        // Subscribe to close event to cleanup
+        if (this.modalComponentRef!.instance.modalClosed) {
+          this.modalComponentRef!.instance.modalClosed.subscribe(() => {
+            try { this.modalComponentRef!.destroy(); } catch (e) {}
+            this.modalComponentRef = null;
+          });
+        }
+      } catch (err) {
+        console.error('[TicketDetail] Error calling openForm on dynamic modal instance', err);
+      }
+    }, 0);
+  }
+
 
   async deleteTicket() {
     if (!confirm('¿Estás seguro de que deseas eliminar este ticket?')) return;
@@ -1103,11 +1103,7 @@ export class TicketDetailComponent implements OnInit {
   }
 
   calculateServicesTotal(): number {
-    return this.ticketServices.reduce((sum, serviceItem) => {
-      const price = serviceItem.service?.base_price || 0;
-      const quantity = serviceItem.quantity || 1;
-      return sum + (price * quantity);
-    }, 0);
+    return this.ticketServices.reduce((sum, serviceItem) => sum + this.getLineTotal(serviceItem), 0);
   }
 
   calculateEstimatedHours(): number {
@@ -1145,5 +1141,18 @@ export class TicketDetailComponent implements OnInit {
 
   getCompanyName(): string {
     return (this.ticket as any)?.company?.name || '';
+  }
+
+  // Pricing helpers: prefer persisted values from ticket_services with fallback to service.base_price
+  getUnitPrice(item: any): number {
+    const fromRelation = typeof item?.price_per_unit === 'number' ? item.price_per_unit : null;
+    const fromService = typeof item?.service?.base_price === 'number' ? item.service.base_price : 0;
+    return (fromRelation ?? fromService) || 0;
+  }
+
+  getLineTotal(item: any): number {
+    if (typeof item?.total_price === 'number') return item.total_price;
+    const qty = Math.max(1, Number(item?.quantity || 1));
+    return this.getUnitPrice(item) * qty;
   }
 }

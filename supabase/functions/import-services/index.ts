@@ -237,14 +237,42 @@ serve(async (req: Request) => {
         const existingMap = new Map((existingTags || []).map((t: any) => [t.name.toLowerCase(), t.id]));
         const toCreate = uniqueNames.filter((n) => !existingMap.has(n)).map((n) => ({ name: n, company_id: svc.company_id, is_active: true }));
         if (toCreate.length) {
-          const { data: newTags } = await supabaseAdmin.from("service_tags").insert(toCreate).select();
-          (newTags || []).forEach((t: any) => existingMap.set(t.name.toLowerCase(), t.id));
+          // Use upsert on (company_id, name) to avoid conflicts when tags already exist
+          try {
+            const { data: newTags, error: upsertErr } = await supabaseAdmin
+              .from("service_tags")
+              .upsert(toCreate, { onConflict: 'company_id,name' })
+              .select();
+            if (upsertErr) {
+              console.warn('import-services: warning upserting tags', upsertErr);
+            }
+            (newTags || []).forEach((t: any) => existingMap.set(String(t.name).toLowerCase(), t.id));
+          } catch (e) {
+            console.warn('import-services: unexpected error upserting tags, falling back to insert try', e);
+            try {
+              const { data: newTags } = await supabaseAdmin.from("service_tags").insert(toCreate).select();
+              (newTags || []).forEach((t: any) => existingMap.set(String(t.name).toLowerCase(), t.id));
+            } catch (e2) {
+              console.warn('import-services: failed to create tags', e2);
+            }
+          }
         }
         const tagIds = uniqueNames.map((n) => existingMap.get(n)).filter(Boolean);
         if (tagIds.length) {
           const relations = tagIds.map((tid: string) => ({ service_id: svc.id, tag_id: tid }));
-          try { await supabaseAdmin.from("service_tag_relations").insert(relations).select(); }
-          catch (relErr) { console.warn("import-services: failed to insert tag relations", relErr, relations); }
+          try {
+            // Use upsert on the relation primary key (service_id, tag_id) to ignore duplicates
+            const { error: relErr } = await supabaseAdmin
+              .from("service_tag_relations")
+              .upsert(relations, { onConflict: 'service_id,tag_id' });
+            if (relErr) {
+              console.warn("import-services: warning upserting tag relations", relErr, relations);
+            }
+          } catch (relErr) {
+            console.warn("import-services: failed to upsert tag relations, falling back to insert", relErr, relations);
+            try { await supabaseAdmin.from("service_tag_relations").insert(relations).select(); }
+            catch (e) { console.warn("import-services: failed to insert tag relations", e, relations); }
+          }
         }
       }
 
