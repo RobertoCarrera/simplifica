@@ -1,10 +1,9 @@
-import { Component, OnInit, inject, ViewChild, ViewContainerRef, ComponentRef } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SimpleSupabaseService } from '../../services/simple-supabase.service';
 import { SupabaseTicketsService, Ticket, TicketStage } from '../../services/supabase-tickets.service';
-import { SupabaseTicketsComponent } from '../supabase-tickets/supabase-tickets.component';
 import { DevicesService, Device } from '../../services/devices.service';
 import { TicketModalService } from '../../services/ticket-modal.service';
 
@@ -26,12 +25,16 @@ import { TicketModalService } from '../../services/ticket-modal.service';
           
           <!-- Quick Actions -->
           <div *ngIf="!loading && !error && ticket" class="flex space-x-2">
-            <button (click)="editTicket()" 
-                    class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700">
-              ✏️ Editar
+            <button (click)="updateHours()" 
+                    class="w-full px-4 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100">
+              ⏱️ Actualizar Horas
+            </button>
+            <button (click)="printTicket()" 
+                    class="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100">
+              🖨️ Imprimir
             </button>
             <button (click)="deleteTicket()" 
-                    class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700">
+                    class="w-full inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700">
               🗑️ Eliminar
             </button>
           </div>
@@ -205,11 +208,17 @@ import { TicketModalService } from '../../services/ticket-modal.service';
                     <input type="checkbox" [(ngModel)]="isInternalComment" class="mr-2">
                     Comentario interno (no visible para el cliente)
                   </label>
-                  <button (click)="addComment()" 
-                          [disabled]="!newComment.trim()"
-                          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-300">
-                    💬 Añadir Comentario
-                  </button>
+                  <div>
+                    <button (click)="addAttachment()" 
+                            class="px-4 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100">
+                      📎 Adjuntar Archivo
+                    </button>
+                    <button (click)="addComment()" 
+                            [disabled]="!newComment.trim()"
+                            class="ms-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-300">
+                      💬 Añadir Comentario
+                    </button>
+                  </div>
                 </div>
               </div>
               
@@ -267,7 +276,9 @@ import { TicketModalService } from '../../services/ticket-modal.service';
 
             <!-- Timeline -->
             <div class="bg-white shadow rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Timeline</h3>
+              <div class="flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Timeline</h3>
+              </div>
               <div class="space-y-4">
                 <div class="flex items-start space-x-3">
                   <div class="flex-shrink-0 w-2 h-2 bg-green-500 rounded-full mt-2"></div>
@@ -292,36 +303,11 @@ import { TicketModalService } from '../../services/ticket-modal.service';
                     <p class="text-xs text-gray-500">{{ formatDate(activity.created_at) }}</p>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="bg-white shadow rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Acciones</h3>
-              <div class="space-y-3">
                 <button (click)="changeStage()" 
-                        class="w-full px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100">
+                        class="px-1 py-1 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100">
                   🔄 Cambiar Estado
                 </button>
-                <button (click)="updateHours()" 
-                        class="w-full px-4 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100">
-                  ⏱️ Actualizar Horas
-                </button>
-                <button (click)="addAttachment()" 
-                        class="w-full px-4 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100">
-                  📎 Adjuntar Archivo
-                </button>
-                <button (click)="printTicket()" 
-                        class="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100">
-                  🖨️ Imprimir
-                </button>
               </div>
-            </div>
-
-            <!-- Company Info -->
-            <div *ngIf="getCompanyName()" class="bg-white shadow rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-2">Empresa</h3>
-              <p class="text-sm text-gray-700">{{ getCompanyName() }}</p>
             </div>
           </div>
         </div>
@@ -491,8 +477,115 @@ import { TicketModalService } from '../../services/ticket-modal.service';
       }
     </div>
 
-      <!-- Dynamic modal host: used to instantiate the central tickets modal in-place when needed -->
-      <ng-template #modalHost></ng-template>
+  <!-- Inline Edit Modal will be rendered from component state -->
+      @if (showEditModal) {
+        <div class="modal-overlay" (click)="closeEditModal()">
+          <div class="modal-content max-w-3xl" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2 class="modal-title">✏️ Editar Ticket</h2>
+              <button (click)="closeEditModal()" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body space-y-4">
+              <div class="form-group">
+                <label class="form-label">Título</label>
+                <input type="text" class="form-input" [(ngModel)]="editingFormData.title" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Descripción</label>
+                <textarea class="form-input" rows="4" [(ngModel)]="editingFormData.description"></textarea>
+              </div>
+
+              <div class="form-row grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="form-group">
+                  <label class="form-label">Cliente</label>
+                  <div class="customer-search-container">
+                    <input type="text" class="form-input" [(ngModel)]="customerSearchText" (input)="filterCustomers()" (focus)="onCustomerSearchFocus()" autocomplete="off" placeholder="Buscar cliente..." />
+                    <div *ngIf="showCustomerDropdown && filteredCustomers.length > 0" class="customer-dropdown bg-white border mt-1 max-h-40 overflow-auto">
+                      <div *ngFor="let c of filteredCustomers" class="p-2 hover:bg-gray-100 cursor-pointer" (click)="selectCustomer(c)">
+                        <div class="font-medium">{{ c.name }}</div>
+                        <div class="text-xs text-gray-500">{{ c.email }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Estado</label>
+                  <select class="form-input" [(ngModel)]="editingFormData.stage_id">
+                    <option value="">Seleccionar estado</option>
+                    <option *ngFor="let s of allStages" [value]="s.id">{{ s.name }}</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Prioridad</label>
+                  <select class="form-input" [(ngModel)]="editingFormData.priority">
+                    <option value="low">Baja</option>
+                    <option value="normal">Normal</option>
+                    <option value="high">Alta</option>
+                    <option value="critical">Crítica</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="services-section">
+                <div class="services-header">
+                  <h4>Servicios</h4>
+                </div>
+
+                <div class="search-container mb-2">
+                  <input type="text" class="form-input" placeholder="Buscar servicios..." [(ngModel)]="serviceSearchText" (input)="filterServices()" />
+                </div>
+
+                <div class="available-services max-h-40 overflow-auto mb-2">
+                  <div *ngFor="let svc of filteredServices" class="p-2 border-b flex items-center justify-between">
+                    <div>
+                      <div class="font-medium">{{ svc.name }}</div>
+                      <div class="text-xs text-gray-500">{{ svc.description }}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <div class="text-sm text-gray-700">{{ svc.base_price }}€</div>
+                      <button class="btn btn-sm btn-outline" (click)="addServiceToEdit(svc)">Añadir</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div *ngIf="selectedServices.length > 0" class="selected-services">
+                  <h5 class="mb-2">Servicios Seleccionados</h5>
+                  <div *ngFor="let it of selectedServices" class="flex items-center gap-3 mb-2">
+                    <div class="flex-1">
+                      <div class="font-medium">{{ it.service.name }}</div>
+                      <div class="text-xs text-gray-500">{{ it.service.category }} • {{ it.service.estimated_hours }}h</div>
+                    </div>
+                    <div class="w-28">
+                      <input type="number" min="1" class="form-input" [value]="it.quantity" (input)="updateServiceQuantityInEdit(it.service.id, +$any($event.target).value)" />
+                    </div>
+                    <button class="btn btn-danger" (click)="removeServiceFromEdit(it.service.id)">Eliminar</button>
+                  </div>
+
+                  <div class="mt-3 border-t pt-2">
+                    <div class="flex justify-between text-sm">
+                      <span>Total servicios:</span>
+                      <strong>{{ getSelectedServicesTotalForEdit() }}€</strong>
+                    </div>
+                  </div>
+                </div>
+                <div *ngIf="selectedServices.length === 0" class="text-sm text-gray-500">No has seleccionado servicios aún</div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Tags (separados por coma)</label>
+                <input class="form-input" type="text" [(ngModel)]="editingTagsString" />
+              </div>
+
+            </div>
+            <div class="modal-footer flex justify-end space-x-2">
+              <button class="btn btn-secondary" (click)="closeEditModal()">Cancelar</button>
+              <button class="btn btn-primary" (click)="saveEdit()">Guardar Cambios</button>
+            </div>
+          </div>
+        </div>
+      }
   `
 })
 export class TicketDetailComponent implements OnInit {
@@ -533,8 +626,13 @@ export class TicketDetailComponent implements OnInit {
   private ticketsService = inject(SupabaseTicketsService);
   private devicesService = inject(DevicesService);
   private ticketModalService = inject(TicketModalService);
-  @ViewChild('modalHost', { read: ViewContainerRef, static: true }) modalHost!: ViewContainerRef;
-  private modalComponentRef: ComponentRef<SupabaseTicketsComponent> | null = null;
+
+  // Inline Edit Modal state
+  showEditModal = false;
+  editingFormData: Partial<Ticket> = {};
+  editingSelectedServices: Array<{ service: any; quantity: number }> = [];
+  editingSelectedTags: string[] = [];
+  editingTagsString: string = '';
 
   ngOnInit() {
     this.route.params.subscribe(params => {
@@ -546,6 +644,90 @@ export class TicketDetailComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  // Data for edit modal helper features
+  companies: any[] = [];
+  customers: any[] = [];
+  filteredCustomers: any[] = [];
+  showCustomerDropdown = false;
+  customerSearchText = '';
+  selectedCustomer: any = null;
+
+  servicesCatalog: any[] = [];
+  filteredServices: any[] = [];
+  serviceSearchText = '';
+
+  selectedServices: Array<{ service: any; quantity: number }> = [];
+
+  // Load catalogs needed for modal
+  private async ensureModalCatalogs() {
+    try {
+      // companies (if multi-tenant)
+      const { data: comps } = await this.supabase.getClient().from('companies').select('id,name').limit(100);
+      this.companies = comps || [];
+
+      // services catalog
+      const { data: services } = await this.supabase.getClient().from('services').select('*').order('name');
+      this.servicesCatalog = services || [];
+      this.filteredServices = this.servicesCatalog.slice(0, 10);
+
+      // customers for selected company
+      if (this.ticket?.company_id) {
+        const { data: clients } = await this.supabase.getClient().from('clients').select('*').eq('company_id', this.ticket.company_id).limit(200);
+        this.customers = clients || [];
+        this.filteredCustomers = this.customers.slice(0, 10);
+      }
+    } catch (err) {
+      console.warn('Error loading modal catalogs', err);
+    }
+  }
+
+  filterCustomers() {
+    const q = (this.customerSearchText || '').toLowerCase();
+    if (!q) {
+      this.filteredCustomers = this.customers.slice(0, 10);
+      return;
+    }
+    this.filteredCustomers = this.customers.filter(c => (c.name || '').toLowerCase().includes(q) || (c.email || '').toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q)).slice(0, 50);
+  }
+
+  selectCustomer(c: any) {
+    this.selectedCustomer = c;
+    this.customerSearchText = c.name;
+    this.showCustomerDropdown = false;
+  }
+
+  onCustomerSearchFocus() { this.showCustomerDropdown = true; }
+  onCustomerSearchBlur() { setTimeout(()=> this.showCustomerDropdown = false, 200); }
+
+  filterServices() {
+    const q = (this.serviceSearchText || '').toLowerCase();
+    if (!q) {
+      this.filteredServices = this.servicesCatalog.slice(0, 10);
+      return;
+    }
+    this.filteredServices = this.servicesCatalog.filter(s => (s.name||'').toLowerCase().includes(q) || (s.description||'').toLowerCase().includes(q) || (s.category||'').toLowerCase().includes(q)).slice(0, 200);
+  }
+
+  isServiceSelected(id: string) { return this.selectedServices.findIndex(x => x.service.id === id) !== -1; }
+
+  addServiceToEdit(service: any) {
+    if (this.isServiceSelected(service.id)) return;
+    this.selectedServices.push({ service, quantity: 1 });
+  }
+
+  removeServiceFromEdit(serviceId: string) {
+    this.selectedServices = this.selectedServices.filter(s => s.service.id !== serviceId);
+  }
+
+  updateServiceQuantityInEdit(serviceId: string, qty: number) {
+    const it = this.selectedServices.find(s => s.service.id === serviceId);
+    if (it) it.quantity = Math.max(1, Math.floor(qty));
+  }
+
+  getSelectedServicesTotalForEdit() {
+    return this.selectedServices.reduce((sum, it) => sum + ((it.service.base_price || 0) * (it.quantity || 1)), 0);
   }
 
   async loadTicketDetail() {
@@ -759,54 +941,124 @@ export class TicketDetailComponent implements OnInit {
     // Quick debug log so we can see the click fired
     try { console.debug('[TicketDetail] editTicket clicked', this.ticket.id); } catch (e) {}
 
-    // If someone is subscribed to the modal service, request open; otherwise fallback to navigate
-    try {
-      if (this.ticketModalService.hasSubscribers && this.ticketModalService.hasSubscribers()) {
-        console.debug('[TicketDetail] Found modal subscribers, requesting open via service');
-        this.ticketModalService.requestOpen(this.ticket);
-      } else {
-        console.warn('[TicketDetail] No modal subscribers detected — instantiating modal in-place');
-        try {
-          this.openModalInPlace(this.ticket);
-        } catch (e) {
-          console.error('[TicketDetail] Failed to open modal in-place, falling back to navigation', e);
-          this.router.navigate(['/tickets'], { queryParams: { edit: this.ticket.id } });
-        }
-      }
-    } catch (e) {
-      console.error('[TicketDetail] Error while requesting modal open, falling back to navigation', e);
-      this.router.navigate(['/tickets'], { queryParams: { edit: this.ticket.id } });
-    }
+    // Open inline edit modal in this component
+    if (!this.ticket) return;
+    // Prefill form data
+    this.editingFormData = {
+      title: this.ticket.title,
+      description: this.ticket.description,
+      stage_id: this.ticket.stage_id,
+      priority: this.ticket.priority,
+      estimated_hours: this.ticket.estimated_hours,
+      actual_hours: this.ticket.actual_hours,
+      total_amount: this.ticket.total_amount,
+      company_id: (this.ticket as any).company_id || (this.ticket as any).company?.id
+    };
+
+  // Prefill services and tags
+    this.editingSelectedServices = (this.ticketServices || []).map(s => ({ service: s.service, quantity: s.quantity || 1 }));
+    this.selectedServices = this.editingSelectedServices.map(s => ({ service: s.service, quantity: s.quantity }));
+    this.editingSelectedTags = [...(this.ticketTags || [])];
+    this.editingTagsString = this.editingSelectedTags.join(', ');
+
+    // Prefill customer
+    this.selectedCustomer = this.ticket?.client || null;
+    this.customerSearchText = this.selectedCustomer ? this.selectedCustomer.name : '';
+
+    // Ensure catalogs loaded
+    this.ensureModalCatalogs();
+
+    this.showEditModal = true;
+    document.body.classList.add('modal-open');
+  }
+  
+  closeEditModal() {
+    this.showEditModal = false;
+    this.editingFormData = {};
+    this.editingSelectedServices = [];
+    this.editingSelectedTags = [];
+    this.editingTagsString = '';
+    document.body.classList.remove('modal-open');
   }
 
-  openModalInPlace(ticket: Ticket) {
-    // Clear previous if any
-    if (this.modalComponentRef) {
-      this.modalComponentRef.instance.closeForm();
-      this.modalComponentRef.destroy();
-      this.modalComponentRef = null;
-    }
+  updateEditingServiceQuantity(serviceId: string, qty: number) {
+    const it = this.editingSelectedServices.find(s => s.service?.id === serviceId);
+    if (it) it.quantity = Math.max(1, Math.floor(qty));
+  }
 
-    // Create component dynamically inside this view
-    this.modalHost.clear();
-    const compRef = this.modalHost.createComponent(SupabaseTicketsComponent as any);
-    this.modalComponentRef = compRef as ComponentRef<SupabaseTicketsComponent>;
+  removeEditingService(serviceId: string) {
+    this.editingSelectedServices = this.editingSelectedServices.filter(s => s.service?.id !== serviceId);
+  }
 
-    // Wait a tick and call openForm
-    setTimeout(async () => {
-      try {
-        await this.modalComponentRef!.instance.openForm(ticket as any);
-        // Subscribe to close event to cleanup
-        if (this.modalComponentRef!.instance.modalClosed) {
-          this.modalComponentRef!.instance.modalClosed.subscribe(() => {
-            try { this.modalComponentRef!.destroy(); } catch (e) {}
-            this.modalComponentRef = null;
-          });
-        }
-      } catch (err) {
-        console.error('[TicketDetail] Error calling openForm on dynamic modal instance', err);
+  async saveEdit() {
+    if (!this.ticket) return;
+    try {
+      // Prepare ticket patch
+      const patch: any = {
+        title: this.editingFormData.title,
+        description: this.editingFormData.description,
+        stage_id: this.editingFormData.stage_id,
+        priority: this.editingFormData.priority,
+        estimated_hours: this.editingFormData.estimated_hours,
+        actual_hours: this.editingFormData.actual_hours,
+        total_amount: this.editingFormData.total_amount
+      };
+
+      // Validate: ensure at least one service
+      if ((!this.selectedServices || this.selectedServices.length === 0) && (!this.editingSelectedServices || this.editingSelectedServices.length === 0)) {
+        alert('Debe asignar al menos un servicio al ticket.');
+        return;
       }
-    }, 0);
+
+      // If user selected a customer in modal, set client_id
+      if (this.selectedCustomer && this.selectedCustomer.id) {
+        patch.client_id = this.selectedCustomer.id;
+      }
+
+      // Update ticket
+      const { error: updErr } = await this.supabase.getClient()
+        .from('tickets')
+        .update(patch)
+        .eq('id', this.ticket.id);
+
+      if (updErr) throw updErr;
+
+      // Prepare services items for replaceTicketServices
+  // prefer selectedServices (the richer UI), fall back to editingSelectedServices
+  const items = (this.selectedServices && this.selectedServices.length > 0 ? this.selectedServices : this.editingSelectedServices || []).map(s => ({ service_id: s.service.id, quantity: s.quantity }));
+
+      // Call service to replace ticket services (uses fallbacks internally)
+  const companyIdForReplace = String(patch.company_id || this.ticket.company_id || (this.ticket as any).company?.id || '');
+      await this.ticketsService.replaceTicketServices(this.ticket.id, companyIdForReplace, items);
+
+      // Optionally update tags: delete existing relations and re-insert
+      // Parse tags string into array
+      this.editingSelectedTags = (this.editingTagsString || '').split(',').map((t:any) => String(t || '').trim()).filter(Boolean);
+      try {
+        await this.supabase.getClient().from('ticket_tag_relations').delete().eq('ticket_id', this.ticket.id);
+        for (const tagName of this.editingSelectedTags || []) {
+          const { data: found } = await this.supabase.getClient().from('ticket_tags').select('id').ilike('name', tagName).limit(1).single();
+          let tagId = found?.id;
+          if (!tagId) {
+            const { data: created } = await this.supabase.getClient().from('ticket_tags').insert({ name: tagName, company_id: this.ticket.company_id }).select('id').single();
+            tagId = created?.id;
+          }
+          if (tagId) {
+            await this.supabase.getClient().from('ticket_tag_relations').insert({ ticket_id: this.ticket.id, tag_id: tagId });
+          }
+        }
+      } catch (tagErr) {
+        console.warn('Warning: tags update failed (ignored)', tagErr);
+      }
+
+      // Reload ticket detail
+      await this.loadTicketDetail();
+      this.closeEditModal();
+      alert('Ticket actualizado correctamente');
+    } catch (error: any) {
+      console.error('Error guardando edición:', error);
+      alert('Error al guardar los cambios: ' + (error.message || error));
+    }
   }
 
 
