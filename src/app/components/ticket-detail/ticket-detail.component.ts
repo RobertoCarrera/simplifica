@@ -14,6 +14,14 @@ import { TicketModalService } from '../../services/ticket-modal.service';
   styleUrls: ['./ticket-detail.component.scss'],
   template: `
     <div class="min-h-screen bg-gray-50 py-8">
+      <!-- Toasts -->
+      <div class="fixed right-4 bottom-4 space-y-2 z-50">
+        <div *ngFor="let t of toasts" class="px-4 py-2 rounded shadow flex items-center justify-between space-x-4"
+             [ngClass]="{ 'bg-green-600 text-white': t.type === 'success', 'bg-red-600 text-white': t.type === 'error', 'bg-gray-800 text-white': t.type === 'info' }">
+          <div class="text-sm">{{ t.msg }}</div>
+          <button class="text-sm opacity-80 hover:opacity-100 ml-2" (click)="closeToast(t.id)">✕</button>
+        </div>
+      </div>
       <div class="max-w-6xl mx-auto px-4">
         
         <!-- Header con navegación -->
@@ -146,7 +154,14 @@ import { TicketModalService } from '../../services/ticket-modal.service';
                         {{ serviceItem.service.description }}
                       </p>
                       <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600">
-                        <span>📦 Cantidad: {{ serviceItem.quantity || 1 }}</span>
+                        <div class="flex items-center space-x-2">
+                          <div class="flex items-center border rounded-lg overflow-hidden">
+                            <button class="px-2 bg-gray-100" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="decreaseAssignedQty(serviceItem)">-</button>
+                            <input type="number" class="w-16 text-center" [(ngModel)]="serviceItem.quantity" (ngModelChange)="onAssignedQuantityChange(serviceItem, $event)" />
+                            <button class="px-2 bg-gray-100" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="increaseAssignedQty(serviceItem)">+</button>
+                          </div>
+                          <span *ngIf="savingAssignedServiceIds.has(serviceItem.service?.id)" class="text-xs text-gray-500">Guardando...</span>
+                        </div>
                         <span>⏱️ {{ serviceItem.service?.estimated_hours || 0 }}h</span>
                         <span>🏷️ {{ serviceItem.service?.category_name || serviceItem.service?.category || 'Sin categoría' }}</span>
                       </div>
@@ -484,7 +499,7 @@ import { TicketModalService } from '../../services/ticket-modal.service';
       <!-- Services Selection Modal -->
       @if (showServicesModal) {
         <div class="modal-overlay" (click)="closeServicesModal()">
-          <div class="modal-content max-w-2xl" (click)="$event.stopPropagation()">
+          <div class="modal-content max-w-4xl w-full" (click)="$event.stopPropagation()">
             <div class="modal-header">
               <h2 class="modal-title">🧰 Seleccionar Servicios</h2>
               <button (click)="closeServicesModal()" class="modal-close"><i class="fas fa-times"></i></button>
@@ -511,7 +526,7 @@ import { TicketModalService } from '../../services/ticket-modal.service';
                         <input type="number" class="w-16 text-center" [value]="getSelectedQuantity(svc)" (input)="$event.stopPropagation(); setSelectedQuantity(svc, $any($event.target).value)" />
                         <button class="px-2 bg-gray-100" (click)="$event.stopPropagation(); increaseQty(svc)">+</button>
                       </div>
-                      <div class="text-right text-sm text-gray-700 w-28">
+                      <div class="text-right text-sm text-gray-700">
                         <div class="font-medium">{{ formatPrice(getServiceUnitPrice(svc) * getSelectedQuantity(svc)) }}</div>
                         <div class="text-xs text-gray-500">Total</div>
                       </div>
@@ -580,6 +595,13 @@ export class TicketDetailComponent implements OnInit {
   // Keep quantities for selected services
   selectedServiceQuantities: Map<string, number> = new Map();
 
+  // Minimal in-component toast system
+  toasts: Array<{ id: number; msg: string; type: 'success' | 'error' | 'info' }> = [];
+  private nextToastId = 1;
+
+  // Track saving state per assigned service id when persisting inline quantity edits
+  savingAssignedServiceIds: Set<string> = new Set();
+
   ngOnInit() {
     this.route.params.subscribe(params => {
       this.ticketId = params['id'];
@@ -624,10 +646,10 @@ export class TicketDetailComponent implements OnInit {
     if (!id) return;
     if (this.selectedServiceIds.has(id)) {
       // Prevent deselecting the last remaining service
-      if (this.selectedServiceIds.size <= 1) {
-        alert('Debe mantener al menos un servicio seleccionado.');
-        return;
-      }
+        if (this.selectedServiceIds.size <= 1) {
+          this.showToast('Debe mantener al menos un servicio seleccionado.', 'info');
+          return;
+        }
       this.selectedServiceIds.delete(id);
     } else {
       this.selectedServiceIds.add(id);
@@ -748,7 +770,7 @@ export class TicketDetailComponent implements OnInit {
 
     } catch (error: any) {
       console.error('Error añadiendo comentario:', error);
-      alert('Error al añadir comentario: ' + error.message);
+      this.showToast('Error al añadir comentario: ' + (error?.message || ''), 'error');
     }
   }
 
@@ -765,7 +787,7 @@ export class TicketDetailComponent implements OnInit {
       await this.ticketsService.deleteTicket(this.ticketId!);
       this.router.navigate(['/tickets']);
     } catch (error: any) {
-      alert('Error al eliminar ticket: ' + error.message);
+      this.showToast('Error al eliminar ticket: ' + (error?.message || ''), 'error');
     }
   }
 
@@ -871,7 +893,7 @@ export class TicketDetailComponent implements OnInit {
       await this.loadTicketDetail();
       this.closeChangeStageModal();
     } catch (err: any) {
-      alert('Error al cambiar estado: ' + (err?.message || err));
+      this.showToast('Error al cambiar estado: ' + (err?.message || err), 'error');
     }
   }
 
@@ -891,7 +913,7 @@ export class TicketDetailComponent implements OnInit {
       await this.addSystemComment(comment);
       this.closeUpdateHoursModal();
     } catch (err: any) {
-      alert('Error al actualizar horas: ' + (err?.message || err));
+      this.showToast('Error al actualizar horas: ' + (err?.message || err), 'error');
     }
   }
 
@@ -908,9 +930,9 @@ export class TicketDetailComponent implements OnInit {
       await this.addSystemComment(`Archivo adjuntado: ${this.selectedFile.name}`);
       this.selectedFile = null;
       this.closeAttachmentModal();
-      alert('Archivo adjuntado (simulado)');
+      this.showToast('Archivo adjuntado (simulado)', 'success');
     } catch (err: any) {
-      alert('Error al adjuntar archivo: ' + (err?.message || err));
+      this.showToast('Error al adjuntar archivo: ' + (err?.message || err), 'error');
     }
   }
 
@@ -960,7 +982,7 @@ export class TicketDetailComponent implements OnInit {
   async saveServicesSelection() {
     if (!this.ticket) return;
     if (this.selectedServiceIds.size === 0) {
-      alert('Debe seleccionar al menos un servicio.');
+      this.showToast('Debe seleccionar al menos un servicio.', 'info');
       return;
     }
     try {
@@ -974,10 +996,10 @@ export class TicketDetailComponent implements OnInit {
       await this.ticketsService.replaceTicketServices(this.ticket.id, companyIdForReplace, items);
       await this.loadTicketServices();
       this.closeServicesModal();
-      alert('Servicios actualizados correctamente');
+      this.showToast('Servicios actualizados correctamente', 'success');
     } catch (err: any) {
       console.error('Error guardando servicios:', err);
-      alert('Error al guardar servicios: ' + (err?.message || err));
+      this.showToast('Error al guardar servicios: ' + (err?.message || err), 'error');
     }
   }
 
@@ -991,6 +1013,47 @@ export class TicketDetailComponent implements OnInit {
   getSelectedQuantity(svc: any): number {
     const id = svc?.id; if (!id) return 1;
     return Math.max(1, Number(this.selectedServiceQuantities.get(id) || 1));
+  }
+
+  // Inline assigned-services quantity editing handlers
+  async onAssignedQuantityChange(serviceItem: any, newVal: any) {
+    const sid = serviceItem?.service?.id; if (!sid) return;
+    const q = Math.max(1, Math.floor(Number(newVal) || 1));
+    serviceItem.quantity = q;
+    await this.persistAssignedServiceQuantity(serviceItem);
+  }
+
+  increaseAssignedQty(serviceItem: any) { serviceItem.quantity = Math.max(1, (Number(serviceItem.quantity) || 1) + 1); this.onAssignedQuantityChange(serviceItem, serviceItem.quantity); }
+  decreaseAssignedQty(serviceItem: any) { serviceItem.quantity = Math.max(1, (Number(serviceItem.quantity) || 1) - 1); this.onAssignedQuantityChange(serviceItem, serviceItem.quantity); }
+
+  private async persistAssignedServiceQuantity(serviceItem: any) {
+    const sid = serviceItem?.service?.id; if (!sid || !this.ticket) return;
+    try {
+      this.savingAssignedServiceIds.add(sid);
+      // Build items from current ticketServices, using current quantities
+      const items = (this.ticketServices || []).map((it: any) => ({ service_id: it.service?.id, quantity: Math.max(1, Number(it.quantity || 1)) }));
+      const companyIdForReplace = String((this.ticket as any).company_id || (this.ticket as any).company?.id || '');
+      await this.ticketsService.replaceTicketServices(this.ticket.id, companyIdForReplace, items);
+      // Refresh services to get any persisted price changes
+      await this.loadTicketServices();
+      this.showToast('Cantidad guardada', 'success');
+    } catch (err: any) {
+      console.error('Error guardando cantidad asignada:', err);
+      this.showToast('Error guardando cantidad: ' + (err?.message || ''), 'error');
+    } finally {
+      this.savingAssignedServiceIds.delete(sid);
+    }
+  }
+
+  // Toast helpers
+  showToast(msg: string, type: 'success' | 'error' | 'info' = 'info', duration = 4000) {
+    const id = this.nextToastId++;
+    this.toasts.push({ id, msg, type });
+    setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, duration);
+  }
+
+  closeToast(id: number) {
+    this.toasts = this.toasts.filter(t => t.id !== id);
   }
 
   setSelectedQuantity(svc: any, qty: number) {
