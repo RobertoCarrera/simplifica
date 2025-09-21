@@ -10,72 +10,6 @@
     </p>
   </div>
 
-  <!-- Unidades de Medida -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-      <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-        <i class="fas fa-ruler mr-3 text-indigo-600"></i>
-        Unidades de Medida
-      </h2>
-      <label class="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
-        <input type="checkbox" [(ngModel)]="includeInactiveUnits" (change)="loadUnits()" />
-        Ver inactivas
-      </label>
-      <div class="flex items-center justify-between">
-        <button class="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700" (click)="openUnitModal()">Nueva Unidad</button>
-      </div>
-    </div>
-    <div class="p-6 space-y-6">
-      <div *ngIf="unitsError" class="p-3 rounded bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300">
-        {{ unitsError }}
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
-        <div class="md:col-span-2">
-          <div class="overflow-x-auto">
-            <!-- Limit height and allow vertical scroll for long lists -->
-            <div class="max-h-72 overflow-y-auto">
-              <table class="min-w-full text-sm">
-              <thead>
-                <tr class="text-left text-gray-600 dark:text-gray-300">
-                  <th class="py-2 pr-4">Nombre</th>
-                  <th class="py-2 pr-4">Código</th>
-                  <th class="py-2 pr-4">Descripción</th>
-                  <th class="py-2 pr-4">Estado</th>
-                  <th class="py-2 pr-4">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let u of units" class="border-t border-gray-200 dark:border-gray-700">
-                  <td class="py-2 pr-4 font-medium text-gray-900 dark:text-white">{{ u.name }}</td>
-                  <td class="py-2 pr-4 text-gray-700 dark:text-gray-300">{{ u.code }}</td>
-                  <td class="py-2 pr-4 text-gray-700 dark:text-gray-300">{{ u.description || '-' }}</td>
-                  <td class="py-2 pr-4">
-                    <span class="px-2 py-1 rounded-full text-xs font-semibold"
-                      [class]="u.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'">
-                      {{ u.is_active ? 'Activa' : 'Inactiva' }}
-                    </span>
-                  </td>
-                  <td class="py-2 pr-4 flex gap-2">
-                    <button class="px-3 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700" (click)="editUnit(u)">
-                      Editar
-                    </button>
-                    <button class="px-3 py-1 text-xs rounded" [class]="u.is_active ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-green-100 text-green-800 hover:bg-green-200'" (click)="toggleUnitActive(u)">
-                      {{ u.is_active ? 'Desactivar' : 'Activar' }}
-                    </button>
-                    <button class="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" (click)="deleteUnit(u)">
-                      Eliminar
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Modal for create/edit unit -->
   <div *ngIf="showUnitModal" #unitModal class="modal-overlay" role="dialog" aria-modal="true">
     <div class="modal-backdrop" (click)="closeUnitModal()"></div>
@@ -216,6 +150,72 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Unidades de Medida -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+      <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+        <i class="fas fa-ruler mr-3 text-indigo-600"></i>
+        Unidades de Medida
+      </h2>
+      <label class="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
+        <input type="checkbox" [(ngModel)]="includeInactiveUnits" (change)="loadUnits()" />
+        Ver inactivas
+      </label>
+      <div class="flex items-center justify-between">
+        <button class="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700" (click)="openUnitModal()">Nueva Unidad</button>
+      </div>
+    </div>
+    <div class="p-6 space-y-6">
+      <div *ngIf="unitsError" class="p-3 rounded bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300">
+        {{ unitsError }}
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
+        <div class="md:col-span-2">
+          <div class="overflow-x-auto">
+            <!-- Limit height and allow vertical scroll for long lists -->
+            <div class="max-h-72 overflow-y-auto">
+              <table class="min-w-full text-sm">
+              <thead>
+                <tr class="text-left text-gray-600 dark:text-gray-300">
+                  <th class="py-2 pr-4">Nombre</th>
+                  <th class="py-2 pr-4">Código</th>
+                  <th class="py-2 pr-4">Descripción</th>
+                  <th class="py-2 pr-4">Estado</th>
+                  <th class="py-2 pr-4">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let u of units" class="border-t border-gray-200 dark:border-gray-700">
+                  <td class="py-2 pr-4 font-medium text-gray-900 dark:text-white">{{ u.name }}</td>
+                  <td class="py-2 pr-4 text-gray-700 dark:text-gray-300">{{ u.code }}</td>
+                  <td class="py-2 pr-4 text-gray-700 dark:text-gray-300">{{ u.description || '-' }}</td>
+                  <td class="py-2 pr-4">
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold"
+                      [class]="u.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'">
+                      {{ u.is_active ? 'Activa' : 'Inactiva' }}
+                    </span>
+                  </td>
+                  <td class="py-2 pr-4 flex gap-2">
+                    <button class="px-3 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700" (click)="editUnit(u)">
+                      Editar
+                    </button>
+                    <button class="px-3 py-1 text-xs rounded" [class]="u.is_active ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-green-100 text-green-800 hover:bg-green-200'" (click)="toggleUnitActive(u)">
+                      {{ u.is_active ? 'Desactivar' : 'Activar' }}
+                    </button>
+                    <button class="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" (click)="deleteUnit(u)">
+                      Eliminar
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
