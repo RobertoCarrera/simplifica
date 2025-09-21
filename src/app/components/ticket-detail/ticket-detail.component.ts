@@ -42,16 +42,16 @@ import Placeholder from '@tiptap/extension-placeholder';
           
           <!-- Quick Actions -->
           <div *ngIf="!loading && !error && ticket" class="flex space-x-2">
-            <button (click)="updateHours()" 
+            <!-- <button (click)="updateHours()" 
                     class="w-full px-4 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100">
               ⏱️ Actualizar Horas
-            </button>
+            </button> -->
             <button (click)="printTicket()" 
-                    class="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100">
+                    class="w-full px-2 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100">
               🖨️ Imprimir
             </button>
             <button (click)="deleteTicket()" 
-                    class="w-full inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700">
+                    class="w-full inline-flex items-center px-2 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700">
               🗑️ Eliminar
             </button>
           </div>
@@ -171,7 +171,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                           </div>
                           <span *ngIf="savingAssignedServiceIds.has(serviceItem.service?.id)" class="text-xs text-gray-500">Guardando...</span>
                         </div>
-                        <span>⏱️ {{ serviceItem.service?.estimated_hours || 0 }}h</span>
+                        <span>⏱️ {{ getLineEstimatedHours(serviceItem) }}h</span>
                         <span>🏷️ {{ serviceItem.service?.category_name || serviceItem.service?.category || 'Sin categoría' }}</span>
                       </div>
                     </div>
@@ -273,6 +273,25 @@ import Placeholder from '@tiptap/extension-placeholder';
 
           <!-- Sidebar (Right Side) -->
           <div class="space-y-6 lg:col-span-1">
+
+            <!-- Client Contact -->
+            <div class="bg-white shadow rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Cliente</h3>
+              <div *ngIf="ticket?.client as client; else noClientInfo">
+                <div class="text-sm text-gray-700 font-medium">{{ client.name}}</div>
+                <div class="mt-3 space-y-2">
+                  <div *ngIf="client.email">
+                    <a [href]="'mailto:' + client.email" class="text-sm text-blue-600 underline">{{ client.email }}</a>
+                  </div>
+                  <div *ngIf="client.phone" class="flex items-center space-x-2">
+                    <a [href]="'tel:' + client.phone" class="text-sm text-blue-600 underline">{{ client.phone }}</a>
+                  </div>
+                </div>
+              </div>
+              <ng-template #noClientInfo>
+                <div class="text-sm text-gray-500">No hay información del cliente</div>
+              </ng-template>
+            </div>
             
             <!-- Quick Stats -->
             <div class="bg-white shadow rounded-lg p-6">
@@ -291,10 +310,10 @@ import Placeholder from '@tiptap/extension-placeholder';
                   <span class="text-sm text-gray-600">Horas Estimadas:</span>
                   <span class="text-sm font-medium">{{ getEstimatedHours() }}h</span>
                 </div>
-                <div class="flex justify-between">
+                <!-- <div class="flex justify-between">
                   <span class="text-sm text-gray-600">Horas Reales:</span>
                   <span class="text-sm font-medium">{{ getActualHours() }}h</span>
-                </div>
+                </div> -->
               </div>
             </div>
 
@@ -672,6 +691,33 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!environment.production) {
       try { console.log(...args); } catch {}
     }
+  }
+
+  /**
+   * Return a sensible full name for a client object.
+   * Supports multiple possible field names coming from different imports (name, first_name, last_name, apellidos, etc.).
+   */
+  getClientFullName(client: any): string {
+    if (!client) return '';
+    const rawName = (client.name || client.nombre || '').toString().trim();
+    const first = (client.first_name || client.firstName || client.nombre || '').toString().trim();
+    const last = (client.last_name || client.lastName || client.apellido || client.apellidos || client.surname || '').toString().trim();
+
+    // If there's a raw `name` and no separate last name, prefer it as-is.
+    if (rawName && !last) return rawName;
+
+    // If rawName exists and last is present but not already included in rawName, append it.
+    if (rawName && last && !rawName.includes(last)) return `${rawName} ${last}`.trim();
+
+    // Otherwise build from first + last
+    const parts: string[] = [];
+    if (first) parts.push(first);
+    if (last) parts.push(last);
+    const combined = parts.join(' ').trim();
+    if (combined) return combined;
+
+    // Fallback to any available name-like fields
+    return rawName || client.email || '';
   }
 
   initializeEditor() {
@@ -1531,6 +1577,26 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     return typeof svc.base_price === 'number' ? svc.base_price : 0;
   }
 
+  // Parse numeric tolerant of strings using comma as decimal separator
+  private parseNumeric(v: any): number {
+    if (v === undefined || v === null) return 0;
+    if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+    const s = String(v).trim().replace(/\s+/g, '').replace(',', '.');
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  // Return the estimated hours for the given ticket service row multiplied by quantity
+  getLineEstimatedHours(serviceItem: any): number {
+    try {
+      const hrs = this.parseNumeric(serviceItem?.service?.estimated_hours ?? serviceItem?.estimated_hours ?? 0);
+      const qty = Math.max(1, Math.floor(this.parseNumeric(serviceItem?.quantity ?? 1)) || 1);
+      return Math.round(hrs * qty * 100) / 100;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   getSelectedQuantity(svc: any): number {
     const id = svc?.id; if (!id) return 1;
     return Math.max(1, Number(this.selectedServiceQuantities.get(id) || 1));
@@ -1552,7 +1618,13 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     try {
       this.savingAssignedServiceIds.add(sid);
       // Build items from current ticketServices, using current quantities
-      const items = (this.ticketServices || []).map((it: any) => ({ service_id: it.service?.id, quantity: Math.max(1, Number(it.quantity || 1)) }));
+      // Include unit_price when available so DB rows keep price_per_unit/total_price and UI can compute totals
+      const items = (this.ticketServices || []).map((it: any) => {
+        const unit = this.getUnitPrice(it);
+        const obj: any = { service_id: it.service?.id, quantity: Math.max(1, Number(it.quantity || 1)) };
+        if (typeof unit === 'number' && unit > 0) obj.unit_price = unit;
+        return obj;
+      });
       const companyIdForReplace = String((this.ticket as any).company_id || (this.ticket as any).company?.id || '');
       await this.ticketsService.replaceTicketServices(this.ticket.id, companyIdForReplace, items);
       // Refresh services to get any persisted price changes
@@ -1634,6 +1706,13 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
       this.ticketServices = (items as any[]).map((it: any) => {
         const svc = it?.service || {};
+        // Ensure estimated_hours is a number (DB might return string)
+        if (svc && svc.estimated_hours !== undefined && svc.estimated_hours !== null) {
+          const n = Number(svc.estimated_hours);
+          svc.estimated_hours = Number.isFinite(n) ? n : 0;
+        } else {
+          svc.estimated_hours = 0;
+        }
         const cat = svc?.category;
         const isUuid = typeof cat === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cat);
         const category_name = isUuid ? (categoriesById[cat]?.name || 'Sin categoría') : (cat || 'Sin categoría');
@@ -1742,29 +1821,44 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   calculateServicesTotal(): number {
-    return this.ticketServices.reduce((sum, serviceItem) => sum + this.getLineTotal(serviceItem), 0);
+    try {
+      const items = this.ticketServices || [];
+      return items.reduce((sum: number, serviceItem: any) => sum + this.getLineTotal(serviceItem), 0);
+    } catch (e) {
+      return 0;
+    }
   }
 
   calculateEstimatedHours(): number {
-    return this.ticketServices.reduce((sum, serviceItem) => {
-      const hours = serviceItem.service?.estimated_hours || 0;
-      const quantity = serviceItem.quantity || 1;
-      return sum + (hours * quantity);
-    }, 0);
+    try {
+      const items = this.ticketServices || [];
+      const total = items.reduce((sum: number, serviceItem: any) => {
+        const hours = this.parseNumeric(serviceItem?.service?.estimated_hours ?? serviceItem?.estimated_hours ?? 0);
+        const qty = Math.max(1, Math.floor(this.parseNumeric(serviceItem?.quantity ?? 1)) || 1);
+        return sum + hours * qty;
+      }, 0);
+      return Math.round(total * 100) / 100;
+    } catch (e) {
+      return 0;
+    }
   }
 
   getEstimatedHours(): number {
-    // Primero intentar usar la columna estimated_hours del ticket si existe
-    if (this.ticket?.estimated_hours !== undefined && this.ticket.estimated_hours > 0) {
-      return this.ticket.estimated_hours;
-    }
-    // Si no existe o es 0, calcular desde los servicios
+    // Prefer an explicit ticket-level override if present and numeric
+  const t: any = this.ticket as any;
+  const ticketEst = t && (t.estimated_hours ?? t.estimatedHours ?? t.estimatedHoursRaw);
+    const tNum = Number(ticketEst);
+    if (Number.isFinite(tNum) && tNum > 0) return Math.round(tNum * 100) / 100;
     return this.calculateEstimatedHours();
   }
 
   getActualHours(): number {
-    // Retornar las horas reales del ticket si existe la columna
-    return this.ticket?.actual_hours || 0;
+    if (!this.ticket) return 0;
+    // Support multiple possible column names for backward compatibility
+  const t2: any = this.ticket as any;
+  const raw = t2.actual_hours ?? t2.hours_real ?? t2.actualHours ?? t2.hoursReal ?? t2.hours_real_backup;
+  const n = Number(raw);
+    return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
   }
 
   formatDate(dateString?: string): string {
@@ -1780,6 +1874,26 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   getCompanyName(): string {
     return (this.ticket as any)?.company?.name || '';
+  }
+
+  // Copy text to clipboard with a friendly toast
+  copyToClipboard(text?: string) {
+    if (!text) {
+      this.showToast('Nada para copiar', 'info');
+      return;
+    }
+    try {
+      navigator.clipboard.writeText(text);
+      this.showToast('Copiado al portapapeles', 'success');
+    } catch {
+      // Fallback for older browsers
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); this.showToast('Copiado al portapapeles', 'success'); } catch { this.showToast('No se pudo copiar', 'error'); }
+      ta.remove();
+    }
   }
 
   // Pricing helpers: prefer persisted values from ticket_services with fallback to service.base_price
