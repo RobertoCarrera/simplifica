@@ -117,3 +117,12 @@
     margin-top: 0.5rem;
   }
 }
+
+/* When modal is open, prevent interacting with the responsive sidebar */
+body.modal-open {
+  /* pointer-events none for sidebar area (responsive-sidebar uses :host fixed at left) */
+  .responsive-sidebar, app-responsive-sidebar, .sidebar, #sidebar, .sidebar-expand-btn {
+    pointer-events: none !important;
+    opacity: 0.6; /* visual hint */
+  }
+}

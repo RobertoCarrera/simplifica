@@ -361,7 +361,6 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Tickets',
       icon: 'confirmation_number',
       route: '/tickets',
-      badge: 5,
       module: 'production'
     },
     {

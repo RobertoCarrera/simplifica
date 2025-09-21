@@ -6,6 +6,7 @@ import { SimpleSupabaseService, SimpleCompany } from '../../services/simple-supa
 import { DevRoleService } from '../../services/dev-role.service';
 import { CsvHeaderMapperComponent, CsvMappingResult } from '../csv-header-mapper/csv-header-mapper.component';
 import { ToastService } from '../../services/toast.service';
+import { SupabaseUnitsService, UnitOfMeasure } from '../../services/supabase-units.service';
 
 @Component({
   selector: 'app-supabase-services',
@@ -63,6 +64,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   private servicesService = inject(SupabaseServicesService);
   private simpleSupabase = inject(SimpleSupabaseService);
   private toastService = inject(ToastService);
+  private unitsService = inject(SupabaseUnitsService);
   @ViewChild(CsvHeaderMapperComponent) private csvMapperCmp?: CsvHeaderMapperComponent;
 
   // CSV Mapper state for services
@@ -89,12 +91,17 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     tags: ['tags', 'etiquetas']
   };
 
+  // Units of measure for dynamic select
+  units: UnitOfMeasure[] = [];
+  unitsLoaded = false;
+
   ngOnInit() {
     this.loadCompanies().then(() => {
       this.loadServices();
       this.loadServiceCategories();
       this.loadServiceTags();
     });
+    this.loadUnits();
   }
 
   showServicesImportInfo(event: Event) {
@@ -160,6 +167,17 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.updateTagFilter();
     } catch (error: any) {
       console.error('Error loading service tags:', error);
+    }
+  }
+
+  async loadUnits() {
+    try {
+      this.units = await this.unitsService.getActiveUnits();
+      this.unitsLoaded = true;
+    } catch (error) {
+      console.warn('No se pudieron cargar unidades, se usarán opciones por defecto');
+      this.units = [];
+      this.unitsLoaded = true;
     }
   }
 
@@ -392,6 +410,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   openForm(service?: Service) {
     this.showForm = true;
     this.editingService = service || null;
+    
+    // Determine default unit_type
+    const defaultUnitType = this.units.length > 0 ? this.units[0].code : 'horas';
+    
     this.formData = service ? { ...service } : {
       name: '',
       description: '',
@@ -400,7 +422,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       category: '',
       is_active: true,
       tax_rate: 21,
-      unit_type: 'horas',
+      unit_type: defaultUnitType,
       min_quantity: 1,
       difficulty_level: 1,
       profit_margin: 30,
@@ -420,6 +442,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.formErrors = {};
     this.loadServiceCategories();
     this.loadServiceTags();
+    this.loadUnits();
     
     // Bloquear scroll de la página principal de forma más agresiva
     document.body.classList.add('modal-open');
@@ -428,9 +451,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     document.body.style.width = '100%';
     document.body.style.height = '100%';
     document.documentElement.style.overflow = 'hidden';
-  }
-
-  closeForm() {
+  }  closeForm() {
     this.showForm = false;
     this.editingService = null;
     this.formData = {};
@@ -554,6 +575,66 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   formatHours(hours: number): string {
     return this.servicesService.formatHours(hours);
+  }
+
+  // New methods for dynamic unit display
+  getServiceUnitName(service: Service): string {
+    if (!service.unit_type) return 'h'; // default fallback
+    
+    const unit = this.units.find(u => u.code === service.unit_type);
+    return unit ? unit.name : service.unit_type;
+  }
+
+  getServiceUnitShortName(service: Service): string {
+    if (!service.unit_type) return 'h'; // default fallback
+    
+    const unit = this.units.find(u => u.code === service.unit_type);
+    return unit ? unit.code : service.unit_type;
+  }
+
+  formatServiceDuration(service: Service): string {
+    if (!service.estimated_hours) return '-';
+    
+    const unitName = this.getServiceUnitShortName(service);
+    const value = service.estimated_hours;
+    
+    // Format the number nicely
+    const formatted = value % 1 === 0 ? value.toString() : value.toFixed(2).replace(/\.?0+$/, '');
+    
+    return `${formatted} ${unitName}`;
+  }
+
+  getAverageUnitDisplay(): string {
+    // For average stats, we need to determine the most common unit type
+    // or show a generic label
+    if (this.services.length === 0) return 'h';
+    
+    // Count unit types
+    const unitCounts: Record<string, number> = {};
+    this.services.forEach(service => {
+      const unitType = service.unit_type || 'horas';
+      unitCounts[unitType] = (unitCounts[unitType] || 0) + 1;
+    });
+    
+    // Find most common unit
+    let mostCommonUnit = 'horas';
+    let maxCount = 0;
+    for (const [unit, count] of Object.entries(unitCounts)) {
+      if (count > maxCount) {
+        maxCount = count;
+        mostCommonUnit = unit;
+      }
+    }
+    
+    const unit = this.units.find(u => u.code === mostCommonUnit);
+    return unit ? unit.name : mostCommonUnit;
+  }
+
+  getSelectedUnitLabel(): string {
+    if (!this.formData.unit_type) return 'Unidades';
+    
+    const unit = this.units.find(u => u.code === this.formData.unit_type);
+    return unit ? unit.name : 'Unidades';
   }
 
   getServiceStatus(service: Service): string {

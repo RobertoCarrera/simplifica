@@ -574,7 +574,20 @@ export class SupabaseServicesService {
   }
 
   formatHours(hours: number): string {
-    return `${hours}h`;
+    if (hours === null || hours === undefined) return '-';
+    const num = Number(hours);
+    if (isNaN(num)) return '-';
+
+    const minutes = Math.round(num * 60);
+    // If less than 120 minutes, show minutes
+    if (minutes < 120) {
+      return `${minutes} min`;
+    }
+
+    // Otherwise show hours with up to 2 decimal places
+    const hoursValue = Math.round((minutes / 60) * 100) / 100;
+    const formatted = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(hoursValue);
+    return `${formatted} h`;
   }
 
   calculateHourlyRate(basePrice: number, estimatedHours: number): number {

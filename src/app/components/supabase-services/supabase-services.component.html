@@ -87,7 +87,7 @@
       </div>
       <div class="stat-content">
         <div class="stat-value">{{ formatHours(stats.averageHours) }}</div>
-        <div class="stat-label">Tiempo Promedio</div>
+        <div class="stat-label">{{ getAverageUnitDisplay() }} Promedio</div>
       </div>
     </div>
   </div>
@@ -143,12 +143,12 @@
           <div class="detail-item">
             <i class="detail-icon fas fa-clock"></i>
             <span class="detail-label">Duración:</span>
-            <span class="detail-value">{{ formatHours(service.estimated_hours) }}</span>
+            <span class="detail-value">{{ formatServiceDuration(service) }}</span>
           </div>
           
           <div class="detail-item">
             <i class="detail-icon fas fa-calculator"></i>
-            <span class="detail-label">Precio/hora:</span>
+            <span class="detail-label">€/{{ getServiceUnitShortName(service) }}:</span>
             <span class="detail-value">{{ formatCurrency(service.base_price / service.estimated_hours) }}</span>
           </div>
         </div>
@@ -214,7 +214,7 @@
           <div class="detail-item">
             <i class="detail-icon fas fa-clock"></i>
             <span class="detail-label">Duración:</span>
-            <span class="detail-value">{{ formatHours(service.estimated_hours) }}</span>
+            <span class="detail-value">{{ formatServiceDuration(service) }}</span>
           </div>
         </div>
 
@@ -484,7 +484,9 @@
           
           <div class="form-grid">
             <div class="form-group">
-              <label for="estimated_hours">Horas Estimadas *</label>
+              <label for="estimated_hours">
+                {{ getSelectedUnitLabel() }} Estimadas *
+              </label>
               <input 
                 type="number" 
                 id="estimated_hours"
@@ -505,12 +507,10 @@
                 class="form-control"
                 [(ngModel)]="formData.unit_type"
                 name="unit_type">
-                <option value="horas">Horas</option>
-                <option value="unidades">Unidades</option>
-                <option value="días">Días</option>
-                <option value="trabajos">Trabajos</option>
-                <option value="licencias">Licencias</option>
-                <option value="sesiones">Sesiones</option>
+                <option *ngIf="unitsLoaded && (!units || !units.length)" value="" disabled>
+                  Configura unidades en Configuración
+                </option>
+                <option *ngFor="let u of units" [value]="u.code">{{ u.name }}</option>
               </select>
             </div>
 
