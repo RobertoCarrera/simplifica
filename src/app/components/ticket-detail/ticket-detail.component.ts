@@ -499,7 +499,7 @@ import { TicketModalService } from '../../services/ticket-modal.service';
       <!-- Services Selection Modal -->
       @if (showServicesModal) {
         <div class="modal-overlay" (click)="closeServicesModal()">
-          <div class="modal-content max-w-4xl w-full" (click)="$event.stopPropagation()">
+          <div class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]" (click)="$event.stopPropagation()">
             <div class="modal-header">
               <h2 class="modal-title">🧰 Seleccionar Servicios</h2>
               <button (click)="closeServicesModal()" class="modal-close"><i class="fas fa-times"></i></button>
@@ -509,26 +509,17 @@ import { TicketModalService } from '../../services/ticket-modal.service';
                 <input type="text" class="form-input" placeholder="Buscar servicios..." [(ngModel)]="serviceSearchText" (input)="filterServices()" />
               </div>
               <div class="max-h-80 overflow-auto divide-y">
-                <div *ngFor="let svc of filteredServices" class="py-3 px-2 hover:bg-gray-50 cursor-pointer">
+                <div *ngFor="let svc of filteredServices" class="py-3 px-2 hover:bg-gray-50 cursor-pointer" (click)="toggleServiceSelection(svc)">
                   <div class="flex items-center justify-between">
-                    <div class="min-w-0 pr-4" (click)="toggleServiceSelection(svc)">
-                      <div class="font-medium truncate">{{ svc.name }}</div>
-                      <div class="text-xs text-gray-500 truncate">{{ svc.description }}</div>
+                    <div class="min-w-0 pr-4">
+                      <div class="font-medium">{{ svc.name }}</div>
+                      <div class="text-xs text-gray-500 line-clamp-2">{{ svc.description }}</div>
                       <div class="text-xs text-gray-500 mt-1">🏷️ {{ svc.category || 'Sin categoría' }}</div>
                     </div>
                     <div class="flex items-center space-x-4">
                       <div class="text-right text-sm text-gray-700">
                         <div class="font-medium">{{ formatPrice(getServiceUnitPrice(svc)) }}</div>
                         <div class="text-xs text-gray-500">Unidad</div>
-                      </div>
-                      <div class="flex items-center border rounded-lg overflow-hidden">
-                        <button class="px-2 bg-gray-100" (click)="$event.stopPropagation(); decreaseQty(svc)">-</button>
-                        <input type="number" class="w-16 text-center" [value]="getSelectedQuantity(svc)" (input)="$event.stopPropagation(); setSelectedQuantity(svc, $any($event.target).value)" />
-                        <button class="px-2 bg-gray-100" (click)="$event.stopPropagation(); increaseQty(svc)">+</button>
-                      </div>
-                      <div class="text-right text-sm text-gray-700">
-                        <div class="font-medium">{{ formatPrice(getServiceUnitPrice(svc) * getSelectedQuantity(svc)) }}</div>
-                        <div class="text-xs text-gray-500">Total</div>
                       </div>
                       <div class="pl-3">
                         <input type="checkbox" [checked]="isServiceIdSelected(svc.id)" (click)="$event.stopPropagation(); toggleServiceSelection(svc)" />
@@ -538,7 +529,7 @@ import { TicketModalService } from '../../services/ticket-modal.service';
                 </div>
               </div>
             </div>
-            <div class="modal-footer flex justify-end space-x-2">
+            <div class="modal-footer flex justify-end space-x-2 p-2">
               <button class="btn btn-secondary" (click)="closeServicesModal()">Cancelar</button>
               <button class="btn btn-primary" [disabled]="selectedServiceIds.size === 0" (click)="saveServicesSelection()">Guardar</button>
             </div>
@@ -827,6 +818,36 @@ export class TicketDetailComponent implements OnInit {
     document.body.classList.remove('modal-open');
   }
 
+  // Robust body scroll lock helpers
+  private _scrollTopBackup: number | null = null;
+  lockBodyScroll() {
+    try {
+      // Save current scroll position
+      this._scrollTopBackup = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      // Add inline style to prevent scrolling and keep visual position
+      document.body.style.top = `-${this._scrollTopBackup}px`;
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+    } catch (e) {
+      // Fallback: add modal-open class which sets overflow hidden via scss
+      document.body.classList.add('modal-open');
+    }
+  }
+
+  unlockBodyScroll() {
+    try {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      if (this._scrollTopBackup !== null) {
+        window.scrollTo(0, this._scrollTopBackup);
+      }
+      this._scrollTopBackup = null;
+    } catch (e) {
+      document.body.classList.remove('modal-open');
+    }
+  }
+
   async loadTicketDetail() {
     try {
       this.loading = true;
@@ -972,11 +993,13 @@ export class TicketDetailComponent implements OnInit {
     }
     this.showServicesModal = true;
     document.body.classList.add('modal-open');
+    this.lockBodyScroll();
   }
 
   closeServicesModal() {
     this.showServicesModal = false;
     document.body.classList.remove('modal-open');
+    this.unlockBodyScroll();
   }
 
   async saveServicesSelection() {
