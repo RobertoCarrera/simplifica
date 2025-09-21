@@ -11,3 +11,5 @@ if (typeof window !== 'undefined' || typeof globalThis !== 'undefined') {
     // If overriding fails (readonly console), ignore silently
   }
 }
+
+export {};

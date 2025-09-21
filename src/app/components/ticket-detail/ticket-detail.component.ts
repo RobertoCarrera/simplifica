@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ElementRef, ViewChild, OnDestroy, AfterViewInit, AfterViewChecked, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -6,6 +6,15 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
 import { SupabaseTicketsService, Ticket, TicketStage } from '../../services/supabase-tickets.service';
 import { DevicesService, Device } from '../../services/devices.service';
 import { TicketModalService } from '../../services/ticket-modal.service';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { environment } from '../../../environments/environment';
+
+// TipTap imports
+import { Editor } from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
+import Image from '@tiptap/extension-image';
+import Link from '@tiptap/extension-link';
+import Placeholder from '@tiptap/extension-placeholder';
 
 @Component({
   selector: 'app-ticket-detail',
@@ -210,30 +219,34 @@ import { TicketModalService } from '../../services/ticket-modal.service';
               
               <!-- Add Comment Form -->
               <div class="mb-6">
-                <textarea [(ngModel)]="newComment" 
-                          placeholder="Añadir un comentario..."
-                          class="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          rows="3"></textarea>
+
+                <!-- TipTap Editor -->
+                <div class="relative">
+                  <div 
+                    #editorElement
+                    id="editorElement"
+                    class="tiptap-editor w-full p-3 border border-gray-300 rounded-lg min-h-[100px] focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent"
+                    (dragover)="onNativeDragOver($event)"
+                    (drop)="onNativeDrop($event)"
+                  >
+                  </div>
+                </div>
+                
                 <div class="mt-2 flex justify-between items-center">
                   <label class="flex items-center text-sm text-gray-600">
                     <input type="checkbox" [(ngModel)]="isInternalComment" class="mr-2">
                     Comentario interno (no visible para el cliente)
                   </label>
-                  <div>
-                    <button (click)="addAttachment()" 
-                            class="px-4 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100">
-                      📎 Adjuntar Archivo
-                    </button>
+                  <div class="flex items-center gap-3">
+                    <span *ngIf="isUploadingImage" class="text-xs text-gray-500">Subiendo imagen...</span>
                     <button (click)="addComment()" 
-                            [disabled]="!newComment.trim()"
-                            class="ms-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-300">
+                            [disabled]="isUploadingImage || !hasEditorContent()"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-300">
                       💬 Añadir Comentario
                     </button>
                   </div>
                 </div>
-              </div>
-              
-              <!-- Comments List -->
+              </div>              <!-- Comments List -->
               <div *ngIf="comments.length === 0" class="text-center py-6 text-gray-500">
                 💬 No hay comentarios aún
               </div>
@@ -251,7 +264,7 @@ import { TicketModalService } from '../../services/ticket-modal.service';
                     </div>
                     <span class="text-xs text-gray-500">{{ formatDate(comment.created_at) }}</span>
                   </div>
-                  <p class="text-gray-700">{{ comment.comment }}</p>
+                  <div class="prose prose-sm max-w-none text-gray-800" [innerHTML]="renderComment(comment.comment)"></div>
                 </div>
               </div>
             </div>
@@ -538,7 +551,7 @@ import { TicketModalService } from '../../services/ticket-modal.service';
       }
   `
 })
-export class TicketDetailComponent implements OnInit {
+export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
   loading = true;
   error: string | null = null;
   ticket: Ticket | null = null;
@@ -558,6 +571,9 @@ export class TicketDetailComponent implements OnInit {
   // Comment form
   newComment: string = '';
   isInternalComment: boolean = false;
+  // Rich editor state
+  commentEditorHtml: string = '';
+  isUploadingImage: boolean = false;
   
   // Modal controls
   showChangeStageModal = false;
@@ -576,6 +592,7 @@ export class TicketDetailComponent implements OnInit {
   private ticketsService = inject(SupabaseTicketsService);
   private devicesService = inject(DevicesService);
   private ticketModalService = inject(TicketModalService);
+  private sanitizer = inject(DomSanitizer);
 
   // Services Selection Modal state
   showServicesModal = false;
@@ -593,9 +610,31 @@ export class TicketDetailComponent implements OnInit {
   // Track saving state per assigned service id when persisting inline quantity edits
   savingAssignedServiceIds: Set<string> = new Set();
 
+  // TipTap Editor
+  editor: Editor | null = null;
+  @ViewChild('editorElement', { static: false }) editorElement!: ElementRef;
+  private editorTried = false;
+  private cdr = inject(ChangeDetectorRef);
+
+  // Custom Image extension to carry a temporary id attribute for preview replacement
+  private ImageWithTemp = Image.extend({
+    addAttributes() {
+      return {
+        ...(this.parent?.() as any),
+        dataTempId: {
+          default: null,
+          renderHTML: (attrs: any) => attrs?.dataTempId ? { 'data-temp-id': attrs.dataTempId } : {},
+          parseHTML: (element: HTMLElement) => element.getAttribute('data-temp-id'),
+        },
+      } as any;
+    },
+  });
+
   ngOnInit() {
+    this.debugLog('TicketDetailComponent ngOnInit called');
     this.route.params.subscribe(params => {
       this.ticketId = params['id'];
+      this.debugLog('Ticket ID from route:', this.ticketId);
       if (this.ticketId) {
         this.loadTicketDetail();
       } else {
@@ -603,6 +642,244 @@ export class TicketDetailComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  ngAfterViewInit() {
+    this.debugLog('ngAfterViewInit called');
+    // Wait for DOM to be fully rendered
+    setTimeout(() => {
+      this.debugLog('Attempting to initialize editor after DOM render...');
+      this.initializeEditor();
+    }, 200);
+  }
+
+  ngAfterViewChecked() {
+    // If the ticket block just became visible, ensure editor is mounted once
+    if (!this.editor && !this.editorTried && this.editorElement?.nativeElement) {
+      this.editorTried = true;
+      setTimeout(() => this.initializeEditor(), 0);
+    }
+  }
+
+  ngOnDestroy() {
+    if (this.editor) {
+      this.editor.destroy();
+    }
+  }
+
+  // Development-only logger: will be a no-op in production
+  private debugLog(...args: any[]) {
+    if (!environment.production) {
+      try { console.log(...args); } catch {}
+    }
+  }
+
+  initializeEditor() {
+    // Debug DOM state
+  this.debugLog('DOM debug:');
+  this.debugLog('- .tiptap-editor exists:', !!document.querySelector('.tiptap-editor'));
+  this.debugLog('- #editorElement exists:', !!document.querySelector('#editorElement'));
+  this.debugLog('- ViewChild editorElement:', this.editorElement);
+  this.debugLog('- All elements with class tiptap-editor:', document.querySelectorAll('.tiptap-editor'));
+
+    // Prefer ViewChild; fall back to query selectors
+    let element = (this.editorElement && this.editorElement.nativeElement) as HTMLElement;
+    if (!element) {
+      element = document.querySelector('#editorElement') as HTMLElement;
+    }
+    if (!element) {
+      element = document.querySelector('.tiptap-editor') as HTMLElement;
+    }
+
+    if (!element) {
+      console.warn('Editor element not found with any selector, will retry once on next check...');
+      this.editorTried = false; // allow ngAfterViewChecked to try again once
+      return;
+    }
+
+    if (this.editor) {
+      this.editor.destroy();
+    }
+
+  this.debugLog('Initializing TipTap editor on element:', element);
+    this.editor = new Editor({
+      element: element,
+      extensions: [
+        StarterKit.configure({
+          // Disable the built-in link to avoid conflict with our custom Link extension
+          link: false,
+        }),
+        this.ImageWithTemp.configure({
+          inline: true,
+          HTMLAttributes: {
+            class: 'max-w-full rounded-lg',
+          },
+        }),
+        Link.configure({
+          openOnClick: false,
+          HTMLAttributes: {
+            class: 'text-blue-600 underline',
+          },
+        }),
+        Placeholder.configure({
+          placeholder: 'Escribe tu comentario aquí...',
+        }),
+      ],
+      content: '',
+      editorProps: {
+        attributes: {
+          class: 'prose prose-sm max-w-none focus:outline-none',
+        },
+        handleDrop: (view, event, slice, moved) => {
+          const hasFiles = !!event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files.length > 0;
+          if (hasFiles) {
+            this.handleEditorDrop(event);
+            return true; // handled, prevent browser default navigation
+          }
+          return false;
+        },
+        handlePaste: (view, event, slice) => {
+          // If files are present in paste, handle and stop default
+          const items = event.clipboardData?.items || [];
+          const hasFiles = Array.from(items).some(i => i.kind === 'file');
+          if (hasFiles) {
+            this.handleEditorPaste(event);
+            return true;
+          }
+          return false;
+        },
+      },
+      onUpdate: ({ editor }) => {
+        this.newComment = editor.getHTML();
+      },
+      onCreate: ({ editor }) => {
+  this.debugLog('TipTap editor created successfully');
+        // Trigger change detection to reflect buttons state bound to editor
+        try { this.cdr.detectChanges(); } catch {}
+      },
+    });
+  }
+
+  // TipTap Editor Methods
+  toggleBold() {
+    this.editor?.chain().focus().toggleBold().run();
+  }
+
+  toggleItalic() {
+    this.editor?.chain().focus().toggleItalic().run();
+  }
+
+  toggleBulletList() {
+    this.editor?.chain().focus().toggleBulletList().run();
+  }
+
+  toggleOrderedList() {
+    this.editor?.chain().focus().toggleOrderedList().run();
+  }
+
+  private async handleEditorPaste(event: ClipboardEvent) {
+    try {
+      const items = event.clipboardData?.items || [];
+      const files: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        if (it.kind === 'file') {
+          const f = it.getAsFile();
+          if (f) files.push(f);
+        }
+      }
+      if (files.length > 0) {
+        event.preventDefault();
+        for (const f of files) {
+          if (f.type.startsWith('image/')) {
+            // 1) Insert a temporary preview image
+            const tmpId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const objectUrl = URL.createObjectURL(f);
+            this.insertTempImage(objectUrl, tmpId, f.name);
+            // 2) Upload and replace src once ready
+            const url = await this.uploadCommentFile(f);
+            if (url && this.editor) {
+              // Replace the temp img (by data attribute)
+              this.editor.commands.command(({ tr, state }) => {
+                const { doc } = state;
+                let replaced = false;
+                doc.descendants((node, pos) => {
+                  if (node.type.name === 'image' && (node.attrs as any)?.dataTempId === tmpId) {
+                    const newAttrs = { ...(node.attrs as any), src: url, alt: f.name, dataTempId: null };
+                    tr.setNodeMarkup(pos, undefined, newAttrs as any);
+                    replaced = true;
+                    return false; // stop traversal
+                  }
+                  return true;
+                });
+                if (replaced) {
+                  tr.setMeta('addToHistory', true);
+                  return true;
+                }
+                return false;
+              });
+            }
+            // 3) Release object URL
+            URL.revokeObjectURL(objectUrl);
+          } else {
+            // Non-image: upload and insert link
+            const url = await this.uploadCommentFile(f);
+            if (url && this.editor) {
+              const safeName = f.name.replace(/[<>]/g, '');
+              this.editor.chain().focus()
+                .insertContent(`<a href="${url}" target="_blank" rel="noopener noreferrer">${safeName}</a>`)
+                .run();
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error procesando pegado:', e);
+    }
+  }
+
+  private async handleEditorDrop(event: DragEvent) {
+    try {
+      if (!event.dataTransfer?.files?.length) return;
+      const files = Array.from(event.dataTransfer.files);
+      event.preventDefault();
+      for (const f of files) {
+        if (f.type.startsWith('image/')) {
+          const tmpId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const objectUrl = URL.createObjectURL(f);
+          this.insertTempImage(objectUrl, tmpId, f.name);
+          const url = await this.uploadCommentFile(f);
+          if (url && this.editor) {
+            this.editor.commands.command(({ tr, state }) => {
+              const { doc } = state;
+              let replaced = false;
+              doc.descendants((node, pos) => {
+                if (node.type.name === 'image' && (node.attrs as any)?.dataTempId === tmpId) {
+                  const newAttrs = { ...(node.attrs as any), src: url, alt: f.name, dataTempId: null };
+                  tr.setNodeMarkup(pos, undefined, newAttrs as any);
+                  replaced = true; return false;
+                }
+                return true;
+              });
+              if (replaced) { tr.setMeta('addToHistory', true); return true; }
+              return false;
+            });
+          }
+          URL.revokeObjectURL(objectUrl);
+        } else {
+          // Upload non-image and insert a link
+          const url = await this.uploadCommentFile(f);
+          if (url && this.editor) {
+            const safeName = f.name.replace(/[<>]/g, '');
+            this.editor.chain().focus()
+              .insertContent(`<a href="${url}" target="_blank" rel="noopener noreferrer">${safeName}</a>`)
+              .run();
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error procesando drop:', e);
+    }
   }
 
   // selected services handled via selectedServiceIds in modal
@@ -737,14 +1014,16 @@ export class TicketDetailComponent implements OnInit {
   }
 
   async addComment() {
-    if (!this.newComment.trim()) return;
+    // Use TipTap editor HTML content
+    const content = this.editor?.getHTML()?.trim() || '';
+    if (!content || content === '<p></p>') return;
 
     try {
       const { data, error } = await this.supabase.getClient()
         .from('ticket_comments')
         .insert({
           ticket_id: this.ticketId,
-          comment: this.newComment.trim(),
+          comment: content,
           is_internal: this.isInternalComment
         })
         .select(`
@@ -756,8 +1035,16 @@ export class TicketDetailComponent implements OnInit {
       if (error) throw error;
 
       this.comments.push(data);
+      this.editor?.commands.clearContent();
       this.newComment = '';
       this.isInternalComment = false;
+
+      // Optionally link pasted images as attachments
+      try {
+        await this.linkCommentAttachments(data.id, content);
+      } catch (e) {
+        console.warn('No se pudieron vincular adjuntos del comentario:', e);
+      }
 
     } catch (error: any) {
       console.error('Error añadiendo comentario:', error);
@@ -899,6 +1186,12 @@ export class TicketDetailComponent implements OnInit {
       this.error = error.message;
     } finally {
       this.loading = false;
+      // Ensure the editor initializes after the DOM renders the *ngIf block
+      setTimeout(() => {
+        try {
+          this.initializeEditor();
+        } catch {}
+      }, 0);
     }
   }
 
@@ -972,6 +1265,211 @@ export class TicketDetailComponent implements OnInit {
 
   printTicket() {
     try { window.print(); } catch {}
+  }
+
+  hasEditorContent(): boolean {
+    if (!this.editor) return false;
+    const html = this.editor.getHTML().trim();
+    const text = this.editor.getText().trim();
+    return !!text || /<img\b/i.test(html);
+  }
+
+  private sanitizeHtml(html: string): string {
+    // Basic sanitizer: remove scripts/styles/iframes, javascript: URLs, and event handlers
+    const div = document.createElement('div');
+    div.innerHTML = html || '';
+
+    const dangerousTags = ['script', 'style', 'iframe', 'object', 'embed', 'link'];
+    dangerousTags.forEach(tag => div.querySelectorAll(tag).forEach(el => el.remove()));
+
+    // Remove event handler attributes and javascript: URLs
+    const walk = (el: Element) => {
+      for (const attr of Array.from(el.attributes)) {
+        const name = attr.name.toLowerCase();
+        const val = (attr.value || '').trim();
+        if (name.startsWith('on')) el.removeAttribute(attr.name);
+        if ((name === 'href' || name === 'src') && /^javascript:/i.test(val)) {
+          el.removeAttribute(attr.name);
+        }
+      }
+      for (const child of Array.from(el.children)) walk(child);
+    };
+    Array.from(div.children).forEach(ch => walk(ch));
+
+    return div.innerHTML;
+  }
+
+  private ensureHttpUrl(url: string): string {
+    try {
+      const u = new URL(url, window.location.origin);
+      if (!/^https?:$/i.test(u.protocol)) return 'https://' + u.href.replace(/^.*?:\/\//, '');
+      return u.href;
+    } catch {
+      return 'https://' + String(url || '').replace(/^.*?:\/\//, '');
+    }
+  }
+
+  renderComment(comment: string): SafeHtml {
+    const safe = this.sanitizeHtml(comment || '');
+    return this.sanitizer.bypassSecurityTrustHtml(safe);
+  }
+
+  private async uploadCommentImage(file: File): Promise<string | null> {
+    // Backward-compatible wrapper for images
+    return this.uploadCommentFile(file);
+  }
+
+  private async uploadCommentFile(file: File): Promise<string | null> {
+    if (!this.ticket) return null;
+    try {
+      this.isUploadingImage = true;
+      const bucket = 'attachments';
+      const originalExt = (file.name.split('.').pop() || '').toLowerCase();
+      const ext = originalExt || 'bin';
+      const path = `tickets/${this.ticket.id}/comments/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await this.supabase.getClient().storage
+        .from(bucket)
+        .upload(path, file);
+      if (uploadError) throw uploadError;
+      // Always create a signed URL (bucket is private, public URL may 400)
+      const { data: signed, error: signErr } = await this.supabase.getClient()
+        .storage.from(bucket)
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      if (signErr) throw signErr;
+      const url = signed?.signedUrl || '';
+
+      // Optional: register in attachments table (works for any file type)
+      try {
+        await this.supabase.getClient().from('attachments').insert({
+          company_id: (this.ticket as any)?.company_id,
+          job_id: null,
+          file_name: file.name,
+          file_path: path,
+          file_size: file.size,
+          mime_type: file.type
+        });
+      } catch {}
+
+      return url || null;
+    } catch (e: any) {
+      console.error('Error subiendo imagen pegada:', e);
+      this.showToast('Error subiendo imagen', 'error');
+      return null;
+    } finally {
+      this.isUploadingImage = false;
+    }
+  }
+
+  private insertTempImage(objectUrl: string, tempId: string, alt: string) {
+    if (!this.editor) return;
+    // Insert image node with our custom schema attribute dataTempId
+    this.editor.chain().focus().insertContent({ type: 'image', attrs: { src: objectUrl, alt, dataTempId: tempId } as any }).run();
+  }
+
+  private async linkCommentAttachments(commentId: string, html: string) {
+    try {
+      const imgSrcs = this.extractImageSrcs(html || '');
+      const linkHrefs = this.extractAnchorHrefs(html || '');
+      const srcs = [...imgSrcs, ...linkHrefs];
+      if (srcs.length === 0) return;
+      const bucket = 'attachments';
+      for (const src of srcs) {
+        const path = this.extractStoragePathFromUrl(src, bucket);
+        if (!path) continue;
+        // Find attachment by file_path or insert if missing
+        let attachmentId: string | null = null;
+        try {
+          const { data: existing } = await this.supabase.getClient()
+            .from('attachments')
+            .select('id')
+            .eq('file_path', path)
+            .limit(1)
+            .single();
+          attachmentId = existing?.id || null;
+        } catch {}
+        if (!attachmentId) {
+          // create minimal row
+          const { data: created } = await this.supabase.getClient()
+            .from('attachments')
+            .insert({
+              company_id: (this.ticket as any)?.company_id,
+              file_name: path.split('/').pop() || 'image',
+              file_path: path
+            })
+            .select('id')
+            .single();
+          attachmentId = created?.id || null;
+        }
+        if (attachmentId) {
+          try {
+            // Prefer secure insert via Edge Function (uses service_role under the hood)
+            const payload = { p_comment_id: commentId, p_attachment_id: attachmentId };
+            const { data: funcData, error: funcError } = await this.supabase.getClient()
+              .functions.invoke('upsert-ticket-comment-attachment', { body: payload });
+            if (funcError) throw funcError;
+          } catch (efErr) {
+            // Fallback: direct insert (if RLS allows)
+            try {
+              await this.supabase.getClient().from('ticket_comment_attachments').insert({
+                comment_id: commentId,
+                attachment_id: attachmentId
+              });
+            } catch (dbErr) {
+              console.warn('No se pudo crear vínculo de comentario-adjunto:', dbErr);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('No se pudieron vincular attachments al comentario:', e);
+    }
+  }
+
+  private extractImageSrcs(html: string): string[] {
+    const div = document.createElement('div');
+    div.innerHTML = html || '';
+    return Array.from(div.querySelectorAll('img'))
+      .map(img => img.getAttribute('src') || '')
+      .filter(Boolean);
+  }
+
+  private extractAnchorHrefs(html: string): string[] {
+    const div = document.createElement('div');
+    div.innerHTML = html || '';
+    return Array.from(div.querySelectorAll('a'))
+      .map(a => a.getAttribute('href') || '')
+      .filter(Boolean);
+  }
+
+  private extractStoragePathFromUrl(url: string, bucket: string): string | null {
+    try {
+      // Public URL pattern: https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
+      const pubRe = new RegExp(`/storage/v1/object/public/${bucket}/(.+)$`);
+      const m = url.match(pubRe);
+      if (m && m[1]) return m[1];
+      // Signed URL pattern: .../object/sign/<bucket>/<path>?token=...
+      const signRe = new RegExp(`/storage/v1/object/sign/${bucket}/([^?]+)`);
+      const m2 = url.match(signRe);
+      if (m2 && m2[1]) return m2[1];
+      return null;
+    } catch { return null; }
+  }
+
+  // Native event guards to ensure Chrome doesn't navigate away when dropping files
+  onNativeDragOver(e: DragEvent) {
+    if (e?.dataTransfer?.types?.includes('Files')) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }
+
+  onNativeDrop(e: DragEvent) {
+    if (e?.dataTransfer?.files?.length) {
+      e.preventDefault();
+      e.stopPropagation();
+      this.handleEditorDrop(e);
+    }
   }
 
   // Services selection modal methods (class scope)

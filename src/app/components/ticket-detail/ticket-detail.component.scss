@@ -14,6 +14,48 @@
   padding: 24px;
 }
 
+/* Rich Text Editor Styles */
+[contenteditable="true"] {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: normal !important;
+  
+  * {
+    direction: ltr !important;
+    text-align: left !important;
+  }
+  
+  &:empty::before {
+    content: attr(data-placeholder);
+    color: #9ca3af;
+    pointer-events: none;
+    position: absolute;
+  }
+  
+  &:focus:empty::before {
+    content: attr(data-placeholder);
+    color: #d1d5db;
+  }
+  
+  p, div, span, li {
+    direction: ltr !important;
+    text-align: left !important;
+    unicode-bidi: normal !important;
+  }
+  
+  ul, ol {
+    direction: ltr !important;
+    text-align: left !important;
+    padding-left: 1.5rem;
+    
+    li {
+      direction: ltr !important;
+      text-align: left !important;
+      unicode-bidi: normal !important;
+    }
+  }
+}
+
 .modal-content {
   background: white;
   border-radius: 20px;
@@ -75,6 +117,97 @@
 
 .modal-body {
   padding: 32px;
+}
+
+/* Fallback styles for preview/prose area (without Tailwind Typography) */
+.prose {
+  color: #111827; /* gray-900 */
+  font-size: 0.875rem; /* text-sm */
+  line-height: 1.5rem;
+}
+.prose ul,
+.prose ol {
+  padding-left: 1.25rem; /* pl-5 */
+  margin: 0.5rem 0; /* my-2 */
+}
+.prose ul {
+  list-style: disc inside; /* ensure bullets visible */
+}
+.prose ol {
+  list-style: decimal inside; /* ensure numbers visible */
+}
+.prose li {
+  margin: 0.25rem 0; /* my-1 */
+}
+.prose a {
+  color: #2563eb; /* blue-600 */
+  text-decoration: underline;
+}
+.prose img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+/* TipTap Editor Styles */
+.tiptap-editor {
+  .ProseMirror {
+    outline: none;
+    min-height: 100px;
+    
+    /* Lists */
+    ul, ol {
+      padding-left: 1.25rem;
+      margin: 0.5rem 0;
+    }
+    
+    ul {
+      list-style: disc;
+    }
+    
+    ol {
+      list-style: decimal;
+    }
+    
+    li {
+      margin: 0.25rem 0;
+    }
+    
+    /* Links */
+    a {
+      color: #2563eb;
+      text-decoration: underline;
+    }
+    
+    /* Images */
+    img {
+      max-width: 100%;
+      border-radius: 6px;
+      margin: 0.5rem 0;
+    }
+    
+    /* Placeholder */
+    p.is-editor-empty:first-child::before {
+      content: attr(data-placeholder);
+      float: left;
+      color: #9ca3af;
+      pointer-events: none;
+      height: 0;
+    }
+    
+    /* Paragraphs */
+    p {
+      margin: 0.5rem 0;
+    }
+    
+    /* Strong and emphasis */
+    strong {
+      font-weight: 700;
+    }
+    
+    em {
+      font-style: italic;
+    }
+  }
 }
 
 .modal-actions {

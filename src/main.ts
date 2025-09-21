@@ -1,6 +1,11 @@
 import { bootstrapApplication } from '@angular/platform-browser';
-// Disable console.log globally at startup to remove noisy logs during development/builds.
-import './disable-console';
+import { environment } from './environments/environment';
+// Load a small shim to reduce navigator.locks error noise before anything else initializes
+import './locks-shim';
+// Only disable console.log in production builds to keep useful logs during development
+if (environment.production) {
+  import('./disable-console');
+}
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { appConfig } from './app/app.config';
 import { AppComponent } from './app/app.component';
