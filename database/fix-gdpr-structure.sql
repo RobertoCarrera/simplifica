@@ -188,6 +188,7 @@ ADD COLUMN IF NOT EXISTS company_id uuid REFERENCES public.companies(id);
 -- ====================================
 
 -- Función para registrar accesos a datos de clientes (GDPR Article 15)
+-- NOTA: Evitar recursión usando pg_trigger_depth() en actualizaciones a la misma tabla
 CREATE OR REPLACE FUNCTION log_client_access()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -217,8 +218,9 @@ BEGIN
         'Client data management for business operations'
     );
     
-    -- Actualizar contador de accesos solo en SELECT/UPDATE
-    IF TG_OP IN ('SELECT', 'UPDATE') THEN
+    -- Actualizar contador de accesos sólo en UPDATE (no en INSERT/DELETE)
+    -- y evitar recursión del trigger: sólo ejecutar en profundidad 1
+    IF TG_OP = 'UPDATE' AND pg_trigger_depth() = 1 THEN
         UPDATE public.clients 
         SET 
             last_accessed_at = now(),
@@ -247,9 +249,9 @@ FOR SELECT
 TO public
 USING (
     company_id IN (
-        SELECT user_companies.company_id
-        FROM user_companies
-        WHERE user_companies.user_id = auth.uid()
+        SELECT u.company_id
+        FROM public.users AS u
+        WHERE u.auth_user_id = auth.uid()
     )
     AND client_id NOT IN (
         -- Excluir devices de clientes anonimizados

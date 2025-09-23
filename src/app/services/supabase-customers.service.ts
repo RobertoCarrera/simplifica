@@ -169,8 +169,11 @@ export class SupabaseCustomersService {
       query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
     }
 
-  // Ordenamiento: activos primero, luego fecha
-  query = query.order('is_active', { ascending: false, nullsFirst: false }).order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
+    // Ordenamiento: activos (deleted_at NULL) primero, luego fecha
+    // Nota: la tabla 'clients' no tiene columna is_active; usamos deleted_at para ordenar activos primero
+    query = query
+      .order('deleted_at', { ascending: true, nullsFirst: true })
+      .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
 
     // Paginación
     if (filters.limit) {
@@ -193,7 +196,7 @@ export class SupabaseCustomersService {
           if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
           if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
           q2 = q2
-            .order('is_active', { ascending: false, nullsFirst: false })
+            .order('deleted_at', { ascending: true, nullsFirst: true })
             .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
           if (filters.limit) {
             q2 = q2.limit(filters.limit);
@@ -275,8 +278,9 @@ export class SupabaseCustomersService {
       query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
     }
 
+    // Ordenamiento consistente con estándar: activos (deleted_at NULL) primero
     query = query
-      .order('is_active', { ascending: false, nullsFirst: false })
+      .order('deleted_at', { ascending: true, nullsFirst: true })
       .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
 
     if (filters.limit) {
@@ -597,9 +601,7 @@ export class SupabaseCustomersService {
     devLog('Actualizando cliente via método estándar', { id });
     
     // Convertir updates de Customer a estructura de clients
-    const clientUpdates: any = {
-      updated_at: new Date().toISOString()
-    };
+    const clientUpdates: any = {};
     
     if (updates.name) clientUpdates.name = updates.name;
     if (updates.apellidos) clientUpdates.apellidos = updates.apellidos;
@@ -609,7 +611,7 @@ export class SupabaseCustomersService {
   // Map direccion_id if provided (leave unchanged when undefined)
   if ('direccion_id' in updates) clientUpdates.direccion_id = (updates as any).direccion_id || null;
     
-    return from(
+    const doStandard = from(
       this.supabase
         .from('clients')
         .update(clientUpdates)
@@ -619,8 +621,6 @@ export class SupabaseCustomersService {
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
-        
-        // Convertir de clients a Customer
         const convertedCustomer: Customer = {
           id: data.id,
           name: data.name,
@@ -632,25 +632,92 @@ export class SupabaseCustomersService {
           created_at: data.created_at,
           updated_at: data.updated_at
         };
-        
         return convertedCustomer;
-      }),
+      })
+    );
+
+    return doStandard.pipe(
       tap(updatedCustomer => {
         devSuccess('Cliente actualizado via método estándar', updatedCustomer.id);
-        // Actualizar lista local
         const currentCustomers = this.customersSubject.value;
-        const updatedList = currentCustomers.map(c => 
-          c.id === id ? updatedCustomer : c
-        );
+        const updatedList = currentCustomers.map(c => c.id === id ? updatedCustomer : c);
         this.customersSubject.next(updatedList);
         this.loadingSubject.next(false);
       }),
-      catchError(error => {
-        this.loadingSubject.next(false);
-        devError('Error al actualizar cliente', error);
-        return throwError(() => error);
+      catchError(err => {
+        // Si es stack depth (54001) u otro 500 del PostgREST, intentar Edge Function segura
+        const code = (err && (err.code || err.status || err.statusCode)) ?? '';
+        const message = String(err?.message || '');
+        const isStackDepth = code === '54001' || message.includes('stack depth') || (err?.status === 500);
+        if (!isStackDepth) {
+          this.loadingSubject.next(false);
+          devError('Error al actualizar cliente', err);
+          return throwError(() => err);
+        }
+        devError('Fallo actualización estándar (stack depth). Intentando Edge Function update-client-safe...', err);
+        return from(this.callUpdateClientEdgeFunction(id, updates)).pipe(
+          tap(updatedCustomer => {
+            devSuccess('Cliente actualizado via Edge Function', updatedCustomer.id);
+            const currentCustomers = this.customersSubject.value;
+            const updatedList = currentCustomers.map(c => c.id === id ? updatedCustomer : c);
+            this.customersSubject.next(updatedList);
+            this.loadingSubject.next(false);
+          })
+        );
       })
     );
+  }
+
+  private async callUpdateClientEdgeFunction(id: string, updates: UpdateCustomer): Promise<Customer> {
+    const session = await this.supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) throw new Error('No auth token for Edge Function');
+
+    const payload: any = {
+      p_id: id,
+      p_name: updates.name,
+      p_apellidos: updates.apellidos ?? null,
+      p_email: updates.email ?? null,
+      p_phone: updates.phone ?? null,
+      p_dni: updates.dni ?? null,
+      p_fecha_nacimiento: (updates as any).fecha_nacimiento ?? null,
+      p_profesion: (updates as any).profesion ?? null,
+      p_empresa: (updates as any).empresa ?? null,
+      p_avatar_url: (updates as any).avatar_url ?? null,
+      p_direccion_id: (updates as any).direccion_id ?? null,
+    };
+
+  const fnBase = (environment as any).edgeFunctionsBaseUrl || `${environment.supabase.url.replace(/\/$/, '')}/functions/v1`;
+  const fnUrl = `${fnBase.replace(/\/$/, '')}/update-client-safe`;
+    const res = await fetch(fnUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'apikey': environment.supabase.anonKey,
+        'x-client-info': 'simplifica-app',
+      },
+      mode: 'cors',
+      credentials: 'omit',
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(json?.error || `Edge Function failed with status ${res.status}`);
+    }
+    const row = json.result;
+    const converted: Customer = {
+      id: row.id,
+      name: row.name,
+      apellidos: row.apellidos || '',
+      dni: row.dni || '',
+      email: row.email || '',
+      phone: row.phone || '',
+      usuario_id: this.currentDevUserId || 'default-user',
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    };
+    return converted;
   }
 
   /**
