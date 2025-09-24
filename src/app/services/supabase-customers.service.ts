@@ -231,7 +231,8 @@ export class SupabaseCustomersService {
         apellidos: client.apellidos || '',
         email: client.email,
         phone: client.phone,
-        dni: this.extractFromMetadata(client.metadata, 'dni') || '',
+        // Prefer the real column; fallback to metadata only if needed
+        dni: client.dni || this.extractFromMetadata(client.metadata, 'dni') || '',
         usuario_id: client.company_id,
         created_at: client.created_at,
         updated_at: client.updated_at,
@@ -258,7 +259,7 @@ export class SupabaseCustomersService {
         access_restrictions: client.access_restrictions ?? undefined,
         last_accessed_at: client.last_accessed_at ?? undefined,
         access_count: client.access_count ?? undefined
-      };
+      } as Customer;
     }
 
   /**
@@ -309,11 +310,12 @@ export class SupabaseCustomersService {
     );
   }
 
-  // Método auxiliar para extraer datos del metadata JSON
-  private extractFromMetadata(metadata: string, key: string): string | null {
+  // Método auxiliar para extraer datos del metadata JSON (acepta string u objeto)
+  private extractFromMetadata(metadata: any, key: string): string | null {
     try {
-      const parsed = JSON.parse(metadata || '{}');
-      return parsed[key] || null;
+      if (!metadata) return null;
+      const parsed = typeof metadata === 'string' ? JSON.parse(metadata || '{}') : metadata;
+      return parsed?.[key] || null;
     } catch {
       return null;
     }
@@ -366,30 +368,33 @@ export class SupabaseCustomersService {
    * Obtener un cliente por ID
    */
   getCustomer(id: string): Observable<Customer> {
-    return from(
-      this.supabase
-        .from('clients')
-        .select('*, direccion:addresses!clients_direccion_id_fkey(*)')
-        .eq('id', id)
-        .single()
-    ).pipe(
-      map(({ data, error }) => {
-        if (error) throw error;
-        
-        // Convertir de clients a Customer
-        const convertedCustomer: Customer = {
-          id: data.id,
-          name: data.name,
-          apellidos: data.apellidos || '',
-          dni: data.dni || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          usuario_id: this.currentDevUserId || 'default-user',
-          created_at: data.created_at,
-          updated_at: data.updated_at
-        };
-        
-        return convertedCustomer;
+    // Intentar cargar con relación de dirección; si falla por esquema (PGRST200), hacer fallback a select simple
+    const withRelation = this.supabase
+      .from('clients')
+      .select('*, direccion:addresses!clients_direccion_id_fkey(*)')
+      .eq('id', id)
+      .single();
+
+    return from(withRelation).pipe(
+      switchMap(({ data, error }) => {
+        if (!error) {
+          return of(this.toCustomerFromClient(data));
+        }
+        if ((error as any)?.code === 'PGRST200') {
+          return from(
+            this.supabase
+              .from('clients')
+              .select('*')
+              .eq('id', id)
+              .single()
+          ).pipe(
+            map(({ data: d2, error: e2 }) => {
+              if (e2) throw e2;
+              return this.toCustomerFromClient({ ...d2, direccion: null });
+            })
+          );
+        }
+        return throwError(() => error);
       }),
       catchError(error => {
         this.handleError('Error al cargar cliente', error);
@@ -430,7 +435,7 @@ export class SupabaseCustomersService {
       p_profesion: customer.profesion || null,
       p_empresa: customer.empresa || null,
       p_avatar_url: customer.avatar_url || null,
-      p_direccion_id: customer.direccion_id || null
+      // No enviar p_direccion_id: el esquema actual de clients no lo soporta
       // notas and activo fields removed per UI change; free-text address handled separately
     });
     
@@ -480,11 +485,8 @@ export class SupabaseCustomersService {
       created_at: new Date().toISOString()
     };
 
-    // Soporte para dirección en texto libre
-    // Preferir direccion_id FK when esté presente
-    if ((customer as any).direccion_id) {
-      clientData.direccion_id = (customer as any).direccion_id;
-    }
+    // Nota: la tabla 'clients' no tiene columna 'direccion_id'.
+    // La dirección se gestiona en la tabla 'addresses' mediante funciones/servicio dedicado.
     
     devLog('Creando cliente via método estándar', { companyId: clientData.company_id });
     
@@ -563,7 +565,6 @@ export class SupabaseCustomersService {
       p_empresa: updates.empresa || null,
       // p_notas removed
       p_avatar_url: updates.avatar_url || null,
-      p_direccion_id: updates.direccion_id || null,
       // p_activo removed - active state handled by default/deleted_at
     });
     
@@ -608,8 +609,7 @@ export class SupabaseCustomersService {
     if (updates.dni) clientUpdates.dni = updates.dni;
     if (updates.email) clientUpdates.email = updates.email;
     if (updates.phone) clientUpdates.phone = updates.phone;
-  // Map direccion_id if provided (leave unchanged when undefined)
-  if ('direccion_id' in updates) clientUpdates.direccion_id = (updates as any).direccion_id || null;
+  // Nota: no mapear 'direccion_id' porque no existe en el esquema de 'clients'.
     
     const doStandard = from(
       this.supabase
@@ -684,7 +684,6 @@ export class SupabaseCustomersService {
       p_profesion: (updates as any).profesion ?? null,
       p_empresa: (updates as any).empresa ?? null,
       p_avatar_url: (updates as any).avatar_url ?? null,
-      p_direccion_id: (updates as any).direccion_id ?? null,
     };
 
   const fnBase = (environment as any).edgeFunctionsBaseUrl || `${environment.supabase.url.replace(/\/$/, '')}/functions/v1`;

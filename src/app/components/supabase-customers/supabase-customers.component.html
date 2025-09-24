@@ -527,7 +527,7 @@
                   <label for="addressTipoVia" class="form-label">Tipo Vía</label>
                   <input id="addressTipoVia" name="addressTipoVia" [(ngModel)]="formData.addressTipoVia" (input)="onAddressViaInput($event)" class="form-input" placeholder="Escribe para buscar tipo vía">
                   <div class="category-input-container">
-                    <div *ngIf="filteredVias.length && formData.addressTipoVia" class="category-dropdown">
+                    <div *ngIf="viaDropdownOpen" class="category-dropdown">
                       <div class="category-options">
                         <div *ngFor="let via of filteredVias" class="category-option" (click)="formData.addressTipoVia = via; filteredVias = []">
                           <span>{{ via }}</span>
@@ -551,7 +551,7 @@
                   <label for="addressLocalidadId" class="form-label">Localidad</label>
                   <input id="addressLocalidadId" name="addressLocalidadId" [(ngModel)]="addressLocalityName" (input)="onLocalityInput($event)" class="form-input" placeholder="Buscar por nombre o código postal">
                   <div class="category-input-container">
-                    <div *ngIf="filteredLocalities.length && addressLocalityName" class="category-dropdown">
+                    <div *ngIf="localityDropdownOpen" class="category-dropdown">
                       <div class="category-options">
                         <div *ngFor="let loc of filteredLocalities" class="category-option" (click)="selectLocality(loc)">
                           <span>{{ loc.nombre }} - {{ loc.provincia }} (CP: {{ loc.CP }})</span>

@@ -30,6 +30,90 @@ export class AddressesService {
     );
   }
 
+  getAddressById(addressId: string): Observable<Address | null> {
+    if (!addressId) return of(null);
+    return from(this.sbClient.instance.from('addresses').select('*').eq('id', addressId).maybeSingle()).pipe(
+      map((res: any) => {
+        if (res.error) throw res.error;
+        const r = res.data;
+        if (!r) return null;
+        return {
+          _id: r.id,
+          id: r.id,
+          created_at: r.created_at,
+          tipo_via: '',
+          nombre: r.direccion || '',
+          numero: r.numero || '',
+          localidad_id: r.locality_id || ''
+        } as Address;
+      })
+    );
+  }
+
+  // Get the most recent address for a given customer (by usuario_id)
+  getLatestAddressForCustomer(customerId: string): Observable<Address | null> {
+    // Deprecated semantics: addresses.usuario_id actually references auth.users.id,
+    // not the clients.id. Keep this method for backward compatibility, but it will
+    // typically return null unless your schema links addresses to clients directly.
+    return from(
+      this.sbClient.instance
+        .from('addresses')
+        .select('*')
+        .eq('usuario_id', customerId)
+        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(1)
+    ).pipe(
+      map((res: any) => {
+        if (res.error) throw res.error;
+        const r = Array.isArray(res.data) && res.data.length ? res.data[0] : null;
+        if (!r) return null;
+        return {
+          _id: r.id,
+          created_at: r.created_at,
+          tipo_via: '',
+          nombre: r.direccion || '',
+          numero: r.numero || '',
+          localidad_id: r.locality_id || ''
+        } as Address;
+      })
+    );
+  }
+
+  // Preferred: get the latest address linked to the current authenticated user
+  getLatestAddressForCurrentUser(): Observable<Address | null> {
+    return from(this.sbClient.instance.auth.getUser()).pipe(
+      mergeMap(({ data, error }: any) => {
+        if (error) throw error;
+        const authUserId = data?.user?.id;
+        if (!authUserId) return of(null);
+        return from(
+          this.sbClient.instance
+            .from('addresses')
+            .select('*')
+            .eq('usuario_id', authUserId)
+            .order('updated_at', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(1)
+        ).pipe(
+          map((res: any) => {
+            if (res.error) throw res.error;
+            const r = Array.isArray(res.data) && res.data.length ? res.data[0] : null;
+            if (!r) return null;
+            return {
+              _id: r.id,
+              created_at: r.created_at,
+              tipo_via: '',
+              nombre: r.direccion || '',
+              numero: r.numero || '',
+              localidad_id: r.locality_id || ''
+            } as Address;
+          })
+        );
+      })
+    );
+  }
+
   createAddress(address: Address): Observable<Address> {
     // Map frontend Address -> DB columns. We store tipo_via+nombre into `direccion` column by default.
     const payload: any = {

@@ -117,6 +117,9 @@ export class SupabaseCustomersComponent implements OnInit {
   filteredVias: string[] = [...this.addressVias];
   // visible typed locality name (search input)
   addressLocalityName: string = '';
+  // dropdown visibility flags
+  viaDropdownOpen: boolean = false;
+  localityDropdownOpen: boolean = false;
 
   // Create locality modal state
   showCreateLocalityModal: boolean = false;
@@ -308,9 +311,11 @@ onMappingConfirmed(mappings: any[]): void {
     const s = q.trim().toLowerCase();
     if (!s) {
       this.filteredVias = [...this.addressVias];
+      this.viaDropdownOpen = false; // don't show when empty
       return;
     }
     this.filteredVias = this.addressVias.filter(v => v.toLowerCase().includes(s));
+    this.viaDropdownOpen = this.filteredVias.length > 0;
   }
 
   // Locality search handler (by name or postal code CP)
@@ -320,6 +325,7 @@ onMappingConfirmed(mappings: any[]): void {
     if (!s) {
       this.filteredLocalities = [...this.localities];
       this.formData.addressLocalidadId = '';
+      this.localityDropdownOpen = false; // don't show when empty
       return;
     }
     this.filteredLocalities = this.localities.filter(loc => {
@@ -327,12 +333,14 @@ onMappingConfirmed(mappings: any[]): void {
       const cpMatch = loc.CP && loc.CP.toString().toLowerCase().includes(s);
       return nameMatch || cpMatch;
     });
+    this.localityDropdownOpen = this.filteredLocalities.length > 0;
   }
 
   selectLocality(loc: Locality) {
     this.formData.addressLocalidadId = loc._id;
     this.addressLocalityName = loc.nombre;
     this.filteredLocalities = [];
+    this.localityDropdownOpen = false;
   }
 
   // Open the create-locality modal (can be used even when matches exist)
@@ -557,6 +565,60 @@ onMappingConfirmed(mappings: any[]): void {
     this.selectedCustomer.set(customer);
     this.populateForm(customer);
     this.showForm.set(true);
+    // ensure dropdowns are closed on open
+    this.viaDropdownOpen = false;
+    this.localityDropdownOpen = false;
+    // Prefill dirección: try customer's linked direccion_id first; if absent, fallback to latest for current auth user
+    try {
+      const direccionId = (customer as any).direccion_id;
+      const source$ = direccionId
+        ? this.addressesService.getAddressById(direccionId)
+        : this.addressesService.getLatestAddressForCurrentUser();
+      source$.subscribe({
+        next: (addr) => {
+          if (addr) {
+            console.debug('[Customers] Fetched latest address for customer', customer.id, addr);
+            // addr.nombre contiene la cadena completa de la dirección DB.direccion
+            // Intento simple de separar tipo_via y nombre si empieza con una palabra conocida
+            const viaTypes = ['Calle', 'Avenida', 'Plaza', 'Paseo', 'Camino', 'Carretera', 'Barrio', 'Ronda'];
+            let tipo_via = '';
+            let nombre = addr.nombre || '';
+            for (const v of viaTypes) {
+              if (nombre?.startsWith(v + ' ')) {
+                tipo_via = v;
+                nombre = nombre.substring(v.length).trim();
+                break;
+              }
+            }
+            this.formData.addressTipoVia = tipo_via;
+            this.formData.addressNombre = nombre;
+            this.formData.addressNumero = addr.numero || '';
+            this.formData.addressLocalidadId = addr.localidad_id || '';
+
+            // Prefill visible locality name if we have it cached; otherwise fetch once
+            if (this.formData.addressLocalidadId) {
+              const match = this.localities.find(l => l._id === this.formData.addressLocalidadId);
+              if (match) {
+                this.addressLocalityName = match.nombre;
+              } else {
+                this.localitiesService.getLocalities().subscribe({
+                  next: (locs) => {
+                    this.localities = locs || [];
+                    const m2 = this.localities.find(l => l._id === this.formData.addressLocalidadId);
+                    if (m2) this.addressLocalityName = m2.nombre;
+                  },
+                  error: () => {}
+                });
+              }
+            }
+            // keep dropdowns closed after prefill
+            this.viaDropdownOpen = false;
+            this.localityDropdownOpen = false;
+          }
+        },
+        error: (e) => console.warn('No se pudo cargar dirección:', e)
+      });
+    } catch {}
     
     // Bloquear scroll de la página principal de forma más agresiva
     document.body.classList.add('modal-open');
