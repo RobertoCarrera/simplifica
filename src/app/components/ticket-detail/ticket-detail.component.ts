@@ -530,7 +530,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 
       <!-- Services Selection Modal -->
       @if (showServicesModal) {
-        <div class="modal-overlay" (click)="closeServicesModal()">
+        <div class="modal-overlay">
           <div class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]" (click)="$event.stopPropagation()">
             <div class="modal-header">
               <h2 class="modal-title">🧰 Seleccionar Servicios</h2>

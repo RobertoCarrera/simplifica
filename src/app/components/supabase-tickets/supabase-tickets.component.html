@@ -863,7 +863,8 @@
   </div>
 
   <!-- Modal para crear servicio rápido -->
-  <div *ngIf="showServiceForm" class="modal-overlay" (click)="closeServiceForm()">
+  <!-- No cerrar al hacer click fuera: eliminar el handler del overlay para evitar cierres accidentales -->
+  <div *ngIf="showServiceForm" class="modal-overlay">
     <div class="modal-content service-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h2 class="modal-title">
