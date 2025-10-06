@@ -865,7 +865,7 @@
   <!-- Modal para crear servicio rápido -->
   <!-- No cerrar al hacer click fuera: eliminar el handler del overlay para evitar cierres accidentales -->
   <div *ngIf="showServiceForm" class="modal-overlay">
-    <div class="modal-content service-modal" (click)="$event.stopPropagation()">
+    <div class="modal-content modal-medium" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h2 class="modal-title">
           <i class="fas fa-plus"></i>
@@ -943,7 +943,7 @@
 
   <!-- Modal para crear cliente completo -->
   <div *ngIf="showCustomerForm" class="modal-overlay">
-    <div class="modal-content customer-modal" (click)="$event.stopPropagation()">
+    <div class="modal-content modal-medium" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h2 class="modal-title">
           <i class="fas fa-user-plus"></i>

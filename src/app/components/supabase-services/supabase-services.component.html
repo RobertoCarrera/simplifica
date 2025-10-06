@@ -242,7 +242,8 @@
         </button>
       </div>
       
-      <form class="service-form" (ngSubmit)="saveService()">
+      <div class="modal-body">
+        <form class="service-form" (ngSubmit)="saveService()">
         <!-- Información Básica -->
         <div class="form-section">
           <h3 class="form-section-title">
@@ -631,17 +632,19 @@
           </div>
         </div>
         
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" (click)="closeForm()">
-            <i class="fas fa-times"></i>
-            Cancelar
-          </button>
-          <button type="submit" class="btn btn-primary" [disabled]="loading">
-            <i class="fas fa-save"></i>
-            {{ editingService ? 'Actualizar' : 'Crear' }} Servicio
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeForm()">
+          <i class="fas fa-times"></i>
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary" (click)="saveService()" [disabled]="loading">
+          <i class="fas fa-save"></i>
+          {{ editingService ? 'Actualizar' : 'Crear' }} Servicio
+        </button>
+      </div>
     </div>
   </div>
 

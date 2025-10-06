@@ -569,20 +569,6 @@
                 <!-- create-locality modal moved below the form to avoid nested form/ngModel issues -->
               </div>
               
-              <div class="modal-actions">
-                <button type="button" (click)="closeForm()" class="btn btn-secondary">
-                  <i class="fas fa-times"></i>
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  class="btn btn-primary"
-                  [disabled]="!customerForm.form.valid || isLoading()"
-                >
-                  <i class="fas fa-save"></i>
-                  {{ selectedCustomer() ? 'Actualizar' : 'Crear' }} Cliente
-                </button>
-              </div>
             </form>
 
             <!-- create-locality modal (moved out of the parent <form> to avoid ngModel inside a form) -->
@@ -632,6 +618,22 @@
                 </div>
               </div>
             </app-modal>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" (click)="closeForm()" class="btn btn-secondary">
+              <i class="fas fa-times"></i>
+              Cancelar
+            </button>
+            <button 
+              type="button" 
+              (click)="saveCustomer()"
+              class="btn btn-primary"
+              [disabled]="!customerForm.form.valid || isLoading()"
+            >
+              <i class="fas fa-save"></i>
+              {{ selectedCustomer() ? 'Actualizar' : 'Crear' }} Cliente
+            </button>
           </div>
         </div>
       </div>
