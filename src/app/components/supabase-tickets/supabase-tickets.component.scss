@@ -1524,7 +1524,7 @@ textarea.form-control {
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
   transition: all 0.3s ease;
-  z-index: 999;
+  z-index: 2000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1563,6 +1563,7 @@ textarea.form-control {
     width: 52px;
     height: 52px;
     font-size: 20px;
+    z-index: 2000;
   }
 }
 

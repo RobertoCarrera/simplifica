@@ -1,19 +1,19 @@
-<div class="customers-container">
+<div class="customers-container container">
       
     @if (devRoleService.canSeeDevTools()) {
       <app-dev-user-selector></app-dev-user-selector>
     }
       
       <!-- Header -->
-      <div class="header-section">
-        <div class="header-content">
-          <div class="title-section">
-            <h1 class="page-title">Gestión de Clientes</h1>
-            <p class="page-subtitle">Administra toda la información de tus clientes</p>
+      <div class="header-section row">
+        <div class="header-content col-12">
+          <div class="title-section row">
+            <h1 class="page-title col-12">Gestión de Clientes</h1>
+            <p class="page-subtitle col-8">Administra toda la información de tus clientes</p>
           </div>
           
           <!-- Actions -->
-          <div class="header-actions">
+          <div class="header-actions row">
             <!-- GDPR Toggle Button -->
             @if (devRoleService.canSeeDevTools()) {
             <button
@@ -28,7 +28,7 @@
             </button>      }      
             <button
               (click)="exportCustomers()"
-              class="btn btn-secondary"
+              class="btn btn-secondary col-4"
               [disabled]="isLoading()"
             >
               <i class="fas fa-download"></i>
@@ -632,7 +632,7 @@
               [disabled]="!customerForm.form.valid || isLoading()"
             >
               <i class="fas fa-save"></i>
-              {{ selectedCustomer() ? 'Actualizar' : 'Crear' }} Cliente
+              {{ selectedCustomer() ? 'Actualizar' : 'Crear' }}
             </button>
           </div>
         </div>
