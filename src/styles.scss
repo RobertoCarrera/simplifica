@@ -4,6 +4,10 @@
 
 /* Variables CSS para temas dinámicos */
 :root {
+  /* Viewport height for mobile Safari */
+  --vh: 1vh;
+  
+  /* Colores base */
   /* Colores base */
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
@@ -177,13 +181,13 @@ body {
 /* Estilos para páginas de autenticación - sin scroll */
 .auth-page {
   overflow: hidden !important;
-  height: 100vh !important;
+  height: calc(var(--vh, 1vh) * 100) !important;
 }
 
 .auth-page html,
 .auth-page body {
   overflow: hidden !important;
-  height: 100vh !important;
+  height: calc(var(--vh, 1vh) * 100) !important;
   margin: 0;
   padding: 0;
 }
@@ -222,7 +226,7 @@ body {
 .modal-dialog {
   position: relative !important;
   z-index: 200001 !important;
-  max-height: 85vh !important;
+  max-height: calc(var(--vh, 1vh) * 85) !important;
   overflow: auto !important;
   margin: 0 !important;
 }
@@ -235,4 +239,26 @@ body.modal-open .modal-overlay,
 body.modal-open .modal-dialog,
 body.modal-open .modal-backdrop {
   pointer-events: auto !important; /* allow interacting with the modal only */
+}
+
+/* Mejoras para Safari y móviles */
+html, body {
+  /* Mejorar el scroll en Safari */
+  -webkit-overflow-scrolling: touch;
+  /* Evitar el zoom en inputs */
+  touch-action: manipulation;
+}
+
+/* Para PWA en Safari */
+@media all and (display-mode: standalone) {
+  html, body {
+    /* Asegurar que el contenido ocupe toda la altura disponible */
+    height: calc(var(--vh, 1vh) * 100);
+    overflow-x: hidden;
+  }
+  
+  /* Mejorar el comportamiento del scroll */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
 }
