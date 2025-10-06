@@ -1104,7 +1104,7 @@ textarea.form-control {
   
   .modal-content {
     margin: 10px;
-    max-height: calc(100vh - 20px);
+    max-height: calc(85vh - 20px);
   }
   
   .modal-header,
@@ -1538,10 +1538,10 @@ textarea.form-control {
 /* Responsive adjustments for FAB */
 @media (max-width: 768px) {
   .fab-button {
-    bottom: 16px;
-    right: 16px;
-    width: 48px;
-    height: 48px;
+    bottom: 70px;
+    right: 8px;
+    width: 52px;
+    height: 52px;
     font-size: 20px;
   }
 }
