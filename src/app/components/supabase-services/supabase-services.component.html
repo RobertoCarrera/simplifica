@@ -5,7 +5,7 @@
       <div class="header-text">
         <h1 class="page-title">
           <i class="fas fa-tools"></i>
-          Catálogo de Servicios
+          Servicios
         </h1>
         <p class="page-subtitle">Gestiona los servicios técnicos disponibles</p>
       </div>
@@ -42,7 +42,7 @@
           title="Importar servicios desde CSV"
         >
           <i class="fas fa-upload"></i>
-          Importar CSV
+          Importar
           <i class="fas fa-info-circle info-icon" (click)="showServicesImportInfo($event)"></i>
         </button>
       </div>
@@ -111,7 +111,7 @@
 
   <!-- Active Services Grid -->
   <div *ngIf="!loading && !error" class="services-section">
-    <h2 class="section-title">Servicios Activos</h2>
+    <h2 class="section-title">Activos</h2>
     <div class="services-grid">
       <div *ngFor="let service of getActiveServices()" class="service-card">
         <!-- Service Header -->
@@ -236,7 +236,7 @@
   <div *ngIf="showForm" class="modal-overlay">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2>{{ editingService ? 'Editar Servicio' : 'Nuevo Servicio' }}</h2>
+        <h2>{{ editingService ? 'Editar' : 'Crear' }}</h2>
         <button class="close-btn" (click)="closeForm()">
           <i class="fas fa-times"></i>
         </button>
@@ -253,7 +253,7 @@
           
           <div class="form-grid">
             <div class="form-group">
-              <label for="name">Nombre del Servicio *</label>
+              <label for="name">Nombre *</label>
               <input 
                 type="text" 
                 id="name"
@@ -642,7 +642,7 @@
         </button>
         <button type="submit" class="btn btn-primary" (click)="saveService()" [disabled]="loading">
           <i class="fas fa-save"></i>
-          {{ editingService ? 'Actualizar' : 'Crear' }} Servicio
+          {{ editingService ? 'Actualizar' : 'Crear' }}
         </button>
       </div>
     </div>
