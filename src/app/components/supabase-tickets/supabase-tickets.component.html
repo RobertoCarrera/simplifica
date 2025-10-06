@@ -481,7 +481,7 @@
               </h3>
               <button type="button" class="btn btn-outline btn-sm" (click)="openServiceForm()">
                 <i class="fas fa-plus"></i>
-                Crear Servicio
+                Servicio
               </button>
             </div>
 
@@ -597,7 +597,7 @@
                 class="btn btn-primary btn-sm"
                 (click)="showCreateDeviceForm = !showCreateDeviceForm">
                 <i class="fas fa-plus"></i>
-                Nuevo Dispositivo
+                Nuevo
               </button>
             </div>
 
@@ -844,7 +844,7 @@
                   (click)="createAndSelectDevice()"
                   [disabled]="!deviceFormData.brand || !deviceFormData.model || !deviceFormData.device_type || !deviceFormData.reported_issue">
                   <i class="fas fa-save"></i>
-                  Crear y Seleccionar
+                  Crear
                 </button>
               </div>
             </div>
@@ -856,7 +856,7 @@
         <button class="btn btn-secondary" (click)="closeForm()">Cancelar</button>
         <button class="btn btn-primary" (click)="saveTicket()" [disabled]="loading">
           <i class="fas fa-save"></i>
-          {{ editingTicket ? 'Actualizar' : 'Crear' }} Ticket
+          {{ editingTicket ? 'Actualizar' : 'Crear' }}
         </button>
       </div>
     </div>
@@ -869,7 +869,7 @@
       <div class="modal-header">
         <h2 class="modal-title">
           <i class="fas fa-plus"></i>
-          Crear Servicio Rápido
+          Nuevo Servicio
         </h2>
         <button class="modal-close" (click)="closeServiceForm()">
           <i class="fas fa-times"></i>
@@ -879,7 +879,7 @@
       <div class="modal-body">
         <div class="form-row">
           <div class="form-group">
-            <label for="service_name">Nombre del Servicio *</label>
+            <label for="service_name">Nombre *</label>
             <input 
               type="text" 
               id="service_name"
@@ -935,7 +935,7 @@
         <button class="btn btn-secondary" (click)="closeServiceForm()">Cancelar</button>
         <button class="btn btn-primary" (click)="createServiceFromTicket()">
           <i class="fas fa-save"></i>
-          Crear y Agregar
+          Agregar
         </button>
       </div>
     </div>
