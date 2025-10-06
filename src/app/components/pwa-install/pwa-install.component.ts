@@ -49,9 +49,9 @@ import { AnimationService } from '../../services/animation.service';
       </div>
     }
 
-  @if (pwaService.isInstalled()) {
+  @if (showInstalledBanner) {
       <div class="fixed top-4 right-4 z-50" @fadeInUp>
-        <div class="bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3">
+        <div class="bg-green-100 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center justify-between">
           <div class="flex items-center space-x-2">
             <div class="text-green-600 dark:text-green-400">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -62,6 +62,11 @@ import { AnimationService } from '../../services/animation.service';
               App instalada correctamente
             </span>
           </div>
+          <button (click)="showInstalledBanner = false" class="ml-3 text-green-700 dark:text-green-300 hover:opacity-80">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
         </div>
       </div>
     }
@@ -91,6 +96,9 @@ import { AnimationService } from '../../services/animation.service';
 })
 export class PwaInstallComponent {
   private dismissed = false;
+  private installedBannerShownKey = 'pwaInstallShown';
+  private installedBannerAutoDismissMs = 6000; // optional auto hide after 6s
+  public showInstalledBanner = false;
 
   constructor(
     public pwaService: PWAService,
@@ -106,11 +114,31 @@ export class PwaInstallComponent {
       const success = await this.pwaService.installPWA();
       if (success) {
         this.toastService.success('PWA', 'Aplicación instalada correctamente');
+        // mark the banner as shown so we don't keep rendering it on subsequent loads
+        try { localStorage.setItem(this.installedBannerShownKey, '1'); } catch(e) {}
+        this.showInstalledBanner = true;
+        // auto-hide after a short period to avoid sticky banners
+        setTimeout(() => { this.showInstalledBanner = false; }, this.installedBannerAutoDismissMs);
       } else {
         this.toastService.error('PWA', 'No se pudo instalar la aplicación');
       }
     } catch (error) {
       this.toastService.error('PWA', 'Error durante la instalación');
+    }
+  }
+
+  ngOnInit() {
+    // show installed banner only once ever (or until localStorage cleared)
+    try {
+      const already = localStorage.getItem(this.installedBannerShownKey);
+      if (!already && this.pwaService.isInstalled()) {
+        // Mark and show then auto-hide
+        localStorage.setItem(this.installedBannerShownKey, '1');
+        this.showInstalledBanner = true;
+        setTimeout(() => { this.showInstalledBanner = false; }, this.installedBannerAutoDismissMs);
+      }
+    } catch(e) {
+      // ignore storage errors
     }
   }
 
