@@ -319,12 +319,16 @@
   border-radius: 12px;
   width: 100%;
   max-width: 1100px;
-  max-height: calc(100vh - 64px);
-  overflow: auto;
+  /* use viewport-aware variable (set in index.html) when available */
+  max-height: calc(var(--vh, 1vh) * 85);
   box-shadow: 0 10px 30px rgba(0,0,0,0.2);
   position: relative;
   z-index: 100000;
   padding: 0;
+
+  /* layout: header, body (scrollable), footer (sticky) */
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
@@ -337,6 +341,10 @@
 
 .modal-body {
   padding: 20px;
+  overflow: auto;
+
+  /* ensure the body takes remaining vertical space so it can scroll internally */
+  flex: 1 1 auto;
 
   /* En pantallas pequeñas, reducir padding */
   @media (max-width: 640px) {
@@ -347,6 +355,9 @@
   @media (max-width: 480px) {
     padding: 12px;
   }
+
+  /* Add a little bottom padding so last inputs/buttons are not hidden under the sticky footer */
+  padding-bottom: 96px;
 }
 
 .modal-close {
@@ -354,6 +365,22 @@
   border: none;
   font-size: 1.1rem;
   cursor: pointer;
+}
+
+/* Footer fixed to bottom of modal */
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,1));
+
+  /* Keep the footer visible at bottom of the modal */
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
 }
 
 .error-content {
