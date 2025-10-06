@@ -106,7 +106,7 @@
           [(ngModel)]="filterStage" 
           (change)="onFilterChange()" 
           class="filter-select">
-          <option value="">Todos los estados</option>
+          <option value="">Estados</option>
           <option *ngFor="let stage of stages" [value]="stage.id">{{ stage.name }}</option>
         </select>
         
@@ -115,33 +115,21 @@
           [(ngModel)]="filterPriority" 
           (change)="onFilterChange()" 
           class="filter-select">
-          <option value="">Todas las prioridades</option>
+          <option value="">Prioridades</option>
           <option value="low">Baja</option>
           <option value="normal">Normal</option>
           <option value="high">Alta</option>
           <option value="critical">Crítica</option>
         </select>
-        
-        <select 
-          name="filterStatus"
-          [(ngModel)]="filterStatus" 
-          (change)="onFilterChange()" 
-          class="filter-select">
-          <option value="">Todos</option>
-          <option value="open">Abiertos</option>
-          <option value="completed">Completados</option>
-          <option value="overdue">Vencidos</option>
-        </select>
-        
-        <button class="btn btn-secondary" (click)="clearFilters()">
-          <i class="fas fa-times"></i>
-          Limpiar
-        </button>
       </div>
     </div>
     
     <div class="results-info">
       <span class="results-count">{{ filteredTickets.length }} ticket(s) encontrado(s)</span>
+      <button class="btn btn-secondary" (click)="clearFilters()">
+        <i class="fas fa-times"></i>
+        Limpiar
+      </button>
     </div>
   </div>
 

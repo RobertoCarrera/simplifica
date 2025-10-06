@@ -2,7 +2,6 @@
 .tickets-container {
   min-height: 100vh;
   background: #f8fafc;
-  padding: 24px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
@@ -730,9 +729,8 @@
   border: 1px solid #e5e7eb;
   
   i {
-    font-size: 3rem;
+    font-size: 1.5rem;
     color: #d1d5db;
-    margin-bottom: 16px;
   }
   
   h3 {
@@ -1066,9 +1064,6 @@ textarea.form-control {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .tickets-container {
-    padding: 16px;
-  }
   
   .header-content {
     flex-direction: column;
