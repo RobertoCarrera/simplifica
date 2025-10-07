@@ -2,10 +2,27 @@
 // Deploy path: functions/v1/import-customers
 // Env required: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 // CORS controlled by: ALLOW_ALL_ORIGINS (true/false), ALLOWED_ORIGINS (comma-separated)
+// Version: 2025-10-06-PRODUCTION (Added sanitization and validation)
 
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// Security: Sanitize string input
+function sanitizeString(str: string): string {
+  if (typeof str !== 'string') return str;
+  return str.trim()
+    .replace(/[<>\"'`]/g, '') // Remove HTML/script injection chars
+    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+    .substring(0, 500); // Max length protection
+}
+
+// Security: Validate email format
+function isValidEmail(email: string): boolean {
+  if (!email || typeof email !== 'string') return false;
+  const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i;
+  return emailRegex.test(email.trim().toLowerCase());
+}
 
 function getCorsHeaders(origin?: string) {
   const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
@@ -73,6 +90,12 @@ serve(async (req: Request) => {
     if (userErr || !userData?.user) {
       return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    
+    // Security: verify user email is confirmed
+    if (!userData.user.email_confirmed_at && !userData.user.confirmed_at) {
+      return new Response(JSON.stringify({ error: "Email not confirmed. Please verify your email before importing customers." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    
     const authUserId = userData.user.id;
 
     let authoritativeCompanyId: string | null = null;
@@ -130,14 +153,23 @@ serve(async (req: Request) => {
       const phone = r.phone || r.telefono || findAnyField(r, [/(:|\b)phone$/i, /telefono$/i, /tel$/i]) || null;
       const dni = r.dni || r.nif || findAnyField(r, [/\b(dni|nif|document)/i]) || null;
 
+      // Security: sanitize all string inputs
+      if (name) name = sanitizeString(String(name));
+      if (surname) surname = sanitizeString(String(surname));
+      if (phone) phone = sanitizeString(String(phone));
+      if (dni) dni = sanitizeString(String(dni));
+
       // Prepare metadata and defaults for incomplete rows
       const attention_reasons: string[] = [];
-      if (!email || typeof email !== 'string' || !email.includes('@')) {
+      if (!email || !isValidEmail(String(email))) {
         // generate placeholder email unique-ish per row
         const ts = Date.now();
         const rand = Math.random().toString(36).slice(2, 8);
         email = `incomplete-${ts}-${rand}@placeholder.invalid`;
         attention_reasons.push('email_missing_or_invalid');
+      } else {
+        // Security: sanitize and normalize email
+        email = sanitizeString(String(email)).toLowerCase();
       }
       if (!name || String(name).trim() === '') {
         name = 'Cliente';
@@ -148,11 +180,11 @@ serve(async (req: Request) => {
         attention_reasons.push('surname_missing');
       }
       const row: any = {
-        name: name || "Cliente importado",
-        apellidos: surname || undefined,
+        name: sanitizeString((name || "Cliente importado").toUpperCase()),
+        apellidos: surname ? sanitizeString(surname.toUpperCase()) : undefined,
         email,
         phone: phone,
-        dni: dni,
+        dni: dni ? sanitizeString(dni.toUpperCase()) : dni,
         company_id: authoritativeCompanyId,
         created_at: new Date().toISOString(),
       };

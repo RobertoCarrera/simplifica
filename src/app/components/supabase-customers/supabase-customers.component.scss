@@ -3,7 +3,6 @@
 .customers-container {
   min-height: 100vh;
   background: #f8fafc;
-  padding: 24px;
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
 
@@ -848,9 +847,6 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .customers-container {
-    padding: 16px;
-  }
   
   .header-content {
     padding: 24px;
@@ -1142,9 +1138,6 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-  .customers-container {
-    padding: 16px;
-  }
   
   .customers-grid {
     grid-template-columns: 1fr;

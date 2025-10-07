@@ -519,6 +519,18 @@
                   class="form-input"
                   placeholder="12345678Z"
                 >
+
+                <!-- Honeypot field - hidden from users, detects bots -->
+                <input
+                  type="text"
+                  [(ngModel)]="formData.honeypot"
+                  [name]="honeypotFieldName"
+                  style="position:absolute;left:-9999px;width:0;height:0;opacity:0;pointer-events:none;"
+                  tabindex="-1"
+                  autocomplete="off"
+                  aria-hidden="true"
+                  [attr.data-honeypot]="true"
+                >
               </div>
 
               <!-- Responsive address row: desktop -> four columns; mobile -> stacked -->

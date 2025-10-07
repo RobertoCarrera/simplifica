@@ -9,12 +9,22 @@ const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s
 
 // Configuration for this function
 const FUNCTION_NAME = 'create-address';
+const FUNCTION_VERSION = '2025-10-06-PRODUCTION'; // Added version and security features
 const RPC_NAME = 'insert_or_get_address'; // try RPC first
 const TABLE_NAME = 'addresses';
 const UNIQUE_ON = 'direccion,locality_id,usuario_id';
 const REQUIRED_FIELDS = ['p_direccion','p_locality_id'];
 const OPTIONAL_FIELDS = ['p_numero'];
 const NUMERIC_ONLY_FIELD = ''; // no numeric-only field for addresses
+
+// Security: Sanitize string input
+function sanitizeString(str: string): string {
+  if (typeof str !== 'string') return str;
+  return str.trim()
+    .replace(/[<>\"'`]/g, '') // Remove HTML/script injection chars
+    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+    .substring(0, 500); // Max length protection
+}
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error(`[${FUNCTION_NAME}] Missing required environment variables SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY`);
@@ -81,6 +91,11 @@ serve(async (req: Request) => {
       return jsonResponse(401, { error: 'Invalid or expired token' }, origin || '*');
     }
     authUserId = userRes.data.user.id;
+    
+    // Security: verify user email is confirmed
+    if (!userRes.data.user.email_confirmed_at && !userRes.data.user.confirmed_at) {
+      return jsonResponse(403, { error: 'Email not confirmed. Please verify your email.' }, origin || '*');
+    }
   } catch (e) {
     console.error(`[${FUNCTION_NAME}] Error validating token`, e.message || e);
     return jsonResponse(401, { error: 'Invalid token' }, origin || '*');
@@ -108,11 +123,22 @@ serve(async (req: Request) => {
 
   // Build DB payload and normalize
   const payload: any = {
-    direccion: (body.p_direccion || '').toString().trim(),
-    numero: body.p_numero !== undefined ? (body.p_numero === null ? null : body.p_numero) : null,
+    direccion: sanitizeString((body.p_direccion || '').toString().trim().toUpperCase()),
+    numero: body.p_numero !== undefined ? (body.p_numero === null ? null : sanitizeString(body.p_numero.toString().trim())) : null,
     locality_id: body.p_locality_id || null,
     usuario_id: authUserId
   };
+
+  // Security: validate direccion is not empty after sanitization
+  if (!payload.direccion) {
+    return jsonResponse(400, { error: 'Address (p_direccion) cannot be empty' }, origin || '*');
+  }
+
+  // Security: validate locality_id is a valid UUID
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!payload.locality_id || !uuidRegex.test(payload.locality_id)) {
+    return jsonResponse(400, { error: 'Invalid locality_id (must be a valid UUID)' }, origin || '*');
+  }
 
   // Normalize numeric-only field if configured
   if (NUMERIC_ONLY_FIELD && body[NUMERIC_ONLY_FIELD]) {

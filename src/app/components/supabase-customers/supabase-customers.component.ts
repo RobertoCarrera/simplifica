@@ -14,6 +14,7 @@ import { SupabaseCustomersService, CustomerFilters, CustomerStats } from '../../
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../services/gdpr-compliance.service';
 import { ToastService } from '../../services/toast.service';
 import { DevRoleService } from '../../services/dev-role.service';
+import { HoneypotService } from '../../services/honeypot.service';
 import { AppModalComponent } from '../app-modal/app-modal.component';
 import { Router } from '@angular/router';
 
@@ -41,6 +42,7 @@ export class SupabaseCustomersComponent implements OnInit {
   private toastService = inject(ToastService);
   private addressesService = inject(AddressesService);
   private localitiesService = inject(LocalitiesService);
+  private honeypotService = inject(HoneypotService);
   private router = inject(Router);
   devRoleService = inject(DevRoleService);
 
@@ -104,8 +106,19 @@ export class SupabaseCustomersComponent implements OnInit {
     addressTipoVia: '',
     addressNombre: '',
     addressNumero: '',
-    addressLocalidadId: ''
+    addressLocalidadId: '',
+    // Honeypot field (hidden from users, bots will fill it)
+    honeypot: ''
   };
+
+  // Honeypot tracking
+  honeypotFieldName: string = '';
+  formLoadTime: number = 0;
+
+  /**
+   * REMOVED: Normalization now happens server-side in Edge Function for security
+   * Client-side normalization removed to prevent bypassing server validation
+   */
 
   // Localities cache for selector
   localities: Locality[] = [];
@@ -265,6 +278,10 @@ onMappingConfirmed(mappings: any[]): void {
   }
 
   ngOnInit() {
+    // Initialize honeypot protection
+    this.honeypotFieldName = this.honeypotService.getHoneypotFieldName();
+    this.formLoadTime = this.honeypotService.getFormLoadTime();
+    
     this.loadData();
     this.loadGdprData();
   }
@@ -671,7 +688,18 @@ onMappingConfirmed(mappings: any[]): void {
   }
 
   private createNewCustomer() {
-    // If there is address text, create an Address record first and then create customer with direccion_id
+    // SECURITY: Bot detection - check honeypot field
+    const submissionTime = this.honeypotService.getSubmissionTime(this.formLoadTime);
+    if (this.honeypotService.isProbablyBot(this.formData.honeypot, submissionTime)) {
+      // Silent rejection - don't tell bots they were detected
+      this.closeForm();
+      this.toastService.error('Error', 'No se pudo procesar la solicitud. Inténtelo de nuevo.');
+      return;
+    }
+    
+    // SECURITY: All normalization now happens server-side in Edge Function
+    // Send raw values - server will sanitize, validate and normalize
+    
     const createCustomerWithDireccion = (direccion_id?: string) => {
       const customerData: CreateCustomerDev = {
         name: this.formData.name,
@@ -686,19 +714,24 @@ onMappingConfirmed(mappings: any[]): void {
         next: (customer) => {
           this.closeForm();
           this.toastService.success('Éxito', 'Cliente creado correctamente');
+          
+          // Reset form load time for next submission
+          this.formLoadTime = this.honeypotService.getFormLoadTime();
         },
         error: (error) => {
           console.error('Error al crear cliente:', error);
-          this.toastService.error('Error', 'No se pudo crear el cliente');
+          const errorMsg = error?.error || error?.message || 'No se pudo crear el cliente';
+          this.toastService.error('Error', errorMsg);
         }
       });
     };
 
-    // If any address field is provided, create Address first
+    // If any address field is provided, create Address first (Edge Function handles normalization)
     const hasAddressData = (this.formData.addressNombre && this.formData.addressNombre.trim()) ||
       (this.formData.addressNumero && this.formData.addressNumero.trim());
 
     if (hasAddressData) {
+      // Send raw values - Edge Function will normalize
       const newAddress: any = {
         _id: '',
         created_at: new Date(),
@@ -714,7 +747,8 @@ onMappingConfirmed(mappings: any[]): void {
         },
         error: (err: any) => {
           console.error('Error creando dirección:', err);
-          this.toastService.error('Error', 'No se pudo crear la dirección');
+          const errorMsg = err?.error || err?.message || 'No se pudo crear la dirección';
+          this.toastService.error('Error', errorMsg);
         }
       });
     } else {
@@ -726,7 +760,8 @@ onMappingConfirmed(mappings: any[]): void {
     const customerId = this.selectedCustomer()?.id;
     if (!customerId) return;
 
-    const applyUpdate = (direccion_id?: string) => {
+      // SECURITY: Send raw values - server handles normalization
+      const applyUpdate = (direccion_id?: string) => {
       const updates: any = {
         name: this.formData.name,
         apellidos: this.formData.apellidos,
@@ -815,8 +850,11 @@ onMappingConfirmed(mappings: any[]): void {
       addressTipoVia: '',
       addressNombre: '',
       addressNumero: '',
-      addressLocalidadId: ''
+      addressLocalidadId: '',
+      honeypot: '' // Reset honeypot field
     };
+    // Reset form timing for bot detection
+    this.formLoadTime = this.honeypotService.getFormLoadTime();
   }
 
   private populateForm(customer: Partial<Customer>) {
@@ -831,7 +869,8 @@ onMappingConfirmed(mappings: any[]): void {
   addressTipoVia: customer.direccion?.tipo_via || '',
   addressNombre: (customer.direccion && customer.direccion.nombre) ? customer.direccion.nombre : (customer.address || ''),
   addressNumero: customer.direccion?.numero || '',
-  addressLocalidadId: customer.direccion?.localidad_id || ''
+  addressLocalidadId: customer.direccion?.localidad_id || '',
+      honeypot: '' // Always empty when populating (not visible to user)
     };
   }
 

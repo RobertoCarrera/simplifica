@@ -466,58 +466,20 @@ export class SupabaseCustomersService {
 
   /**
    * Crear cliente usando método estándar
+   * SECURITY: In production, always use Edge Function for server-side validation and normalization
    */
   private createCustomerStandard(customer: CreateCustomerDev): Observable<Customer> {
-    // MULTI-TENANT: Usar company_id del usuario autenticado
     const companyId = this.authService.companyId();
     if (!companyId) {
       return throwError(() => new Error('Usuario no tiene empresa asignada'));
     }
 
-    // Convertir de Customer a estructura de clients
-    const clientData: any = {
-      name: customer.name || '',
-      apellidos: customer.apellidos || '',
-      dni: customer.dni || '',
-      email: customer.email || '',
-      phone: customer.phone || '',
-      company_id: companyId, // Usar company_id del usuario autenticado
-      created_at: new Date().toISOString()
-    };
-
-    // Nota: la tabla 'clients' no tiene columna 'direccion_id'.
-    // La dirección se gestiona en la tabla 'addresses' mediante funciones/servicio dedicado.
+    devLog('Creando cliente via Edge Function (producción segura)', { companyId });
     
-    devLog('Creando cliente via método estándar', { companyId: clientData.company_id });
-    
-    return from(
-      this.supabase
-        .from('clients')
-        .insert([clientData])
-        .select('*')
-        .single()
-    ).pipe(
-      map(({ data, error }) => {
-        if (error) throw error;
-        
-        // Convertir de clients a Customer
-        const convertedCustomer: Customer = {
-          id: data.id,
-          name: data.name,
-          apellidos: data.apellidos || '',
-          dni: data.dni || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          usuario_id: customer.usuario_id || this.currentDevUserId || 'default-user',
-          created_at: data.created_at,
-          updated_at: data.updated_at
-        };
-        
-        return convertedCustomer;
-      }),
+    // PRODUCTION: Always use Edge Function for security
+    return from(this.callUpsertClientEdgeFunction(customer, companyId)).pipe(
       tap(newCustomer => {
-        devSuccess('Cliente creado via método estándar', newCustomer.id);
-        // Actualizar lista local
+        devSuccess('Cliente creado via Edge Function', newCustomer.id);
         const currentCustomers = this.customersSubject.value;
         this.customersSubject.next([newCustomer, ...currentCustomers]);
         this.loadingSubject.next(false);
@@ -525,10 +487,66 @@ export class SupabaseCustomersService {
       }),
       catchError(error => {
         this.loadingSubject.next(false);
-        devError('Error al crear cliente', error);
+        devError('Error al crear cliente via Edge Function', error);
         return throwError(() => error);
       })
     );
+  }
+
+  /**
+   * SECURITY: Call Edge Function for client upsert (create/update)
+   * Handles server-side validation, sanitization, and normalization
+   */
+  private async callUpsertClientEdgeFunction(customer: CreateCustomerDev | UpdateCustomer, companyId?: string): Promise<Customer> {
+    const session = await this.supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) throw new Error('No auth token for Edge Function');
+
+    const payload: any = {
+      p_name: customer.name,
+      p_apellidos: customer.apellidos ?? null,
+      p_email: customer.email ?? null,
+      p_phone: customer.phone ?? null,
+      p_dni: customer.dni ?? null,
+    };
+
+    // If updating, include ID
+    if ('id' in customer && (customer as any).id) {
+      payload.p_id = (customer as any).id;
+    }
+
+    // Add direccion_id if present
+    if ('direccion_id' in customer) {
+      payload.p_direccion_id = (customer as any).direccion_id ?? null;
+    }
+
+    const fnBase = (environment as any).edgeFunctionsBaseUrl || `${environment.supabase.url.replace(/\/$/, '')}/functions/v1`;
+    const fnUrl = `${fnBase.replace(/\/$/, '')}/upsert-client`;
+    
+    const res = await fetch(fnUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'apikey': environment.supabase.anonKey,
+        'x-client-info': 'simplifica-app',
+      },
+      mode: 'cors',
+      credentials: 'omit',
+      body: JSON.stringify(payload),
+    });
+    
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const errorMsg = json?.error || `Edge Function failed with status ${res.status}`;
+      throw new Error(errorMsg);
+    }
+    
+    const row = json.client;
+    if (!row) throw new Error('No client returned from Edge Function');
+    
+    const converted: Customer = this.toCustomerFromClient(row);
+    return converted;
   }
 
   /**
@@ -597,126 +615,26 @@ export class SupabaseCustomersService {
 
   /**
    * Actualizar cliente usando método estándar
+   * SECURITY: In production, use Edge Function for server-side validation
    */
   private updateCustomerStandard(id: string, updates: UpdateCustomer): Observable<Customer> {
-    devLog('Actualizando cliente via método estándar', { id });
+    devLog('Actualizando cliente via Edge Function (producción segura)', { id });
     
-    // Convertir updates de Customer a estructura de clients
-    const clientUpdates: any = {};
-    
-    if (updates.name) clientUpdates.name = updates.name;
-    if (updates.apellidos) clientUpdates.apellidos = updates.apellidos;
-    if (updates.dni) clientUpdates.dni = updates.dni;
-    if (updates.email) clientUpdates.email = updates.email;
-    if (updates.phone) clientUpdates.phone = updates.phone;
-  // Nota: no mapear 'direccion_id' porque no existe en el esquema de 'clients'.
-    
-    const doStandard = from(
-      this.supabase
-        .from('clients')
-        .update(clientUpdates)
-        .eq('id', id)
-        .select('*')
-        .single()
-    ).pipe(
-      map(({ data, error }) => {
-        if (error) throw error;
-        const convertedCustomer: Customer = {
-          id: data.id,
-          name: data.name,
-          apellidos: data.apellidos || '',
-          dni: data.dni || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          usuario_id: this.currentDevUserId || 'default-user',
-          created_at: data.created_at,
-          updated_at: data.updated_at
-        };
-        return convertedCustomer;
-      })
-    );
-
-    return doStandard.pipe(
+    // PRODUCTION: Always use Edge Function for security
+    return from(this.callUpsertClientEdgeFunction({ ...updates, id } as any, undefined)).pipe(
       tap(updatedCustomer => {
-        devSuccess('Cliente actualizado via método estándar', updatedCustomer.id);
+        devSuccess('Cliente actualizado via Edge Function', updatedCustomer.id);
         const currentCustomers = this.customersSubject.value;
         const updatedList = currentCustomers.map(c => c.id === id ? updatedCustomer : c);
         this.customersSubject.next(updatedList);
         this.loadingSubject.next(false);
       }),
-      catchError(err => {
-        // Si es stack depth (54001) u otro 500 del PostgREST, intentar Edge Function segura
-        const code = (err && (err.code || err.status || err.statusCode)) ?? '';
-        const message = String(err?.message || '');
-        const isStackDepth = code === '54001' || message.includes('stack depth') || (err?.status === 500);
-        if (!isStackDepth) {
-          this.loadingSubject.next(false);
-          devError('Error al actualizar cliente', err);
-          return throwError(() => err);
-        }
-        devError('Fallo actualización estándar (stack depth). Intentando Edge Function update-client-safe...', err);
-        return from(this.callUpdateClientEdgeFunction(id, updates)).pipe(
-          tap(updatedCustomer => {
-            devSuccess('Cliente actualizado via Edge Function', updatedCustomer.id);
-            const currentCustomers = this.customersSubject.value;
-            const updatedList = currentCustomers.map(c => c.id === id ? updatedCustomer : c);
-            this.customersSubject.next(updatedList);
-            this.loadingSubject.next(false);
-          })
-        );
+      catchError(error => {
+        this.loadingSubject.next(false);
+        devError('Error al actualizar cliente via Edge Function', error);
+        return throwError(() => error);
       })
     );
-  }
-
-  private async callUpdateClientEdgeFunction(id: string, updates: UpdateCustomer): Promise<Customer> {
-    const session = await this.supabase.auth.getSession();
-    const token = session.data.session?.access_token;
-    if (!token) throw new Error('No auth token for Edge Function');
-
-    const payload: any = {
-      p_id: id,
-      p_name: updates.name,
-      p_apellidos: updates.apellidos ?? null,
-      p_email: updates.email ?? null,
-      p_phone: updates.phone ?? null,
-      p_dni: updates.dni ?? null,
-      p_fecha_nacimiento: (updates as any).fecha_nacimiento ?? null,
-      p_profesion: (updates as any).profesion ?? null,
-      p_empresa: (updates as any).empresa ?? null,
-      p_avatar_url: (updates as any).avatar_url ?? null,
-    };
-
-  const fnBase = (environment as any).edgeFunctionsBaseUrl || `${environment.supabase.url.replace(/\/$/, '')}/functions/v1`;
-  const fnUrl = `${fnBase.replace(/\/$/, '')}/update-client-safe`;
-    const res = await fetch(fnUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'apikey': environment.supabase.anonKey,
-        'x-client-info': 'simplifica-app',
-      },
-      mode: 'cors',
-      credentials: 'omit',
-      body: JSON.stringify(payload),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(json?.error || `Edge Function failed with status ${res.status}`);
-    }
-    const row = json.result;
-    const converted: Customer = {
-      id: row.id,
-      name: row.name,
-      apellidos: row.apellidos || '',
-      dni: row.dni || '',
-      email: row.email || '',
-      phone: row.phone || '',
-      usuario_id: this.currentDevUserId || 'default-user',
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-    };
-    return converted;
   }
 
   /**
