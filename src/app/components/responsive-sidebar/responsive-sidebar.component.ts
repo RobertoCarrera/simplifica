@@ -371,6 +371,13 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'production'
     },
     {
+      id: 41, // Nuevo ID entre servicios y productos
+      label: 'Chat',
+      icon: 'chat',
+      route: '/chat',
+      module: 'production'
+    },
+    {
       id: 5,
       label: 'Productos',
       icon: 'inventory_2',

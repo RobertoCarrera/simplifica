@@ -1,0 +1,247 @@
+<div class="anychat-container">
+  <!-- ===============================
+       HEADER
+       =============================== -->
+  <div class="chat-header">
+    <div class="header-title">
+      <i class="fas fa-comments"></i>
+      <h1>Chat AnyChat</h1>
+    </div>
+    <div class="header-stats">
+      <span class="stat-badge">
+        <i class="fas fa-users"></i>
+        {{ totalContacts() }} contactos
+      </span>
+    </div>
+  </div>
+
+  <div class="chat-layout">
+    <!-- ===============================
+         SIDEBAR - LISTA DE CONTACTOS
+         =============================== -->
+    <aside class="contacts-sidebar">
+      <!-- Búsqueda -->
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input 
+          type="text" 
+          placeholder="Buscar por nombre, email o empresa..."
+          [(ngModel)]="searchTerm"
+          (input)="searchContactsByEmail()"
+          class="search-input"
+        />
+        @if (searchTerm()) {
+          <button 
+            class="clear-search"
+            (click)="searchTerm.set(''); loadContacts()">
+            <i class="fas fa-times"></i>
+          </button>
+        }
+      </div>
+
+      <!-- Lista de contactos -->
+      <div class="contacts-list">
+        @if (isLoadingContacts()) {
+          <div class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Cargando contactos...</p>
+          </div>
+        } @else if (!hasContacts()) {
+          <div class="empty-state">
+            <i class="fas fa-user-friends"></i>
+            <h3>No hay contactos</h3>
+            <p>Los contactos aparecerán aquí cuando los crees en AnyChat</p>
+          </div>
+        } @else {
+          @for (contact of filteredContacts(); track contact.guid) {
+            <div 
+              class="contact-item"
+              [class.active]="selectedContact()?.guid === contact.guid"
+              (click)="selectContact(contact)">
+              
+              <!-- Avatar -->
+              <div class="contact-avatar">
+                @if (contact.image) {
+                  <img [src]="contact.image" [alt]="contact.name" />
+                } @else {
+                  <div class="avatar-initials">
+                    {{ getContactInitials(contact) }}
+                  </div>
+                }
+              </div>
+
+              <!-- Info -->
+              <div class="contact-info">
+                <div class="contact-name">{{ contact.name || 'Sin nombre' }}</div>
+                <div class="contact-email">{{ contact.email || 'Sin email' }}</div>
+                @if (contact.company) {
+                  <div class="contact-company">
+                    <i class="fas fa-building"></i>
+                    {{ contact.company }}
+                  </div>
+                }
+              </div>
+
+              <!-- Última actualización -->
+              <div class="contact-meta">
+                <span class="contact-date">{{ formatDate(contact.updated_at) }}</span>
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Paginación -->
+      @if (hasContacts() && totalPages() > 1) {
+        <div class="pagination">
+          <button 
+            class="page-btn"
+            [disabled]="currentPage() === 1"
+            (click)="previousPage()">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          
+          <span class="page-info">
+            Página {{ currentPage() }} de {{ totalPages() }}
+          </span>
+          
+          <button 
+            class="page-btn"
+            [disabled]="currentPage() === totalPages()"
+            (click)="nextPage()">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      }
+    </aside>
+
+    <!-- ===============================
+         MAIN - ÁREA DE CHAT
+         =============================== -->
+    <main class="chat-main">
+      @if (!selectedContact()) {
+        <!-- Sin contacto seleccionado -->
+        <div class="welcome-state">
+          <i class="fas fa-comments"></i>
+          <h2>Bienvenido a AnyChat</h2>
+          <p>Selecciona un contacto de la izquierda para ver las conversaciones</p>
+          <div class="features">
+            <div class="feature-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Gestión de contactos</span>
+            </div>
+            <div class="feature-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Conversaciones en tiempo real</span>
+            </div>
+            <div class="feature-item">
+              <i class="fas fa-check-circle"></i>
+              <span>Integración completa con AnyChat API</span>
+            </div>
+          </div>
+        </div>
+      } @else {
+        <!-- Contacto seleccionado -->
+        <div class="chat-content">
+          <!-- Header del chat -->
+          <div class="chat-content-header">
+            <div class="contact-header-info">
+              <div class="contact-avatar-small">
+                @if (selectedContact()!.image) {
+                  <img [src]="selectedContact()!.image" [alt]="selectedContact()!.name" />
+                } @else {
+                  <div class="avatar-initials-small">
+                    {{ getContactInitials(selectedContact()!) }}
+                  </div>
+                }
+              </div>
+              <div>
+                <h3>{{ selectedContact()!.name }}</h3>
+                <p class="contact-status">
+                  <i class="fas fa-circle"></i>
+                  {{ selectedContact()!.email }}
+                </p>
+              </div>
+            </div>
+            <div class="chat-actions">
+              <button class="action-btn" title="Información del contacto">
+                <i class="fas fa-info-circle"></i>
+              </button>
+              <button class="action-btn" title="Llamar">
+                <i class="fas fa-phone"></i>
+              </button>
+              <button class="action-btn" title="Más opciones">
+                <i class="fas fa-ellipsis-v"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Mensajes -->
+          <div class="messages-container">
+            @if (isLoadingMessages()) {
+              <div class="loading-messages">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Cargando mensajes...</p>
+              </div>
+            } @else if (!hasMessages()) {
+              <div class="empty-messages">
+                <i class="fas fa-comment-slash"></i>
+                <h3>No hay mensajes aún</h3>
+                <p>Inicia la conversación enviando el primer mensaje</p>
+              </div>
+            } @else {
+              @for (message of messages(); track message.guid) {
+                <div 
+                  class="message"
+                  [class.message-out]="message.direction === 'out'"
+                  [class.message-in]="message.direction === 'in'">
+                  
+                  <div class="message-content">
+                    <p>{{ message.message }}</p>
+                    <span class="message-time">
+                      {{ formatDate(message.created_at) }}
+                      @if (message.direction === 'out') {
+                        <i 
+                          class="fas fa-check-double"
+                          [class.read]="message.read_at">
+                        </i>
+                      }
+                    </span>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+
+          <!-- Input de mensaje -->
+          <div class="message-input-container">
+            <button class="attach-btn" title="Adjuntar archivo">
+              <i class="fas fa-paperclip"></i>
+            </button>
+            
+            <input 
+              type="text"
+              placeholder="Escribe un mensaje..."
+              [(ngModel)]="newMessage"
+              (keyup.enter)="sendMessage()"
+              class="message-input"
+              [disabled]="isSendingMessage()"
+            />
+            
+            <button 
+              class="send-btn"
+              (click)="sendMessage()"
+              [disabled]="!canSendMessage()"
+              [title]="canSendMessage() ? 'Enviar mensaje' : 'Escribe un mensaje para enviar'">
+              @if (isSendingMessage()) {
+                <i class="fas fa-spinner fa-spin"></i>
+              } @else {
+                <i class="fas fa-paper-plane"></i>
+              }
+            </button>
+          </div>
+        </div>
+      }
+    </main>
+  </div>
+</div>

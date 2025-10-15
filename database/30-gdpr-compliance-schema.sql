@@ -231,12 +231,15 @@ BEGIN
     -- Update client with anonymized data
     UPDATE public.clients SET
         name = 'ANONYMIZED_' || left(md5(client_record.name), 8),
+        apellidos = 'ANONYMIZED_' || left(md5(COALESCE(client_record.apellidos, '')), 8),
         email = 'anonymized.' || left(md5(client_record.email), 8) || '@anonymized.local',
         phone = NULL,
         dni = NULL,
         address = jsonb_build_object('anonymized', true),
         metadata = jsonb_build_object('anonymized', true, 'original_metadata', anonymized_data),
         anonymized_at = now(),
+        last_accessed_at = now(),
+        access_count = COALESCE(access_count, 0) + 1,
         updated_at = now()
     WHERE id = client_id;
     

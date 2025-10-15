@@ -186,33 +186,39 @@
       @if (!isLoading() || customers().length) {
         <div class="customers-grid">
           @for (customer of filteredCustomers(); track customer.id; let i = $index) {
-            <div class="customer-card" (click)="selectCustomer(customer)">
+            <div class="customer-card-container" [class.flipped]="flippedCardId() === customer.id">
               
-              <!-- Avatar -->
-              <div class="customer-avatar">
-                @if (customer.avatar_url) {
-                  <img 
-                    [src]="customer.avatar_url"
-                    [alt]="customer.name + ' ' + customer.apellidos"
-                    class="avatar-img"
-                  >
-                } @else {
-                  <div class="avatar-placeholder">
-                    {{ getCustomerInitials(customer) }}
-                  </div>
-                }
+              <!-- Card Inner (for 3D flip) -->
+              <div class="customer-card-inner">
                 
-                <!-- Status Badge -->
-                <div 
-                  class="status-badge"
-                  [class.active]="customer.activo"
-                  [class.inactive]="!customer.activo"
-                  [title]="customer.activo ? 'Cliente activo' : 'Cliente inactivo'"
-                ></div>
-              </div>
+                <!-- FRONT FACE - Customer Info -->
+                <div class="customer-card customer-card-front">
+                  
+                  <!-- Avatar -->
+                  <div class="customer-avatar" (click)="selectCustomer(customer)">
+                    @if (customer.avatar_url) {
+                      <img 
+                        [src]="customer.avatar_url"
+                        [alt]="customer.name + ' ' + customer.apellidos"
+                        class="avatar-img"
+                      >
+                    } @else {
+                      <div class="avatar-placeholder">
+                        {{ getCustomerInitials(customer) }}
+                      </div>
+                    }
+                    
+                    <!-- Status Badge -->
+                    <div 
+                      class="status-badge"
+                      [class.active]="customer.activo"
+                      [class.inactive]="!customer.activo"
+                      [title]="customer.activo ? 'Cliente activo' : 'Cliente inactivo'"
+                    ></div>
+                  </div>
 
-              <!-- Customer Info -->
-              <div class="customer-info">
+                  <!-- Customer Info -->
+                  <div class="customer-info">
                 <h3 class="customer-name">
                   {{ customer.name }} {{ customer.apellidos }}
                 </h3>
@@ -292,80 +298,114 @@
                 
               </div>
 
-              <!-- Actions -->
-              <div class="customer-actions">
-                
-                <button
-                  (click)="editCustomer(customer); $event.stopPropagation()"
-                  class="action-btn edit"
-                  title="Editar cliente"
-                >
-                  <i class="fas fa-edit"></i>
-                </button>
-                
-                <!-- GDPR Actions Menu -->
-                @if (devRoleService.canSeeDevTools()) {
-                  <div class="gdpr-actions-menu relative inline-block">
+                  <!-- Actions -->
+                  <div class="customer-actions">
+                    
                     <button
+                      (click)="editCustomer(customer); $event.stopPropagation()"
+                      class="action-btn edit"
+                      title="Editar cliente"
+                    >
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    
+                    <!-- GDPR Flip Button -->
+                    <button
+                      (click)="flipCardToGdpr($event, customer.id)"
                       class="action-btn gdpr"
                       [class.opacity-50]="customer?.metadata?.inactive_on_import"
                       [disabled]="customer?.metadata?.inactive_on_import"
                       title="Acciones RGPD"
-                      (click)="toggleGdprMenu($event, customer.id)"
                     >
                       <i class="fas fa-shield-alt"></i>
                     </button>
                     
-                    <div 
-                      [id]="'gdpr-menu-' + customer.id"
-                      class="gdpr-dropdown hidden absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10"
+                    <button
+                      (click)="deleteCustomer(customer); $event.stopPropagation()"
+                      class="action-btn delete"
+                      [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                      [disabled]="customer?.metadata?.inactive_on_import"
+                      title="Eliminar cliente"
                     >
-                      <button
-                        (click)="sendConsentRequest(customer); $event.stopPropagation()"
-                        class="block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
-                      >
-                        <i class="fas fa-envelope-open-text mr-2"></i>
-                        Solicitar Consentimiento
-                      </button>
-
-                      <button
-                        (click)="requestDataAccess(customer); $event.stopPropagation()"
-                        class="block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
-                      >
-                        <i class="fas fa-file-alt mr-2"></i>
-                        Solicitar Acceso Datos
-                      </button>
-                      
-                      <button
-                        (click)="exportCustomerData(customer); $event.stopPropagation()"
-                        class="block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100"
-                      >
-                        <i class="fas fa-download mr-2"></i>
-                        Exportar Datos RGPD
-                      </button>
-                      
-                      <hr class="my-1">
-                      
-                      <button
-                        (click)="anonymizeCustomer(customer); $event.stopPropagation()"
-                        class="block w-full text-left px-3 py-2 text-xs text-red-700 hover:bg-red-50"
-                      >
-                        <i class="fas fa-user-slash mr-2"></i>
-                        Derecho al Olvido
-                      </button>
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- BACK FACE - GDPR Menu -->
+                <div class="customer-card customer-card-back">
+                  
+                  <!-- Close Button -->
+                  <button
+                    (click)="closeGdprCard($event)"
+                    class="gdpr-close-btn"
+                    title="Cerrar"
+                  >
+                    <i class="fas fa-times"></i>
+                  </button>
+                  
+                  <!-- GDPR Header -->
+                  <div class="gdpr-back-header">
+                    <div class="gdpr-back-icon">
+                      <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div>
+                      <h3 class="gdpr-back-title">Acciones RGPD</h3>
+                      <p class="gdpr-back-subtitle">{{ customer.name }} {{ customer.apellidos }}</p>
                     </div>
                   </div>
-                }
+                  
+                  <!-- GDPR Actions -->
+                  <div class="gdpr-back-actions">
+                    
+                    <button
+                      (click)="sendConsentRequest(customer); $event.stopPropagation()"
+                      class="gdpr-back-btn"
+                    >
+                      <i class="fas fa-envelope-open-text"></i>
+                      <span>Solicitar Consentimiento</span>
+                    </button>
+
+                    <button
+                      (click)="requestDataAccess(customer); $event.stopPropagation()"
+                      class="gdpr-back-btn"
+                    >
+                      <i class="fas fa-file-alt"></i>
+                      <span>Solicitar Acceso Datos</span>
+                    </button>
+                    
+                    <button
+                      (click)="exportCustomerData(customer); $event.stopPropagation()"
+                      class="gdpr-back-btn"
+                    >
+                      <i class="fas fa-download"></i>
+                      <span>Exportar Datos RGPD</span>
+                    </button>
+                    
+                    <div class="gdpr-back-divider"></div>
+                    
+                    <button
+                      (click)="openGdprModal(customer); $event.stopPropagation()"
+                      class="gdpr-back-btn primary"
+                    >
+                      <i class="fas fa-cog"></i>
+                      <span>Gestionar GDPR Completo</span>
+                    </button>
+                    
+                    <button
+                      (click)="anonymizeCustomer(customer); $event.stopPropagation()"
+                      class="gdpr-back-btn danger"
+                      [disabled]="isCustomerAnonymized(customer)"
+                      [class.opacity-50]="isCustomerAnonymized(customer)"
+                      [title]="isCustomerAnonymized(customer) ? 'Cliente ya anonimizado' : 'Anonimizar datos del cliente (irreversible)'"
+                    >
+                      <i class="fas fa-user-slash"></i>
+                      <span>{{ isCustomerAnonymized(customer) ? 'Ya Anonimizado' : 'Derecho al Olvido' }}</span>
+                    </button>
+                    
+                  </div>
+                </div>
                 
-                <button
-                  (click)="deleteCustomer(customer); $event.stopPropagation()"
-                  class="action-btn delete"
-                  [class.opacity-50]="customer?.metadata?.inactive_on_import"
-                  [disabled]="customer?.metadata?.inactive_on_import"
-                  title="Eliminar cliente"
-                >
-                  <i class="fas fa-trash"></i>
-                </button>
               </div>
             </div>
           }
@@ -662,6 +702,17 @@
       (mappingConfirmed)="onCsvMappingConfirmed($event)"
       (cancelled)="onCsvMappingCancelled()"
     ></app-csv-header-mapper>
+
+    <!-- GDPR Management Modal -->
+    @if (gdprModalClient()) {
+      <app-client-gdpr-modal
+        [isOpen]="showGdprModal()"
+        [clientId]="gdprModalClient()!.id"
+        [clientEmail]="gdprModalClient()!.email"
+        [clientName]="gdprModalClient()!.name + ' ' + (gdprModalClient()!.apellidos || '')"
+        (closeModal)="closeGdprModal()">
+      </app-client-gdpr-modal>
+    }
 
     <!-- Floating Action Button (FAB) -->
     <button

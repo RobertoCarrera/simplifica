@@ -48,11 +48,6 @@ import { environment } from '../../../environments/environment';
             </div>
 
             <div *ngIf="done" class="p-3 bg-green-50 text-green-700 rounded">Preferencias guardadas. Ya puedes cerrar esta página.</div>
-
-            <div *ngIf="lastRpcResponse" class="mt-4 p-3 bg-gray-50 border rounded text-xs text-gray-700">
-              <div class="font-medium">Debug RPC:</div>
-              <pre class="mt-2 text-xs">{{ lastRpcResponse | json }}</pre>
-            </div>
           </ng-container>
         </ng-container>
       </div>

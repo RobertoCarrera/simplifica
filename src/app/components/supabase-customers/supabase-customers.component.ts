@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, HostListener, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, HostListener, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SkeletonComponent } from '../skeleton/skeleton.component';
@@ -17,6 +17,7 @@ import { DevRoleService } from '../../services/dev-role.service';
 import { HoneypotService } from '../../services/honeypot.service';
 import { AppModalComponent } from '../app-modal/app-modal.component';
 import { Router } from '@angular/router';
+import { ClientGdprModalComponent } from '../client-gdpr-modal/client-gdpr-modal.component';
 
 @Component({
   selector: 'app-supabase-customers',
@@ -27,8 +28,9 @@ import { Router } from '@angular/router';
     SkeletonComponent, 
     LoadingComponent,
     DevUserSelectorComponent,
-  CsvHeaderMapperComponent,
-  AppModalComponent,
+    CsvHeaderMapperComponent,
+    AppModalComponent,
+    ClientGdprModalComponent,
   ],
   templateUrl: './supabase-customers.component.html',
   styleUrls: ['./supabase-customers.component.scss']
@@ -44,6 +46,7 @@ export class SupabaseCustomersComponent implements OnInit {
   private localitiesService = inject(LocalitiesService);
   private honeypotService = inject(HoneypotService);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
   devRoleService = inject(DevRoleService);
 
   // State signals
@@ -56,6 +59,11 @@ export class SupabaseCustomersComponent implements OnInit {
   // GDPR signals
   gdprPanelVisible = signal(false);
   complianceStats = signal<any>(null);
+  
+  // GDPR Modal signals
+  showGdprModal = signal(false);
+  gdprModalClient = signal<Customer | null>(null);
+  flippedCardId = signal<string | null>(null);
 
   // Filter signals
   searchTerm = signal('');
@@ -222,6 +230,9 @@ onMappingConfirmed(mappings: any[]): void {
   // Computed
   filteredCustomers = computed(() => {
     let filtered = this.customers();
+    
+    // ✅ Filtrar clientes anonimizados (ocultarlos de la lista)
+    filtered = filtered.filter(customer => !this.isCustomerAnonymized(customer));
     
     // Apply search filter
     const search = this.searchTerm().toLowerCase().trim();
@@ -1091,16 +1102,16 @@ onMappingConfirmed(mappings: any[]): void {
       return;
     }
 
-    const accessRequest = {
+    const accessRequest: GdprAccessRequest = {
       subject_email: customer.email,
-      request_type: 'access' as const,
-      requested_data: ['personal_data', 'processing_activities', 'data_sources'],
-      purpose: 'Customer data access request via CRM',
-      legal_basis: 'gdpr_article_15'
+      subject_name: `${customer.name} ${customer.apellidos}`,
+      request_type: 'access',
+      request_details: `Solicitud de acceso a datos personales del cliente desde CRM`,
+      verification_method: 'email'
     };
 
     this.gdprService.createAccessRequest(accessRequest).subscribe({
-      next: (request: any) => {
+      next: (response: any) => {
         this.toastService.success('RGPD', 'Solicitud de acceso a datos creada correctamente');
         this.loadGdprData(); // Refresh stats
       },
@@ -1160,23 +1171,96 @@ onMappingConfirmed(mappings: any[]): void {
 
   // Anonymize customer data (GDPR erasure)
   anonymizeCustomer(customer: Customer) {
+    // ✅ Verificar si ya está anonimizado
+    if (this.isCustomerAnonymized(customer)) {
+      this.toastService.warning('RGPD', 'Este cliente ya ha sido anonimizado');
+      return;
+    }
+
     const confirmMessage = `¿Estás seguro de que quieres anonimizar los datos de ${customer.name} ${customer.apellidos}?\n\nEsta acción es irreversible y cumple con el derecho al olvido del RGPD.`;
     
     if (!confirm(confirmMessage)) {
       return;
     }
 
+    // ✅ Cerrar la tarjeta GDPR inmediatamente
+    this.flippedCardId.set(null);
+
     this.gdprService.anonymizeClientData(customer.id, 'gdpr_erasure_request').subscribe({
       next: (result: any) => {
-        this.toastService.success('RGPD', 'Datos del cliente anonimizados correctamente');
-        this.loadData(); // Refresh customer list
-        this.loadGdprData(); // Refresh GDPR stats
+        if (result.success) {
+          // ✅ Actualizar el cliente localmente primero (para feedback inmediato)
+          const currentCustomers = this.customers();
+          const updatedCustomers = currentCustomers.map(c => {
+            if (c.id === customer.id) {
+              return {
+                ...c,
+                name: 'ANONYMIZED_' + Math.random().toString(36).substr(2, 8),
+                apellidos: 'ANONYMIZED_' + Math.random().toString(36).substr(2, 8),
+                email: 'anonymized.' + Math.random().toString(36).substr(2, 8) + '@anonymized.local',
+                phone: '',
+                dni: '',
+                anonymized_at: new Date().toISOString()
+              } as Customer;
+            }
+            return c;
+          });
+          this.customers.set(updatedCustomers);
+          
+          // ✅ Forzar detección de cambios de Angular
+          this.cdr.detectChanges();
+          
+          // ✅ Recargar datos reales de Supabase después de un momento
+          setTimeout(() => {
+            this.loadData();
+            this.loadGdprData();
+            this.toastService.success('RGPD', 'Cliente anonimizado y ocultado de la lista');
+          }, 500);
+        } else {
+          this.toastService.error('Error RGPD', result.error || 'No se pudieron anonimizar los datos');
+        }
       },
       error: (error: any) => {
         console.error('Error anonymizing customer:', error);
         this.toastService.error('Error RGPD', 'No se pudieron anonimizar los datos del cliente');
       }
     });
+  }
+
+  // Open GDPR modal for comprehensive management
+  openGdprModal(customer: Customer): void {
+    this.gdprModalClient.set(customer);
+    this.showGdprModal.set(true);
+    // Close the flipped card
+    this.flippedCardId.set(null);
+  }
+
+  // Close GDPR modal
+  closeGdprModal(): void {
+    this.showGdprModal.set(false);
+    this.gdprModalClient.set(null);
+    // Refresh data after modal closes
+    this.loadData();
+    this.loadGdprData();
+  }
+
+  // Flip card to show GDPR menu
+  flipCardToGdpr(event: Event, customerId: string) {
+    event.stopPropagation();
+    this.flippedCardId.set(customerId);
+  }
+  
+  // Close GDPR card and flip back to customer info
+  closeGdprCard(event: Event) {
+    event.stopPropagation();
+    this.flippedCardId.set(null);
+  }
+
+  // Check if customer is already anonymized
+  isCustomerAnonymized(customer: Customer): boolean {
+    return customer.anonymized_at != null || 
+           customer.name?.startsWith('ANONYMIZED_') || 
+           customer.email?.includes('@anonymized.local');
   }
 
   // Show GDPR compliance status for a customer
@@ -1214,14 +1298,41 @@ onMappingConfirmed(mappings: any[]): void {
   toggleGdprMenu(event: Event, customerId: string) {
     event.stopPropagation();
     
-    // Close all other menus
+    // Get the button that was clicked
+    const button = (event.target as HTMLElement).closest('.action-btn.gdpr') as HTMLElement;
+    if (!button) return;
+    
+    // Close all other menus first
     const allMenus = document.querySelectorAll('.gdpr-dropdown');
-    allMenus.forEach(menu => menu.classList.add('hidden'));
+    allMenus.forEach(menu => {
+      if (menu.id !== `gdpr-menu-${customerId}`) {
+        menu.classList.add('hidden');
+      }
+    });
     
     // Toggle current menu
-    const menu = document.getElementById(`gdpr-menu-${customerId}`);
-    if (menu) {
-      menu.classList.toggle('hidden');
+    const menu = document.getElementById(`gdpr-menu-${customerId}`) as HTMLElement;
+    if (!menu) return;
+    
+    const isCurrentlyHidden = menu.classList.contains('hidden');
+    
+    if (isCurrentlyHidden) {
+      // Position the menu relative to the card (not the button)
+      const card = button.closest('.customer-card') as HTMLElement;
+      if (card) {
+        const cardRect = card.getBoundingClientRect();
+        
+        // Position overlay over the card
+        menu.style.position = 'fixed';
+        menu.style.top = `${cardRect.top}px`;
+        menu.style.left = `${cardRect.left}px`;
+        menu.style.width = `${cardRect.width}px`;
+        menu.style.height = `${cardRect.height}px`;
+        menu.style.zIndex = '9999';
+      }
+      menu.classList.remove('hidden');
+    } else {
+      menu.classList.add('hidden');
     }
   }
 
