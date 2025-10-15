@@ -34,6 +34,18 @@
             </a>
           </li>
           
+          <li (click) = "activeElement(16)"
+          [ngClass]="{'elemento-actual-menu': element === 16}">
+            <a routerLink="presupuestos">
+                <i class="bi bi-file-earmark-text"
+                data-bs-toggle="tooltip"
+                data-bs-placement="right"
+                data-bs-title="Presupuestos"
+                data-bs-custom-class="bg-tooltip"></i>
+                <span>Presupuestos</span>
+            </a>
+          </li>
+          
           <li (click) = "activeElement(3)"
           [ngClass]="{'elemento-actual-menu': element === 3}">
             <a routerLink="taller">

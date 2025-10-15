@@ -151,10 +151,11 @@ export class SupabaseCustomersService {
    * Método estándar para producción - usa autenticación normal
    */
   private getCustomersStandard(filters: CustomerFilters = {}): Observable<Customer[]> {
-    // Include direccion (addresses) relation when available; fallback handled below
+    // Include direccion (addresses) relation when available
+    // Nota: Usando LEFT JOIN (sin !) para permitir clientes sin dirección
     let query = this.supabase
       .from('clients')
-      .select('*, direccion:addresses!clients_direccion_id_fkey(*)');
+      .select('*, direccion:addresses(*)');  // ← LEFT JOIN: permite NULL
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
     const companyId = this.authService.companyId();
@@ -368,10 +369,10 @@ export class SupabaseCustomersService {
    * Obtener un cliente por ID
    */
   getCustomer(id: string): Observable<Customer> {
-    // Intentar cargar con relación de dirección; si falla por esquema (PGRST200), hacer fallback a select simple
+    // Intentar cargar con relación de dirección; usando LEFT JOIN para permitir NULL
     const withRelation = this.supabase
       .from('clients')
-      .select('*, direccion:addresses!clients_direccion_id_fkey(*)')
+      .select('*, direccion:addresses(*)')  // ← LEFT JOIN: permite NULL
       .eq('id', id)
       .single();
 

@@ -1,0 +1,316 @@
+<div class="quote-detail-container">
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Cargando...</span>
+      </div>
+      <p class="mt-3">Cargando presupuesto...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error()) {
+    <div class="alert alert-danger alert-dismissible animate-shake">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>
+      {{ error() }}
+      <button class="btn-close" (click)="error.set(null)"></button>
+    </div>
+  }
+
+  <!-- Quote Detail -->
+  @if (quote()) {
+    <!-- Header Section -->
+    <div class="quote-header">
+      <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+          <button class="btn btn-link text-decoration-none ps-0" (click)="backToList()">
+            <i class="bi bi-arrow-left me-2"></i> Volver al listado
+          </button>
+          <h1 class="quote-number-title mt-2">
+            <i class="bi bi-file-earmark-text me-2"></i>
+            Presupuesto {{ formatQuoteNumber(quote()!) }}
+          </h1>
+          <div class="quote-meta">
+            <span class="status-badge" [class]="'status-' + quote()!.status">
+              {{ getStatusLabel(quote()!.status) }}
+            </span>
+            <span class="date-info">
+              <i class="bi bi-calendar-event me-1"></i>
+              Creado el {{ quote()!.created_at | date:'dd/MM/yyyy' }}
+            </span>
+          </div>
+        </div>
+        
+        <div class="action-buttons">
+          @if (quote()!.status === 'draft') {
+            <button class="btn btn-primary" (click)="editQuote()">
+              <i class="bi bi-pencil me-2"></i> Editar
+            </button>
+          }
+          <button class="btn btn-outline-primary" (click)="downloadPDF()">
+            <i class="bi bi-file-pdf me-2"></i> Descargar PDF
+          </button>
+          <button class="btn btn-outline-secondary" (click)="sendByEmail()">
+            <i class="bi bi-envelope me-2"></i> Enviar Email
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- Left Column: Main Info -->
+      <div class="col-lg-8">
+        <!-- Client Info Card -->
+        <div class="info-card mb-4">
+          <div class="card-header">
+            <i class="bi bi-person-circle me-2"></i>
+            Información del Cliente
+          </div>
+          <div class="card-body">
+            <div class="client-details">
+              <div class="client-avatar-large">
+                {{ (quote()!.client?.business_name || quote()!.client?.name || 'N')[0].toUpperCase() }}
+              </div>
+              <div class="client-info-text">
+                <h4>{{ quote()!.client?.business_name || quote()!.client?.name || 'N/A' }}</h4>
+                @if (quote()!.client?.tax_id) {
+                  <p class="text-muted mb-1">
+                    <i class="bi bi-card-text me-1"></i> CIF/NIF: {{ quote()!.client.tax_id }}
+                  </p>
+                }
+                @if (quote()!.client?.email) {
+                  <p class="text-muted mb-1">
+                    <i class="bi bi-envelope me-1"></i> {{ quote()!.client.email }}
+                  </p>
+                }
+                @if (quote()!.client?.phone) {
+                  <p class="text-muted mb-0">
+                    <i class="bi bi-telephone me-1"></i> {{ quote()!.client.phone }}
+                  </p>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quote Details Card -->
+        <div class="info-card mb-4">
+          <div class="card-header">
+            <i class="bi bi-file-earmark-text me-2"></i>
+            Detalles del Presupuesto
+          </div>
+          <div class="card-body">
+            <div class="detail-row">
+              <span class="detail-label">Título:</span>
+              <span class="detail-value">{{ quote()!.title }}</span>
+            </div>
+            @if (quote()!.description) {
+              <div class="detail-row">
+                <span class="detail-label">Descripción:</span>
+                <span class="detail-value">{{ quote()!.description }}</span>
+              </div>
+            }
+            <div class="detail-row">
+              <span class="detail-label">Fecha de creación:</span>
+              <span class="detail-value">{{ quote()!.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Válido hasta:</span>
+              <span class="detail-value" 
+                    [class.text-danger]="isExpired(quote()!.valid_until)">
+                <i class="bi me-1" 
+                   [class.bi-calendar-check]="!isExpired(quote()!.valid_until)"
+                   [class.bi-calendar-x]="isExpired(quote()!.valid_until)"></i>
+                {{ quote()!.valid_until | date:'dd/MM/yyyy' }}
+                @if (isExpired(quote()!.valid_until)) {
+                  <span class="badge bg-danger ms-2">Expirado</span>
+                }
+              </span>
+            </div>
+            @if (quote()!.notes) {
+              <div class="detail-row">
+                <span class="detail-label">Notas:</span>
+                <span class="detail-value">{{ quote()!.notes }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="info-card mb-4">
+          <div class="card-header">
+            <i class="bi bi-list-check me-2"></i>
+            Conceptos del Presupuesto
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="items-table">
+                <thead>
+                  <tr>
+                    <th>Concepto</th>
+                    <th class="text-center">Cantidad</th>
+                    <th class="text-end">Precio Unit.</th>
+                    <th class="text-center">IVA</th>
+                    <th class="text-center">Dto.</th>
+                    <th class="text-end">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of quote()!.items; track item.id || $index) {
+                    <tr>
+                      <td>
+                        <div class="item-description">
+                          <strong>{{ item.description }}</strong>
+                          @if (item.notes) {
+                            <small class="d-block text-muted">{{ item.notes }}</small>
+                          }
+                        </div>
+                      </td>
+                      <td class="text-center">{{ item.quantity }}</td>
+                      <td class="text-end">{{ formatCurrency(item.unit_price) }}</td>
+                      <td class="text-center">
+                        <span class="tax-badge">{{ item.tax_rate }}%</span>
+                      </td>
+                      <td class="text-center">
+                        @if (item.discount_percent && item.discount_percent > 0) {
+                          <span class="discount-badge">{{ item.discount_percent }}%</span>
+                        } @else {
+                          <span class="text-muted">-</span>
+                        }
+                      </td>
+                      <td class="text-end">
+                        <strong>{{ formatCurrency(calculateItemTotal(item)) }}</strong>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Summary -->
+      <div class="col-lg-4">
+        <div class="summary-sticky">
+          <!-- Totals Card -->
+          <div class="totals-card">
+            <div class="card-header">
+              <i class="bi bi-calculator me-2"></i>
+              Resumen del Presupuesto
+            </div>
+            <div class="card-body">
+              <div class="total-row">
+                <span>Subtotal:</span>
+                <span>{{ formatCurrency(quote()!.subtotal) }}</span>
+              </div>
+              
+              @if (hasDiscount(quote()!)) {
+                <div class="total-row discount-row">
+                  <span>
+                    <i class="bi bi-tag me-1"></i> Descuento:
+                  </span>
+                  <span>-{{ formatCurrency(quote()!.discount_amount) }}</span>
+                </div>
+              }
+              
+              <div class="total-row">
+                <span>
+                  <i class="bi bi-percent me-1"></i> IVA:
+                </span>
+                <span>{{ formatCurrency(quote()!.tax_amount) }}</span>
+              </div>
+              
+              <div class="total-divider"></div>
+              
+              <div class="total-row total-final">
+                <span>Total:</span>
+                <span class="total-amount">
+                  {{ formatCurrency(quote()!.total_amount) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status Actions Card -->
+          @if (quote()!.status === 'sent' || quote()!.status === 'viewed') {
+            <div class="status-actions-card mt-4">
+              <div class="card-header">
+                <i class="bi bi-check-circle me-2"></i>
+                Cambiar Estado
+              </div>
+              <div class="card-body">
+                <button class="btn btn-success w-100 mb-2" (click)="markAsAccepted()">
+                  <i class="bi bi-check-lg me-2"></i>
+                  Marcar como Aceptado
+                </button>
+                <button class="btn btn-danger w-100" (click)="markAsRejected()">
+                  <i class="bi bi-x-lg me-2"></i>
+                  Marcar como Rechazado
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- Activity Timeline (placeholder) -->
+          <div class="activity-card mt-4">
+            <div class="card-header">
+              <i class="bi bi-clock-history me-2"></i>
+              Historial de Actividad
+            </div>
+            <div class="card-body">
+              <div class="activity-timeline">
+                <div class="activity-item">
+                  <div class="activity-icon bg-primary">
+                    <i class="bi bi-plus"></i>
+                  </div>
+                  <div class="activity-content">
+                    <p class="mb-0"><strong>Presupuesto creado</strong></p>
+                    <small class="text-muted">{{ quote()!.created_at | date:'dd/MM/yyyy HH:mm' }}</small>
+                  </div>
+                </div>
+                
+                @if (quote()!.status !== 'draft') {
+                  <div class="activity-item">
+                    <div class="activity-icon bg-info">
+                      <i class="bi bi-send"></i>
+                    </div>
+                    <div class="activity-content">
+                      <p class="mb-0"><strong>Enviado al cliente</strong></p>
+                      <small class="text-muted">{{ quote()!.updated_at | date:'dd/MM/yyyy HH:mm' }}</small>
+                    </div>
+                  </div>
+                }
+                
+                @if (quote()!.status === 'accepted') {
+                  <div class="activity-item">
+                    <div class="activity-icon bg-success">
+                      <i class="bi bi-check-lg"></i>
+                    </div>
+                    <div class="activity-content">
+                      <p class="mb-0"><strong>Aceptado por el cliente</strong></p>
+                      <small class="text-muted">{{ quote()!.updated_at | date:'dd/MM/yyyy HH:mm' }}</small>
+                    </div>
+                  </div>
+                }
+                
+                @if (quote()!.status === 'rejected') {
+                  <div class="activity-item">
+                    <div class="activity-icon bg-danger">
+                      <i class="bi bi-x-lg"></i>
+                    </div>
+                    <div class="activity-content">
+                      <p class="mb-0"><strong>Rechazado por el cliente</strong></p>
+                      <small class="text-muted">{{ quote()!.updated_at | date:'dd/MM/yyyy HH:mm' }}</small>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

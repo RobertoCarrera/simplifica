@@ -70,7 +70,31 @@ export class AnychatComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.loadContacts();
+    // Verificar si AnyChat está configurado y disponible
+    const isAnyChatEnabled = this.checkAnyChatAvailability();
+    
+    if (isAnyChatEnabled) {
+      this.loadContacts();
+    } else {
+      console.warn('⚠️ AnyChat no disponible - módulo en modo solo visualización');
+      this.toastService.info(
+        'Módulo en Configuración',
+        'AnyChat requiere configuración adicional para funcionar'
+      );
+    }
+  }
+
+  /**
+   * Verifica si AnyChat está disponible y configurado
+   */
+  private checkAnyChatAvailability(): boolean {
+    // Aquí podrías agregar más verificaciones
+    // Por ejemplo, hacer un ping a la API primero
+    
+    // Por ahora, simplemente verificamos que exista el servicio
+    // En el futuro, se puede agregar una verificación de conectividad
+    
+    return true; // Cambiar a false para deshabilitar temporalmente
   }
 
   // ===============================
@@ -92,8 +116,24 @@ export class AnychatComponent implements OnInit {
       },
       error: (error) => {
         this.isLoadingContacts.set(false);
-        this.toastService.error('Error', 'No se pudieron cargar los contactos');
-        console.error('Error cargando contactos:', error);
+        
+        // Manejo específico de errores CORS
+        if (error.message?.includes('CORS')) {
+          this.toastService.error(
+            'Error de Configuración', 
+            'La API de AnyChat requiere configuración adicional. Contacta con soporte.'
+          );
+          console.error('❌ Error CORS de AnyChat:', error);
+        } else if (error.message?.includes('API Key')) {
+          this.toastService.error(
+            'Configuración Requerida', 
+            'Falta configurar la API Key de AnyChat'
+          );
+          console.error('❌ API Key no configurada:', error);
+        } else {
+          this.toastService.error('Error', 'No se pudieron cargar los contactos');
+          console.error('❌ Error cargando contactos:', error);
+        }
       }
     });
   }

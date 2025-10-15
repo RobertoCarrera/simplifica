@@ -2,8 +2,9 @@ import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { csrfInterceptor } from './interceptors/csrf.interceptor';
+import { HttpErrorInterceptor } from './interceptors/http-error.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -13,6 +14,12 @@ export const appConfig: ApplicationConfig = {
     // If SSR is added later, re-enable: provideClientHydration(withEventReplay()) in the SERVER config.
     provideHttpClient(
       withInterceptors([csrfInterceptor])
-    )
+    ),
+    // Interceptor de errores HTTP global
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: HttpErrorInterceptor,
+      multi: true
+    }
   ]
 };

@@ -52,6 +52,13 @@ export const routes: Routes = [
     {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     // Ruta de invitaciones eliminada (modelo de auto-registro activo)
     
+    // Módulo de presupuestos (lazy loading)
+    {
+        path: 'presupuestos',
+        loadChildren: () => import('./modules/quotes/quotes.module').then(m => m.QuotesModule),
+        canActivate: [AuthGuard]
+    },
+    
     // Rutas de autenticación (sin guards)
     {path: 'login', component: LoginComponent, canActivate: [GuestGuard]},
     {path: 'register', component: RegisterComponent, canActivate: [GuestGuard]},

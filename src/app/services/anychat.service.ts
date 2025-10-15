@@ -106,12 +106,27 @@ export class AnyChatService {
    * Obtiene la lista de contactos
    */
   getContacts(page: number = 1, limit: number = 20): Observable<AnyChatPaginatedResponse<AnyChatContact>> {
+    // Validar que tenemos API Key
+    if (!this.API_KEY || this.API_KEY.trim() === '') {
+      console.warn('⚠️ AnyChat API Key no configurada');
+      return throwError(() => new Error('AnyChat API Key no configurada'));
+    }
+
     const url = `${this.API_URL}/contact?page=${page}&limit=${limit}`;
     
     return this.http.get<AnyChatPaginatedResponse<AnyChatContact>>(url, { 
-      headers: this.getHeaders() 
+      headers: this.getHeaders(),
+      // Agregar withCredentials para manejar CORS
+      withCredentials: false
     }).pipe(
-      catchError(this.handleError)
+      catchError((error) => {
+        // Manejo específico de errores CORS
+        if (error.status === 0) {
+          console.error('❌ Error CORS: La API de AnyChat no permite peticiones desde este dominio');
+          return throwError(() => new Error('Error CORS: Verifica la configuración de AnyChat API'));
+        }
+        return this.handleError(error);
+      })
     );
   }
 
@@ -119,12 +134,24 @@ export class AnyChatService {
    * Busca un contacto por email
    */
   searchContactByEmail(email: string): Observable<AnyChatPaginatedResponse<AnyChatContact>> {
+    if (!this.API_KEY || this.API_KEY.trim() === '') {
+      console.warn('⚠️ AnyChat API Key no configurada');
+      return throwError(() => new Error('AnyChat API Key no configurada'));
+    }
+
     const url = `${this.API_URL}/contact/search?email=${encodeURIComponent(email)}`;
     
     return this.http.get<AnyChatPaginatedResponse<AnyChatContact>>(url, {
-      headers: this.getHeaders()
+      headers: this.getHeaders(),
+      withCredentials: false
     }).pipe(
-      catchError(this.handleError)
+      catchError((error) => {
+        if (error.status === 0) {
+          console.error('❌ Error CORS: La API de AnyChat no permite peticiones desde este dominio');
+          return throwError(() => new Error('Error CORS: Verifica la configuración de AnyChat API'));
+        }
+        return this.handleError(error);
+      })
     );
   }
 

@@ -1,0 +1,361 @@
+<div class="public-quote-wrapper">
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="loading-overlay">
+      <div class="loading-content">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="mt-3">Cargando presupuesto...</p>
+      </div>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error()) {
+    <div class="container py-5">
+      <div class="alert alert-danger text-center animate-shake">
+        <i class="bi bi-exclamation-triangle-fill fs-1 mb-3 d-block"></i>
+        <h4>Error al cargar el presupuesto</h4>
+        <p class="mb-0">{{ error() }}</p>
+      </div>
+    </div>
+  }
+
+  <!-- Quote Content -->
+  @if (quote()) {
+    <!-- Professional Header -->
+    <div class="quote-public-header">
+      <div class="container">
+        <div class="header-content">
+          <div class="company-branding">
+            <div class="company-logo">
+              <i class="bi bi-building"></i>
+            </div>
+            <div>
+              <h2 class="company-name">Tu Empresa SL</h2>
+              <p class="company-tagline">Soluciones profesionales de calidad</p>
+            </div>
+          </div>
+          
+          <div class="quote-status-badge">
+            <span class="status-indicator" [class]="'status-' + quote()!.status"></span>
+            <span class="status-text">{{ getStatusLabel(quote()!.status) }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container py-5">
+      <!-- Success Message -->
+      @if (successMessage()) {
+        <div class="alert alert-success alert-dismissible mb-4 animate-slideDown">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          {{ successMessage() }}
+          <button class="btn-close" (click)="successMessage.set(null)"></button>
+        </div>
+      }
+
+      <!-- Quote Title & Number -->
+      <div class="quote-title-section mb-4">
+        <h1 class="quote-title">{{ quote()!.title }}</h1>
+        <p class="quote-number">
+          <i class="bi bi-file-earmark-text me-2"></i>
+          Presupuesto {{ formatQuoteNumber(quote()!) }}
+        </p>
+      </div>
+
+      <div class="row">
+        <!-- Left Column: Details -->
+        <div class="col-lg-8">
+          <!-- Quote Info Card -->
+          <div class="public-card mb-4">
+            <div class="card-header">
+              <i class="bi bi-info-circle me-2"></i>
+              Información del Presupuesto
+            </div>
+            <div class="card-body">
+              <div class="info-grid">
+                <div class="info-item">
+                  <div class="info-icon">
+                    <i class="bi bi-calendar-event"></i>
+                  </div>
+                  <div>
+                    <span class="info-label">Fecha de emisión</span>
+                    <span class="info-value">{{ formatDate(quote()!.quote_date) }}</span>
+                  </div>
+                </div>
+                
+                <div class="info-item">
+                  <div class="info-icon" 
+                       [class.text-danger]="isExpired(quote()!.valid_until)">
+                    <i class="bi" 
+                       [class.bi-calendar-check]="!isExpired(quote()!.valid_until)"
+                       [class.bi-calendar-x]="isExpired(quote()!.valid_until)"></i>
+                  </div>
+                  <div>
+                    <span class="info-label">Válido hasta</span>
+                    <span class="info-value" 
+                          [class.text-danger]="isExpired(quote()!.valid_until)">
+                      {{ formatDate(quote()!.valid_until) }}
+                      @if (isExpired(quote()!.valid_until)) {
+                        <span class="badge bg-danger ms-2">Expirado</span>
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              @if (quote()!.description) {
+                <div class="mt-4">
+                  <h6 class="text-muted mb-2">
+                    <i class="bi bi-text-paragraph me-2"></i>
+                    Descripción
+                  </h6>
+                  <p class="mb-0">{{ quote()!.description }}</p>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Items Card -->
+          <div class="public-card mb-4">
+            <div class="card-header">
+              <i class="bi bi-list-ul me-2"></i>
+              Conceptos y Servicios
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="public-items-table">
+                  <thead>
+                    <tr>
+                      <th>Concepto</th>
+                      <th class="text-center">Cantidad</th>
+                      <th class="text-end">Precio Unit.</th>
+                      <th class="text-end">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (item of quote()!.items; track item.id || $index) {
+                      <tr>
+                        <td>
+                          <div class="item-name">{{ item.description }}</div>
+                          @if (item.notes) {
+                            <small class="item-notes">{{ item.notes }}</small>
+                          }
+                        </td>
+                        <td class="text-center">{{ item.quantity }}</td>
+                        <td class="text-end">{{ formatCurrency(item.unit_price) }}</td>
+                        <td class="text-end">
+                          <strong>{{ formatCurrency(calculateItemTotal(item)) }}</strong>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Additional Notes -->
+          @if (quote()!.notes) {
+            <div class="public-card mb-4">
+              <div class="card-header">
+                <i class="bi bi-chat-left-text me-2"></i>
+                Notas Adicionales
+              </div>
+              <div class="card-body">
+                <p class="mb-0">{{ quote()!.notes }}</p>
+              </div>
+            </div>
+          }
+
+          <!-- Terms & Conditions (Example) -->
+          <div class="public-card mb-4">
+            <div class="card-header">
+              <i class="bi bi-file-text me-2"></i>
+              Condiciones
+            </div>
+            <div class="card-body">
+              <ul class="terms-list">
+                <li>Los precios mostrados incluyen IVA</li>
+                <li>El presupuesto tiene validez hasta la fecha indicada</li>
+                <li>Una vez aceptado, se procederá con la prestación del servicio</li>
+                <li>El pago se realizará según las condiciones acordadas</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Summary & Actions -->
+        <div class="col-lg-4">
+          <div class="sticky-sidebar">
+            <!-- Total Summary -->
+            <div class="summary-card mb-4">
+              <div class="card-header">
+                <i class="bi bi-calculator me-2"></i>
+                Resumen
+              </div>
+              <div class="card-body">
+                <div class="summary-row">
+                  <span>Subtotal:</span>
+                  <span>{{ formatCurrency(quote()!.subtotal) }}</span>
+                </div>
+                
+                @if (hasDiscount(quote()!)) {
+                  <div class="summary-row discount">
+                    <span>
+                      <i class="bi bi-tag me-1"></i> Descuento:
+                    </span>
+                    <span>-{{ formatCurrency(quote()!.discount_amount) }}</span>
+                  </div>
+                }
+                
+                <div class="summary-row">
+                  <span>
+                    <i class="bi bi-percent me-1"></i> IVA:
+                  </span>
+                  <span>{{ formatCurrency(quote()!.tax_amount) }}</span>
+                </div>
+                
+                <div class="summary-divider"></div>
+                
+                <div class="summary-total">
+                  <span>Total:</span>
+                  <span class="total-value">{{ formatCurrency(quote()!.total_amount) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Card - Accept/Reject -->
+            @if (canAccept(quote()!)) {
+              <div class="action-card">
+                <div class="card-header">
+                  <i class="bi bi-hand-thumbs-up me-2"></i>
+                  ¿Qué deseas hacer?
+                </div>
+                <div class="card-body">
+                  <p class="action-description">
+                    Revisa los detalles del presupuesto y decide si deseas aceptarlo o rechazarlo.
+                  </p>
+                  
+                  <button 
+                    class="btn btn-accept w-100 mb-3" 
+                    (click)="acceptQuote()"
+                    [disabled]="processing()"
+                  >
+                    @if (processing()) {
+                      <span class="spinner-border spinner-border-sm me-2"></span>
+                    } @else {
+                      <i class="bi bi-check-circle me-2"></i>
+                    }
+                    Aceptar Presupuesto
+                  </button>
+                  
+                  <button 
+                    class="btn btn-reject w-100" 
+                    (click)="rejectQuote()"
+                    [disabled]="processing()"
+                  >
+                    @if (processing()) {
+                      <span class="spinner-border spinner-border-sm me-2"></span>
+                    } @else {
+                      <i class="bi bi-x-circle me-2"></i>
+                    }
+                    Rechazar Presupuesto
+                  </button>
+
+                  <div class="security-notice mt-3">
+                    <i class="bi bi-shield-check me-1"></i>
+                    <small>Conexión segura</small>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- Already Accepted -->
+            @if (quote()!.status === QuoteStatus.ACCEPTED) {
+              <div class="status-card status-accepted">
+                <div class="status-icon">
+                  <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <h4>¡Presupuesto Aceptado!</h4>
+                <p>Gracias por tu confirmación. Nos pondremos en contacto contigo próximamente.</p>
+                <div class="status-date">
+                  <small>
+                    <i class="bi bi-clock me-1"></i>
+                    Aceptado el {{ formatDate(quote()!.updated_at) }}
+                  </small>
+                </div>
+              </div>
+            }
+
+            <!-- Already Rejected -->
+            @if (quote()!.status === QuoteStatus.REJECTED) {
+              <div class="status-card status-rejected">
+                <div class="status-icon">
+                  <i class="bi bi-x-circle-fill"></i>
+                </div>
+                <h4>Presupuesto Rechazado</h4>
+                <p>Has rechazado este presupuesto. Si tienes alguna pregunta, no dudes en contactarnos.</p>
+                <div class="status-date">
+                  <small>
+                    <i class="bi bi-clock me-1"></i>
+                    Rechazado el {{ formatDate(quote()!.updated_at) }}
+                  </small>
+                </div>
+              </div>
+            }
+
+            <!-- Trust Indicators -->
+            <div class="trust-indicators mt-4">
+              <div class="trust-item">
+                <i class="bi bi-patch-check-fill text-success"></i>
+                <span>Empresa verificada</span>
+              </div>
+              <div class="trust-item">
+                <i class="bi bi-lock-fill text-primary"></i>
+                <span>Datos protegidos</span>
+              </div>
+              <div class="trust-item">
+                <i class="bi bi-headset text-info"></i>
+                <span>Soporte 24/7</span>
+              </div>
+            </div>
+
+            <!-- Contact Info -->
+            <div class="contact-card mt-4">
+              <h6>¿Tienes preguntas?</h6>
+              <p class="mb-2">
+                <i class="bi bi-envelope me-2"></i>
+                <a href="mailto:info@tuempresa.com">info&#64;tuempresa.com</a>
+              </p>
+              <p class="mb-0">
+                <i class="bi bi-telephone me-2"></i>
+                <a href="tel:+34900000000">+34 900 000 000</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="public-footer">
+      <div class="container">
+        <div class="row align-items-center">
+          <div class="col-md-6">
+            <p class="mb-0">
+              &copy; {{ currentYear }} Tu Empresa SL. Todos los derechos reservados.
+            </p>
+          </div>
+          <div class="col-md-6 text-md-end">
+            <a href="#" class="footer-link">Política de Privacidad</a>
+            <span class="mx-2">|</span>
+            <a href="#" class="footer-link">Términos y Condiciones</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>
