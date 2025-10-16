@@ -3,7 +3,8 @@ import { Address } from '../models/address';
 import { Observable, from, of, throwError } from 'rxjs';
 import { map, mergeMap } from 'rxjs/operators';
 import { SupabaseClientService } from './supabase-client.service';
-import { environment } from '../../environments/environment';
+import { RuntimeConfigService } from './runtime-config.service';
+import { inject } from '@angular/core';
 
 @Injectable({
   providedIn: 'root'
@@ -123,7 +124,8 @@ export class AddressesService {
     };
 
     // Prefer Edge Function first to avoid RLS 403 noise in the browser
-    const base = (environment.edgeFunctionsBaseUrl || '').replace(/\/+$/, '');
+    const cfg = inject(RuntimeConfigService).get();
+    const base = (cfg.edgeFunctionsBaseUrl || '').replace(/\/+$/, '');
     if (base) {
       const funcUrl = base + '/create-address';
       return from(this.sbClient.instance.auth.getSession()).pipe(

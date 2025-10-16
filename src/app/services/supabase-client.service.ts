@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { environment } from '../../environments/environment';
+import { inject } from '@angular/core';
+import { RuntimeConfigService } from './runtime-config.service';
 
 /**
  * Servicio singleton que centraliza una única instancia de SupabaseClient.
@@ -9,25 +10,36 @@ import { environment } from '../../environments/environment';
 @Injectable({ providedIn: 'root' })
 export class SupabaseClientService {
   private client: SupabaseClient;
+  private cfg = inject(RuntimeConfigService);
 
   constructor() {
-    // Use a stable storage key so sessions persist across reloads and match previous keys
-    const storageKey = 'sb-main-auth-token';
+    // Derive a unique storage key per Supabase project to avoid cross-app lock collisions
+    const rc = this.cfg.get();
+    const projectRef = (() => {
+      try {
+        const host = new URL(rc.supabase.url).host; // e.g., ufutyj...supabase.co
+        return host.split('.')[0] || 'default';
+      } catch {
+        return 'default';
+      }
+    })();
+    const storageKey = `sb-${projectRef}-auth-token`;
 
     // Migrate any previous hostname-suffixed session to the canonical key if needed
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
+        // Migrate from legacy keys if present
         const hasCanonical = window.localStorage.getItem(storageKey);
         if (!hasCanonical) {
-          // Find keys like sb-main-auth-token-<host>
-          for (let i = 0; i < window.localStorage.length; i++) {
-            const key = window.localStorage.key(i);
-            if (key && key.startsWith(`${storageKey}-`)) {
-              const val = window.localStorage.getItem(key);
-              if (val) {
-                window.localStorage.setItem(storageKey, val);
-                break; // first match is enough
-              }
+          const legacyKeys = [
+            'sb-main-auth-token',
+            `${storageKey}-legacy`,
+          ];
+          for (const lk of legacyKeys) {
+            const val = window.localStorage.getItem(lk);
+            if (val) {
+              window.localStorage.setItem(storageKey, val);
+              break;
             }
           }
         }
@@ -54,8 +66,8 @@ export class SupabaseClientService {
     })();
 
     this.client = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey,
+      rc.supabase.url,
+      rc.supabase.anonKey,
       {
         auth: {
           storageKey,

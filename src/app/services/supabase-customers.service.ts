@@ -5,7 +5,7 @@ import { Observable, from, throwError, BehaviorSubject, combineLatest, Subject, 
 import { map, catchError, tap, switchMap, concatMap } from 'rxjs/operators';
 import { Customer, CreateCustomer, CreateCustomerDev, UpdateCustomer } from '../models/customer';
 import { Address } from '../models/address';
-import { environment } from '../../environments/environment';
+import { RuntimeConfigService } from './runtime-config.service';
 import { getCurrentSupabaseConfig, devLog, devError, devSuccess } from '../config/supabase.config';
 import { AuthService } from './auth.service';
 
@@ -50,7 +50,7 @@ export class SupabaseCustomersService {
 
     devLog('Servicio inicializado', {
       config: this.config,
-      environment: environment.production ? 'production' : 'development'
+  environment: 'development'
     });
     
     // Cargar cache de usuarios al inicializar
@@ -521,7 +521,8 @@ export class SupabaseCustomersService {
       payload.p_direccion_id = (customer as any).direccion_id ?? null;
     }
 
-    const fnBase = (environment as any).edgeFunctionsBaseUrl || `${environment.supabase.url.replace(/\/$/, '')}/functions/v1`;
+  const cfg = inject(RuntimeConfigService).get();
+  const fnBase = cfg.edgeFunctionsBaseUrl || `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1`;
     const fnUrl = `${fnBase.replace(/\/$/, '')}/upsert-client`;
     
     const res = await fetch(fnUrl, {
@@ -529,7 +530,7 @@ export class SupabaseCustomersService {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
-        'apikey': environment.supabase.anonKey,
+  'apikey': cfg.supabase.anonKey,
         'x-client-info': 'simplifica-app',
       },
       mode: 'cors',
@@ -1097,7 +1098,8 @@ importFromCSV(file: File): Observable<Customer[]> {
         headers['Authorization'] = `Bearer ${accessToken}`;
 
         const proxyUrl = '/api/import-customers';
-        const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
+  const cfg = inject(RuntimeConfigService).get();
+  const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
 
         let resp = await fetch(proxyUrl, {
           method: 'POST',
@@ -1408,7 +1410,8 @@ importFromCSV(file: File): Observable<Customer[]> {
       }));
 
       const proxyUrl = '/api/import-customers';
-      const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
+  const cfg = inject(RuntimeConfigService).get();
+  const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
 
       (async () => {
           try {
@@ -1497,7 +1500,8 @@ importFromCSV(file: File): Observable<Customer[]> {
    */
   async testImportEndpoints(): Promise<{ proxy?: { status: number; text: string }, direct?: { status: number; text: string }, errors?: any[] }> {
     const proxyUrl = '/api/import-customers';
-    const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
+  const cfg = inject(RuntimeConfigService).get();
+  const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
     const samplePayload = { rows: [{ name: 'DEBUG', surname: 'USER', email: 'debug@example.com' }] };
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     // Try to include auth if available using AuthService-managed client

@@ -27,6 +27,8 @@ export class AnychatComponent implements OnInit {
   contacts = signal<AnyChatContact[]>([]);
   conversations = signal<AnyChatConversation[]>([]);
   messages = signal<AnyChatMessage[]>([]);
+  // chat GUID to use with message endpoints (may differ from conversation.guid depending on API)
+  private selectedChatGuid = signal<string | null>(null);
   
   selectedContact = signal<AnyChatContact | null>(null);
   selectedConversation = signal<AnyChatConversation | null>(null);
@@ -35,6 +37,7 @@ export class AnychatComponent implements OnInit {
   isLoadingConversations = signal(false);
   isLoadingMessages = signal(false);
   isSendingMessage = signal(false);
+  messagesUnavailable = signal(false);
   
   searchTerm = signal('');
   newMessage = signal('');
@@ -43,6 +46,7 @@ export class AnychatComponent implements OnInit {
   currentPage = signal(1);
   totalPages = signal(1);
   totalContacts = signal(0);
+  totalConversations = signal(0);
   
   // ===============================
   // COMPUTED - DATOS DERIVADOS
@@ -61,20 +65,32 @@ export class AnychatComponent implements OnInit {
     );
   });
 
+  filteredConversations = computed(() => {
+    const search = this.searchTerm().toLowerCase().trim();
+    const all = this.conversations();
+    if (!search) return all;
+    return all.filter(c =>
+      c.guid?.toLowerCase().includes(search) ||
+      c.status?.toLowerCase().includes(search)
+    );
+  });
+
   hasContacts = computed(() => this.contacts().length > 0);
+  hasConversations = computed(() => this.conversations().length > 0);
   hasMessages = computed(() => this.messages().length > 0);
   canSendMessage = computed(() => {
     return this.newMessage().trim().length > 0 && 
-           this.selectedConversation() !== null &&
-           !this.isSendingMessage();
+           this.selectedChatGuid() !== null &&
+           !this.isSendingMessage() &&
+           !this.messagesUnavailable();
   });
 
   ngOnInit(): void {
     // Verificar si AnyChat está configurado y disponible
     const isAnyChatEnabled = this.checkAnyChatAvailability();
-    
     if (isAnyChatEnabled) {
-      this.loadContacts();
+      // Cargar solo conversaciones en el módulo de Chat
+      this.loadConversations();
     } else {
       console.warn('⚠️ AnyChat no disponible - módulo en modo solo visualización');
       this.toastService.info(
@@ -176,34 +192,44 @@ export class AnychatComponent implements OnInit {
   // MÉTODOS - CONVERSACIONES
   // ===============================
 
-  loadConversations(): void {
+  loadConversations(page: number = 1): void {
     this.isLoadingConversations.set(true);
-    
-    // NOTA: Este endpoint aún no está documentado en AnyChat API
-    // Por ahora mostramos un mensaje
-    this.toastService.info(
-      'En desarrollo', 
-      'El módulo de conversaciones estará disponible próximamente'
-    );
-    
-    this.isLoadingConversations.set(false);
-    
-    // Simulación temporal para UI
-    /* this.anychatService.getConversations().subscribe({
-      next: (response) => {
+    this.anychatService.getConversations(page, 20).subscribe({
+      next: (response: AnyChatPaginatedResponse<AnyChatConversation>) => {
         this.conversations.set(response.data);
+        this.currentPage.set(response.page);
+        this.totalPages.set(response.pages);
+        this.totalConversations.set(response.total);
         this.isLoadingConversations.set(false);
       },
       error: (error) => {
         this.isLoadingConversations.set(false);
-        console.error('Error cargando conversaciones:', error);
+        if (error.message?.includes('deshabilitad')) {
+          console.warn('ℹ️ Conversaciones de AnyChat deshabilitadas.');
+          this.toastService.info('Conversaciones no disponibles', 'La API de conversaciones aún no está habilitada');
+        } else if (error.message?.includes('CORS')) {
+          this.toastService.error('Error de Configuración', 'Revisa el proxy AnyChat en Supabase y CORS');
+        } else {
+          this.toastService.error('Error', 'No se pudieron cargar las conversaciones');
+        }
+        console.error('❌ Error cargando conversaciones:', error);
       }
-    }); */
+    });
   }
 
   selectConversation(conversation: AnyChatConversation): void {
     this.selectedConversation.set(conversation);
-    this.loadMessages(conversation.guid);
+    // Prefer explicit chat_guid when provided by API; fallback to guid
+    const chatGuid = (conversation as any)?.chat_guid || conversation.guid;
+    this.selectedChatGuid.set(chatGuid);
+    this.loadMessages(chatGuid);
+    // Cargar datos del contacto asociado a la conversación para mostrar en header
+    if (conversation.contact_guid) {
+      this.anychatService.getContact(conversation.contact_guid).subscribe({
+        next: (contact) => this.selectedContact.set(contact),
+        error: () => {/* silencioso */}
+      });
+    }
   }
 
   // ===============================
@@ -212,6 +238,7 @@ export class AnychatComponent implements OnInit {
 
   loadMessages(conversationId: string): void {
     this.isLoadingMessages.set(true);
+    this.messagesUnavailable.set(false);
     
     this.anychatService.getMessages(conversationId).subscribe({
       next: (response: AnyChatPaginatedResponse<AnyChatMessage>) => {
@@ -220,7 +247,13 @@ export class AnychatComponent implements OnInit {
       },
       error: (error) => {
         this.isLoadingMessages.set(false);
-        this.toastService.error('Error', 'No se pudieron cargar los mensajes');
+        this.messagesUnavailable.set(true);
+        if (error.message?.includes('deshabilitad')) {
+          this.toastService.info('Mensajes no disponibles', 'La API de conversaciones aún no está habilitada');
+        } else {
+          // Evitar ruido excesivo si los endpoints de mensajes no están disponibles
+          console.warn('Mensajes no disponibles vía API de AnyChat en este entorno.');
+        }
         console.error('Error cargando mensajes:', error);
       }
     });
@@ -228,13 +261,12 @@ export class AnychatComponent implements OnInit {
 
   sendMessage(): void {
     const message = this.newMessage().trim();
-    const conversation = this.selectedConversation();
-    
-    if (!message || !conversation) return;
+    const chatGuid = this.selectedChatGuid();
+    if (!message || !chatGuid) return;
     
     this.isSendingMessage.set(true);
     
-    this.anychatService.sendMessage(conversation.guid, message).subscribe({
+  this.anychatService.sendMessage(chatGuid, message).subscribe({
       next: (sentMessage: AnyChatMessage) => {
         // Agregar mensaje a la lista
         this.messages.update(msgs => [...msgs, sentMessage]);
@@ -247,7 +279,11 @@ export class AnychatComponent implements OnInit {
       },
       error: (error) => {
         this.isSendingMessage.set(false);
-        this.toastService.error('Error', 'No se pudo enviar el mensaje');
+        if (error.message?.includes('deshabilitad')) {
+          this.toastService.info('Mensajes no disponibles', 'La API de conversaciones aún no está habilitada');
+        } else {
+          this.toastService.error('Error', 'No se pudo enviar el mensaje');
+        }
         console.error('Error enviando mensaje:', error);
       }
     });
@@ -285,13 +321,13 @@ export class AnychatComponent implements OnInit {
 
   nextPage(): void {
     if (this.currentPage() < this.totalPages()) {
-      this.loadContacts(this.currentPage() + 1);
+      this.loadConversations(this.currentPage() + 1);
     }
   }
 
   previousPage(): void {
     if (this.currentPage() > 1) {
-      this.loadContacts(this.currentPage() - 1);
+      this.loadConversations(this.currentPage() - 1);
     }
   }
 }

@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
 import { BehaviorSubject, Observable, from, of } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
-import { environment } from '../../environments/environment';
+import { RuntimeConfigService } from './runtime-config.service';
 import { SupabaseClientService } from './supabase-client.service';
 
 // AppUser refleja la fila de public.users + datos de compañía
@@ -74,7 +74,8 @@ export class AuthService {
 
   constructor(private sbClient: SupabaseClientService) {
     // Validar que las variables de entorno estén configuradas
-    if (!environment.supabase.url || !environment.supabase.anonKey) {
+  const cfg = this.sbClient['cfg']?.get?.() ?? null;
+  if (!cfg?.supabase?.url || !cfg?.supabase?.anonKey) {
       console.error('❌ SUPABASE CONFIGURATION ERROR:');
       console.error('Las variables de entorno de Supabase no están configuradas.');
       console.error('En Vercel Dashboard, configura:');

@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { environment } from '../../../environments/environment';
+import { RuntimeConfigService } from '../../services/runtime-config.service';
 
 @Component({
   selector: 'app-consent-portal',
@@ -240,15 +240,16 @@ export class ConsentPortalComponent implements OnInit {
   }
 
   private async restRpc(fnName: string, payload: any): Promise<{ data: any; error: any }> {
-    const url = `${environment.supabase.url}/rest/v1/rpc/${fnName}`;
+  const cfg = inject(RuntimeConfigService).get();
+  const url = `${cfg.supabase.url}/rest/v1/rpc/${fnName}`;
     try {
       const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'apikey': environment.supabase.anonKey,
-          'Authorization': `Bearer ${environment.supabase.anonKey}`
+          'apikey': cfg.supabase.anonKey,
+          'Authorization': `Bearer ${cfg.supabase.anonKey}`
         },
         body: JSON.stringify(payload)
       });

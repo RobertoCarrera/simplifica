@@ -36,6 +36,7 @@ import { CompanyAdminComponent } from './components/company-admin/company-admin.
 import { ConsentPortalComponent } from './components/consent-portal/consent-portal.component';
 import { GdprCustomerManagerComponent } from './components/gdpr-customer-manager/gdpr-customer-manager.component';
 import { AnychatComponent } from './components/anychat/anychat.component';
+import { AnychatContactsComponent } from './components/anychat-contacts/anychat-contacts.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -47,6 +48,7 @@ export const routes: Routes = [
     {path: 'ticket/:id', component: TicketDetailComponent, canActivate: [AuthGuard]},
     {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard]},
     {path: 'chat', component: AnychatComponent, canActivate: [AuthGuard]},
+    {path: 'anychat/contacts', component: AnychatContactsComponent, canActivate: [AuthGuard]},
     {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard]},
     {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},

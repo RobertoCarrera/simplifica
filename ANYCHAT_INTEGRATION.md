@@ -51,7 +51,7 @@ La API key está configurada de forma segura:
 #### **Desarrollo Local:**
 ```typescript
 // src/environments/environment.ts
-anychatApiKey: 'iPLpIQmz5RIVoBigmpjICNC2aOlhXzqVouuNedaCaf01cXuqnIvCD27-lz56Bnys'
+anychatApiKey: '' // no exponer claves en el cliente; usar Edge Function proxy
 ```
 
 #### **Producción (Vercel):**
@@ -65,8 +65,8 @@ anychatApiKey: process.env['ANYCHAT_API_KEY'] || ''
 1. Ve a tu proyecto en Vercel
 2. `Settings` → `Environment Variables`
 3. Agregar nueva variable:
-   - **Name:** `ANYCHAT_API_KEY`
-   - **Value:** `iPLpIQmz5RIVoBigmpjICNC2aOlhXzqVouuNedaCaf01cXuqnIvCD27-lz56Bnys`
+  - **Name:** `ANYCHAT_API_KEY`
+  - **Value:** `[tu clave de AnyChat]`
    - **Environments:** Production, Preview, Development
 4. Click en **Save**
 5. Redeploy el proyecto

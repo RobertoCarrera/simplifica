@@ -3,7 +3,6 @@ import { SupabaseClientService } from './supabase-client.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Observable, from, BehaviorSubject } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
-import { environment } from '../../environments/environment';
 
 // Interfaz básica para testing
 export interface BasicCustomer {
@@ -27,8 +26,7 @@ export class BasicSupabaseService {
 
   constructor(private sbClient: SupabaseClientService) {
     console.log('🔧 Configurando Supabase (singleton)...');
-    console.log('URL:', environment.supabase.url);
-    console.log('Key (primeros 20 chars):', environment.supabase.anonKey.substring(0, 20) + '...');
+  // Runtime config is used elsewhere; avoid logging secrets here.
 
     this.supabase = this.sbClient.instance;
 

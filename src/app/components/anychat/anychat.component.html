@@ -9,82 +9,71 @@
     </div>
     <div class="header-stats">
       <span class="stat-badge">
-        <i class="fas fa-users"></i>
-        {{ totalContacts() }} contactos
+        <i class="fas fa-comments"></i>
+        {{ totalConversations() }} conversaciones
       </span>
     </div>
   </div>
 
   <div class="chat-layout">
     <!-- ===============================
-         SIDEBAR - LISTA DE CONTACTOS
-         =============================== -->
+      SIDEBAR - LISTA DE CONVERSACIONES
+      =============================== -->
     <aside class="contacts-sidebar">
       <!-- Búsqueda -->
       <div class="search-box">
         <i class="fas fa-search"></i>
         <input 
           type="text" 
-          placeholder="Buscar por nombre, email o empresa..."
+          placeholder="Buscar por ID/estado de conversación..."
           [(ngModel)]="searchTerm"
-          (input)="searchContactsByEmail()"
           class="search-input"
         />
         @if (searchTerm()) {
           <button 
             class="clear-search"
-            (click)="searchTerm.set(''); loadContacts()">
+            (click)="searchTerm.set(''); loadConversations()">
             <i class="fas fa-times"></i>
           </button>
         }
       </div>
 
-      <!-- Lista de contactos -->
+      <!-- Lista de conversaciones -->
       <div class="contacts-list">
-        @if (isLoadingContacts()) {
+        @if (isLoadingConversations()) {
           <div class="loading-state">
             <i class="fas fa-spinner fa-spin"></i>
-            <p>Cargando contactos...</p>
+            <p>Cargando conversaciones...</p>
           </div>
-        } @else if (!hasContacts()) {
+        } @else if (!hasConversations()) {
           <div class="empty-state">
-            <i class="fas fa-user-friends"></i>
-            <h3>No hay contactos</h3>
-            <p>Los contactos aparecerán aquí cuando los crees en AnyChat</p>
+            <i class="fas fa-comments"></i>
+            <h3>No hay conversaciones</h3>
+            <p>Las conversaciones aparecerán aquí cuando haya actividad en AnyChat</p>
           </div>
         } @else {
-          @for (contact of filteredContacts(); track contact.guid) {
+          @for (conversation of filteredConversations(); track conversation.guid) {
             <div 
               class="contact-item"
-              [class.active]="selectedContact()?.guid === contact.guid"
-              (click)="selectContact(contact)">
+              [class.active]="selectedConversation()?.guid === conversation.guid"
+              (click)="selectConversation(conversation)">
               
               <!-- Avatar -->
               <div class="contact-avatar">
-                @if (contact.image) {
-                  <img [src]="contact.image" [alt]="contact.name" />
-                } @else {
-                  <div class="avatar-initials">
-                    {{ getContactInitials(contact) }}
-                  </div>
-                }
+                <div class="avatar-initials">
+                  {{ ('' + (conversation.status || 'C')) | slice:0:2 | uppercase }}
+                </div>
               </div>
 
               <!-- Info -->
               <div class="contact-info">
-                <div class="contact-name">{{ contact.name || 'Sin nombre' }}</div>
-                <div class="contact-email">{{ contact.email || 'Sin email' }}</div>
-                @if (contact.company) {
-                  <div class="contact-company">
-                    <i class="fas fa-building"></i>
-                    {{ contact.company }}
-                  </div>
-                }
+                <div class="contact-name">Chat {{ (conversation.guid || '') | slice:-6 }}</div>
+                <div class="contact-email">Estado: {{ conversation.status }}</div>
               </div>
 
               <!-- Última actualización -->
               <div class="contact-meta">
-                <span class="contact-date">{{ formatDate(contact.updated_at) }}</span>
+                <span class="contact-date">{{ formatDate(conversation.updated_at) }}</span>
               </div>
             </div>
           }
@@ -92,7 +81,7 @@
       </div>
 
       <!-- Paginación -->
-      @if (hasContacts() && totalPages() > 1) {
+      @if (hasConversations() && totalPages() > 1) {
         <div class="pagination">
           <button 
             class="page-btn"
@@ -119,16 +108,16 @@
          MAIN - ÁREA DE CHAT
          =============================== -->
     <main class="chat-main">
-      @if (!selectedContact()) {
-        <!-- Sin contacto seleccionado -->
+  @if (!selectedConversation()) {
+        <!-- Sin conversación seleccionada -->
         <div class="welcome-state">
           <i class="fas fa-comments"></i>
           <h2>Bienvenido a AnyChat</h2>
-          <p>Selecciona un contacto de la izquierda para ver las conversaciones</p>
+          <p>Selecciona una conversación de la izquierda para ver los mensajes</p>
           <div class="features">
             <div class="feature-item">
               <i class="fas fa-check-circle"></i>
-              <span>Gestión de contactos</span>
+              <span>Gestión de conversaciones</span>
             </div>
             <div class="feature-item">
               <i class="fas fa-check-circle"></i>
@@ -141,25 +130,21 @@
           </div>
         </div>
       } @else {
-        <!-- Contacto seleccionado -->
+        <!-- Conversación seleccionada -->
         <div class="chat-content">
           <!-- Header del chat -->
           <div class="chat-content-header">
             <div class="contact-header-info">
               <div class="contact-avatar-small">
-                @if (selectedContact()!.image) {
-                  <img [src]="selectedContact()!.image" [alt]="selectedContact()!.name" />
-                } @else {
-                  <div class="avatar-initials-small">
-                    {{ getContactInitials(selectedContact()!) }}
-                  </div>
-                }
+                <div class="avatar-initials-small">
+                  {{ ('' + (selectedConversation()!.status || 'C')) | slice:0:2 | uppercase }}
+                </div>
               </div>
               <div>
-                <h3>{{ selectedContact()!.name }}</h3>
+                <h3>Chat {{ (selectedConversation()!.guid || '') | slice:-6 }}</h3>
                 <p class="contact-status">
                   <i class="fas fa-circle"></i>
-                  {{ selectedContact()!.email }}
+                  Estado: {{ selectedConversation()!.status }}
                 </p>
               </div>
             </div>
@@ -178,7 +163,13 @@
 
           <!-- Mensajes -->
           <div class="messages-container">
-            @if (isLoadingMessages()) {
+            @if (messagesUnavailable()) {
+              <div class="empty-messages">
+                <i class="fas fa-ban"></i>
+                <h3>Mensajes no disponibles</h3>
+                <p>Este entorno de AnyChat no expone el endpoint de mensajes para este chat.</p>
+              </div>
+            } @else if (isLoadingMessages()) {
               <div class="loading-messages">
                 <i class="fas fa-spinner fa-spin"></i>
                 <p>Cargando mensajes...</p>
@@ -225,7 +216,7 @@
               [(ngModel)]="newMessage"
               (keyup.enter)="sendMessage()"
               class="message-input"
-              [disabled]="isSendingMessage()"
+              [disabled]="isSendingMessage() || messagesUnavailable()"
             />
             
             <button 

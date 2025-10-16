@@ -16,24 +16,19 @@ import {
   InvoiceStatus
 } from '../models/invoice.model';
 import { AuthService } from './auth.service';
+import { SupabaseClientService } from './supabase-client.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SupabaseInvoicesService {
   private authService = inject(AuthService);
-  private supabase!: SupabaseClient;
+  private supabase: SupabaseClient;
+  private clientSvc = inject(SupabaseClientService);
 
   constructor() {
-    this.initSupabase();
-  }
-
-  private async initSupabase() {
-    const { createClient } = await import('@supabase/supabase-js');
-    this.supabase = createClient(
-      'YOUR_SUPABASE_URL',
-      'YOUR_SUPABASE_ANON_KEY'
-    );
+    // Use the shared singleton client to avoid multiple auth storages/locks
+    this.supabase = this.clientSvc.instance;
   }
 
   // =====================================================

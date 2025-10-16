@@ -19,9 +19,9 @@ export const environment = {
     requestDeadlineDays: 30 // Días para responder solicitudes (Art. 12.3)
   },
 
-  // AnyChat API Configuration
-  // ⚠️ IMPORTANTE: En producción (Vercel), crear variable de entorno: ANYCHAT_API_KEY
-  anychatApiKey: 'iPLpIQmz5RIVoBigmpjICNC2aOlhXzqVouuNedaCaf01cXuqnIvCD27-lz56Bnys'
+  // AnyChat API Configuration (no secrets in client)
+  // En desarrollo se deja vacío; la API key se usa solo en el Edge Function
+  anychatApiKey: ''
 };
 
 // ========================================

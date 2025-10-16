@@ -908,7 +908,10 @@ export class SupabaseServicesService {
           }
 
           const proxyUrl = `/api/import-services`;
-          const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-services`;
+          const { RuntimeConfigService } = await import('./runtime-config.service');
+          const cfg = new (RuntimeConfigService as any)();
+          await cfg.load?.();
+          const functionUrl = `${cfg.get().supabase.url.replace(/\/$/, '')}/functions/v1/import-services`;
 
           // Debug logs to ensure UI triggered import
           console.log('importFromCSV: parsed', dataRows.length, 'data rows -> payloadRows length=', payloadRows.length);
@@ -1091,7 +1094,10 @@ export class SupabaseServicesService {
     if (!accessToken) throw new Error('No hay sesión activa. Inicia sesión para importar servicios.');
 
     const proxyUrl = `/api/import-services`;
-    const functionUrl = `${environment.supabase.url.replace(/\/$/, '')}/functions/v1/import-services`;
+  const { RuntimeConfigService } = await import('./runtime-config.service');
+  const cfg = new (RuntimeConfigService as any)();
+  await cfg.load?.();
+  const functionUrl = `${cfg.get().supabase.url.replace(/\/$/, '')}/functions/v1/import-services`;
 
     let resp = await fetch(proxyUrl, {
       method: 'POST',

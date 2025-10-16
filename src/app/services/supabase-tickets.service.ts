@@ -315,7 +315,10 @@ export class SupabaseTicketsService {
     try {
       // Prefer Edge Function to bypass RLS safely and validate membership
       const client = this.supabase.getClient();
-      const base: string | undefined = (await import('../../environments/environment')).environment.edgeFunctionsBaseUrl as any;
+  const { RuntimeConfigService } = await import('./runtime-config.service');
+  const cfg = new (RuntimeConfigService as any)();
+  await cfg.load?.();
+  const base: string | undefined = cfg.get().edgeFunctionsBaseUrl as any;
 
       if (base) {
         try {
@@ -414,7 +417,10 @@ export class SupabaseTicketsService {
     // If no services, we still create the ticket but UI should have prevented this
     try {
       const client = this.supabase.getClient();
-      const base: string | undefined = (await import('../../environments/environment')).environment.edgeFunctionsBaseUrl as any;
+  const { RuntimeConfigService } = await import('./runtime-config.service');
+  const cfg = new (RuntimeConfigService as any)();
+  await cfg.load?.();
+  const base: string | undefined = cfg.get().edgeFunctionsBaseUrl as any;
 
       if (base) {
         try {

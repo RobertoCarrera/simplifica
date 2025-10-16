@@ -388,6 +388,13 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'production'
     },
     {
+      id: 42,
+      label: 'Contactos AnyChat',
+      icon: 'people',
+      route: '/anychat/contacts',
+      module: 'production'
+    },
+    {
       id: 5,
       label: 'Productos',
       icon: 'inventory_2',

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, tap, shareReplay, of, switchMap } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { RuntimeConfigService } from './runtime-config.service';
 
 interface CsrfTokenResponse {
   csrfToken: string;
@@ -30,7 +30,7 @@ export class CsrfService {
   private fetchingToken$: Observable<string> | null = null;
   
   // Supabase Edge Function endpoint
-  private readonly csrfEndpoint = `${environment.supabase.url}/functions/v1/get-csrf-token`;
+  private readonly csrfEndpoint = `${inject(RuntimeConfigService).get().supabase.url}/functions/v1/get-csrf-token`;
   
   /**
    * Get the current CSRF token or fetch a new one if needed

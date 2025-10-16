@@ -14,8 +14,13 @@
         }
         return await original(name, optionsOrCb, maybeCb);
       } catch (e: any) {
-        // Swallow specific immediate acquire timeout errors
-        if (e && String(e.name || e.message).includes('NavigatorLockAcquireTimeoutError')) {
+        // Swallow common lock acquisition errors seen in some browsers
+        const msg = String(e?.message || e?.name || '');
+        if (
+          msg.includes('NavigatorLockAcquireTimeoutError') ||
+          msg.includes('Acquiring an exclusive Navigator LockManager lock') ||
+          msg.includes('lock:sb-main-auth-token')
+        ) {
           return undefined;
         }
         throw e;
