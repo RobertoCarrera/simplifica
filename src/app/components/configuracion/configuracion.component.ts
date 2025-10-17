@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService, AppUser } from '../../services/auth.service';
 import { DevRoleService } from '../../services/dev-role.service';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { SupabaseClientService } from '../../services/supabase-client.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
@@ -13,7 +13,7 @@ import { SupabaseUnitsService, UnitOfMeasure } from '../../services/supabase-uni
 @Component({
   selector: 'app-configuracion',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule],
   templateUrl: './configuracion.component.html',
   styleUrls: ['./configuracion.component.scss']
 })

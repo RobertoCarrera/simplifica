@@ -6,7 +6,7 @@ import { Ticket } from '../../models/ticket';
 import { TicketsService } from '../../services/tickets.service';
 import { ModalTicketsComponent } from '../modal-tickets/modal-tickets.component';
 import { TicketsStage } from '../../models/tickets-stage';
-import { TicketStagesService } from '../../services/ticket-stages.service';
+import { SupabaseTicketStagesService, TicketStage } from '../../services/supabase-ticket-stages.service';
 
 @Component({
   selector: 'app-dashboard-sat',
@@ -16,22 +16,35 @@ import { TicketStagesService } from '../../services/ticket-stages.service';
 })
 export class DashboardSatComponent implements OnInit{
 
-  @Output() estados: TicketsStage [] = [];
+  @Output() estados: TicketStage [] = [];
   
   tickets: Ticket[] = [];
   selectedTicket: Ticket | null = null;
   searchTicket: string = '';
 
   constructor(private ticketsService: TicketsService,
-              private ticketStageService: TicketStagesService){}
+              private ticketStageService: SupabaseTicketStagesService){}
 
   ngOnInit(): void{
     this.ticketsService.getTickets().subscribe( ticket => {
       this.tickets = ticket;
     });
-    this.ticketStageService.getStages().subscribe(stages => {
-      this.estados = stages;
-    });
+    this.loadStages();
+  }
+
+  async loadStages(): Promise<void> {
+    try {
+      const { data, error } = await this.ticketStageService.getStages();
+      if (error) {
+        console.error('Error loading ticket stages:', error);
+        this.estados = [];
+      } else {
+        this.estados = data || [];
+      }
+    } catch (error) {
+      console.error('Error loading ticket stages:', error);
+      this.estados = [];
+    }
   }
 
   filterTickets(): Ticket[]{

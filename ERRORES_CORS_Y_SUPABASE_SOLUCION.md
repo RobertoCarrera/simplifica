@@ -121,7 +121,7 @@ ngOnInit(): void {
   // Comentar temporalmente
   // this.loadContacts();
   
-  console.warn('⚠️ Carga de contactos AnyChat deshabilitada temporalmente');
+  console.warn('⚠️ Carga de contactos deshabilitada temporalmente');
 }
 ```
 
