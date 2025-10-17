@@ -364,7 +364,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Presupuestos',
       icon: 'description',
       route: '/presupuestos',
-      module: 'production'
+      module: 'development'
     },
     {
       id: 3,
@@ -385,14 +385,14 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Chat',
       icon: 'chat',
       route: '/chat',
-      module: 'production'
+      module: 'development'
     },
     {
       id: 42,
-      label: 'Contactos AnyChat',
+      label: 'Contactos',
       icon: 'people',
-      route: '/anychat/contacts',
-      module: 'production'
+      route: '/contactos',
+      module: 'development'
     },
     {
       id: 5,
