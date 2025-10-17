@@ -19,7 +19,7 @@ import {
     <div class="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       <!-- Header con búsqueda -->
       <div class="bg-white shadow-sm border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-6 py-8">
+        <div class="mx-auto px-6 py-8">
           <div class="text-center mb-8">
             <h1 class="text-4xl font-bold text-gray-900 mb-4">
               🎓 <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -92,7 +92,7 @@ import {
       </div>
 
       <!-- Contenido principal -->
-      <div class="max-w-7xl mx-auto px-6 py-12">
+      <div class="mx-auto px-6 py-12">
         <!-- Navegación por pestañas -->
         <div class="bg-white rounded-2xl shadow-lg mb-8">
           <div class="border-b border-gray-200">

@@ -11,7 +11,7 @@ import { ToastService } from '../../services/toast.service';
   imports: [CommonModule],
   template: `
     <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div class="max-w-7xl mx-auto">
+      <div>
         <!-- Header -->
         <div class="mb-8">
           <h1 class="text-3xl font-bold text-gray-900 mb-2">📊 Panel de Análisis</h1>

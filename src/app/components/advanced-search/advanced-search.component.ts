@@ -13,7 +13,7 @@ import { SearchFilter, SearchableItem, SearchSuggestion } from '../../models/sea
   imports: [CommonModule, FormsModule],
   template: `
     <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      <div class="max-w-7xl mx-auto">
+      <div>
         
         <!-- Header -->
         <div class="mb-8">

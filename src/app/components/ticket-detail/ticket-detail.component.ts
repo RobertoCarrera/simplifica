@@ -31,7 +31,7 @@ import Placeholder from '@tiptap/extension-placeholder';
           <button class="text-sm opacity-80 hover:opacity-100 ml-2" (click)="closeToast(t.id)">✕</button>
         </div>
       </div>
-      <div class="max-w-6xl mx-auto px-4">
+      <div class="mx-auto px-4">
         
         <!-- Header con navegación -->
         <div class="mb-6 flex justify-between items-center">

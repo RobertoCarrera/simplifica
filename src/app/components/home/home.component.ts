@@ -71,8 +71,6 @@ import { SupabaseServicesService } from '../../services/supabase-services.servic
     `
     .home-container { 
       padding: 2rem; 
-      max-width: 1200px; 
-      margin: 0 auto; 
     }
     
     .home-header { 

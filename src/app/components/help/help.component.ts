@@ -77,8 +77,6 @@ import { CommonModule } from '@angular/common';
   styles: [`
     .help-container {
       padding: 2rem;
-      max-width: 1200px;
-      margin: 0 auto;
     }
 
     .help-header {
