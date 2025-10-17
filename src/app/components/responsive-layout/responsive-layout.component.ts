@@ -109,7 +109,7 @@ export class ResponsiveLayoutComponent {
   }
 
   getContentWidth(): string {
-    return 'max-w-7xl';
+    return 'max-w-8xl';
   }
 
   openSidebar(): void {

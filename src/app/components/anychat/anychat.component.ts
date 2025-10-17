@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, ViewChild, ElementRef, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { 
@@ -13,8 +13,7 @@ import { ToastService } from '../../services/toast.service';
 @Component({
   selector: 'app-anychat',
   imports: [CommonModule, FormsModule],
-  templateUrl: './anychat.component.html',
-  styleUrl: './anychat.component.scss'
+  templateUrl: './anychat.component.html'
 })
 export class AnychatComponent implements OnInit {
   private anychatService = inject(AnyChatService);
@@ -47,6 +46,11 @@ export class AnychatComponent implements OnInit {
   totalPages = signal(1);
   totalContacts = signal(0);
   totalConversations = signal(0);
+  // Mensajes: paginación separada
+  messagesPage = signal(1);
+  messagesTotalPages = signal(1);
+  // Sidebar responsive (mobile toggle)
+  sidebarOpen = signal(false);
   
   // ===============================
   // COMPUTED - DATOS DERIVADOS
@@ -98,6 +102,41 @@ export class AnychatComponent implements OnInit {
         'AnyChat requiere configuración adicional para funcionar'
       );
     }
+  }
+
+  // Acceso al contenedor de mensajes para manejo de scroll
+  @ViewChild('messagesContainer', { static: false })
+  private messagesContainer!: ElementRef<HTMLDivElement>;
+
+  // Listener de scroll (guardado para poder eliminarlo)
+  private onScroll = (ev: Event) => {
+    try {
+      const el = this.messagesContainer?.nativeElement;
+      if (!el) return;
+      // Si estamos cerca del top y hay más páginas, cargar la anterior
+      if (el.scrollTop <= 120 && !this.isLoadingMessages() && this.messagesPage() < this.messagesTotalPages()) {
+        this.loadOlderMessages();
+      }
+    } catch (e) { /* silencioso */ }
+  };
+
+  ngAfterViewInit(): void {
+    // Añadir listener de scroll al contenedor de mensajes
+    try {
+      setTimeout(() => {
+        if (this.messagesContainer && this.messagesContainer.nativeElement) {
+          this.messagesContainer.nativeElement.addEventListener('scroll', this.onScroll);
+        }
+      }, 0);
+    } catch (e) {}
+  }
+
+  ngOnDestroy(): void {
+    try {
+      if (this.messagesContainer && this.messagesContainer.nativeElement) {
+        this.messagesContainer.nativeElement.removeEventListener('scroll', this.onScroll as any);
+      }
+    } catch (e) {}
   }
 
   /**
@@ -239,11 +278,20 @@ export class AnychatComponent implements OnInit {
   loadMessages(conversationId: string): void {
     this.isLoadingMessages.set(true);
     this.messagesUnavailable.set(false);
+    // Reset pagination for messages when loading a new conversation
+    this.messagesPage.set(1);
+    this.messagesTotalPages.set(1);
     
-    this.anychatService.getMessages(conversationId).subscribe({
+    this.anychatService.getMessages(conversationId, 1, 50).subscribe({
       next: (response: AnyChatPaginatedResponse<AnyChatMessage>) => {
-        this.messages.set(response.data);
+        // Ensure messages are oldest->newest
+        const ordered = (response.data || []).slice().sort((a, b) => (a.created_at - b.created_at));
+        this.messages.set(ordered);
+        this.messagesPage.set(response.page || 1);
+        this.messagesTotalPages.set(response.pages || 1);
         this.isLoadingMessages.set(false);
+        // Scroll to bottom on initial load
+        setTimeout(() => this.scrollMessagesToBottom(), 50);
       },
       error: (error) => {
         this.isLoadingMessages.set(false);
@@ -257,6 +305,51 @@ export class AnychatComponent implements OnInit {
         console.error('Error cargando mensajes:', error);
       }
     });
+  }
+
+  /** Carga páginas anteriores (mensajes más antiguos) y las antepone manteniendo la posición de scroll */
+  private loadOlderMessages(): void {
+    const conversationId = this.selectedChatGuid();
+    if (!conversationId) return;
+    const nextPage = this.messagesPage() + 1;
+    if (nextPage > this.messagesTotalPages()) return;
+    this.isLoadingMessages.set(true);
+
+    const el = this.messagesContainer?.nativeElement;
+    // Guardar scrollHeight previo para preservar posición
+    const prevScrollHeight = el ? el.scrollHeight : 0;
+
+    this.anychatService.getMessages(conversationId, nextPage, 50).subscribe({
+      next: (response: AnyChatPaginatedResponse<AnyChatMessage>) => {
+        const older = (response.data || []).slice().sort((a, b) => (a.created_at - b.created_at));
+        // Anteponer mensajes antiguos
+        this.messages.update(msgs => [...older, ...msgs]);
+        this.messagesPage.set(response.page || nextPage);
+        this.messagesTotalPages.set(response.pages || this.messagesTotalPages());
+        this.isLoadingMessages.set(false);
+        // Ajustar scroll para mantener la posición relativa
+        setTimeout(() => {
+          try {
+            if (el) {
+              const newScroll = el.scrollHeight - prevScrollHeight;
+              el.scrollTop = newScroll + el.scrollTop;
+            }
+          } catch (e) {}
+        }, 20);
+      },
+      error: (error) => {
+        this.isLoadingMessages.set(false);
+        console.error('Error cargando mensajes antiguos:', error);
+      }
+    });
+  }
+
+  private scrollMessagesToBottom(): void {
+    try {
+      const el = this.messagesContainer?.nativeElement;
+      if (!el) return;
+      el.scrollTop = el.scrollHeight;
+    } catch (e) {}
   }
 
   sendMessage(): void {
@@ -275,6 +368,8 @@ export class AnychatComponent implements OnInit {
         this.newMessage.set('');
         
         this.isSendingMessage.set(false);
+        // Mantener vista en la parte inferior tras enviar
+        setTimeout(() => this.scrollMessagesToBottom(), 50);
         this.toastService.success('Enviado', 'Mensaje enviado correctamente');
       },
       error: (error) => {

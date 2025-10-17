@@ -1,37 +1,38 @@
-<div class="anychat-container">
+<div class="h-[calc(100vh-7dvh)] flex flex-col bg-gray-50 overflow-hidden">
   <!-- ===============================
        HEADER
        =============================== -->
-  <div class="chat-header">
-    <div class="header-title">
-      <i class="fas fa-comments"></i>
-      <h1>Chat AnyChat</h1>
-    </div>
-    <div class="header-stats">
-      <span class="stat-badge">
-        <i class="fas fa-comments"></i>
+  <div class="bg-white border-b border-gray-200 px-8 py-6 flex justify-between items-center shadow-sm">
+    <div class="flex gap-4 items-center">
+      <!-- Mobile menu button to open conversations sidebar -->
+      <button class="lg:hidden p-2 mr-2 text-gray-600" (click)="sidebarOpen.set(true)">
+        <i class="fas fa-bars text-lg"></i>
+      </button>
+      <span class="bg-gray-100 px-4 py-2 rounded-full text-sm font-semibold text-gray-700 flex items-center gap-2">
+        <i class="fas fa-comments text-indigo-600"></i>
         {{ totalConversations() }} conversaciones
       </span>
     </div>
   </div>
 
-  <div class="chat-layout">
+  <div class="flex flex-1 overflow-hidden">
     <!-- ===============================
       SIDEBAR - LISTA DE CONVERSACIONES
       =============================== -->
-    <aside class="contacts-sidebar">
+  <!-- Sidebar: visible on lg, hidden on smaller viewports; mobile overlay shown when sidebarOpen -->
+  <aside class="hidden lg:flex lg:w-80 lg:flex-shrink-0 bg-white border-r border-gray-200 flex-col overflow-hidden">
       <!-- Búsqueda -->
-      <div class="search-box">
-        <i class="fas fa-search"></i>
+      <div class="p-5 border-b border-gray-200 flex items-center gap-3 bg-white">
+        <i class="fas fa-search text-gray-400"></i>
         <input 
           type="text" 
           placeholder="Buscar por ID/estado de conversación..."
           [(ngModel)]="searchTerm"
-          class="search-input"
+          class="flex-1 border-none outline-none text-base text-gray-700 placeholder:text-gray-400"
         />
         @if (searchTerm()) {
           <button 
-            class="clear-search"
+            class="text-gray-400 hover:text-gray-600 transition-colors p-1"
             (click)="searchTerm.set(''); loadConversations()">
             <i class="fas fa-times"></i>
           </button>
@@ -39,41 +40,49 @@
       </div>
 
       <!-- Lista de conversaciones -->
-      <div class="contacts-list">
+      <div class="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-300">
         @if (isLoadingConversations()) {
-          <div class="loading-state">
-            <i class="fas fa-spinner fa-spin"></i>
+          <div class="p-12 text-center text-gray-500">
+            <i class="fas fa-spinner fa-spin text-5xl text-gray-300 mb-4"></i>
             <p>Cargando conversaciones...</p>
           </div>
         } @else if (!hasConversations()) {
-          <div class="empty-state">
-            <i class="fas fa-comments"></i>
-            <h3>No hay conversaciones</h3>
-            <p>Las conversaciones aparecerán aquí cuando haya actividad en AnyChat</p>
+          <div class="p-12 text-center text-gray-500">
+            <i class="fas fa-comments text-5xl text-gray-300 mb-4"></i>
+            <h3 class="text-xl text-gray-700 mb-2">No hay conversaciones</h3>
+            <p class="text-base text-gray-500">Las conversaciones aparecerán aquí cuando haya actividad</p>
           </div>
         } @else {
           @for (conversation of filteredConversations(); track conversation.guid) {
             <div 
-              class="contact-item"
-              [class.active]="selectedConversation()?.guid === conversation.guid"
+              class="flex items-center gap-4 px-5 py-4 cursor-pointer transition-all border-b border-gray-100 hover:bg-gray-50"
+              [class.bg-gradient-to-r]="selectedConversation()?.guid === conversation.guid"
+              [class.from-indigo-50]="selectedConversation()?.guid === conversation.guid"
+              [class.to-purple-50]="selectedConversation()?.guid === conversation.guid"
+              [class.border-l-4]="selectedConversation()?.guid === conversation.guid"
+              [class.border-l-indigo-600]="selectedConversation()?.guid === conversation.guid"
               (click)="selectConversation(conversation)">
               
               <!-- Avatar -->
-              <div class="contact-avatar">
-                <div class="avatar-initials">
+              <div class="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+                <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-600 text-white font-bold text-lg">
                   {{ ('' + (conversation.status || 'C')) | slice:0:2 | uppercase }}
                 </div>
               </div>
 
               <!-- Info -->
-              <div class="contact-info">
-                <div class="contact-name">Chat {{ (conversation.guid || '') | slice:-6 }}</div>
-                <div class="contact-email">Estado: {{ conversation.status }}</div>
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold text-gray-900 text-base mb-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                  Chat {{ (conversation.guid || '') | slice:-6 }}
+                </div>
+                <div class="text-gray-500 text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+                  Estado: {{ conversation.status }}
+                </div>
               </div>
 
               <!-- Última actualización -->
-              <div class="contact-meta">
-                <span class="contact-date">{{ formatDate(conversation.updated_at) }}</span>
+              <div>
+                <span class="text-xs text-gray-400">{{ formatDate(conversation.updated_at) }}</span>
               </div>
             </div>
           }
@@ -82,20 +91,20 @@
 
       <!-- Paginación -->
       @if (hasConversations() && totalPages() > 1) {
-        <div class="pagination">
+        <div class="p-4 border-t border-gray-200 flex justify-between items-center bg-white">
           <button 
-            class="page-btn"
+            class="bg-white border border-gray-300 rounded-lg px-3 py-2 cursor-pointer transition-all text-gray-600 hover:bg-gray-50 hover:border-indigo-600 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
             [disabled]="currentPage() === 1"
             (click)="previousPage()">
             <i class="fas fa-chevron-left"></i>
           </button>
           
-          <span class="page-info">
+          <span class="text-sm text-gray-600 font-medium">
             Página {{ currentPage() }} de {{ totalPages() }}
           </span>
           
           <button 
-            class="page-btn"
+            class="bg-white border border-gray-300 rounded-lg px-3 py-2 cursor-pointer transition-all text-gray-600 hover:bg-gray-50 hover:border-indigo-600 hover:text-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
             [disabled]="currentPage() === totalPages()"
             (click)="nextPage()">
             <i class="fas fa-chevron-right"></i>
@@ -104,98 +113,160 @@
       }
     </aside>
 
+    <!-- Mobile overlay sidebar -->
+    <div class="lg:hidden">
+      <div class="fixed inset-0 z-40" [class.hidden]="!sidebarOpen()">
+        <div class="absolute inset-0 bg-black opacity-40" (click)="sidebarOpen.set(false)"></div>
+  <div class="absolute left-0 top-0 h-full w-80 bg-white border-r border-gray-200 overflow-y-auto">
+          <!-- Reuse the same sidebar content by inlining a small version -->
+          <div class="p-5 border-b border-gray-200 flex items-center gap-3 bg-white">
+            <i class="fas fa-search text-gray-400"></i>
+            <input 
+              type="text" 
+              placeholder="Buscar por ID/estado de conversación..."
+              [(ngModel)]="searchTerm"
+              class="flex-1 border-none outline-none text-base text-gray-700 placeholder:text-gray-400"
+            />
+            <button class="text-gray-400 hover:text-gray-600 transition-colors p-1" (click)="searchTerm.set(''); loadConversations()">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="p-4">
+            <!-- conversations list simplified for mobile overlay -->
+            @if (isLoadingConversations()) {
+              <div class="p-12 text-center text-gray-500">
+                <i class="fas fa-spinner fa-spin text-5xl text-gray-300 mb-4"></i>
+                <p>Cargando conversaciones...</p>
+              </div>
+            } @else if (!hasConversations()) {
+              <div class="p-12 text-center text-gray-500">
+                <i class="fas fa-comments text-5xl text-gray-300 mb-4"></i>
+                <h3 class="text-xl text-gray-700 mb-2">No hay conversaciones</h3>
+                <p class="text-base text-gray-500">Las conversaciones aparecerán aquí cuando haya actividad</p>
+              </div>
+            } @else {
+              @for (conversation of filteredConversations(); track conversation.guid) {
+                <div class="flex items-center gap-4 px-3 py-3 cursor-pointer border-b border-gray-100" (click)="selectConversation(conversation); sidebarOpen.set(false)">
+                  <div class="w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-600 text-white font-bold">{{ ('' + (conversation.status || 'C')) | slice:0:2 | uppercase }}</div>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-gray-900 text-sm whitespace-nowrap overflow-hidden text-ellipsis">Chat {{ (conversation.guid || '') | slice:-6 }}</div>
+                    <div class="text-gray-500 text-xs whitespace-nowrap overflow-hidden text-ellipsis">Estado: {{ conversation.status }}</div>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ===============================
-         MAIN - ÁREA DE CHAT
-         =============================== -->
-    <main class="chat-main">
-  @if (!selectedConversation()) {
+      MAIN - ÁREA DE CHAT (full width)
+      =============================== -->
+  <main class="w-full flex-1 flex flex-col bg-gray-50 overflow-hidden min-h-0">
+      @if (!selectedConversation()) {
         <!-- Sin conversación seleccionada -->
-        <div class="welcome-state">
-          <i class="fas fa-comments"></i>
-          <h2>Bienvenido a AnyChat</h2>
-          <p>Selecciona una conversación de la izquierda para ver los mensajes</p>
-          <div class="features">
-            <div class="feature-item">
-              <i class="fas fa-check-circle"></i>
+        <div class="flex-1 flex flex-col items-center justify-center p-12 text-center">
+          <i class="fas fa-comments text-6xl text-gray-300 mb-6"></i>
+          <h2 class="text-3xl font-bold text-gray-900 mb-3">Bienvenido al módulo de chat</h2>
+          <p class="text-gray-500 text-lg mb-8 max-w-md">
+            Selecciona una conversación de la izquierda para ver los mensajes
+          </p>
+          <div class="flex flex-col gap-4 items-start">
+            <div class="flex items-center gap-3 text-gray-700 text-base">
+              <i class="fas fa-check-circle text-xl text-green-500"></i>
               <span>Gestión de conversaciones</span>
             </div>
-            <div class="feature-item">
-              <i class="fas fa-check-circle"></i>
+            <div class="flex items-center gap-3 text-gray-700 text-base">
+              <i class="fas fa-check-circle text-xl text-green-500"></i>
               <span>Conversaciones en tiempo real</span>
             </div>
-            <div class="feature-item">
-              <i class="fas fa-check-circle"></i>
-              <span>Integración completa con AnyChat API</span>
+            <div class="flex items-center gap-3 text-gray-700 text-base">
+              <i class="fas fa-check-circle text-xl text-green-500"></i>
+              <span>Integración con otros módulos</span>
             </div>
           </div>
         </div>
       } @else {
         <!-- Conversación seleccionada -->
-        <div class="chat-content">
+        <div class="flex-1 flex flex-col overflow-hidden bg-white">
           <!-- Header del chat -->
-          <div class="chat-content-header">
-            <div class="contact-header-info">
-              <div class="contact-avatar-small">
-                <div class="avatar-initials-small">
+          <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-center bg-white">
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 rounded-full overflow-hidden">
+                <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-600 text-white font-bold">
                   {{ ('' + (selectedConversation()!.status || 'C')) | slice:0:2 | uppercase }}
                 </div>
               </div>
               <div>
-                <h3>Chat {{ (selectedConversation()!.guid || '') | slice:-6 }}</h3>
-                <p class="contact-status">
-                  <i class="fas fa-circle"></i>
+                <h3 class="text-lg font-semibold text-gray-900">
+                  Chat {{ (selectedConversation()!.guid || '') | slice:-6 }}
+                </h3>
+                <p class="text-sm text-gray-500 flex items-center gap-2 mt-1">
+                  <i class="fas fa-circle text-xs text-green-500"></i>
                   Estado: {{ selectedConversation()!.status }}
                 </p>
               </div>
             </div>
-            <div class="chat-actions">
-              <button class="action-btn" title="Información del contacto">
+            <div class="flex gap-2">
+              <button class="text-gray-500 hover:bg-gray-100 hover:text-indigo-600 p-2 rounded-lg transition-all text-lg" title="Información del contacto">
                 <i class="fas fa-info-circle"></i>
               </button>
-              <button class="action-btn" title="Llamar">
+              <button class="text-gray-500 hover:bg-gray-100 hover:text-indigo-600 p-2 rounded-lg transition-all text-lg" title="Llamar">
                 <i class="fas fa-phone"></i>
               </button>
-              <button class="action-btn" title="Más opciones">
+              <button class="text-gray-500 hover:bg-gray-100 hover:text-indigo-600 p-2 rounded-lg transition-all text-lg" title="Más opciones">
                 <i class="fas fa-ellipsis-v"></i>
               </button>
             </div>
           </div>
 
           <!-- Mensajes -->
-          <div class="messages-container">
+          <div #messagesContainer class="flex-1 overflow-y-auto p-6 bg-gray-50 scrollbar-thin scrollbar-thumb-gray-300">
             @if (messagesUnavailable()) {
-              <div class="empty-messages">
-                <i class="fas fa-ban"></i>
-                <h3>Mensajes no disponibles</h3>
-                <p>Este entorno de AnyChat no expone el endpoint de mensajes para este chat.</p>
+              <div class="p-12 text-center text-gray-500">
+                <i class="fas fa-ban text-5xl text-gray-300 mb-4"></i>
+                <h3 class="text-xl text-gray-700 mb-2">Mensajes no disponibles</h3>
+                <p class="text-base text-gray-500">
+                  Este entorno del módulo de chat no expone el endpoint de mensajes para este chat.
+                </p>
               </div>
             } @else if (isLoadingMessages()) {
-              <div class="loading-messages">
-                <i class="fas fa-spinner fa-spin"></i>
-                <p>Cargando mensajes...</p>
+              <div class="flex flex-col items-center justify-center h-full">
+                <i class="fas fa-spinner fa-spin text-5xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500">Cargando mensajes...</p>
               </div>
             } @else if (!hasMessages()) {
-              <div class="empty-messages">
-                <i class="fas fa-comment-slash"></i>
-                <h3>No hay mensajes aún</h3>
-                <p>Inicia la conversación enviando el primer mensaje</p>
+              <div class="p-12 text-center text-gray-500">
+                <i class="fas fa-comment-slash text-5xl text-gray-300 mb-4"></i>
+                <h3 class="text-xl text-gray-700 mb-2">No hay mensajes aún</h3>
+                <p class="text-base text-gray-500">Inicia la conversación enviando el primer mensaje</p>
               </div>
             } @else {
               @for (message of messages(); track message.guid) {
                 <div 
-                  class="message"
-                  [class.message-out]="message.direction === 'out'"
-                  [class.message-in]="message.direction === 'in'">
+                  class="flex mb-4 animate-[fadeIn_0.3s_ease] w-full"
+                  [class.justify-end]="message.direction === 'out'"
+                  [class.justify-start]="message.direction === 'in'">
                   
-                  <div class="message-content">
-                    <p>{{ message.message }}</p>
-                    <span class="message-time">
-                      {{ formatDate(message.created_at) }}
+                  <div 
+                    class="max-w-[65%] px-5 py-4 shadow-sm rounded-3xl"
+                    [class.bg-gradient-to-br]="message.direction === 'out'"
+                    [class.from-indigo-600]="message.direction === 'out'"
+                    [class.to-purple-600]="message.direction === 'out'"
+                    [class.text-white]="message.direction === 'out'"
+                    [class.bg-white]="message.direction === 'in'"
+                    [class.text-gray-900]="message.direction === 'in'"
+                    [class.border]="message.direction === 'in'"
+                    [class.border-gray-200]="message.direction === 'in'">
+                    
+                    <p class="mb-2 text-base leading-relaxed break-words">{{ message.message }}</p>
+                    <span class="text-xs opacity-75 flex items-center gap-2" [class.justify-end]="message.direction === 'out'" [class.justify-start]="message.direction === 'in'">
+                      <span class="">{{ formatDate(message.created_at) }}</span>
                       @if (message.direction === 'out') {
                         <i 
-                          class="fas fa-check-double"
-                          [class.read]="message.read_at">
-                        </i>
+                          class="fas fa-check-double text-xs"
+                          [class.text-blue-300]="message.read_at"></i>
                       }
                     </span>
                   </div>
@@ -205,8 +276,8 @@
           </div>
 
           <!-- Input de mensaje -->
-          <div class="message-input-container">
-            <button class="attach-btn" title="Adjuntar archivo">
+          <div class="px-6 py-5 border-t border-gray-200 flex items-center gap-3 bg-white">
+            <button class="text-gray-500 hover:bg-gray-100 hover:text-indigo-600 p-2 rounded-lg transition-all text-xl" title="Adjuntar archivo">
               <i class="fas fa-paperclip"></i>
             </button>
             
@@ -215,12 +286,12 @@
               placeholder="Escribe un mensaje..."
               [(ngModel)]="newMessage"
               (keyup.enter)="sendMessage()"
-              class="message-input"
+              class="flex-1 border border-gray-300 rounded-3xl px-5 py-4 text-base outline-none transition-all focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
               [disabled]="isSendingMessage() || messagesUnavailable()"
             />
             
             <button 
-              class="send-btn"
+              class="bg-gradient-to-br from-indigo-600 to-purple-600 text-white w-11 h-11 rounded-full cursor-pointer flex items-center justify-center transition-all shadow-lg shadow-indigo-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-400 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
               (click)="sendMessage()"
               [disabled]="!canSendMessage()"
               [title]="canSendMessage() ? 'Enviar mensaje' : 'Escribe un mensaje para enviar'">
@@ -236,3 +307,4 @@
     </main>
   </div>
 </div>
+
