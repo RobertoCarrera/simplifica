@@ -31,70 +31,84 @@ import { ToastService } from '../../services/toast.service';
           <i class="fas fa-info-circle"></i>
           Estados predeterminados. Puedes reordenarlos arrastrando (solo los visibles; los ocultos quedan al final) y ocultarlos si no los necesitas.
         </p>
-  <div class="stages-grid" cdkDropList [cdkDropListSortingDisabled]="true" [cdkDropListData]="visibleGenericStages" (cdkDropListDropped)="onDropGeneric($event)">
-          @for (stage of genericStages; track stage.id) {
-              <div class="stage-card generic justify-between" 
-                   [class.hidden-stage]="stage.is_hidden" 
-                   cdkDrag
-                   [cdkDragDisabled]="stage.is_hidden">
-                @if (!stage.is_hidden) {
-                  <div class="drag-handle" cdkDragHandle>
+        <div class="stages-grid" cdkDropList [cdkDropListData]="visibleGenericStages" (cdkDropListDropped)="onDropGeneric($event)">
+          @for (stage of visibleGenericStages; track stage.id) {
+            <div class="stage-card generic" cdkDrag>
+              <div class="drag-handle" cdkDragHandle>
+                <i class="fas fa-grip-vertical"></i>
+              </div>
+              <ng-template cdkDragPreview>
+                <div class="stage-card generic drag-preview">
+                  <div class="drag-handle">
                     <i class="fas fa-grip-vertical"></i>
                   </div>
-                  <ng-template cdkDragPreview>
-                    <div class="stage-card generic drag-preview">
-                      <div class="drag-handle">
-                        <i class="fas fa-grip-vertical"></i>
-                      </div>
-                      <div class="card-body">
-                        <div class="title-row">
-                          <div class="name">{{ stage.name }}</div>
-                          <div>
-                            <span class="badge">Pos: {{ stage.position }}</span>
-                          </div>
-                        </div>
+                  <div class="card-body">
+                    <div class="title-row">
+                      <div class="name">{{ stage.name }}</div>
+                      <div>
+                        <span class="badge">Pos: {{ stage.position }}</span>
+                        <span class="badge badge-system">Sistema</span>
                       </div>
                     </div>
-                  </ng-template>
-                  <ng-template cdkDragPlaceholder>
-                    <div class="stage-card generic placeholder"></div>
-                  </ng-template>
-                }
+                  </div>
+                </div>
+              </ng-template>
+              <ng-template cdkDragPlaceholder>
+                <div class="stage-card generic placeholder"></div>
+              </ng-template>
+              <div class="card-body">
+                <div class="title-row">
+                  <div class="name">{{ stage.name }}</div>
+                  <div>
+                    <span class="badge">Pos: {{ stage.position }}</span>
+                    <span class="badge badge-system">Sistema</span>
+                  </div>
+                </div>
+              </div>
+              <div class="actions">
+                <button 
+                  class="btn btn-sm btn-outline" 
+                  (click)="hideStage(stage)"
+                  [disabled]="!!togglingVisibilityById[stage.id]"
+                  title="Ocultar este estado">
+                  <i class="fas fa-eye-slash"></i>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+        @if (hiddenGenericStages.length > 0) {
+          <div class="hidden-divider">
+            <span><i class="fas fa-eye-slash"></i> Estados ocultos</span>
+          </div>
+          <div class="stages-grid hidden-list">
+            @for (stage of hiddenGenericStages; track stage.id) {
+              <div class="stage-card generic hidden-stage">
                 <div class="card-body">
-                  <div class="title-row flex flex-row">
-                    <div>
-                      @if(!stage.is_hidden) {
-                        <span class="badge mr-2">Pos: {{ stage.is_hidden ? 9999 : stage.position }}</span>
-                      }
-                    </div>
+                  <div class="title-row">
                     <div class="name">
-                      @if (stage.is_hidden) { <span class="badge badge-hidden">Oculto</span> }
                       {{ stage.name }}
+                      <span class="badge badge-hidden">Oculto</span>
+                    </div>
+                    <div>
+                      <span class="badge">Pos: 9999</span>
+                      <span class="badge badge-system">Sistema</span>
                     </div>
                   </div>
                 </div>
                 <div class="actions">
-                  @if (stage.is_hidden) {
-                    <button 
-                      class="btn btn-sm btn-success" 
-                      (click)="unhideStage(stage)"
-                      [disabled]="!!togglingVisibilityById[stage.id]"
-                      title="Mostrar este estado">
-                      <i class="fas fa-eye"></i>
-                    </button>
-                  } @else {
-                    <button 
-                      class="btn btn-sm btn-outline" 
-                      (click)="hideStage(stage)"
-                      [disabled]="!!togglingVisibilityById[stage.id]"
-                      title="Ocultar este estado">
-                      <i class="fas fa-eye-slash"></i>
-                    </button>
-                  }
+                  <button 
+                    class="btn btn-sm btn-success" 
+                    (click)="unhideStage(stage)"
+                    [disabled]="!!togglingVisibilityById[stage.id]"
+                    title="Mostrar este estado">
+                    <i class="fas fa-eye"></i>
+                  </button>
                 </div>
               </div>
             }
           </div>
+        }
       </div>
 
         <!-- Company-Specific Stages Section -->
@@ -474,6 +488,24 @@ import { ToastService } from '../../services/toast.service';
       cursor: move; /* draggable when visible */
     }
 
+    .hidden-list .stage-card {
+      cursor: default;
+    }
+
+    .hidden-list {
+      grid-template-columns: 1fr;
+    }
+
+    .hidden-divider {
+      margin: 1.5rem 0 0.75rem;
+      color: #6b7280;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+    }
+
     .stage-card.company {
       background: white;
       cursor: move; /* draggable */
@@ -839,6 +871,10 @@ export class StagesManagementComponent implements OnInit {
     return this.genericStages.filter(s => !s.is_hidden);
   }
 
+  get hiddenGenericStages(): TicketStage[] {
+    return this.genericStages.filter(s => !!s.is_hidden);
+  }
+
   async ngOnInit() {
     await this.loadStages();
   }
@@ -1075,23 +1111,21 @@ export class StagesManagementComponent implements OnInit {
   async onDropGeneric(event: CdkDragDrop<TicketStage[]>) {
     if (event.previousIndex === event.currentIndex) return;
 
-    // Work only with visible generics (hidden are not draggable and stay at the end)
-    const visible = this.genericStages.filter(s => !s.is_hidden);
-    const hidden = this.genericStages.filter(s => !!s.is_hidden);
+    // Clone arrays to compute new order for visible stages
+    const visible = [...this.visibleGenericStages];
+    const hidden = [...this.hiddenGenericStages];
 
-    const from = event.previousIndex;
-    const to = event.currentIndex;
-    const a = visible[from];
-    const b = visible[to];
-    if (!a || !b) return;
+    moveItemInArray(visible, event.previousIndex, event.currentIndex);
 
-    // Swap their visual positions: swap 'position' values so that sorting reflects a swap
-    const tmpPos = a.position;
-    a.position = b.position;
-    b.position = tmpPos;
+    visible.forEach((stage, index) => {
+      stage.position = index;
+    });
+    hidden.forEach((stage, index) => {
+      stage.position = 9999 + index;
+    });
 
-    // Rebuild the combined list and sort (visible by position asc, then hidden)
-    this.genericStages = this.sortGenerics([...visible, ...hidden]);
+    const combined = [...visible, ...hidden];
+    this.genericStages = this.sortGenerics(combined);
 
     // Persist full ordered list of generic stage IDs (visible first, then hidden)
     try {
