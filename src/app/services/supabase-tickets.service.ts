@@ -642,8 +642,8 @@ export class SupabaseTicketsService {
     try {
       let query: any = this.supabase.getClient()
         .from('ticket_stages')
-        .select('*')
-        .is('deleted_at', null)
+  .select('*')
+  .is('deleted_at', null)
         .order('position', { ascending: true });
 
       if (this.isValidUuid(companyId)) {

@@ -249,9 +249,10 @@ export class SupabaseTicketStagesService {
    */
   async deleteStage(stageId: string): Promise<{ error: any }> {
     try {
+      // Hard delete: remove the record entirely
       const { error } = await this.supabase
         .from('ticket_stages')
-        .update({ deleted_at: new Date().toISOString() })
+        .delete()
         .eq('id', stageId);
 
       if (error) {

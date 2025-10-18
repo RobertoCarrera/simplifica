@@ -334,6 +334,7 @@ export class SupabaseTicketsComponent implements OnInit {
       const { data: stages, error } = await this.simpleSupabase.getClient()
         .from('ticket_stages')
         .select('*')
+        .is('deleted_at', null)
         .order('position', { ascending: true });
       
       if (error) {

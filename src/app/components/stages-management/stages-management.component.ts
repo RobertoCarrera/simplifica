@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { SupabaseTicketStagesService, TicketStage, CreateStagePayload, UpdateStagePayload } from '../../services/supabase-ticket-stages.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-stages-management',
@@ -71,7 +72,7 @@ import { SupabaseTicketStagesService, TicketStage, CreateStagePayload, UpdateSta
                     <button 
                       class="btn btn-sm btn-success" 
                       (click)="unhideStage(stage)"
-                      [disabled]="togglingVisibility"
+                      [disabled]="!!togglingVisibilityById[stage.id]"
                       title="Mostrar este estado">
                       <i class="fas fa-eye"></i> Mostrar
                     </button>
@@ -79,7 +80,7 @@ import { SupabaseTicketStagesService, TicketStage, CreateStagePayload, UpdateSta
                     <button 
                       class="btn btn-sm btn-outline" 
                       (click)="hideStage(stage)"
-                      [disabled]="togglingVisibility"
+                      [disabled]="!!togglingVisibilityById[stage.id]"
                       title="Ocultar este estado">
                       <i class="fas fa-eye-slash"></i> Ocultar
                     </button>
@@ -735,10 +736,12 @@ import { SupabaseTicketStagesService, TicketStage, CreateStagePayload, UpdateSta
 })
 export class StagesManagementComponent implements OnInit {
   private stagesService = inject(SupabaseTicketStagesService);
+  private toast = inject(ToastService);
 
   loading = false;
   creating = false;
-  togglingVisibility = false;
+  // Per-item loading map for hide/unhide actions
+  togglingVisibilityById: Record<string, boolean> = {};
   showCreateForm = false;
   successMessage = '';
   errorMessage = '';
@@ -882,8 +885,16 @@ export class StagesManagementComponent implements OnInit {
     this.clearMessages();
   }
 
+  isToggling(id: string): boolean {
+    return !!this.togglingVisibilityById[id];
+  }
+
+  private setToggling(id: string, value: boolean) {
+    this.togglingVisibilityById = { ...this.togglingVisibilityById, [id]: value };
+  }
+
   async hideStage(stage: TicketStage) {
-    this.togglingVisibility = true;
+    this.setToggling(stage.id, true);
     this.clearMessages();
 
     try {
@@ -893,18 +904,25 @@ export class StagesManagementComponent implements OnInit {
         throw result.error;
       }
 
-      this.successMessage = `Estado "${stage.name}" ocultado correctamente`;
-      await this.loadStages();
+  // Notify via global toast system for consistency
+  this.toast.success('Estado ocultado', `"${stage.name}" ocultado correctamente`);
+      // Update only the affected item locally
+      const idx = this.genericStages.findIndex(s => s.id === stage.id);
+      if (idx !== -1) {
+        this.genericStages[idx] = { ...this.genericStages[idx], is_hidden: true } as TicketStage;
+        // Reassign array reference to trigger change detection if needed
+        this.genericStages = [...this.genericStages];
+      }
 
     } catch (error: any) {
       this.errorMessage = 'Error al ocultar el estado: ' + (error.message || 'Error desconocido');
     } finally {
-      this.togglingVisibility = false;
+      this.setToggling(stage.id, false);
     }
   }
 
   async unhideStage(stage: TicketStage) {
-    this.togglingVisibility = true;
+    this.setToggling(stage.id, true);
     this.clearMessages();
 
     try {
@@ -914,13 +932,20 @@ export class StagesManagementComponent implements OnInit {
         throw result.error;
       }
 
-      this.successMessage = `Estado "${stage.name}" mostrado correctamente`;
-      await this.loadStages();
+  // Notify via global toast system for consistency
+  this.toast.success('Estado mostrado', `"${stage.name}" ahora está visible`);
+      // Update only the affected item locally
+      const idx = this.genericStages.findIndex(s => s.id === stage.id);
+      if (idx !== -1) {
+        this.genericStages[idx] = { ...this.genericStages[idx], is_hidden: false } as TicketStage;
+        // Reassign array reference to trigger change detection if needed
+        this.genericStages = [...this.genericStages];
+      }
 
     } catch (error: any) {
       this.errorMessage = 'Error al mostrar el estado: ' + (error.message || 'Error desconocido');
     } finally {
-      this.togglingVisibility = false;
+      this.setToggling(stage.id, false);
     }
   }
 
