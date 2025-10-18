@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { SimpleSupabaseService } from './simple-supabase.service';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { environment } from '../../environments/environment';
 
 export interface UnitOfMeasure {
   id: string;
@@ -44,6 +45,8 @@ export class SupabaseUnitsService {
 
     const { data, error } = await query;
     if (error) throw new Error(error.message);
+    // Optionally exclude hidden generic units for current company by filtering client-side if hidden_units exists
+    // NOTE: For config screen, use getConfigUnits() from Edge Function
     return (data || []) as UnitOfMeasure[];
   }
 
@@ -91,11 +94,52 @@ export class SupabaseUnitsService {
   }
 
   async softDeleteUnit(id: string): Promise<void> {
+    // Hard delete to match stages behavior for company-specific items
     const { error } = await this.supabase
       .from('service_units')
-      .update({ deleted_at: new Date().toISOString() } as any)
+      .delete()
       .eq('id', id);
 
     if (error) throw new Error(error.message);
+  }
+
+  // Edge-backed config units (generic with is_hidden)
+  async getConfigUnits(): Promise<{ units: Array<UnitOfMeasure & { is_hidden?: boolean }>; error?: any }> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (!session?.access_token) return { units: [], error: { message: 'No active session' } };
+    const resp = await fetch(`${environment.supabase.url}/functions/v1/get-config-units`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+    });
+    const json = await resp.json();
+    if (!resp.ok) return { units: [], error: json?.error || json };
+    return { units: json?.units || [] };
+  }
+
+  // Hide/show generic units via Edge Function
+  async hideGenericUnit(unitId: string): Promise<{ error?: any }> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (!session?.access_token) return { error: { message: 'No active session' } };
+    const resp = await fetch(`${environment.supabase.url}/functions/v1/hide-unit`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_unit_id: unitId, p_operation: 'hide' })
+    });
+    const json = await resp.json();
+    if (!resp.ok) return { error: json?.error || json };
+    return {};
+  }
+
+  async unhideGenericUnit(unitId: string): Promise<{ error?: any }> {
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (!session?.access_token) return { error: { message: 'No active session' } };
+    const resp = await fetch(`${environment.supabase.url}/functions/v1/hide-unit`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_unit_id: unitId, p_operation: 'unhide' })
+    });
+    const json = await resp.json();
+    if (!resp.ok) return { error: json?.error || json };
+    return {};
   }
 }

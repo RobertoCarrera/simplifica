@@ -38,6 +38,7 @@ import { GdprCustomerManagerComponent } from './components/gdpr-customer-manager
 import { AnychatComponent } from './components/anychat/anychat.component';
 import { AnychatContactsComponent } from './components/anychat-contacts/anychat-contacts.component';
 import { StagesManagementComponent } from './components/stages-management/stages-management.component';
+import { UnitsManagementComponent } from './components/units-management/units-management.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -51,8 +52,9 @@ export const routes: Routes = [
     {path: 'chat', component: AnychatComponent, canActivate: [AuthGuard]},
     {path: 'anychat/contacts', component: AnychatContactsComponent, canActivate: [AuthGuard]},
     {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
-    {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard]},
     {path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard]},
+    {path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard]},
+    {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full'},
     {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     // Ruta de invitaciones eliminada (modelo de auto-registro activo)
     
