@@ -154,11 +154,29 @@ serve(async (req) => {
       });
     }
 
+    // Leer overlay de orden por empresa
+    const { data: overlay, error: oErr } = await supabaseAdmin
+      .from("company_stage_order")
+      .select("stage_id, position")
+      .eq("company_id", companyId);
+    if (oErr) {
+      return new Response(JSON.stringify({ error: oErr.message }), {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+
     const hiddenIds = new Set((hidden || []).map((h: any) => h.stage_id));
-    const result = (stages || []).map((s: any) => ({
-      ...s,
-      is_hidden: hiddenIds.has(s.id),
-    }));
+    const overlayMap = new Map((overlay || []).map((o: any) => [o.stage_id, o.position]));
+
+    const result = (stages || [])
+      .map((s: any) => ({
+        ...s,
+        is_hidden: hiddenIds.has(s.id),
+        // Si existe overlay para este stage, usarlo como position efectiva
+        position: overlayMap.has(s.id) ? overlayMap.get(s.id) : s.position,
+      }))
+      .sort((a: any, b: any) => (Number(a.position) - Number(b.position)));
 
     return new Response(JSON.stringify({ stages: result }), {
       status: 200,

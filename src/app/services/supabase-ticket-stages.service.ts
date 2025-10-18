@@ -153,6 +153,32 @@ export class SupabaseTicketStagesService {
   }
 
   /**
+   * Reorder generic (system) stages per company via Edge Function overlay.
+   * stageIds must be the full ordered list of generic stage IDs.
+   */
+  async reorderGenericStages(stageIds: string[]): Promise<{ error: any; data?: any }> {
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session?.access_token) return { error: { message: 'No active session' } };
+
+      const resp = await fetch(`${environment.supabase.url}/functions/v1/reorder-stages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ stage_ids: stageIds })
+      });
+
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) return { error: json?.error || json };
+      return { error: null, data: json };
+    } catch (e) {
+      return { error: e };
+    }
+  }
+
+  /**
    * Get only company-specific stages for the current user's company
    */
   async getCompanyStages(): Promise<{ data: TicketStage[] | null; error: any }> {

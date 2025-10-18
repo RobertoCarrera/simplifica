@@ -27,6 +27,28 @@ export class SupabaseUnitsService {
   }
 
   async listUnits(includeInactive = false): Promise<UnitOfMeasure[]> {
+    // Use Edge Function to get properly filtered units (respecting hidden_units)
+    const { units, error } = await this.getConfigUnits();
+    if (error) {
+      console.warn('Error fetching config units, falling back to direct query:', error);
+      // Fallback to direct query if Edge Function fails
+      return this.listUnitsDirectQuery(includeInactive);
+    }
+
+    // Filter by active status if needed
+    let result = units || [];
+    if (!includeInactive) {
+      result = result.filter(u => u.is_active !== false);
+    }
+
+    // Filter out hidden units
+    result = result.filter(u => !u.is_hidden);
+
+    return result;
+  }
+
+  // Direct database query (fallback)
+  private async listUnitsDirectQuery(includeInactive = false): Promise<UnitOfMeasure[]> {
     let query = this.supabase
       .from('service_units')
       .select('*')
@@ -45,8 +67,6 @@ export class SupabaseUnitsService {
 
     const { data, error } = await query;
     if (error) throw new Error(error.message);
-    // Optionally exclude hidden generic units for current company by filtering client-side if hidden_units exists
-    // NOTE: For config screen, use getConfigUnits() from Edge Function
     return (data || []) as UnitOfMeasure[];
   }
 

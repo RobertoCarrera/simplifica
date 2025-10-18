@@ -2,13 +2,14 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { SupabaseTicketStagesService, TicketStage, CreateStagePayload, UpdateStagePayload } from '../../services/supabase-ticket-stages.service';
 import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-stages-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, DragDropModule],
   template: `
     <!-- Header -->
     <div class="header">
@@ -18,62 +19,68 @@ import { ToastService } from '../../services/toast.service';
         </button>
       </div>
     </div>
-
-    <!-- Alert messages -->
-    @if (successMessage) {
-      <div class="alert alert-success">
-        <i class="fas fa-check-circle"></i> {{ successMessage }}
-      </div>
-    }
-    @if (errorMessage) {
-      <div class="alert alert-danger">
-        <i class="fas fa-exclamation-circle"></i> {{ errorMessage }}
-      </div>
-    }
-
-    <!-- Loading state -->
-    @if (loading) {
-      <div class="loading-container">
-        <i class="fas fa-spinner fa-spin fa-3x"></i>
-        <p>Cargando estados...</p>
-      </div>
-    }
-
-    @if (!loading) {
-      <!-- Two Column Layout -->
-      <div class="two-columns-layout">
-        <!-- Generic (System) Stages Section -->
-        <div class="section">
+    <div class="two-columns-layout">
+      <div class="section">
+        <div class="section-header">
           <h3><i class="fas fa-globe"></i> Estados del Sistema</h3>
-          <p class="info-text">
-            <i class="fas fa-info-circle"></i>
-            Estados predeterminados. Puedes ocultarlos si no los necesitas.
-          </p>
-          
-          <div class="stages-grid">
-            @for (stage of genericStages; track stage.id) {
-              <div class="stage-card generic" [class.hidden-stage]="stage.is_hidden">
-                <div class="stage-color" [style.background-color]="stage.color"></div>
-                <div class="stage-info">
-                  <div class="stage-name">
-                    {{ stage.name }}
-                    @if (stage.is_hidden) {
-                      <span class="badge badge-hidden">Oculto</span>
-                    }
+          <button class="btn btn-outline" (click)="hideAllSystemStages()" [disabled]="hidingAllGenericStages" title="Ocultar todos los estados del sistema">
+            <i class="fas fa-eye-slash"></i> Ocultar Todos
+          </button>
+        </div>
+        <p class="info-text">
+          <i class="fas fa-info-circle"></i>
+          Estados predeterminados. Puedes reordenarlos arrastrando (solo los visibles; los ocultos quedan al final) y ocultarlos si no los necesitas.
+        </p>
+  <div class="stages-grid" cdkDropList [cdkDropListSortingDisabled]="true" [cdkDropListData]="visibleGenericStages" (cdkDropListDropped)="onDropGeneric($event)">
+          @for (stage of genericStages; track stage.id) {
+              <div class="stage-card generic justify-between" 
+                   [class.hidden-stage]="stage.is_hidden" 
+                   cdkDrag
+                   [cdkDragDisabled]="stage.is_hidden">
+                @if (!stage.is_hidden) {
+                  <div class="drag-handle" cdkDragHandle>
+                    <i class="fas fa-grip-vertical"></i>
                   </div>
-                  <div class="stage-meta">
-                    <span class="badge">Pos: {{ stage.position }}</span>
-                    <span class="badge badge-system">Sistema</span>
+                  <ng-template cdkDragPreview>
+                    <div class="stage-card generic drag-preview">
+                      <div class="drag-handle">
+                        <i class="fas fa-grip-vertical"></i>
+                      </div>
+                      <div class="card-body">
+                        <div class="title-row">
+                          <div class="name">{{ stage.name }}</div>
+                          <div>
+                            <span class="badge">Pos: {{ stage.position }}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </ng-template>
+                  <ng-template cdkDragPlaceholder>
+                    <div class="stage-card generic placeholder"></div>
+                  </ng-template>
+                }
+                <div class="card-body">
+                  <div class="title-row flex flex-row">
+                    <div>
+                      @if(!stage.is_hidden) {
+                        <span class="badge mr-2">Pos: {{ stage.is_hidden ? 9999 : stage.position }}</span>
+                      }
+                    </div>
+                    <div class="name">
+                      @if (stage.is_hidden) { <span class="badge badge-hidden">Oculto</span> }
+                      {{ stage.name }}
+                    </div>
                   </div>
                 </div>
-                <div class="stage-actions">
+                <div class="actions">
                   @if (stage.is_hidden) {
                     <button 
                       class="btn btn-sm btn-success" 
                       (click)="unhideStage(stage)"
                       [disabled]="!!togglingVisibilityById[stage.id]"
                       title="Mostrar este estado">
-                      <i class="fas fa-eye"></i> Mostrar
+                      <i class="fas fa-eye"></i>
                     </button>
                   } @else {
                     <button 
@@ -81,14 +88,16 @@ import { ToastService } from '../../services/toast.service';
                       (click)="hideStage(stage)"
                       [disabled]="!!togglingVisibilityById[stage.id]"
                       title="Ocultar este estado">
-                      <i class="fas fa-eye-slash"></i> Ocultar
+                      <i class="fas fa-eye-slash"></i>
                     </button>
                   }
                 </div>
               </div>
             }
           </div>
-        </div>
+      </div>
+
+        <!-- Company-Specific Stages Section -->
 
         <!-- Company-Specific Stages Section -->
         <div class="section">
@@ -167,9 +176,12 @@ import { ToastService } from '../../services/toast.service';
               <p class="small">Crea estados específicos para las necesidades de tu empresa</p>
             </div>
           } @else {
-            <div class="stages-grid">
+            <div class="stages-grid" cdkDropList (cdkDropListDropped)="onDropCompany($event)">
               @for (stage of companyStages; track stage.id) {
-                <div class="stage-card company">
+                <div class="stage-card company" cdkDrag>
+                  <div class="drag-handle" cdkDragHandle>
+                    <i class="fas fa-grip-vertical"></i>
+                  </div>
                   @if (editingStageId === stage.id) {
                     <!-- Edit Form -->
                     <form (ngSubmit)="saveEdit()" class="edit-form">
@@ -245,7 +257,6 @@ import { ToastService } from '../../services/toast.service';
           <li><strong>Color:</strong> Ayuda a identificar visualmente cada estado en el sistema.</li>
         </ul>
       </div>
-    }
   `,
   styles: [`
     .header {
@@ -394,16 +405,64 @@ import { ToastService } from '../../services/toast.service';
       border-radius: 0.5rem;
       border: 2px solid #e5e7eb;
       transition: all 0.2s;
+      background: white;
     }
 
     .stage-card:hover {
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
+    /* Drag and Drop styles */
+    .drag-handle {
+      cursor: grab;
+      color: #9ca3af;
+      padding: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+
+    .drag-handle:hover {
+      color: #6366f1;
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .cdk-drag-preview {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.25);
+      opacity: 0.95;
+      border-radius: 0.5rem;
+      transform: translateZ(0);
+    }
+
+    .cdk-drag-animating {
+      transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+    }
+
+    .stages-grid.cdk-drop-list-dragging .stage-card:not(.cdk-drag-placeholder) {
+      transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+    }
+
+    .cdk-drag-placeholder,
+    .stage-card.placeholder {
+      opacity: 0.5;
+      background: #f3f4f6;
+      border: 2px dashed #9ca3af;
+      min-height: 84px;
+    }
+
+    .drag-preview {
+      will-change: transform;
+    }
+
     .stage-card.hidden-stage {
       opacity: 0.6;
       border-color: #d1d5db;
       background-color: #f9fafb;
+      cursor: not-allowed;
     }
 
     .stage-card.hidden-stage:hover {
@@ -412,10 +471,12 @@ import { ToastService } from '../../services/toast.service';
 
     .stage-card.generic {
       background: #f9fafb;
+      cursor: move; /* draggable when visible */
     }
 
     .stage-card.company {
       background: white;
+      cursor: move; /* draggable */
     }
 
     .stage-color {
@@ -759,6 +820,7 @@ export class StagesManagementComponent implements OnInit {
   showCreateForm = false;
   successMessage = '';
   errorMessage = '';
+  hidingAllGenericStages = false;
 
   genericStages: TicketStage[] = [];
   companyStages: TicketStage[] = [];
@@ -772,8 +834,31 @@ export class StagesManagementComponent implements OnInit {
   editingStageId: string | null = null;
   editStage: UpdateStagePayload = {};
 
+  // Use a getter to expose only visible generic stages for CDK drop list data binding
+  get visibleGenericStages(): TicketStage[] {
+    return this.genericStages.filter(s => !s.is_hidden);
+  }
+
   async ngOnInit() {
     await this.loadStages();
+  }
+
+  async hideAllSystemStages() {
+    if (!confirm('¿Estás seguro de que quieres ocultar todos los estados del sistema visibles?')) return;
+    this.hidingAllGenericStages = true;
+    try {
+      const toHide = this.genericStages.filter(s => !s.is_hidden);
+      for (const s of toHide) {
+        const res = await this.stagesService.hideGenericStage(s.id);
+        if (res.error) throw res.error;
+      }
+      this.toast.success('Operación completada', 'Todos los estados del sistema visibles han sido ocultados');
+      await this.loadStages();
+    } catch (e: any) {
+      this.errorMessage = 'Error al ocultar todos los estados: ' + (e?.message || 'Error desconocido');
+    } finally {
+      this.hidingAllGenericStages = false;
+    }
   }
 
   async loadStages() {
@@ -786,7 +871,7 @@ export class StagesManagementComponent implements OnInit {
       if (genericResult.error) {
         throw genericResult.error;
       }
-      this.genericStages = genericResult.data || [];
+  this.genericStages = this.sortGenerics(genericResult.data || []);
       
       // 🔍 DEBUG: Ver datos recibidos
       console.log('🔍 DEBUG - Generic stages loaded:', this.genericStages);
@@ -804,6 +889,18 @@ export class StagesManagementComponent implements OnInit {
     } finally {
       this.loading = false;
     }
+  }
+
+  private sortGenerics(list: TicketStage[]): TicketStage[] {
+    // Visible first by position asc, then hidden by position asc (but at the end)
+    return [...list].sort((a, b) => {
+      const ah = !!a.is_hidden;
+      const bh = !!b.is_hidden;
+      if (ah !== bh) return ah ? 1 : -1; // hidden to the end
+      const ap = Number(a.position ?? 0);
+      const bp = Number(b.position ?? 0);
+      return ap - bp;
+    });
   }
 
   async createStage() {
@@ -924,8 +1021,7 @@ export class StagesManagementComponent implements OnInit {
       const idx = this.genericStages.findIndex(s => s.id === stage.id);
       if (idx !== -1) {
         this.genericStages[idx] = { ...this.genericStages[idx], is_hidden: true } as TicketStage;
-        // Reassign array reference to trigger change detection if needed
-        this.genericStages = [...this.genericStages];
+        this.genericStages = this.sortGenerics(this.genericStages);
       }
 
     } catch (error: any) {
@@ -952,8 +1048,7 @@ export class StagesManagementComponent implements OnInit {
       const idx = this.genericStages.findIndex(s => s.id === stage.id);
       if (idx !== -1) {
         this.genericStages[idx] = { ...this.genericStages[idx], is_hidden: false } as TicketStage;
-        // Reassign array reference to trigger change detection if needed
-        this.genericStages = [...this.genericStages];
+        this.genericStages = this.sortGenerics(this.genericStages);
       }
 
     } catch (error: any) {
@@ -975,4 +1070,65 @@ export class StagesManagementComponent implements OnInit {
     this.successMessage = '';
     this.errorMessage = '';
   }
+
+  // Drag and Drop handlers
+  async onDropGeneric(event: CdkDragDrop<TicketStage[]>) {
+    if (event.previousIndex === event.currentIndex) return;
+
+    // Work only with visible generics (hidden are not draggable and stay at the end)
+    const visible = this.genericStages.filter(s => !s.is_hidden);
+    const hidden = this.genericStages.filter(s => !!s.is_hidden);
+
+    const from = event.previousIndex;
+    const to = event.currentIndex;
+    const a = visible[from];
+    const b = visible[to];
+    if (!a || !b) return;
+
+    // Swap their visual positions: swap 'position' values so that sorting reflects a swap
+    const tmpPos = a.position;
+    a.position = b.position;
+    b.position = tmpPos;
+
+    // Rebuild the combined list and sort (visible by position asc, then hidden)
+    this.genericStages = this.sortGenerics([...visible, ...hidden]);
+
+    // Persist full ordered list of generic stage IDs (visible first, then hidden)
+    try {
+      const orderedIds = this.genericStages.map(s => s.id);
+      const { error } = await this.stagesService.reorderGenericStages(orderedIds);
+      if (error) throw error;
+      this.toast.success('Orden actualizado', 'El orden de los estados del sistema se ha guardado');
+    } catch (error: any) {
+      this.errorMessage = 'Error al actualizar el orden: ' + (error.message || 'Error desconocido');
+      await this.loadStages();
+    }
+  }
+
+  async onDropCompany(event: CdkDragDrop<TicketStage[]>) {
+    if (event.previousIndex === event.currentIndex) return;
+
+    // Reorder locally
+    moveItemInArray(this.companyStages, event.previousIndex, event.currentIndex);
+
+    // Update positions in backend
+    try {
+      await this.updateStagePositions(this.companyStages);
+      this.toast.success('Orden actualizado', 'El orden de los estados se ha actualizado correctamente');
+    } catch (error: any) {
+      this.errorMessage = 'Error al actualizar el orden: ' + (error.message || 'Error desconocido');
+      // Reload to restore correct order
+      await this.loadStages();
+    }
+  }
+
+  private async updateStagePositions(stages: TicketStage[]) {
+    // Only update company-specific stages; generic/system stages are handled by reorderGenericStages overlay
+    const updatable = stages.filter(s => s.company_id !== null);
+    const updates = updatable.map((stage, index) =>
+      this.stagesService.updateStage(stage.id, { position: index })
+    );
+    await Promise.all(updates);
+  }
 }
+

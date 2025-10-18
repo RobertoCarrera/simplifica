@@ -31,7 +31,12 @@ import { ToastService } from '../../services/toast.service';
       <div class="two-columns-layout">
         <!-- Genéricas -->
         <div class="section">
-          <h3><i class="fas fa-globe"></i> Unidades del Sistema</h3>
+          <div class="section-header">
+            <h3><i class="fas fa-globe"></i> Unidades del Sistema</h3>
+            <button class="btn btn-outline" (click)="hideAllSystemUnits()" [disabled]="hidingAllGenericUnits" title="Ocultar todas las unidades del sistema">
+              <i class="fas fa-eye-slash"></i> Ocultar Todos
+            </button>
+          </div>
           <p class="info-text">
             <i class="fas fa-info-circle"></i>
             Unidades predeterminadas. Puedes ocultarlas si no las necesitas.
@@ -234,6 +239,7 @@ export class UnitsManagementComponent implements OnInit {
   showCreateForm = false;
   creating = false;
   toggling: Record<string, boolean> = {};
+  hidingAllGenericUnits = false;
 
   genericUnits: Array<UnitOfMeasure & { is_hidden?: boolean }> = [];
   companyUnits: UnitOfMeasure[] = [];
@@ -329,5 +335,23 @@ export class UnitsManagementComponent implements OnInit {
       this.toast.success('Unidad mostrada', `"${u.name}" ahora está visible`);
     } catch (e: any) { this.toast.error('Error', e?.message || 'No se pudo mostrar'); }
     finally { this.toggling = { ...this.toggling, [u.id]: false }; }
+  }
+
+  async hideAllSystemUnits() {
+    if (!confirm('¿Estás seguro de que quieres ocultar todas las unidades del sistema visibles?')) return;
+    this.hidingAllGenericUnits = true;
+    try {
+      const toHide = this.genericUnits.filter(u => !u.is_hidden);
+      for (const u of toHide) {
+        const res = await this.unitsSvc.hideGenericUnit(u.id);
+        if (res.error) throw res.error;
+      }
+      this.toast.success('Operación completada', 'Todas las unidades del sistema visibles han sido ocultadas');
+      await this.load();
+    } catch (e: any) {
+      this.toast.error('Error', e?.message || 'No se pudo ocultar todas las unidades');
+    } finally {
+      this.hidingAllGenericUnits = false;
+    }
   }
 }
