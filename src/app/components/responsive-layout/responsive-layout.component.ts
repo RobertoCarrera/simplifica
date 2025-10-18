@@ -1,7 +1,7 @@
 import { Component, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { ResponsiveSidebarComponent } from '../responsive-sidebar/responsive-sidebar.component';
+import { ResponsiveSidebarComponent } from '../../utils/responsive-sidebar/responsive-sidebar.component';
 import { RlsWarningBannerComponent } from '../rls-warning-banner/rls-warning-banner.component';
 import { MobileBottomNavComponent } from '../mobile-bottom-nav/mobile-bottom-nav.component';
 import { PWAService } from '../../services/pwa.service';

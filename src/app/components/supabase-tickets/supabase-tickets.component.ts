@@ -5,7 +5,9 @@ import { Router } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
 import { TicketModalService } from '../../services/ticket-modal.service';
 import { SupabaseTicketsService, Ticket, TicketStage, TicketStats } from '../../services/supabase-tickets.service';
+import { SupabaseTicketStagesService, TicketStage as ConfigStage } from '../../services/supabase-ticket-stages.service';
 import { SupabaseServicesService, Service } from '../../services/supabase-services.service';
+import { ProductsService } from '../../services/products.service';
 import { SimpleSupabaseService, SimpleClient } from '../../services/simple-supabase.service';
 import { DevicesService, Device } from '../../services/devices.service';
 import { DevRoleService } from '../../services/dev-role.service';
@@ -42,7 +44,9 @@ export class SupabaseTicketsComponent implements OnInit {
   // Core data
   tickets: Ticket[] = [];
   filteredTickets: Ticket[] = [];
-  stages: TicketStage[] = [];
+  stages: ConfigStage[] = [];
+
+  private stagesSvc = inject(SupabaseTicketStagesService);
   availableTags: TicketTag[] = [];
   selectedTags: string[] = [];
   stats: TicketStats = {
@@ -81,6 +85,13 @@ export class SupabaseTicketsComponent implements OnInit {
   selectedServices: { service: Service; quantity: number }[] = [];
   showServiceForm = false;
   serviceFormData: Partial<Service> = {};
+
+  // Products management
+  availableProducts: any[] = [];
+  filteredProducts: any[] = [];
+  productSearchText: string = '';
+  selectedProducts: { product: any; quantity: number }[] = [];
+  showProductsModal = false;
   
   // Customer selection
   customers: SimpleClient[] = [];
@@ -115,6 +126,7 @@ export class SupabaseTicketsComponent implements OnInit {
   
   private ticketsService = inject(SupabaseTicketsService);
   private servicesService = inject(SupabaseServicesService);
+  private productsService = inject(ProductsService);
   private simpleSupabase = inject(SimpleSupabaseService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -329,20 +341,15 @@ export class SupabaseTicketsComponent implements OnInit {
     if (!this.selectedCompanyId) return;
     
     try {
-      
-      // Cargar stages desde la base de datos real
-      const { data: stages, error } = await this.simpleSupabase.getClient()
-        .from('ticket_stages')
-        .select('*')
-        .is('deleted_at', null)
-        .order('position', { ascending: true });
-      
+      // Usar la fuente de verdad de "estados visibles" (genéricos no ocultos + específicos de empresa)
+      const { data, error } = await this.stagesSvc.getVisibleStages(this.selectedCompanyId);
       if (error) {
-        console.error('Error cargando stages:', error);
+        console.error('Error cargando stages visibles:', error);
+        this.stages = [];
         return;
       }
-      
-      this.stages = stages || [];
+      // Ensure UI ordering by position
+      this.stages = (data || []).slice().sort((a: any, b: any) => (Number(a?.position ?? 0) - Number(b?.position ?? 0)));
     } catch (error) {
       console.error('Error in loadStages:', error);
     }
@@ -784,8 +791,11 @@ export class SupabaseTicketsComponent implements OnInit {
   this.selectedTags = [];
     this.formErrors = {};
     this.selectedServices = [];
+    this.selectedProducts = [];
     this.serviceSearchText = '';
+    this.productSearchText = '';
     this.filteredServices = [...this.topUsedServices];
+    this.filteredProducts = [];
     this.customerSearchText = '';
     this.selectedCustomer = null;
     this.showCustomerDropdown = false;
@@ -828,7 +838,9 @@ export class SupabaseTicketsComponent implements OnInit {
     this.formData = {};
     this.formErrors = {};
     this.selectedServices = [];
+    this.selectedProducts = [];
     this.showServiceForm = false;
+    this.showProductsModal = false;
     
     // Restaurar scroll de la página principal
     document.body.classList.remove('modal-open');
@@ -861,6 +873,71 @@ export class SupabaseTicketsComponent implements OnInit {
     if (serviceItem) {
       serviceItem.quantity = Math.max(1, quantity);
     }
+  }
+
+  // Products management methods
+  openProductsModal() {
+    this.showProductsModal = true;
+    this.loadProducts();
+  }
+
+  closeProductsModal() {
+    this.showProductsModal = false;
+    this.productSearchText = '';
+    this.filteredProducts = [];
+  }
+
+  loadProducts() {
+    this.productsService.getProducts().subscribe({
+      next: (products) => {
+        this.availableProducts = products;
+        this.filteredProducts = [...products];
+      },
+      error: (error) => {
+        console.error('Error loading products:', error);
+      }
+    });
+  }
+
+  filterProducts() {
+    if (!this.productSearchText.trim()) {
+      this.filteredProducts = [...this.availableProducts];
+      return;
+    }
+
+    const searchText = this.productSearchText.toLowerCase().trim();
+    this.filteredProducts = this.availableProducts.filter(product =>
+      product.name.toLowerCase().includes(searchText) ||
+      product.description?.toLowerCase().includes(searchText) ||
+      product.category?.toLowerCase().includes(searchText)
+    );
+  }
+
+  addProductToTicket(product: any) {
+    const existing = this.selectedProducts.find(p => p.product.id === product.id);
+    if (existing) {
+      existing.quantity += 1;
+    } else {
+      this.selectedProducts.push({ product, quantity: 1 });
+    }
+    // Clear search after adding
+    this.productSearchText = '';
+    this.filteredProducts = [...this.availableProducts];
+  }
+
+  removeProductFromTicket(productId: string) {
+    this.selectedProducts = this.selectedProducts.filter(p => p.product.id !== productId);
+  }
+
+  updateProductQuantity(productId: string, quantity: number) {
+    const productItem = this.selectedProducts.find(p => p.product.id === productId);
+    if (productItem) {
+      productItem.quantity = Math.max(1, quantity);
+    }
+  }
+
+  isProductSelected(productId: string): boolean {
+    return this.selectedProducts.some(p => p.product.id === productId);
   }
 
   filterServices() {
@@ -994,6 +1071,16 @@ export class SupabaseTicketsComponent implements OnInit {
     }, 0);
   }
 
+  getSelectedProductsTotal(): number {
+    return this.selectedProducts.reduce((total, item) => {
+      return total + (item.product.price * item.quantity);
+    }, 0);
+  }
+
+  getGrandTotal(): number {
+    return this.getSelectedServicesTotal() + this.getSelectedProductsTotal();
+  }
+
   getTotalEstimatedHours(): number {
     return this.selectedServices.reduce((total, item) => {
       return total + (item.service.estimated_hours * item.quantity);
@@ -1062,9 +1149,9 @@ export class SupabaseTicketsComponent implements OnInit {
       this.formErrors['estimated_hours'] = 'Las horas estimadas deben ser mayor a 0';
     }
 
-    // Validar que hay al menos un servicio seleccionado
-    if (this.selectedServices.length === 0) {
-      this.formErrors['services'] = 'Debe seleccionar al menos un servicio';
+    // Validar que hay al menos un servicio o producto seleccionado
+    if (this.selectedServices.length === 0 && this.selectedProducts.length === 0) {
+      this.formErrors['items'] = 'Debe seleccionar al menos un servicio o producto';
     }
 
     return Object.keys(this.formErrors).length === 0;
@@ -1079,10 +1166,16 @@ export class SupabaseTicketsComponent implements OnInit {
       const totalHours = this.getTotalEstimatedHours();
       
       // Add company_id to form data
-      // Compute total amount from selected services (unit price * quantity)
+      // Compute total amount from selected services and products (unit price * quantity)
       const servicesTotal = (this.selectedServices || []).reduce((sum, s) => {
         const unit = typeof s.service.base_price === 'number' ? s.service.base_price : 0;
         const qty = Math.max(1, Number(s.quantity || 1));
+        return sum + (unit * qty);
+      }, 0);
+
+      const productsTotal = (this.selectedProducts || []).reduce((sum, p) => {
+        const unit = typeof p.product.price === 'number' ? p.product.price : 0;
+        const qty = Math.max(1, Number(p.quantity || 1));
         return sum + (unit * qty);
       }, 0);
 
@@ -1090,20 +1183,27 @@ export class SupabaseTicketsComponent implements OnInit {
         ...this.formData,
         company_id: this.selectedCompanyId,
         estimated_hours: totalHours > 0 ? totalHours : this.formData.estimated_hours,
-        total_amount: Number(servicesTotal.toFixed(2))
+        total_amount: Number((servicesTotal + productsTotal).toFixed(2))
       };
 
       let savedTicket;
       if (this.editingTicket) {
         savedTicket = await this.ticketsService.updateTicket(this.editingTicket.id, dataWithCompany);
       } else {
-        // Build service items payload
-        const items = (this.selectedServices || []).map(s => ({
+        // Build service and product items payload
+        const serviceItems = (this.selectedServices || []).map(s => ({
           service_id: s.service.id,
           quantity: s.quantity || 1,
           unit_price: typeof s.service.base_price === 'number' ? s.service.base_price : 0
         }));
-        savedTicket = await this.ticketsService.createTicketWithServices(dataWithCompany, items);
+
+        const productItems = (this.selectedProducts || []).map(p => ({
+          product_id: p.product.id,
+          quantity: p.quantity || 1,
+          unit_price: typeof p.product.price === 'number' ? p.product.price : 0
+        }));
+
+        savedTicket = await this.ticketsService.createTicketWithItems(dataWithCompany, serviceItems, productItems);
       }
 
       // If updateTicket/createTicket returned an object but didn't include total_amount,
@@ -1114,17 +1214,28 @@ export class SupabaseTicketsComponent implements OnInit {
         } catch {}
       }
 
-      // Persist selected services into ticket_services only when updating an existing ticket
+      // Persist selected services and products into ticket_services/ticket_products only when updating an existing ticket
       if (this.editingTicket) {
         try {
-          const items = (this.selectedServices || []).map(s => ({
+          const serviceItems = (this.selectedServices || []).map(s => ({
             service_id: s.service.id,
             quantity: s.quantity || 1,
             unit_price: typeof s.service.base_price === 'number' ? s.service.base_price : 0
           }));
-          await this.ticketsService.replaceTicketServices(savedTicket.id, this.selectedCompanyId, items);
+          await this.ticketsService.replaceTicketServices(savedTicket.id, this.selectedCompanyId, serviceItems);
         } catch (svcErr) {
           console.warn('No se pudieron guardar los servicios del ticket:', svcErr);
+        }
+
+        try {
+          const productItems = (this.selectedProducts || []).map(p => ({
+            product_id: p.product.id,
+            quantity: p.quantity || 1,
+            unit_price: typeof p.product.price === 'number' ? p.product.price : 0
+          }));
+          await this.ticketsService.replaceTicketProducts(savedTicket.id, this.selectedCompanyId, productItems);
+        } catch (prodErr) {
+          console.warn('No se pudieron guardar los productos del ticket:', prodErr);
         }
       }
 
@@ -1278,7 +1389,7 @@ export class SupabaseTicketsComponent implements OnInit {
     return this.ticketsService.formatDate(dateString);
   }
 
-  getStatusBadgeClass(stage: TicketStage): string {
+  getStatusBadgeClass(stage: ConfigStage): string {
     const baseClasses = 'px-2 py-1 text-xs font-medium rounded-full';
     
     if (stage.name === 'Completado') {

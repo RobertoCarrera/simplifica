@@ -1,7 +1,7 @@
 import { Component, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { ResponsiveSidebarComponent } from '../responsive-sidebar/responsive-sidebar.component';
+import { ResponsiveSidebarComponent } from '../../utils/responsive-sidebar/responsive-sidebar.component';
 import { PWAService } from '../../services/pwa.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
 import { AuthService } from '../../services/auth.service';

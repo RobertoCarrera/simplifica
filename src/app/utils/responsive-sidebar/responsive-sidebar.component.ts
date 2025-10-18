@@ -399,7 +399,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Productos',
       icon: 'inventory_2',
       route: '/productos',
-      module: 'development'
+      module: 'production'
     },
     {
       id: 6,

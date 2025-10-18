@@ -370,53 +370,50 @@ export class SupabaseTicketStagesService {
    * Get all visible stages for the current company
    * (Generic stages not hidden + company-specific stages)
    */
-  async getVisibleStages(): Promise<{ data: TicketStage[] | null; error: any }> {
+  async getVisibleStages(companyIdOverride?: string): Promise<{ data: TicketStage[] | null; error: any }> {
     try {
-      const companyId = await this.resolveCompanyId();
+      const companyId = companyIdOverride || await this.resolveCompanyId();
+      if (!companyId) return { data: [], error: null };
 
-      if (!companyId) {
-        return { data: [], error: null };
+      // 1) Obtener estados genéricos anotados (is_hidden) vía Edge Function para evitar RLS en hidden_stages
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session?.access_token) {
+        return { data: null, error: { message: 'No active session' } };
       }
 
-      // Get all stages (generic + company)
-      const { data: allStages, error: stagesError } = await this.supabase
+      const url = `${environment.supabase.url}/functions/v1/get-config-stages` + (companyId ? `?company_id=${encodeURIComponent(companyId)}` : '');
+      const efResp = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      const efJson = await efResp.json().catch(() => ({}));
+      if (!efResp.ok) {
+        console.error('get-config-stages failed:', efJson);
+        return { data: null, error: efJson?.error || efJson };
+      }
+      const genericWithFlags: TicketStage[] = Array.isArray(efJson?.stages) ? efJson.stages : [];
+      const visibleGenerics = genericWithFlags.filter(s => !s.is_hidden);
+
+      // 2) Obtener estados específicos de empresa
+      const { data: companyStages, error: compErr } = await this.supabase
         .from('ticket_stages')
         .select('*')
-        .or(`company_id.is.null,company_id.eq.${companyId}`)
+        .eq('company_id', companyId)
         .is('deleted_at', null)
         .order('position', { ascending: true });
-
-      if (stagesError) {
-        console.error('Error fetching stages:', stagesError);
-        return { data: null, error: stagesError };
+      if (compErr) {
+        console.error('Error fetching company stages:', compErr);
+        return { data: null, error: compErr };
       }
 
-      if (!allStages) {
-        return { data: [], error: null };
-      }
+      // 3) Combinar y ordenar por posición
+      const combined = [...visibleGenerics, ...(companyStages || [])]
+        .sort((a: any, b: any) => (Number(a?.position ?? 0) - Number(b?.position ?? 0)));
 
-      // Get hidden stages for this company
-      const { data: hiddenStages, error: hiddenError } = await this.supabase
-        .from('hidden_stages')
-        .select('stage_id')
-        .eq('company_id', companyId);
-
-      if (hiddenError) {
-        console.error('Error fetching hidden stages:', hiddenError);
-        // Continue without filtering
-        return { data: allStages, error: null };
-      }
-
-      // Filter out hidden generic stages
-      const hiddenStageIds = new Set(hiddenStages?.map(h => h.stage_id) || []);
-      const visibleStages = allStages.filter(stage => {
-        // Always include company-specific stages
-        if (stage.company_id === companyId) return true;
-        // Include generic stages only if not hidden
-        return !hiddenStageIds.has(stage.id);
-      });
-
-      return { data: visibleStages, error: null };
+      return { data: combined, error: null };
     } catch (error) {
       console.error('Exception fetching visible stages:', error);
       return { data: null, error };

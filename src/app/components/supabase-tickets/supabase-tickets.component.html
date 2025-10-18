@@ -566,9 +566,74 @@
                   <strong>{{ getTotalEstimatedHours() }}h</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Total Estimado:</span>
+                  <span>Total Servicios:</span>
                   <strong>{{ getSelectedServicesTotal() }}€</strong>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sección de Productos -->
+          <div class="products-section">
+            <div class="section-header">
+              <h3>
+                <i class="fas fa-box"></i>
+                Productos
+              </h3>
+              <button 
+                type="button" 
+                class="btn btn-primary btn-sm"
+                (click)="openProductsModal()">
+                <i class="fas fa-plus"></i>
+                Agregar
+              </button>
+            </div>
+
+            <!-- Error de productos -->
+            <div *ngIf="formErrors['items']" class="error-message">
+              {{ formErrors['items'] }}
+            </div>
+
+            <!-- Lista de productos seleccionados -->
+            <div *ngIf="selectedProducts.length > 0" class="selected-products">
+              <h4>Productos Seleccionados</h4>
+              <div class="selected-products-list">
+                <div *ngFor="let item of selectedProducts" class="selected-product-item">
+                  <div class="product-info">
+                    <div class="product-name">{{ item.product.name }}</div>
+                    <div class="product-price">{{ item.product.price }}€ × {{ item.quantity }}</div>
+                  </div>
+                  <div class="product-controls">
+                    <input 
+                      type="number" 
+                      [value]="item.quantity" 
+                      (input)="updateProductQuantity(item.product.id, +$any($event.target).value)"
+                      min="1" 
+                      class="quantity-input">
+                    <button 
+                      type="button" 
+                      class="btn-remove" 
+                      (click)="removeProductFromTicket(item.product.id)">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Resumen -->
+              <div class="products-summary">
+                <div class="summary-row">
+                  <span>Total Productos:</span>
+                  <strong>{{ getSelectedProductsTotal() }}€</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Resumen General si hay servicios y productos -->
+            <div *ngIf="selectedServices.length > 0 || selectedProducts.length > 0" class="grand-total-summary">
+              <div class="summary-row grand-total">
+                <span>Total General:</span>
+                <strong>{{ getGrandTotal() }}€</strong>
               </div>
             </div>
           </div>
@@ -1041,6 +1106,74 @@
           [disabled]="!customerFormData.name.trim()">
           <i class="fas fa-save"></i>
           Crear Cliente
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para seleccionar productos -->
+  <div *ngIf="showProductsModal" class="modal-overlay" (click)="closeProductsModal()">
+    <div class="modal-content modal-large" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <i class="fas fa-box"></i>
+          Seleccionar Productos
+        </h2>
+        <button class="modal-close" (click)="closeProductsModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Búsqueda de productos -->
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input 
+            type="text" 
+            [(ngModel)]="productSearchText"
+            (input)="filterProducts()"
+            placeholder="Buscar productos..."
+            class="search-input">
+        </div>
+
+        <!-- Lista de productos disponibles -->
+        <div class="products-grid">
+          <div 
+            *ngFor="let product of filteredProducts" 
+            class="product-card"
+            [class.selected]="isProductSelected(product.id)"
+            (click)="addProductToTicket(product)">
+            <div class="product-header">
+              <h4 class="product-name">{{ product.name }}</h4>
+              <span class="product-price">{{ product.price }}€</span>
+            </div>
+            <p class="product-description" *ngIf="product.description">
+              {{ product.description }}
+            </p>
+            <div class="product-footer">
+              <span class="product-stock" 
+                    [class.low-stock]="product.stock_quantity <= 5"
+                    [class.out-stock]="product.stock_quantity === 0">
+                <i class="fas fa-box"></i>
+                Stock: {{ product.stock_quantity || 0 }}
+              </span>
+              <span class="product-selected" *ngIf="isProductSelected(product.id)">
+                <i class="fas fa-check"></i> Seleccionado
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mensaje si no hay productos -->
+        <div *ngIf="filteredProducts.length === 0" class="empty-message">
+          <i class="fas fa-box-open"></i>
+          <p>No se encontraron productos</p>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeProductsModal()">
+          Cerrar
         </button>
       </div>
     </div>

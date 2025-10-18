@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SimpleSupabaseService } from '../../services/simple-supabase.service';
-import { SupabaseTicketsService, Ticket, TicketStage } from '../../services/supabase-tickets.service';
+import { SupabaseTicketsService, Ticket } from '../../services/supabase-tickets.service';
+import { SupabaseTicketStagesService, TicketStage as ConfigStage } from '../../services/supabase-ticket-stages.service';
 import { DevicesService, Device } from '../../services/devices.service';
 import { TicketModalService } from '../../services/ticket-modal.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -582,7 +583,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   linkedDeviceIds: Set<string> = new Set();
   ticketTags: string[] = [];
   availableTags: any[] = [];
-  allStages: TicketStage[] = [];
+  allStages: ConfigStage[] = [];
+  private stagesSvc = inject(SupabaseTicketStagesService);
   comments: any[] = [];
   recentActivity: any[] = [];
   ticketId: string | null = null;
@@ -1213,14 +1215,19 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       // Cargar comentarios
       await this.loadComments();
 
-      // Cargar todos los estados para el progreso
-      const { data: stagesData, error: stagesError } = await this.supabase.getClient()
-        .from('ticket_stages')
-        .select('*')
-        .order('position');
-
-      if (stagesError) console.warn('Error cargando estados:', stagesError);
-      this.allStages = stagesData || [];
+      // Cargar estados visibles (genéricos no ocultos + específicos de empresa)
+      try {
+        const { data, error } = await this.stagesSvc.getVisibleStages();
+        if (error) {
+          console.warn('Error cargando estados visibles:', error);
+          this.allStages = [];
+        } else {
+          this.allStages = (data || []).slice().sort((a: any, b: any) => (Number(a?.position ?? 0) - Number(b?.position ?? 0)));
+        }
+      } catch (err) {
+        console.warn('Excepción cargando estados visibles:', err);
+        this.allStages = [];
+      }
 
       // Simular actividad reciente
       this.recentActivity = [
@@ -1753,7 +1760,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     return found?.color || '#6366F1';
   }
 
-  getVisibleStages(): TicketStage[] {
+  getVisibleStages(): ConfigStage[] {
     return this.allStages || [];
   }
 
@@ -1767,7 +1774,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     return (index / total) * 100;
   }
 
-  getStageMarkerClass(stage: TicketStage): string {
+  getStageMarkerClass(stage: ConfigStage): string {
     const idx = (this.allStages || []).findIndex(s => s.id === stage.id);
     const cur = this.currentStageIndex();
     if (idx < cur) return 'bg-blue-500';
@@ -1775,7 +1782,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     return 'bg-gray-300';
   }
 
-  isStageCompleted(stage: TicketStage): boolean {
+  isStageCompleted(stage: ConfigStage): boolean {
     const idx = (this.allStages || []).findIndex(s => s.id === stage.id);
     return idx <= this.currentStageIndex();
   }

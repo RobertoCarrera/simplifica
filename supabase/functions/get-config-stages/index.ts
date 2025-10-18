@@ -95,19 +95,36 @@ serve(async (req) => {
       });
     }
 
-    const { data: userRow, error: userRowError } = await supabaseAdmin
-      .from("users")
-      .select("company_id")
-      .eq("auth_user_id", user.id)
-      .single();
+    // Permitir sobreescritura opcional de company_id vía query param (sólo si pertenece al usuario)
+    const urlObj = new URL(req.url);
+    const qCompany = urlObj.searchParams.get('company_id');
 
-    if (userRowError || !userRow?.company_id) {
-      return new Response(JSON.stringify({ error: "User not associated with a company" }), {
-        status: 400,
-        headers: corsHeaders,
-      });
+    let companyId: string | null = null;
+    if (qCompany) {
+      // Validar que el usuario realmente pertenece a qCompany
+      const { data: uRow, error: uErr } = await supabaseAdmin
+        .from('users')
+        .select('company_id')
+        .eq('auth_user_id', user.id)
+        .single();
+      if (uErr || !uRow?.company_id || uRow.company_id !== qCompany) {
+        return new Response(JSON.stringify({ error: 'Forbidden company_id' }), { status: 403, headers: corsHeaders });
+      }
+      companyId = qCompany;
+    } else {
+      const { data: userRow, error: userRowError } = await supabaseAdmin
+        .from("users")
+        .select("company_id")
+        .eq("auth_user_id", user.id)
+        .single();
+      if (userRowError || !userRow?.company_id) {
+        return new Response(JSON.stringify({ error: "User not associated with a company" }), {
+          status: 400,
+          headers: corsHeaders,
+        });
+      }
+      companyId = userRow.company_id;
     }
-    const companyId = userRow.company_id;
 
     // Obtener estados genéricos
     const { data: stages, error: stagesError } = await supabaseAdmin

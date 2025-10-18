@@ -400,19 +400,28 @@ export class SupabaseTicketsService {
     }
   }
 
-  // Create a ticket and assign its services atomically (via Edge Function when available)
-  async createTicketWithServices(
+  // Create a ticket and assign both services and products atomically (via Edge Function when available)
+  async createTicketWithItems(
     ticketData: Partial<Ticket>,
-    items: Array<{ service_id: string; quantity: number; unit_price?: number }>
+    serviceItems: Array<{ service_id: string; quantity: number; unit_price?: number }>,
+    productItems: Array<{ product_id: string; quantity: number; unit_price?: number }>
   ): Promise<Ticket> {
     // Normalize items
-    const normalized = (items || [])
+    const normalizedServices = (serviceItems || [])
       .map(it => ({
         service_id: it.service_id,
         quantity: Math.max(1, Number(it.quantity || 1)),
         unit_price: typeof it.unit_price === 'number' ? it.unit_price : undefined
       }))
       .filter(it => typeof it.service_id === 'string' && it.service_id.length > 0);
+
+    const normalizedProducts = (productItems || [])
+      .map(it => ({
+        product_id: it.product_id,
+        quantity: Math.max(1, Number(it.quantity || 1)),
+        unit_price: typeof it.unit_price === 'number' ? it.unit_price : undefined
+      }))
+      .filter(it => typeof it.product_id === 'string' && it.product_id.length > 0);
 
     // If no services, we still create the ticket but UI should have prevented this
     try {
@@ -440,7 +449,8 @@ export class SupabaseTicketsService {
             p_due_date: ticketData.due_date,
             p_estimated_hours: ticketData.estimated_hours,
             p_total_amount: ticketData.total_amount,
-            p_services: normalized
+            p_services: normalizedServices,
+            p_products: normalizedProducts
           };
 
           const resp = await fetch(funcUrl, { method: 'POST', headers, body: JSON.stringify(body) });
@@ -471,7 +481,7 @@ export class SupabaseTicketsService {
         }
       }
 
-      // Fallback: direct insert into tickets (bypass edge) and then replace services
+      // Fallback: direct insert into tickets (bypass edge) and then replace relations
       const nowIso = new Date().toISOString();
       const directTicket: any = {
         company_id: ticketData.company_id,
@@ -494,15 +504,28 @@ export class SupabaseTicketsService {
       const created = this.transformTicketData(createdRow);
 
       try {
-        await this.replaceTicketServices(created.id, String(ticketData.company_id || ''), normalized);
+        if (normalizedServices.length > 0) {
+          await this.replaceTicketServices(created.id, String(ticketData.company_id || ''), normalizedServices);
+        }
+        if (normalizedProducts.length > 0) {
+          await this.replaceTicketProducts(created.id, String(ticketData.company_id || ''), normalizedProducts);
+        }
       } catch (svcErr) {
-        console.warn('Fallback path: failed to insert ticket_services after ticket creation', svcErr);
+        console.warn('Fallback path: failed to insert ticket relations after ticket creation', svcErr);
       }
       return created;
     } catch (err) {
-      console.error('❌ Error createTicketWithServices:', err);
+      console.error('❌ Error createTicketWithItems:', err);
       throw err;
     }
+  }
+
+  // Backward-compatible helper: only services
+  async createTicketWithServices(
+    ticketData: Partial<Ticket>,
+    items: Array<{ service_id: string; quantity: number; unit_price?: number }>
+  ): Promise<Ticket> {
+    return this.createTicketWithItems(ticketData, items, []);
   }
 
   async updateTicket(ticketId: string, ticketData: Partial<Ticket>): Promise<Ticket> {
@@ -634,6 +657,103 @@ export class SupabaseTicketsService {
 
       // If it's some other error, throw as before
       console.error('replaceTicketServices: insert error', insErr);
+      throw insErr;
+    }
+  }
+
+  // Replace all products for a ticket in ticket_products table (if exists).
+  // Mirrors replaceTicketServices with resilient fallbacks for column name differences.
+  async replaceTicketProducts(ticketId: string, companyId: string, items: Array<{ product_id: string; quantity: number; unit_price?: number }>): Promise<void> {
+    if (!ticketId) return;
+    const client = this.supabase.getClient();
+
+    // Normalize payload and compute totals
+    const rows = (items || []).map(it => {
+      const price = typeof it.unit_price === 'number' ? it.unit_price : 0;
+      const qty = Math.max(1, Number(it.quantity || 1));
+      return {
+        ticket_id: ticketId,
+        product_id: it.product_id,
+        quantity: qty,
+        price_per_unit: price,
+        total_price: Number((price * qty).toFixed(2)),
+        company_id: companyId
+      } as any;
+    });
+
+    // Delete existing relations for this ticket
+    const { error: delErr } = await client
+      .from('ticket_products')
+      .delete()
+      .eq('ticket_id', ticketId);
+
+    if (delErr) {
+      // If table doesn't exist, or delete fails (RLS, etc.), log and stop to avoid duplicates
+      console.warn('replaceTicketProducts: delete failed, aborting insert', delErr);
+      return;
+    }
+
+    if (rows.length === 0) return; // nothing to insert
+
+    const { error: insErr } = await client
+      .from('ticket_products')
+      .insert(rows);
+
+    if (insErr) {
+      const msg = (insErr && (insErr.message || '')).toString();
+      // 1) company_id missing -> retry without it
+      if ((insErr.code === 'PGRST204' || msg.includes("Could not find the 'company_id' column"))) {
+        try {
+          const rowsNoCompany = rows.map(r => {
+            const { company_id, ...rest } = r as any;
+            return rest;
+          });
+          const { error: insErr2 } = await client.from('ticket_products').insert(rowsNoCompany);
+          if (!insErr2) return;
+          // 2) If still failing due to price_per_unit undefined, try unit_price naming
+          const msg2 = (insErr2 && (insErr2.message || '')).toString();
+          const undefinedCol2 = insErr2.code === '42703' || /price_per_unit.*does not exist/i.test(msg2) || /column\s+"?price_per_unit"?/i.test(msg2);
+          if (undefinedCol2) {
+            const rowsUnitNoCompany = (rowsNoCompany as any[]).map(r => {
+              const { price_per_unit, ...rest } = r;
+              return { ...rest, unit_price: price_per_unit };
+            });
+            const { error: insErr3 } = await client.from('ticket_products').insert(rowsUnitNoCompany);
+            if (insErr3) throw insErr3;
+            return;
+          }
+          throw insErr2;
+        } catch (e) {
+          throw e;
+        }
+      }
+
+      // 2) undefined_column for price_per_unit -> try with unit_price key (keeping company_id)
+      const undefinedCol = insErr.code === '42703' || /price_per_unit.*does not exist/i.test(msg) || /column\s+"?price_per_unit"?/i.test(msg);
+      if (undefinedCol) {
+        try {
+          const rowsUnit = rows.map((r: any) => {
+            const { price_per_unit, ...rest } = r;
+            return { ...rest, unit_price: price_per_unit };
+          });
+          const { error: e2 } = await client.from('ticket_products').insert(rowsUnit);
+          if (!e2) return;
+          // If company_id missing in this branch
+          const msg2 = (e2 && (e2.message || '')).toString();
+          if ((e2.code === 'PGRST204' || msg2.includes("Could not find the 'company_id' column"))) {
+            const rowsUnitNoCompany = rowsUnit.map((r: any) => { const { company_id, ...rest } = r; return rest; });
+            const { error: e3 } = await client.from('ticket_products').insert(rowsUnitNoCompany);
+            if (e3) throw e3;
+            return;
+          }
+          throw e2;
+        } catch (e) {
+          throw e;
+        }
+      }
+
+      // If it's some other error, throw as before
+      console.error('replaceTicketProducts: insert error', insErr);
       throw insErr;
     }
   }

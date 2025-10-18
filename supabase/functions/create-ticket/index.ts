@@ -9,7 +9,7 @@ const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s
 const AUTO_CREATE_DEFAULT_STAGES = (Deno.env.get('AUTO_CREATE_DEFAULT_STAGES') || 'false').toLowerCase() === 'true';
 
 const FUNCTION_NAME = 'create-ticket';
-const FUNCTION_VERSION = '2025-09-20-1';
+const FUNCTION_VERSION = '2025-10-18-1';
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error(`[${FUNCTION_NAME}] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars`);
@@ -147,9 +147,36 @@ serve(async (req: Request) => {
     }
     const services = Array.from(merged.values());
 
+    // Parse optional products payload
+    const rawProducts = Array.isArray(body.p_products) ? body.p_products : [];
+    const preProducts = rawProducts
+      .map((p: any) => ({
+        product_id: p?.product_id,
+        quantity: Math.max(1, Number(p?.quantity || 1)),
+        unit_price: typeof p?.unit_price === 'number' ? p.unit_price : null
+      }))
+      .filter((p: any) => typeof p.product_id === 'string' && p.product_id.length > 0);
+    const mergedProd = new Map<string, { product_id: string; quantity: number; unit_price: number | null }>();
+    for (const p of preProducts) {
+      const prev = mergedProd.get(p.product_id);
+      if (prev) {
+        mergedProd.set(p.product_id, {
+          product_id: p.product_id,
+          quantity: Math.max(1, Number(prev.quantity + (p.quantity || 0))),
+          unit_price: prev.unit_price != null ? prev.unit_price : p.unit_price
+        });
+      } else {
+        mergedProd.set(p.product_id, p);
+      }
+    }
+    const products = Array.from(mergedProd.values());
+
     // If p_services key is present, enforce at least one item
     if ('p_services' in body && services.length === 0) {
       return jsonResponse(400, { error: 'At least one service is required when p_services is provided' }, origin || '*');
+    }
+    if ('p_products' in body && products.length === 0) {
+      return jsonResponse(400, { error: 'At least one product is required when p_products is provided' }, origin || '*');
     }
     // Validate user belongs to the company via public.users (single-company membership)
     const { data: userRow, error: userErr } = await supabaseAdmin
@@ -254,6 +281,9 @@ serve(async (req: Request) => {
       console.error(`[${FUNCTION_NAME}] Insert failed`, insErr);
       return jsonResponse(500, { error: 'Insert failed', details: insErr }, origin || '*');
     }
+    
+    // We'll collect total lines amount (services + products) if client did not send total_amount
+    let computedLinesTotal = 0;
 
     // If services were provided, insert rows into ticket_services now
     if (services.length > 0) {
@@ -389,19 +419,96 @@ serve(async (req: Request) => {
         console.error(`[${FUNCTION_NAME}] Insert ticket_services failed (multi-fallback)`, outcome.err);
         return jsonResponse(500, { error: 'Insert ticket services failed', details: outcome.err }, origin || '*');
       }
+      computedLinesTotal += baseRows.reduce((acc: number, r: any) => acc + Number(r.total_price || 0), 0);
+    }
 
-      // If client didn't send total_amount, compute as sum of lines
-      if (inserted && (payload.total_amount == null)) {
-  const sum = baseRows.reduce((acc: number, r: any) => acc + Number(r.total_price || 0), 0);
-        const { data: updatedTicket, error: updErr } = await supabaseAdmin
-          .from('tickets')
-          .update({ total_amount: Number(sum.toFixed(2)), updated_at: new Date().toISOString() })
-          .eq('id', inserted.id)
-          .select('*')
-          .single();
-        if (!updErr && updatedTicket) {
-          return jsonResponse(200, { result: updatedTicket }, origin || '*');
+    // If products were provided, insert rows into ticket_products now
+    if (products.length > 0) {
+      const productIds = products.map((p: any) => p.product_id);
+      const { data: prodRows, error: prodErr } = await supabaseAdmin
+        .from('products')
+        .select('id, price')
+        .in('id', productIds);
+      if (prodErr) {
+        await supabaseAdmin.from('tickets').delete().eq('id', inserted.id);
+        console.error(`[${FUNCTION_NAME}] Failed fetching products`, prodErr);
+        return jsonResponse(500, { error: 'Failed fetching products', details: prodErr }, origin || '*');
+      }
+      const foundProdIds = new Set((prodRows || []).map((r: any) => r.id));
+      const missingProd = productIds.filter((id: string) => !foundProdIds.has(id));
+      if (missingProd.length > 0) {
+        await supabaseAdmin.from('tickets').delete().eq('id', inserted.id);
+        return jsonResponse(400, {
+          error: 'Some products do not exist',
+          details: { missing_product_ids: missingProd }
+        }, origin || '*');
+      }
+      const prodPriceMap = new Map<string, number>((prodRows || []).map((r: any) => [r.id, Number(r.price || 0)]));
+
+      async function tryInsertTicketProducts(baseRows: any[]): Promise<{ ok: boolean; err?: any }> {
+        // Try as-is first (price_per_unit)
+        let { error: e1 } = await supabaseAdmin.from('ticket_products').insert(baseRows);
+        if (!e1) return { ok: true };
+        const msg1 = (e1 && (e1.message || '')).toString();
+        // company_id missing -> retry without it
+        if (e1.code === 'PGRST204' || msg1.includes("Could not find the 'company_id' column")) {
+          const rowsNoCompany = baseRows.map((r: any) => { const { company_id, ...rest } = r; return rest; });
+          const { error: e1b } = await supabaseAdmin.from('ticket_products').insert(rowsNoCompany);
+          if (!e1b) return { ok: true };
+          e1 = e1b;
         }
+        // undefined column for price_per_unit -> retry with unit_price
+        const undefinedColumn = e1.code === '42703' || /column\s+"?price_per_unit"?/i.test(msg1) || /price_per_unit.*does not exist/i.test(msg1);
+        if (undefinedColumn) {
+          const rowsUnit = baseRows.map((r: any) => { const { price_per_unit, ...rest } = r; return { ...rest, unit_price: price_per_unit }; });
+          const { error: e2 } = await supabaseAdmin.from('ticket_products').insert(rowsUnit);
+          if (!e2) return { ok: true };
+          const msg2 = (e2 && (e2.message || '')).toString();
+          if (e2.code === 'PGRST204' || msg2.includes("Could not find the 'company_id' column")) {
+            const rowsUnitNoCompany = rowsUnit.map((r: any) => { const { company_id, ...rest } = r; return rest; });
+            const { error: e2b } = await supabaseAdmin.from('ticket_products').insert(rowsUnitNoCompany);
+            if (!e2b) return { ok: true };
+            return { ok: false, err: e2b };
+          }
+          return { ok: false, err: e2 };
+        }
+        return { ok: false, err: e1 };
+      }
+
+      const prodBaseRows = products.map((p: any) => {
+        const unit = typeof p.unit_price === 'number' ? p.unit_price : (prodPriceMap.get(p.product_id) || 0);
+        const qty = Math.max(1, Number(p.quantity || 1));
+        const total = Number((unit * qty).toFixed(2));
+        return {
+          id: crypto.randomUUID(),
+          ticket_id: inserted.id,
+          product_id: p.product_id,
+          quantity: qty,
+          price_per_unit: unit,
+          total_price: total,
+          company_id: payload.company_id
+        } as any;
+      });
+
+      const prodOutcome = await tryInsertTicketProducts(prodBaseRows);
+      if (!prodOutcome.ok) {
+        await supabaseAdmin.from('tickets').delete().eq('id', inserted.id);
+        console.error(`[${FUNCTION_NAME}] Insert ticket_products failed (multi-fallback)`, prodOutcome.err);
+        return jsonResponse(500, { error: 'Insert ticket products failed', details: prodOutcome.err }, origin || '*');
+      }
+      computedLinesTotal += prodBaseRows.reduce((acc: number, r: any) => acc + Number(r.total_price || 0), 0);
+    }
+
+    // If client didn't send total_amount, compute from all line items
+    if (inserted && (payload.total_amount == null)) {
+      const { data: updatedTicket, error: updErr } = await supabaseAdmin
+        .from('tickets')
+        .update({ total_amount: Number((computedLinesTotal).toFixed(2)), updated_at: new Date().toISOString() })
+        .eq('id', inserted.id)
+        .select('*')
+        .single();
+      if (!updErr && updatedTicket) {
+        return jsonResponse(200, { result: updatedTicket }, origin || '*');
       }
     }
 

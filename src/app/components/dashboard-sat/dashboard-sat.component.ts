@@ -34,7 +34,7 @@ export class DashboardSatComponent implements OnInit{
 
   async loadStages(): Promise<void> {
     try {
-      const { data, error } = await this.ticketStageService.getStages();
+      const { data, error } = await this.ticketStageService.getVisibleStages();
       if (error) {
         console.error('Error loading ticket stages:', error);
         this.estados = [];

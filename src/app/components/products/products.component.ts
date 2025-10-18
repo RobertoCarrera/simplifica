@@ -18,6 +18,7 @@ export class ProductsComponent implements OnInit {
     price: 0,
     stock_quantity: 0
   };
+  editingProduct: any = null;
   isLoading = false;
   showNewProductForm = false;
 
@@ -49,18 +50,60 @@ export class ProductsComponent implements OnInit {
   async saveProduct() {
     try {
       if (this.newProduct.name.trim()) {
-        this.productsService.createProduct(this.newProduct).subscribe({
-          next: () => {
-            this.resetForm();
-            this.loadProducts();
-          },
-          error: (error) => {
-            console.error('Error saving product:', error);
-          }
-        });
+        if (this.editingProduct) {
+          // Actualizar producto existente
+          this.productsService.updateProduct(this.editingProduct.id, this.newProduct).subscribe({
+            next: () => {
+              this.resetForm();
+              this.loadProducts();
+            },
+            error: (error) => {
+              console.error('Error updating product:', error);
+            }
+          });
+        } else {
+          // Crear nuevo producto
+          this.productsService.createProduct(this.newProduct).subscribe({
+            next: () => {
+              this.resetForm();
+              this.loadProducts();
+            },
+            error: (error) => {
+              console.error('Error saving product:', error);
+            }
+          });
+        }
       }
     } catch (error) {
       console.error('Error saving product:', error);
+    }
+  }
+
+  editProduct(product: any) {
+    this.editingProduct = product;
+    this.newProduct = {
+      name: product.name,
+      description: product.description || '',
+      price: product.price,
+      stock_quantity: product.stock_quantity
+    };
+    this.showNewProductForm = true;
+  }
+
+  async deleteProduct(product: any) {
+    if (confirm(`¿Estás seguro de que quieres eliminar "${product.name}"?`)) {
+      try {
+        this.productsService.deleteProduct(product.id).subscribe({
+          next: () => {
+            this.loadProducts();
+          },
+          error: (error) => {
+            console.error('Error deleting product:', error);
+          }
+        });
+      } catch (error) {
+        console.error('Error deleting product:', error);
+      }
     }
   }
 
@@ -71,6 +114,7 @@ export class ProductsComponent implements OnInit {
       price: 0,
       stock_quantity: 0
     };
+    this.editingProduct = null;
     this.showNewProductForm = false;
   }
 
