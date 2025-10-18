@@ -10,45 +10,44 @@ import { ToastService } from '../../services/toast.service';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <div class="stages-management-container">
-      <div class="header">
-        <div class="header-top">
-          <button class="btn-back" routerLink="/configuracion" title="Volver a Configuración">
-            <i class="fas fa-arrow-left"></i> Volver
-          </button>
-        </div>
-        <h2><i class="fas fa-clipboard-list"></i> Gestión de Estados de Tickets</h2>
-        <p class="subtitle">Administra los estados disponibles para los tickets de tu empresa</p>
+    <!-- Header -->
+    <div class="header">
+      <div class="header-top">
+        <button class="btn-back" routerLink="/configuracion" title="Volver a Configuración">
+          <i class="fas fa-arrow-left"></i> Volver
+        </button>
       </div>
+    </div>
 
-      <!-- Alert messages -->
-      @if (successMessage) {
-        <div class="alert alert-success">
-          <i class="fas fa-check-circle"></i> {{ successMessage }}
-        </div>
-      }
-      @if (errorMessage) {
-        <div class="alert alert-danger">
-          <i class="fas fa-exclamation-circle"></i> {{ errorMessage }}
-        </div>
-      }
+    <!-- Alert messages -->
+    @if (successMessage) {
+      <div class="alert alert-success">
+        <i class="fas fa-check-circle"></i> {{ successMessage }}
+      </div>
+    }
+    @if (errorMessage) {
+      <div class="alert alert-danger">
+        <i class="fas fa-exclamation-circle"></i> {{ errorMessage }}
+      </div>
+    }
 
-      <!-- Loading state -->
-      @if (loading) {
-        <div class="loading-container">
-          <i class="fas fa-spinner fa-spin fa-3x"></i>
-          <p>Cargando estados...</p>
-        </div>
-      }
+    <!-- Loading state -->
+    @if (loading) {
+      <div class="loading-container">
+        <i class="fas fa-spinner fa-spin fa-3x"></i>
+        <p>Cargando estados...</p>
+      </div>
+    }
 
-      @if (!loading) {
+    @if (!loading) {
+      <!-- Two Column Layout -->
+      <div class="two-columns-layout">
         <!-- Generic (System) Stages Section -->
         <div class="section">
-          <h3><i class="fas fa-globe"></i> Estados del Sistema (Predeterminados)</h3>
+          <h3><i class="fas fa-globe"></i> Estados del Sistema</h3>
           <p class="info-text">
             <i class="fas fa-info-circle"></i>
-            Estos estados están disponibles para todas las empresas y no se pueden modificar ni eliminar.
-            Puedes ocultarlos si no los necesitas.
+            Estados predeterminados. Puedes ocultarlos si no los necesitas.
           </p>
           
           <div class="stages-grid">
@@ -63,7 +62,7 @@ import { ToastService } from '../../services/toast.service';
                     }
                   </div>
                   <div class="stage-meta">
-                    <span class="badge">Posición: {{ stage.position }}</span>
+                    <span class="badge">Pos: {{ stage.position }}</span>
                     <span class="badge badge-system">Sistema</span>
                   </div>
                 </div>
@@ -94,7 +93,7 @@ import { ToastService } from '../../services/toast.service';
         <!-- Company-Specific Stages Section -->
         <div class="section">
           <div class="section-header">
-            <h3><i class="fas fa-building"></i> Estados Personalizados de tu Empresa</h3>
+            <h3><i class="fas fa-building"></i> Estados Personalizados</h3>
             <button class="btn btn-primary" (click)="showCreateForm = !showCreateForm">
               <i class="fas" [class.fa-plus]="!showCreateForm" [class.fa-times]="showCreateForm"></i>
               {{ showCreateForm ? 'Cancelar' : 'Nuevo Estado' }}
@@ -233,28 +232,22 @@ import { ToastService } from '../../services/toast.service';
             </div>
           }
         </div>
+      </div>
 
-        <!-- Info Box -->
-        <div class="info-box">
-          <h4><i class="fas fa-lightbulb"></i> Información Importante</h4>
-          <ul>
-            <li><strong>Estados del Sistema:</strong> Son comunes para todas las empresas y no se pueden modificar ni eliminar, pero puedes ocultarlos si no los necesitas.</li>
-            <li><strong>Ocultar Estados:</strong> Los estados del sistema que ocultes no aparecerán en tus listas y formularios, pero seguirán disponibles para otras empresas.</li>
-            <li><strong>Estados Personalizados:</strong> Puedes crear estados específicos para tu empresa que complementen los del sistema.</li>
-            <li><strong>Posición:</strong> Determina el orden en que aparecen los estados en las listas y tableros.</li>
-            <li><strong>Color:</strong> Ayuda a identificar visualmente cada estado en el sistema.</li>
-          </ul>
-        </div>
-      }
-    </div>
+      <!-- Info Box -->
+      <div class="info-box">
+        <h4><i class="fas fa-lightbulb"></i> Información Importante</h4>
+        <ul>
+          <li><strong>Estados del Sistema:</strong> Son comunes para todas las empresas y no se pueden modificar ni eliminar, pero puedes ocultarlos si no los necesitas.</li>
+          <li><strong>Ocultar Estados:</strong> Los estados del sistema que ocultes no aparecerán en tus listas y formularios, pero seguirán disponibles para otras empresas.</li>
+          <li><strong>Estados Personalizados:</strong> Puedes crear estados específicos para tu empresa que complementen los del sistema.</li>
+          <li><strong>Posición:</strong> Determina el orden en que aparecen los estados en las listas y tableros.</li>
+          <li><strong>Color:</strong> Ayuda a identificar visualmente cada estado en el sistema.</li>
+        </ul>
+      </div>
+    }
   `,
   styles: [`
-    .stages-management-container {
-      padding: 2rem;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
     .header {
       margin-bottom: 2rem;
     }
@@ -328,11 +321,24 @@ import { ToastService } from '../../services/toast.service';
       color: #6b7280;
     }
 
+    /* Two Column Layout */
+    .two-columns-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 1024px) {
+      .two-columns-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .section {
       background: white;
       border-radius: 0.75rem;
       padding: 1.5rem;
-      margin-bottom: 2rem;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
@@ -342,6 +348,7 @@ import { ToastService } from '../../services/toast.service';
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      font-size: 1.125rem;
     }
 
     .section-header {
@@ -364,12 +371,19 @@ import { ToastService } from '../../services/toast.service';
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      font-size: 0.875rem;
     }
 
     .stages-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      grid-template-columns: 1fr 1fr;
       gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .stages-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     .stage-card {

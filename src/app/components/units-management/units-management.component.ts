@@ -10,74 +10,71 @@ import { ToastService } from '../../services/toast.service';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <div class="units-management-container">
-      <div class="header">
-        <div class="header-top">
-          <button class="btn-back" routerLink="/configuracion" title="Volver a Configuración">
-            <i class="fas fa-arrow-left"></i> Volver
-          </button>
-        </div>
-        <h2><i class="fas fa-ruler-combined"></i> Gestión de Unidades de Medida</h2>
-        <p class="subtitle">Configura las unidades por defecto y personalizadas para tu empresa</p>
+    <!-- Header -->
+    <div class="header">
+      <div class="header-top">
+        <button class="btn-back" routerLink="/configuracion" title="Volver a Configuración">
+          <i class="fas fa-arrow-left"></i> Volver
+        </button>
       </div>
+    </div>
 
-      @if (loading) {
-        <div class="loading-container">
-          <i class="fas fa-spinner fa-spin fa-3x"></i>
-          <p>Cargando unidades...</p>
-        </div>
-      }
+    @if (loading) {
+      <div class="loading-container">
+        <i class="fas fa-spinner fa-spin fa-3x"></i>
+        <p>Cargando unidades...</p>
+      </div>
+    }
 
-      @if (!loading) {
-        <div class="controls-row">
-          <button class="btn btn-primary" (click)="showCreateForm = !showCreateForm">
-            <i class="fas" [class.fa-plus]="!showCreateForm" [class.fa-times]="showCreateForm"></i>
-            {{ showCreateForm ? 'Cancelar' : 'Nueva Unidad' }}
-          </button>
-        </div>
+    @if (!loading) {
+      <!-- Two Column Layout -->
+      <div class="two-columns-layout">
+        <!-- Genéricas -->
+        <div class="section">
+          <h3><i class="fas fa-globe"></i> Unidades del Sistema</h3>
+          <p class="info-text">
+            <i class="fas fa-info-circle"></i>
+            Unidades predeterminadas. Puedes ocultarlas si no las necesitas.
+          </p>
 
-        <div class="two-columns">
-          <!-- Genéricas -->
-          <div class="section">
-            <h3><i class="fas fa-globe"></i> Unidades del Sistema (Predeterminadas)</h3>
-            <p class="info-text">
-              <i class="fas fa-info-circle"></i>
-              Estas unidades están disponibles para todas las empresas. Puedes ocultarlas si no las necesitas.
-            </p>
-
-            <div class="cards">
-              @for (u of genericUnits; track u.id) {
-                <div class="card generic" [class.hidden-item]="u.is_hidden">
-                  <div class="card-body">
-                    <div class="title-row">
-                      <div class="name">{{ u.name }}</div>
-                      @if (u.is_hidden) { <span class="badge badge-hidden">Oculto</span> }
+          <div class="units-grid">
+            @for (u of genericUnits; track u.id) {
+              <div class="unit-card generic" [class.hidden-item]="u.is_hidden">
+                <div class="card-body">
+                  <div class="title-row">
+                    <div class="name">{{ u.name }}</div>
+                    <div>
+                      @if (u.is_hidden) { <span class="badge badge-hidden mr-1">Oculto</span> }
+                      <span class="badge">{{ u.code }}</span>
                     </div>
-                    <div class="meta">
-                      <span class="badge">Código: {{ u.code }}</span>
-                      <span class="badge badge-system">Sistema</span>
-                    </div>
-                    <div class="desc" *ngIf="u.description">{{ u.description }}</div>
                   </div>
-                  <div class="actions">
-                    @if (u.is_hidden) {
-                      <button class="btn btn-sm btn-success" (click)="unhide(u)" [disabled]="!!toggling[u.id]">
-                        <i class="fas fa-eye"></i> Mostrar
-                      </button>
-                    } @else {
-                      <button class="btn btn-sm btn-outline" (click)="hide(u)" [disabled]="!!toggling[u.id]">
-                        <i class="fas fa-eye-slash"></i> Ocultar
-                      </button>
-                    }
-                  </div>
+                  <div class="desc" *ngIf="u.description">{{ u.description }}</div>
                 </div>
-              }
-            </div>
+                <div class="actions">
+                  @if (u.is_hidden) {
+                    <button class="btn btn-sm btn-success" (click)="unhide(u)" [disabled]="!!toggling[u.id]">
+                      <i class="fas fa-eye"></i> Mostrar
+                    </button>
+                  } @else {
+                    <button class="btn btn-sm btn-outline" (click)="hide(u)" [disabled]="!!toggling[u.id]">
+                      <i class="fas fa-eye-slash"></i> Ocultar
+                    </button>
+                  }
+                </div>
+              </div>
+            }
           </div>
+        </div>
 
-          <!-- Empresa -->
-          <div class="section">
+        <!-- Empresa -->
+        <div class="section">
+          <div class="section-header">
             <h3><i class="fas fa-building"></i> Unidades Personalizadas</h3>
+            <button class="btn btn-primary" (click)="showCreateForm = !showCreateForm">
+              <i class="fas" [class.fa-plus]="!showCreateForm" [class.fa-times]="showCreateForm"></i>
+              {{ showCreateForm ? 'Cancelar' : 'Nueva Unidad' }}
+            </button>
+          </div>
 
             @if (showCreateForm) {
               <div class="form-card">
@@ -108,32 +105,39 @@ import { ToastService } from '../../services/toast.service';
               </div>
             }
 
-            <div class="cards" *ngIf="companyUnits.length; else emptyCompany">
+            <div class="units-grid" *ngIf="companyUnits.length; else emptyCompany">
               @for (u of companyUnits; track u.id) {
-                <div class="card company">
+                <div class="unit-card company">
                   <div class="card-body">
                     @if (editingId === u.id) {
-                      <div class="edit-row">
+                      <div class="form-group">
+                        <label>Nombre</label>
                         <input class="form-control" [(ngModel)]="editUnit.name" name="editName" />
+                      </div>
+                      <div class="form-group">
+                        <label>Código</label>
                         <input class="form-control" [(ngModel)]="editUnit.code" name="editCode" />
                       </div>
-                      <input class="form-control" [(ngModel)]="editUnit.description" name="editDesc" />
+                      <div class="form-group">
+                        <label>Descripción</label>
+                        <input class="form-control" [(ngModel)]="editUnit.description" name="editDesc" />
+                      </div>
                     } @else {
                       <div class="title-row">
                         <div class="name">{{ u.name }}</div>
                         <span class="badge badge-company">Personalizada</span>
                       </div>
-                      <div class="meta"><span class="badge">Código: {{ u.code }}</span></div>
+                      <div class="meta"><span class="badge">{{ u.code }}</span></div>
                       <div class="desc" *ngIf="u.description">{{ u.description }}</div>
                     }
                   </div>
                   <div class="actions">
                     @if (editingId === u.id) {
-                      <button class="btn-icon btn-success" (click)="saveEdit()"><i class="fas fa-check"></i></button>
-                      <button class="btn-icon btn-secondary" (click)="cancelEdit()"><i class="fas fa-times"></i></button>
+                      <button class="btn btn-sm btn-success" (click)="saveEdit()"><i class="fas fa-check"></i> Guardar</button>
+                      <button class="btn btn-sm btn-secondary" (click)="cancelEdit()"><i class="fas fa-times"></i> Cancelar</button>
                     } @else {
-                      <button class="btn-icon btn-primary" (click)="startEdit(u)"><i class="fas fa-edit"></i></button>
-                      <button class="btn-icon btn-danger" (click)="remove(u)"><i class="fas fa-trash"></i></button>
+                      <button class="btn-icon btn-primary" (click)="startEdit(u)" title="Editar"><i class="fas fa-edit"></i></button>
+                      <button class="btn-icon btn-danger" (click)="remove(u)" title="Eliminar"><i class="fas fa-trash"></i></button>
                     }
                   </div>
                 </div>
@@ -148,44 +152,78 @@ import { ToastService } from '../../services/toast.service';
           </div>
         </div>
       }
-    </div>
   `,
   styles: [`
-    .units-management-container{padding:1.5rem;max-width:1200px;margin:0 auto}
     .header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem}
     .btn-back{display:inline-flex;align-items:center;gap:.5rem;background:#e5e7eb;border:1px solid #d1d5db;padding:.5rem .75rem;border-radius:.375rem}
     .subtitle{color:#6b7280;margin:0.25rem 0 1rem}
     .loading-container{display:flex;flex-direction:column;align-items:center;gap:.75rem;color:#6b7280}
-    .controls-row{display:flex;gap:.5rem;justify-content:flex-end;margin:0 0 1rem}
-    .two-columns{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
-    .section{background:#fff;border:1px solid #e5e7eb;border-radius:.5rem;padding:1rem}
-    .info-text{font-size:.875rem;color:#374151;margin:.25rem 0 1rem}
-    .cards{display:grid;grid-template-columns:1fr;gap:.75rem}
-    .card{display:flex;align-items:stretch;gap:.75rem;border:1px solid #e5e7eb;border-radius:.5rem;padding:.75rem}
-    .card.generic.hidden-item{opacity:.6}
+    
+    /* Two Column Layout */
+    .two-columns-layout{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem}
+    
+    @media (max-width: 1024px) {
+      .two-columns-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .section{background:white;border-radius:.75rem;padding:1.25rem;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+    .section h3{color:#1f2937;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem;font-size:1.125rem}
+    .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+    .section-header h3{margin:0}
+    .info-text{font-size:.875rem;color:#4b5563;padding:.75rem;background:#f3f4f6;border-radius:.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+    
+    /* Units Grid - 2 columns */
+    .units-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    
+    @media (max-width: 768px) {
+      .units-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .unit-card{display:flex;flex-direction:column;gap:0.75rem;border:2px solid #e5e7eb;border-radius:.5rem;padding:1rem;transition:all .2s}
+    .unit-card:hover{box-shadow:0 4px 6px rgba(0,0,0,.1)}
+    .unit-card.hidden-item{opacity:0.6;border-color:#d1d5db;background-color:#f9fafb}
+    .unit-card.generic{background:#f9fafb}
+    
     .card-body{flex:1}
-    .title-row{display:flex;align-items:center;gap:.5rem;font-weight:600}
-    .name{font-size:1rem}
-    .meta{display:flex;gap:.5rem;margin-top:.25rem}
-    .desc{margin-top:.25rem;color:#374151}
+    .title-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem}
+    .name{font-weight:600;color:#1f2937}
+    .meta{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
+    .desc{font-size:.875rem;color:#6b7280}
+    
+    .actions{display:flex;gap:.5rem}
+    
     .badge{background:#f3f4f6;border:1px solid #e5e7eb;border-radius:9999px;padding:.125rem .5rem;font-size:.75rem;color:#374151}
     .badge-system{background:#eef2ff;color:#3730a3;border-color:#c7d2fe}
     .badge-company{background:#ecfeff;color:#155e75;border-color:#a5f3fc}
     .badge-hidden{background:#fee2e2;color:#991b1b;border-color:#fecaca}
-    .actions{display:flex;align-items:center;gap:.5rem}
-    .btn{border:1px solid #e5e7eb;border-radius:.375rem;padding:.375rem .625rem}
+    
+    .btn{border:1px solid #e5e7eb;border-radius:.375rem;padding:.375rem .625rem;cursor:pointer;transition:all .2s}
     .btn-outline{background:#fff}
     .btn-success{background:#10b981;color:#fff;border-color:#059669}
+    .btn-success:hover{background:#059669}
     .btn-primary{background:#6366f1;color:#fff;border-color:#4f46e5}
+    .btn-primary:hover{background:#4f46e5}
     .btn-danger{background:#ef4444;color:#fff;border-color:#dc2626}
-    .btn-secondary{background:#e5e7eb}
-    .btn-icon{border:1px solid #e5e7eb;border-radius:.375rem;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center}
-    .form-card{border:1px solid #e5e7eb;border-radius:.5rem;padding:1rem;margin-bottom:1rem}
+    .btn-danger:hover{background:#dc2626}
+    .btn-secondary{background:#e5e7eb;color:#374151}
+    .btn-secondary:hover{background:#d1d5db}
+    .btn-sm{font-size:.875rem;padding:.25rem .5rem}
+    .btn-icon{border:1px solid #e5e7eb;border-radius:.375rem;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+    
+    .form-card{border:1px solid #e5e7eb;border-radius:.5rem;padding:1rem;margin-bottom:1rem;background:white}
+    .form-card h4{margin:0 0 1rem;color:#1f2937}
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
     .form-group{display:flex;flex-direction:column;gap:.25rem}
-    .form-control{border:1px solid #e5e7eb;border-radius:.375rem;padding:.5rem}
+    .form-group label{font-size:.875rem;font-weight:500;color:#374151}
+    .form-control{border:1px solid #e5e7eb;border-radius:.375rem;padding:.5rem;font-size:.875rem}
     .form-actions{display:flex;gap:.5rem;margin-top:.5rem}
-    @media (max-width: 900px){.two-columns{grid-template-columns:1fr}}
+    
+    .empty-state{text-align:center;padding:2rem;color:#9ca3af}
+    .empty-state i{margin-bottom:.5rem;color:#d1d5db}
   `]
 })
 export class UnitsManagementComponent implements OnInit {
