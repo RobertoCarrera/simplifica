@@ -8,6 +8,7 @@ import { SupabaseTicketsService, Ticket, TicketStage, TicketStats } from '../../
 import { SupabaseTicketStagesService, TicketStage as ConfigStage } from '../../services/supabase-ticket-stages.service';
 import { SupabaseServicesService, Service } from '../../services/supabase-services.service';
 import { ProductsService } from '../../services/products.service';
+import { firstValueFrom } from 'rxjs';
 import { SimpleSupabaseService, SimpleClient } from '../../services/simple-supabase.service';
 import { DevicesService, Device } from '../../services/devices.service';
 import { DevRoleService } from '../../services/dev-role.service';
@@ -89,9 +90,11 @@ export class SupabaseTicketsComponent implements OnInit {
   // Products management
   availableProducts: any[] = [];
   filteredProducts: any[] = [];
+  topUsedProducts: any[] = [];
   productSearchText: string = '';
   selectedProducts: { product: any; quantity: number }[] = [];
-  showProductsModal = false;
+  showProductForm = false;
+  productFormData: any = {};
   
   // Customer selection
   customers: SimpleClient[] = [];
@@ -237,6 +240,7 @@ export class SupabaseTicketsComponent implements OnInit {
       // Load other data in parallel
       await Promise.all([
         this.loadServices(),
+        this.loadProducts(),
         this.loadCustomers(),
         this.loadTags()
       ]);
@@ -285,6 +289,7 @@ export class SupabaseTicketsComponent implements OnInit {
     // Load other data in parallel
     await Promise.all([
       this.loadServices(),
+      this.loadProducts(),
       this.loadCustomers(),
       this.loadDevices(),
       this.loadTags()
@@ -453,8 +458,8 @@ export class SupabaseTicketsComponent implements OnInit {
       // Obtener los servicios más usados
       this.topUsedServices = await this.getTopUsedServices();
       
-      // Inicialmente mostrar todos los servicios
-      this.filteredServices = [...this.availableServices];
+      // Inicialmente mostrar SOLO los más usados
+      this.filteredServices = [...this.topUsedServices];
       
     } catch (error) {
       console.error('Error in loadServices:', error);
@@ -465,9 +470,20 @@ export class SupabaseTicketsComponent implements OnInit {
 
   async getTopUsedServices(): Promise<Service[]> {
     try {
-      // Obtener estadísticas de uso de servicios desde la base de datos
-      // Por ahora devolver los primeros 5 servicios disponibles
-      return this.availableServices.slice(0, 5);
+      // Prefer server-side computation via RPC for performance and analytics consistency
+      if (this.selectedCompanyId) {
+        const { data, error } = await this.simpleSupabase
+          .getClient()
+          .rpc('get_top_used_services', { target_company_id: this.selectedCompanyId, limit_count: 3 });
+        if (!error && Array.isArray(data)) {
+          return data as Service[];
+        }
+        if (error) {
+          console.warn('get_top_used_services RPC failed, falling back to local slice:', error);
+        }
+      }
+      // Fallback: take first 3 active services if RPC is unavailable
+      return this.availableServices.slice(0, 3);
     } catch (error) {
       console.error('Error getting top used services:', error);
       return this.availableServices.slice(0, 3);
@@ -794,8 +810,8 @@ export class SupabaseTicketsComponent implements OnInit {
     this.selectedProducts = [];
     this.serviceSearchText = '';
     this.productSearchText = '';
-    this.filteredServices = [...this.topUsedServices];
-    this.filteredProducts = [];
+  this.filteredServices = [...this.topUsedServices];
+  this.filteredProducts = [...this.topUsedProducts];
     this.customerSearchText = '';
     this.selectedCustomer = null;
     this.showCustomerDropdown = false;
@@ -840,7 +856,7 @@ export class SupabaseTicketsComponent implements OnInit {
     this.selectedServices = [];
     this.selectedProducts = [];
     this.showServiceForm = false;
-    this.showProductsModal = false;
+  this.showProductForm = false;
     
     // Restaurar scroll de la página principal
     document.body.classList.remove('modal-open');
@@ -876,32 +892,49 @@ export class SupabaseTicketsComponent implements OnInit {
   }
 
   // Products management methods
-  openProductsModal() {
-    this.showProductsModal = true;
-    this.loadProducts();
+  async loadProducts() {
+    try {
+      this.productsService.getProducts().subscribe({
+        next: async (products) => {
+          this.availableProducts = products || [];
+          // Fetch top used products from server-side RPC (default 3)
+          this.topUsedProducts = await this.getTopUsedProducts();
+          // By default, show only the top 3 products; full list appears on search
+          this.filteredProducts = [...this.topUsedProducts];
+        },
+        error: (error) => {
+          console.error('Error loading products:', error);
+          this.availableProducts = [];
+          this.filteredProducts = [];
+        }
+      });
+    } catch (e) {
+      console.error('loadProducts error:', e);
+      this.availableProducts = [];
+      this.filteredProducts = [];
+    }
   }
 
-  closeProductsModal() {
-    this.showProductsModal = false;
-    this.productSearchText = '';
-    this.filteredProducts = [];
-  }
-
-  loadProducts() {
-    this.productsService.getProducts().subscribe({
-      next: (products) => {
-        this.availableProducts = products;
-        this.filteredProducts = [...products];
-      },
-      error: (error) => {
-        console.error('Error loading products:', error);
+  private async getTopUsedProducts(): Promise<any[]> {
+    try {
+      if (this.selectedCompanyId) {
+        const { data, error } = await this.simpleSupabase
+          .getClient()
+          .rpc('get_top_used_products', { target_company_id: this.selectedCompanyId, limit_count: 3 });
+        if (!error && Array.isArray(data)) return data as any[];
+        if (error) console.warn('get_top_used_products RPC failed, falling back to slice(0,3):', error);
       }
-    });
+      return this.availableProducts.slice(0, 3);
+    } catch (err) {
+      console.error('Error getting top used products:', err);
+      return this.availableProducts.slice(0, 3);
+    }
   }
 
   filterProducts() {
     if (!this.productSearchText.trim()) {
-      this.filteredProducts = [...this.availableProducts];
+      // No search: show only the top used products to match Services UX
+      this.filteredProducts = [...this.topUsedProducts];
       return;
     }
 
@@ -920,9 +953,9 @@ export class SupabaseTicketsComponent implements OnInit {
     } else {
       this.selectedProducts.push({ product, quantity: 1 });
     }
-    // Clear search after adding
+    // Clear search after adding and return to top used products
     this.productSearchText = '';
-    this.filteredProducts = [...this.availableProducts];
+    this.filteredProducts = [...this.topUsedProducts];
   }
 
   removeProductFromTicket(productId: string) {
@@ -938,6 +971,51 @@ export class SupabaseTicketsComponent implements OnInit {
 
   isProductSelected(productId: string): boolean {
     return this.selectedProducts.some(p => p.product.id === productId);
+  }
+
+  // Product creation from Ticket form
+  openProductForm() {
+    this.productFormData = {
+      name: '',
+      description: '',
+      category: '',
+      brand: '',
+      model: '',
+      price: 0,
+      stock_quantity: 0
+    };
+    this.showProductForm = true;
+  }
+
+  closeProductForm() {
+    this.showProductForm = false;
+    this.productFormData = {};
+  }
+
+  async createProductFromTicket() {
+    try {
+      if (!this.productFormData.name?.trim()) {
+        alert('El nombre del producto es requerido');
+        return;
+      }
+      // Ensure numeric fields
+      const payload = {
+        name: this.productFormData.name,
+        description: this.productFormData.description || null,
+        category: this.productFormData.category || null,
+        brand: this.productFormData.brand || null,
+        model: this.productFormData.model || null,
+        price: Number(this.productFormData.price || 0),
+        stock_quantity: Number(this.productFormData.stock_quantity || 0)
+      };
+      const newProduct = await firstValueFrom(this.productsService.createProduct(payload));
+      this.availableProducts.push(newProduct);
+      this.addProductToTicket(newProduct);
+      this.closeProductForm();
+    } catch (error) {
+      console.error('Error creando producto:', error);
+      alert('Error al crear el producto');
+    }
   }
 
   filterServices() {
@@ -1018,6 +1096,18 @@ export class SupabaseTicketsComponent implements OnInit {
 
   removeDeviceFromTicket(deviceId: string) {
     this.selectedDevices = this.selectedDevices.filter(d => d.id !== deviceId);
+  }
+
+  // Open modal to create a new device (prefill company/client context)
+  openCreateDeviceForm() {
+    this.deviceFormData = {
+      company_id: this.selectedCustomer?.company_id || this.selectedCompanyId,
+      client_id: this.selectedCustomer?.id || '',
+      status: 'received',
+      priority: 'normal'
+    };
+    this.selectedDeviceImages = [];
+    this.showCreateDeviceForm = true;
   }
 
   openDeviceForm() {

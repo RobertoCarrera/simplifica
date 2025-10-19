@@ -153,7 +153,7 @@
 
   <!-- Tickets Content -->
   <div *ngIf="!loading && !error" class="tickets-content">
-    
+        <div class="modal-body modal-medium">
     <!-- List View -->
     <div *ngIf="viewMode === 'list'" class="tickets-list">
       <div *ngFor="let ticket of filteredTickets" class="ticket-card">
@@ -559,51 +559,93 @@
                 </div>
               </div>
 
-              <!-- Resumen -->
-              <div class="services-summary">
-                <div class="summary-row">
-                  <span>Total Horas:</span>
-                  <strong>{{ getTotalEstimatedHours() }}h</strong>
-                </div>
-                <div class="summary-row">
-                  <span>Total Servicios:</span>
-                  <strong>{{ getSelectedServicesTotal() }}€</strong>
-                </div>
-              </div>
+              <!-- Resumen eliminado a petición: en SAT solo se gestionan servicios seleccionados aquí -->
             </div>
           </div>
 
-          <!-- Sección de Productos -->
+          <!-- Sección de Productos (homogénea con Servicios) -->
           <div class="products-section">
-            <div class="section-header">
+            <div class="services-header">
               <h3>
                 <i class="fas fa-box"></i>
                 Productos
               </h3>
-              <button 
-                type="button" 
-                class="btn btn-primary btn-sm"
-                (click)="openProductsModal()">
+              <button type="button" class="btn btn-outline btn-sm" (click)="openProductForm()">
                 <i class="fas fa-plus"></i>
-                Agregar
+                Producto
               </button>
             </div>
 
             <!-- Error de productos -->
-            <div *ngIf="formErrors['items']" class="error-message">
+            <div *ngIf="formErrors['items']" class="error-message mb-3">
+              <i class="fas fa-exclamation-triangle"></i>
               {{ formErrors['items'] }}
             </div>
 
-            <!-- Lista de productos seleccionados -->
-            <div *ngIf="selectedProducts.length > 0" class="selected-products">
-              <h4>Productos Seleccionados</h4>
-              <div class="selected-products-list">
-                <div *ngFor="let item of selectedProducts" class="selected-product-item">
-                  <div class="product-info">
-                    <div class="product-name">{{ item.product.name }}</div>
-                    <div class="product-price">{{ item.product.price }}€ × {{ item.quantity }}</div>
+            <!-- Lista de productos disponibles -->
+            <div class="available-services">
+              <h4>
+                <span *ngIf="!productSearchText.trim()">Productos Más Usados</span>
+                <span *ngIf="productSearchText.trim()">Resultados de Búsqueda</span>
+              </h4>
+
+              <!-- Buscador de productos -->
+              <div class="search-container">
+                <input 
+                  type="text" 
+                  name="productSearchText"
+                  [(ngModel)]="productSearchText" 
+                  (input)="filterProducts()"
+                  placeholder="Buscar productos por nombre, descripción o categoría..."
+                  class="search-input">
+                <i class="fas fa-search search-icon"></i>
+              </div>
+
+              <div class="services-grid">
+                <div 
+                  *ngFor="let product of filteredProducts" 
+                  class="service-item"
+                  [class.selected]="isProductSelected(product.id)"
+                  (click)="addProductToTicket(product)">
+                  <div class="service-info">
+                    <div class="service-name">{{ product.name }}</div>
+                    <div class="service-details">
+                      {{ product.price }}€
+                      <span *ngIf="product.category" class="service-category">• {{ product.category }}</span>
+                    </div>
+                    <div *ngIf="product.description" class="service-description">{{ product.description }}</div>
                   </div>
-                  <div class="product-controls">
+                  <div class="service-actions">
+                    <button type="button" class="btn-add">
+                      <i class="fas fa-plus"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mensaje cuando no hay resultados -->
+              <div *ngIf="filteredProducts.length === 0" class="no-results">
+                <i class="fas fa-search"></i>
+                <p>No se encontraron productos que coincidan con tu búsqueda</p>
+              </div>
+
+              <!-- Mensaje informativo para productos más usados -->
+              <div *ngIf="!productSearchText.trim() && filteredProducts.length > 0" class="info-message">
+                <i class="fas fa-info-circle"></i>
+                <span>Mostrando los 3 productos más utilizados. Usa el buscador para ver todos.</span>
+              </div>
+            </div>
+
+            <!-- Lista de productos seleccionados -->
+            <div *ngIf="selectedProducts.length > 0" class="selected-services">
+              <h4>Productos Seleccionados</h4>
+              <div class="selected-services-list">
+                <div *ngFor="let item of selectedProducts" class="selected-service-item">
+                  <div class="service-info">
+                    <div class="service-name">{{ item.product.name }}</div>
+                    <div class="service-price">{{ item.product.price }}€ × {{ item.quantity }}</div>
+                  </div>
+                  <div class="service-controls">
                     <input 
                       type="number" 
                       [value]="item.quantity" 
@@ -619,17 +661,9 @@
                   </div>
                 </div>
               </div>
-
-              <!-- Resumen -->
-              <div class="products-summary">
-                <div class="summary-row">
-                  <span>Total Productos:</span>
-                  <strong>{{ getSelectedProductsTotal() }}€</strong>
-                </div>
-              </div>
             </div>
 
-            <!-- Resumen General si hay servicios y productos -->
+            <!-- Resumen General si hay servicios y/o productos -->
             <div *ngIf="selectedServices.length > 0 || selectedProducts.length > 0" class="grand-total-summary">
               <div class="summary-row grand-total">
                 <span>Total General:</span>
@@ -648,7 +682,7 @@
               <button 
                 type="button" 
                 class="btn btn-primary btn-sm"
-                (click)="showCreateDeviceForm = !showCreateDeviceForm">
+                (click)="openCreateDeviceForm()">
                 <i class="fas fa-plus"></i>
                 Nuevo
               </button>
@@ -744,163 +778,7 @@
               </div>
             </div>
 
-            <!-- Formulario para crear nuevo dispositivo -->
-            <div *ngIf="showCreateDeviceForm" class="create-device-form">
-              <h4>
-                <i class="fas fa-plus"></i>
-                Crear Nuevo Dispositivo
-              </h4>
-              
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="device_brand">Marca *</label>
-                  <input 
-                    type="text" 
-                    id="device_brand"
-                    [(ngModel)]="deviceFormData.brand"
-                    name="device_brand"
-                    class="form-control"
-                    placeholder="Ej: Apple, Samsung, Xiaomi">
-                </div>
-                <div class="form-group">
-                  <label for="device_model">Modelo *</label>
-                  <input 
-                    type="text" 
-                    id="device_model"
-                    [(ngModel)]="deviceFormData.model"
-                    name="device_model"
-                    class="form-control"
-                    placeholder="Ej: iPhone 14, Galaxy S23">
-                </div>
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="device_imei">IMEI</label>
-                  <input 
-                    type="text" 
-                    id="device_imei"
-                    [(ngModel)]="deviceFormData.imei"
-                    name="device_imei"
-                    class="form-control"
-                    placeholder="Número IMEI del dispositivo">
-                </div>
-                <div class="form-group">
-                  <label for="device_color">Color</label>
-                  <input 
-                    type="text" 
-                    id="device_color"
-                    [(ngModel)]="deviceFormData.color"
-                    name="device_color"
-                    class="form-control"
-                    placeholder="Color del dispositivo">
-                </div>
-                <div class="form-group">
-                  <label for="device_type">Tipo *</label>
-                  <select 
-                    id="device_type"
-                    [(ngModel)]="deviceFormData.device_type"
-                    name="device_type"
-                    class="form-control">
-                    <option value="">Seleccionar tipo</option>
-                    <option value="smartphone">Smartphone</option>
-                    <option value="tablet">Tablet</option>
-                    <option value="laptop">Portátil</option>
-                    <option value="desktop">Ordenador</option>
-                    <option value="console">Consola</option>
-                    <option value="other">Otro</option>
-                  </select>
-                </div>
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="reported_issue">Problema Reportado *</label>
-                  <textarea 
-                    id="reported_issue"
-                    [(ngModel)]="deviceFormData.reported_issue"
-                    name="reported_issue"
-                    class="form-control"
-                    rows="2"
-                    placeholder="Describe el problema reportado por el cliente">
-                  </textarea>
-                </div>
-              </div>
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="device_notes">Estado al llegar</label>
-                  <textarea 
-                    id="device_notes"
-                    [(ngModel)]="deviceFormData.condition_on_arrival"
-                    name="device_notes"
-                    class="form-control"
-                    rows="3"
-                    placeholder="Estado inicial, accesorios incluidos, etc.">
-                  </textarea>
-                </div>
-              </div>
-
-              <!-- Sección de imágenes -->
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="device_images">Imágenes del dispositivo</label>
-                  <div class="image-upload-container">
-                    <input 
-                      type="file" 
-                      id="device_images"
-                      (change)="onDeviceImagesSelected($event)"
-                      name="device_images"
-                      accept="image/*"
-                      multiple
-                      class="file-input">
-                    
-                    <label for="device_images" class="file-upload-label">
-                      <i class="fas fa-camera"></i>
-                      <span>Agregar imágenes</span>
-                      <small>Arrastra archivos aquí o haz click para seleccionar</small>
-                    </label>
-                  </div>
-
-                  <!-- Preview de imágenes seleccionadas -->
-                  <div *ngIf="selectedDeviceImages.length > 0" class="image-preview-container">
-                    <div class="image-preview-grid">
-                      <div 
-                        *ngFor="let image of selectedDeviceImages; let i = index" 
-                        class="image-preview-item">
-                        <img [src]="image.preview" [alt]="image.file.name">
-                        <div class="image-overlay">
-                          <button 
-                            type="button" 
-                            class="btn-remove-image"
-                            (click)="removeDeviceImage(i)">
-                            <i class="fas fa-trash"></i>
-                          </button>
-                        </div>
-                        <span class="image-name">{{ image.file.name }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="form-actions">
-                <button 
-                  type="button" 
-                  class="btn btn-secondary"
-                  (click)="cancelCreateDevice()">
-                  Cancelar
-                </button>
-                <button 
-                  type="button" 
-                  class="btn btn-primary"
-                  (click)="createAndSelectDevice()"
-                  [disabled]="!deviceFormData.brand || !deviceFormData.model || !deviceFormData.device_type || !deviceFormData.reported_issue">
-                  <i class="fas fa-save"></i>
-                  Crear
-                </button>
-              </div>
-            </div>
+            <!-- Inline create-device-form removed; moved to modal for consistency -->
           </div>
         </form>
       </div>
@@ -910,6 +788,162 @@
         <button class="btn btn-primary" (click)="saveTicket()" [disabled]="loading">
           <i class="fas fa-save"></i>
           {{ editingTicket ? 'Actualizar' : 'Crear' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para crear dispositivo -->
+  <div *ngIf="showCreateDeviceForm" class="modal-overlay">
+    <div class="modal-content modal-medium" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2 class="modal-title">
+          <i class="fas fa-mobile-alt"></i>
+          Nuevo Dispositivo
+        </h2>
+        <button class="modal-close" (click)="cancelCreateDevice()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="device_brand">Marca *</label>
+            <input 
+              type="text" 
+              id="device_brand"
+              [(ngModel)]="deviceFormData.brand"
+              name="device_brand"
+              class="form-control"
+              placeholder="Ej: Apple, Samsung, Xiaomi">
+          </div>
+          <div class="form-group">
+            <label for="device_model">Modelo *</label>
+            <input 
+              type="text" 
+              id="device_model"
+              [(ngModel)]="deviceFormData.model"
+              name="device_model"
+              class="form-control"
+              placeholder="Ej: iPhone 14, Galaxy S23">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="device_imei">IMEI</label>
+            <input 
+              type="text" 
+              id="device_imei"
+              [(ngModel)]="deviceFormData.imei"
+              name="device_imei"
+              class="form-control"
+              placeholder="Número IMEI del dispositivo">
+          </div>
+          <div class="form-group">
+            <label for="device_color">Color</label>
+            <input 
+              type="text" 
+              id="device_color"
+              [(ngModel)]="deviceFormData.color"
+              name="device_color"
+              class="form-control"
+              placeholder="Color del dispositivo">
+          </div>
+          <div class="form-group">
+            <label for="device_type">Tipo *</label>
+            <select 
+              id="device_type"
+              [(ngModel)]="deviceFormData.device_type"
+              name="device_type"
+              class="form-control">
+              <option value="">Seleccionar tipo</option>
+              <option value="smartphone">Smartphone</option>
+              <option value="tablet">Tablet</option>
+              <option value="laptop">Portátil</option>
+              <option value="desktop">Ordenador</option>
+              <option value="console">Consola</option>
+              <option value="other">Otro</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="reported_issue">Problema Reportado *</label>
+            <textarea 
+              id="reported_issue"
+              [(ngModel)]="deviceFormData.reported_issue"
+              name="reported_issue"
+              class="form-control"
+              rows="2"
+              placeholder="Describe el problema reportado por el cliente">
+            </textarea>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="device_notes">Estado al llegar</label>
+            <textarea 
+              id="device_notes"
+              [(ngModel)]="deviceFormData.condition_on_arrival"
+              name="device_notes"
+              class="form-control"
+              rows="3"
+              placeholder="Estado inicial, accesorios incluidos, etc.">
+            </textarea>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="device_images">Imágenes del dispositivo</label>
+            <div class="image-upload-container">
+              <input 
+                type="file" 
+                id="device_images"
+                (change)="onDeviceImagesSelected($event)"
+                name="device_images"
+                accept="image/*"
+                multiple
+                class="file-input">
+              
+              <label for="device_images" class="file-upload-label">
+                <i class="fas fa-camera"></i>
+                <span>Agregar imágenes</span>
+                <small>Arrastra archivos aquí o haz click para seleccionar</small>
+              </label>
+            </div>
+
+            <div *ngIf="selectedDeviceImages.length > 0" class="image-preview-container">
+              <div class="image-preview-grid">
+                <div 
+                  *ngFor="let image of selectedDeviceImages; let i = index" 
+                  class="image-preview-item">
+                  <img [src]="image.preview" [alt]="image.file.name">
+                  <div class="image-overlay">
+                    <button 
+                      type="button" 
+                      class="btn-remove-image"
+                      (click)="removeDeviceImage(i)">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                  <span class="image-name">{{ image.file.name }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="cancelCreateDevice()">Cancelar</button>
+        <button class="btn btn-primary" (click)="createAndSelectDevice()" [disabled]="!deviceFormData.brand || !deviceFormData.model || !deviceFormData.device_type || !deviceFormData.reported_issue">
+          <i class="fas fa-save"></i>
+          Crear
         </button>
       </div>
     </div>
@@ -1111,73 +1145,120 @@
     </div>
   </div>
 
-  <!-- Modal para seleccionar productos -->
-  <div *ngIf="showProductsModal" class="modal-overlay" (click)="closeProductsModal()">
-    <div class="modal-content modal-large" (click)="$event.stopPropagation()">
+  <!-- Modal para crear producto -->
+  <div *ngIf="showProductForm" class="modal-overlay">
+    <div class="modal-content modal-medium" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h2 class="modal-title">
           <i class="fas fa-box"></i>
-          Seleccionar Productos
+          Nuevo Producto
         </h2>
-        <button class="modal-close" (click)="closeProductsModal()">
+        <button class="modal-close" (click)="closeProductForm()">
           <i class="fas fa-times"></i>
         </button>
       </div>
-      
-      <div class="modal-body">
-        <!-- Búsqueda de productos -->
-        <div class="search-box">
-          <i class="fas fa-search"></i>
-          <input 
-            type="text" 
-            [(ngModel)]="productSearchText"
-            (input)="filterProducts()"
-            placeholder="Buscar productos..."
-            class="search-input">
-        </div>
 
-        <!-- Lista de productos disponibles -->
-        <div class="products-grid">
-          <div 
-            *ngFor="let product of filteredProducts" 
-            class="product-card"
-            [class.selected]="isProductSelected(product.id)"
-            (click)="addProductToTicket(product)">
-            <div class="product-header">
-              <h4 class="product-name">{{ product.name }}</h4>
-              <span class="product-price">{{ product.price }}€</span>
-            </div>
-            <p class="product-description" *ngIf="product.description">
-              {{ product.description }}
-            </p>
-            <div class="product-footer">
-              <span class="product-stock" 
-                    [class.low-stock]="product.stock_quantity <= 5"
-                    [class.out-stock]="product.stock_quantity === 0">
-                <i class="fas fa-box"></i>
-                Stock: {{ product.stock_quantity || 0 }}
-              </span>
-              <span class="product-selected" *ngIf="isProductSelected(product.id)">
-                <i class="fas fa-check"></i> Seleccionado
-              </span>
-            </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="product_name">Nombre *</label>
+            <input 
+              type="text" 
+              id="product_name"
+              [(ngModel)]="productFormData.name"
+              name="product_name"
+              class="form-control"
+              placeholder="Ej: Cable USB-C, Funda protectora">
           </div>
         </div>
 
-        <!-- Mensaje si no hay productos -->
-        <div *ngIf="filteredProducts.length === 0" class="empty-message">
-          <i class="fas fa-box-open"></i>
-          <p>No se encontraron productos</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="product_price">Precio (€)</label>
+            <input 
+              type="number" 
+              id="product_price"
+              [(ngModel)]="productFormData.price"
+              name="product_price"
+              class="form-control"
+              min="0"
+              step="0.01"
+              placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label for="product_category">Categoría</label>
+            <input 
+              type="text" 
+              id="product_category"
+              [(ngModel)]="productFormData.category"
+              name="product_category"
+              class="form-control"
+              placeholder="Ej: Accesorios, Repuestos">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="product_brand">Marca</label>
+            <input 
+              type="text" 
+              id="product_brand"
+              [(ngModel)]="productFormData.brand"
+              name="product_brand"
+              class="form-control"
+              placeholder="Marca del producto">
+          </div>
+          <div class="form-group">
+            <label for="product_model">Modelo</label>
+            <input 
+              type="text" 
+              id="product_model"
+              [(ngModel)]="productFormData.model"
+              name="product_model"
+              class="form-control"
+              placeholder="Modelo del producto">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="product_stock">Stock Inicial</label>
+            <input 
+              type="number" 
+              id="product_stock"
+              [(ngModel)]="productFormData.stock_quantity"
+              name="product_stock"
+              class="form-control"
+              min="0"
+              placeholder="0">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="product_description">Descripción</label>
+            <textarea 
+              id="product_description"
+              [(ngModel)]="productFormData.description"
+              name="product_description"
+              class="form-control"
+              rows="3"
+              placeholder="Descripción del producto..."></textarea>
+          </div>
         </div>
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="closeProductsModal()">
-          Cerrar
+        <button class="btn btn-secondary" (click)="closeProductForm()">Cancelar</button>
+        <button class="btn btn-primary" (click)="createProductFromTicket()" [disabled]="!productFormData.name?.trim()">
+          <i class="fas fa-save"></i>
+          Crear y Agregar
         </button>
       </div>
     </div>
   </div>
+
+  
 
   <!-- Floating Action Button (FAB) -->
   <button
