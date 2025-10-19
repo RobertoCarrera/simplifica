@@ -4,12 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { SupabaseTicketStagesService, TicketStage, CreateStagePayload, UpdateStagePayload } from '../../services/supabase-ticket-stages.service';
+import { TextContrastPipe } from '../../pipes/text-contrast.pipe';
 import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-stages-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, DragDropModule],
+  imports: [CommonModule, FormsModule, RouterLink, DragDropModule, TextContrastPipe],
   template: `
     <!-- Header -->
     <div class="header">
@@ -23,7 +24,14 @@ import { ToastService } from '../../services/toast.service';
       <div class="section">
         <div class="section-header">
           <h3><i class="fas fa-globe"></i> Estados del Sistema</h3>
-          <button class="btn btn-outline" (click)="hideAllSystemStages()" [disabled]="hidingAllGenericStages" title="Ocultar todos los estados del sistema">
+          <button
+            class="btn btn-outline"
+            (click)="hideAllSystemStages()"
+            [disabled]="hidingAllGenericStages"
+            title="Ocultar todos los estados del sistema"
+            [style.color]="newStage.color | textContrast"
+            [style.background-color]="(newStage.color | textContrast) === '#000' ? '#fff' : '#000'"
+          >
             <i class="fas fa-eye-slash"></i> Ocultar Todos
           </button>
         </div>
@@ -41,45 +49,68 @@ import { ToastService } from '../../services/toast.service';
         >
           @for (stage of visibleGenericStages; track stage.id) {
             <div
-              class="stage-card generic flex justify-between"
+              class="stage-card generic"
               cdkDrag
+              [style.background-color]="stage.color"
+              [style.color]="stage.color | textContrast"
             >
-              <div class="drag-handle" cdkDragHandle>
+              <div class="drag-handle" cdkDragHandle [style.color]="stage.color | textContrast">
                 <i class="fas fa-grip-vertical"></i>
               </div>
+
               <ng-template cdkDragPreview>
-                <div class="stage-card generic drag-preview">
-                  <div class="drag-handle">
+                <div class="stage-card generic drag-preview" [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
+                  <div class="drag-handle" [style.color]="stage.color | textContrast">
                     <i class="fas fa-grip-vertical"></i>
                   </div>
                   <div class="card-body">
                     <div class="title-row">
                       <div class="name">{{ stage.name }}</div>
                       <div>
-                        <span class="badge">Pos: {{ stage.position }}</span>
-                        <span class="badge badge-system">Sistema</span>
+                        <span
+                          class="badge"
+                          [style.color]="stage.color | textContrast"
+                          [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
+                          Pos: {{ stage.position }}
+                        </span>
+                        <span
+                          class="badge badge-system"
+                          [style.color]="stage.color | textContrast"
+                          [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
+                          Sistema
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
               </ng-template>
+
               <ng-template cdkDragPlaceholder>
                 <div class="stage-card generic placeholder"></div>
               </ng-template>
-              <div class="card-body">
-                <div class="title-row flex flex-row">
-                  <div>
-                    <span class="badge mr-2">Pos: {{ stage.position }}</span>
-                  </div>
-                  <div class="name">{{ stage.name }}</div>
+
+              <div class="stage-info">
+                <div class="stage-name">{{ stage.name }}</div>
+                <div class="stage-meta">
+                  <span
+                    class="badge"
+                    [style.color]="stage.color | textContrast"
+                    [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
+                    Posición: {{ stage.position }}
+                  </span>
                 </div>
               </div>
-              <div class="actions">
+
+              <div class="stage-actions">
                 <button
-                  class="btn btn-sm btn-outline"
+                  class="btn-icon btn-secondary"
                   (click)="hideStage(stage)"
                   [disabled]="!!togglingVisibilityById[stage.id]"
                   title="Ocultar este estado"
+                  (mouseenter)="setBtnHover(stage.id, true)"
+                  (mouseleave)="setBtnHover(stage.id, false)"
+                  [style.color]="stage.color | textContrast"
+                  [style.background-color]="btnHoverById[stage.id] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
                 >
                   <i class="fas fa-eye-slash"></i>
                 </button>
@@ -93,25 +124,34 @@ import { ToastService } from '../../services/toast.service';
           </div>
           <div class="stages-grid hidden-list">
             @for (stage of hiddenGenericStages; track stage.id) {
-              <div class="stage-card generic hidden-stage flex justify-between">
-                <div class="card-body">
-                  <div class="title-row">
-                    <div class="name">
-                      {{ stage.name }}
+                <div class="stage-card generic hidden-stage flex justify-between" [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
+                  <div class="stage-info">
+                        <div class="stage-name">{{ stage.name }}</div>
+                        <div class="stage-meta">
+                          <span
+                            class="badge"
+                            [style.color]="stage.color | textContrast"
+                            [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
+                            Posición: {{ stage.position }}
+                          </span>
+                        </div>
+                      </div>
+                    <div class="stage-actions">
+                      <button 
+                        class="btn-icon btn-secondary" 
+                        (click)="unhideStage(stage)"
+                        [disabled]="!!togglingVisibilityById[stage.id]"
+                        title="Mostrar este estado"
+                        (mouseenter)="setBtnHover(stage.id, true)"
+                        (mouseleave)="setBtnHover(stage.id, false)"
+                        [style.color]="stage.color | textContrast"
+                        [style.background-color]="btnHoverById[stage.id] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
+                      >
+                        <i class="fas fa-eye"></i>
+                      </button>
                     </div>
                   </div>
-                </div>
-                <div class="actions">
-                  <button 
-                    class="btn btn-sm btn-success" 
-                    (click)="unhideStage(stage)"
-                    [disabled]="!!togglingVisibilityById[stage.id]"
-                    title="Mostrar este estado">
-                    <i class="fas fa-eye"></i>
-                  </button>
-                </div>
-              </div>
-            }
+              }
           </div>
         }
       </div>
@@ -197,10 +237,10 @@ import { ToastService } from '../../services/toast.service';
           } @else {
             <div class="stages-grid" cdkDropList (cdkDropListDropped)="onDropCompany($event)">
               @for (stage of companyStages; track stage.id) {
-                <div class="stage-card company" cdkDrag>
-                  <div class="drag-handle" cdkDragHandle>
-                    <i class="fas fa-grip-vertical"></i>
-                  </div>
+                  <div class="stage-card company" cdkDrag [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
+                    <div class="drag-handle" cdkDragHandle [style.color]="stage.color | textContrast">
+                        <i class="fas fa-grip-vertical"></i>
+                      </div>
                   @if (editingStageId === stage.id) {
                     <!-- Edit Form -->
                     <form (ngSubmit)="saveEdit()" class="edit-form">
@@ -231,29 +271,63 @@ import { ToastService } from '../../services/toast.service';
                         />
                       </div>
                       <div class="edit-actions">
-                        <button type="submit" class="btn-icon btn-success" title="Guardar">
+                        <button
+                          type="submit"
+                          class="btn-icon btn-success"
+                          title="Guardar"
+                          (mouseenter)="setBtnHover(stage.id, true)"
+                          (mouseleave)="setBtnHover(stage.id, false)"
+                          [style.color]="(editStage.color || stage.color) | textContrast"
+                          [style.background-color]="btnHoverById[stage.id] ? (((editStage.color || stage.color) | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'">
                           <i class="fas fa-check"></i>
                         </button>
-                        <button type="button" class="btn-icon btn-secondary" (click)="cancelEdit()" title="Cancelar">
+                        <button
+                          type="button"
+                          class="btn-icon btn-secondary"
+                          (click)="cancelEdit()"
+                          title="Cancelar"
+                          (mouseenter)="setBtnHover(stage.id, true)"
+                          (mouseleave)="setBtnHover(stage.id, false)"
+                          [style.color]="(editStage.color || stage.color) | textContrast"
+                          [style.background-color]="btnHoverById[stage.id] ? (((editStage.color || stage.color) | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'">
                           <i class="fas fa-times"></i>
                         </button>
                       </div>
                     </form>
                   } @else {
                     <!-- View Mode -->
-                    <div class="stage-color" [style.background-color]="stage.color"></div>
                     <div class="stage-info">
                       <div class="stage-name">{{ stage.name }}</div>
                       <div class="stage-meta">
-                        <span class="badge">Posición: {{ stage.position }}</span>
-                        <span class="badge badge-company">Personalizado</span>
+                        <span
+                          class="badge"
+                          [style.color]="stage.color | textContrast"
+                          [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
+                          Posición: {{ stage.position }}
+                        </span>
                       </div>
                     </div>
                     <div class="stage-actions">
-                      <button class="btn-icon btn-primary" (click)="startEdit(stage)" title="Editar">
+                      <button
+                        class="btn-icon btn-primary"
+                        (click)="startEdit(stage)"
+                        title="Editar"
+                        (mouseenter)="setBtnHover(stage.id, true)"
+                        (mouseleave)="setBtnHover(stage.id, false)"
+                        [style.color]="stage.color | textContrast"
+                        [style.background-color]="btnHoverById[stage.id] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
+                      >
                         <i class="fas fa-edit"></i>
                       </button>
-                      <button class="btn-icon btn-danger" (click)="deleteStage(stage.id)" title="Eliminar">
+                      <button
+                        class="btn-icon btn-danger"
+                        (click)="deleteStage(stage.id)"
+                        title="Eliminar"
+                        (mouseenter)="setBtnHover(stage.id, true)"
+                        (mouseleave)="setBtnHover(stage.id, false)"
+                        [style.color]="stage.color | textContrast"
+                        [style.background-color]="btnHoverById[stage.id] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
+                      >
                         <i class="fas fa-trash"></i>
                       </button>
                     </div>
@@ -541,13 +615,7 @@ import { ToastService } from '../../services/toast.service';
       cursor: move; /* draggable */
     }
 
-    .stage-color {
-      width: 50px;
-      height: 50px;
-      border-radius: 0.5rem;
-      flex-shrink: 0;
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
+
 
     .stage-info {
       flex: 1;
@@ -556,7 +624,7 @@ import { ToastService } from '../../services/toast.service';
 
     .stage-name {
       font-weight: 600;
-      color: #1f2937;
+      color: inherit;
       margin-bottom: 0.25rem;
     }
 
@@ -694,13 +762,16 @@ import { ToastService } from '../../services/toast.service';
       background: #4f46e5;
     }
 
-    .btn-success {
-      background: #10b981;
+    .btn-ocultar {
+      background: transparent;
       color: white;
+      border: 1px solid transparent;
     }
 
-    .btn-success:hover:not(:disabled) {
-      background: #059669;
+    .btn-ocultar:hover:not(:disabled) {
+      border: 1px solid white;
+      color: black;
+      background: white;
     }
 
     .btn-secondary {
@@ -729,7 +800,7 @@ import { ToastService } from '../../services/toast.service';
     .btn-outline {
       background: transparent;
       border: 1px solid #d1d5db;
-      color: #6b7280;
+      color: white;
     }
 
     .btn-outline:hover:not(:disabled) {
@@ -879,6 +950,8 @@ export class StagesManagementComponent implements OnInit {
   creating = false;
   // Per-item loading map for hide/unhide actions
   togglingVisibilityById: Record<string, boolean> = {};
+  // Per-button hover state map for outline buttons inside colored cards
+  btnHoverById: Record<string, boolean> = {};
   showCreateForm = false;
   successMessage = '';
   errorMessage = '';
@@ -1071,6 +1144,10 @@ export class StagesManagementComponent implements OnInit {
     this.togglingVisibilityById = { ...this.togglingVisibilityById, [id]: value };
   }
 
+  setBtnHover(id: string, value: boolean) {
+    this.btnHoverById = { ...this.btnHoverById, [id]: value };
+  }
+
   async hideStage(stage: TicketStage) {
     this.setToggling(stage.id, true);
     this.clearMessages();
@@ -1135,6 +1212,8 @@ export class StagesManagementComponent implements OnInit {
     this.successMessage = '';
     this.errorMessage = '';
   }
+
+  
 
   // Drag and Drop handlers
   async onDropGeneric(event: CdkDragDrop<TicketStage[]>) {
