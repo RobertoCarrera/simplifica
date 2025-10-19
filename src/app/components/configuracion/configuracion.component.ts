@@ -11,6 +11,8 @@ import { environment } from '../../../environments/environment';
 import { SupabaseUnitsService, UnitOfMeasure } from '../../services/supabase-units.service';
 import { CompanyAdminComponent } from '../company-admin/company-admin.component';
 import { HelpComponent } from '../help/help.component';
+import { ToastService } from '../../services/toast.service';
+import { UserModulesService, type UserModule, type ModuleStatus } from '../../services/user-modules.service';
 
 @Component({
   selector: 'app-configuracion',
@@ -26,8 +28,7 @@ export class ConfiguracionComponent implements OnInit {
   profileForm: FormGroup;
   passwordForm: FormGroup;
   loading = false;
-  message = '';
-  messageType: 'success' | 'error' = 'success';
+  // Migrated to toast service for notifications
   
   // Units management
   units: UnitOfMeasure[] = [];
@@ -46,6 +47,8 @@ export class ConfiguracionComponent implements OnInit {
   isSettingUpDev = false;
   devMessages: Array<{type: string, text: string, timestamp: Date}> = [];
   private supabase: SupabaseClient;
+  // User modules state
+  private userModules: UserModule[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -53,7 +56,9 @@ export class ConfiguracionComponent implements OnInit {
     public devRoleService: DevRoleService,
     private router: Router,
     private sbClient: SupabaseClientService,
-    private unitsService: SupabaseUnitsService
+    private unitsService: SupabaseUnitsService,
+    private toast: ToastService,
+    private userModulesService: UserModulesService
   ) {
     this.supabase = this.sbClient.instance;
     this.profileForm = this.fb.group({
@@ -79,6 +84,7 @@ export class ConfiguracionComponent implements OnInit {
   ngOnInit() {
     this.loadUserProfile();
     this.loadUnits();
+    this.loadUserModules();
   }
 
   private loadUserProfile() {
@@ -90,6 +96,8 @@ export class ConfiguracionComponent implements OnInit {
             full_name: profile.full_name || '',
             email: profile.email
           });
+          // After user profile is available, ensure modules are loaded (in case of timing)
+          this.loadUserModules();
         }
       },
       error: (error: any) => {
@@ -104,8 +112,28 @@ export class ConfiguracionComponent implements OnInit {
       this.loading = true;
       try {
         const profileData = this.profileForm.value;
-        // Aquí implementarías la actualización del perfil
-        // await this.authService.updateProfile(profileData);
+        // 1) Actualizar metadatos en Auth (full_name) si hay sesión
+        try {
+          await this.supabase.auth.updateUser({
+            data: { full_name: profileData.full_name }
+          });
+        } catch (e) {
+          // No bloquear si falla metadata; seguimos con tabla app
+          console.warn('No se pudo actualizar metadatos de auth:', e);
+        }
+
+        // 2) Actualizar tabla public.users (name/surname)
+        const userId = this.userProfile?.id;
+        if (userId) {
+          const { error } = await this.supabase
+            .from('users')
+            .update({ name: profileData.full_name })
+            .eq('id', userId);
+          if (error) throw error;
+        }
+
+        // 3) Refrescar perfil en el servicio para reflejar cambios
+        await this.authService.refreshCurrentUser();
         this.showMessage('Perfil actualizado correctamente', 'success');
       } catch (error) {
         this.showMessage('Error al actualizar el perfil', 'error');
@@ -121,10 +149,13 @@ export class ConfiguracionComponent implements OnInit {
       this.loading = true;
       try {
         const { newPassword } = this.passwordForm.value;
-        // Aquí implementarías el cambio de contraseña
-        // await this.authService.changePassword(newPassword);
-        this.showMessage('Contraseña cambiada correctamente', 'success');
-        this.passwordForm.reset();
+        const result = await this.authService.updatePassword(newPassword);
+        if (!result.success) {
+          this.showMessage(result.error || 'Error al cambiar la contraseña', 'error');
+        } else {
+          this.showMessage('Contraseña cambiada correctamente', 'success');
+          this.passwordForm.reset();
+        }
       } catch (error) {
         this.showMessage('Error al cambiar la contraseña', 'error');
         console.error('Error changing password:', error);
@@ -155,11 +186,12 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   private showMessage(message: string, type: 'success' | 'error') {
-    this.message = message;
-    this.messageType = type;
-    setTimeout(() => {
-      this.message = '';
-    }, 5000);
+    // Use toast notifications instead of inline status block
+    if (type === 'success') {
+      this.toast.success('Operación exitosa', message);
+    } else {
+      this.toast.error('Error', message);
+    }
   }
 
   // ===============================
@@ -317,6 +349,36 @@ export class ConfiguracionComponent implements OnInit {
       case 'admin': return 'Administrador';
       case 'member': return 'Miembro';
       default: return role;
+    }
+  }
+
+  // Devuelve una lista ordenada de módulos conocidos con su estado (activo/inactivo)
+  get modulesList(): Array<{ key: string; label: string; status: ModuleStatus }> {
+    const statusByKey: Record<string, ModuleStatus> = {};
+    for (const um of this.userModules) {
+      statusByKey[um.module_key] = um.status;
+    }
+
+    const known = [
+      { key: 'moduloFacturas', label: 'Facturación' },
+      { key: 'moduloPresupuestos', label: 'Presupuestos' },
+      { key: 'moduloServicios', label: 'Servicios' },
+      { key: 'moduloMaterial', label: 'Material' }
+    ];
+
+    return known.map(m => ({
+      key: m.key,
+      label: m.label,
+      status: statusByKey[m.key] || 'desactivado'
+    }));
+  }
+
+  private async loadUserModules() {
+    try {
+      // Cargar estados de módulos del usuario actual
+      this.userModules = await this.userModulesService.listForCurrentUser();
+    } catch (e) {
+      console.warn('No se pudieron cargar módulos del usuario:', e);
     }
   }
 

@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { SupabaseCustomersService } from '../../services/supabase-customers.service';
 import { SupabaseTicketsService, TicketStats } from '../../services/supabase-tickets.service';
 import { SupabaseServicesService } from '../../services/supabase-services.service';
+import { ProductsService } from '../../services/products.service';
 
 @Component({
   selector: 'app-home',
@@ -50,6 +51,16 @@ import { SupabaseServicesService } from '../../services/supabase-services.servic
           <div class="card-content">
             <h3>Servicios</h3>
             <span class="count">{{ servicesCount }}</span>
+          </div>
+        </a>
+
+        <a routerLink="/productos" class="card card-yellow">
+          <div class="card-icon">
+            <i class="fas fa-cogs"></i>
+          </div>
+          <div class="card-content">
+            <h3>Productos</h3>
+            <span class="count">{{ productsCount }}</span>
           </div>
         </a>
       </div>
@@ -254,9 +265,11 @@ export class HomeComponent implements OnInit {
   private customersService = inject(SupabaseCustomersService);
   private ticketsService = inject(SupabaseTicketsService);
   private servicesService = inject(SupabaseServicesService);
+  private productsService = inject(ProductsService);
 
   customersCount = 0;
   servicesCount = 0;
+  productsCount = 0;
   ticketsStats: TicketStats | null = null;
   recentTickets: any[] = [];
 

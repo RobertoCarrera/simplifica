@@ -97,7 +97,6 @@ WHERE tablename IN ('clients', 'addresses');
 **Email a enviar:**
 
 ```
-Para: soporte@anychat.one
 Asunto: Solicitud de Whitelist CORS para API
 
 Hola,
@@ -229,14 +228,6 @@ Antes de ejecutar SQL, hacer backup:
 2. Crear backup manual
 3. Esperar confirmación
 4. Luego ejecutar scripts
-
----
-
-## 📞 Contactos de Soporte
-
-- **AnyChat**: soporte@anychat.one
-- **Supabase**: Desde dashboard → Help
-- **Equipo Dev**: [tu-email@aqui.com]
 
 ---
 

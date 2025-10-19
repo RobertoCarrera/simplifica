@@ -7,10 +7,6 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     <div class="help-container">
-      <header class="help-header">
-        <h1><i class="fas fa-question-circle"></i> Ayuda y Soporte</h1>
-        <p class="subtitle">¿Necesitas ayuda? Aquí tienes varias formas de contactarnos</p>
-      </header>
 
       <div class="contact-grid">
         <div class="contact-card">
@@ -20,7 +16,7 @@ import { CommonModule } from '@angular/common';
           <div class="contact-content">
             <h3>Email</h3>
             <p>Envíanos un correo y te responderemos en menos de 24 horas</p>
-            <a href="mailto:soporte@simplifica.com" class="contact-btn">soporte&#64;simplifica.com</a>
+            <a href="mailto:soporte@sincronia.agency.com" class="contact-btn">soporte&#64;sincronia.agency.com</a>
           </div>
         </div>
 
@@ -31,7 +27,7 @@ import { CommonModule } from '@angular/common';
           <div class="contact-content">
             <h3>Teléfono</h3>
             <p>Llámanos de lunes a viernes de 9:00 a 18:00</p>
-            <a href="tel:+34900123456" class="contact-btn">+34 900 123 456</a>
+            <a href="tel:+34624344917" class="contact-btn">+34 624 34 49 17</a>
           </div>
         </div>
 
