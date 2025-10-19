@@ -1,105 +1,106 @@
-<div class="container-fluid h-100">
-    <div class="row h-100">
-        <div class="col-12">
-            <div class="row">
-                <div class="col-6 p-2">
-                    <label for="marca_producto" class="form-label">Marca</label>
-                    <select class="form-control" id="brands" name="brand" required 
-                        [(ngModel)]="selectedBrand" (change)="onBrandChange()">
-                        <option [ngValue]= "null" disabled hidden>Elige marca</option>
+<div class="w-full">
+    <div class="grid grid-cols-1 gap-4">
+        <div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="marca_producto" class="block text-sm font-medium text-gray-700">Marca</label>
+                    <select id="brands" name="brand" required 
+                            [(ngModel)]="selectedBrand" (change)="onBrandChange()"
+                            class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 bg-white focus:ring-2 focus:ring-orange-500">
+                        <option [ngValue]="null" disabled hidden>Elige marca</option>
                         <option *ngFor="let brand of brands" [ngValue]="brand">{{ brand.nombre }}</option>
                     </select>
-                </div><!--Sólo marca y modelos obligatorios. Otros opcionales-->
-                <div *ngIf="isSelectedBrand && models.length" class="col-6 p-2">
-                    <label for="modelSearch" class="form-label">Modelo</label>
-                    <input [(ngModel)]="selectedModelName"
-                    (input)="onSearchProductModel($event)"
-                    type="text" class="form-control" id="modelSearch"
-                    placeholder="Buscar Modelo..."
-                    name="modelSearch" required>
-                    <!-- <div *ngIf="newServiceForm.submitted && !selectedModel" class="text-danger">El modelo es obligatorio.</div> -->
-                    <ul *ngIf="filteredModels.length" class="list-group position-absolute z-2">
-                        <li *ngFor="let model of filteredModels"
-                            (click)="selectModel(model)"
-                            class="list-group-item">
-                            {{model.nombre}}
-                        </li>
-                    </ul>
                 </div>
-                <div *ngIf="selectedBrand!.nombre === 'Apple'" class="col-12 p-2">
-                    <label for="modelSearch" class="form-label">Nº de serie</label>
-                    <input [(ngModel)]="serialNumber"
-                    type="text" class="form-control" id="serialNumber"
-                    placeholder="Introducir SN"
-                    name="serialNumber" required>
+
+                <div *ngIf="isSelectedBrand && models.length">
+                    <label for="modelSearch" class="block text-sm font-medium text-gray-700">Modelo</label>
+                    <div class="relative mt-1">
+                        <input [(ngModel)]="selectedModelName"
+                                     (input)="onSearchProductModel($event)"
+                                     type="text" id="modelSearch" name="modelSearch" required
+                                     class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-orange-500"
+                                     placeholder="Buscar Modelo...">
+
+                        <ul *ngIf="filteredModels.length" class="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow max-h-48 overflow-y-auto">
+                            <li *ngFor="let model of filteredModels" (click)="selectModel(model)" class="px-3 py-2 hover:bg-gray-50 cursor-pointer">{{ model.nombre }}</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div *ngIf="selectedBrand!.nombre === 'Apple'" class="md:col-span-2">
+                    <label for="serialNumber" class="block text-sm font-medium text-gray-700">Nº de serie</label>
+                    <input [(ngModel)]="serialNumber" type="text" id="serialNumber" name="serialNumber" required
+                                 class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-orange-500" placeholder="Introducir SN">
                 </div>
             </div>
         </div>
-        <div class="row">
-            <div class="col-10">
-                <h2 class="fs-4">Información Opcional</h2>
-            </div>
-            <div *ngIf="selectedModelName" class="col-6 p-2">
-                <label for="cpuSearch" class="form-label">CPU</label>
-                <input [(ngModel)]="selectedCPUModel"
-                        (input)="onSearchProductCPU($event)"
-                        type="text" class="form-control" id="cpuSearch"
-                        placeholder="Buscar CPU..."
-                        name="cpuSearch" required>
-                <ul *ngIf="filteredCPUs.length" class="list-group position-absolute z-2">
-                    <li *ngFor="let cpu of filteredCPUs"
-                        (click)="selectCPU(cpu)"
-                        class="list-group-item">
-                        {{cpu.serie}}
-                    </li>
-                </ul>
-            </div>
-            <div *ngIf="selectedModelName" class="col-6 p-2">
-                <label for="ram_producto" class="form-label">RAM</label>
-                <select class="form-control" id="product-ram" name="product-ram" required [(ngModel)]="selectedProductRAM">
-                    <option value="" disabled hidden>Elige RAM</option>
-                    <option *ngFor="let ram of rams" [value]="ram">{{ ram.cantidad }} GB</option>
-                </select>
-                <!-- <div *ngIf="selectedRAM === true" class="text-danger">La RAM es obligatoria.</div> -->
-            </div>
-            <div *ngIf="selectedModelName" class="col-6 p-2">
-                <label for="ssd_producto" class="form-label">SSD</label>
-                <select class="form-control" id="product-ssd" name="product-ssd" required [(ngModel)]="selectedProductSSD">
-                    <option value="" disabled hidden>Elige SSD</option>
-                    <option *ngFor="let ssd of ssds" [value]="ssd">{{ ssd.capacidad }} GB</option>
-                </select>            <!-- <div *ngIf="selectedSSD === true" class="text-danger">El SSD es obligatoria.</div> -->
-            </div>
-            <div *ngIf="selectedModelName" class="col-6 p-2">
-                <label for="hdd_producto" class="form-label">HDD</label>
-                <select class="form-control" id="product-hhd" name="product-hhd" required [(ngModel)]="selectedProductHHD">
-                    <option value="" disabled hidden>Elige HHD</option>
-                    <option *ngFor="let hhd of hhds" [value]="hhd">{{ hhd.capacidad }} GB</option>
-                </select>              <!-- <div *ngIf="selectedHDD === true" class="text-danger">El HDD es obligatorio.</div> -->
-            </div>
-            <div *ngIf="selectedModelName" class="col-6 p-2">
-                <label for="grafica_producto" class="form-label">Tarjeta gráfica</label>
-                <input type="text" class="form-control" id="grafica_producto" placeholder="Buscar la gráfica" name="grafica_producto"required>
-                <!-- <div *ngIf="selectedGrafica === true" class="text-danger">La gráfica es obligatoria.</div> -->
-            </div>
-            <div *ngIf="selectedModelName" class="col-6 p-2">
-                <label for="pulgadas_producto" class="form-label">Pulgadas</label>
-                <select class="form-control" id="inches" name="inches" required [(ngModel)]="selectedProductInches">
-                    <option value="" disabled hidden>Elige Pulgadas</option>
-                    <option *ngFor="let inch of inches" [value]="inch">{{ inch.tamanyo }}</option>
-                </select>            <!-- <div *ngIf="selectedPulgadas === true" class="text-danger">Las pulgadas son obligatorias.</div> -->
-            </div>
-            <div *ngIf="selectedModelName" class="col-6 p-2">
-                <label for="peso_producto" class="form-label">Resolución</label> <!--Cambiar a resolución-->
-                <input type="text" class="form-control" id="peso_producto" placeholder="Introducir peso" name="peso_producto" required>
-                <!-- <div *ngIf="selectedPeso === true" class="text-danger">El peso es obligatorio.</div> -->
-            </div>
-            <div *ngIf="selectedModelName" class="col-6 p-2">
-                <label for="so_producto" class="form-label">SO</label>
-                <select class="form-control" id="sos" name="so" required [(ngModel)]="selectedSOName">
-                    <option value="" disabled hidden>Elige SO</option>
-                    <option *ngFor="let so of sos" [value]="so">{{ so.nombre }}</option>
-                </select>
-                <div *ngIf="selectedSO === true" class="text-danger">El SO es obligatoria.</div>
+
+        <div>
+            <h2 class="text-base font-semibold text-gray-900">Información Opcional</h2>
+
+            <div *ngIf="selectedModelName" class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="cpuSearch" class="block text-sm font-medium text-gray-700">CPU</label>
+                    <div class="relative mt-1">
+                        <input [(ngModel)]="selectedCPUModel" (input)="onSearchProductCPU($event)" type="text" id="cpuSearch" name="cpuSearch" required
+                                     class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-orange-500" placeholder="Buscar CPU...">
+
+                        <ul *ngIf="filteredCPUs.length" class="absolute left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-lg shadow max-h-48 overflow-y-auto">
+                            <li *ngFor="let cpu of filteredCPUs" (click)="selectCPU(cpu)" class="px-3 py-2 hover:bg-gray-50 cursor-pointer">{{ cpu.serie }}</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="ram_producto" class="block text-sm font-medium text-gray-700">RAM</label>
+                    <select id="product-ram" name="product-ram" required [(ngModel)]="selectedProductRAM" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2">
+                        <option value="" disabled hidden>Elige RAM</option>
+                        <option *ngFor="let ram of rams" [value]="ram">{{ ram.cantidad }} GB</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="ssd_producto" class="block text-sm font-medium text-gray-700">SSD</label>
+                    <select id="product-ssd" name="product-ssd" required [(ngModel)]="selectedProductSSD" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2">
+                        <option value="" disabled hidden>Elige SSD</option>
+                        <option *ngFor="let ssd of ssds" [value]="ssd">{{ ssd.capacidad }} GB</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="hdd_producto" class="block text-sm font-medium text-gray-700">HDD</label>
+                    <select id="product-hhd" name="product-hhd" required [(ngModel)]="selectedProductHHD" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2">
+                        <option value="" disabled hidden>Elige HHD</option>
+                        <option *ngFor="let hhd of hhds" [value]="hhd">{{ hhd.capacidad }} GB</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="grafica_producto" class="block text-sm font-medium text-gray-700">Tarjeta gráfica</label>
+                    <input type="text" id="grafica_producto" name="grafica_producto" placeholder="Buscar la gráfica" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2">
+                </div>
+
+                <div>
+                    <label for="pulgadas_producto" class="block text-sm font-medium text-gray-700">Pulgadas</label>
+                    <select id="inches" name="inches" required [(ngModel)]="selectedProductInches" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2">
+                        <option value="" disabled hidden>Elige Pulgadas</option>
+                        <option *ngFor="let inch of inches" [value]="inch">{{ inch.tamanyo }}</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="peso_producto" class="block text-sm font-medium text-gray-700">Resolución</label>
+                    <input type="text" id="peso_producto" name="peso_producto" placeholder="Introducir peso" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2">
+                </div>
+
+                <div>
+                    <label for="so_producto" class="block text-sm font-medium text-gray-700">SO</label>
+                    <select id="sos" name="so" required [(ngModel)]="selectedSOName" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2">
+                        <option value="" disabled hidden>Elige SO</option>
+                        <option *ngFor="let so of sos" [value]="so">{{ so.nombre }}</option>
+                    </select>
+                    <div *ngIf="selectedSO === true" class="text-red-600 text-sm mt-1">El SO es obligatoria.</div>
+                </div>
             </div>
         </div>
     </div>

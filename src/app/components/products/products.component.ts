@@ -14,6 +14,9 @@ import { firstValueFrom } from 'rxjs';
 })
 export class ProductsComponent implements OnInit {
   products: any[] = [];
+  filteredProducts: any[] = [];
+  searchTerm: string = '';
+  
   newProduct: any = {
     name: '',
     description: '',
@@ -41,6 +44,29 @@ export class ProductsComponent implements OnInit {
   private productsService = inject(ProductsService);
   private productMetadataService = inject(ProductMetadataService);
 
+  // Helpers to mimic Services modal behavior (prevent background scroll and hide bottom nav)
+  private lockBody() {
+    try {
+      document.body.classList.add('modal-open');
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.height = '100%';
+      document.documentElement.style.overflow = 'hidden';
+    } catch {}
+  }
+
+  private unlockBody() {
+    try {
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      document.body.style.height = '';
+      document.documentElement.style.overflow = '';
+    } catch {}
+  }
+
   ngOnInit() {
     this.loadProducts();
   }
@@ -51,6 +77,8 @@ export class ProductsComponent implements OnInit {
       this.productsService.getProducts().subscribe({
         next: (products) => {
           this.products = products;
+          this.filteredProducts = [...products];
+          this.filterProducts();
           this.isLoading = false;
         },
         error: (error) => {
@@ -62,6 +90,22 @@ export class ProductsComponent implements OnInit {
       console.error('Error loading products:', error);
       this.isLoading = false;
     }
+  }
+
+  filterProducts() {
+    if (!this.searchTerm.trim()) {
+      this.filteredProducts = [...this.products];
+      return;
+    }
+    
+    const searchText = this.searchTerm.toLowerCase().trim();
+    this.filteredProducts = this.products.filter(product =>
+      product.name?.toLowerCase().includes(searchText) ||
+      product.description?.toLowerCase().includes(searchText) ||
+      product.brand?.toLowerCase().includes(searchText) ||
+      product.category?.toLowerCase().includes(searchText) ||
+      product.model?.toLowerCase().includes(searchText)
+    );
   }
 
   async saveProduct() {
@@ -110,6 +154,9 @@ export class ProductsComponent implements OnInit {
     this.brandSearchText = product.brand || '';
     this.categorySearchText = product.category || '';
     this.showNewProductForm = true;
+    this.loadBrands();
+    this.loadCategories();
+    this.lockBody();
   }
 
   async deleteProduct(product: any) {
@@ -145,6 +192,7 @@ export class ProductsComponent implements OnInit {
     this.categorySearchText = '';
     this.showBrandInput = false;
     this.showCategoryInput = false;
+    this.unlockBody();
   }
 
   toggleForm() {
@@ -155,6 +203,18 @@ export class ProductsComponent implements OnInit {
     } else {
       this.resetForm();
     }
+  }
+
+  openForm() {
+    this.showNewProductForm = true;
+    this.loadBrands();
+    this.loadCategories();
+    this.lockBody();
+  }
+
+  closeFormIfClickOutside(event: MouseEvent) {
+    // Overlay receives this click; modal panel stops propagation
+    this.resetForm();
   }
 
   formatDate(dateString: string): string {

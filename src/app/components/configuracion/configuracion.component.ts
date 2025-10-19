@@ -9,15 +9,19 @@ import { SupabaseClientService } from '../../services/supabase-client.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../environments/environment';
 import { SupabaseUnitsService, UnitOfMeasure } from '../../services/supabase-units.service';
+import { CompanyAdminComponent } from '../company-admin/company-admin.component';
+import { HelpComponent } from '../help/help.component';
 
 @Component({
   selector: 'app-configuracion',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent],
   templateUrl: './configuracion.component.html',
   styleUrls: ['./configuracion.component.scss']
 })
 export class ConfiguracionComponent implements OnInit {
+  // UI tabs
+  activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' = 'perfil';
   userProfile: AppUser | null = null;
   profileForm: FormGroup;
   passwordForm: FormGroup;

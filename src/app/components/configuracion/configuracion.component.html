@@ -1,13 +1,11 @@
 <div class="p-1 space-y-8">
-  <!-- Header -->
-  <div class="text-center">
-    <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-      <i class="fas fa-cog mr-3 text-blue-600"></i>
-      Configuración
-    </h1>
-    <p class="text-gray-600 dark:text-gray-400">
-      Gestiona tu perfil y configuración de la cuenta
-    </p>
+
+  <!-- Tabs: Perfil | Empresa | Ayuda | Ajustes -->
+  <div class="flex flex-wrap justify-center gap-2 mb-2">
+    <button (click)="activeTab='perfil'" [class]="activeTab==='perfil' ? 'px-3 py-2 rounded-lg bg-blue-600 text-white' : 'px-3 py-2 rounded-lg bg-gray-100 text-gray-700'">Mi Perfil</button>
+    <button (click)="activeTab='empresa'" [class]="activeTab==='empresa' ? 'px-3 py-2 rounded-lg bg-blue-600 text-white' : 'px-3 py-2 rounded-lg bg-gray-100 text-gray-700'">Empresa</button>
+    <button (click)="activeTab='ayuda'" [class]="activeTab==='ayuda' ? 'px-3 py-2 rounded-lg bg-blue-600 text-white' : 'px-3 py-2 rounded-lg bg-gray-100 text-gray-700'">Ayuda</button>
+    <button (click)="activeTab='ajustes'" [class]="activeTab==='ajustes' ? 'px-3 py-2 rounded-lg bg-blue-600 text-white' : 'px-3 py-2 rounded-lg bg-gray-100 text-gray-700'">Ajustes</button>
   </div>
 
   <!-- Mensaje de estado -->
@@ -21,8 +19,8 @@
     </div>
   </div>
 
-  <!-- Información de la empresa -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700" *ngIf="userProfile">
+  <!-- Información de la empresa (visible en pestañas Perfil/Ajustes) -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700" *ngIf="userProfile && (activeTab==='perfil' || activeTab==='ajustes')">
     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
       <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
         <i class="fas fa-building mr-3 text-blue-600"></i>
@@ -73,7 +71,7 @@
   </div>
 
   <!-- Perfil de usuario -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700" *ngIf="activeTab==='perfil'">
     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
       <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
         <i class="fas fa-user mr-3 text-green-600"></i>
@@ -126,8 +124,8 @@
     </div>
   </div>
 
-  <!-- Gestión de Estados y Unidades: dos columnas -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <!-- Gestión de Estados y Unidades: dos columnas (pestaña Ajustes) -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6" *ngIf="activeTab==='ajustes'">
     <!-- Estados de Tickets -->
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -171,8 +169,8 @@
     </div>
   </div>
 
-  <!-- Cambiar contraseña -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+  <!-- Cambiar contraseña (pestaña Perfil) -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700" *ngIf="activeTab==='perfil'">
     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
       <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
         <i class="fas fa-shield-alt mr-3 text-yellow-600"></i>
@@ -237,8 +235,8 @@
     </div>
   </div>
 
-  <!-- Zona de peligro -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-red-200 dark:border-red-700">
+  <!-- Zona de peligro (pestaña Perfil) -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-red-200 dark:border-red-700" *ngIf="activeTab==='perfil'">
     <div class="px-6 py-4 border-b border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20">
       <h2 class="text-xl font-semibold text-red-800 dark:text-red-300 flex items-center">
         <i class="fas fa-exclamation-triangle mr-3 text-red-600"></i>
@@ -259,8 +257,8 @@
     </div>
   </div>
 
-  <!-- Configuración de Desarrollo (Solo para devs) -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-orange-200 dark:border-orange-700" *ngIf="devRoleService.canSeeDevTools()">
+  <!-- Configuración de Desarrollo (Solo para devs, en Ajustes) -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-orange-200 dark:border-orange-700" *ngIf="devRoleService.canSeeDevTools() && activeTab==='ajustes'">
     <div class="px-6 py-4 border-b border-orange-200 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20">
       <h2 class="text-xl font-semibold text-orange-800 dark:text-orange-300 flex items-center">
         <i class="fas fa-code mr-3 text-orange-600"></i>
@@ -344,4 +342,20 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- Pestaña Empresa -->
+<div *ngIf="activeTab==='empresa'">
+  <app-company-admin></app-company-admin>
+  <!-- Modal de Unidades ya existe en esta página, mantenemos CompanyAdmin embebido arriba -->
+  <!-- Reutilizamos los estilos existentes -->
+  <div class="mt-6"></div>
+  <!-- Sección de Unidades permanece en Ajustes -->
+  
+  <!-- Modal unidades sigue manejado por esta página -->
+</div>
+
+<!-- Pestaña Ayuda -->
+<div *ngIf="activeTab==='ayuda'">
+  <app-help></app-help>
 </div>

@@ -458,21 +458,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/configuracion',
       module: 'core'
     },
-    {
-      id: 101,
-      label: 'Empresa',
-      icon: 'business',
-      route: '/empresa',
-      module: 'core',
-      roleOnly: 'ownerAdmin'
-    },
-    {
-      id: 14,
-      label: 'Ayuda',
-      icon: 'help_outline',
-      route: '/ayuda',
-      module: 'core'
-    }
+    // Empresa y Ayuda se integran en Configuración para simplificar el menú
   ];
 
   // Computed menu items based on user role

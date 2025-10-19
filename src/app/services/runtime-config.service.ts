@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 
@@ -16,8 +16,9 @@ export interface RuntimeConfig {
 
 @Injectable({ providedIn: 'root' })
 export class RuntimeConfigService {
-  private http = inject(HttpClient);
   private config: RuntimeConfig | null = null;
+
+  constructor(private http: HttpClient) {}
 
   async load(): Promise<void> {
     try {
