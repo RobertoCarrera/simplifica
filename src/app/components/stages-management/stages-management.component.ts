@@ -856,6 +856,8 @@ export class StagesManagementComponent implements OnInit {
 
   genericStages: TicketStage[] = [];
   companyStages: TicketStage[] = [];
+  visibleGenericStages: TicketStage[] = [];
+  hiddenGenericStages: TicketStage[] = [];
 
   newStage: CreateStagePayload = {
     name: '',
@@ -866,13 +868,11 @@ export class StagesManagementComponent implements OnInit {
   editingStageId: string | null = null;
   editStage: UpdateStagePayload = {};
 
-  // Use a getter to expose only visible generic stages for CDK drop list data binding
-  get visibleGenericStages(): TicketStage[] {
-    return this.genericStages.filter(s => !s.is_hidden);
-  }
-
-  get hiddenGenericStages(): TicketStage[] {
-    return this.genericStages.filter(s => !!s.is_hidden);
+  private refreshGenericBuckets() {
+    const sorted = this.sortGenerics(this.genericStages);
+    this.genericStages = sorted;
+    this.visibleGenericStages = sorted.filter(stage => !stage.is_hidden);
+    this.hiddenGenericStages = sorted.filter(stage => !!stage.is_hidden);
   }
 
   async ngOnInit() {
@@ -907,11 +907,12 @@ export class StagesManagementComponent implements OnInit {
       if (genericResult.error) {
         throw genericResult.error;
       }
-  this.genericStages = this.sortGenerics(genericResult.data || []);
-      
+      this.genericStages = genericResult.data || [];
+      this.refreshGenericBuckets();
+
       // 🔍 DEBUG: Ver datos recibidos
       console.log('🔍 DEBUG - Generic stages loaded:', this.genericStages);
-      console.log('🔍 DEBUG - Hidden stages:', this.genericStages.filter(s => s.is_hidden).map(s => s.name));
+      console.log('🔍 DEBUG - Hidden stages:', this.hiddenGenericStages.map(s => s.name));
 
       // Load company stages
       const companyResult = await this.stagesService.getCompanyStages();
@@ -1050,14 +1051,13 @@ export class StagesManagementComponent implements OnInit {
       if (result.error) {
         throw result.error;
       }
-
-  // Notify via global toast system for consistency
-  this.toast.success('Estado ocultado', `"${stage.name}" ocultado correctamente`);
+      // Notify via global toast system for consistency
+      this.toast.success('Estado ocultado', `"${stage.name}" ocultado correctamente`);
       // Update only the affected item locally
       const idx = this.genericStages.findIndex(s => s.id === stage.id);
       if (idx !== -1) {
         this.genericStages[idx] = { ...this.genericStages[idx], is_hidden: true } as TicketStage;
-        this.genericStages = this.sortGenerics(this.genericStages);
+        this.refreshGenericBuckets();
       }
 
     } catch (error: any) {
@@ -1077,14 +1077,13 @@ export class StagesManagementComponent implements OnInit {
       if (result.error) {
         throw result.error;
       }
-
-  // Notify via global toast system for consistency
-  this.toast.success('Estado mostrado', `"${stage.name}" ahora está visible`);
+      // Notify via global toast system for consistency
+      this.toast.success('Estado mostrado', `"${stage.name}" ahora está visible`);
       // Update only the affected item locally
       const idx = this.genericStages.findIndex(s => s.id === stage.id);
       if (idx !== -1) {
         this.genericStages[idx] = { ...this.genericStages[idx], is_hidden: false } as TicketStage;
-        this.genericStages = this.sortGenerics(this.genericStages);
+        this.refreshGenericBuckets();
       }
 
     } catch (error: any) {
@@ -1125,7 +1124,8 @@ export class StagesManagementComponent implements OnInit {
     });
 
     const combined = [...visible, ...hidden];
-    this.genericStages = this.sortGenerics(combined);
+    this.genericStages = combined;
+    this.refreshGenericBuckets();
 
     // Persist full ordered list of generic stage IDs (visible first, then hidden)
     try {
