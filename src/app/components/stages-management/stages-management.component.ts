@@ -120,39 +120,52 @@ import { ToastService } from '../../services/toast.service';
         </div>
         @if (hiddenGenericStages.length > 0) {
           <div class="hidden-divider">
-            <span><i class="fas fa-eye-slash"></i> Estados ocultos</span>
+            <button
+              class="btn btn-outline btn-sm"
+              (click)="toggleHiddenGenerics()"
+              [attr.aria-expanded]="!hiddenGenericsCollapsed"
+              (mouseenter)="setBtnHover('hidden-toggle', true)"
+              (mouseleave)="setBtnHover('hidden-toggle', false)"
+              [style.color]="btnHoverById['hidden-toggle'] ? ((((newStage.color || '#6366f1') | textContrast) === '#000') ? '#fff' : '#000') : ((newStage.color || '#6366f1') | textContrast)"
+              [style.background-color]="btnHoverById['hidden-toggle'] ? ((((newStage.color || '#6366f1') | textContrast) === '#000') ? '#000' : '#fff') : ((((newStage.color || '#6366f1') | textContrast) === '#000') ? 'transparent' : '#000')"
+            >
+              <i class="fas" [class.fa-chevron-down]="hiddenGenericsCollapsed" [class.fa-chevron-up]="!hiddenGenericsCollapsed"></i>
+              Estados ocultos ({{ hiddenGenericStages.length }})
+            </button>
           </div>
-          <div class="stages-grid hidden-list">
-            @for (stage of hiddenGenericStages; track stage.id) {
-                <div class="stage-card generic hidden-stage flex justify-between" [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
-                  <div class="stage-info">
-                        <div class="stage-name">{{ stage.name }}</div>
-                        <div class="stage-meta">
-                          <span
-                            class="badge"
-                            [style.color]="stage.color | textContrast"
-                            [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
-                            Posición: {{ stage.position }}
-                          </span>
-                        </div>
+          @if (!hiddenGenericsCollapsed) {
+            <div class="stages-grid hidden-list">
+              @for (stage of hiddenGenericStages; track stage.id) {
+                  <div class="stage-card generic hidden-stage" [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
+                    <div class="stage-info">
+                      <div class="stage-name">{{ stage.name }}</div>
+                      <div class="stage-meta">
+                        <span
+                          class="badge"
+                          [style.color]="stage.color | textContrast"
+                          [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
+                          Posición: {{ stage.position }}
+                        </span>
                       </div>
+                    </div>
                     <div class="stage-actions">
-                      <button 
-                        class="btn-icon btn-secondary" 
+                      <button
+                        class="btn-icon btn-secondary"
                         (click)="unhideStage(stage)"
                         [disabled]="!!togglingVisibilityById[stage.id]"
                         title="Mostrar este estado"
-                        (mouseenter)="setBtnHover(stage.id, true)"
-                        (mouseleave)="setBtnHover(stage.id, false)"
+                        (mouseenter)="setBtnHover(stage.id + '-unhide', true)"
+                        (mouseleave)="setBtnHover(stage.id + '-unhide', false)"
                         [style.color]="stage.color | textContrast"
-                        [style.background-color]="btnHoverById[stage.id] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
+                        [style.background-color]="btnHoverById[stage.id + '-unhide'] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
                       >
                         <i class="fas fa-eye"></i>
                       </button>
                     </div>
                   </div>
               }
-          </div>
+            </div>
+          }
         }
       </div>
 
@@ -275,10 +288,10 @@ import { ToastService } from '../../services/toast.service';
                           type="submit"
                           class="btn-icon btn-success"
                           title="Guardar"
-                          (mouseenter)="setBtnHover(stage.id, true)"
-                          (mouseleave)="setBtnHover(stage.id, false)"
+                          (mouseenter)="setBtnHover(stage.id + '-save', true)"
+                          (mouseleave)="setBtnHover(stage.id + '-save', false)"
                           [style.color]="(editStage.color || stage.color) | textContrast"
-                          [style.background-color]="btnHoverById[stage.id] ? (((editStage.color || stage.color) | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'">
+                          [style.background-color]="btnHoverById[stage.id + '-save'] ? (((editStage.color || stage.color) | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'">
                           <i class="fas fa-check"></i>
                         </button>
                         <button
@@ -286,10 +299,10 @@ import { ToastService } from '../../services/toast.service';
                           class="btn-icon btn-secondary"
                           (click)="cancelEdit()"
                           title="Cancelar"
-                          (mouseenter)="setBtnHover(stage.id, true)"
-                          (mouseleave)="setBtnHover(stage.id, false)"
+                          (mouseenter)="setBtnHover(stage.id + '-cancel', true)"
+                          (mouseleave)="setBtnHover(stage.id + '-cancel', false)"
                           [style.color]="(editStage.color || stage.color) | textContrast"
-                          [style.background-color]="btnHoverById[stage.id] ? (((editStage.color || stage.color) | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'">
+                          [style.background-color]="btnHoverById[stage.id + '-cancel'] ? (((editStage.color || stage.color) | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'">
                           <i class="fas fa-times"></i>
                         </button>
                       </div>
@@ -312,10 +325,10 @@ import { ToastService } from '../../services/toast.service';
                         class="btn-icon btn-primary"
                         (click)="startEdit(stage)"
                         title="Editar"
-                        (mouseenter)="setBtnHover(stage.id, true)"
-                        (mouseleave)="setBtnHover(stage.id, false)"
+                        (mouseenter)="setBtnHover(stage.id + '-edit', true)"
+                        (mouseleave)="setBtnHover(stage.id + '-edit', false)"
                         [style.color]="stage.color | textContrast"
-                        [style.background-color]="btnHoverById[stage.id] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
+                        [style.background-color]="btnHoverById[stage.id + '-edit'] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
                       >
                         <i class="fas fa-edit"></i>
                       </button>
@@ -323,10 +336,10 @@ import { ToastService } from '../../services/toast.service';
                         class="btn-icon btn-danger"
                         (click)="deleteStage(stage.id)"
                         title="Eliminar"
-                        (mouseenter)="setBtnHover(stage.id, true)"
-                        (mouseleave)="setBtnHover(stage.id, false)"
+                        (mouseenter)="setBtnHover(stage.id + '-delete', true)"
+                        (mouseleave)="setBtnHover(stage.id + '-delete', false)"
                         [style.color]="stage.color | textContrast"
-                        [style.background-color]="btnHoverById[stage.id] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
+                        [style.background-color]="btnHoverById[stage.id + '-delete'] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
                       >
                         <i class="fas fa-trash"></i>
                       </button>
@@ -956,6 +969,8 @@ export class StagesManagementComponent implements OnInit {
   successMessage = '';
   errorMessage = '';
   hidingAllGenericStages = false;
+  // Control collapsed state for hidden generic stages accordion
+  hiddenGenericsCollapsed = true;
 
   genericStages: TicketStage[] = [];
   companyStages: TicketStage[] = [];
@@ -1146,6 +1161,10 @@ export class StagesManagementComponent implements OnInit {
 
   setBtnHover(id: string, value: boolean) {
     this.btnHoverById = { ...this.btnHoverById, [id]: value };
+  }
+
+  toggleHiddenGenerics() {
+    this.hiddenGenericsCollapsed = !this.hiddenGenericsCollapsed;
   }
 
   async hideStage(stage: TicketStage) {
