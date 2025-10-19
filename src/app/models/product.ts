@@ -1,8 +1,12 @@
 export interface Product {
     id: string;
     name: string;
+    // Legacy text fields (for backward compatibility, will be deprecated)
     category: string | null;
     brand: string | null;
+    // New normalized fields
+    category_id: string | null;
+    brand_id: string | null;
     model: string | null;
     description: string | null;
     price: number; // store numeric for UI; service will normalize from string if needed

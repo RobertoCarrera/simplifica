@@ -153,7 +153,7 @@
 
   <!-- Tickets Content -->
   <div *ngIf="!loading && !error" class="tickets-content">
-        <div class="modal-body modal-medium">
+        <div class="modal-medium">
     <!-- List View -->
     <div *ngIf="viewMode === 'list'" class="tickets-list">
       <div *ngFor="let ticket of filteredTickets" class="ticket-card">
@@ -662,14 +662,6 @@
                 </div>
               </div>
             </div>
-
-            <!-- Resumen General si hay servicios y/o productos -->
-            <div *ngIf="selectedServices.length > 0 || selectedProducts.length > 0" class="grand-total-summary">
-              <div class="summary-row grand-total">
-                <span>Total General:</span>
-                <strong>{{ getGrandTotal() }}€</strong>
-              </div>
-            </div>
           </div>
 
           <!-- Sección de Dispositivos -->
@@ -1174,6 +1166,134 @@
 
         <div class="form-row">
           <div class="form-group">
+            <label for="product_brand">Marca</label>
+            <div class="category-input-container">
+              <input 
+                type="text" 
+                id="product_brand"
+                class="form-control"
+                [(ngModel)]="productFormData.brand"
+                name="product_brand"
+                (focus)="showBrandInput = true"
+                placeholder="Ej: Samsung, Apple, Xiaomi">
+              
+              <!-- Brand Dropdown -->
+              <div *ngIf="showBrandInput" class="category-dropdown">
+                <div class="category-search">
+                  <input 
+                    type="text"
+                    class="form-control small"
+                    [(ngModel)]="brandSearchText"
+                    (ngModelChange)="onBrandSearchChange()"
+                    placeholder="Buscar o crear marca..."
+                    name="brandFilter">
+                </div>
+                
+                <div class="category-options">
+                  <div *ngFor="let brand of filteredBrands" 
+                       class="category-option"
+                       (click)="selectBrand(brand)">
+                    <i class="fas fa-tag"></i>
+                    <span>{{ brand.name }}</span>
+                    <small *ngIf="brand.company_id">Privada</small>
+                    <small *ngIf="!brand.company_id" style="color: #10b981;">Global</small>
+                  </div>
+                  
+                  <div *ngIf="brandSearchText && filteredBrands.length === 0 && !hasExactBrandMatch()" 
+                       class="category-option create-new"
+                       (click)="createNewBrand()">
+                    <i class="fas fa-plus" style="color: #10b981;"></i>
+                    <span>Crear "{{ brandSearchText }}"</span>
+                  </div>
+                  
+                  <div *ngIf="brandSearchText && filteredBrands.length === 0 && hasExactBrandMatch()" 
+                       class="category-option existing-match"
+                       (click)="selectExistingBrandMatch()">
+                    <i class="fas fa-check" style="color: #3b82f6;"></i>
+                    <span>Usar "{{ getExactBrandMatch()?.name }}" (existe)</span>
+                  </div>
+                </div>
+                
+                <div class="category-actions">
+                  <button type="button" class="btn btn-sm btn-secondary" (click)="showBrandInput = false">
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="product_category">Categoría</label>
+            <div class="category-input-container">
+              <input 
+                type="text" 
+                id="product_category"
+                class="form-control"
+                [(ngModel)]="productFormData.category"
+                name="product_category"
+                (focus)="showCategoryInput = true"
+                placeholder="Ej: Accesorios, Repuestos, Hardware">
+              
+              <!-- Category Dropdown -->
+              <div *ngIf="showCategoryInput" class="category-dropdown">
+                <div class="category-search">
+                  <input 
+                    type="text"
+                    class="form-control small"
+                    [(ngModel)]="categorySearchText"
+                    (ngModelChange)="onCategorySearchChange()"
+                    placeholder="Buscar o crear categoría..."
+                    name="categoryFilter">
+                </div>
+                
+                <div class="category-options">
+                  <div *ngFor="let category of filteredCategories" 
+                       class="category-option"
+                       (click)="selectCategory(category)">
+                    <i [class]="category.icon || 'fas fa-folder'" [style.color]="category.color"></i>
+                    <span>{{ category.name }}</span>
+                    <small *ngIf="category.company_id">Privada</small>
+                    <small *ngIf="!category.company_id" style="color: #10b981;">Global</small>
+                  </div>
+                  
+                  <div *ngIf="categorySearchText && filteredCategories.length === 0 && !hasExactCategoryMatch()" 
+                       class="category-option create-new"
+                       (click)="createNewCategory()">
+                    <i class="fas fa-plus" style="color: #10b981;"></i>
+                    <span>Crear "{{ categorySearchText }}"</span>
+                  </div>
+                  
+                  <div *ngIf="categorySearchText && filteredCategories.length === 0 && hasExactCategoryMatch()" 
+                       class="category-option existing-match"
+                       (click)="selectExistingCategoryMatch()">
+                    <i class="fas fa-check" style="color: #3b82f6;"></i>
+                    <span>Usar "{{ getExactCategoryMatch()?.name }}" (existe)</span>
+                  </div>
+                </div>
+                
+                <div class="category-actions">
+                  <button type="button" class="btn btn-sm btn-secondary" (click)="showCategoryInput = false">
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="product_model">Modelo</label>
+            <input 
+              type="text" 
+              id="product_model"
+              [(ngModel)]="productFormData.model"
+              name="product_model"
+              class="form-control"
+              placeholder="Modelo o referencia específica">
+          </div>
+          <div class="form-group">
             <label for="product_price">Precio (€)</label>
             <input 
               type="number" 
@@ -1184,39 +1304,6 @@
               min="0"
               step="0.01"
               placeholder="0.00">
-          </div>
-          <div class="form-group">
-            <label for="product_category">Categoría</label>
-            <input 
-              type="text" 
-              id="product_category"
-              [(ngModel)]="productFormData.category"
-              name="product_category"
-              class="form-control"
-              placeholder="Ej: Accesorios, Repuestos">
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="product_brand">Marca</label>
-            <input 
-              type="text" 
-              id="product_brand"
-              [(ngModel)]="productFormData.brand"
-              name="product_brand"
-              class="form-control"
-              placeholder="Marca del producto">
-          </div>
-          <div class="form-group">
-            <label for="product_model">Modelo</label>
-            <input 
-              type="text" 
-              id="product_model"
-              [(ngModel)]="productFormData.model"
-              name="product_model"
-              class="form-control"
-              placeholder="Modelo del producto">
           </div>
         </div>
 
@@ -1243,7 +1330,7 @@
               name="product_description"
               class="form-control"
               rows="3"
-              placeholder="Descripción del producto..."></textarea>
+              placeholder="Descripción detallada del producto..."></textarea>
           </div>
         </div>
       </div>

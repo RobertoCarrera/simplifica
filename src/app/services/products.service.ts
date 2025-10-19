@@ -60,6 +60,10 @@ export class ProductsService {
     const payload: any = {
       name: product.name?.trim() || 'Producto',
       description: product.description ?? null,
+      // Use normalized IDs if available, otherwise use legacy text fields
+      category_id: product.category_id ?? null,
+      brand_id: product.brand_id ?? null,
+      // Keep legacy fields for backward compatibility
       category: product.category ?? null,
       brand: product.brand ?? null,
       model: product.model ?? null,
@@ -119,6 +123,8 @@ export class ProductsService {
     name: row.name,
     category: row.category ?? null,
     brand: row.brand ?? null,
+    category_id: row.category_id ?? null,
+    brand_id: row.brand_id ?? null,
     model: row.model ?? null,
     description: row.description ?? null,
     price: typeof row.price === 'number' ? row.price : Number(row.price || 0),

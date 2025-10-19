@@ -2,6 +2,8 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductsService } from '../../services/products.service';
+import { ProductMetadataService } from '../../services/product-metadata.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-products',
@@ -16,13 +18,28 @@ export class ProductsComponent implements OnInit {
     name: '',
     description: '',
     price: 0,
-    stock_quantity: 0
+    stock_quantity: 0,
+    brand: '',
+    category: '',
+    model: ''
   };
   editingProduct: any = null;
   isLoading = false;
   showNewProductForm = false;
 
+  // Autocomplete for brands and categories
+  availableBrands: any[] = [];
+  filteredBrands: any[] = [];
+  brandSearchText: string = '';
+  showBrandInput = false;
+  
+  availableCategories: any[] = [];
+  filteredCategories: any[] = [];
+  categorySearchText: string = '';
+  showCategoryInput = false;
+
   private productsService = inject(ProductsService);
+  private productMetadataService = inject(ProductMetadataService);
 
   ngOnInit() {
     this.loadProducts();
@@ -85,8 +102,13 @@ export class ProductsComponent implements OnInit {
       name: product.name,
       description: product.description || '',
       price: product.price,
-      stock_quantity: product.stock_quantity
+      stock_quantity: product.stock_quantity,
+      brand: product.brand || '',
+      category: product.category || '',
+      model: product.model || ''
     };
+    this.brandSearchText = product.brand || '';
+    this.categorySearchText = product.category || '';
     this.showNewProductForm = true;
   }
 
@@ -112,10 +134,27 @@ export class ProductsComponent implements OnInit {
       name: '',
       description: '',
       price: 0,
-      stock_quantity: 0
+      stock_quantity: 0,
+      brand: '',
+      category: '',
+      model: ''
     };
     this.editingProduct = null;
     this.showNewProductForm = false;
+    this.brandSearchText = '';
+    this.categorySearchText = '';
+    this.showBrandInput = false;
+    this.showCategoryInput = false;
+  }
+
+  toggleForm() {
+    this.showNewProductForm = !this.showNewProductForm;
+    if (this.showNewProductForm) {
+      this.loadBrands();
+      this.loadCategories();
+    } else {
+      this.resetForm();
+    }
   }
 
   formatDate(dateString: string): string {
@@ -127,5 +166,141 @@ export class ProductsComponent implements OnInit {
       style: 'currency',
       currency: 'EUR'
     }).format(price);
+  }
+
+  // Brand autocomplete methods
+  async loadBrands() {
+    try {
+      this.availableBrands = await firstValueFrom(this.productMetadataService.getBrands());
+      this.filteredBrands = [...this.availableBrands];
+    } catch (error) {
+      console.error('Error cargando marcas:', error);
+      this.availableBrands = [];
+      this.filteredBrands = [];
+    }
+  }
+
+  onBrandSearchChange() {
+    if (!this.brandSearchText.trim()) {
+      this.filteredBrands = [...this.availableBrands];
+      return;
+    }
+    const searchText = this.brandSearchText.toLowerCase().trim();
+    this.filteredBrands = this.availableBrands.filter(brand =>
+      brand.name.toLowerCase().includes(searchText)
+    );
+  }
+
+  selectBrand(brand: any) {
+    this.newProduct.brand = brand.name;
+    this.newProduct.brand_id = brand.id;
+    this.brandSearchText = brand.name;
+    this.showBrandInput = false;
+  }
+
+  hasExactBrandMatch(): boolean {
+    if (!this.brandSearchText.trim()) return false;
+    const searchText = this.brandSearchText.toLowerCase().trim();
+    return this.availableBrands.some(b => b.name.toLowerCase() === searchText);
+  }
+
+  getExactBrandMatch(): any {
+    const searchText = this.brandSearchText.toLowerCase().trim();
+    return this.availableBrands.find(b => b.name.toLowerCase() === searchText);
+  }
+
+  selectExistingBrandMatch() {
+    const match = this.getExactBrandMatch();
+    if (match) {
+      this.selectBrand(match);
+    }
+  }
+
+  async createNewBrand() {
+    try {
+      if (!this.brandSearchText.trim()) return;
+      
+      // Get current company_id from localStorage or wherever it's stored
+      const companyId = localStorage.getItem('selectedCompanyId') || '';
+      
+      const newBrand = await this.productMetadataService.createBrand(
+        this.brandSearchText.trim(), 
+        companyId
+      );
+      
+      this.availableBrands.push(newBrand);
+      this.selectBrand(newBrand);
+    } catch (error) {
+      console.error('Error creando marca:', error);
+      alert('Error al crear la marca. Puede que ya exista.');
+    }
+  }
+
+  // Category autocomplete methods
+  async loadCategories() {
+    try {
+      this.availableCategories = await firstValueFrom(this.productMetadataService.getCategories());
+      this.filteredCategories = [...this.availableCategories];
+    } catch (error) {
+      console.error('Error cargando categorías:', error);
+      this.availableCategories = [];
+      this.filteredCategories = [];
+    }
+  }
+
+  onCategorySearchChange() {
+    if (!this.categorySearchText.trim()) {
+      this.filteredCategories = [...this.availableCategories];
+      return;
+    }
+    const searchText = this.categorySearchText.toLowerCase().trim();
+    this.filteredCategories = this.availableCategories.filter(category =>
+      category.name.toLowerCase().includes(searchText)
+    );
+  }
+
+  selectCategory(category: any) {
+    this.newProduct.category = category.name;
+    this.newProduct.category_id = category.id;
+    this.categorySearchText = category.name;
+    this.showCategoryInput = false;
+  }
+
+  hasExactCategoryMatch(): boolean {
+    if (!this.categorySearchText.trim()) return false;
+    const searchText = this.categorySearchText.toLowerCase().trim();
+    return this.availableCategories.some(c => c.name.toLowerCase() === searchText);
+  }
+
+  getExactCategoryMatch(): any {
+    const searchText = this.categorySearchText.toLowerCase().trim();
+    return this.availableCategories.find(c => c.name.toLowerCase() === searchText);
+  }
+
+  selectExistingCategoryMatch() {
+    const match = this.getExactCategoryMatch();
+    if (match) {
+      this.selectCategory(match);
+    }
+  }
+
+  async createNewCategory() {
+    try {
+      if (!this.categorySearchText.trim()) return;
+      
+      // Get current company_id from localStorage or wherever it's stored
+      const companyId = localStorage.getItem('selectedCompanyId') || '';
+      
+      const newCategory = await this.productMetadataService.createCategory(
+        this.categorySearchText.trim(), 
+        companyId
+      );
+      
+      this.availableCategories.push(newCategory);
+      this.selectCategory(newCategory);
+    } catch (error) {
+      console.error('Error creando categoría:', error);
+      alert('Error al crear la categoría. Puede que ya exista.');
+    }
   }
 }

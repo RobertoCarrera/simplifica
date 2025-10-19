@@ -8,6 +8,7 @@ import { SupabaseTicketsService, Ticket, TicketStage, TicketStats } from '../../
 import { SupabaseTicketStagesService, TicketStage as ConfigStage } from '../../services/supabase-ticket-stages.service';
 import { SupabaseServicesService, Service } from '../../services/supabase-services.service';
 import { ProductsService } from '../../services/products.service';
+import { ProductMetadataService } from '../../services/product-metadata.service';
 import { firstValueFrom } from 'rxjs';
 import { SimpleSupabaseService, SimpleClient } from '../../services/simple-supabase.service';
 import { DevicesService, Device } from '../../services/devices.service';
@@ -96,6 +97,17 @@ export class SupabaseTicketsComponent implements OnInit {
   showProductForm = false;
   productFormData: any = {};
   
+  // Product autocomplete for brands and categories
+  availableBrands: any[] = [];
+  filteredBrands: any[] = [];
+  brandSearchText: string = '';
+  showBrandInput = false;
+  
+  availableCategories: any[] = [];
+  filteredCategories: any[] = [];
+  categorySearchText: string = '';
+  showCategoryInput = false;
+  
   // Customer selection
   customers: SimpleClient[] = [];
   filteredCustomers: SimpleClient[] = [];
@@ -130,6 +142,7 @@ export class SupabaseTicketsComponent implements OnInit {
   private ticketsService = inject(SupabaseTicketsService);
   private servicesService = inject(SupabaseServicesService);
   private productsService = inject(ProductsService);
+  private productMetadataService = inject(ProductMetadataService);
   private simpleSupabase = inject(SimpleSupabaseService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -984,6 +997,15 @@ export class SupabaseTicketsComponent implements OnInit {
       price: 0,
       stock_quantity: 0
     };
+    this.brandSearchText = '';
+    this.categorySearchText = '';
+    this.showBrandInput = false;
+    this.showCategoryInput = false;
+    
+    // Load brands and categories for autocomplete
+    this.loadBrands();
+    this.loadCategories();
+    
     this.showProductForm = true;
   }
 
@@ -1015,6 +1037,136 @@ export class SupabaseTicketsComponent implements OnInit {
     } catch (error) {
       console.error('Error creando producto:', error);
       alert('Error al crear el producto');
+    }
+  }
+
+  // Brand autocomplete methods
+  async loadBrands() {
+    try {
+      this.availableBrands = await firstValueFrom(this.productMetadataService.getBrands());
+      this.filteredBrands = [...this.availableBrands];
+    } catch (error) {
+      console.error('Error cargando marcas:', error);
+      this.availableBrands = [];
+      this.filteredBrands = [];
+    }
+  }
+
+  onBrandSearchChange() {
+    if (!this.brandSearchText.trim()) {
+      this.filteredBrands = [...this.availableBrands];
+      return;
+    }
+    const searchText = this.brandSearchText.toLowerCase().trim();
+    this.filteredBrands = this.availableBrands.filter(brand =>
+      brand.name.toLowerCase().includes(searchText)
+    );
+  }
+
+  selectBrand(brand: any) {
+    this.productFormData.brand = brand.name;
+    this.productFormData.brand_id = brand.id;
+    this.brandSearchText = brand.name;
+    this.showBrandInput = false;
+  }
+
+  hasExactBrandMatch(): boolean {
+    if (!this.brandSearchText.trim()) return false;
+    const searchText = this.brandSearchText.toLowerCase().trim();
+    return this.availableBrands.some(b => b.name.toLowerCase() === searchText);
+  }
+
+  getExactBrandMatch(): any {
+    const searchText = this.brandSearchText.toLowerCase().trim();
+    return this.availableBrands.find(b => b.name.toLowerCase() === searchText);
+  }
+
+  selectExistingBrandMatch() {
+    const match = this.getExactBrandMatch();
+    if (match) {
+      this.selectBrand(match);
+    }
+  }
+
+  async createNewBrand() {
+    try {
+      if (!this.brandSearchText.trim()) return;
+      
+      const newBrand = await this.productMetadataService.createBrand(
+        this.brandSearchText.trim(), 
+        this.selectedCompanyId
+      );
+      
+      this.availableBrands.push(newBrand);
+      this.selectBrand(newBrand);
+    } catch (error) {
+      console.error('Error creando marca:', error);
+      alert('Error al crear la marca. Puede que ya exista.');
+    }
+  }
+
+  // Category autocomplete methods
+  async loadCategories() {
+    try {
+      this.availableCategories = await firstValueFrom(this.productMetadataService.getCategories());
+      this.filteredCategories = [...this.availableCategories];
+    } catch (error) {
+      console.error('Error cargando categorías:', error);
+      this.availableCategories = [];
+      this.filteredCategories = [];
+    }
+  }
+
+  onCategorySearchChange() {
+    if (!this.categorySearchText.trim()) {
+      this.filteredCategories = [...this.availableCategories];
+      return;
+    }
+    const searchText = this.categorySearchText.toLowerCase().trim();
+    this.filteredCategories = this.availableCategories.filter(category =>
+      category.name.toLowerCase().includes(searchText)
+    );
+  }
+
+  selectCategory(category: any) {
+    this.productFormData.category = category.name;
+    this.productFormData.category_id = category.id;
+    this.categorySearchText = category.name;
+    this.showCategoryInput = false;
+  }
+
+  hasExactCategoryMatch(): boolean {
+    if (!this.categorySearchText.trim()) return false;
+    const searchText = this.categorySearchText.toLowerCase().trim();
+    return this.availableCategories.some(c => c.name.toLowerCase() === searchText);
+  }
+
+  getExactCategoryMatch(): any {
+    const searchText = this.categorySearchText.toLowerCase().trim();
+    return this.availableCategories.find(c => c.name.toLowerCase() === searchText);
+  }
+
+  selectExistingCategoryMatch() {
+    const match = this.getExactCategoryMatch();
+    if (match) {
+      this.selectCategory(match);
+    }
+  }
+
+  async createNewCategory() {
+    try {
+      if (!this.categorySearchText.trim()) return;
+      
+      const newCategory = await this.productMetadataService.createCategory(
+        this.categorySearchText.trim(), 
+        this.selectedCompanyId
+      );
+      
+      this.availableCategories.push(newCategory);
+      this.selectCategory(newCategory);
+    } catch (error) {
+      console.error('Error creando categoría:', error);
+      alert('Error al crear la categoría. Puede que ya exista.');
     }
   }
 
@@ -1527,13 +1679,9 @@ export class SupabaseTicketsComponent implements OnInit {
       const allDevices = await this.devicesService.getDevices(companyId);
   console.log('[Tickets] Devices fetched for company:', companyId, 'count=', allDevices?.length || 0);
 
-      // Show devices for the customer's company. Prefer client's own devices first for convenience.
+      // Filter to show ONLY devices belonging to the selected customer (client_id match)
       const clientId = this.selectedCustomer!.id;
-      this.customerDevices = (allDevices || []).slice().sort((a, b) => {
-        const aClient = a.client_id === clientId ? 0 : 1;
-        const bClient = b.client_id === clientId ? 0 : 1;
-        return aClient - bClient;
-      });
+      this.customerDevices = (allDevices || []).filter(device => device.client_id === clientId);
 
       this.filteredCustomerDevices = [...this.customerDevices];
     } catch (error) {
