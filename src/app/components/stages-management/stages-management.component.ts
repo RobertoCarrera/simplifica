@@ -31,9 +31,19 @@ import { ToastService } from '../../services/toast.service';
           <i class="fas fa-info-circle"></i>
           Estados predeterminados. Puedes reordenarlos arrastrando (solo los visibles; los ocultos quedan al final) y ocultarlos si no los necesitas.
         </p>
-        <div class="stages-grid" cdkDropList [cdkDropListData]="visibleGenericStages" (cdkDropListDropped)="onDropGeneric($event)">
+        <div 
+          class="stages-grid" 
+          cdkDropList 
+          [cdkDropListData]="visibleGenericStages" 
+          (cdkDropListDropped)="onDropGeneric($event)"
+          cdkDropListSortingDisabled="false"
+          [cdkDropListAutoScrollDisabled]="false"
+        >
           @for (stage of visibleGenericStages; track stage.id) {
-            <div class="stage-card generic" cdkDrag>
+            <div
+              class="stage-card generic flex justify-between"
+              cdkDrag
+            >
               <div class="drag-handle" cdkDragHandle>
                 <i class="fas fa-grip-vertical"></i>
               </div>
@@ -57,20 +67,20 @@ import { ToastService } from '../../services/toast.service';
                 <div class="stage-card generic placeholder"></div>
               </ng-template>
               <div class="card-body">
-                <div class="title-row">
-                  <div class="name">{{ stage.name }}</div>
+                <div class="title-row flex flex-row">
                   <div>
-                    <span class="badge">Pos: {{ stage.position }}</span>
-                    <span class="badge badge-system">Sistema</span>
+                    <span class="badge mr-2">Pos: {{ stage.position }}</span>
                   </div>
+                  <div class="name">{{ stage.name }}</div>
                 </div>
               </div>
               <div class="actions">
-                <button 
-                  class="btn btn-sm btn-outline" 
+                <button
+                  class="btn btn-sm btn-outline"
                   (click)="hideStage(stage)"
                   [disabled]="!!togglingVisibilityById[stage.id]"
-                  title="Ocultar este estado">
+                  title="Ocultar este estado"
+                >
                   <i class="fas fa-eye-slash"></i>
                 </button>
               </div>
@@ -83,16 +93,11 @@ import { ToastService } from '../../services/toast.service';
           </div>
           <div class="stages-grid hidden-list">
             @for (stage of hiddenGenericStages; track stage.id) {
-              <div class="stage-card generic hidden-stage">
+              <div class="stage-card generic hidden-stage flex justify-between">
                 <div class="card-body">
                   <div class="title-row">
                     <div class="name">
                       {{ stage.name }}
-                      <span class="badge badge-hidden">Oculto</span>
-                    </div>
-                    <div>
-                      <span class="badge">Pos: 9999</span>
-                      <span class="badge badge-system">Sistema</span>
                     </div>
                   </div>
                 </div>
@@ -403,6 +408,11 @@ import { ToastService } from '../../services/toast.service';
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1rem;
+      position: relative;
+    }
+
+    .stages-grid.cdk-drop-list-dragging {
+      position: relative;
     }
 
     @media (max-width: 768px) {
@@ -446,26 +456,30 @@ import { ToastService } from '../../services/toast.service';
     }
 
     .cdk-drag-preview {
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.25);
-      opacity: 0.95;
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3), 0 2px 8px rgba(0, 0, 0, 0.15);
+      opacity: 0.92;
       border-radius: 0.5rem;
-      transform: translateZ(0);
+      transform: rotate(2deg) scale(1.05);
+      border: 2px solid #6366f1;
     }
 
     .cdk-drag-animating {
-      transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+      transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     .stages-grid.cdk-drop-list-dragging .stage-card:not(.cdk-drag-placeholder) {
-      transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+      transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
     .cdk-drag-placeholder,
     .stage-card.placeholder {
-      opacity: 0.5;
-      background: #f3f4f6;
-      border: 2px dashed #9ca3af;
+      opacity: 0;
+      background: transparent;
+      border: 2px dashed #6366f1;
+      border-radius: 0.5rem;
       min-height: 84px;
+      transform: scale(0.95);
+      transition: all 200ms ease;
     }
 
     .drag-preview {
@@ -485,7 +499,21 @@ import { ToastService } from '../../services/toast.service';
 
     .stage-card.generic {
       background: #f9fafb;
-      cursor: move; /* draggable when visible */
+      cursor: move;
+      position: relative;
+      transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1), 
+                  box-shadow 200ms ease, 
+                  border-color 200ms ease,
+                  background 200ms ease;
+      will-change: transform;
+    }
+
+    .stage-card.generic:active {
+      cursor: grabbing;
+    }
+
+    .stage-card.generic.cdk-drag-dragging {
+      cursor: grabbing;
     }
 
     .hidden-list .stage-card {
@@ -493,7 +521,9 @@ import { ToastService } from '../../services/toast.service';
     }
 
     .hidden-list {
-      grid-template-columns: 1fr;
+      /* Hidden stages should appear in two columns on desktop for easier scanning */
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
     }
 
     .hidden-divider {
@@ -1108,7 +1138,9 @@ export class StagesManagementComponent implements OnInit {
 
   // Drag and Drop handlers
   async onDropGeneric(event: CdkDragDrop<TicketStage[]>) {
-    if (event.previousIndex === event.currentIndex) return;
+    if (event.previousIndex === event.currentIndex) {
+      return;
+    }
 
     // Clone arrays to compute new order for visible stages
     const visible = [...this.visibleGenericStages];
