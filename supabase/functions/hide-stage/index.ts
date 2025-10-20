@@ -190,8 +190,9 @@ serve(async (req) => {
       );
     }
 
-    const stageId = body.p_stage_id;
-    const operation: Operation = body.p_operation;
+  const stageId = body.p_stage_id;
+  const operation: Operation = body.p_operation;
+  const reassignTo: string | undefined = body.p_reassign_to;
 
     // Validar operación
     if (operation !== "hide" && operation !== "unhide") {
@@ -256,6 +257,121 @@ serve(async (req) => {
     let result;
 
     if (operation === "hide") {
+      // Precheck: ensure hide won't break coverage per workflow_category for this company.
+      // 1) Fetch target stage category
+      const { data: catRow, error: catErr } = await supabaseAdmin
+        .from('ticket_stages')
+        .select('id, name, workflow_category')
+        .eq('id', stageId)
+        .single();
+      if (catErr || !catRow) {
+        console.error('❌ Cannot fetch workflow_category for stage', catErr?.message);
+        return new Response(JSON.stringify({ error: 'Stage not found for category check' }), { status: 404, headers: corsHeaders });
+      }
+
+      const category = catRow.workflow_category;
+      // 2) Count visible stages in this category after hiding this one (exclude hidden generics + include company stages)
+      // Generic visible = company_id IS NULL AND NOT EXISTS hidden_stages(companyId, stage.id)
+      const { data: visibleStages, error: visErr } = await supabaseAdmin.rpc('fn_visible_stages_by_category', {
+        p_company_id: companyId,
+        p_category: category
+      });
+      // Fallback if RPC missing: do manual query
+      let countVisible = 0;
+      if (visErr) {
+        const { data: genRows } = await supabaseAdmin
+          .from('ticket_stages')
+          .select('id')
+          .is('company_id', null)
+          .eq('workflow_category', category);
+        const { data: hiddenRows } = await supabaseAdmin
+          .from('hidden_stages')
+          .select('stage_id')
+          .eq('company_id', companyId);
+        const hiddenSet = new Set((hiddenRows || []).map(r => r.stage_id));
+        const genericVisible = (genRows || []).filter(r => !hiddenSet.has(r.id)).map(r => r.id);
+        const { data: compRows } = await supabaseAdmin
+          .from('ticket_stages')
+          .select('id')
+          .eq('company_id', companyId)
+          .eq('workflow_category', category);
+        const allVisible = new Set([...(genericVisible || []), ...((compRows || []).map(r => r.id))]);
+        // After hide, if this stage is generic and in set, remove it
+        if (allVisible.has(stageId)) allVisible.delete(stageId);
+        countVisible = allVisible.size;
+      } else {
+        // visibleStages should include current one; subtract if it's the one being hidden
+        const ids = (visibleStages || []).map((s: any) => s.id);
+        const after = new Set(ids);
+        if (after.has(stageId)) after.delete(stageId);
+        countVisible = after.size;
+      }
+
+      if (countVisible <= 0) {
+        return new Response(JSON.stringify({
+          error: 'Hiding this stage would leave its workflow category without any visible stage',
+          code: 'COVERAGE_BREAK',
+          category,
+          stage_id: stageId
+        }), { status: 409, headers: corsHeaders });
+      }
+
+      // 3) If tickets currently use this generic stage for this company, require reassignment (or perform it if p_reassign_to provided)
+      const { count: tCount } = await supabaseAdmin
+        .from('tickets')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('stage_id', stageId);
+      const countTickets = (tCount as number) || 0;
+      if (countTickets > 0) {
+        if (!reassignTo) {
+          return new Response(JSON.stringify({
+            error: 'Tickets reference this stage; reassignment required before hiding',
+            code: 'REASSIGN_REQUIRED',
+            stage_id: stageId,
+            tickets_count: countTickets,
+            category
+          }), { status: 409, headers: corsHeaders });
+        }
+        // Validate reassign target: must exist, same category, and be visible for company after reassignment
+        const { data: targetRow, error: targetErr } = await supabaseAdmin
+          .from('ticket_stages')
+          .select('id, company_id, workflow_category')
+          .eq('id', reassignTo)
+          .single();
+        if (targetErr || !targetRow) {
+          return new Response(JSON.stringify({ error: 'Reassignment target not found', code: 'INVALID_TARGET' }), { status: 400, headers: corsHeaders });
+        }
+        if (targetRow.workflow_category !== category) {
+          return new Response(JSON.stringify({ error: 'Target stage must be in the same workflow category', code: 'CATEGORY_MISMATCH' }), { status: 400, headers: corsHeaders });
+        }
+        // Check visibility of target for this company: either company-owned or generic not hidden
+        let targetVisible = false;
+        if (targetRow.company_id === companyId) targetVisible = true;
+        if (targetRow.company_id === null) {
+          const { count: hiddenCount } = await supabaseAdmin
+            .from('hidden_stages')
+            .select('*', { count: 'exact', head: true })
+            .eq('company_id', companyId)
+            .eq('stage_id', reassignTo);
+          targetVisible = ((hiddenCount as number) || 0) === 0;
+        }
+        if (!targetVisible) {
+          return new Response(JSON.stringify({ error: 'Target stage is not visible for this company', code: 'TARGET_NOT_VISIBLE' }), { status: 400, headers: corsHeaders });
+        }
+        // Perform reassignment
+        const { error: updErr } = await supabaseAdmin
+          .from('tickets')
+          .update({ stage_id: reassignTo })
+          .eq('company_id', companyId)
+          .eq('stage_id', stageId);
+        if (updErr) {
+          console.error('❌ Failed to reassign tickets:', updErr);
+          return new Response(JSON.stringify({ error: 'Failed to reassign tickets', details: updErr.message }), { status: 500, headers: corsHeaders });
+        }
+        console.log(`✅ Reassigned ${countTickets} tickets from ${stageId} to ${reassignTo}`);
+      }
+
       // HIDE: Insertar en hidden_stages
       const { data, error } = await supabaseAdmin
         .from("hidden_stages")
@@ -268,35 +384,17 @@ serve(async (req) => {
         .single();
 
       if (error) {
-        // Si ya existe (unique constraint), no es error crítico
         if (error.code === "23505") {
           console.log(`⚠️ Stage already hidden for company ${companyId}`);
           return new Response(
             JSON.stringify({
-              result: {
-                message: "Stage already hidden",
-                stage_id: stageId,
-                company_id: companyId,
-              },
+              result: { message: "Stage already hidden", stage_id: stageId, company_id: companyId },
             }),
-            {
-              status: 200,
-              headers: corsHeaders,
-            }
+            { status: 200, headers: corsHeaders }
           );
         }
-
         console.error("❌ Error hiding stage:", error);
-        return new Response(
-          JSON.stringify({
-            error: "Failed to hide stage",
-            details: error.message,
-          }),
-          {
-            status: 500,
-            headers: corsHeaders,
-          }
-        );
+        return new Response(JSON.stringify({ error: "Failed to hide stage", details: error.message }), { status: 500, headers: corsHeaders });
       }
 
       result = data;

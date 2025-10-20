@@ -227,6 +227,26 @@ import { ToastService } from '../../services/toast.service';
                   </div>
                 </div>
 
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="newWorkflowCategory">Categoría de flujo *</label>
+                    <select
+                      id="newWorkflowCategory"
+                      [(ngModel)]="newStage.workflow_category"
+                      name="newWorkflowCategory"
+                      class="form-control"
+                      required
+                    >
+                      <option value="waiting">Espera (Abierto)</option>
+                      <option value="analysis">Análisis (En Progreso)</option>
+                      <option value="action">Acción (En Progreso)</option>
+                      <option value="final">Final (Completado)</option>
+                      <option value="cancel">Cancelación (Completado)</option>
+                    </select>
+                    <small class="form-hint">Define cómo cuenta este estado en las estadísticas</small>
+                  </div>
+                </div>
+
                 <div class="form-actions">
                   <button type="submit" class="btn btn-success" [disabled]="creating">
                     <i class="fas" [class.fa-spinner]="creating" [class.fa-spin]="creating" [class.fa-save]="!creating"></i>
@@ -282,6 +302,18 @@ import { ToastService } from '../../services/toast.service';
                           class="form-control-small"
                           required
                         />
+                        <select
+                          [(ngModel)]="editStage.workflow_category"
+                          name="editWorkflowCategory"
+                          class="form-control-small"
+                          required
+                        >
+                          <option value="waiting">Espera</option>
+                          <option value="analysis">Análisis</option>
+                          <option value="action">Acción</option>
+                          <option value="final">Final</option>
+                          <option value="cancel">Cancelación</option>
+                        </select>
                       </div>
                       <div class="edit-actions">
                         <button
@@ -348,6 +380,32 @@ import { ToastService } from '../../services/toast.service';
                 </div>
               }
             </div>
+            @if (showingReassignPicker && pendingDeleteStageId) {
+              <div class="form-card" style="margin-top:1rem">
+                <h4>Reasignar tickets antes de eliminar</h4>
+                <p>Este estado tiene tickets asociados. Selecciona a qué estado moverlos para poder eliminarlo.</p>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="reassignTarget">Mover tickets a</label>
+                    <select id="reassignTarget" class="form-control" [(ngModel)]="reassignTargetId" name="reassignTarget">
+                      <option [ngValue]="null" disabled>Selecciona un estado</option>
+                      @for (s of getReassignOptions(pendingDeleteStageId); track s.id) {
+                        <option [ngValue]="s.id">{{ s.name }}</option>
+                      }
+                    </select>
+                    <small class="form-hint">No puedes reasignar a un estado genérico oculto</small>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn-success" [disabled]="!reassignTargetId" (click)="confirmReassignAndDelete()">
+                    <i class="fas fa-check"></i> Confirmar y eliminar
+                  </button>
+                  <button class="btn btn-secondary" (click)="cancelReassign()">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            }
           }
         </div>
       </div>
@@ -976,11 +1034,16 @@ export class StagesManagementComponent implements OnInit {
   companyStages: TicketStage[] = [];
   visibleGenericStages: TicketStage[] = [];
   hiddenGenericStages: TicketStage[] = [];
+  // UI state for delete-with-reassign flow
+  pendingDeleteStageId: string | null = null;
+  reassignTargetId: string | null = null;
+  showingReassignPicker = false;
 
   newStage: CreateStagePayload = {
     name: '',
     position: 0,
-    color: '#6366f1'
+    color: '#6366f1',
+    workflow_category: 'waiting'
   };
 
   editingStageId: string | null = null;
@@ -1063,6 +1126,10 @@ export class StagesManagementComponent implements OnInit {
       this.errorMessage = 'El nombre del estado es obligatorio';
       return;
     }
+    if (!this.newStage.workflow_category) {
+      this.errorMessage = 'Selecciona una categoría de flujo';
+      return;
+    }
 
     this.creating = true;
     this.clearMessages();
@@ -1080,7 +1147,17 @@ export class StagesManagementComponent implements OnInit {
       await this.loadStages();
 
     } catch (error: any) {
-      this.errorMessage = 'Error al crear el estado: ' + (error.message || 'Error desconocido');
+      const msg = (error?.message || '').toLowerCase();
+      if (msg.includes('ux_ticket_stages_company_final') || msg.includes('workflow_category = "final"')) {
+        this.errorMessage = 'Ya existe un estado "Final" en tu empresa. Solo puede haber uno.';
+      } else if (msg.includes('ux_ticket_stages_company_cancel') || msg.includes('workflow_category = "cancel"')) {
+        this.errorMessage = 'Ya existe un estado de "Cancelación" en tu empresa. Solo puede haber uno.';
+      } else if (msg.includes('debe existir al menos un estado de la categoría')) {
+        this.errorMessage = 'No puedes eliminar o mover el último estado de una categoría requerida. Asegúrate de mantener al menos uno por categoría.';
+      } else {
+        this.errorMessage = 'Error al crear el estado: ' + (error.message || 'Error desconocido');
+      }
+      this.toast.error('No se pudo crear el estado', this.errorMessage);
     } finally {
       this.creating = false;
     }
@@ -1091,7 +1168,8 @@ export class StagesManagementComponent implements OnInit {
     this.editStage = {
       name: stage.name,
       position: stage.position,
-      color: stage.color
+      color: stage.color,
+      workflow_category: stage.workflow_category || 'waiting'
     };
     this.clearMessages();
   }
@@ -1113,7 +1191,17 @@ export class StagesManagementComponent implements OnInit {
       await this.loadStages();
 
     } catch (error: any) {
-      this.errorMessage = 'Error al actualizar el estado: ' + (error.message || 'Error desconocido');
+      const msg = (error?.message || '').toLowerCase();
+      if (msg.includes('ux_ticket_stages_company_final') || msg.includes('workflow_category = "final"')) {
+        this.errorMessage = 'Ya existe un estado "Final" en tu empresa. Solo puede haber uno.';
+      } else if (msg.includes('ux_ticket_stages_company_cancel') || msg.includes('workflow_category = "cancel"')) {
+        this.errorMessage = 'Ya existe un estado de "Cancelación" en tu empresa. Solo puede haber uno.';
+      } else if (msg.includes('debe existir al menos un estado de la categoría')) {
+        this.errorMessage = 'No puedes eliminar o mover el último estado de una categoría requerida. Asegúrate de mantener al menos uno por categoría.';
+      } else {
+        this.errorMessage = 'Error al actualizar el estado: ' + (error.message || 'Error desconocido');
+      }
+      this.toast.error('No se pudo actualizar', this.errorMessage);
     }
   }
 
@@ -1121,6 +1209,15 @@ export class StagesManagementComponent implements OnInit {
     this.editingStageId = null;
     this.editStage = {};
     this.clearMessages();
+  }
+
+  private resetNewStage() {
+    this.newStage = {
+      name: '',
+      position: 0,
+      color: '#6366f1',
+      workflow_category: 'waiting'
+    };
   }
 
   async deleteStage(stageId: string) {
@@ -1132,8 +1229,28 @@ export class StagesManagementComponent implements OnInit {
 
     try {
       const result = await this.stagesService.deleteStage(stageId);
-      
+
       if (result.error) {
+        const status = Number(result.error?.status || 0);
+        const code = result.error?.code as string | undefined;
+        const msg = (result.error?.message || result.error?.error || '').toString().toLowerCase();
+
+        // Only open reassignment picker when the backend explicitly requests it
+        if (status === 409 && (code === 'REASSIGN_REQUIRED' || msg.includes('reassign') || msg.includes('asignar') || msg.includes('tickets referenciando')) ) {
+          this.pendingDeleteStageId = stageId;
+          this.reassignTargetId = null;
+          this.showingReassignPicker = true;
+          this.toast.info('Este estado tiene tickets', 'Selecciona un estado destino para reasignar los tickets.');
+          return;
+        }
+
+        // Show clear coverage message when category coverage would break
+        if (status === 409 && (code === 'COVERAGE_BREAK' || msg.includes('categor') || msg.includes('coverage'))) {
+          this.errorMessage = 'No puedes eliminar este estado porque dejaría una categoría sin cobertura. Muestra un estado del sistema equivalente o crea otro antes de eliminar.';
+          this.toast.error('Cobertura insuficiente', this.errorMessage);
+          return;
+        }
+
         throw result.error;
       }
 
@@ -1141,8 +1258,53 @@ export class StagesManagementComponent implements OnInit {
       await this.loadStages();
 
     } catch (error: any) {
-      this.errorMessage = 'Error al eliminar el estado: ' + (error.message || 'Error desconocido');
+      const msg = (error?.message || '').toLowerCase();
+      if (msg.includes('debe existir al menos un estado de la categoría') || msg.includes('coverage') || msg.includes('categoría requerida')) {
+        this.errorMessage = 'No puedes eliminar este estado porque dejaría una categoría sin cobertura. Muestra un estado del sistema equivalente o crea otro antes de eliminar.';
+      } else {
+        this.errorMessage = 'Error al eliminar el estado: ' + (error.message || 'Error desconocido');
+      }
     }
+  }
+
+  getReassignOptions(excludeStageId: string): TicketStage[] {
+    // Options: all visible generics + company stages except the one being deleted
+    const visibleGenerics = this.visibleGenericStages;
+    const company = this.companyStages.filter(s => s.id !== excludeStageId);
+    return [...visibleGenerics, ...company]
+      .sort((a, b) => (Number(a.position ?? 0) - Number(b.position ?? 0)));
+  }
+
+  async confirmReassignAndDelete() {
+    if (!this.pendingDeleteStageId || !this.reassignTargetId) return;
+    this.clearMessages();
+    try {
+      // Prefer hide-with-reassign when the pending action was triggered by hide, but we don't track origin explicitly.
+      // Heuristic: try hide-with-reassign first; if it returns 400/404 fallback to delete-with-reassign.
+      let res = await this.stagesService.hideGenericStageWithReassign(this.pendingDeleteStageId, this.reassignTargetId);
+      if (res.error && Number(res.error.status || 0) >= 400) {
+        res = await this.stagesService.deleteStageWithReassign(this.pendingDeleteStageId, this.reassignTargetId);
+      }
+      if (res.error) {
+        throw res.error;
+      }
+      this.toast.success('Reasignado', 'Tickets reasignados y operación completada.');
+      this.cancelReassign();
+      await this.loadStages();
+    } catch (e: any) {
+      const msg = (e?.message || '').toLowerCase();
+      if (msg.includes('debe existir al menos un estado de la categoría') || msg.includes('coverage') || msg.includes('categoría requerida')) {
+        this.errorMessage = 'No se pudo completar porque se rompería la cobertura de categorías. Revisa los estados visibles.';
+      } else {
+        this.errorMessage = 'No se pudo completar la reasignación: ' + (e?.message || 'Error desconocido');
+      }
+    }
+  }
+
+  cancelReassign() {
+    this.pendingDeleteStageId = null;
+    this.reassignTargetId = null;
+    this.showingReassignPicker = false;
   }
 
   cancelCreate() {
@@ -1175,6 +1337,21 @@ export class StagesManagementComponent implements OnInit {
       const result = await this.stagesService.hideGenericStage(stage.id);
       
       if (result.error) {
+        const status = Number(result.error?.status || 0);
+        const code = result.error?.code;
+        const msg = (result.error?.message || result.error?.error || '').toString().toLowerCase();
+        if (status === 409 && (code === 'REASSIGN_REQUIRED' || msg.includes('reassign') || msg.includes('asignar'))) {
+          this.pendingDeleteStageId = stage.id;
+          this.reassignTargetId = null;
+          this.showingReassignPicker = true;
+          this.toast.info('Este estado tiene tickets', 'Selecciona un estado destino para reasignar los tickets y vuelve a ocultar.');
+          return;
+        }
+        if (status === 409 && (code === 'COVERAGE_BREAK' || msg.includes('categor') || msg.includes('coverage'))) {
+          this.errorMessage = 'No se puede ocultar: dejaría la categoría sin estados visibles.';
+          this.toast.error('Cobertura insuficiente', this.errorMessage);
+          return;
+        }
         throw result.error;
       }
       // Notify via global toast system for consistency
@@ -1217,14 +1394,6 @@ export class StagesManagementComponent implements OnInit {
     } finally {
       this.setToggling(stage.id, false);
     }
-  }
-
-  private resetNewStage() {
-    this.newStage = {
-      name: '',
-      position: 0,
-      color: '#6366f1'
-    };
   }
 
   private clearMessages() {

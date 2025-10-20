@@ -309,6 +309,17 @@ export class HomeComponent implements OnInit {
         console.warn('Home: error cargando servicios', err);
       }
 
+      // Products (observable)
+      try {
+        this.productsService.getProducts().subscribe(list => {
+          this.productsCount = Array.isArray(list) ? list.length : 0;
+        }, err => {
+          console.warn('Home: error cargando productos', err);
+        });
+      } catch (err) {
+        console.warn('Home: error cargando productos', err);
+      }
+
     } catch (error) {
       console.error('Home: error en loadCounts', error);
     }

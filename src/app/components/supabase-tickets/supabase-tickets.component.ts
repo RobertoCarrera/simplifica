@@ -73,6 +73,9 @@ export class SupabaseTicketsComponent implements OnInit {
   filterStatus = '';
   filterTags: string[] = [];
   viewMode: 'list' | 'board' = 'list';
+  // Visibility toggles
+  showCompleted = false;
+  showDeleted = false;
   
   // Form management
   showForm = false;
@@ -326,11 +329,15 @@ export class SupabaseTicketsComponent implements OnInit {
         .select(`
           *,
           client:clients(id, name, email, phone),
-          stage:ticket_stages(id, name, color, position),
+          stage:ticket_stages(id, name, color, position, stage_category, workflow_category),
           company:companies(id, name)
-        `)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+        `);
+
+      // Exclude deleted by default; include when toggled
+      if (!this.showDeleted) {
+        query = query.is('deleted_at', null);
+      }
+      query = query.order('created_at', { ascending: false });
 
       if (this.isValidUuid(this.selectedCompanyId)) {
         query = query.eq('company_id', this.selectedCompanyId);
@@ -416,11 +423,35 @@ export class SupabaseTicketsComponent implements OnInit {
   
   private calculateStatsInFrontend() {
     
-    // Calcular estadísticas desde los tickets reales (fallback)
+    // Calcular estadísticas desde los tickets reales usando stage_category
     const totalTickets = this.tickets.length;
-    const openTickets = this.tickets.filter(t => t.stage?.name?.toLowerCase().includes('abierto') || t.stage?.name?.toLowerCase().includes('pendiente')).length;
-    const inProgressTickets = this.tickets.filter(t => t.stage?.name?.toLowerCase().includes('progreso') || t.stage?.name?.toLowerCase().includes('proceso')).length;
-    const completedTickets = this.tickets.filter(t => t.stage?.name?.toLowerCase().includes('completado') || t.stage?.name?.toLowerCase().includes('finalizado')).length;
+    
+    // Usar stage_category para clasificación confiable
+    const openTickets = this.tickets.filter(t => t.stage?.workflow_category === 'waiting' || t.stage?.stage_category === 'open').length;
+    const inProgressTickets = this.tickets.filter(t => (
+      t.stage?.workflow_category === 'analysis' || t.stage?.workflow_category === 'action' || t.stage?.stage_category === 'in_progress'
+    )).length;
+    const completedTickets = this.tickets.filter(t => (
+      t.stage?.workflow_category === 'final' || t.stage?.workflow_category === 'cancel' || t.stage?.stage_category === 'completed'
+    )).length;
+    
+    // Fallback: si no hay stage_category, usar nombres (backward compatibility)
+    const openTicketsFallback = openTickets > 0 ? openTickets : this.tickets.filter(t => 
+      t.stage?.name?.toLowerCase().includes('abierto') || 
+      t.stage?.name?.toLowerCase().includes('pendiente') ||
+      t.stage?.name?.toLowerCase().includes('recibido')
+    ).length;
+    
+    const inProgressTicketsFallback = inProgressTickets > 0 ? inProgressTickets : this.tickets.filter(t => 
+      t.stage?.name?.toLowerCase().includes('progreso') || 
+      t.stage?.name?.toLowerCase().includes('proceso')
+    ).length;
+    
+    const completedTicketsFallback = completedTickets > 0 ? completedTickets : this.tickets.filter(t => 
+      t.stage?.name?.toLowerCase().includes('completado') || 
+      t.stage?.name?.toLowerCase().includes('finalizado')
+    ).length;
+    
     const overdueTickets = this.tickets.filter(t => t.due_date && new Date(t.due_date) < new Date()).length;
     const totalRevenue = this.tickets.reduce((sum, t) => sum + (t.total_amount || 0), 0);
     
@@ -430,7 +461,9 @@ export class SupabaseTicketsComponent implements OnInit {
     
     // Calcular tiempo promedio de resolución para tickets completados
     const completedTicketsWithDates = this.tickets.filter(t => 
-      (t.stage?.name?.toLowerCase().includes('completado') || t.stage?.name?.toLowerCase().includes('finalizado')) &&
+      (t.stage?.workflow_category === 'final' || t.stage?.workflow_category === 'cancel' || t.stage?.stage_category === 'completed' || 
+       t.stage?.name?.toLowerCase().includes('completado') || 
+       t.stage?.name?.toLowerCase().includes('finalizado')) &&
       t.created_at && t.updated_at
     );
     
@@ -446,9 +479,9 @@ export class SupabaseTicketsComponent implements OnInit {
     
     this.stats = {
       total: totalTickets,
-      open: openTickets,
-      inProgress: inProgressTickets,
-      completed: completedTickets,
+      open: openTicketsFallback,
+      inProgress: inProgressTicketsFallback,
+      completed: completedTicketsFallback,
       overdue: overdueTickets,
       avgResolutionTime: avgResolutionTime,
       totalRevenue: totalRevenue,
@@ -456,6 +489,18 @@ export class SupabaseTicketsComponent implements OnInit {
       totalActualHours: totalActualHours
     };
     
+  }
+
+  // Toggle handlers
+  toggleShowCompleted() {
+    this.showCompleted = !this.showCompleted;
+    this.updateFilteredTickets();
+  }
+
+  async toggleShowDeleted() {
+    this.showDeleted = !this.showDeleted;
+    await this.loadTickets();
+    this.updateFilteredTickets();
   }
 
   async loadServices() {
@@ -732,13 +777,27 @@ export class SupabaseTicketsComponent implements OnInit {
 
     // Filter by status
     if (this.filterStatus === 'open') {
-      filtered = filtered.filter(ticket => ticket.stage?.name !== 'Completado');
+      filtered = filtered.filter(t => (t.stage?.workflow_category === 'waiting' || t.stage?.stage_category === 'open'));
     } else if (this.filterStatus === 'completed') {
-      filtered = filtered.filter(ticket => ticket.stage?.name === 'Completado');
+      filtered = filtered.filter(t => (t.stage?.workflow_category === 'final' || t.stage?.workflow_category === 'cancel' || t.stage?.stage_category === 'completed'));
     } else if (this.filterStatus === 'overdue') {
       filtered = filtered.filter(ticket => 
         ticket.due_date && new Date(ticket.due_date) < new Date()
       );
+    }
+
+    // Hide completed tickets by default unless toggled on
+    if (!this.showCompleted) {
+      filtered = filtered.filter(t => (
+        t.stage?.workflow_category !== 'final' &&
+        t.stage?.workflow_category !== 'cancel' &&
+        t.stage?.stage_category !== 'completed'
+      ));
+    }
+
+    // Hide deleted locally when we fetched all (showDeleted=false)
+    if (!this.showDeleted) {
+      filtered = filtered.filter(t => !t.deleted_at);
     }
 
     // Filter by tags
@@ -1615,6 +1674,10 @@ export class SupabaseTicketsComponent implements OnInit {
       console.warn('viewTicketDetail: ticket without id');
       return;
     }
+    // Optimistic UI: mark as opened in local list
+    (ticket as any).is_opened = true;
+    // Fire-and-forget persistence; detail page will also ensure marking
+    try { this.ticketsService.markTicketOpened(ticket.id); } catch {}
     this.router.navigate(['ticket', ticket.id]);
   }
 

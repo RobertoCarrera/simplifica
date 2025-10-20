@@ -1,6 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { SimpleSupabaseService } from './simple-supabase.service';
 
+export type StageCategory = 'open' | 'in_progress' | 'completed' | 'on_hold';
+export type WorkflowCategory = 'cancel' | 'waiting' | 'analysis' | 'action' | 'final';
+
 export interface TicketStage {
   id: string;
   name: string;
@@ -8,6 +11,8 @@ export interface TicketStage {
   position: number;
   is_active: boolean;
   company_id: string;
+  stage_category?: StageCategory; // Categoría del stage
+  workflow_category?: WorkflowCategory; // Categoría funcional
   created_at: string;
   updated_at: string;
 }
@@ -38,8 +43,10 @@ export interface Ticket {
   services?: TicketService[];
   company_id: string;
   is_active: boolean;
+  is_opened?: boolean;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
   
   // Relaciones populadas
   client?: {
@@ -304,6 +311,7 @@ export class SupabaseTicketsService {
       company_id: ticket.company_id,
       // derive is_active from deleted_at for backward-compat in UI
       is_active: ticket.deleted_at ? false : true,
+      is_opened: typeof ticket.is_opened === 'boolean' ? ticket.is_opened : undefined,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at,
       client: ticket.clients,
@@ -548,6 +556,34 @@ export class SupabaseTicketsService {
     } catch (error) {
       console.error('❌ Error updating ticket:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Mark a ticket as opened (idempotent). Returns true if update succeeded or no-op.
+   */
+  async markTicketOpened(ticketId: string): Promise<boolean> {
+    if (!ticketId) return false;
+    try {
+      const { error } = await this.supabase.getClient()
+        .from('tickets')
+        .update({ is_opened: true, updated_at: new Date().toISOString() })
+        .eq('id', ticketId)
+        .eq('is_opened', false); // avoid unnecessary writes
+      if (error) {
+        // If column missing, silently ignore to avoid crashing older DBs
+        const msg = (error.message || '').toString();
+        if (msg.includes('column "is_opened"') || msg.includes('does not exist')) {
+          console.warn('markTicketOpened: is_opened column not present, skipping');
+          return false;
+        }
+        console.warn('markTicketOpened: update failed', error);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.warn('markTicketOpened: exception', e);
+      return false;
     }
   }
 
@@ -842,11 +878,16 @@ export class SupabaseTicketsService {
   async getTicketStats(companyId: string): Promise<TicketStats> {
     const tickets = await this.getTickets(companyId);
     
+    // Filtrar por stage_category en lugar de nombre
+    const openTickets = tickets.filter(t => t.stage?.stage_category === 'open').length;
+    const inProgressTickets = tickets.filter(t => t.stage?.stage_category === 'in_progress').length;
+    const completedTickets = tickets.filter(t => t.stage?.stage_category === 'completed').length;
+    
     const stats: TicketStats = {
       total: tickets.length,
-      open: tickets.filter(t => t.stage?.name !== 'Completado').length,
-      inProgress: tickets.filter(t => t.stage?.name === 'En Progreso').length,
-      completed: tickets.filter(t => t.stage?.name === 'Completado').length,
+      open: openTickets,
+      inProgress: inProgressTickets,
+      completed: completedTickets,
       overdue: tickets.filter(t => t.due_date && new Date(t.due_date) < new Date()).length,
       avgResolutionTime: 2.5, // Mock data
       totalRevenue: tickets.reduce((sum, t) => sum + (t.total_amount || 0), 0),

@@ -128,6 +128,28 @@
           <option value="high">Alta</option>
           <option value="critical">Crítica</option>
         </select>
+
+        <!-- Toggle completed -->
+        <button 
+          type="button"
+          class="px-3 py-2.5 border rounded-lg text-sm"
+          [class.bg-green-50]="showCompleted"
+          [class.text-green-700]="showCompleted"
+          (click)="toggleShowCompleted()">
+          <i class="fas" [class.fa-eye]="showCompleted" [class.fa-eye-slash]="!showCompleted"></i>
+          {{ showCompleted ? 'Ocultar Completados' : 'Mostrar Completados' }}
+        </button>
+
+        <!-- Toggle deleted -->
+        <button 
+          type="button"
+          class="px-3 py-2.5 border rounded-lg text-sm"
+          [class.bg-red-50]="showDeleted"
+          [class.text-red-700]="showDeleted"
+          (click)="toggleShowDeleted()">
+          <i class="fas" [class.fa-trash-restore]="showDeleted" [class.fa-trash]="!showDeleted"></i>
+          {{ showDeleted ? 'Ocultar Eliminados' : 'Mostrar Eliminados' }}
+        </button>
       </div>
     </div>
     
@@ -168,8 +190,11 @@
           <div class="flex-1">
             <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
               <div class="flex items-center gap-3">
-                <h3 class="text-lg font-bold text-orange-500">#{{ ticket.ticket_number }}</h3>
-                <h4 class="text-lg font-semibold text-gray-900">{{ ticket.title }}</h4>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-lg font-bold text-orange-500">#{{ ticket.ticket_number }}</h3>
+                  <span *ngIf="ticket.is_opened === false" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Nuevo</span>
+                </div>
+                <h4 class="text-lg font-semibold" [class.text-gray-900]="true" [class.font-extrabold]="ticket.is_opened === false">{{ ticket.title }}</h4>
               </div>
               <div class="flex items-center gap-2">
                 <span 

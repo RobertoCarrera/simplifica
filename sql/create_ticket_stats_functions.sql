@@ -34,43 +34,37 @@ BEGIN
     WHERE t.company_id = target_company_id
     AND t.deleted_at IS NULL;
     
-    -- Contar tickets abiertos/pendientes
+    -- Contar tickets abiertos/pendientes priorizando workflow_category (fallback a stage_category)
     SELECT COUNT(*) INTO open_tickets
     FROM tickets t
     JOIN ticket_stages ts ON t.stage_id = ts.id
     WHERE t.company_id = target_company_id
     AND t.deleted_at IS NULL
     AND (
-        ts.name ILIKE '%abierto%' OR 
-        ts.name ILIKE '%pendiente%' OR 
-        ts.name ILIKE '%nuevo%' OR 
-        ts.name ILIKE '%recibido%'
+        (ts.workflow_category IN ('waiting'))
+        OR (ts.workflow_category IS NULL AND ts.stage_category = 'open')
     );
     
-    -- Contar tickets en progreso
+    -- Contar tickets en progreso priorizando workflow_category (analysis/action) con fallback a stage_category
     SELECT COUNT(*) INTO in_progress_tickets
     FROM tickets t
     JOIN ticket_stages ts ON t.stage_id = ts.id
     WHERE t.company_id = target_company_id
     AND t.deleted_at IS NULL
     AND (
-        ts.name ILIKE '%progreso%' OR 
-        ts.name ILIKE '%proceso%' OR 
-        ts.name ILIKE '%trabajando%' OR 
-        ts.name ILIKE '%reparando%'
+        (ts.workflow_category IN ('analysis','action'))
+        OR (ts.workflow_category IS NULL AND ts.stage_category = 'in_progress')
     );
     
-    -- Contar tickets completados
+    -- Contar tickets completados priorizando workflow_category (final/cancel) con fallback a stage_category
     SELECT COUNT(*) INTO completed_tickets
     FROM tickets t
     JOIN ticket_stages ts ON t.stage_id = ts.id
     WHERE t.company_id = target_company_id
     AND t.deleted_at IS NULL
     AND (
-        ts.name ILIKE '%completado%' OR 
-        ts.name ILIKE '%finalizado%' OR 
-        ts.name ILIKE '%terminado%' OR 
-        ts.name ILIKE '%entregado%'
+        (ts.workflow_category IN ('final','cancel'))
+        OR (ts.workflow_category IS NULL AND ts.stage_category = 'completed')
     );
     
     -- Contar tickets vencidos
@@ -119,10 +113,8 @@ BEGIN
     WHERE t.company_id = target_company_id
     AND t.deleted_at IS NULL
     AND (
-        ts.name ILIKE '%completado%' OR 
-        ts.name ILIKE '%finalizado%' OR 
-        ts.name ILIKE '%terminado%' OR 
-        ts.name ILIKE '%entregado%'
+        (ts.workflow_category IN ('final','cancel'))
+        OR (ts.workflow_category IS NULL AND ts.stage_category = 'completed')
     )
     AND t.created_at IS NOT NULL
     AND t.updated_at IS NOT NULL

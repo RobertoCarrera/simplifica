@@ -23,7 +23,7 @@ import Placeholder from '@tiptap/extension-placeholder';
   imports: [CommonModule, FormsModule],
   styleUrls: ['./ticket-detail.component.scss'],
   template: `
-    <div class="min-h-screen bg-gray-50 py-8">
+    <div class="min-h-screen bg-gray-50">
       <!-- Toasts -->
       <div class="fixed right-4 bottom-4 space-y-2 z-50">
         <div *ngFor="let t of toasts" class="px-4 py-2 rounded shadow flex items-center justify-between space-x-4"
@@ -1204,6 +1204,13 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.ticket = ticketData;
 
       // Cargar servicios del ticket desde ticket_services
+      // Mark as opened (non-blocking). Ignore result; UI will refresh from list next time.
+      try {
+        if (this.ticket?.id) {
+          this.ticketsService.markTicketOpened(this.ticket.id);
+        }
+      } catch {}
+
       await this.loadTicketServices();
       
       // Cargar tags del ticket

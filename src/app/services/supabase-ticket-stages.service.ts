@@ -3,12 +3,17 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
 
+export type StageCategory = 'open' | 'in_progress' | 'completed' | 'on_hold';
+export type WorkflowCategory = 'cancel' | 'waiting' | 'analysis' | 'action' | 'final';
+
 export interface TicketStage {
   id: string;
   name: string;
   position: number;
   color: string;
   company_id: string | null; // NULL = generic/system stage
+  stage_category?: StageCategory; // Categoría del stage (open, in_progress, completed, on_hold)
+  workflow_category?: WorkflowCategory; // Nueva categoría funcional
   created_at?: string;
   updated_at?: string;
   deleted_at?: string | null;
@@ -27,12 +32,15 @@ export interface CreateStagePayload {
   name: string;
   position: number;
   color: string;
+  stage_category?: StageCategory;
+  workflow_category?: WorkflowCategory;
 }
 
 export interface UpdateStagePayload {
   name?: string;
   position?: number;
   color?: string;
+  workflow_category?: WorkflowCategory;
 }
 
 @Injectable({
@@ -275,20 +283,53 @@ export class SupabaseTicketStagesService {
    */
   async deleteStage(stageId: string): Promise<{ error: any }> {
     try {
-      // Hard delete: remove the record entirely
-      const { error } = await this.supabase
-        .from('ticket_stages')
-        .delete()
-        .eq('id', stageId);
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session?.access_token) return { error: { message: 'No active session' } };
 
-      if (error) {
-        console.error('Error deleting stage:', error);
-        return { error };
+      const resp = await fetch(`${environment.supabase.url}/functions/v1/delete-stage-safe`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ p_stage_id: stageId })
+      });
+
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        console.error('Error deleting stage (safe):', json);
+        return { error: json?.error ? { ...json, status: resp.status } : { message: resp.statusText, status: resp.status, ...json } };
       }
-
       return { error: null };
     } catch (error) {
-      console.error('Exception deleting stage:', error);
+      console.error('Exception deleting stage (safe):', error);
+      return { error };
+    }
+  }
+
+  /** Delete with reassignment when backend reports tickets referencing the stage */
+  async deleteStageWithReassign(stageId: string, reassignToStageId: string): Promise<{ error: any }> {
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session?.access_token) return { error: { message: 'No active session' } };
+
+      const resp = await fetch(`${environment.supabase.url}/functions/v1/delete-stage-safe`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ p_stage_id: stageId, p_reassign_to: reassignToStageId })
+      });
+
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        console.error('Error deleting stage with reassignment:', json);
+        return { error: json?.error ? { ...json, status: resp.status } : { message: resp.statusText, status: resp.status, ...json } };
+      }
+      return { error: null };
+    } catch (error) {
+      console.error('Exception deleting stage with reassignment:', error);
       return { error };
     }
   }
@@ -340,12 +381,43 @@ export class SupabaseTicketStagesService {
 
       if (!response.ok) {
         console.error('Error hiding stage:', result);
-        return { error: result.error || result };
+        // Surface structured errors like COVERAGE_BREAK or REASSIGN_REQUIRED
+        const err = result?.error || result;
+        return { error: { ...(typeof err === 'string' ? { message: err } : err), status: response.status, code: result?.code } };
       }
 
       return { error: null, data: result.result };
     } catch (error) {
       console.error('Exception hiding stage:', error);
+      return { error };
+    }
+  }
+
+  /** Hide a generic stage providing a reassignment target to move tickets before hiding. */
+  async hideGenericStageWithReassign(stageId: string, reassignToStageId: string): Promise<{ error: any; data?: any }> {
+    try {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (!session?.access_token) {
+        return { error: { message: 'No active session' } };
+      }
+      const response = await fetch(
+        `${environment.supabase.url}/functions/v1/hide-stage`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ p_stage_id: stageId, p_operation: 'hide', p_reassign_to: reassignToStageId })
+        }
+      );
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const err = result?.error || result;
+        return { error: { ...(typeof err === 'string' ? { message: err } : err), status: response.status, code: result?.code } };
+      }
+      return { error: null, data: result.result };
+    } catch (error) {
       return { error };
     }
   }
