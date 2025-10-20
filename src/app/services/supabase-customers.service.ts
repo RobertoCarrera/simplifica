@@ -32,6 +32,7 @@ export class SupabaseCustomersService {
   private supabase: SupabaseClient;
   private config = getCurrentSupabaseConfig();
   private authService = inject(AuthService);
+  private runtimeConfig = inject(RuntimeConfigService);
   
   // Estado reactivo
   private customersSubject = new BehaviorSubject<Customer[]>([]);
@@ -521,7 +522,7 @@ export class SupabaseCustomersService {
       payload.p_direccion_id = (customer as any).direccion_id ?? null;
     }
 
-  const cfg = inject(RuntimeConfigService).get();
+  const cfg = this.runtimeConfig.get();
   const fnBase = cfg.edgeFunctionsBaseUrl || `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1`;
     const fnUrl = `${fnBase.replace(/\/$/, '')}/upsert-client`;
     

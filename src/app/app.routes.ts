@@ -39,6 +39,9 @@ import { AnychatComponent } from './components/anychat/anychat.component';
 import { AnychatContactsComponent } from './components/anychat-contacts/anychat-contacts.component';
 import { StagesManagementComponent } from './components/stages-management/stages-management.component';
 import { UnitsManagementComponent } from './components/units-management/units-management.component';
+import { PortalInviteComponent } from './components/portal-invite/portal-invite.component';
+import { PortalDashboardComponent } from './components/portal-dashboard/portal-dashboard.component';
+import { ClientPortalAdminComponent } from './components/client-portal-admin/client-portal-admin.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -57,6 +60,8 @@ export const routes: Routes = [
     {path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full'},
     {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    // Client portal admin (owner/admin only)
+    {path: 'empresa/portal-clientes', component: ClientPortalAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     // Ruta de invitaciones eliminada (modelo de auto-registro activo)
     
     // Módulo de presupuestos (lazy loading)
@@ -74,6 +79,10 @@ export const routes: Routes = [
     {path: 'reset-password', component: ResetPasswordComponent}, // Recuperación de contraseña
     // Public GDPR consent portal (no guard)
     {path: 'consent', component: ConsentPortalComponent},
+    // Client portal public/semi-public invite accept
+    {path: 'invite', component: PortalInviteComponent},
+    // Client portal dashboard (requires login as invited user)
+    {path: 'portal', component: PortalDashboardComponent, canActivate: [AuthGuard]},
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [DevGuard]},

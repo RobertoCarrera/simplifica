@@ -309,6 +309,17 @@
                       <i class="fas fa-edit"></i>
                     </button>
                     
+                    <!-- Invite to Client Portal Button -->
+                    <button
+                      (click)="openInviteModal(customer); $event.stopPropagation()"
+                      class="action-btn invite"
+                      [class.opacity-50]="customer?.metadata?.inactive_on_import || !customer.email"
+                      [disabled]="customer?.metadata?.inactive_on_import || !customer.email"
+                      title="Invitar al portal de clientes"
+                    >
+                      <i class="fas fa-user-plus"></i>
+                    </button>
+
                     <!-- GDPR Flip Button -->
                     <button
                       (click)="flipCardToGdpr($event, customer.id)"
@@ -690,6 +701,71 @@
         </div>
       </div>
     }
+
+      <!-- Invite Modal -->
+      @if (showInviteModal()) {
+        <div class="modal-overlay">
+          <div class="modal-content" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2 class="modal-title">
+                <i class="fas fa-user-plus"></i>
+                Invitar al Portal de Clientes
+              </h2>
+              <button (click)="closeInviteModal()" class="modal-close">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="modal-body">
+              <form (ngSubmit)="sendInvite()" #inviteForm="ngForm" class="customer-form">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="inviteEmail" class="form-label">
+                      <i class="fas fa-envelope"></i>
+                      Email del cliente
+                    </label>
+                    <input
+                      type="email"
+                      id="inviteEmail"
+                      name="inviteEmail"
+                      [(ngModel)]="inviteEmail"
+                      required
+                      class="form-input"
+                      placeholder="cliente@ejemplo.com"
+                    >
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group full-width">
+                    <label for="inviteMessage" class="form-label">
+                      <i class="fas fa-comment-dots"></i>
+                      Mensaje (opcional)
+                    </label>
+                    <textarea
+                      id="inviteMessage"
+                      name="inviteMessage"
+                      [(ngModel)]="inviteMessage"
+                      class="form-textarea"
+                      rows="3"
+                      placeholder="Hola, te invito a acceder a tu portal de cliente para ver tus tickets y presupuestos."
+                    ></textarea>
+                  </div>
+                </div>
+
+                <div class="modal-actions">
+                  <button type="button" class="btn btn-secondary" (click)="closeInviteModal()" [disabled]="inviting()">
+                    Cancelar
+                  </button>
+                  <button type="submit" class="btn btn-primary" [disabled]="inviting() || !inviteEmail">
+                    <i class="fas" [class.fa-paper-plane]="!inviting()" [class.fa-spinner]="inviting()" [class.fa-pulse]="inviting()"></i>
+                    {{ inviting() ? 'Enviando...' : 'Enviar invitación' }}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      }
 
     <!-- CSV Header Mapper Modal -->
     <app-csv-header-mapper

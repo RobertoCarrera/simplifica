@@ -976,6 +976,33 @@ export class AuthService {
   }
 
   /**
+   * Enviar invitación por email usando Edge Function + SMTP de Supabase (SES)
+   * Utiliza la sesión actual para autorizar y que la función valide owner/admin.
+   */
+  async sendCompanyInvite(params: { email: string; role?: string; message?: string }): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data, error } = await this.supabase.functions.invoke('send-company-invite', {
+        body: {
+          email: params.email,
+          role: params.role || 'member',
+          message: params.message || null,
+        },
+      });
+      if (error) {
+        console.error('❌ send-company-invite error:', error);
+        return { success: false, error: error.message };
+      }
+      if (!data?.success) {
+        return { success: false, error: data?.error || 'Edge function returned error' };
+      }
+      return { success: true };
+    } catch (e: any) {
+      console.error('❌ sendCompanyInvite exception:', e);
+      return { success: false, error: e?.message || String(e) };
+    }
+  }
+
+  /**
    * Obtener invitaciones pendientes para la empresa actual
    */
   async getCompanyInvitations(): Promise<{
@@ -1004,6 +1031,68 @@ export class AuthService {
     } catch (error: any) {
       console.error('❌ Error fetching invitations:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  // ========================================
+  // GESTIÓN DE USUARIOS DE EMPRESA (Owner/Admin)
+  // ========================================
+
+  /**
+   * Listar usuarios de la empresa actual
+   */
+  async listCompanyUsers(): Promise<{ success: boolean; users?: any[]; error?: string }> {
+    try {
+      const profile = this.userProfileSubject.value;
+      if (!profile?.company_id) return { success: false, error: 'Usuario sin empresa' };
+      const { data, error } = await this.supabase
+        .from('users')
+        .select('id, email, name, role, active, company_id')
+        .eq('company_id', profile.company_id)
+        .order('name', { ascending: true });
+      if (error) return { success: false, error: error.message };
+      return { success: true, users: data || [] };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  /**
+   * Actualizar rol o activo de un usuario de la empresa
+   */
+  async updateCompanyUser(userId: string, patch: { role?: 'owner'|'admin'|'member'; active?: boolean }): Promise<{ success: boolean; error?: string }>{
+    try {
+      const updates: any = {};
+      if (typeof patch.role !== 'undefined') updates.role = patch.role;
+      if (typeof patch.active !== 'undefined') updates.active = patch.active;
+      if (Object.keys(updates).length === 0) return { success: true };
+      const { error } = await this.supabase
+        .from('users')
+        .update(updates)
+        .eq('id', userId);
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  /**
+   * Obtener enlace directo de invitación por ID (usa helper RPC para token y compone URL)
+   */
+  async getInvitationLink(invitationId: string): Promise<{ success: boolean; url?: string; error?: string }>{
+    try {
+      const { data: tokenData, error } = await this.supabase
+        .rpc('get_company_invitation_token', { p_invitation_id: invitationId });
+      if (error) return { success: false, error: error.message };
+      const token = tokenData as string;
+      if (!token) return { success: false, error: 'Token no disponible' };
+      // Compose redirect URL using current location origin
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const url = `${origin}/invite?token=${encodeURIComponent(token)}`;
+      return { success: true, url };
+    } catch (e: any) {
+      return { success: false, error: e.message };
     }
   }
 }

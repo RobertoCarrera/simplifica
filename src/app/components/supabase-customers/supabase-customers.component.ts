@@ -17,6 +17,7 @@ import { DevRoleService } from '../../services/dev-role.service';
 import { HoneypotService } from '../../services/honeypot.service';
 import { AppModalComponent } from '../app-modal/app-modal.component';
 import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
 import { ClientGdprModalComponent } from '../client-gdpr-modal/client-gdpr-modal.component';
 
 @Component({
@@ -48,6 +49,7 @@ export class SupabaseCustomersComponent implements OnInit {
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   devRoleService = inject(DevRoleService);
+  private auth = inject(AuthService);
 
   // State signals
   customers = signal<Customer[]>([]);
@@ -64,6 +66,13 @@ export class SupabaseCustomersComponent implements OnInit {
   showGdprModal = signal(false);
   gdprModalClient = signal<Customer | null>(null);
   flippedCardId = signal<string | null>(null);
+
+  // Invite modal state
+  showInviteModal = signal(false);
+  inviting = signal(false);
+  inviteEmail: string = '';
+  inviteMessage: string = '';
+  inviteTarget = signal<Customer | null>(null);
 
   // Filter signals
   searchTerm = signal('');
@@ -295,6 +304,73 @@ onMappingConfirmed(mappings: any[]): void {
     
     this.loadData();
     this.loadGdprData();
+  }
+
+  // Open invite modal prefilled with customer email
+  openInviteModal(customer: Customer) {
+    if (!customer) return;
+    this.inviteTarget.set(customer);
+    this.inviteEmail = (customer.email || '').trim();
+    this.inviteMessage = '';
+    this.showInviteModal.set(true);
+  }
+
+  closeInviteModal() {
+    this.showInviteModal.set(false);
+    this.inviteTarget.set(null);
+    this.inviteEmail = '';
+    this.inviteMessage = '';
+  }
+
+  private isValidEmail(email: string): boolean {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test((email || '').trim());
+  }
+
+  async sendInvite() {
+    const email = (this.inviteEmail || '').trim().toLowerCase();
+    if (!this.isValidEmail(email)) {
+      this.toastService.error('Introduce un email válido.', 'Email inválido');
+      return;
+    }
+
+    const companyId = this.auth.companyId();
+    if (!companyId) {
+      this.toastService.error('No se pudo detectar tu empresa activa.', 'Error');
+      return;
+    }
+
+    this.inviting.set(true);
+    try {
+      // 1) Crear/actualizar invitación en BD
+      const res = await this.auth.inviteUserToCompany({
+        companyId,
+        email,
+        message: (this.inviteMessage || '').trim() || undefined,
+      });
+      if (!res.success) {
+        this.toastService.error(res.error || 'No se pudo crear la invitación', 'Error');
+        return;
+      }
+
+      // 2) Enviar email mediante Edge Function (usa SMTP SES de Supabase)
+      const mail = await this.auth.sendCompanyInvite({
+        email,
+        role: 'member',
+        message: (this.inviteMessage || '').trim() || undefined,
+      });
+      if (!mail.success) {
+        this.toastService.error(mail.error || 'Invitación creada, pero fallo enviando el email', 'Aviso');
+        return;
+      }
+
+      this.toastService.success('Invitación enviada por email.', 'Éxito');
+      this.closeInviteModal();
+    } catch (e: any) {
+      this.toastService.error(e?.message || 'No se pudo enviar la invitación', 'Error');
+    } finally {
+      this.inviting.set(false);
+    }
   }
 
   private loadData() {
