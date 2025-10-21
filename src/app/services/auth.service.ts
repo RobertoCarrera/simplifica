@@ -12,7 +12,7 @@ export interface AppUser {
   auth_user_id: string;    // id de auth.users
   email: string;
   name?: string | null;
-  role: 'owner' | 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member' | 'client';
   active: boolean;
   company_id?: string | null;
   permissions?: any;
@@ -679,7 +679,8 @@ export class AuthService {
 
   // Método para verificar permisos
   hasPermission(requiredRole: string): boolean {
-    const roleHierarchy = ['member', 'admin', 'owner'];
+    // Include 'client' as the lowest privilege role
+    const roleHierarchy = ['client', 'member', 'admin', 'owner'];
     const userRoleIndex = roleHierarchy.indexOf(this.userRole());
     const requiredRoleIndex = roleHierarchy.indexOf(requiredRole);
     return userRoleIndex >= requiredRoleIndex;

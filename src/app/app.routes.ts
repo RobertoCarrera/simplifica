@@ -28,6 +28,7 @@ import { DevSetupComponent } from './components/dev-setup/dev-setup.component';
 import { EmergencyLoginComponent } from './components/emergency-login/emergency-login.component';
 import { DebugDashboardComponent } from './components/debug-dashboard/debug-dashboard.component';
 import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard } from './guards/auth.guard';
+import { ClientRoleGuard } from './guards/client-role.guard';
 import { AuthCallbackComponent } from './components/auth-callback/auth-callback.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 import { AuthDebugComponent } from './components/auth-debug/auth-debug.component';
@@ -48,17 +49,17 @@ export const routes: Routes = [
     // Rutas principales con guards apropiados
     {path: '', redirectTo: '/inicio', pathMatch: 'full'},
     {path: 'inicio', component: HomeComponent, canActivate: [AuthGuard]},
-    {path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard]},
-    {path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard]},
+    {path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    {path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard]},
     {path: 'ticket/:id', component: TicketDetailComponent, canActivate: [AuthGuard]},
-    {path: 'productos', component: ProductsComponent, canActivate: [AuthGuard]},
-    {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard]},
-    {path: 'chat', component: AnychatComponent, canActivate: [AuthGuard]},
-    {path: 'anychat/contacts', component: AnychatContactsComponent, canActivate: [AuthGuard]},
+    {path: 'productos', component: ProductsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    {path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    {path: 'anychat/contacts', component: AnychatContactsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
-    {path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard]},
-    {path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard]},
+    {path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    {path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full'},
     {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     // Client portal admin (owner/admin only)
@@ -69,7 +70,7 @@ export const routes: Routes = [
     {
         path: 'presupuestos',
         loadChildren: () => import('./modules/quotes/quotes.module').then(m => m.QuotesModule),
-        canActivate: [AuthGuard]
+        canActivate: [AuthGuard, OwnerAdminGuard]
     },
     
     // Rutas de autenticación (sin guards)
@@ -84,7 +85,7 @@ export const routes: Routes = [
     {path: 'invite', component: PortalInviteComponent},
     {path: 'client/set-password', component: ClientPasswordSetupComponent, canActivate: [AuthGuard]},
     // Client portal dashboard (requires login as invited user)
-    {path: 'portal', component: PortalDashboardComponent, canActivate: [AuthGuard]},
+    {path: 'portal', component: PortalDashboardComponent, canActivate: [AuthGuard, ClientRoleGuard]},
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [DevGuard]},

@@ -30,6 +30,34 @@ export class PortalInviteComponent {
   }
 
   private async handle() {
+    // Handle Supabase magic link tokens if present in URL (hash or query)
+    try {
+      const rawHash = window.location.hash;
+      const fragment = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
+      const hashParams = new URLSearchParams(fragment);
+      const queryParams = new URLSearchParams(window.location.search);
+
+      let accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+      let refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+
+      if (!accessToken && fragment.includes('access_token=')) {
+        const p = fragment.split('&').find(s => s.startsWith('access_token='));
+        if (p) accessToken = p.split('=')[1];
+      }
+      if (!refreshToken && fragment.includes('refresh_token=')) {
+        const p = fragment.split('&').find(s => s.startsWith('refresh_token='));
+        if (p) refreshToken = p.split('=')[1];
+      }
+
+      if (accessToken && refreshToken) {
+        await this.auth.client.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+        // Clean hash to avoid reprocessing
+        history.replaceState({}, document.title, window.location.pathname + window.location.search);
+      }
+    } catch (e) {
+      // non-fatal
+    }
+
     const token = this.route.snapshot.queryParamMap.get('token');
     if (!token) {
       this.loading = false;
