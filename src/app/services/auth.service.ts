@@ -976,6 +976,25 @@ export class AuthService {
       }
 
       if (!result.success) {
+        // Fallback: intentar aceptar por email del usuario autenticado (por si el token se perdió en el redirect)
+        if (result.error && result.error.includes('Invalid or expired invitation')) {
+          const email = user.email || '';
+          if (email) {
+            const { data: res2, error: err2 } = await this.supabase
+              .rpc('accept_company_invitation_by_email', {
+                p_email: email,
+                p_auth_user_id: user.id
+              });
+            if (!err2 && res2?.success) {
+              await this.refreshCurrentUser();
+              return {
+                success: true,
+                company: { id: res2.company_id, name: res2.company_name },
+                role: res2.role
+              };
+            }
+          }
+        }
         return { success: false, error: result.error };
       }
 

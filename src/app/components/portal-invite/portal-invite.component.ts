@@ -58,7 +58,13 @@ export class PortalInviteComponent {
       // non-fatal
     }
 
-    const token = this.route.snapshot.queryParamMap.get('token');
+    let token = this.route.snapshot.queryParamMap.get('token');
+    if (!token) {
+      // Some providers may append extra params in the hash; try to parse token there as well
+      const fragment = (window.location.hash || '').replace(/^#/, '');
+      const hashParams = new URLSearchParams(fragment);
+      token = hashParams.get('token') || token;
+    }
     if (!token) {
       this.loading = false;
       this.error = 'Falta el token de invitación';

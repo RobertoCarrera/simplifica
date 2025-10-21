@@ -148,6 +148,138 @@ BEGIN
 END;
 $$;
 
+-- Fallback: aceptar invitación por email (última para ese email)
+CREATE OR REPLACE FUNCTION accept_company_invitation_by_email(
+    p_email TEXT,
+    p_auth_user_id UUID
+)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    inv public.company_invitations;
+    existing_user public.users;
+    placeholder_user public.users;
+    new_user_id UUID;
+    company_name TEXT;
+BEGIN
+    IF auth.uid() IS DISTINCT FROM p_auth_user_id THEN
+        RETURN json_build_object('success', false, 'error', 'Unauthorized');
+    END IF;
+
+    SELECT * INTO inv
+    FROM public.company_invitations
+    WHERE LOWER(email) = LOWER(p_email)
+    ORDER BY created_at DESC
+    LIMIT 1;
+
+    IF NOT FOUND THEN
+        RETURN json_build_object('success', false, 'error', 'Invitation not found for email');
+    END IF;
+
+    IF inv.status = 'accepted' THEN
+        SELECT name INTO company_name FROM public.companies WHERE id = inv.company_id;
+        RETURN json_build_object(
+            'success', true,
+            'company_id', inv.company_id,
+            'company_name', company_name,
+            'role', inv.role,
+            'message', 'Invitation already accepted'
+        );
+    END IF;
+
+    SELECT name INTO company_name FROM public.companies WHERE id = inv.company_id;
+
+    SELECT * INTO existing_user FROM public.users WHERE auth_user_id = p_auth_user_id LIMIT 1;
+    IF FOUND THEN
+        UPDATE public.users
+        SET 
+            email = COALESCE(inv.email, existing_user.email),
+            role = inv.role,
+            active = true,
+            company_id = inv.company_id,
+            updated_at = NOW()
+        WHERE id = existing_user.id
+        RETURNING id INTO new_user_id;
+
+        UPDATE public.company_invitations
+        SET status = 'accepted', responded_at = NOW()
+        WHERE id = inv.id;
+
+        UPDATE public.pending_users
+        SET confirmed_at = NOW(), company_id = inv.company_id
+        WHERE auth_user_id = p_auth_user_id AND email = inv.email;
+
+        RETURN json_build_object(
+            'success', true,
+            'user_id', new_user_id,
+            'company_id', inv.company_id,
+            'company_name', company_name,
+            'role', inv.role,
+            'message', 'Invitation accepted successfully'
+        );
+    END IF;
+
+    SELECT * INTO placeholder_user
+    FROM public.users
+    WHERE email = inv.email AND company_id = inv.company_id
+    ORDER BY created_at DESC
+    LIMIT 1;
+
+    IF FOUND THEN
+        UPDATE public.users
+        SET 
+            auth_user_id = p_auth_user_id,
+            role = inv.role,
+            active = true,
+            updated_at = NOW()
+        WHERE id = placeholder_user.id
+        RETURNING id INTO new_user_id;
+    ELSE
+        INSERT INTO public.users (
+            email,
+            name,
+            surname,
+            role,
+            active,
+            company_id,
+            auth_user_id,
+            permissions
+        ) VALUES (
+            inv.email,
+            split_part(inv.email, '@', 1),
+            NULL,
+            inv.role,
+            true,
+            inv.company_id,
+            p_auth_user_id,
+            '{}'::jsonb
+        ) RETURNING id INTO new_user_id;
+    END IF;
+
+    UPDATE public.company_invitations
+    SET status = 'accepted', responded_at = NOW()
+    WHERE id = inv.id;
+
+    UPDATE public.pending_users
+    SET confirmed_at = NOW(), company_id = inv.company_id
+    WHERE auth_user_id = p_auth_user_id AND email = inv.email;
+
+    RETURN json_build_object(
+        'success', true,
+        'user_id', new_user_id,
+        'company_id', inv.company_id,
+        'company_name', company_name,
+        'role', inv.role,
+        'message', 'Invitation accepted successfully'
+    );
+
+EXCEPTION WHEN OTHERS THEN
+    RETURN json_build_object('success', false, 'error', SQLERRM);
+END;
+$$;
+
 -- Función mejorada para confirmar registro de usuario
 CREATE OR REPLACE FUNCTION confirm_user_registration(
     p_auth_user_id UUID,
@@ -794,6 +926,7 @@ GRANT EXECUTE ON FUNCTION check_company_exists(TEXT) TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION confirm_user_registration(UUID, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION invite_user_to_company(UUID, TEXT, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION accept_company_invitation(TEXT, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION accept_company_invitation_by_email(TEXT, UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION approve_company_invitation(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION reject_company_invitation(UUID) TO authenticated;
 
