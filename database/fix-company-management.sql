@@ -389,8 +389,9 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-    invitation_data public.company_invitations;
-    pending_user_data public.pending_users;
+    inv public.company_invitations;
+    existing_user public.users;
+    placeholder_user public.users;
     new_user_id UUID;
     company_name TEXT;
 BEGIN
@@ -399,87 +400,118 @@ BEGIN
         RETURN json_build_object('success', false, 'error', 'Unauthorized');
     END IF;
 
-    -- Buscar invitación válida
-    SELECT * INTO invitation_data
+    -- Buscar invitación (permitir pending; si ya fue aceptada, devolver ok idempotente)
+    SELECT * INTO inv
     FROM public.company_invitations
     WHERE token = p_invitation_token
-    AND status = 'pending'
-    AND expires_at > NOW();
-    
+    AND expires_at > NOW()
+    ORDER BY created_at DESC
+    LIMIT 1;
+
     IF NOT FOUND THEN
-        RETURN json_build_object(
-            'success', false,
-            'error', 'Invalid or expired invitation'
-        );
+        RETURN json_build_object('success', false, 'error', 'Invalid or expired invitation');
     END IF;
-    
-    -- Buscar datos del usuario pendiente
-    SELECT * INTO pending_user_data
-    FROM public.pending_users
-    WHERE auth_user_id = p_auth_user_id
-    AND email = invitation_data.email;
-    
-    IF NOT FOUND THEN
-        RETURN json_build_object(
-            'success', false,
-            'error', 'Pending user data not found'
-        );
-    END IF;
-    
+
     -- Obtener nombre de la empresa
     SELECT name INTO company_name
     FROM public.companies
-    WHERE id = invitation_data.company_id;
-    
-    -- Crear usuario en la empresa (name + surname normalizados)
-    INSERT INTO public.users (
-        email,
-        name,
-        surname,
-        role,
-        active,
-        company_id,
-        auth_user_id,
-        permissions
-    )
-    VALUES (
-        pending_user_data.email,
-        COALESCE(NULLIF(pending_user_data.given_name, ''), split_part(pending_user_data.full_name, ' ', 1), split_part(pending_user_data.email, '@', 1)),
-        COALESCE(NULLIF(pending_user_data.surname, ''), NULLIF(regexp_replace(pending_user_data.full_name, '^[^\s]+\s*', ''), '')),
-        invitation_data.role,
-        true,
-        invitation_data.company_id,
-        pending_user_data.auth_user_id,
-        '{}'::jsonb
-    )
-    RETURNING id INTO new_user_id;
-    
+    WHERE id = inv.company_id;
+
+    -- 1) Si ya existe usuario por auth_user_id, actualizar su pertenencia/rol
+    SELECT * INTO existing_user FROM public.users WHERE auth_user_id = p_auth_user_id LIMIT 1;
+    IF FOUND THEN
+        UPDATE public.users
+        SET 
+            email = COALESCE(inv.email, existing_user.email),
+            role = inv.role,
+            active = true,
+            company_id = inv.company_id,
+            updated_at = NOW()
+        WHERE id = existing_user.id
+        RETURNING id INTO new_user_id;
+
+        -- Marcar invitación como aceptada (idempotente)
+        UPDATE public.company_invitations
+        SET status = 'accepted', responded_at = NOW()
+        WHERE id = inv.id;
+
+        -- Confirmar pending_users si existe
+        UPDATE public.pending_users
+        SET confirmed_at = NOW(), company_id = inv.company_id
+        WHERE auth_user_id = p_auth_user_id AND email = inv.email;
+
+        RETURN json_build_object(
+            'success', true,
+            'user_id', new_user_id,
+            'company_id', inv.company_id,
+            'company_name', company_name,
+            'role', inv.role,
+            'message', 'Invitation accepted successfully'
+        );
+    END IF;
+
+    -- 2) Si existe un placeholder por email+company (invitado previamente), enlazarlo
+    SELECT * INTO placeholder_user
+    FROM public.users
+    WHERE email = inv.email AND company_id = inv.company_id
+    ORDER BY created_at DESC
+    LIMIT 1;
+
+    IF FOUND THEN
+        UPDATE public.users
+        SET 
+            auth_user_id = p_auth_user_id,
+            role = inv.role,
+            active = true,
+            updated_at = NOW()
+        WHERE id = placeholder_user.id
+        RETURNING id INTO new_user_id;
+    ELSE
+        -- 3) Crear usuario desde la invitación
+        INSERT INTO public.users (
+            email,
+            name,
+            surname,
+            role,
+            active,
+            company_id,
+            auth_user_id,
+            permissions
+        )
+        VALUES (
+            inv.email,
+            split_part(inv.email, '@', 1),
+            NULL,
+            inv.role,
+            true,
+            inv.company_id,
+            p_auth_user_id,
+            '{}'::jsonb
+        )
+        RETURNING id INTO new_user_id;
+    END IF;
+
     -- Marcar invitación como aceptada
     UPDATE public.company_invitations
-    SET 
-        status = 'accepted',
-        responded_at = NOW()
-    WHERE id = invitation_data.id;
-    
-    -- Marcar usuario pendiente como confirmado
+    SET status = 'accepted', responded_at = NOW()
+    WHERE id = inv.id;
+
+    -- Confirmar pending_users si existe (opcional)
     UPDATE public.pending_users
-    SET confirmed_at = NOW()
-    WHERE auth_user_id = p_auth_user_id;
-    
+    SET confirmed_at = NOW(), company_id = inv.company_id
+    WHERE auth_user_id = p_auth_user_id AND email = inv.email;
+
     RETURN json_build_object(
         'success', true,
         'user_id', new_user_id,
-        'company_id', invitation_data.company_id,
+        'company_id', inv.company_id,
         'company_name', company_name,
-        'role', invitation_data.role,
+        'role', inv.role,
         'message', 'Invitation accepted successfully'
     );
-    
+
 EXCEPTION WHEN OTHERS THEN
-    RETURN json_build_object(
-        'success', false,
-        'error', SQLERRM
-    );
+    RETURN json_build_object('success', false, 'error', SQLERRM);
 END;
 $$;
 
