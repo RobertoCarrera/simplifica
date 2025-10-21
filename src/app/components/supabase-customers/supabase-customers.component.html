@@ -316,7 +316,7 @@
                         class="action-btn invite"
                         [class.opacity-50]="customer?.metadata?.inactive_on_import"
                         [disabled]="customer?.metadata?.inactive_on_import"
-                        *ngIf="!(portal.hasClientPortalAccess(customer.id, cEmail) | async)"
+                        *ngIf="!hasPortalAccess(customer, cEmail)"
                         title="Invitar al portal de clientes"
                       >
                         <i class="fas fa-user-plus"></i>
@@ -326,7 +326,7 @@
                         class="action-btn delete"
                         [class.opacity-50]="customer?.metadata?.inactive_on_import"
                         [disabled]="customer?.metadata?.inactive_on_import"
-                        *ngIf="(portal.hasClientPortalAccess(customer.id, cEmail) | async)"
+                        *ngIf="hasPortalAccess(customer, cEmail)"
                         title="Quitar acceso al portal"
                       >
                         <i class="fas fa-user-times"></i>

@@ -76,6 +76,9 @@ export class SupabaseCustomersComponent implements OnInit {
   inviteMessage: string = '';
   inviteTarget = signal<Customer | null>(null);
 
+  // Cache of client portal access to avoid per-item async calls from the template
+  private portalAccessKeys = signal<Set<string>>(new Set());
+
   // Filter signals
   searchTerm = signal('');
   sortBy = signal<'name' | 'apellidos' | 'created_at'>('created_at');
@@ -306,6 +309,8 @@ onMappingConfirmed(mappings: any[]): void {
     
     this.loadData();
     this.loadGdprData();
+    // Initialize portal access cache
+    this.refreshPortalAccess();
   }
 
   // Open invite modal prefilled with customer email
@@ -322,6 +327,28 @@ onMappingConfirmed(mappings: any[]): void {
     this.inviteTarget.set(null);
     this.inviteEmail = '';
     this.inviteMessage = '';
+  }
+
+  // Build a cache of (client_id:email) with active portal access
+  private async refreshPortalAccess() {
+    try {
+      const { data, error } = await this.portal.listMappings();
+      if (error) return;
+      const active = (data || []).filter((r: any) => r && r.is_active !== false);
+      const keys = new Set<string>();
+      for (const r of active) {
+        const cid = (r.client_id || '').toString();
+        const em = (r.email || '').toLowerCase();
+        if (cid && em) keys.add(`${cid}:${em}`);
+      }
+      this.portalAccessKeys.set(keys);
+    } catch {}
+  }
+
+  // Helper used by template to avoid async pipes per item
+  hasPortalAccess(customer: Customer, email?: string | null): boolean {
+    if (!customer?.id || !email) return false;
+    return this.portalAccessKeys().has(`${customer.id}:${email.toLowerCase()}`);
   }
 
   private isValidEmail(email: string): boolean {
@@ -400,6 +427,11 @@ onMappingConfirmed(mappings: any[]): void {
     if (res.success) {
       if (enable) this.toastService.success('Acceso habilitado al portal', 'Portal de clientes');
       else this.toastService.info('Acceso deshabilitado al portal', 'Portal de clientes');
+      // Update local cache immediately for snappy UI
+      const next = new Set(this.portalAccessKeys());
+      const key = `${customer.id}:${(customer.email || '').toLowerCase()}`;
+      if (enable) next.add(key); else next.delete(key);
+      this.portalAccessKeys.set(next);
     } else {
       this.toastService.error(res.error || 'No se pudo actualizar el acceso', 'Portal de clientes');
     }
@@ -409,6 +441,8 @@ onMappingConfirmed(mappings: any[]): void {
     // Subscribe to customers
     this.customersService.customers$.subscribe(customers => {
       this.customers.set(customers);
+      // Keep portal access cache in sync with customer list
+      this.refreshPortalAccess();
     });
 
     // Subscribe to loading state
