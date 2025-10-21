@@ -425,8 +425,46 @@ onMappingConfirmed(mappings: any[]): void {
     }
     const res = await this.portal.toggleClientPortalAccess(customer.id, customer.email, enable);
     if (res.success) {
-      if (enable) this.toastService.success('Acceso habilitado al portal', 'Portal de clientes');
-      else this.toastService.info('Acceso deshabilitado al portal', 'Portal de clientes');
+      if (enable) {
+        this.toastService.success('Acceso habilitado al portal', 'Portal de clientes');
+        // Enviar invitación automáticamente con rol 'client'
+        try {
+          const mail = await this.auth.sendCompanyInvite({ email: customer.email!, role: 'client' });
+          if (!mail.success) {
+            if (mail.token) {
+              const copyTxt = `${location.origin}/invite?token=${encodeURIComponent(mail.token)}`;
+              await navigator.clipboard?.writeText?.(copyTxt).catch(() => {});
+              this.toastService.warning('Email no enviado, enlace copiado al portapapeles.', 'Aviso');
+            } else {
+              this.toastService.error(mail.error || 'Invitación creada, pero fallo enviando el email', 'Aviso');
+            }
+          } else {
+            if (mail.info === 'email_exists_magiclink') {
+              this.toastService.info('El usuario ya tenía cuenta: se envió un enlace mágico.', 'Invitación');
+            } else if (mail.info === 'email_exists') {
+              if (mail.token) {
+                const copyTxt = `${location.origin}/invite?token=${encodeURIComponent(mail.token)}`;
+                await navigator.clipboard?.writeText?.(copyTxt).catch(() => {});
+                this.toastService.warning('El usuario ya existe. Copiamos el enlace al portapapeles.', 'Invitación');
+              } else {
+                this.toastService.info('El usuario ya existe. Revisa tu correo.', 'Invitación');
+              }
+            } else if (mail.info === 'email_send_failed_token_only') {
+              if (mail.token) {
+                const copyTxt = `${location.origin}/invite?token=${encodeURIComponent(mail.token)}`;
+                await navigator.clipboard?.writeText?.(copyTxt).catch(() => {});
+              }
+              this.toastService.warning('No se pudo enviar el email. Enlace copiado al portapapeles.', 'Invitación');
+            } else {
+              this.toastService.success('Invitación enviada por email.', 'Éxito');
+            }
+          }
+        } catch (e: any) {
+          this.toastService.error(e?.message || 'No se pudo enviar la invitación', 'Error');
+        }
+      } else {
+        this.toastService.info('Acceso deshabilitado al portal', 'Portal de clientes');
+      }
       // Update local cache immediately for snappy UI
       const next = new Set(this.portalAccessKeys());
       const key = `${customer.id}:${(customer.email || '').toLowerCase()}`;

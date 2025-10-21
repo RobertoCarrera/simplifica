@@ -108,6 +108,24 @@ export class ClientPortalService {
     }
   }
 
+  async setUserRoleForEmail(email: string, role: 'client' | 'none'): Promise<{ success: boolean; error?: string }> {
+    const cid = this.auth.companyId();
+    if (!cid) return { success: false, error: 'No company id' };
+    try {
+      const client = this.sb.instance;
+      const { error } = await client
+        .from('users')
+        .update({ role })
+        .eq('company_id', cid)
+        .eq('email', email.toLowerCase())
+        .eq('active', true);
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
   // Toggle access for a given client email in current company (create or deactivate mapping)
   async toggleClientPortalAccess(clientId: string, email: string, enable: boolean): Promise<{ success: boolean; error?: string }> {
     const cid = this.auth.companyId();
@@ -119,6 +137,8 @@ export class ClientPortalService {
           .from('client_portal_users')
           .upsert({ company_id: cid, client_id: clientId, email: email.toLowerCase(), is_active: true }, { onConflict: 'company_id,client_id,email' });
         if (error) return { success: false, error: error.message };
+        // Align role with access grant
+        await this.setUserRoleForEmail(email, 'client').catch(() => ({ success: false }));
       } else {
         const { error } = await client
           .from('client_portal_users')
@@ -127,6 +147,8 @@ export class ClientPortalService {
           .eq('client_id', clientId)
           .eq('email', email.toLowerCase());
         if (error) return { success: false, error: error.message };
+        // Downgrade role when access is revoked
+        await this.setUserRoleForEmail(email, 'none').catch(() => ({ success: false }));
       }
       return { success: true };
     } catch (e: any) {

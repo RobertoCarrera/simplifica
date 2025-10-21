@@ -572,6 +572,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       case 'admin': return 'Administrador';
       case 'member': return 'Miembro';
       case 'client': return 'Cliente';
+      case 'none': return 'Sin acceso';
       default: return role;
     }
   }
