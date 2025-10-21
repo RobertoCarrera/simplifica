@@ -342,18 +342,7 @@ onMappingConfirmed(mappings: any[]): void {
 
     this.inviting.set(true);
     try {
-      // 1) Crear/actualizar invitación en BD
-      const res = await this.auth.inviteUserToCompany({
-        companyId,
-        email,
-        message: (this.inviteMessage || '').trim() || undefined,
-      });
-      if (!res.success) {
-        this.toastService.error(res.error || 'No se pudo crear la invitación', 'Error');
-        return;
-      }
-
-      // 2) Enviar email mediante Edge Function (usa SMTP SES de Supabase)
+      // Enviar invitación mediante Edge Function (crea/usa la invitación y envía email por SMTP de Supabase)
       const mail = await this.auth.sendCompanyInvite({
         email,
         role: 'member',
