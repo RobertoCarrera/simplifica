@@ -107,4 +107,45 @@ export class ClientPortalService {
       return { success: false, error: e.message };
     }
   }
+
+  // Toggle access for a given client email in current company (create or deactivate mapping)
+  async toggleClientPortalAccess(clientId: string, email: string, enable: boolean): Promise<{ success: boolean; error?: string }> {
+    const cid = this.auth.companyId();
+    if (!cid) return { success: false, error: 'No company id' };
+    try {
+      const client = this.sb.instance;
+      if (enable) {
+        const { error } = await client
+          .from('client_portal_users')
+          .upsert({ company_id: cid, client_id: clientId, email: email.toLowerCase(), is_active: true }, { onConflict: 'company_id,client_id,email' });
+        if (error) return { success: false, error: error.message };
+      } else {
+        const { error } = await client
+          .from('client_portal_users')
+          .update({ is_active: false })
+          .eq('company_id', cid)
+          .eq('client_id', clientId)
+          .eq('email', email.toLowerCase());
+        if (error) return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async hasClientPortalAccess(clientId: string, email: string): Promise<boolean> {
+    const cid = this.auth.companyId();
+    if (!cid) return false;
+    const client = this.sb.instance;
+    const { data, error } = await client
+      .from('client_portal_users')
+      .select('id, is_active')
+      .eq('company_id', cid)
+      .eq('client_id', clientId)
+      .eq('email', email.toLowerCase())
+      .maybeSingle();
+    if (error) return false;
+    return !!data && (data as any).is_active !== false;
+  }
 }

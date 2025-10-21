@@ -309,16 +309,29 @@
                       <i class="fas fa-edit"></i>
                     </button>
                     
-                    <!-- Invite to Client Portal Button -->
-                    <button
-                      (click)="openInviteModal(customer); $event.stopPropagation()"
-                      class="action-btn invite"
-                      [class.opacity-50]="customer?.metadata?.inactive_on_import || !customer.email"
-                      [disabled]="customer?.metadata?.inactive_on_import || !customer.email"
-                      title="Invitar al portal de clientes"
-                    >
-                      <i class="fas fa-user-plus"></i>
-                    </button>
+                    <!-- Invite/Quitar acceso Client Portal Button -->
+                    <ng-container *ngIf="customer.email as cEmail">
+                      <button
+                        (click)="openInviteModal(customer); $event.stopPropagation()"
+                        class="action-btn invite"
+                        [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                        [disabled]="customer?.metadata?.inactive_on_import"
+                        *ngIf="!(portal.hasClientPortalAccess(customer.id, cEmail) | async)"
+                        title="Invitar al portal de clientes"
+                      >
+                        <i class="fas fa-user-plus"></i>
+                      </button>
+                      <button
+                        (click)="togglePortalAccess(customer, false, $event)"
+                        class="action-btn delete"
+                        [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                        [disabled]="customer?.metadata?.inactive_on_import"
+                        *ngIf="(portal.hasClientPortalAccess(customer.id, cEmail) | async)"
+                        title="Quitar acceso al portal"
+                      >
+                        <i class="fas fa-user-times"></i>
+                      </button>
+                    </ng-container>
 
                     <!-- GDPR Flip Button -->
                     <button

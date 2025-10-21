@@ -996,7 +996,7 @@ export class AuthService {
    * Enviar invitación por email usando Edge Function + SMTP de Supabase (SES)
    * Utiliza la sesión actual para autorizar y que la función valide owner/admin.
    */
-  async sendCompanyInvite(params: { email: string; role?: string; message?: string }): Promise<{ success: boolean; error?: string }> {
+  async sendCompanyInvite(params: { email: string; role?: string; message?: string }): Promise<{ success: boolean; error?: string; info?: string; token?: string }> {
     try {
       const { data, error } = await this.supabase.functions.invoke('send-company-invite', {
         body: {
@@ -1007,12 +1007,14 @@ export class AuthService {
       });
       if (error) {
         console.error('❌ send-company-invite error:', error);
-        return { success: false, error: error.message };
+        // Intentar extraer cuerpo de error si viene del function
+        const errMsg = (error as any)?.message || (error as any)?.error || 'Edge Function error';
+        return { success: false, error: errMsg };
       }
       if (!data?.success) {
-        return { success: false, error: data?.error || 'Edge function returned error' };
+        return { success: false, error: data?.error || 'Edge function returned error', info: data?.info, token: data?.token };
       }
-      return { success: true };
+      return { success: true, info: data?.info, token: data?.token };
     } catch (e: any) {
       console.error('❌ sendCompanyInvite exception:', e);
       return { success: false, error: e?.message || String(e) };

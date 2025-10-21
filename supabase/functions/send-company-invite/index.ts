@@ -52,10 +52,12 @@ serve(async (req: Request) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
     const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const APP_URL = Deno.env.get("APP_URL") || "";
-    if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !APP_URL) {
+    if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
       console.error("send-company-invite: missing env vars", { hasUrl: !!SUPABASE_URL, hasKey: !!SERVICE_ROLE_KEY, hasAppUrl: !!APP_URL });
-      return new Response(JSON.stringify({ error: "Missing env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, APP_URL" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Missing env: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+    // Allow missing APP_URL by falling back to request origin
+    const redirectBase = APP_URL || origin || '';
 
     const authHeader = req.headers.get("Authorization") || req.headers.get("authorization") || "";
     if (!authHeader.startsWith("Bearer ")) {
@@ -93,9 +95,10 @@ serve(async (req: Request) => {
     }
 
     // Create invitation via RPC (try new signature with named params). Fallback to legacy signature.
-    let invitationId: string | null = null;
-    let inviteJson: any = null;
-    let inviteFirstErr: any = null;
+  let invitationId: string | null = null;
+  let inviteToken: string | null = null; // declare early to avoid TDZ when assigning in fallbacks
+  let inviteJson: any = null;
+  let inviteFirstErr: any = null;
     {
       const { data: inviteRes, error: inviteErr } = await supabaseAdmin.rpc("invite_user_to_company", {
         p_company_id: currentUser.company_id,
@@ -139,16 +142,46 @@ serve(async (req: Request) => {
           .select("id, token")
           .single();
         if (createErr) {
-          console.error("send-company-invite: invite RPCs failed and direct creation failed", { inviteFirstErr, fallbackErr: fallbackErr?.message, createErr });
-          return new Response(JSON.stringify({ error: inviteFirstErr || fallbackErr?.message || createErr.message || "Invite creation failed" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          // Unique violation when re-inviting same email: try to reuse/update latest invitation
+          if ((createErr as any).code === '23505') {
+            const { data: existing, error: existingErr } = await supabaseAdmin
+              .from("company_invitations")
+              .select("id, token, status")
+              .eq("company_id", currentUser.company_id)
+              .eq("email", email)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (!existingErr && existing?.id) {
+              const { data: updated, error: updErr } = await supabaseAdmin
+                .from("company_invitations")
+                .update({ status: "pending", token: generatedToken, expires_at: expiresAt, invited_by_user_id: currentUser.id })
+                .eq("id", existing.id)
+                .select("id, token")
+                .single();
+              if (!updErr && updated) {
+                invitationId = updated.id;
+                inviteToken = updated.token || generatedToken;
+              } else {
+                console.error("send-company-invite: failed to update existing invitation after unique violation", updErr);
+                return new Response(JSON.stringify({ error: "Failed to update existing invitation" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+              }
+            } else {
+              console.error("send-company-invite: unique violation but could not fetch existing invitation", existingErr);
+              return new Response(JSON.stringify({ error: "Invite creation conflict and no existing invitation found" }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+          } else {
+            console.error("send-company-invite: invite RPCs failed and direct creation failed", { inviteFirstErr, fallbackErr: fallbackErr?.message, createErr });
+            return new Response(JSON.stringify({ error: inviteFirstErr || fallbackErr?.message || createErr.message || "Invite creation failed" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+        } else {
+          invitationId = created?.id || null;
+          inviteToken = created?.token || generatedToken;
         }
-        invitationId = created?.id || null;
-        inviteToken = created?.token || generatedToken;
       }
     }
 
     // Obtain token for redirect; try company_invitations first, then legacy invitations table
-    let inviteToken: string | null = null;
     if (invitationId) {
       const { data: tokenRow, error: tokErr } = await supabaseAdmin.rpc("get_company_invitation_token", { p_invitation_id: invitationId });
       if (!tokErr && tokenRow) inviteToken = tokenRow as string;
@@ -206,18 +239,19 @@ serve(async (req: Request) => {
 
     // Send invite email using Supabase Auth
     const { data: adminInvite, error: adminErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${APP_URL}/invite?token=${encodeURIComponent(inviteToken)}`,
+      redirectTo: `${redirectBase}/invite?token=${encodeURIComponent(inviteToken)}`,
     });
     if (adminErr) {
       // If the user already exists in Auth, send a magic link instead, pointing to our /invite page
       const status: any = (adminErr as any)?.status;
       const code: any = (adminErr as any)?.code;
       const name: any = (adminErr as any)?.name;
+      // Also handle cases where the email was previously invited or soft-deleted; API often returns 422
       if (status === 422 || code === "email_exists" || name === "AuthApiError") {
         try {
           const { data: otpData, error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
             email,
-            options: { emailRedirectTo: `${APP_URL}/invite?token=${encodeURIComponent(inviteToken)}` },
+            options: { emailRedirectTo: `${redirectBase}/invite?token=${encodeURIComponent(inviteToken)}` },
           });
           if (otpErr) {
             console.warn("send-company-invite: signInWithOtp fallback failed, returning token only", otpErr);
@@ -239,7 +273,11 @@ serve(async (req: Request) => {
         }
       }
       console.error("send-company-invite: inviteUserByEmail failed", adminErr);
-      return new Response(JSON.stringify({ error: adminErr.message || "Failed to send email" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      // As a safety net, don't block the flow: return success with token so UI can share or we can manually deliver link
+      return new Response(
+        JSON.stringify({ success: true, invitation_id: invitationId || null, info: "email_send_failed_token_only", token: inviteToken }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(JSON.stringify({ success: true, invitation_id: invitationId || null, token: inviteToken }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });

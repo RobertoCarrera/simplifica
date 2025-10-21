@@ -18,6 +18,7 @@ import { HoneypotService } from '../../services/honeypot.service';
 import { AppModalComponent } from '../app-modal/app-modal.component';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { ClientPortalService } from '../../services/client-portal.service';
 import { ClientGdprModalComponent } from '../client-gdpr-modal/client-gdpr-modal.component';
 
 @Component({
@@ -50,6 +51,7 @@ export class SupabaseCustomersComponent implements OnInit {
   private cdr = inject(ChangeDetectorRef);
   devRoleService = inject(DevRoleService);
   private auth = inject(AuthService);
+  portal = inject(ClientPortalService);
 
   // State signals
   customers = signal<Customer[]>([]);
@@ -349,16 +351,57 @@ onMappingConfirmed(mappings: any[]): void {
         message: (this.inviteMessage || '').trim() || undefined,
       });
       if (!mail.success) {
-        this.toastService.error(mail.error || 'Invitación creada, pero fallo enviando el email', 'Aviso');
+        // Cuando el correo falla pero tenemos token/info, mostrar aviso y ofrecer copiar enlace
+        if (mail.token) {
+          const copyTxt = `${location.origin}/invite?token=${encodeURIComponent(mail.token)}`;
+          await navigator.clipboard?.writeText?.(copyTxt).catch(() => {});
+          this.toastService.warning('Email no enviado, enlace copiado al portapapeles.', 'Aviso');
+        } else {
+          this.toastService.error(mail.error || 'Invitación creada, pero fallo enviando el email', 'Aviso');
+        }
         return;
       }
 
-      this.toastService.success('Invitación enviada por email.', 'Éxito');
+      if (mail.info === 'email_exists_magiclink') {
+        this.toastService.info('El usuario ya tenía cuenta: se envió un enlace mágico.', 'Invitación');
+      } else if (mail.info === 'email_exists') {
+        if (mail.token) {
+          const copyTxt = `${location.origin}/invite?token=${encodeURIComponent(mail.token)}`;
+          await navigator.clipboard?.writeText?.(copyTxt).catch(() => {});
+          this.toastService.warning('El usuario ya existe. Copiamos el enlace al portapapeles.', 'Invitación');
+        } else {
+          this.toastService.info('El usuario ya existe. Revisa tu correo.', 'Invitación');
+        }
+      } else if (mail.info === 'email_send_failed_token_only') {
+        if (mail.token) {
+          const copyTxt = `${location.origin}/invite?token=${encodeURIComponent(mail.token)}`;
+          await navigator.clipboard?.writeText?.(copyTxt).catch(() => {});
+        }
+        this.toastService.warning('No se pudo enviar el email. Enlace copiado al portapapeles.', 'Invitación');
+      } else {
+        this.toastService.success('Invitación enviada por email.', 'Éxito');
+      }
       this.closeInviteModal();
     } catch (e: any) {
       this.toastService.error(e?.message || 'No se pudo enviar la invitación', 'Error');
     } finally {
       this.inviting.set(false);
+    }
+  }
+
+  // Toggle client portal access from the list (button changes icon/color)
+  async togglePortalAccess(customer: Customer, enable: boolean, ev?: Event) {
+    ev?.stopPropagation();
+    if (!customer?.email) {
+      this.toastService.error('El cliente no tiene email.', 'Portal de clientes');
+      return;
+    }
+    const res = await this.portal.toggleClientPortalAccess(customer.id, customer.email, enable);
+    if (res.success) {
+      if (enable) this.toastService.success('Acceso habilitado al portal', 'Portal de clientes');
+      else this.toastService.info('Acceso deshabilitado al portal', 'Portal de clientes');
+    } else {
+      this.toastService.error(res.error || 'No se pudo actualizar el acceso', 'Portal de clientes');
     }
   }
 
