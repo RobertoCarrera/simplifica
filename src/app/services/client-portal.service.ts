@@ -30,6 +30,9 @@ export interface ClientPortalQuote {
 export class ClientPortalService {
   private sb = inject(SupabaseClientService);
   private auth = inject(AuthService);
+  
+  // Computed properties for service
+  private get supabase() { return this.sb.instance; }
 
   async listTickets(): Promise<{ data: ClientPortalTicket[]; error?: any }> {
     const client = this.sb.instance;
@@ -169,5 +172,35 @@ export class ClientPortalService {
       .maybeSingle();
     if (error) return false;
     return !!data && (data as any).is_active !== false;
+  }
+
+  async sendInvitation(email: string, companyId: string, role: 'client' | 'member' | 'admin' | 'owner' = 'client'): Promise<{
+    success: boolean;
+    message?: string;
+    code?: string;
+    token?: string;
+    error?: string;
+  }> {
+    try {
+      const { data, error } = await this.supabase.functions.invoke('send-company-invite', {
+        body: { 
+          email, 
+          company_id: companyId, 
+          role,
+          force_email: true  // SIEMPRE enviar email, nunca fallar silenciosamente
+        }
+      });
+
+      if (error) throw error;
+      
+      // Validar que realmente se envió el email
+      if (data && !data.success && data.code !== 'email_exists') {
+        throw new Error(data.error || 'No se pudo enviar el email de invitación');
+      }
+      
+      return data || { success: false, error: 'Sin respuesta de la función' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Error al enviar invitación' };
+    }
   }
 }

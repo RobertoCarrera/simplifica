@@ -70,6 +70,7 @@ serve(async (req: Request) => {
     const email = String(body?.email || "").trim().toLowerCase();
     const role = String(body?.role || "member").trim();
     const message = body?.message != null ? String(body.message) : null;
+    const forceEmail = body?.force_email === true; // Flag to ALWAYS send email
     if (!email) {
       return new Response(JSON.stringify({ success: false, error: "invalid_request", message: "email is required" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -281,7 +282,14 @@ serve(async (req: Request) => {
             options: { emailRedirectTo: `${redirectBase}/invite?token=${encodeURIComponent(inviteToken)}` },
           });
           if (otpErr) {
-            console.warn("send-company-invite: signInWithOtp fallback failed, returning token only", otpErr);
+            console.warn("send-company-invite: signInWithOtp fallback failed", otpErr);
+            if (forceEmail) {
+              // If force_email flag is set, this is a hard error
+              return new Response(
+                JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email de invitación", token: inviteToken }),
+                { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
             return new Response(
               JSON.stringify({ success: true, invitation_id: invitationId || null, info: "email_exists", token: inviteToken }),
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -292,7 +300,13 @@ serve(async (req: Request) => {
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } catch (e) {
-          console.warn("send-company-invite: signInWithOtp threw, returning token only", e);
+          console.warn("send-company-invite: signInWithOtp threw", e);
+          if (forceEmail) {
+            return new Response(
+              JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email de invitación", token: inviteToken }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
           return new Response(
             JSON.stringify({ success: true, invitation_id: invitationId || null, info: "email_exists", token: inviteToken }),
             { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -300,6 +314,13 @@ serve(async (req: Request) => {
         }
       }
       console.error("send-company-invite: inviteUserByEmail failed", adminErr);
+      // If force_email flag is set and email send failed, return error
+      if (forceEmail) {
+        return new Response(
+          JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email de invitación", token: inviteToken }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       // As a safety net, don't block the flow: return success with token so UI can share or we can manually deliver link
       return new Response(
         JSON.stringify({ success: true, invitation_id: invitationId || null, info: "email_send_failed_token_only", token: inviteToken }),

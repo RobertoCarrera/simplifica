@@ -134,15 +134,26 @@ export class PortalInviteComponent {
 
   private async getInvitationData(token: string): Promise<any> {
     try {
+      // Usar cliente anónimo para lectura pública
       const { data, error } = await this.auth.client
         .from('company_invitations')
         .select('id, email, company_id, role, status')
         .eq('token', token)
         .maybeSingle();
       
-      if (error || !data) return null;
+      if (error) {
+        console.error('Error fetching invitation:', error);
+        return null;
+      }
+      
+      if (!data) {
+        console.warn('No invitation found for token');
+        return null;
+      }
+      
       return data;
     } catch (e) {
+      console.error('Exception fetching invitation:', e);
       return null;
     }
   }
