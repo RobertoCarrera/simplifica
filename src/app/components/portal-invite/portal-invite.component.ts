@@ -71,7 +71,11 @@ export class PortalInviteComponent {
       try { await this.auth.client.auth.refreshSession(); } catch {}
     }
 
-    const res = await this.auth.acceptInvitation(token);
+    let res = await this.auth.acceptInvitation(token);
+    if (!res.success && (res.error?.includes('Unauthorized') || res.error?.includes('Invalid') )) {
+      await new Promise(r => setTimeout(r, 500));
+      res = await this.auth.acceptInvitation(token);
+    }
     this.loading = false;
     if (!res.success) {
       this.error = res.error || 'No se pudo aceptar la invitación';

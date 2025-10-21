@@ -235,7 +235,10 @@ export class AuthService {
     // Verificar si ya existe el usuario antes de llamar ensureAppUser
     const existingAppUser = await this.fetchAppUserByAuthId(user.id);
     
-    if (!existingAppUser) {
+    // Evitar creación automática durante el flujo de invitación (/invite):
+    // En este flujo, la creación/enlace del usuario la realiza el RPC accept_company_invitation.
+    const onInviteFlow = typeof window !== 'undefined' && window.location.pathname.startsWith('/invite');
+    if (!existingAppUser && !onInviteFlow) {
       console.log('🔄 User not found in app database, creating...');
       try {
         await this.ensureAppUser(user);
