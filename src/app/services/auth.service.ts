@@ -1011,8 +1011,9 @@ export class AuthService {
         const errMsg = (error as any)?.message || (error as any)?.error || 'Edge Function error';
         return { success: false, error: errMsg };
       }
+      // La función ahora devuelve 200 siempre; success=false indica error no fatal
       if (!data?.success) {
-        return { success: false, error: data?.error || 'Edge function returned error', info: data?.info, token: data?.token };
+        return { success: false, error: data?.message || data?.error || 'Invite failed', info: data?.info, token: data?.token };
       }
       return { success: true, info: data?.info, token: data?.token };
     } catch (e: any) {

@@ -41,7 +41,8 @@ serve(async (req: Request) => {
 
   if (!isAllowedOrigin(origin)) {
     console.warn("send-company-invite: Origin not allowed:", origin);
-    return new Response(JSON.stringify({ error: "Origin not allowed" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Return 200 with structured error to avoid noisy client Function errors
+    return new Response(JSON.stringify({ success: false, error: "origin_not_allowed", message: "Origin not allowed", origin }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   if (req.method !== "POST") {
@@ -54,7 +55,7 @@ serve(async (req: Request) => {
     const APP_URL = Deno.env.get("APP_URL") || "";
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
       console.error("send-company-invite: missing env vars", { hasUrl: !!SUPABASE_URL, hasKey: !!SERVICE_ROLE_KEY, hasAppUrl: !!APP_URL });
-      return new Response(JSON.stringify({ error: "Missing env: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "missing_env", message: "Missing env: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     // Allow missing APP_URL by falling back to request origin
     const redirectBase = APP_URL || origin || '';
@@ -62,7 +63,7 @@ serve(async (req: Request) => {
     const authHeader = req.headers.get("Authorization") || req.headers.get("authorization") || "";
     if (!authHeader.startsWith("Bearer ")) {
       console.warn("send-company-invite: missing bearer token header");
-      return new Response(JSON.stringify({ error: "Authorization Bearer token required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "unauthorized", message: "Authorization Bearer token required" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const body = await req.json().catch(() => ({} as any));
@@ -70,7 +71,7 @@ serve(async (req: Request) => {
     const role = String(body?.role || "member").trim();
     const message = body?.message != null ? String(body.message) : null;
     if (!email) {
-      return new Response(JSON.stringify({ error: "email is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "invalid_request", message: "email is required" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -80,7 +81,7 @@ serve(async (req: Request) => {
     const { data: userFromToken, error: tokenErr } = await supabaseAdmin.auth.getUser(token);
     if (tokenErr || !userFromToken?.user?.id) {
       console.warn("send-company-invite: invalid token or user not found", tokenErr);
-      return new Response(JSON.stringify({ error: "Invalid auth token" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "unauthorized", message: "Invalid auth token" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const authUserId = userFromToken.user.id;
@@ -91,7 +92,7 @@ serve(async (req: Request) => {
       .single();
 
     if (userErr || !currentUser?.active || !["owner", "admin"].includes(currentUser.role)) {
-      return new Response(JSON.stringify({ error: "Not authorized" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "Not authorized" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Create invitation via RPC (try new signature with named params). Fallback to legacy signature.
@@ -164,15 +165,15 @@ serve(async (req: Request) => {
                 inviteToken = updated.token || generatedToken;
               } else {
                 console.error("send-company-invite: failed to update existing invitation after unique violation", updErr);
-                return new Response(JSON.stringify({ error: "Failed to update existing invitation" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+                return new Response(JSON.stringify({ success: false, error: "invite_conflict_update_failed", message: "Failed to update existing invitation" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
               }
             } else {
               console.error("send-company-invite: unique violation but could not fetch existing invitation", existingErr);
-              return new Response(JSON.stringify({ error: "Invite creation conflict and no existing invitation found" }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+              return new Response(JSON.stringify({ success: false, error: "invite_conflict_no_existing", message: "Invite creation conflict and no existing invitation found" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
             }
           } else {
             console.error("send-company-invite: invite RPCs failed and direct creation failed", { inviteFirstErr, fallbackErr: fallbackErr?.message, createErr });
-            return new Response(JSON.stringify({ error: inviteFirstErr || fallbackErr?.message || createErr.message || "Invite creation failed" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            return new Response(JSON.stringify({ success: false, error: "invite_creation_failed", message: inviteFirstErr || fallbackErr?.message || createErr.message || "Invite creation failed" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
         } else {
           invitationId = created?.id || null;
@@ -233,7 +234,7 @@ serve(async (req: Request) => {
         inviteToken = created?.token || generatedToken;
       } catch (e) {
         console.error("send-company-invite: could not retrieve invitation token for", { email, company_id: currentUser.company_id });
-        return new Response(JSON.stringify({ error: "Could not retrieve or create invitation token" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ success: false, error: "token_unavailable", message: "Could not retrieve or create invitation token" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
@@ -283,6 +284,7 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ success: true, invitation_id: invitationId || null, token: inviteToken }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     console.error("send-company-invite: unhandled error", e);
-    return new Response(JSON.stringify({ error: e?.message || String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Last-resort: avoid surfacing 500 to client to prevent function-layer retries/loops
+    return new Response(JSON.stringify({ success: false, error: "unhandled", message: e?.message || String(e) }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
