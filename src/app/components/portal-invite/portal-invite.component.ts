@@ -23,7 +23,7 @@ import { AuthService } from '../../services/auth.service';
       </div>
       
       <div *ngIf="success && !showPasswordForm" class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
-        <p class="text-green-800 dark:text-green-200">¡Invitación aceptada! Redirigiendo...</p>
+        <p class="text-green-800 dark:text-green-200">¡Contraseña creada! Redirigiendo al login...</p>
       </div>
 
       <!-- Password setup form -->
@@ -74,8 +74,12 @@ import { AuthService } from '../../services/auth.service';
           [disabled]="submitting || !password || !passwordConfirm"
           class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
         >
-          {{ submitting ? 'Creando cuenta...' : 'Crear cuenta y acceder' }}
+          {{ submitting ? 'Creando contraseña...' : 'Crear contraseña' }}
         </button>
+
+        <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-4">
+          Después de crear tu contraseña, podrás iniciar sesión en el portal
+        </p>
       </div>
     </div>
   </div>
@@ -103,6 +107,33 @@ export class PortalInviteComponent {
   }
 
   private async handle() {
+    // 1. Primero manejar magic link si existe (viene del email)
+    try {
+      const rawHash = window.location.hash;
+      const fragment = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
+      const hashParams = new URLSearchParams(fragment);
+      
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      
+      if (accessToken && refreshToken) {
+        // Establecer sesión desde el magic link
+        await this.auth.client.auth.setSession({ 
+          access_token: accessToken, 
+          refresh_token: refreshToken 
+        });
+        
+        // Limpiar hash para evitar reprocesamiento
+        history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        
+        // Esperar un momento para que la sesión se establezca
+        await new Promise(r => setTimeout(r, 300));
+      }
+    } catch (e) {
+      console.warn('Error processing magic link:', e);
+    }
+
+    // 2. Obtener el token de invitación
     let token = this.route.snapshot.queryParamMap.get('token');
     if (!token) {
       const fragment = (window.location.hash || '').replace(/^#/, '');
@@ -111,6 +142,21 @@ export class PortalInviteComponent {
     }
     
     if (!token) {
+      // Si no hay token, intentar obtener el email de la sesión actual
+      const { data: { user } } = await this.auth.client.auth.getUser();
+      if (user?.email) {
+        // Buscar invitación pendiente por email
+        const invData = await this.getInvitationByEmail(user.email);
+        if (invData) {
+          this.invitationToken = invData.token;
+          this.invitationData = invData;
+          this.userEmail = invData.email;
+          this.loading = false;
+          this.showPasswordForm = true;
+          return;
+        }
+      }
+      
       this.loading = false;
       this.error = 'Falta el token de invitación';
       return;
@@ -118,7 +164,7 @@ export class PortalInviteComponent {
 
     this.invitationToken = token;
 
-    // Obtener datos de la invitación SIN necesidad de estar autenticado
+    // 3. Obtener datos de la invitación
     const invData = await this.getInvitationData(token);
     if (!invData) {
       this.loading = false;
@@ -130,6 +176,24 @@ export class PortalInviteComponent {
     this.userEmail = invData.email;
     this.loading = false;
     this.showPasswordForm = true;
+  }
+
+  private async getInvitationByEmail(email: string): Promise<any> {
+    try {
+      const { data, error } = await this.auth.client
+        .from('company_invitations')
+        .select('id, email, company_id, role, status, token')
+        .eq('email', email.toLowerCase())
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (error || !data) return null;
+      return data;
+    } catch (e) {
+      return null;
+    }
   }
 
   private async getInvitationData(token: string): Promise<any> {
@@ -174,50 +238,60 @@ export class PortalInviteComponent {
     this.submitting = true;
 
     try {
-      // 1. Crear cuenta en Supabase Auth
-      const { data: signUpData, error: signUpError } = await this.auth.client.auth.signUp({
-        email: this.userEmail,
-        password: this.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/portal`,
+      // Verificar si ya hay una sesión activa del magic link
+      const { data: { user: existingUser } } = await this.auth.client.auth.getUser();
+      
+      if (existingUser) {
+        // Usuario ya tiene sesión del magic link, solo necesita configurar contraseña
+        const { error: updateError } = await this.auth.client.auth.updateUser({
+          password: this.password
+        });
+        
+        if (updateError) {
+          this.passwordError = updateError.message || 'Error al configurar la contraseña';
+          this.submitting = false;
+          return;
         }
-      });
-
-      if (signUpError) {
-        // Si el usuario ya existe, intentar login
-        if (signUpError.message.includes('already registered') || signUpError.status === 422) {
-          const { data: signInData, error: signInError } = await this.auth.client.auth.signInWithPassword({
-            email: this.userEmail,
-            password: this.password,
-          });
-
-          if (signInError) {
-            this.passwordError = 'Credenciales incorrectas o error al iniciar sesión';
-            this.submitting = false;
-            return;
+      } else {
+        // No hay sesión, crear cuenta nueva
+        const { data: signUpData, error: signUpError } = await this.auth.client.auth.signUp({
+          email: this.userEmail,
+          password: this.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/login`,
           }
-        } else {
+        });
+
+        if (signUpError) {
           this.passwordError = signUpError.message || 'Error al crear la cuenta';
           this.submitting = false;
           return;
         }
       }
 
-      // 2. Esperar un momento para que la sesión se establezca
+      // Esperar un momento para que la sesión se establezca
       await new Promise(r => setTimeout(r, 500));
 
-      // 3. Aceptar la invitación
+      // Aceptar la invitación
       const res = await this.auth.acceptInvitation(this.invitationToken);
       if (!res.success) {
-        this.passwordError = res.error || 'No se pudo aceptar la invitación';
-        this.submitting = false;
-        return;
+        // Invitación ya aceptada o error menor, continuar de todas formas
+        console.warn('Invitation acceptance warning:', res.error);
       }
 
-      // 4. Éxito: redirigir al portal
+      // Éxito: cerrar sesión y redirigir a login para que pruebe su contraseña
+      await this.auth.client.auth.signOut();
       this.success = true;
       this.showPasswordForm = false;
-      setTimeout(() => this.router.navigate(['/portal']), 800);
+      
+      setTimeout(() => {
+        this.router.navigate(['/login'], { 
+          queryParams: { 
+            email: this.userEmail,
+            message: 'Contraseña creada correctamente. Inicia sesión con tus credenciales.'
+          }
+        });
+      }, 800);
     } catch (e: any) {
       this.passwordError = e?.message || 'Error inesperado';
       this.submitting = false;

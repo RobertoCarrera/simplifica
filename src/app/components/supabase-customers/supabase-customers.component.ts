@@ -371,46 +371,23 @@ onMappingConfirmed(mappings: any[]): void {
 
     this.inviting.set(true);
     try {
-      // Enviar invitación al PORTAL DE CLIENTES mediante Edge Function (crea invitación y envía email por SMTP de Supabase)
+      // Enviar invitación al PORTAL DE CLIENTES mediante Edge Function
       const mail = await this.auth.sendCompanyInvite({
         email,
         role: 'client',
         message: (this.inviteMessage || '').trim() || undefined,
       });
+      
       if (!mail.success) {
-        // Cuando el correo falla pero tenemos token/info, mostrar aviso y ofrecer copiar enlace
-        if (mail.token) {
-          const copyTxt = `${location.origin}/invite?token=${encodeURIComponent(mail.token)}`;
-          await navigator.clipboard?.writeText?.(copyTxt).catch(() => {});
-          this.toastService.warning('Email no enviado, enlace copiado al portapapeles.', 'Aviso');
-        } else {
-          this.toastService.error(mail.error || 'Invitación creada, pero fallo enviando el email', 'Aviso');
-        }
+        this.toastService.error(mail.error || 'No se pudo enviar la invitación', 'Error');
         return;
       }
 
-      if (mail.info === 'email_exists_magiclink') {
-        this.toastService.info('El usuario ya tenía cuenta: se envió un enlace mágico.', 'Invitación');
-      } else if (mail.info === 'email_exists') {
-        if (mail.token) {
-          const copyTxt = `${location.origin}/invite?token=${encodeURIComponent(mail.token)}`;
-          await navigator.clipboard?.writeText?.(copyTxt).catch(() => {});
-          this.toastService.warning('El usuario ya existe. Copiamos el enlace al portapapeles.', 'Invitación');
-        } else {
-          this.toastService.info('El usuario ya existe. Revisa tu correo.', 'Invitación');
-        }
-      } else if (mail.info === 'email_send_failed_token_only') {
-        if (mail.token) {
-          const copyTxt = `${location.origin}/invite?token=${encodeURIComponent(mail.token)}`;
-          await navigator.clipboard?.writeText?.(copyTxt).catch(() => {});
-        }
-        this.toastService.warning('No se pudo enviar el email. Enlace copiado al portapapeles.', 'Invitación');
-      } else {
-        this.toastService.success('Invitación enviada por email.', 'Éxito');
-      }
+      // ÉXITO: Email enviado (ya sea invitación nueva o magic link para usuario existente)
+      this.toastService.success('Invitación enviada por email correctamente.', 'Éxito');
       this.closeInviteModal();
     } catch (e: any) {
-      this.toastService.error(e?.message || 'No se pudo enviar la invitación', 'Error');
+      this.toastService.error(e?.message || 'Error al enviar la invitación', 'Error');
     } finally {
       this.inviting.set(false);
     }
@@ -431,36 +408,12 @@ onMappingConfirmed(mappings: any[]): void {
         try {
           const mail = await this.auth.sendCompanyInvite({ email: customer.email!, role: 'client' });
           if (!mail.success) {
-            if (mail.token) {
-              const copyTxt = `${location.origin}/invite?token=${encodeURIComponent(mail.token)}`;
-              await navigator.clipboard?.writeText?.(copyTxt).catch(() => {});
-              this.toastService.warning('Email no enviado, enlace copiado al portapapeles.', 'Aviso');
-            } else {
-              this.toastService.error(mail.error || 'Invitación creada, pero fallo enviando el email', 'Aviso');
-            }
+            this.toastService.error(mail.error || 'No se pudo enviar la invitación por email', 'Error');
           } else {
-            if (mail.info === 'email_exists_magiclink') {
-              this.toastService.info('El usuario ya tenía cuenta: se envió un enlace mágico.', 'Invitación');
-            } else if (mail.info === 'email_exists') {
-              if (mail.token) {
-                const copyTxt = `${location.origin}/invite?token=${encodeURIComponent(mail.token)}`;
-                await navigator.clipboard?.writeText?.(copyTxt).catch(() => {});
-                this.toastService.warning('El usuario ya existe. Copiamos el enlace al portapapeles.', 'Invitación');
-              } else {
-                this.toastService.info('El usuario ya existe. Revisa tu correo.', 'Invitación');
-              }
-            } else if (mail.info === 'email_send_failed_token_only') {
-              if (mail.token) {
-                const copyTxt = `${location.origin}/invite?token=${encodeURIComponent(mail.token)}`;
-                await navigator.clipboard?.writeText?.(copyTxt).catch(() => {});
-              }
-              this.toastService.warning('No se pudo enviar el email. Enlace copiado al portapapeles.', 'Invitación');
-            } else {
-              this.toastService.success('Invitación enviada por email.', 'Éxito');
-            }
+            this.toastService.success('Invitación enviada por email correctamente.', 'Éxito');
           }
         } catch (e: any) {
-          this.toastService.error(e?.message || 'No se pudo enviar la invitación', 'Error');
+          this.toastService.error(e?.message || 'Error al enviar la invitación', 'Error');
         }
       } else {
         this.toastService.info('Acceso deshabilitado al portal', 'Portal de clientes');

@@ -266,62 +266,23 @@ serve(async (req: Request) => {
     }
 
     // Send invite email using Supabase Auth
-    const { data: adminInvite, error: adminErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${redirectBase}/invite?token=${encodeURIComponent(inviteToken)}`,
+    // SIEMPRE usar signInWithOtp (magic link) porque funciona tanto para usuarios nuevos como existentes
+    const { data: otpData, error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
+      email,
+      options: { 
+        emailRedirectTo: `${redirectBase}/invite?token=${encodeURIComponent(inviteToken)}`,
+        shouldCreateUser: true  // Crear usuario si no existe
+      },
     });
-    if (adminErr) {
-      // If the user already exists in Auth, send a magic link instead, pointing to our /invite page
-      const status: any = (adminErr as any)?.status;
-      const code: any = (adminErr as any)?.code;
-      const name: any = (adminErr as any)?.name;
-      // Also handle cases where the email was previously invited or soft-deleted; API often returns 422
-      if (status === 422 || code === "email_exists" || name === "AuthApiError") {
-        try {
-          const { data: otpData, error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
-            email,
-            options: { emailRedirectTo: `${redirectBase}/invite?token=${encodeURIComponent(inviteToken)}` },
-          });
-          if (otpErr) {
-            console.warn("send-company-invite: signInWithOtp fallback failed", otpErr);
-            if (forceEmail) {
-              // If force_email flag is set, this is a hard error
-              return new Response(
-                JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email de invitación", token: inviteToken }),
-                { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-              );
-            }
-            return new Response(
-              JSON.stringify({ success: true, invitation_id: invitationId || null, info: "email_exists", token: inviteToken }),
-              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-          return new Response(
-            JSON.stringify({ success: true, invitation_id: invitationId || null, info: "email_exists_magiclink", token: inviteToken }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        } catch (e) {
-          console.warn("send-company-invite: signInWithOtp threw", e);
-          if (forceEmail) {
-            return new Response(
-              JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email de invitación", token: inviteToken }),
-              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-          return new Response(
-            JSON.stringify({ success: true, invitation_id: invitationId || null, info: "email_exists", token: inviteToken }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      }
-      console.error("send-company-invite: inviteUserByEmail failed", adminErr);
-      // If force_email flag is set and email send failed, return error
+
+    if (otpErr) {
+      console.error("send-company-invite: signInWithOtp failed", otpErr);
       if (forceEmail) {
         return new Response(
           JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email de invitación", token: inviteToken }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      // As a safety net, don't block the flow: return success with token so UI can share or we can manually deliver link
       return new Response(
         JSON.stringify({ success: true, invitation_id: invitationId || null, info: "email_send_failed_token_only", token: inviteToken }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

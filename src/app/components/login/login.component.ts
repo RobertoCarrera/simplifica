@@ -457,6 +457,14 @@ export class LoginComponent implements OnDestroy, OnInit {
           this.loginForm.patchValue({ email: params['email'] });
         }
       }
+      
+      // Mensaje de éxito al crear contraseña desde invitación
+      if (params['message'] && params['message'].includes('Contraseña creada')) {
+        this.toastService.success(params['message'], 'Bienvenido');
+        if (params['email']) {
+          this.loginForm.patchValue({ email: params['email'] });
+        }
+      }
     });
     // If the guard navigated here with navigation state, capture the intended return path
     // history.state is populated by Angular router when using `router.navigate(..., { state })`.
