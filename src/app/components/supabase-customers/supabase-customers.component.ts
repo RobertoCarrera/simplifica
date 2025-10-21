@@ -342,10 +342,10 @@ onMappingConfirmed(mappings: any[]): void {
 
     this.inviting.set(true);
     try {
-      // Enviar invitación mediante Edge Function (crea/usa la invitación y envía email por SMTP de Supabase)
+      // Enviar invitación al PORTAL DE CLIENTES mediante Edge Function (crea invitación y envía email por SMTP de Supabase)
       const mail = await this.auth.sendCompanyInvite({
         email,
-        role: 'member',
+        role: 'client',
         message: (this.inviteMessage || '').trim() || undefined,
       });
       if (!mail.success) {
