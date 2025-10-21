@@ -812,6 +812,23 @@ export class AuthService {
   }
 
   /**
+   * Establecer/actualizar contraseña del usuario actual (cliente)
+   */
+  async setPassword(newPassword: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (!user) return { success: false, error: 'No autenticado' };
+      const { error } = await this.supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        return { success: false, error: this.getErrorMessage(error.message) };
+      }
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'Error inesperado' };
+    }
+  }
+
+  /**
    * Crea un registro pendiente de confirmación
    */
   private async createPendingUser(authUser: any, registerData: RegisterData): Promise<void> {

@@ -466,6 +466,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     const userRole = this.authService.userRole();
     const profile = this.authService.userProfile;
     const isAdmin = userRole === 'admin';
+    const isClient = userRole === 'client';
     const isDev = this.devRoleService.isDev();
 
     console.log('🔍 Menu filtering - Real user role:', userRole, 'Is adminOnly:', isAdmin, 'Is dev:', isDev);
@@ -476,6 +477,12 @@ export class ResponsiveSidebarComponent implements OnInit {
         { id: 1001, label: 'Confirmación', icon: 'auto_awesome', route: '/auth/confirm?pending=1', module: 'core' },
         { id: 14, label: 'Ayuda', icon: 'help_outline', route: '/ayuda', module: 'core' }
       ];
+    }
+
+    // Client role: restrict to Inicio, Tickets, Configuración
+    if (isClient) {
+      const allowedRoutes = new Set<string>(['/', '/tickets', '/configuracion']);
+      return this.allMenuItems.filter(item => allowedRoutes.has(item.route));
     }
 
     return this.allMenuItems.filter(item => {
@@ -564,6 +571,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       case 'owner': return 'Propietario';
       case 'admin': return 'Administrador';
       case 'member': return 'Miembro';
+      case 'client': return 'Cliente';
       default: return role;
     }
   }

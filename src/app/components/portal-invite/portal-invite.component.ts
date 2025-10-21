@@ -43,6 +43,7 @@ export class PortalInviteComponent {
       return;
     }
     this.success = true;
-    setTimeout(() => this.router.navigate(['/portal']), 800);
+    // Tras aceptar, invita a configurar contraseña del cliente
+    setTimeout(() => this.router.navigate(['/client/set-password']), 800);
   }
 }

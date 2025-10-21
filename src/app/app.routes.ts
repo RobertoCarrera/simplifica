@@ -42,6 +42,7 @@ import { UnitsManagementComponent } from './components/units-management/units-ma
 import { PortalInviteComponent } from './components/portal-invite/portal-invite.component';
 import { PortalDashboardComponent } from './components/portal-dashboard/portal-dashboard.component';
 import { ClientPortalAdminComponent } from './components/client-portal-admin/client-portal-admin.component';
+import { ClientPasswordSetupComponent } from './components/client-password-setup/client-password-setup.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -81,6 +82,7 @@ export const routes: Routes = [
     {path: 'consent', component: ConsentPortalComponent},
     // Client portal public/semi-public invite accept
     {path: 'invite', component: PortalInviteComponent},
+    {path: 'client/set-password', component: ClientPasswordSetupComponent, canActivate: [AuthGuard]},
     // Client portal dashboard (requires login as invited user)
     {path: 'portal', component: PortalDashboardComponent, canActivate: [AuthGuard]},
     
