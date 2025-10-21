@@ -64,6 +64,13 @@ export class PortalInviteComponent {
       this.error = 'Falta el token de invitación';
       return;
     }
+    // Ensure we have a current user after magic link setSession
+    const { data: { user } } = await this.auth.client.auth.getUser();
+    if (!user) {
+      // try refresh once
+      try { await this.auth.client.auth.refreshSession(); } catch {}
+    }
+
     const res = await this.auth.acceptInvitation(token);
     this.loading = false;
     if (!res.success) {

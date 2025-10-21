@@ -400,16 +400,27 @@ BEGIN
         RETURN json_build_object('success', false, 'error', 'Unauthorized');
     END IF;
 
-    -- Buscar invitación (permitir pending; si ya fue aceptada, devolver ok idempotente)
+    -- Buscar invitación por token (sin filtrar por expiración para permitir idempotencia)
     SELECT * INTO inv
     FROM public.company_invitations
     WHERE token = p_invitation_token
-    AND expires_at > NOW()
     ORDER BY created_at DESC
     LIMIT 1;
 
     IF NOT FOUND THEN
         RETURN json_build_object('success', false, 'error', 'Invalid or expired invitation');
+    END IF;
+
+    -- Si ya fue aceptada previamente, devolver éxito idempotente
+    IF inv.status = 'accepted' THEN
+        SELECT name INTO company_name FROM public.companies WHERE id = inv.company_id;
+        RETURN json_build_object(
+            'success', true,
+            'company_id', inv.company_id,
+            'company_name', company_name,
+            'role', inv.role,
+            'message', 'Invitation already accepted'
+        );
     END IF;
 
     -- Obtener nombre de la empresa
@@ -491,7 +502,7 @@ BEGIN
         RETURNING id INTO new_user_id;
     END IF;
 
-    -- Marcar invitación como aceptada
+    -- Marcar invitación como aceptada (aceptamos incluso si estaba expirada para no bloquear onboarding)
     UPDATE public.company_invitations
     SET status = 'accepted', responded_at = NOW()
     WHERE id = inv.id;
