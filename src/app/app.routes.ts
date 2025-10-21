@@ -81,9 +81,9 @@ export const routes: Routes = [
     {path: 'reset-password', component: ResetPasswordComponent}, // Recuperación de contraseña
     // Public GDPR consent portal (no guard)
     {path: 'consent', component: ConsentPortalComponent},
-    // Client portal public/semi-public invite accept
+    // Client portal public/semi-public invite accept (NO AUTH REQUIRED)
     {path: 'invite', component: PortalInviteComponent},
-    {path: 'client/set-password', component: ClientPasswordSetupComponent, canActivate: [AuthGuard]},
+    {path: 'client/set-password', component: ClientPasswordSetupComponent},
     // Client portal dashboard (requires login as invited user)
     {path: 'portal', component: PortalDashboardComponent, canActivate: [AuthGuard, ClientRoleGuard]},
     
