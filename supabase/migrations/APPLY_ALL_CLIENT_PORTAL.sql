@@ -23,12 +23,59 @@ ALTER TABLE company_invitations ADD CONSTRAINT company_invitations_role_check
 
 DROP POLICY IF EXISTS "Users can view invitations for their company" ON company_invitations;
 DROP POLICY IF EXISTS "Public can read invitation by token" ON company_invitations;
+DROP POLICY IF EXISTS "Service role can insert invitations" ON company_invitations;
+DROP POLICY IF EXISTS "Service role can update invitations" ON company_invitations;
+DROP POLICY IF EXISTS "Users can accept their own invitation" ON company_invitations;
+DROP POLICY IF EXISTS "Company admins can delete invitations" ON company_invitations;
 
+-- LECTURA: Pública (cualquiera con el link puede leer)
 CREATE POLICY "Public can read invitation by token"
 ON company_invitations 
 FOR SELECT 
 TO anon, authenticated 
 USING (true);
+
+-- INSERCIÓN: Solo Service Role (Edge Functions)
+CREATE POLICY "Service role can insert invitations"
+ON company_invitations
+FOR INSERT
+TO service_role
+WITH CHECK (true);
+
+-- ACTUALIZACIÓN: Service Role + usuarios aceptando su propia invitación
+CREATE POLICY "Service role can update invitations"
+ON company_invitations
+FOR UPDATE
+TO service_role
+USING (true)
+WITH CHECK (true);
+
+CREATE POLICY "Users can accept their own invitation"
+ON company_invitations
+FOR UPDATE
+TO authenticated
+USING (
+  lower(email) = lower(((current_setting('request.jwt.claims'::text, true))::jsonb ->> 'email'::text))
+  AND status = 'pending'
+)
+WITH CHECK (
+  status IN ('accepted', 'rejected')
+);
+
+-- ELIMINACIÓN: Solo admins de la empresa
+CREATE POLICY "Company admins can delete invitations"
+ON company_invitations
+FOR DELETE
+TO authenticated
+USING (
+  company_id = get_user_company_id()
+  AND EXISTS (
+    SELECT 1 FROM users 
+    WHERE users.auth_user_id = auth.uid()
+    AND users.company_id = company_invitations.company_id
+    AND users.role IN ('owner', 'admin')
+  )
+);
 
 -- 4. VERIFICAR CONFIGURACIÓN
 -- ========================================
