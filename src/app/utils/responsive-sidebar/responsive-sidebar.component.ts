@@ -42,9 +42,13 @@ interface MenuItem {
       [class]="getSidebarClasses()"
     >
       <!-- Header -->
-      <div class="flex items-center justify-between h-16 px-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <!-- Logo area -->
-        <div class="flex items-center flex-1">
+   <div class="flex items-center h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+     [class.justify-between]="!isCollapsed()"
+     [class.justify-center]="isCollapsed()"
+     [class.px-4]="!isCollapsed()"
+     [class.px-0]="isCollapsed()">
+  <!-- Logo area -->
+  <div class="flex items-center flex-1" [class.justify-center]="isCollapsed()">
           @if (!isCollapsed()) {
             <a routerLink="/inicio" class="flex items-center hover:opacity-80 transition-opacity">
               <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
