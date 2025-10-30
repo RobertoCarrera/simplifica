@@ -265,6 +265,43 @@ serve(async (req: Request) => {
       }
     }
 
+    // Ensure the invitation row exists in company_invitations with the exact token we'll email
+    // This guarantees admin views and /invite can always find it, even if RPC/legacy paths were used above
+    try {
+      const ensuredExpiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(); // 7 days
+      const ensuredToken = inviteToken || ((globalThis as any).crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      const { data: ensured, error: ensureErr } = await supabaseAdmin
+        .from("company_invitations")
+        .upsert({
+          company_id: currentUser.company_id,
+          email,
+          role,
+          status: "pending",
+          token: ensuredToken,
+          expires_at: ensuredExpiresAt,
+          invited_by_user_id: currentUser.id,
+        }, { onConflict: 'company_id,email' })
+        .select("id, token")
+        .maybeSingle();
+
+      if (ensureErr) {
+        console.warn("send-company-invite: ensure company_invitations upsert failed; proceeding anyway", ensureErr);
+        // Keep using ensuredToken regardless to maintain a consistent email link
+        inviteToken = ensuredToken;
+      } else if (ensured) {
+        invitationId = ensured.id || invitationId;
+        inviteToken = ensured.token || ensuredToken;
+      } else {
+        // No row returned, but proceed with the ensuredToken
+        inviteToken = ensuredToken;
+      }
+    } catch (e) {
+      console.warn("send-company-invite: exception during ensure upsert; proceeding with token fallback", e);
+      if (!inviteToken) {
+        inviteToken = (globalThis as any).crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+    }
+
     // Send invite email using Supabase Auth
     // SIEMPRE usar signInWithOtp (magic link) porque funciona tanto para usuarios nuevos como existentes
     const { data: otpData, error: otpErr } = await supabaseAdmin.auth.signInWithOtp({

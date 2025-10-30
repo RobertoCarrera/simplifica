@@ -46,14 +46,14 @@ interface MenuItem {
         <!-- Logo area -->
         <div class="flex items-center flex-1">
           @if (!isCollapsed()) {
-            <a routerLink="/" class="flex items-center hover:opacity-80 transition-opacity">
+            <a routerLink="/inicio" class="flex items-center hover:opacity-80 transition-opacity">
               <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
                 <span class="text-white font-bold text-sm">S</span>
               </div>
               <span class="text-xl font-semibold text-gray-900 dark:text-white">Simplifica</span>
             </a>
           } @else {
-            <a routerLink="/" class="hover:opacity-80 transition-opacity">
+            <a routerLink="/inicio" class="hover:opacity-80 transition-opacity">
               <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mx-auto">
                 <span class="text-white font-bold text-sm">S</span>
               </div>
@@ -66,9 +66,10 @@ interface MenuItem {
           <button
             (click)="toggleSidebar()"
             class="flex items-center justify-center w-8 h-8 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-sm hover:shadow-md"
-            [title]="isOpen() ? 'Cerrar sidebar' : 'Abrir sidebar'"
+            [title]="isCollapsed() ? 'Expandir sidebar' : 'Colapsar sidebar'"
           >
-            <svg class="w-4 h-4 transition-transform duration-200" [class.rotate-180]="!isOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <!-- Mostrar chevron hacia la izquierda cuando la sidebar está abierta -->
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
           </button>
@@ -349,7 +350,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       id: 1,
       label: 'Inicio',
       icon: 'home',
-      route: '/',
+      route: '/inicio',
       module: 'core'
     },
     {
