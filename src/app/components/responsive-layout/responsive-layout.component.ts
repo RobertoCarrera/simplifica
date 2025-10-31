@@ -113,16 +113,8 @@ export class ResponsiveLayoutComponent {
   }
 
   getContentWrapperClasses(): string {
-    // On mobile always full width
-    if (this.isMobile()) return 'w-full';
-
-    // When sidebar is collapsed, allow content to use full width
-    if (this.sidebarService.isCollapsed()) {
-      return 'w-full';
-    }
-
-    // Default: center content with max width
-    return `mx-auto ${this.getContentWidth()}`;
+    // Prioritize full width in all cases to maximize usable space
+    return 'w-full';
   }
 
   openSidebar(): void {
