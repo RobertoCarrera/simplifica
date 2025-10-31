@@ -1,6 +1,5 @@
-<div class="customers-container"
-  [class.container]="!sidebarService.isCollapsed()"
-  [class.container-fluid]="sidebarService.isCollapsed()">
+<div class="customers-container container"
+  [attr.data-sidebar-collapsed]="sidebarService.isCollapsed() ? '1' : '0'">
       
     @if (devRoleService.canSeeDevTools()) {
       <app-dev-user-selector></app-dev-user-selector>
