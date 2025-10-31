@@ -1,0 +1,141 @@
+// Mixins para Dark Mode
+// Usar en todos los componentes para consistencia
+
+@mixin dark-mode {
+  @media (prefers-color-scheme: dark) {
+    @content;
+  }
+}
+
+// Backgrounds
+@mixin bg-primary {
+  background: #ffffff;
+  
+  @include dark-mode {
+    background: #0f172a;
+  }
+}
+
+@mixin bg-secondary {
+  background: #f8fafc;
+  
+  @include dark-mode {
+    background: #1e293b;
+  }
+}
+
+@mixin bg-tertiary {
+  background: #f1f5f9;
+  
+  @include dark-mode {
+    background: #334155;
+  }
+}
+
+// Text colors
+@mixin text-primary {
+  color: #1f2937;
+  
+  @include dark-mode {
+    color: #f8fafc;
+  }
+}
+
+@mixin text-secondary {
+  color: #64748b;
+  
+  @include dark-mode {
+    color: #cbd5e1;
+  }
+}
+
+@mixin text-muted {
+  color: #9ca3af;
+  
+  @include dark-mode {
+    color: #94a3b8;
+  }
+}
+
+// Borders
+@mixin border-color {
+  border-color: #e5e7eb;
+  
+  @include dark-mode {
+    border-color: #475569;
+  }
+}
+
+// Shadows
+@mixin shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  
+  @include dark-mode {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  }
+}
+
+@mixin shadow-md {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  
+  @include dark-mode {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@mixin shadow-lg {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  
+  @include dark-mode {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  }
+}
+
+// Cards
+@mixin card {
+  @include bg-primary;
+  @include border-color;
+  @include shadow-md;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 0.75rem;
+}
+
+// Inputs
+@mixin input {
+  @include bg-primary;
+  @include text-primary;
+  @include border-color;
+  border-width: 2px;
+  border-style: solid;
+  
+  &::placeholder {
+    @include text-muted;
+  }
+  
+  &:focus {
+    @include dark-mode {
+      background: #1e293b;
+    }
+  }
+}
+
+// Buttons
+@mixin btn-secondary {
+  background: #ffffff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  
+  @include dark-mode {
+    background: #334155;
+    color: #f8fafc;
+    border-color: #475569;
+  }
+  
+  &:hover:not(:disabled) {
+    @include dark-mode {
+      background: #475569;
+      border-color: #64748b;
+    }
+  }
+}

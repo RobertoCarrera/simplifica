@@ -98,10 +98,22 @@ import { ProductsService } from '../../services/products.service';
       gap: 0.5rem;
     }
     
+    @media (prefers-color-scheme: dark) {
+      .home-header h1 {
+        color: #f8fafc;
+      }
+    }
+    
     .subtitle { 
       color: #6b7280; 
       margin: 0.5rem 0 0 0; 
       font-size: 1rem;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      .subtitle {
+        color: #cbd5e1;
+      }
     }
 
     .cards-grid { 
@@ -193,6 +205,13 @@ import { ProductsService } from '../../services/products.service';
       border: 1px solid #e5e7eb;
     }
     
+    @media (prefers-color-scheme: dark) {
+      .recent {
+        background: #1e293b;
+        border-color: #475569;
+      }
+    }
+    
     .recent h4 { 
       margin: 0 0 1rem 0; 
       font-size: 1.125rem; 
@@ -201,6 +220,12 @@ import { ProductsService } from '../../services/products.service';
       display: flex;
       align-items: center;
       gap: 0.5rem;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      .recent h4 {
+        color: #f8fafc;
+      }
     }
     
     .tickets-list { 
@@ -217,6 +242,14 @@ import { ProductsService } from '../../services/products.service';
       border-radius: 0.5rem; 
       border-left: 3px solid #3b82f6;
       box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      text-decoration: none;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      .ticket-item {
+        background: #0f172a;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+      }
     }
     
     .ticket-number { 
@@ -229,6 +262,12 @@ import { ProductsService } from '../../services/products.service';
     .ticket-title { 
       color: #374151; 
       flex: 1;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      .ticket-title {
+        color: #cbd5e1;
+      }
     }
 
     @media (max-width: 768px) {
