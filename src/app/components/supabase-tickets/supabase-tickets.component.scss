@@ -162,25 +162,7 @@
   }
 }
 
-/* Force dark mode on ALL inputs, selects and textareas in modals */
-.modal-content {
-  input,
-  select,
-  textarea {
-    @media (prefers-color-scheme: dark) {
-      background: #1e293b !important;
-      color: #f8fafc !important;
-      border-color: #475569 !important;
-    }
-  }
-  
-  input::placeholder,
-  textarea::placeholder {
-    @media (prefers-color-scheme: dark) {
-      color: #64748b !important;
-    }
-  }
-}
+/* Inputs adopt dark mode via .form-control rules above; avoid extra overrides here. */
 
 /* Prevent body scroll when modal is open */
 body.modal-open {
@@ -279,9 +261,9 @@ body.modal-open {
   color: #1f2937;
   
   @media (prefers-color-scheme: dark) {
-    background: #1e293b !important;
-    color: #f8fafc !important;
-    border-color: #475569 !important;
+    background: #1e293b;
+    color: #f8fafc;
+    border-color: #475569;
   }
   
   &:focus {
@@ -290,7 +272,7 @@ body.modal-open {
     box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
     
     @media (prefers-color-scheme: dark) {
-      border-color: #fbbf24 !important;
+      border-color: #fbbf24;
       box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
     }
   }
@@ -300,7 +282,7 @@ body.modal-open {
     border-color: #ef4444;
     
     @media (prefers-color-scheme: dark) {
-      border-color: #f87171 !important;
+      border-color: #f87171;
     }
   }
   
@@ -310,8 +292,8 @@ body.modal-open {
     opacity: 0.6;
     
     @media (prefers-color-scheme: dark) {
-      background: #0f172a !important;
-      color: #64748b !important;
+      background: #0f172a;
+      color: #64748b;
     }
   }
 }
@@ -756,73 +738,7 @@ body.modal-open {
   }
 }
 
-/* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-  width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-  scrollbar-width: none !important;
-}
-
-.modal-header {
-  padding: 24px;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  
-  i {
-    color: #f59e0b;
-  }
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    color: #374151;
-    background: #f3f4f6;
-  }
-}
-
-.modal-body {
-  padding: 24px;
-}
+/* Removed legacy duplicate modal styles block; unified modal styles are defined at the top of the file with dark mode variants. */
 
 /* Form Styles */
 .ticket-form {
