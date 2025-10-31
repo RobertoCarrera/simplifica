@@ -100,6 +100,10 @@
   padding: 20px;
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 #f1f5f9;
+  
+  @media (prefers-color-scheme: dark) {
+    scrollbar-color: #475569 #1e293b;
+  }
 
   &::-webkit-scrollbar {
     width: 8px;
@@ -107,14 +111,26 @@
 
   &::-webkit-scrollbar-track {
     background: #f1f5f9;
+    
+    @media (prefers-color-scheme: dark) {
+      background: #1e293b;
+    }
   }
 
   &::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 4px;
     
+    @media (prefers-color-scheme: dark) {
+      background: #475569;
+    }
+    
     &:hover {
       background: #94a3b8;
+      
+      @media (prefers-color-scheme: dark) {
+        background: #64748b;
+      }
     }
   }
 
@@ -139,6 +155,11 @@
   bottom: 0;
   z-index: 20;
   flex-shrink: 0;
+  
+  @media (prefers-color-scheme: dark) {
+    border-top-color: #475569;
+    background: #1e293b;
+  }
 }
 
 /* Prevent body scroll when modal is open */
@@ -200,9 +221,20 @@ body.modal-open {
     border: 1px solid #d1d5db;
     color: #374151;
     
+    @media (prefers-color-scheme: dark) {
+      border-color: #475569;
+      color: #cbd5e1;
+    }
+    
     &:hover:not(:disabled) {
       background: #f9fafb;
       border-color: #9ca3af;
+      
+      @media (prefers-color-scheme: dark) {
+        background: #334155;
+        border-color: #64748b;
+        color: #f8fafc;
+      }
     }
   }
   
@@ -226,21 +258,41 @@ body.modal-open {
   background: white;
   color: #1f2937;
   
+  @media (prefers-color-scheme: dark) {
+    background: #1e293b;
+    color: #f8fafc;
+    border-color: #475569;
+  }
+  
   &:focus {
     outline: none;
     border-color: #f59e0b;
     box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    
+    @media (prefers-color-scheme: dark) {
+      border-color: #fbbf24;
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+    }
   }
   
   &.error,
   &:invalid {
     border-color: #ef4444;
+    
+    @media (prefers-color-scheme: dark) {
+      border-color: #f87171;
+    }
   }
   
   &:disabled {
     background: #f3f4f6;
     cursor: not-allowed;
     opacity: 0.6;
+    
+    @media (prefers-color-scheme: dark) {
+      background: #0f172a;
+      color: #64748b;
+    }
   }
 }
 
@@ -539,9 +591,19 @@ body.modal-open {
   cursor: pointer;
   transition: all 0.2s ease;
   
+  @media (prefers-color-scheme: dark) {
+    background: #1e293b;
+    border-color: #475569;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  
   &:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    
+    @media (prefers-color-scheme: dark) {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
   }
 }
 
@@ -568,6 +630,10 @@ body.modal-open {
   color: #1f2937;
   margin: 0 0 6px 0;
   line-height: 1.3;
+  
+  @media (prefers-color-scheme: dark) {
+    color: #f8fafc;
+  }
 }
 
 .board-ticket-description {
@@ -575,6 +641,10 @@ body.modal-open {
   color: #6b7280;
   line-height: 1.4;
   margin-bottom: 10px;
+  
+  @media (prefers-color-scheme: dark) {
+    color: #94a3b8;
+  }
 }
 
 .board-ticket-meta {
@@ -591,6 +661,10 @@ body.modal-open {
   font-size: 0.75rem;
   color: #6b7280;
   
+  @media (prefers-color-scheme: dark) {
+    color: #94a3b8;
+  }
+  
   i {
     font-size: 0.7rem;
   }
@@ -600,6 +674,10 @@ body.modal-open {
   font-size: 0.8rem;
   font-weight: 600;
   color: #059669;
+  
+  @media (prefers-color-scheme: dark) {
+    color: #10b981;
+  }
 }
 
 .board-ticket-actions {
@@ -617,9 +695,19 @@ body.modal-open {
   cursor: pointer;
   transition: all 0.2s ease;
   
+  @media (prefers-color-scheme: dark) {
+    background: #334155;
+    color: #cbd5e1;
+  }
+  
   &:hover {
     background: #e5e7eb;
     color: #374151;
+    
+    @media (prefers-color-scheme: dark) {
+      background: #475569;
+      color: #f8fafc;
+    }
   }
 }
 
@@ -750,7 +838,7 @@ body.modal-open {
   color: #374151;
   
   @media (prefers-color-scheme: dark) {
-    color: #cbd5e1;
+    color: #f8fafc;
   }
 }
 
@@ -817,14 +905,29 @@ textarea.form-control {
     font-size: 0.9rem;
     transition: all 0.3s ease;
     
+    @media (prefers-color-scheme: dark) {
+      background: #1e293b;
+      color: #f8fafc;
+      border-color: #475569;
+    }
+    
     &:focus {
       outline: none;
       border-color: #f59e0b;
       box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+      
+      @media (prefers-color-scheme: dark) {
+        border-color: #fbbf24;
+        box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
+      }
     }
     
     &.error {
       border-color: #ef4444;
+      
+      @media (prefers-color-scheme: dark) {
+        border-color: #f87171;
+      }
     }
   }
   
@@ -841,6 +944,12 @@ textarea.form-control {
     overflow-y: auto;
     z-index: 1000;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    
+    @media (prefers-color-scheme: dark) {
+      background: #1e293b;
+      border-color: #fbbf24;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
   }
   
   .customer-option {
@@ -849,8 +958,16 @@ textarea.form-control {
     transition: background-color 0.2s ease;
     border-bottom: 1px solid #f3f4f6;
     
+    @media (prefers-color-scheme: dark) {
+      border-bottom-color: #334155;
+    }
+    
     &:hover {
       background: #f9fafb;
+      
+      @media (prefers-color-scheme: dark) {
+        background: #334155;
+      }
     }
     
     &:last-child {
@@ -861,6 +978,10 @@ textarea.form-control {
       .customer-name {
         font-weight: 500;
         color: #374151;
+        
+        @media (prefers-color-scheme: dark) {
+          color: #f8fafc;
+        }
       }
     }
   }
@@ -875,9 +996,18 @@ textarea.form-control {
     border-radius: 8px;
     margin-top: 8px;
     
+    @media (prefers-color-scheme: dark) {
+      background: #064e3b;
+      border-color: #059669;
+    }
+    
     .customer-name {
       font-weight: 500;
       color: #065f46;
+      
+      @media (prefers-color-scheme: dark) {
+        color: #6ee7b7;
+      }
     }
     
     .btn-clear {
@@ -889,9 +1019,18 @@ textarea.form-control {
       border-radius: 4px;
       transition: all 0.2s ease;
       
+      @media (prefers-color-scheme: dark) {
+        color: #94a3b8;
+      }
+      
       &:hover {
         background: #d1fae5;
         color: #065f46;
+        
+        @media (prefers-color-scheme: dark) {
+          background: #064e3b;
+          color: #6ee7b7;
+        }
       }
     }
   }
@@ -901,6 +1040,10 @@ textarea.form-control {
     padding: 20px;
     color: #6b7280;
     font-style: italic;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #94a3b8;
+    }
     
     i {
       font-size: 1.5rem;
@@ -1192,14 +1335,29 @@ textarea.form-control {
   justify-content: space-between;
   align-items: center;
   
+  @media (prefers-color-scheme: dark) {
+    background: #1e293b;
+    border-color: #475569;
+  }
+  
   &:hover {
     border-color: #f59e0b;
     box-shadow: 0 2px 4px rgba(245, 158, 11, 0.1);
+    
+    @media (prefers-color-scheme: dark) {
+      border-color: #fbbf24;
+      box-shadow: 0 2px 4px rgba(251, 191, 36, 0.15);
+    }
   }
   
   &.selected {
     border-color: #10b981;
     background: #ecfdf5;
+    
+    @media (prefers-color-scheme: dark) {
+      background: #064e3b;
+      border-color: #059669;
+    }
     
     .btn-add {
       background: #10b981;
@@ -1215,6 +1373,10 @@ textarea.form-control {
     font-weight: 500;
     color: #374151;
     margin-bottom: 4px;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #f8fafc;
+    }
   }
   
   .service-details {
@@ -1224,6 +1386,10 @@ textarea.form-control {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #94a3b8;
+    }
     
     .service-category {
       background: #f59e0b;
@@ -1241,6 +1407,10 @@ textarea.form-control {
     margin-top: 6px;
     font-style: italic;
     line-height: 1.3;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #64748b;
+    }
   }
 }
 
@@ -1258,9 +1428,18 @@ textarea.form-control {
     align-items: center;
     justify-content: center;
     
+    @media (prefers-color-scheme: dark) {
+      background: #334155;
+      color: #cbd5e1;
+    }
+    
     &:hover {
       background: #f59e0b;
       color: white;
+      
+      @media (prefers-color-scheme: dark) {
+        background: #fbbf24;
+      }
     }
   }
 }
@@ -1275,6 +1454,10 @@ textarea.form-control {
     text-transform: uppercase;
     font-weight: 600;
     letter-spacing: 0.5px;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #94a3b8;
+    }
   }
 }
 
@@ -1564,15 +1747,31 @@ textarea.form-control {
   justify-content: space-between;
   align-items: center;
 
+  @media (prefers-color-scheme: dark) {
+    background: #1e293b;
+    border-color: #475569;
+  }
+
   &:hover {
     border-color: #d1d5db;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    
+    @media (prefers-color-scheme: dark) {
+      border-color: #64748b;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
   }
 
   &.selected {
     border-color: #6366f1;
     background: #f0f9ff;
     box-shadow: 0 0 0 1px #6366f1;
+    
+    @media (prefers-color-scheme: dark) {
+      background: #1e3a8a;
+      border-color: #818cf8;
+      box-shadow: 0 0 0 1px #818cf8;
+    }
   }
 }
 
@@ -1584,8 +1783,16 @@ textarea.form-control {
     color: #1f2937;
     margin-bottom: 4px;
 
+    @media (prefers-color-scheme: dark) {
+      color: #f8fafc;
+    }
+
     .device-brand {
       color: #6366f1;
+      
+      @media (prefers-color-scheme: dark) {
+        color: #a5b4fc;
+      }
     }
 
     .device-model {
@@ -1599,6 +1806,10 @@ textarea.form-control {
     gap: 2px;
     font-size: 0.875rem;
     color: #6b7280;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #94a3b8;
+    }
 
     .device-imei {
       font-family: 'Monaco', monospace;
@@ -1630,10 +1841,18 @@ textarea.form-control {
     font-size: 1.25rem;
     color: #6b7280;
     transition: color 0.2s ease;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #94a3b8;
+    }
   }
 
   .device-card.selected & i {
     color: #6366f1;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #a5b4fc;
+    }
   }
 }
 
@@ -1642,10 +1861,18 @@ textarea.form-control {
   padding: 40px 20px;
   color: #6b7280;
 
+  @media (prefers-color-scheme: dark) {
+    color: #94a3b8;
+  }
+
   i {
     font-size: 3rem;
     margin-bottom: 16px;
     color: #d1d5db;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #475569;
+    }
   }
 
   p {
@@ -2042,11 +2269,19 @@ textarea.form-control {
   background: #f3f4f6;
   border-radius: 6px;
   
+  @media (prefers-color-scheme: dark) {
+    background: #334155;
+  }
+  
   .summary-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 4px 0;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #f8fafc;
+    }
   }
 }
 
@@ -2057,6 +2292,11 @@ textarea.form-control {
   border: 2px solid #f59e0b;
   border-radius: 6px;
   
+  @media (prefers-color-scheme: dark) {
+    background: #422006;
+    border-color: #fbbf24;
+  }
+  
   .summary-row.grand-total {
     display: flex;
     justify-content: space-between;
@@ -2064,6 +2304,10 @@ textarea.form-control {
     font-size: 1.2rem;
     font-weight: 600;
     color: #92400e;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #fcd34d;
+    }
   }
 }
 
@@ -2085,14 +2329,29 @@ textarea.form-control {
   cursor: pointer;
   transition: all 0.2s ease;
   
+  @media (prefers-color-scheme: dark) {
+    background: #1e293b;
+    border-color: #475569;
+  }
+  
   &:hover {
     border-color: #f59e0b;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    
+    @media (prefers-color-scheme: dark) {
+      border-color: #fbbf24;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
   }
   
   &.selected {
     border-color: #10b981;
     background: #ecfdf5;
+    
+    @media (prefers-color-scheme: dark) {
+      background: #064e3b;
+      border-color: #059669;
+    }
   }
   
   .product-header {
@@ -2107,6 +2366,10 @@ textarea.form-control {
       color: #374151;
       margin: 0;
       flex: 1;
+      
+      @media (prefers-color-scheme: dark) {
+        color: #f8fafc;
+      }
     }
     
     .product-price {
@@ -2115,6 +2378,10 @@ textarea.form-control {
       color: #f59e0b;
       white-space: nowrap;
       margin-left: 8px;
+      
+      @media (prefers-color-scheme: dark) {
+        color: #fbbf24;
+      }
     }
   }
   
@@ -2127,6 +2394,10 @@ textarea.form-control {
     line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #94a3b8;
+    }
   }
   
   .product-footer {
