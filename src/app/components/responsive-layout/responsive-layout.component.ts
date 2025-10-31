@@ -32,7 +32,7 @@ import { AuthService } from '../../services/auth.service';
         <div class="main-content-area flex flex-col min-h-screen overflow-hidden" [class]="mainAreaClasses()">
           <!-- Page content -->
           <main class="flex-1 overflow-auto" [class]="getMainContentPadding()">
-            <div class="mx-auto" [class]="getContentWidth()">
+            <div [class]="getContentWrapperClasses()">
               <router-outlet></router-outlet>
             </div>
           </main>
@@ -110,6 +110,19 @@ export class ResponsiveLayoutComponent {
 
   getContentWidth(): string {
     return 'max-w-8xl';
+  }
+
+  getContentWrapperClasses(): string {
+    // On mobile always full width
+    if (this.isMobile()) return 'w-full';
+
+    // When sidebar is collapsed, allow content to use full width
+    if (this.sidebarService.isCollapsed()) {
+      return 'w-full';
+    }
+
+    // Default: center content with max width
+    return `mx-auto ${this.getContentWidth()}`;
   }
 
   openSidebar(): void {

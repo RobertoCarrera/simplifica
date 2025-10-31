@@ -14,6 +14,7 @@ import { SupabaseCustomersService, CustomerFilters, CustomerStats } from '../../
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../services/gdpr-compliance.service';
 import { ToastService } from '../../services/toast.service';
 import { DevRoleService } from '../../services/dev-role.service';
+import { SidebarStateService } from '../../services/sidebar-state.service';
 import { HoneypotService } from '../../services/honeypot.service';
 import { AppModalComponent } from '../app-modal/app-modal.component';
 import { Router } from '@angular/router';
@@ -49,6 +50,7 @@ export class SupabaseCustomersComponent implements OnInit {
   private honeypotService = inject(HoneypotService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  sidebarService = inject(SidebarStateService);
   devRoleService = inject(DevRoleService);
   private auth = inject(AuthService);
   portal = inject(ClientPortalService);
