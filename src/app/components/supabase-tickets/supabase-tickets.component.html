@@ -1,22 +1,22 @@
-<div class="min-h-screen bg-gray-50 p-6">
+<div class="min-h-screen bg-gray-50 dark:bg-slate-900 p-6">
   <!-- Header Section -->
-  <div class="bg-white rounded-xl p-4 mb-6 border border-gray-200 shadow-sm">
+  <div class="bg-white dark:bg-slate-800 rounded-xl p-4 mb-6 border border-gray-200 dark:border-slate-700 shadow-sm">
     <div class="flex justify-between items-center flex-wrap gap-4">
       <div class="flex-1">
-        <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3 mb-1">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-50 flex items-center gap-3 mb-1">
           <i class="fas fa-ticket-alt text-orange-500"></i>
           Tickets
         </h1>
-        <p class="text-gray-600 text-sm">Gestión completa de tickets y reparaciones {{ getCompanyName() }}</p>
+        <p class="text-gray-600 dark:text-slate-400 text-sm">Gestión completa de tickets y reparaciones {{ getCompanyName() }}</p>
       </div>
       <div class="flex items-center gap-4 flex-wrap">
         @if(devRoleService.isDev()){
-        <div class="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-lg border border-gray-200">
-          <label for="companySelect" class="text-sm font-medium text-gray-700 whitespace-nowrap">Empresa:</label>
+        <div class="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-slate-900/50 rounded-lg border border-gray-200 dark:border-slate-700">
+          <label for="companySelect" class="text-sm font-medium text-gray-700 dark:text-slate-300 whitespace-nowrap">Empresa:</label>
           <select 
             id="companySelect" 
             name="companySelect"
-            class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 text-sm min-w-[180px] focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+            class="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 text-sm min-w-[180px] focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
             [(ngModel)]="selectedCompanyId" 
             (change)="onCompanyChange()">
             <option value="">Seleccionar empresa...</option>
@@ -25,7 +25,7 @@
         </div>
       }
         <!-- View Mode Toggle -->
-        <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors flex items-center gap-2" (click)="toggleViewMode()">
+        <button class="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 rounded-lg font-medium transition-colors flex items-center gap-2" (click)="toggleViewMode()">
           <i class="fas" [class.fa-list]="viewMode === 'board'" [class.fa-th-large]="viewMode === 'list'"></i>
           {{ viewMode === 'list' ? 'Vista Board' : 'Vista Lista' }}
         </button>
@@ -36,74 +36,74 @@
   <!-- Statistics Grid -->
   <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
     <!-- Total Tickets -->
-    <div class="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3">
+    <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3">
       <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-white">
         <i class="fas fa-ticket-alt"></i>
       </div>
       <div class="flex-1">
-        <div class="text-2xl font-bold text-gray-900">{{ stats.total }}</div>
-        <div class="text-xs text-gray-600 font-medium">Total Tickets</div>
+        <div class="text-2xl font-bold text-gray-900 dark:text-slate-50">{{ stats.total }}</div>
+        <div class="text-xs text-gray-600 dark:text-slate-400 font-medium">Total Tickets</div>
       </div>
     </div>
     
     <!-- Abiertos -->
-    <div class="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3">
+    <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3">
       <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-500 to-red-500 flex items-center justify-center text-white">
         <i class="fas fa-folder-open"></i>
       </div>
       <div class="flex-1">
-        <div class="text-2xl font-bold text-gray-900">{{ stats.open }}</div>
-        <div class="text-xs text-gray-600 font-medium">Abiertos</div>
+        <div class="text-2xl font-bold text-gray-900 dark:text-slate-50">{{ stats.open }}</div>
+        <div class="text-xs text-gray-600 dark:text-slate-400 font-medium">Abiertos</div>
       </div>
     </div>
     
     <!-- En Progreso -->
-    <div class="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3">
+    <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3">
       <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white">
         <i class="fas fa-cogs"></i>
       </div>
       <div class="flex-1">
-        <div class="text-2xl font-bold text-gray-900">{{ stats.inProgress }}</div>
-        <div class="text-xs text-gray-600 font-medium">En Progreso</div>
+        <div class="text-2xl font-bold text-gray-900 dark:text-slate-50">{{ stats.inProgress }}</div>
+        <div class="text-xs text-gray-600 dark:text-slate-400 font-medium">En Progreso</div>
       </div>
     </div>
     
     <!-- Completados -->
-    <div class="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3">
+    <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3">
       <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-green-400 to-cyan-300 flex items-center justify-center text-white">
         <i class="fas fa-check-circle"></i>
       </div>
       <div class="flex-1">
-        <div class="text-2xl font-bold text-gray-900">{{ stats.completed }}</div>
-        <div class="text-xs text-gray-600 font-medium">Completados</div>
+        <div class="text-2xl font-bold text-gray-900 dark:text-slate-50">{{ stats.completed }}</div>
+        <div class="text-xs text-gray-600 dark:text-slate-400 font-medium">Completados</div>
       </div>
     </div>
 
     <!-- Vencidos -->
-    <div class="bg-white rounded-lg p-4 border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3">
+    <div class="bg-white dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow flex items-center gap-3">
       <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-pink-400 to-yellow-300 flex items-center justify-center text-white">
         <i class="fas fa-exclamation-triangle"></i>
       </div>
       <div class="flex-1">
-        <div class="text-2xl font-bold text-gray-900">{{ stats.overdue }}</div>
-        <div class="text-xs text-gray-600 font-medium">Vencidos</div>
+        <div class="text-2xl font-bold text-gray-900 dark:text-slate-50">{{ stats.overdue }}</div>
+        <div class="text-xs text-gray-600 dark:text-slate-400 font-medium">Vencidos</div>
       </div>
     </div>
   </div>
 
   <!-- Filters Section -->
-  <div class="bg-white rounded-xl p-5 mb-6 border border-gray-200 shadow-sm">
+  <div class="bg-white dark:bg-slate-800 rounded-xl p-5 mb-6 border border-gray-200 dark:border-slate-700 shadow-sm">
     <div class="flex gap-4 items-center flex-wrap mb-3">
       <!-- Search Box -->
       <div class="relative flex-1 min-w-[300px]">
-        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 text-sm"></i>
         <input 
           type="text" 
           name="searchTerm"
           placeholder="Buscar tickets..." 
           [(ngModel)]="searchTerm"
           (input)="onSearch()"
-          class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
+          class="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
       </div>
       
       <!-- Filter Group -->
@@ -112,7 +112,7 @@
           name="filterStage"
           [(ngModel)]="filterStage" 
           (change)="onFilterChange()" 
-          class="px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
+          class="px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
           <option value="">Estados</option>
           <option *ngFor="let stage of stages" [value]="stage.id">{{ stage.name }}</option>
         </select>
@@ -121,7 +121,7 @@
           name="filterPriority"
           [(ngModel)]="filterPriority" 
           (change)="onFilterChange()" 
-          class="px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-700 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
+          class="px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
           <option value="">Prioridades</option>
           <option value="low">Baja</option>
           <option value="normal">Normal</option>
@@ -132,9 +132,8 @@
         <!-- Toggle completed -->
         <button 
           type="button"
-          class="px-3 py-2.5 border rounded-lg text-sm"
-          [class.bg-green-50]="showCompleted"
-          [class.text-green-700]="showCompleted"
+          class="px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm"
+          [class]="showCompleted ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300'"
           (click)="toggleShowCompleted()">
           <i class="fas" [class.fa-eye]="showCompleted" [class.fa-eye-slash]="!showCompleted"></i>
           {{ showCompleted ? 'Ocultar Completados' : 'Mostrar Completados' }}
@@ -143,9 +142,8 @@
         <!-- Toggle deleted -->
         <button 
           type="button"
-          class="px-3 py-2.5 border rounded-lg text-sm"
-          [class.bg-red-50]="showDeleted"
-          [class.text-red-700]="showDeleted"
+          class="px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm"
+          [class]="showDeleted ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300'"
           (click)="toggleShowDeleted()">
           <i class="fas" [class.fa-trash-restore]="showDeleted" [class.fa-trash]="!showDeleted"></i>
           {{ showDeleted ? 'Ocultar Eliminados' : 'Mostrar Eliminados' }}
@@ -153,9 +151,9 @@
       </div>
     </div>
     
-    <div class="flex justify-between items-center text-gray-600 text-sm">
+    <div class="flex justify-between items-center text-gray-600 dark:text-slate-400 text-sm">
       <span class="font-medium">{{ filteredTickets.length }} ticket(s) encontrado(s)</span>
-      <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors flex items-center gap-2" (click)="clearFilters()">
+      <button class="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 rounded-lg font-medium transition-colors flex items-center gap-2" (click)="clearFilters()">
         <i class="fas fa-times"></i>
         Limpiar
       </button>
@@ -163,19 +161,19 @@
   </div>
 
   <!-- Loading State -->
-  <div *ngIf="loading" class="flex justify-center items-center min-h-[300px] bg-white rounded-xl border border-gray-200">
+  <div *ngIf="loading" class="flex justify-center items-center min-h-[300px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
     <div class="text-center p-8">
-      <div class="w-10 h-10 border-3 border-gray-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-4"></div>
-      <p class="text-gray-600">Cargando tickets...</p>
+      <div class="w-10 h-10 border-3 border-gray-200 dark:border-slate-700 border-t-orange-500 rounded-full animate-spin mx-auto mb-4"></div>
+      <p class="text-gray-600 dark:text-slate-400">Cargando tickets...</p>
     </div>
   </div>
 
   <!-- Error State -->
-  <div *ngIf="error && !loading" class="flex justify-center items-center min-h-[300px] bg-white rounded-xl border border-gray-200">
+  <div *ngIf="error && !loading" class="flex justify-center items-center min-h-[300px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
     <div class="text-center p-8">
       <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
-      <h3 class="text-xl text-gray-900 font-semibold mb-2">Error al cargar tickets</h3>
-      <p class="text-gray-600 mb-6">{{ error }}</p>
+      <h3 class="text-xl text-gray-900 dark:text-slate-50 font-semibold mb-2">Error al cargar tickets</h3>
+      <p class="text-gray-600 dark:text-slate-400 mb-6">{{ error }}</p>
       <button class="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors" (click)="loadTickets()">Reintentar</button>
     </div>
   </div>
@@ -184,7 +182,7 @@
   <div *ngIf="!loading && !error">
     <!-- List View -->
     <div *ngIf="viewMode === 'list'" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div *ngFor="let ticket of filteredTickets" class="bg-white rounded-xl p-5 border border-gray-200 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-orange-500 transition-all duration-200 flex flex-col h-full">
+      <div *ngFor="let ticket of filteredTickets" class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-orange-500 transition-all duration-200 flex flex-col h-full">
         <!-- Ticket Header -->
         <div class="flex justify-between items-start mb-4 flex-wrap gap-3">
           <div class="flex-1">
@@ -192,9 +190,9 @@
               <div class="flex items-center gap-3">
                 <div class="flex items-center gap-2">
                   <h3 class="text-lg font-bold text-orange-500">#{{ ticket.ticket_number }}</h3>
-                  <span *ngIf="ticket.is_opened === false" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Nuevo</span>
+                  <span *ngIf="ticket.is_opened === false" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">Nuevo</span>
                 </div>
-                <h4 class="text-lg font-semibold" [class.text-gray-900]="true" [class.font-extrabold]="ticket.is_opened === false">{{ ticket.title }}</h4>
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-slate-50" [class.font-extrabold]="ticket.is_opened === false">{{ ticket.title }}</h4>
               </div>
               <div class="flex items-center gap-2">
                 <span 
@@ -203,7 +201,7 @@
                   <i class="fas fa-flag text-[10px]"></i>
                   {{ getPriorityLabel(ticket.priority) }}
                 </span>
-                <span *ngIf="isOverdue(ticket)" class="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-600 rounded-full text-xs font-medium">
+                <span *ngIf="isOverdue(ticket)" class="flex items-center gap-1 px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full text-xs font-medium">
                   <i class="fas fa-clock text-[10px]"></i>
                   Vencido
                 </span>
@@ -221,48 +219,48 @@
 
         <!-- Ticket Content -->
         <div class="flex-1 mb-4">
-          <p class="text-gray-600 leading-relaxed mb-3">{{ ticket.description }}</p>
+          <p class="text-gray-600 dark:text-slate-400 leading-relaxed mb-3">{{ ticket.description }}</p>
           
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="flex items-center gap-2 text-sm">
-              <i class="fas fa-user text-gray-400 w-4"></i>
-              <span class="text-gray-600 font-medium">Cliente:</span>
-              <span class="text-gray-900 font-medium">{{ ticket.client?.name || 'No asignado' }}</span>
+              <i class="fas fa-user text-gray-400 dark:text-slate-500 w-4"></i>
+              <span class="text-gray-600 dark:text-slate-400 font-medium">Cliente:</span>
+              <span class="text-gray-900 dark:text-slate-200 font-medium">{{ ticket.client?.name || 'No asignado' }}</span>
             </div>
             
             <div class="flex items-center gap-2 text-sm" *ngIf="ticket.due_date">
-              <i class="fas fa-calendar text-gray-400 w-4"></i>
-              <span class="text-gray-600 font-medium">Fecha límite:</span>
-              <span class="text-gray-900 font-medium">{{ formatDate(ticket.due_date) }}</span>
+              <i class="fas fa-calendar text-gray-400 dark:text-slate-500 w-4"></i>
+              <span class="text-gray-600 dark:text-slate-400 font-medium">Fecha límite:</span>
+              <span class="text-gray-900 dark:text-slate-200 font-medium">{{ formatDate(ticket.due_date) }}</span>
             </div>
             
             <div class="flex items-center gap-2 text-sm" *ngIf="ticket.estimated_hours">
-              <i class="fas fa-clock text-gray-400 w-4"></i>
-              <span class="text-gray-600 font-medium">Horas estimadas:</span>
-              <span class="text-gray-900 font-medium">{{ ticket.estimated_hours }}h</span>
+              <i class="fas fa-clock text-gray-400 dark:text-slate-500 w-4"></i>
+              <span class="text-gray-600 dark:text-slate-400 font-medium">Horas estimadas:</span>
+              <span class="text-gray-900 dark:text-slate-200 font-medium">{{ ticket.estimated_hours }}h</span>
             </div>
 
             <div class="flex items-start gap-2 text-sm col-span-full" *ngIf="ticket.tags && ticket.tags.length > 0">
-              <i class="fas fa-tags text-gray-400 w-4 mt-0.5"></i>
-              <span class="text-gray-600 font-medium">Tags:</span>
+              <i class="fas fa-tags text-gray-400 dark:text-slate-500 w-4 mt-0.5"></i>
+              <span class="text-gray-600 dark:text-slate-400 font-medium">Tags:</span>
               <div class="flex gap-1.5 flex-wrap">
-                <span *ngFor="let tag of ticket.tags" class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">{{ tag }}</span>
+                <span *ngFor="let tag of ticket.tags" class="px-2 py-0.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 rounded-full text-xs font-medium">{{ tag }}</span>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Ticket Actions -->
-        <div class="flex gap-2 justify-end flex-wrap pt-3 border-t border-gray-200">
-          <button class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors flex items-center gap-2" (click)="viewTicketDetail(ticket)">
+        <div class="flex gap-2 justify-end flex-wrap pt-3 border-t border-gray-200 dark:border-slate-700">
+          <button class="px-3 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-200 rounded-lg text-sm font-medium transition-colors flex items-center gap-2" (click)="viewTicketDetail(ticket)">
             <i class="fas fa-eye"></i>
             Ver Detalle
           </button>
-          <button class="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-sm font-medium transition-colors flex items-center gap-2" (click)="openForm(ticket)">
+          <button class="px-3 py-2 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-2" (click)="openForm(ticket)">
             <i class="fas fa-edit"></i>
             Editar
           </button>
-          <button class="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition-colors flex items-center gap-2" (click)="deleteTicket(ticket)">
+          <button class="px-3 py-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-2" (click)="deleteTicket(ticket)">
             <i class="fas fa-trash"></i>
             Eliminar
           </button>
@@ -270,10 +268,10 @@
       </div>
 
       <!-- Empty State (shown when no tickets match filters) -->
-      <div *ngIf="filteredTickets.length === 0" class="col-span-full text-center py-16 bg-white rounded-xl border border-gray-200">
-        <i class="fas fa-ticket-alt text-6xl text-gray-300 mb-4"></i>
-        <h3 class="text-xl text-gray-900 font-semibold mb-2">No hay tickets</h3>
-        <p class="text-gray-600 mb-6">No se encontraron tickets con los filtros aplicados.</p>
+      <div *ngIf="filteredTickets.length === 0" class="col-span-full text-center py-16 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+        <i class="fas fa-ticket-alt text-6xl text-gray-300 dark:text-slate-600 mb-4"></i>
+        <h3 class="text-xl text-gray-900 dark:text-slate-50 font-semibold mb-2">No hay tickets</h3>
+        <p class="text-gray-600 dark:text-slate-400 mb-6">No se encontraron tickets con los filtros aplicados.</p>
         <button class="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors inline-flex items-center gap-2" (click)="openForm()">
           <i class="fas fa-plus"></i>
           Crear primer ticket
