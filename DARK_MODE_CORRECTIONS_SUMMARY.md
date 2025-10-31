@@ -42,8 +42,11 @@ La aplicación no se adaptaba correctamente al modo oscuro del navegador. Los pr
 - ✅ Empty states adaptados
 - ✅ Category dropdowns con fondos oscuros
 
-#### Tickets Component (`src/app/components/supabase-tickets/supabase-tickets.component.scss`)
-**Correcciones aplicadas:**
+#### Tickets Component
+**Archivo SCSS:** `src/app/components/supabase-tickets/supabase-tickets.component.scss`
+**Archivo HTML:** `src/app/components/supabase-tickets/supabase-tickets.component.html`
+
+**Correcciones SCSS aplicadas (modales):**
 - ✅ Modal content con fondo oscuro: `background: #ffffff` → `background: #1e293b`
 - ✅ Modal header con borde adaptado
 - ✅ Modal title legible
@@ -53,6 +56,49 @@ La aplicación no se adaptaba correctamente al modo oscuro del navegador. Los pr
 - ✅ Form groups labels adaptados
 - ✅ Form controls con fondos oscuros, bordes y placeholders
 - ✅ Focus states adaptados
+
+**Correcciones HTML Tailwind aplicadas (template principal):**
+- ✅ Container principal: `bg-gray-50` → `bg-gray-50 dark:bg-slate-900`
+- ✅ Header section: `bg-white` → `bg-white dark:bg-slate-800`
+- ✅ Títulos: `text-gray-900` → `text-gray-900 dark:text-slate-50`
+- ✅ Subtítulos: `text-gray-600` → `text-gray-600 dark:text-slate-400`
+- ✅ Stats cards (5 cards): fondos, textos y valores adaptados
+- ✅ Search input: fondo, borde, texto y placeholder adaptados
+- ✅ Filtros (selects): fondos y textos oscuros
+- ✅ Toggle buttons (Completados/Eliminados): fondos y colores dinámicos
+- ✅ Loading state: spinner y texto adaptados
+- ✅ Error state: título y mensaje legibles
+- ✅ Ticket cards (List View): fondos, bordes y contenido completo
+- ✅ Badges de prioridad y vencidos: fondos semitransparentes
+- ✅ Metadata (cliente, fecha, horas, tags): iconos y textos adaptados
+- ✅ Action buttons: fondos semitransparentes y hovers
+- ✅ Empty state: fondo, iconos y textos oscuros
+- ✅ Board View: clases `.board-*` usan SCSS ya corregido
+
+#### Products Component
+**Archivo HTML:** `src/app/components/products/products.component.html`
+
+**Correcciones Tailwind aplicadas:**
+- ✅ Container principal: `bg-gray-50` → `bg-gray-50 dark:bg-slate-900`
+- ✅ Header section: `bg-white` → `bg-white dark:bg-slate-800`
+- ✅ Título: `text-gray-900` → `text-gray-900 dark:text-slate-50`
+- ✅ Subtítulo: `text-gray-600` → `text-gray-600 dark:text-slate-400`
+- ✅ Search input: fondo, bordes, texto y placeholder oscuros
+- ✅ Modal form: fondo, header y close button adaptados
+- ✅ Form labels: `text-gray-700` → `text-gray-700 dark:text-slate-300`
+- ✅ Form inputs/textareas: fondos oscuros, bordes y placeholders
+- ✅ Brand dropdown: fondo, input de búsqueda, items y botones
+- ✅ Category dropdown: fondo, input de búsqueda, items y botones
+- ✅ Create/Select actions: fondos semitransparentes verdes/azules
+- ✅ Modal footer: botones Cancelar y Guardar adaptados
+- ✅ Product cards grid: fondos, bordes y shadows oscuros
+- ✅ Product titles: `text-gray-900` → `text-gray-900 dark:text-slate-50`
+- ✅ Product prices: `text-orange-600` → `text-orange-600 dark:text-orange-400`
+- ✅ Stock badges: fondos semitransparentes (verde/amarillo/rojo)
+- ✅ Description boxes: `bg-gray-50` → `bg-gray-50 dark:bg-slate-900/50`
+- ✅ Action buttons (Edit/Delete): fondos semitransparentes y hovers
+- ✅ Empty states: fondos, textos y bordes adaptados
+- ✅ Floating Action Button: sin cambios (naranja siempre visible)
 
 #### Services Component (`src/app/components/supabase-services/supabase-services.component.scss`)
 **Correcciones aplicadas:**
@@ -81,10 +127,19 @@ La aplicación no se adaptaba correctamente al modo oscuro del navegador. Los pr
 ## Patrones de Diseño Utilizados
 
 ### 1. Media Query Consistente
+### 1. Media Query y Tailwind Dark Variants
+**SCSS (componentes legacy):**
 ```scss
 @media (prefers-color-scheme: dark) {
   // estilos dark mode
 }
+```
+
+**Tailwind (componentes modernos):**
+```html
+<div class="bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-50">
+  <!-- Uso de clases dark: en HTML -->
+</div>
 ```
 
 ### 2. Paleta de Colores Dark Mode
@@ -112,6 +167,7 @@ La aplicación no se adaptaba correctamente al modo oscuro del navegador. Los pr
 - Buttons: background, border y shadow adaptados
 - Cards: hover con sombras más pronunciadas
 - Forms: placeholders con contraste apropiado
+- Badges semitransparentes: `bg-color-100 dark:bg-color-900/30`
 
 ## Impacto
 
@@ -132,8 +188,11 @@ La aplicación no se adaptaba correctamente al modo oscuro del navegador. Los pr
 ## Commits Realizados
 1. `Dark mode: correcciones principales en Home, Customers, Tickets y Services`
 2. `Dark mode: correcciones en modales, configuración y componentes auxiliares`
+3. `Documentación: resumen completo de correcciones dark mode`
+4. `Dark mode: Tailwind variants para Products completo y Tickets (parcial - primeras 300 líneas)`
 
 ## Archivos Modificados
+**Componentes SCSS:**
 - `src/app/components/home/home.component.ts` (estilos inline)
 - `src/app/components/supabase-customers/supabase-customers.component.scss`
 - `src/app/components/supabase-tickets/supabase-tickets.component.scss`
@@ -141,6 +200,13 @@ La aplicación no se adaptaba correctamente al modo oscuro del navegador. Los pr
 - `src/app/components/app-modal/app-modal.component.scss`
 - `src/app/components/configuracion/configuracion.component.scss`
 - `src/app/styles/_dark-mode-mixins.scss` (nuevo)
+
+**Componentes Tailwind:**
+- `src/app/components/products/products.component.html` (320 líneas - 100% completado)
+- `src/app/components/supabase-tickets/supabase-tickets.component.html` (1388 líneas - 100% completado)
+
+**Documentación:**
+- `DARK_MODE_CORRECTIONS_SUMMARY.md` (este archivo)
 
 ## Recomendaciones Futuras
 
