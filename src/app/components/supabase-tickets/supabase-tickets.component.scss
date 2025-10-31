@@ -842,52 +842,6 @@ body.modal-open {
   }
 }
 
-.form-control {
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
-  
-  @media (prefers-color-scheme: dark) {
-    background: #0f172a;
-    border-color: #475569;
-    color: #f8fafc;
-  }
-  
-  &:focus {
-    outline: none;
-    border-color: #f59e0b;
-    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
-    
-    @media (prefers-color-scheme: dark) {
-      background: #1e293b;
-      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
-    }
-  }
-  
-  &.error {
-    border-color: #ef4444;
-    
-    &:focus {
-      border-color: #ef4444;
-      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-      
-      @media (prefers-color-scheme: dark) {
-        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
-      }
-    }
-  }
-  
-  &::placeholder {
-    color: #9ca3af;
-    
-    @media (prefers-color-scheme: dark) {
-      color: #64748b;
-    }
-  }
-}
-
 textarea.form-control {
   resize: vertical;
   min-height: 80px;
