@@ -847,6 +847,31 @@
   flex-shrink: 0;
 }
 
+/* Dark mode for Customers modal and form elements */
+@media (prefers-color-scheme: dark) {
+  .modal-content {
+    background: #1f2937; /* slate-800 */
+    box-shadow: 0 25px 50px rgba(2, 6, 23, 0.6);
+  }
+  .modal-header { border-bottom: 1px solid #334155; }
+  .modal-title { color: #e5e7eb; }
+  .modal-footer {
+    border-top: 1px solid #334155;
+    background: #1f2937;
+  }
+
+  .form-label { color: #e2e8f0; }
+  .form-input,
+  .form-textarea {
+    background: #0f172a; /* slate-900 */
+    color: #e5e7eb;
+    border-color: #334155; /* slate-600 */
+  }
+  .form-input::placeholder,
+  .form-textarea::placeholder { color: #94a3b8; }
+  .checkbox-label:hover { background: #0b1220; }
+}
+
 /* Form Styles */
 .customer-form {
   display: flex;
@@ -932,6 +957,18 @@
 .checkbox-text {
   font-weight: 500;
   color: #374151;
+}
+
+/* Ensure dark styles win over later light defaults in this file */
+@media (prefers-color-scheme: dark) {
+  .modal-content .form-input,
+  .modal-content .form-textarea {
+    background: #0f172a; /* slate-900 */
+    color: #e5e7eb;
+    border-color: #334155;
+  }
+  .modal-content .form-input::placeholder,
+  .modal-content .form-textarea::placeholder { color: #94a3b8; }
 }
 
 /* Loading Overlay */

@@ -625,6 +625,38 @@
   flex-shrink: 0;
 }
 
+/* Dark mode for Services modal and form elements */
+@media (prefers-color-scheme: dark) {
+  .modal-content {
+    background: #1f2937; /* slate-800 */
+    box-shadow: 0 20px 40px rgba(2, 6, 23, 0.6);
+  }
+  .modal-header {
+    border-bottom: 1px solid #334155;
+    h2 { color: #e5e7eb; }
+  }
+  .modal-footer {
+    border-top: 1px solid #334155;
+    background: #1f2937;
+  }
+  .form-group label { color: #e2e8f0; }
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    background: #0f172a; /* slate-900 */
+    color: #e5e7eb;
+    border-color: #334155;
+  }
+  .form-group input::placeholder,
+  .form-group textarea::placeholder { color: #94a3b8; }
+
+  .search-section {
+    background: #0f172a;
+    border-color: #1f2937;
+    box-shadow: 0 1px 3px rgba(2, 6, 23, 0.6);
+  }
+}
+
 /* Form Styles */
 .service-form {
   padding: 10px;

@@ -554,6 +554,13 @@ body.modal-open {
   overflow: hidden;
 }
 
+@media (prefers-color-scheme: dark) {
+  .board-column {
+    background: #0f172a; /* slate-900 */
+    border-color: #1f2937; /* slate-800 */
+  }
+}
+
 .column-header {
   padding: 16px;
   color: white;
@@ -736,6 +743,15 @@ body.modal-open {
     color: #6b7280;
     margin-bottom: 24px;
   }
+}
+
+@media (prefers-color-scheme: dark) {
+  .empty-state {
+    background: #0f172a;
+    border-color: #1f2937;
+  }
+  .empty-state h3 { color: #e5e7eb; }
+  .empty-state p { color: #94a3b8; }
 }
 
 /* Removed legacy duplicate modal styles block; unified modal styles are defined at the top of the file with dark mode variants. */
@@ -1094,6 +1110,13 @@ textarea.form-control {
   background: #f9fafb;
 }
 
+@media (prefers-color-scheme: dark) {
+  .services-section {
+    background: #0f172a; /* slate-900 */
+    border-color: #1f2937; /* slate-800 */
+  }
+}
+
 .services-header {
   display: flex;
   justify-content: space-between;
@@ -1151,6 +1174,15 @@ textarea.form-control {
       color: #9ca3af;
     }
   }
+
+  @media (prefers-color-scheme: dark) {
+    .search-input {
+      background: #0f172a; /* slate-900 */
+      color: #e5e7eb;
+      border-color: #334155;
+    }
+    .search-input::placeholder { color: #94a3b8; }
+  }
   
   .search-icon {
     position: absolute;
@@ -1196,6 +1228,15 @@ textarea.form-control {
   i {
     color: #0284c7;
   }
+}
+
+@media (prefers-color-scheme: dark) {
+  .info-message {
+    background: #0b1220; /* slightly lighter than slate-950 */
+    border-color: #334155; /* slate-600 */
+    color: #93c5fd; /* blue-300 */
+  }
+  .info-message i { color: #bfdbfe; }
 }
 
 .services-grid {
@@ -1358,6 +1399,14 @@ textarea.form-control {
   overflow: hidden;
 }
 
+@media (prefers-color-scheme: dark) {
+  .selected-services-list {
+    background: #0f172a;
+    border-color: #1f2937;
+  }
+  .selected-service-item { border-bottom-color: #334155; }
+}
+
 .selected-service-item {
   display: flex;
   justify-content: space-between;
@@ -1439,6 +1488,10 @@ textarea.form-control {
       font-size: 1.1rem;
     }
   }
+}
+
+@media (prefers-color-scheme: dark) {
+  .services-summary { background: #334155; color: #f8fafc; }
 }
 
 .field-help {
@@ -2071,6 +2124,13 @@ textarea.form-control {
   background: #f9fafb;
 }
 
+@media (prefers-color-scheme: dark) {
+  .products-section {
+    background: #0f172a;
+    border-color: #1f2937;
+  }
+}
+
 .selected-products {
   margin-top: 20px;
   
@@ -2089,6 +2149,11 @@ textarea.form-control {
   border: 1px solid #d1d5db;
   border-radius: 6px;
   overflow: hidden;
+}
+
+@media (prefers-color-scheme: dark) {
+  .selected-products-list { background: #0f172a; border-color: #1f2937; }
+  .selected-product-item { border-bottom-color: #334155; }
 }
 
 .selected-product-item {

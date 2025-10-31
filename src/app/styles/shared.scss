@@ -167,6 +167,62 @@
   gap: 0.75rem;
 }
 
+/* === Dark mode variants for shared modal, form and card styles === */
+@media (prefers-color-scheme: dark) {
+  /* Modals */
+  .modal-content {
+    background: #1f2937; /* slate-800 */
+    box-shadow: 0 25px 60px -12px rgba(2, 6, 23, 0.6);
+  }
+  .modal-header {
+    border-bottom: 1px solid #334155; /* slate-600 */
+  }
+  .modal-title {
+    color: #e5e7eb; /* slate-200 */
+  }
+  .modal-body {
+    color: #e5e7eb;
+  }
+  .modal-footer {
+    border-top: 1px solid #334155;
+    background: #1f2937; /* match panel */
+  }
+
+  /* Forms */
+  .form-label {
+    color: #e2e8f0; /* slate-200 */
+  }
+  .form-input,
+  .form-textarea,
+  .form-select {
+    background: #0f172a; /* slate-900 */
+    color: #e5e7eb;
+    border-color: #334155; /* slate-600 */
+  }
+  .form-input::placeholder,
+  .form-textarea::placeholder {
+    color: #94a3b8; /* slate-400 */
+  }
+
+  /* Cards */
+  .card,
+  .stat-card {
+    background: #0f172a; /* slate-900 */
+    border-color: #1f2937; /* slate-800 */
+    box-shadow: 0 1px 3px 0 rgba(2, 6, 23, 0.6);
+  }
+  .card-header,
+  .card-footer {
+    border-color: #334155; /* slate-600 */
+  }
+  .stat-value {
+    color: #e5e7eb;
+  }
+  .stat-label {
+    color: #94a3b8;
+  }
+}
+
 /* ===========================================
    TARJETAS COMUNES
    =========================================== */
