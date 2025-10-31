@@ -306,6 +306,7 @@
                       (click)="editCustomer(customer); $event.stopPropagation()"
                       class="action-btn edit"
                       title="Editar cliente"
+                      aria-label="Editar cliente"
                     >
                       <i class="fas fa-edit"></i>
                     </button>
@@ -319,6 +320,7 @@
                         [disabled]="customer?.metadata?.inactive_on_import"
                         *ngIf="!hasPortalAccess(customer, cEmail)"
                         title="Invitar al portal de clientes"
+                        aria-label="Invitar al portal de clientes"
                       >
                         <i class="fas fa-user-plus"></i>
                       </button>
@@ -329,6 +331,7 @@
                         [disabled]="customer?.metadata?.inactive_on_import"
                         *ngIf="hasPortalAccess(customer, cEmail)"
                         title="Quitar acceso al portal"
+                        aria-label="Quitar acceso al portal"
                       >
                         <i class="fas fa-user-times"></i>
                       </button>
@@ -341,6 +344,7 @@
                       [class.opacity-50]="customer?.metadata?.inactive_on_import"
                       [disabled]="customer?.metadata?.inactive_on_import"
                       title="Acciones RGPD"
+                      aria-label="Acciones RGPD"
                     >
                       <i class="fas fa-shield-alt"></i>
                     </button>
@@ -351,6 +355,7 @@
                       [class.opacity-50]="customer?.metadata?.inactive_on_import"
                       [disabled]="customer?.metadata?.inactive_on_import"
                       title="Eliminar cliente"
+                      aria-label="Eliminar cliente"
                     >
                       <i class="fas fa-trash"></i>
                     </button>

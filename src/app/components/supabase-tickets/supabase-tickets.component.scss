@@ -1503,6 +1503,12 @@ textarea.form-control {
   gap: 4px;
 }
 
+@media (prefers-color-scheme: dark) {
+  .field-help { color: #cbd5e1; }
+  .detail-label { color: #cbd5e1; }
+  .ticket-description { color: #cbd5e1; }
+}
+
 /* Modal size variants */
 .modal-medium {
   max-width: 700px !important;
@@ -1642,6 +1648,16 @@ textarea.form-control {
   }
 }
 
+@media (prefers-color-scheme: dark) {
+  .devices-section {
+    background: #0f172a; /* slate-900 */
+    border-color: #1f2937; /* slate-800 */
+  }
+  .devices-section .section-header h3 {
+    color: #e5e7eb;
+  }
+}
+
 .devices-selector {
   margin-bottom: 24px;
 
@@ -1658,6 +1674,11 @@ textarea.form-control {
       color: #6b7280;
     }
   }
+}
+
+@media (prefers-color-scheme: dark) {
+  .devices-selector h4 { color: #e5e7eb; }
+  .devices-selector h4 i { color: #94a3b8; }
 }
 
 .devices-list {
@@ -1839,6 +1860,10 @@ textarea.form-control {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 8px;
 }
 
 .selected-device-item {
@@ -1903,6 +1928,21 @@ textarea.form-control {
   }
 }
 
+@media (prefers-color-scheme: dark) {
+  .selected-devices h4 { color: #94a3b8; }
+  .selected-devices-list {
+    background: #0f172a; /* slate-900 */
+    border-color: #1f2937; /* slate-800 */
+  }
+  .selected-device-item {
+    background: #1e293b; /* slate-800 */
+    border-color: #334155; /* slate-700 */
+  }
+  .selected-device-item .device-info .device-name { color: #e5e7eb; }
+  .selected-device-item .device-info .device-imei,
+  .selected-device-item .device-info .device-status { color: #cbd5e1; }
+}
+
 .create-device-form {
   background: white;
   border: 1px solid #e5e7eb;
@@ -1929,6 +1969,13 @@ textarea.form-control {
     gap: 12px;
     justify-content: flex-end;
     margin-top: 20px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .create-device-form {
+    background: #1e293b;
+    border-color: #475569;
   }
 }
 

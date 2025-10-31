@@ -187,6 +187,49 @@
   margin: 2px 0 0 0;
 }
 
+/* Dark-mode contrast improvements for stats and service cards */
+@media (prefers-color-scheme: dark) {
+  /* Make stat labels readable on dark backgrounds */
+  .stat-label {
+    color: #cbd5e1; /* slate-300 */
+  }
+
+  /* Service card detail texts */
+  .service-card {
+    .service-details {
+      .detail-item { color: #cbd5e1; }
+      .detail-icon { color: #94a3b8; }
+      .detail-label { color: #94a3b8; }
+      .detail-value { color: #e5e7eb; }
+      .detail-value.price { color: #10b981; }
+
+      /* Status pills on dark */
+      .detail-value.status.status-active {
+        background: rgba(16, 185, 129, 0.15); /* emerald-500 @ 15% */
+        color: #a7f3d0; /* emerald-200 */
+      }
+      .detail-value.status.status-inactive {
+        background: rgba(239, 68, 68, 0.15); /* red-500 @ 15% */
+        color: #fecaca; /* red-200 */
+      }
+    }
+
+    /* Description box on dark */
+    .service-description {
+      background: #0f172a; /* slate-900 */
+      border: 1px solid #334155; /* slate-600 */
+
+      i { color: #94a3b8; }
+      p { color: #cbd5e1; }
+    }
+  }
+
+  /* Footer separator on dark */
+  .service-footer {
+    border-top-color: #334155;
+  }
+}
+
 /* Filters Section */
 .filters-section {
   background: white;
@@ -935,6 +978,14 @@
       color: #9ca3af;
     }
   }
+}
+
+/* Dark mode adjustments for section titles and separators */
+@media (prefers-color-scheme: dark) {
+  .section-title { color: #e5e7eb; }
+  .section-title.inactive-title { color: #cbd5e1; }
+  .section-title.inactive-title i { color: #94a3b8; }
+  .services-section.inactive-section { border-top-color: #334155; }
 }
 
 /* Inactive Service Cards */
