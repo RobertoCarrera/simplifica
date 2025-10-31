@@ -47,7 +47,54 @@ La aplicación no se adaptaba correctamente al modo oscuro del navegador. Los pr
 **Archivo HTML:** `src/app/components/supabase-tickets/supabase-tickets.component.html`
 
 **Correcciones SCSS aplicadas (modales):**
+- ✅ Modal overlay con fondo oscuro semitransparente
 - ✅ Modal content con fondo oscuro: `background: #ffffff` → `background: #1e293b`
+- ✅ Modal header con fondo oscuro y borde adaptado
+- ✅ Modal title legible: `color: #1f2937` → `color: #f8fafc`
+- ✅ Close button adaptado con fondo y hover oscuros
+- ✅ Modal body con scrollbars personalizados para dark mode (track #1e293b, thumb #475569)
+- ✅ Modal footer con borde y fondo oscuros
+- ✅ **Form labels más visibles**: `color: #cbd5e1` → `color: #f8fafc` (blanco brillante)
+- ✅ **Form inputs completos** (form-control, form-input, form-select, form-textarea):
+  - Background: `#ffffff` → `#1e293b`
+  - Color texto: `#1f2937` → `#f8fafc`
+  - Border: `#d1d5db` → `#475569`
+  - Focus: border `#f59e0b` → `#fbbf24`, box-shadow adaptado
+  - Disabled: background `#f3f4f6` → `#0f172a`
+  - Error: border `#ef4444` → `#f87171`
+- ✅ **Botón btn-outline** adaptado con border/color/background oscuros
+- ✅ **Customer search input** con fondo/border oscuros y focus adaptado
+- ✅ **Customer dropdown** con fondo oscuro y box-shadow más prominente
+- ✅ **Customer options** con border oscuro y hover adaptado
+- ✅ **Customer option names** legibles en blanco
+- ✅ **Selected customer** con fondo verde oscuro (#064e3b) y texto verde claro (#6ee7b7)
+- ✅ **Btn-clear** adaptado con colores oscuros
+- ✅ **No-customers-found** con color de texto adaptado
+- ✅ **Service items** (.service-item):
+  - Background: `#ffffff` → `#1e293b`
+  - Border: `#d1d5db` → `#475569`
+  - Hover: border `#f59e0b` → `#fbbf24`
+  - Selected: background `#ecfdf5` → `#064e3b`, border `#10b981` → `#059669`
+- ✅ **Service info** (.service-name, .service-details, .service-description) con textos legibles
+- ✅ **Service actions** (.btn-add) con fondo/color oscuros
+- ✅ **Selected services** (h4) con color adaptado
+- ✅ **Device cards** (.device-card):
+  - Background: `#ffffff` → `#1e293b`
+  - Border: `#e5e7eb` → `#475569`
+  - Hover: border y shadow adaptados
+  - Selected: background `#f0f9ff` → `#1e3a8a`, border `#6366f1` → `#818cf8`
+- ✅ **Device info** (.device-primary, .device-brand, .device-details) con colores legibles
+- ✅ **Device actions** con iconos adaptados
+- ✅ **No-devices** con texto e icono adaptados
+- ✅ **Product cards** (.product-card):
+  - Background: `#ffffff` → `#1e293b`
+  - Border: `#e5e7eb` → `#475569`
+  - Hover: border `#f59e0b` → `#fbbf24`
+  - Selected: background `#ecfdf5` → `#064e3b`, border `#10b981` → `#059669`
+- ✅ **Product header** (.product-name, .product-price) con colores adaptados
+- ✅ **Product description** con color legible
+- ✅ **Products summary** con fondo oscuro (#334155)
+- ✅ **Grand total summary** con fondo oscuro (#422006) y color dorado (#fcd34d)
 - ✅ Modal header con borde adaptado
 - ✅ Modal title legible
 - ✅ Modal close button adaptado
@@ -195,7 +242,7 @@ La aplicación no se adaptaba correctamente al modo oscuro del navegador. Los pr
 **Componentes SCSS:**
 - `src/app/components/home/home.component.ts` (estilos inline)
 - `src/app/components/supabase-customers/supabase-customers.component.scss`
-- `src/app/components/supabase-tickets/supabase-tickets.component.scss`
+- `src/app/components/supabase-tickets/supabase-tickets.component.scss` (272 líneas añadidas en último commit)
 - `src/app/components/supabase-services/supabase-services.component.scss`
 - `src/app/components/app-modal/app-modal.component.scss`
 - `src/app/components/configuracion/configuracion.component.scss`
@@ -207,6 +254,38 @@ La aplicación no se adaptaba correctamente al modo oscuro del navegador. Los pr
 
 **Documentación:**
 - `DARK_MODE_CORRECTIONS_SUMMARY.md` (este archivo)
+
+## Commits Realizados
+
+1. **Dark mode: Home, Customers y Services components corregidos**
+   - Implementación inicial de dark mode en 3 componentes principales
+   - Creación de archivo de mixins reutilizables
+
+2. **Dark mode: Configuracion y App-Modal components completados**
+   - Adaptación de formularios de configuración
+   - Modales genéricos con dark mode
+
+3. **Dark mode: Products component (HTML Tailwind) 100% completado**
+   - 320 líneas de HTML con variantes `dark:` en clases Tailwind
+   - Cards, modales, dropdowns y forms adaptados
+
+4. **Dark mode: Tickets component (HTML+SCSS) 100% completado**
+   - 1388 líneas HTML con variantes Tailwind dark
+   - Modales SCSS con fondos y bordes oscuros
+   - Board view cards completas
+
+5. **Dark mode: Board view cards y modales refinados**
+   - Board ticket cards con backgrounds oscuros
+   - Labels de formulario más visibles (slate-50)
+   - Modal footer y scrollbars oscuros
+
+6. **Dark mode: mejorados modales completos (labels, campos, customer search, servicios, dispositivos, productos, summaries)**
+   - Form inputs completos (form-control, form-input, form-select, form-textarea) con todos los estados
+   - Customer search input, dropdown y options completamente adaptados
+   - Service items con fondos y bordes oscuros
+   - Device cards completas con todos los estados (hover, selected)
+   - Product cards con headers, descriptions y footers adaptados
+   - Products summary y Grand total summary con fondos oscuros
 
 ## Recomendaciones Futuras
 
