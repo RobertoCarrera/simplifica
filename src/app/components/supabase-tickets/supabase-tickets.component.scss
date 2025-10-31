@@ -162,6 +162,26 @@
   }
 }
 
+/* Force dark mode on ALL inputs, selects and textareas in modals */
+.modal-content {
+  input,
+  select,
+  textarea {
+    @media (prefers-color-scheme: dark) {
+      background: #1e293b !important;
+      color: #f8fafc !important;
+      border-color: #475569 !important;
+    }
+  }
+  
+  input::placeholder,
+  textarea::placeholder {
+    @media (prefers-color-scheme: dark) {
+      color: #64748b !important;
+    }
+  }
+}
+
 /* Prevent body scroll when modal is open */
 body.modal-open {
   overflow: hidden;
@@ -259,9 +279,9 @@ body.modal-open {
   color: #1f2937;
   
   @media (prefers-color-scheme: dark) {
-    background: #1e293b;
-    color: #f8fafc;
-    border-color: #475569;
+    background: #1e293b !important;
+    color: #f8fafc !important;
+    border-color: #475569 !important;
   }
   
   &:focus {
@@ -270,7 +290,7 @@ body.modal-open {
     box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
     
     @media (prefers-color-scheme: dark) {
-      border-color: #fbbf24;
+      border-color: #fbbf24 !important;
       box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15);
     }
   }
@@ -280,7 +300,7 @@ body.modal-open {
     border-color: #ef4444;
     
     @media (prefers-color-scheme: dark) {
-      border-color: #f87171;
+      border-color: #f87171 !important;
     }
   }
   
@@ -290,8 +310,8 @@ body.modal-open {
     opacity: 0.6;
     
     @media (prefers-color-scheme: dark) {
-      background: #0f172a;
-      color: #64748b;
+      background: #0f172a !important;
+      color: #64748b !important;
     }
   }
 }
