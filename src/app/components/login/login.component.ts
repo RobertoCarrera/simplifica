@@ -527,27 +527,31 @@ export class LoginComponent implements OnDestroy, OnInit {
 
       if (result.success) {
         console.log('✅ Login successful');
-        // Navigate to the intended return path when present (clean, not via query param)
-        const returnTo = (this as any)._returnTo as string | undefined;
-        try {
-          if (returnTo) {
-            // Normalize simple relative paths and avoid double-encoding
-            const normalized = decodeURIComponent(returnTo).startsWith('/') ? decodeURIComponent(returnTo) : `/${decodeURIComponent(returnTo)}`;
-            // Replace the current history entry to clear any legacy query params from the URL
-            // This keeps the URL clean (no ?returnUrl=... lingering)
-            history.replaceState({}, '', normalized);
-            this.router.navigateByUrl(normalized);
-          } else {
-            // Default behavior: go to Inicio
-            this.router.navigate(['/inicio']);
-          }
-        } catch (navErr) {
-          // Fallback to root route if navigation fails
-          console.error('Navigation error, falling back to /', navErr);
-          this.router.navigate(['/']);
-        }
-
         this.toastService.success('¡Bienvenido!', 'Login exitoso');
+        
+        // Navigate to the intended return path when present
+        const returnTo = (this as any)._returnTo as string | undefined;
+        
+        if (returnTo) {
+          try {
+            // Decode and normalize the path
+            let normalized = decodeURIComponent(returnTo);
+            // Ensure it starts with /
+            if (!normalized.startsWith('/')) {
+              normalized = `/${normalized}`;
+            }
+            console.log('🔀 Navigating to returnUrl:', normalized);
+            // Navigate directly without history manipulation
+            await this.router.navigateByUrl(normalized);
+          } catch (navErr) {
+            console.error('❌ Navigation error with returnUrl, falling back to /inicio:', navErr);
+            await this.router.navigate(['/inicio']);
+          }
+        } else {
+          // Default behavior: go to Inicio
+          console.log('🔀 No returnUrl, navigating to /inicio');
+          await this.router.navigate(['/inicio']);
+        }
       } else {
         console.error('❌ Login failed:', result.error);
         let errorMsg = result.error || 'Error al iniciar sesión';

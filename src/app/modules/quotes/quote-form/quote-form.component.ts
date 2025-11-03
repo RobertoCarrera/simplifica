@@ -6,7 +6,7 @@ import { SupabaseQuotesService } from '../../../services/supabase-quotes.service
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { SupabaseServicesService, Service } from '../../../services/supabase-services.service';
 import { Customer } from '../../../models/customer';
-import { CreateQuoteDTO, CreateQuoteItemDTO } from '../../../models/quote.model';
+import { CreateQuoteDTO, CreateQuoteItemDTO, QuoteItem } from '../../../models/quote.model';
 import { debounceTime } from 'rxjs/operators';
 
 interface ClientOption {
@@ -119,6 +119,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       if (params['id']) {
         this.editMode.set(true);
         this.quoteId.set(params['id']);
+        this.loadQuote(params['id']);
       }
     });
   }
@@ -339,6 +340,60 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     ]);
   }
 
+  loadQuote(id: string) {
+    this.loading.set(true);
+    this.quotesService.getQuote(id).subscribe({
+      next: (quote) => {
+        console.log('📄 Cargando presupuesto para edición:', quote);
+        
+        // Cargar datos principales del formulario
+        this.quoteForm.patchValue({
+          client_id: quote.client_id,
+          title: quote.title,
+          description: quote.description || '',
+          issue_date: quote.quote_date,
+          valid_until: quote.valid_until,
+          status: quote.status,
+          notes: quote.notes || '',
+          terms_conditions: quote.terms_conditions || ''
+        });
+
+        // Limpiar items actuales
+        while (this.items.length > 0) {
+          this.items.removeAt(0);
+        }
+
+        // Cargar items del presupuesto
+        if (quote.items && quote.items.length > 0) {
+          quote.items.forEach((item: QuoteItem) => {
+            const itemGroup = this.createItemFormGroup();
+            itemGroup.patchValue({
+              description: item.description,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              tax_rate: item.tax_rate,
+              discount_percent: item.discount_percent || 0,
+              notes: item.notes || ''
+            });
+            this.items.push(itemGroup);
+          });
+        } else {
+          // Si no hay items, añadir uno vacío
+          this.items.push(this.createItemFormGroup());
+        }
+
+        this.calculateTotals();
+        this.loading.set(false);
+        console.log('✅ Presupuesto cargado correctamente en el formulario');
+      },
+      error: (err) => {
+        console.error('❌ Error al cargar presupuesto:', err);
+        this.error.set('Error al cargar presupuesto: ' + err.message);
+        this.loading.set(false);
+      }
+    });
+  }
+
   applyTemplate(templateId: string) {
     const template = this.templates().find(t => t.id === templateId);
     if (!template) return;
@@ -452,27 +507,95 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     this.loading.set(true);
     const formValue = this.quoteForm.value;
 
-    const dto: CreateQuoteDTO = {
-      client_id: formValue.client_id,
-      title: formValue.title,
-      description: formValue.description,
-      quote_date: formValue.issue_date,
-      valid_until: formValue.valid_until,
-      notes: formValue.notes,
-      terms_conditions: formValue.terms_conditions,
-      items: formValue.items as CreateQuoteItemDTO[]
-    };
+    // Si estamos en modo edición, actualizar en lugar de crear
+    if (this.editMode() && this.quoteId()) {
+      console.log('📝 Actualizando presupuesto existente:', this.quoteId());
+      
+      // Primero actualizar los campos básicos del presupuesto
+      const updateDto: any = {
+        // Campos principales
+        title: formValue.title,
+        description: formValue.description,
+        valid_until: formValue.valid_until,
+        notes: formValue.notes,
+        terms_conditions: formValue.terms_conditions,
+        // Permitir modificar estado y fechas/cliente si cambia
+        status: formValue.status,
+        quote_date: formValue.issue_date,
+        client_id: formValue.client_id
+      };
 
-    this.quotesService.createQuote(dto).subscribe({
-      next: (quote) => {
-        this.loading.set(false);
-        this.router.navigate(['/presupuestos', quote.id]);
-      },
-      error: (err) => {
-        this.error.set('Error al guardar: ' + err.message);
-        this.loading.set(false);
-      }
-    });
+      this.quotesService.updateQuote(this.quoteId()!, updateDto).subscribe({
+        next: async (quote) => {
+          try {
+            // Ahora actualizar los items: eliminar todos y volver a crear
+            const client = this.quotesService['supabaseClient'].instance;
+            
+            // Eliminar items existentes
+            await client
+              .from('quote_items')
+              .delete()
+              .eq('quote_id', this.quoteId()!);
+            
+            // Crear nuevos items
+            const companyId = this.quotesService['authService'].companyId();
+            const items = formValue.items.map((item: any, index: number) => ({
+              quote_id: this.quoteId()!,
+              company_id: companyId,
+              line_number: index + 1,
+              description: item.description,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              tax_rate: item.tax_rate || 21,
+              discount_percent: item.discount_percent || 0,
+              notes: item.notes || ''
+            }));
+            
+            await client
+              .from('quote_items')
+              .insert(items);
+            
+            this.loading.set(false);
+            console.log('✅ Presupuesto actualizado correctamente');
+            this.router.navigate(['/presupuestos', quote.id]);
+          } catch (err: any) {
+            console.error('❌ Error al actualizar items:', err);
+            this.error.set('Error al actualizar items: ' + err.message);
+            this.loading.set(false);
+          }
+        },
+        error: (err) => {
+          console.error('❌ Error al actualizar presupuesto:', err);
+          this.error.set('Error al actualizar: ' + err.message);
+          this.loading.set(false);
+        }
+      });
+    } else {
+      console.log('📝 Creando nuevo presupuesto');
+      const dto: CreateQuoteDTO = {
+        client_id: formValue.client_id,
+        title: formValue.title,
+        description: formValue.description,
+        quote_date: formValue.issue_date,
+        valid_until: formValue.valid_until,
+        notes: formValue.notes,
+        terms_conditions: formValue.terms_conditions,
+        items: formValue.items as CreateQuoteItemDTO[]
+      };
+
+      this.quotesService.createQuote(dto).subscribe({
+        next: (quote) => {
+          this.loading.set(false);
+          console.log('✅ Presupuesto creado correctamente');
+          this.router.navigate(['/presupuestos', quote.id]);
+        },
+        error: (err) => {
+          console.error('❌ Error al crear presupuesto:', err);
+          this.error.set('Error al guardar: ' + err.message);
+          this.loading.set(false);
+        }
+      });
+    }
   }
 
   cancel() {

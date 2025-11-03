@@ -78,6 +78,27 @@ export class ClientPortalService {
     }
   }
 
+  async respondToQuote(id: string, action: 'accept' | 'reject'): Promise<{ data: any | null; error?: any }> {
+    try {
+      console.log(`📝 Calling client-quote-respond Edge Function for quote ${id} with action ${action}...`);
+      
+      const { data, error } = await this.supabase.functions.invoke('client-quote-respond', {
+        body: { id, action }
+      });
+      
+      if (error) {
+        console.error('❌ Error from Edge Function:', error);
+        return { data: null, error };
+      }
+      
+      console.log('✅ Quote response successful:', data);
+      return { data: data?.data || null, error: null };
+    } catch (e: any) {
+      console.error('❌ Unexpected error responding to quote:', e);
+      return { data: null, error: { message: e?.message || 'Failed to respond to quote' } };
+    }
+  }
+
   async markTicketOpened(ticketId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const client = this.sb.instance;
