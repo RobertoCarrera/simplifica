@@ -197,7 +197,7 @@ export class SupabaseQuotesService {
         client_id: dto.client_id,
         year,
         sequence_number: nextNumber,
-        quote_number: `${year}-Q-${String(nextNumber).padStart(5, '0')}`,
+        quote_number: `${year}-F-${String(nextNumber).padStart(5, '0')}`,
         title: dto.title,
         description: dto.description,
         notes: dto.notes,
@@ -497,18 +497,29 @@ export class SupabaseQuotesService {
   }
 
   private async executeConvertToInvoice(quoteId: string, invoiceSeriesId?: string): Promise<ConvertQuoteToInvoiceResponse> {
+    // Prefer Edge Function to avoid RPC differences and handle FK mapping
     const client = this.supabaseClient.instance;
+    const { data: sessionData } = await client.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) throw new Error('Sesión no válida');
 
-    const { data, error } = await client
-      .rpc('convert_quote_to_invoice', {
-        p_quote_id: quoteId,
-        p_invoice_series_id: invoiceSeriesId || null
-      });
+    const res = await fetch(`${environment.edgeFunctionsBaseUrl}/convert-quote-to-invoice`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ quote_id: quoteId, invoice_series_id: invoiceSeriesId || null })
+    });
 
-    if (error) throw error;
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = [json?.error, json?.details].filter(Boolean).join(': ') || 'Error al convertir presupuesto';
+      throw new Error(msg);
+    }
 
     return {
-      invoice_id: data,
+      invoice_id: json.invoice_id || json.id,
       success: true,
       message: 'Presupuesto convertido a factura exitosamente'
     };

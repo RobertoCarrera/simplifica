@@ -135,11 +135,13 @@ serve(async (req) => {
       });
     }
 
-    // Update quote status
+    // Update quote status (+ accepted_at when applicable)
     const newStatus = action === 'accept' ? 'accepted' : 'rejected';
+    const updatePayload: any = { status: newStatus };
+    if (action === 'accept') updatePayload.accepted_at = new Date().toISOString();
     const { data: updatedQuote, error: updateError } = await supabaseAdmin
       .from('quotes')
-      .update({ status: newStatus })
+      .update(updatePayload)
       .eq('id', quoteId)
       .select('id, full_quote_number, title, status, quote_date, valid_until, total_amount')
       .single();
@@ -153,6 +155,90 @@ serve(async (req) => {
     }
 
     console.log(`✅ Quote ${quoteId} ${action}ed successfully by ${user.email}`);
+
+    // If accepted, resolve automation rules and optionally schedule conversion
+    if (action === 'accept') {
+      try {
+        // Effective policy precedence: app_settings.enforce_globally -> company_settings.enforce_company_defaults -> quote.convert_policy -> company_settings.convert_policy -> app_settings.default_convert_policy
+        const [{ data: appSettings }, { data: compSettings }] = await Promise.all([
+          supabaseAdmin.from('app_settings').select('*').order('created_at', { ascending: true }).limit(1).maybeSingle(),
+          supabaseAdmin.from('company_settings').select('*').eq('company_id', company_id as string).maybeSingle(),
+        ]);
+
+        // Fetch quote-specific fields needed
+        const { data: qFields } = await supabaseAdmin
+          .from('quotes')
+          .select('id, convert_policy, deposit_percentage, invoice_on_date')
+          .eq('id', quoteId)
+          .single();
+
+        const app = (appSettings || {}) as any;
+        const cmp = (compSettings || {}) as any;
+        const q = (qFields || {}) as any;
+
+        const appPolicy = app.default_convert_policy || 'manual';
+        const cmpPolicy = cmp.convert_policy || null;
+        const quotePolicy = q.convert_policy || null;
+
+        let effectivePolicy = appPolicy as string;
+        let askBefore = true;
+        let delayDays: number = 0;
+
+        if (app.enforce_globally === true) {
+          effectivePolicy = appPolicy;
+          askBefore = app.ask_before_convert ?? true;
+          delayDays = Number(app.default_invoice_delay_days || 0);
+        } else if (cmp.enforce_company_defaults === true) {
+          effectivePolicy = (cmpPolicy || appPolicy);
+          askBefore = (cmp.ask_before_convert ?? app.ask_before_convert ?? true);
+          delayDays = Number(cmp.default_invoice_delay_days ?? app.default_invoice_delay_days ?? 0);
+        } else {
+          effectivePolicy = (quotePolicy || cmpPolicy || appPolicy);
+          askBefore = (cmp.ask_before_convert ?? app.ask_before_convert ?? true);
+          delayDays = Number(cmp.default_invoice_delay_days ?? app.default_invoice_delay_days ?? 0);
+        }
+
+        // If user prefers to be asked, do not schedule anything
+        if (!askBefore) {
+          const deposit = q.deposit_percentage ? Number(q.deposit_percentage) : null;
+          const policy = String(effectivePolicy || 'manual');
+
+          if (policy === 'on_accept' || (deposit && deposit > 0)) {
+            const payload = { quote_id: quoteId, policy, deposit_percentage: deposit };
+            await supabaseAdmin.from('scheduled_jobs').insert({
+              scheduled_at: new Date().toISOString(),
+              job_type: 'convert_quote_to_invoice',
+              payload,
+            });
+            await supabaseAdmin
+              .from('quotes')
+              .update({ conversion_status: 'scheduled' })
+              .eq('id', quoteId);
+          } else if (policy === 'scheduled') {
+            // Date precedence: quote.invoice_on_date -> company_settings.invoice_on_date -> now + delayDays
+            let when: Date | null = null;
+            if (q.invoice_on_date) when = new Date(q.invoice_on_date);
+            else if (cmp.invoice_on_date) when = new Date(cmp.invoice_on_date);
+            else {
+              when = new Date();
+              when.setUTCDate(when.getUTCDate() + delayDays);
+            }
+            const payload = { quote_id: quoteId, policy, delay_days: delayDays };
+            await supabaseAdmin.from('scheduled_jobs').insert({
+              scheduled_at: when!.toISOString(),
+              job_type: 'convert_quote_to_invoice',
+              payload,
+            });
+            await supabaseAdmin
+              .from('quotes')
+              .update({ conversion_status: 'scheduled' })
+              .eq('id', quoteId);
+          }
+        }
+      } catch (scheduleErr) {
+        console.error('Scheduling decision failed (non-blocking):', scheduleErr);
+      }
+    }
 
     // Fetch full quote with items
     const { data: fullQuote } = await supabaseAdmin

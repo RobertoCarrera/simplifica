@@ -70,6 +70,12 @@ export interface Quote {
   rejected_at?: string | null;
   invoiced_at?: string | null;
   
+  // Conversión a factura (reglas y estado)
+  convert_policy?: 'manual' | 'automatic' | 'scheduled' | null;
+  deposit_percentage?: number | null;
+  invoice_on_date?: string | null;
+  conversion_status?: 'not_converted' | 'pending' | 'scheduled' | 'processing' | 'converted' | null;
+  
   // Referencia a factura
   invoice_id?: string | null;
   
@@ -398,7 +404,12 @@ export function canEditQuote(quote: Quote): boolean {
  * Verifica si el presupuesto puede ser convertido a factura
  */
 export function canConvertToInvoice(quote: Quote): boolean {
-  return quote.status === QuoteStatus.ACCEPTED && !quote.invoice_id;
+  // Permitimos convertir manualmente si está aceptado, no tiene factura
+  // y no hay una conversión ya programada/en proceso.
+  const isAccepted = quote.status === QuoteStatus.ACCEPTED;
+  const hasNoInvoice = !quote.invoice_id;
+  const notScheduled = !quote.conversion_status || (quote.conversion_status !== 'scheduled' && quote.conversion_status !== 'processing');
+  return isAccepted && hasNoInvoice && notScheduled;
 }
 
 /**

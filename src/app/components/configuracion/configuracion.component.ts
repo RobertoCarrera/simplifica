@@ -13,6 +13,8 @@ import { CompanyAdminComponent } from '../company-admin/company-admin.component'
 import { HelpComponent } from '../help/help.component';
 import { ToastService } from '../../services/toast.service';
 import { UserModulesService, type UserModule, type ModuleStatus } from '../../services/user-modules.service';
+import { SupabaseSettingsService, type AppSettings, type CompanySettings } from '../../services/supabase-settings.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-configuracion',
@@ -49,6 +51,10 @@ export class ConfiguracionComponent implements OnInit {
   private supabase: SupabaseClient;
   // User modules state
   private userModules: UserModule[] = [];
+  // Settings forms
+  appSettingsForm: FormGroup;
+  companySettingsForm: FormGroup;
+  settingsLoading = false;
 
   constructor(
     private fb: FormBuilder,
@@ -58,7 +64,8 @@ export class ConfiguracionComponent implements OnInit {
     private sbClient: SupabaseClientService,
     private unitsService: SupabaseUnitsService,
     private toast: ToastService,
-    private userModulesService: UserModulesService
+    private userModulesService: UserModulesService,
+    private settingsService: SupabaseSettingsService
   ) {
     this.supabase = this.sbClient.instance;
     this.profileForm = this.fb.group({
@@ -79,12 +86,29 @@ export class ConfiguracionComponent implements OnInit {
       description: [''],
       is_active: [true]
     });
+
+    // Settings forms
+    this.appSettingsForm = this.fb.group({
+      default_convert_policy: ['manual', [Validators.required]],
+      ask_before_convert: [false],
+      enforce_globally: [false],
+      default_invoice_delay_days: [null]
+    });
+    this.companySettingsForm = this.fb.group({
+      convert_policy: [null],
+      ask_before_convert: [null],
+      enforce_company_defaults: [false],
+      default_invoice_delay_days: [null],
+      invoice_on_date: [null],
+      deposit_percentage: [null]
+    });
   }
 
   ngOnInit() {
     this.loadUserProfile();
     this.loadUnits();
     this.loadUserModules();
+    this.loadSettings();
   }
 
   private loadUserProfile() {
@@ -450,6 +474,62 @@ export class ConfiguracionComponent implements OnInit {
       this.addDevMessage('error', `❌ Error configurando sistema: ${error}`);
     } finally {
       this.isSettingUpDev = false;
+    }
+  }
+
+  // ===============================
+  // SETTINGS (App & Company)
+  // ===============================
+  async loadSettings() {
+    this.settingsLoading = true;
+    try {
+      const [app, company] = await Promise.all([
+        firstValueFrom(this.settingsService.getAppSettings()),
+        firstValueFrom(this.settingsService.getCompanySettings())
+      ]);
+      if (app) {
+        this.appSettingsForm.patchValue({
+          default_convert_policy: app.default_convert_policy || 'manual',
+          ask_before_convert: !!app.ask_before_convert,
+          enforce_globally: !!app.enforce_globally,
+          default_invoice_delay_days: app.default_invoice_delay_days ?? null
+        });
+      }
+      if (company) {
+        this.companySettingsForm.patchValue({
+          convert_policy: company.convert_policy ?? null,
+          ask_before_convert: company.ask_before_convert ?? null,
+          enforce_company_defaults: !!company.enforce_company_defaults,
+          default_invoice_delay_days: company.default_invoice_delay_days ?? null,
+          invoice_on_date: company.invoice_on_date ?? null,
+          deposit_percentage: company.deposit_percentage ?? null
+        });
+      }
+    } catch (e) {
+      console.error('Error loading settings', e);
+      this.showMessage('Error cargando ajustes', 'error');
+    } finally {
+      this.settingsLoading = false;
+    }
+  }
+
+  async saveAppSettings() {
+    if (this.appSettingsForm.invalid) return;
+    try {
+      await firstValueFrom(this.settingsService.upsertAppSettings(this.appSettingsForm.value));
+      this.showMessage('Ajustes globales guardados', 'success');
+    } catch (e) {
+      this.showMessage('Error guardando ajustes globales', 'error');
+    }
+  }
+
+  async saveCompanySettings() {
+    if (this.companySettingsForm.invalid) return;
+    try {
+      await firstValueFrom(this.settingsService.upsertCompanySettings(this.companySettingsForm.value));
+      this.showMessage('Ajustes de empresa guardados', 'success');
+    } catch (e) {
+      this.showMessage('Error guardando ajustes de empresa', 'error');
     }
   }
 

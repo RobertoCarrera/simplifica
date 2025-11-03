@@ -218,6 +218,22 @@ export class QuoteDetailComponent implements OnInit {
     return `badge bg-${this.statusColors[status]}`;
   }
 
+  getConversionStatusLabel(): string | null {
+    const q = this.quote();
+    if (!q) return null;
+    const map: Record<string, string> = {
+      pending: 'pendiente',
+      scheduled: 'programada',
+      processing: 'en proceso',
+      converted: 'convertida',
+      not_converted: 'no convertida'
+    };
+    if (!q.conversion_status) return null;
+    const key = q.conversion_status as keyof typeof map;
+    if (q.conversion_status === 'not_converted') return null; // ocultar chip si no hay conversión programada/realizada
+    return map[key] || q.conversion_status.replace(/_/g, ' ');
+  }
+
   backToList() {
     this.router.navigate(['/presupuestos']);
   }
