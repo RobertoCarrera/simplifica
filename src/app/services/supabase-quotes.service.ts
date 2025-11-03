@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, from, map, switchMap, firstValueFrom } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 import {
   Quote,
   QuoteItem,
@@ -151,6 +152,8 @@ export class SupabaseQuotesService {
     return data as Quote;
   }
 
+  
+
   /**
    * Crear un nuevo presupuesto
    */
@@ -162,8 +165,9 @@ export class SupabaseQuotesService {
     const companyId = this.authService.companyId();
     if (!companyId) throw new Error('No company ID available');
 
-    const userProfile = await firstValueFrom(this.authService.userProfile$);
-    const userId = userProfile?.id;
+  const userProfile = await firstValueFrom(this.authService.userProfile$);
+  // created_by must reference auth.users(id), not public.users(id)
+  const createdBy = this.authService.currentUser?.id || userProfile?.auth_user_id || null;
 
     const client = this.supabaseClient.instance;
 
@@ -204,7 +208,7 @@ export class SupabaseQuotesService {
         language: dto.language || 'es',
         discount_percent: dto.discount_percent || 0,
         status: 'draft',
-        created_by: userId
+        created_by: createdBy
       })
       .select()
       .single();
@@ -385,6 +389,34 @@ export class SupabaseQuotesService {
   }
 
   /**
+   * Enviar presupuesto por email (Amazon SES) vía Edge Function
+   */
+  sendQuoteEmail(quoteId: string, to: string, subject?: string, message?: string): Observable<any> {
+    const client = this.supabaseClient.instance;
+    return from(client.auth.getSession()).pipe(
+      switchMap(({ data: { session } }) => {
+        const token = session?.access_token;
+        if (!token) throw new Error('Sesión no válida');
+        return from(
+          fetch(`${environment.edgeFunctionsBaseUrl}/quotes-email`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quote_id: quoteId, to, subject, message })
+          }).then(async r => {
+            const json = await r.json().catch(() => ({}));
+            if (!r.ok) {
+              const missing = Array.isArray(json?.missing) ? ` Missing: ${json.missing.join(', ')}` : '';
+              const msg = [json?.error, json?.details].filter(Boolean).join(': ') + missing;
+              throw new Error(msg || 'Error al enviar email');
+            }
+            return json;
+          })
+        );
+      })
+    );
+  }
+
+  /**
    * Marcar presupuesto como visto por el cliente
    */
   markQuoteAsViewed(id: string, ipAddress?: string, userAgent?: string): Observable<Quote> {
@@ -431,6 +463,8 @@ export class SupabaseQuotesService {
 
     return this.executeGetQuote(id);
   }
+
+  
 
   /**
    * Rechazar presupuesto

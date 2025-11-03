@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { environment } from '../../environments/environment';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClientService } from './supabase-client.service';
+import { RuntimeConfigService } from './runtime-config.service';
 import { AuthService } from './auth.service';
 
 export type StageCategory = 'open' | 'in_progress' | 'completed' | 'on_hold';
@@ -50,12 +51,12 @@ export class SupabaseTicketStagesService {
   private supabase: SupabaseClient;
   private authService = inject(AuthService);
   private cachedCompanyId: string | null = null;
+  private supabaseUrl: string;
 
-  constructor() {
-    this.supabase = createClient(
-      environment.supabase.url,
-      environment.supabase.anonKey
-    );
+  constructor(private sbClient: SupabaseClientService, private runtimeConfig: RuntimeConfigService) {
+    // Reuse the shared singleton Supabase client to avoid multiple auth clients and storage lock contention
+    this.supabase = this.sbClient.instance;
+    this.supabaseUrl = this.runtimeConfig.get().supabase.url;
   }
 
   /**
@@ -136,7 +137,7 @@ export class SupabaseTicketStagesService {
 
       // Llamar a la Edge Function get-config-stages para unificar lógica
       const response = await fetch(
-        `${environment.supabase.url}/functions/v1/get-config-stages`,
+        `${this.supabaseUrl}/functions/v1/get-config-stages`,
         {
           method: 'GET',
           headers: {
@@ -169,7 +170,7 @@ export class SupabaseTicketStagesService {
       const { data: { session } } = await this.supabase.auth.getSession();
       if (!session?.access_token) return { error: { message: 'No active session' } };
 
-      const resp = await fetch(`${environment.supabase.url}/functions/v1/reorder-stages`, {
+  const resp = await fetch(`${this.supabaseUrl}/functions/v1/reorder-stages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -286,7 +287,7 @@ export class SupabaseTicketStagesService {
       const { data: { session } } = await this.supabase.auth.getSession();
       if (!session?.access_token) return { error: { message: 'No active session' } };
 
-      const resp = await fetch(`${environment.supabase.url}/functions/v1/delete-stage-safe`, {
+  const resp = await fetch(`${this.supabaseUrl}/functions/v1/delete-stage-safe`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -313,7 +314,7 @@ export class SupabaseTicketStagesService {
       const { data: { session } } = await this.supabase.auth.getSession();
       if (!session?.access_token) return { error: { message: 'No active session' } };
 
-      const resp = await fetch(`${environment.supabase.url}/functions/v1/delete-stage-safe`, {
+  const resp = await fetch(`${this.supabaseUrl}/functions/v1/delete-stage-safe`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -363,7 +364,7 @@ export class SupabaseTicketStagesService {
 
       // Call Edge Function
       const response = await fetch(
-        `${environment.supabase.url}/functions/v1/hide-stage`,
+        `${this.supabaseUrl}/functions/v1/hide-stage`,
         {
           method: 'POST',
           headers: {
@@ -401,7 +402,7 @@ export class SupabaseTicketStagesService {
         return { error: { message: 'No active session' } };
       }
       const response = await fetch(
-        `${environment.supabase.url}/functions/v1/hide-stage`,
+        `${this.supabaseUrl}/functions/v1/hide-stage`,
         {
           method: 'POST',
           headers: {
@@ -436,7 +437,7 @@ export class SupabaseTicketStagesService {
 
       // Call Edge Function
       const response = await fetch(
-        `${environment.supabase.url}/functions/v1/hide-stage`,
+        `${this.supabaseUrl}/functions/v1/hide-stage`,
         {
           method: 'POST',
           headers: {
@@ -479,7 +480,7 @@ export class SupabaseTicketStagesService {
         return { data: null, error: { message: 'No active session' } };
       }
 
-      const url = `${environment.supabase.url}/functions/v1/get-config-stages` + (companyId ? `?company_id=${encodeURIComponent(companyId)}` : '');
+  const url = `${this.supabaseUrl}/functions/v1/get-config-stages` + (companyId ? `?company_id=${encodeURIComponent(companyId)}` : '');
       const efResp = await fetch(url, {
         method: 'GET',
         headers: {

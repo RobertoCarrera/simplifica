@@ -73,7 +73,7 @@ export class RuntimeConfigService {
   get(): RuntimeConfig {
     if (!this.config) {
       // Should be initialized by APP_INITIALIZER
-      return { supabase: { url: '', anonKey: '' }, edgeFunctionsBaseUrl: '' };
+      return { supabase: { url: '', anonKey: '' }, edgeFunctionsBaseUrl: '' } as RuntimeConfig;
     }
     return this.config;
   }

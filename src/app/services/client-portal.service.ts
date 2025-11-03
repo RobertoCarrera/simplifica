@@ -44,12 +44,38 @@ export class ClientPortalService {
   }
 
   async listQuotes(): Promise<{ data: ClientPortalQuote[]; error?: any }> {
-    const client = this.sb.instance;
-    const { data, error } = await client
-      .from('client_visible_quotes')
-      .select('*')
-      .order('quote_date', { ascending: false });
-    return { data: (data || []) as any, error };
+    try {
+      // Prefer secure edge function to enforce mapping and privacy
+      const { data, error } = await this.supabase.functions.invoke('client-quotes', { body: undefined });
+      if (error) {
+        // Fallback to view if available
+        const { data: viewData, error: viewErr } = await this.supabase
+          .from('client_visible_quotes')
+          .select('*')
+          .order('quote_date', { ascending: false });
+        return { data: (viewData || []) as any, error: viewErr };
+      }
+      return { data: (data?.data || []) as any, error: null };
+    } catch (e: any) {
+      // Final fallback: empty list with error message
+      return { data: [], error: { message: e?.message || 'listQuotes failed' } };
+    }
+  }
+
+  async getQuote(id: string): Promise<{ data: any | null; error?: any }> {
+    try {
+      const { data, error } = await this.supabase.functions.invoke('client-quotes', { body: { id } });
+      if (error) return { data: null, error };
+      return { data: data?.data || null };
+    } catch (e: any) {
+      // Fallback: try direct table with RLS (may fail for client if policies are strict)
+      const { data, error } = await this.supabase
+        .from('quotes')
+        .select('id, full_quote_number, title, status, quote_date, valid_until, total_amount, items:quote_items(*)')
+        .eq('id', id)
+        .maybeSingle();
+      return { data: data || null, error };
+    }
   }
 
   async markTicketOpened(ticketId: string): Promise<{ success: boolean; error?: string }> {

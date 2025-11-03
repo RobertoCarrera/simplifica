@@ -369,7 +369,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Presupuestos',
       icon: 'description',
       route: '/presupuestos',
-      module: 'development'
+      module: 'production'
     },
     {
       id: 3,
@@ -383,6 +383,13 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Servicios',
       icon: 'build',
       route: '/servicios',
+      module: 'production'
+    },
+    {
+      id: 44,
+      label: 'Facturación',
+      icon: 'description',
+      route: '/facturacion',
       module: 'production'
     },
     {
@@ -484,10 +491,13 @@ export class ResponsiveSidebarComponent implements OnInit {
       ];
     }
 
-    // Client role: restrict to Inicio, Tickets, Configuración
+    // Client role: show Tickets, Presupuestos (client portal), Configuración
     if (isClient) {
-      const allowedRoutes = new Set<string>(['/', '/tickets', '/configuracion']);
-      return this.allMenuItems.filter(item => allowedRoutes.has(item.route));
+      return [
+        { id: 2001, label: 'Tickets', icon: 'confirmation_number', route: '/tickets', module: 'production' },
+        { id: 2002, label: 'Presupuestos', icon: 'description', route: '/portal/presupuestos', module: 'production' },
+        { id: 2003, label: 'Configuración', icon: 'settings', route: '/configuracion', module: 'core' }
+      ];
     }
 
     return this.allMenuItems.filter(item => {

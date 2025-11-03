@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService, RegisterData } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 
@@ -432,6 +432,7 @@ import { ToastService } from '../../services/toast.service';
 export class RegisterComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
   private toastService = inject(ToastService);
 
@@ -459,6 +460,13 @@ export class RegisterComponent {
       }
     );
 
+  }
+
+  ngOnInit() {
+    const qp = this.route.snapshot.queryParams['returnUrl'] as string | undefined;
+    if (qp) {
+      (this as any)._returnTo = qp;
+    }
   }
 
   // Computed properties para validación
@@ -539,9 +547,15 @@ export class RegisterComponent {
           this.router.navigate(['/auth/confirm']);
         } else {
           this.toastService.success('Bienvenido 👋 Tu cuenta ha sido creada.', 'Registro exitoso');
-          console.log('✅ Registration successful, redirecting to dashboard');
-          // Redirigir directo al dashboard
-          this.router.navigate(['/clientes']);
+          console.log('✅ Registration successful, redirecting');
+          const returnTo = (this as any)._returnTo as string | undefined;
+          if (returnTo) {
+            const normalized = decodeURIComponent(returnTo).startsWith('/') ? decodeURIComponent(returnTo) : `/${decodeURIComponent(returnTo)}`;
+            history.replaceState({}, '', normalized);
+            this.router.navigateByUrl(normalized);
+          } else {
+            this.router.navigate(['/inicio']);
+          }
         }
       } else {
         console.error('❌ Registration failed:', result.error);

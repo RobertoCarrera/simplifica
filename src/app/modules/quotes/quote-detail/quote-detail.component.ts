@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
+import { ToastService } from '../../../services/toast.service';
 import { 
   Quote, 
   QuoteItem,
@@ -23,10 +24,13 @@ export class QuoteDetailComponent implements OnInit {
   private quotesService = inject(SupabaseQuotesService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private toastService = inject(ToastService);
 
   quote = signal<Quote | null>(null);
   loading = signal(true);
   error = signal<string | null>(null);
+  sendingEmail = signal(false);
+  
 
   QuoteStatus = QuoteStatus;
   statusLabels = QUOTE_STATUS_LABELS;
@@ -101,10 +105,37 @@ export class QuoteDetailComponent implements OnInit {
 
   sendByEmail() {
     const q = this.quote();
-    if (q) {
-      // TODO: Implement email sending
-      alert('Función de envío por email en desarrollo');
+    if (!q) return;
+    const to = q.client?.email?.trim();
+    if (!to) {
+  const msg = 'El cliente no tiene un email configurado. Añádelo en la ficha del cliente para poder enviar el presupuesto.';
+  this.error.set(msg);
+  try { this.toastService.error('Error al enviar', msg); } catch {}
+      return;
     }
+    const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    if (!emailRegex.test(to)) {
+  const msg = 'El email del cliente no es válido. Por favor, revisa el formato (ej. usuario@dominio.com).';
+  this.error.set(msg);
+  try { this.toastService.error('Email inválido', msg); } catch {}
+      return;
+    }
+    const num = formatQuoteNumber(q);
+    const subject = num ? `Tu presupuesto ${num}` : 'Tu presupuesto';
+    const message = 'Te enviamos tu presupuesto para revisión.';
+    this.sendingEmail.set(true);
+    this.quotesService.sendQuoteEmail(q.id, to, subject, message).subscribe({
+      next: () => {
+        this.sendingEmail.set(false);
+        try { this.toastService.success('Email enviado', 'Presupuesto enviado correctamente'); } catch {}
+      },
+      error: (e) => {
+        this.sendingEmail.set(false);
+        const msg = 'Error al enviar email: ' + (e?.message || e);
+        this.error.set(msg);
+        try { this.toastService.error('Error al enviar', msg); } catch {}
+      }
+    });
   }
 
   convertToInvoice() {

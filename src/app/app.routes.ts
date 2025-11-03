@@ -44,6 +44,8 @@ import { PortalInviteComponent } from './components/portal-invite/portal-invite.
 import { PortalDashboardComponent } from './components/portal-dashboard/portal-dashboard.component';
 import { ClientPortalAdminComponent } from './components/client-portal-admin/client-portal-admin.component';
 import { ClientPasswordSetupComponent } from './components/client-password-setup/client-password-setup.component';
+import { PortalQuotesComponent } from './components/portal-quotes/portal-quotes.component';
+import { PortalQuoteDetailComponent } from './components/portal-quote-detail/portal-quote-detail.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -72,6 +74,15 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/quotes/quotes.module').then(m => m.QuotesModule),
         canActivate: [AuthGuard, OwnerAdminGuard]
     },
+    // Módulo de facturación (lazy loading)
+    {
+        path: 'facturacion',
+        loadChildren: () => import('./modules/invoices/invoices.module').then(m => m.InvoicesModule),
+        canActivate: [AuthGuard, OwnerAdminGuard]
+    },
+    // Compatibilidad: rutas antiguas
+    { path: 'invoices', redirectTo: 'facturacion', pathMatch: 'full' },
+    { path: 'invoices/:id', redirectTo: 'facturacion/:id', pathMatch: 'full' },
     
     // Rutas de autenticación (sin guards)
     {path: 'login', component: LoginComponent, canActivate: [GuestGuard]},
@@ -86,6 +97,10 @@ export const routes: Routes = [
     {path: 'client/set-password', component: ClientPasswordSetupComponent},
     // Client portal dashboard (requires login as invited user)
     {path: 'portal', component: PortalDashboardComponent, canActivate: [AuthGuard, ClientRoleGuard]},
+    // Client portal quotes list (client users only)
+    {path: 'portal/presupuestos', component: PortalQuotesComponent, canActivate: [AuthGuard, ClientRoleGuard]},
+    // Client portal quote detail
+    {path: 'portal/presupuestos/:id', component: PortalQuoteDetailComponent, canActivate: [AuthGuard, ClientRoleGuard]},
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [DevGuard]},

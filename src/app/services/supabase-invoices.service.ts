@@ -17,6 +17,7 @@ import {
 } from '../models/invoice.model';
 import { AuthService } from './auth.service';
 import { SupabaseClientService } from './supabase-client.service';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -29,6 +30,158 @@ export class SupabaseInvoicesService {
   constructor() {
     // Use the shared singleton client to avoid multiple auth storages/locks
     this.supabase = this.clientSvc.instance;
+  }
+
+  // =====================================================
+  // VERIFACTU (Meta & Events + Dispatcher Actions)
+  // =====================================================
+
+  private verifactuConfig: { maxAttempts: number; backoffMinutes: number[] } | null = null;
+
+  /**
+   * Obtener metadatos VeriFactu de una factura
+   */
+  getVerifactuMeta(invoiceId: string): Observable<any | null> {
+    return from(
+      this.supabase
+        .from('verifactu.invoice_meta')
+        .select('*')
+        .eq('invoice_id', invoiceId)
+        .single()
+    ).pipe(
+      map(res => {
+        if (res.error) throw res.error;
+        return res.data;
+      }),
+      catchError(err => {
+        console.warn('VeriFactu meta no disponible:', err?.message || err);
+        return from([null]);
+      })
+    );
+  }
+
+  /**
+   * Obtener últimos eventos VeriFactu de una factura
+   */
+  getVerifactuEvents(invoiceId: string, limit: number = 5): Observable<any[]> {
+    return from(
+      this.supabase
+        .from('verifactu.events')
+        .select('*')
+        .eq('invoice_id', invoiceId)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+    ).pipe(
+      map(res => {
+        if (res.error) throw res.error;
+        return res.data || [];
+      }),
+      catchError(err => {
+        console.warn('VeriFactu events no disponibles:', err?.message || err);
+        return from([[]]);
+      })
+    );
+  }
+
+  /**
+   * Ejecuta el dispatcher inmediatamente (procesa eventos pendientes)
+   */
+  runDispatcherNow(): Observable<any> {
+    return from(
+      fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      }).then(r => r.json())
+    );
+  }
+
+  /**
+   * Reintento manual seguro: resetear el último evento rechazado a 'pending'
+   */
+  retryVerifactu(invoiceId: string): Observable<any> {
+    return from(
+      fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'retry', invoice_id: invoiceId })
+      }).then(r => r.json())
+    );
+  }
+
+  /**
+   * Obtener configuración VeriFactu desde el servidor (no sensible)
+   */
+  getVerifactuConfig(): Observable<{ maxAttempts: number; backoffMinutes: number[] }> {
+    if (this.verifactuConfig) {
+      return from([this.verifactuConfig]);
+    }
+    return from(
+      fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'config' })
+      }).then(async r => {
+        const json = await r.json();
+        if (!r.ok) throw new Error(json?.error || 'VF config error');
+        const cfg = { maxAttempts: Number(json.maxAttempts) || 7, backoffMinutes: (json.backoffMinutes as number[]) || [0,1,5,15,60,180,720] };
+        this.verifactuConfig = cfg;
+        return cfg;
+      })
+    );
+  }
+
+  /**
+   * Enviar factura por email (Amazon SES) con enlace seguro al PDF
+   */
+  sendInvoiceEmail(invoiceId: string, to: string, subject?: string, message?: string): Observable<any> {
+    return new Observable(observer => {
+      (async () => {
+        try {
+          const { data: { session } } = await this.supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) throw new Error('Sesión no válida');
+          const res = await fetch(`${environment.edgeFunctionsBaseUrl}/invoices-email`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ invoice_id: invoiceId, to, subject, message })
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json?.error || 'Error al enviar email');
+          observer.next(json);
+          observer.complete();
+        } catch (e) {
+          observer.error(e);
+        }
+      })();
+    });
+  }
+
+  /**
+   * Cancelar factura con AEAT (verifactu anulacion) vía Edge Function
+   */
+  cancelInvoiceWithAEAT(invoiceId: string, reason?: string): Observable<any> {
+    return new Observable(observer => {
+      (async () => {
+        try {
+          const { data: { session } } = await this.supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) throw new Error('Sesión no válida');
+
+          const res = await fetch(`${environment.edgeFunctionsBaseUrl}/invoices-cancel`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ invoice_id: invoiceId, reason: reason || null })
+          });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json?.error || 'Error al anular factura');
+          observer.next(json);
+          observer.complete();
+        } catch (e) {
+          console.error('Error cancelInvoiceWithAEAT:', e);
+          observer.error(e);
+        }
+      })();
+    });
   }
 
   // =====================================================

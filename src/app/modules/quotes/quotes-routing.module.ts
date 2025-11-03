@@ -3,7 +3,7 @@ import { RouterModule, Routes } from '@angular/router';
 import { QuoteListComponent } from './quote-list/quote-list.component';
 import { QuoteFormComponent } from './quote-form/quote-form.component';
 import { QuoteDetailComponent } from './quote-detail/quote-detail.component';
-import { QuoteClientViewComponent } from './quote-client-view/quote-client-view.component';
+// Public client view removed for GDPR compliance
 
 const routes: Routes = [
   {
@@ -18,10 +18,7 @@ const routes: Routes = [
     path: 'edit/:id',
     component: QuoteFormComponent
   },
-  {
-    path: 'client/:id/:token',
-    component: QuoteClientViewComponent
-  },
+  // Public client route removed
   {
     path: ':id',
     component: QuoteDetailComponent

@@ -27,6 +27,7 @@ export class QuoteClientViewComponent implements OnInit {
   error = signal<string | null>(null);
   processing = signal(false);
   successMessage = signal<string | null>(null);
+  
 
   QuoteStatus = QuoteStatus;
   currentYear = new Date().getFullYear();
@@ -34,35 +35,24 @@ export class QuoteClientViewComponent implements OnInit {
   ngOnInit() {
     this.route.params.subscribe(params => {
       const id = params['id'];
-      const token = params['token'];
-      
-      if (id && token) {
-        this.loadQuote(id, token);
+      if (id) {
+        this.loadQuote(id);
       }
     });
   }
 
-  loadQuote(id: string, token: string) {
+  loadQuote(id: string) {
     this.loading.set(true);
-    
     this.quotesService.getQuote(id).subscribe({
-      next: (quote) => {
-        this.quote.set(quote);
+      next: (res) => {
+        this.quote.set(res);
         this.loading.set(false);
-        
-        if (quote.status === QuoteStatus.SENT) {
-          this.markAsViewed(id);
-        }
       },
-      error: (err) => {
-        this.error.set('No se pudo cargar el presupuesto. Verifica el enlace.');
+      error: () => {
+        this.error.set('No se pudo cargar el presupuesto.');
         this.loading.set(false);
       }
     });
-  }
-
-  markAsViewed(id: string) {
-    this.quotesService.markQuoteAsViewed(id).subscribe();
   }
 
   acceptQuote() {
@@ -71,13 +61,15 @@ export class QuoteClientViewComponent implements OnInit {
       if (confirm('¿Estás seguro de que deseas aceptar este presupuesto?')) {
         this.processing.set(true);
         this.quotesService.acceptQuote(q.id).subscribe({
-          next: (updated) => {
-            this.quote.set(updated);
+          next: (res) => {
+            // reflect acceptance locally
+            const updatedQuote: Quote = { ...q, status: QuoteStatus.ACCEPTED, accepted_at: new Date().toISOString() } as any;
+            this.quote.set(updatedQuote);
             this.processing.set(false);
-            this.successMessage.set('¡Presupuesto aceptado! Recibirás la factura pronto.');
+            this.successMessage.set('¡Presupuesto aceptado!');
           },
           error: (err) => {
-            this.error.set('Error al aceptar: ' + err.message);
+            this.error.set('Error al aceptar: ' + (err?.message || err));
             this.processing.set(false);
           }
         });
@@ -90,6 +82,7 @@ export class QuoteClientViewComponent implements OnInit {
     if (q && canAcceptQuote(q)) {
       if (confirm('¿Estás seguro de que deseas rechazar este presupuesto?')) {
         this.processing.set(true);
+        // Rejection for public portal could be future; keep internal call if available
         this.quotesService.rejectQuote(q.id).subscribe({
           next: (updated) => {
             this.quote.set(updated);
