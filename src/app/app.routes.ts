@@ -7,8 +7,6 @@ import { WorksComponent } from './components/works/works.component';
 import { DemoComponentsComponent } from './components/demo-components/demo-components.component';
 import { DashboardAnalyticsComponent } from './components/dashboard-analytics/dashboard-analytics.component';
 import { AdvancedSearchComponent } from './components/advanced-search/advanced-search.component';
-import { NotificationCenterComponent } from './components/notification-center/notification-center.component';
-import { NotificationDemoComponent } from './components/notification-demo/notification-demo.component';
 import { WorkflowBuilderComponent } from './components/workflow-builder/workflow-builder.component';
 import { ExportImportManagerComponent } from './components/export-import-manager/export-import-manager.component';
 import { AdvancedFeaturesDashboardComponent } from './components/advanced-features-dashboard/advanced-features-dashboard.component';
@@ -114,7 +112,7 @@ export const routes: Routes = [
     {path: 'workflows', component: WorkflowBuilderComponent, canActivate: [DevGuard]},
     {path: 'export-import', component: ExportImportManagerComponent, canActivate: [DevGuard]},
     {path: 'demo', component: DemoComponentsComponent, canActivate: [DevGuard]},
-    {path: 'notification-demo', component: NotificationDemoComponent, canActivate: [DevGuard]},
+    // Eliminado: notification-demo (usamos solo sistema de toasts)
     {path: 'search', component: AdvancedSearchComponent, canActivate: [DevGuard]},
-    {path: 'notifications', component: NotificationCenterComponent, canActivate: [DevGuard]}
+    // Eliminado: notifications (centro de notificaciones personalizado)
 ];

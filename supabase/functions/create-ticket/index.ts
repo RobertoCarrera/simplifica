@@ -9,7 +9,7 @@ const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s
 const AUTO_CREATE_DEFAULT_STAGES = (Deno.env.get('AUTO_CREATE_DEFAULT_STAGES') || 'false').toLowerCase() === 'true';
 
 const FUNCTION_NAME = 'create-ticket';
-const FUNCTION_VERSION = '2025-10-18-1';
+const FUNCTION_VERSION = '2025-11-04-1';
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error(`[${FUNCTION_NAME}] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars`);
@@ -171,12 +171,9 @@ serve(async (req: Request) => {
     }
     const products = Array.from(mergedProd.values());
 
-    // If p_services key is present, enforce at least one item
-    if ('p_services' in body && services.length === 0) {
-      return jsonResponse(400, { error: 'At least one service is required when p_services is provided' }, origin || '*');
-    }
-    if ('p_products' in body && products.length === 0) {
-      return jsonResponse(400, { error: 'At least one product is required when p_products is provided' }, origin || '*');
+    // Business rule: a ticket must include at least ONE service OR ONE product
+    if (services.length === 0 && products.length === 0) {
+      return jsonResponse(400, { error: 'At least one service or product is required', code: 'no_line_items' }, origin || '*');
     }
     // Validate user belongs to the company via public.users (single-company membership)
     const { data: userRow, error: userErr } = await supabaseAdmin
@@ -518,22 +515,3 @@ serve(async (req: Request) => {
     return jsonResponse(500, { error: 'Internal server error', details: e?.message || e }, origin || '*');
   }
 });
-
-/*
-Deploy:
-  supabase functions deploy create-ticket --project-ref <YOUR_PROJECT_REF>
-
-Local test (replace <TOKEN>):
-  curl -i -X POST 'https://<YOUR_PROJECT>.supabase.co/functions/v1/create-ticket' \
-    -H 'Origin: http://localhost:4200' \
-    -H 'Authorization: Bearer <TOKEN>' \
-    -H 'Content-Type: application/json' \
-    -d '{
-      "p_company_id":"00000000-0000-0000-0000-000000000000",
-      "p_client_id":"00000000-0000-0000-0000-000000000000",
-      "p_title":"Pantalla rota iPhone",
-      "p_description":"El cliente reporta pantalla rota tras caída",
-      "p_stage_id":"00000000-0000-0000-0000-000000000000",
-      "p_priority":"normal"
-    }'
-*/

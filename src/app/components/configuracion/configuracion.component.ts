@@ -92,7 +92,13 @@ export class ConfiguracionComponent implements OnInit {
       default_convert_policy: ['manual', [Validators.required]],
       ask_before_convert: [false],
       enforce_globally: [false],
-      default_invoice_delay_days: [null]
+      default_invoice_delay_days: [null],
+      // Global tax defaults
+      default_prices_include_tax: [false],
+      default_iva_enabled: [true],
+      default_iva_rate: [21, [Validators.min(0), Validators.max(100)]],
+      default_irpf_enabled: [false],
+      default_irpf_rate: [15, [Validators.min(0), Validators.max(100)]]
     });
     this.companySettingsForm = this.fb.group({
       convert_policy: [null],
@@ -100,7 +106,13 @@ export class ConfiguracionComponent implements OnInit {
       enforce_company_defaults: [false],
       default_invoice_delay_days: [null],
       invoice_on_date: [null],
-      deposit_percentage: [null]
+      deposit_percentage: [null],
+      // Company tax overrides
+      prices_include_tax: [null],
+      iva_enabled: [null],
+      iva_rate: [null, [Validators.min(0), Validators.max(100)]],
+      irpf_enabled: [null],
+      irpf_rate: [null, [Validators.min(0), Validators.max(100)]]
     });
   }
 
@@ -492,7 +504,12 @@ export class ConfiguracionComponent implements OnInit {
           default_convert_policy: app.default_convert_policy || 'manual',
           ask_before_convert: !!app.ask_before_convert,
           enforce_globally: !!app.enforce_globally,
-          default_invoice_delay_days: app.default_invoice_delay_days ?? null
+          default_invoice_delay_days: app.default_invoice_delay_days ?? null,
+          default_prices_include_tax: app.default_prices_include_tax ?? false,
+          default_iva_enabled: app.default_iva_enabled ?? true,
+          default_iva_rate: app.default_iva_rate ?? 21,
+          default_irpf_enabled: app.default_irpf_enabled ?? false,
+          default_irpf_rate: app.default_irpf_rate ?? 15
         });
       }
       if (company) {
@@ -502,7 +519,12 @@ export class ConfiguracionComponent implements OnInit {
           enforce_company_defaults: !!company.enforce_company_defaults,
           default_invoice_delay_days: company.default_invoice_delay_days ?? null,
           invoice_on_date: company.invoice_on_date ?? null,
-          deposit_percentage: company.deposit_percentage ?? null
+          deposit_percentage: company.deposit_percentage ?? null,
+          prices_include_tax: company.prices_include_tax ?? null,
+          iva_enabled: company.iva_enabled ?? null,
+          iva_rate: company.iva_rate ?? null,
+          irpf_enabled: company.irpf_enabled ?? null,
+          irpf_rate: company.irpf_rate ?? null
         });
       }
     } catch (e) {

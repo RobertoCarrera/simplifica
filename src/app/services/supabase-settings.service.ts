@@ -11,6 +11,12 @@ export interface AppSettings {
   ask_before_convert?: boolean;
   enforce_globally?: boolean;
   default_invoice_delay_days?: number | null;
+  // Global tax defaults
+  default_prices_include_tax?: boolean | null;
+  default_iva_enabled?: boolean | null;
+  default_iva_rate?: number | null; // 0, 4, 10, 21
+  default_irpf_enabled?: boolean | null;
+  default_irpf_rate?: number | null; // e.g., 7, 15
   updated_at?: string;
 }
 
@@ -22,6 +28,12 @@ export interface CompanySettings {
   default_invoice_delay_days?: number | null;
   invoice_on_date?: string | null; // ISO date
   deposit_percentage?: number | null;
+  // Company tax settings (override globals when set)
+  prices_include_tax?: boolean | null;
+  iva_enabled?: boolean | null;
+  iva_rate?: number | null; // 0, 4, 10, 21
+  irpf_enabled?: boolean | null;
+  irpf_rate?: number | null; // e.g., 7, 15
   updated_at?: string;
 }
 

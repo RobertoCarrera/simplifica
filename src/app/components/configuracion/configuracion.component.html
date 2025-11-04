@@ -332,6 +332,44 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Días por defecto para programar</label>
             <input type="number" formControlName="default_invoice_delay_days" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white" placeholder="p.ej. 3">
           </div>
+
+          <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+            <h3 class="text-md font-semibold text-gray-900 dark:text-white mb-2 flex items-center">
+              <i class="fas fa-receipt mr-2 text-blue-600"></i>
+              Impuestos (IVA/IRPF) · Global
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="flex items-center gap-2">
+                <input id="default_prices_include_tax" type="checkbox" formControlName="default_prices_include_tax" class="h-4 w-4">
+                <label for="default_prices_include_tax" class="text-sm text-gray-700 dark:text-gray-300">Precios con IVA incluido</label>
+              </div>
+              <div class="flex items-center gap-2">
+                <input id="default_iva_enabled" type="checkbox" formControlName="default_iva_enabled" class="h-4 w-4">
+                <label for="default_iva_enabled" class="text-sm text-gray-700 dark:text-gray-300">Aplicar IVA</label>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IVA por defecto (%)</label>
+                <select formControlName="default_iva_rate" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
+                  <option [ngValue]="0">0%</option>
+                  <option [ngValue]="4">4%</option>
+                  <option [ngValue]="10">10%</option>
+                  <option [ngValue]="21">21%</option>
+                </select>
+              </div>
+              <div class="flex items-center gap-2">
+                <input id="default_irpf_enabled" type="checkbox" formControlName="default_irpf_enabled" class="h-4 w-4">
+                <label for="default_irpf_enabled" class="text-sm text-gray-700 dark:text-gray-300">Aplicar IRPF (retención)</label>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IRPF por defecto (%)</label>
+                <select formControlName="default_irpf_rate" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
+                  <option [ngValue]="0">0%</option>
+                  <option [ngValue]="7">7%</option>
+                  <option [ngValue]="15">15%</option>
+                </select>
+              </div>
+            </div>
+          </div>
           <div class="flex justify-end">
             <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Guardar</button>
           </div>
@@ -379,6 +417,47 @@
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Anticipo (%)</label>
             <input type="number" min="0" max="100" step="1" formControlName="deposit_percentage" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white" placeholder="p.ej. 30">
+          </div>
+
+          <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+            <h3 class="text-md font-semibold text-gray-900 dark:text-white mb-2 flex items-center">
+              <i class="fas fa-file-invoice mr-2 text-green-600"></i>
+              Impuestos (IVA/IRPF) · Empresa
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="flex items-center gap-2">
+                <input id="prices_include_tax" type="checkbox" formControlName="prices_include_tax" class="h-4 w-4">
+                <label for="prices_include_tax" class="text-sm text-gray-700 dark:text-gray-300">Precios con IVA incluido</label>
+              </div>
+              <div class="flex items-center gap-2">
+                <input id="iva_enabled" type="checkbox" formControlName="iva_enabled" class="h-4 w-4">
+                <label for="iva_enabled" class="text-sm text-gray-700 dark:text-gray-300">Aplicar IVA</label>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IVA (%)</label>
+                <select formControlName="iva_rate" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
+                  <option [ngValue]="null">Usar global</option>
+                  <option [ngValue]="0">0%</option>
+                  <option [ngValue]="4">4%</option>
+                  <option [ngValue]="10">10%</option>
+                  <option [ngValue]="21">21%</option>
+                </select>
+              </div>
+              <div class="flex items-center gap-2">
+                <input id="irpf_enabled" type="checkbox" formControlName="irpf_enabled" class="h-4 w-4">
+                <label for="irpf_enabled" class="text-sm text-gray-700 dark:text-gray-300">Aplicar IRPF (retención)</label>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IRPF (%)</label>
+                <select formControlName="irpf_rate" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
+                  <option [ngValue]="null">Usar global</option>
+                  <option [ngValue]="0">0%</option>
+                  <option [ngValue]="7">7%</option>
+                  <option [ngValue]="15">15%</option>
+                </select>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">La empresa puede definir impuestos específicos. Si se activa "Forzar ajustes de empresa", estos valores prevalecen sobre los globales.</p>
           </div>
           <div class="flex justify-end">
             <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">Guardar</button>

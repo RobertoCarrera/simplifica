@@ -9,6 +9,8 @@ import { ProductsService } from '../../../services/products.service';
 import { Customer } from '../../../models/customer';
 import { CreateQuoteDTO, CreateQuoteItemDTO, QuoteItem } from '../../../models/quote.model';
 import { debounceTime } from 'rxjs/operators';
+import { SupabaseSettingsService, type AppSettings, type CompanySettings } from '../../../services/supabase-settings.service';
+import { firstValueFrom } from 'rxjs';
 
 interface ClientOption {
   id: string;
@@ -60,6 +62,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   private productsService = inject(ProductsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private settingsService = inject(SupabaseSettingsService);
 
   quoteForm!: FormGroup;
   loading = signal(false);
@@ -123,7 +126,15 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   // Cálculos automáticos
   subtotal = signal(0);
   taxAmount = signal(0);
+  irpfAmount = signal(0);
   totalAmount = signal(0);
+
+  // Tax configuration (derived from settings)
+  pricesIncludeTax = signal<boolean>(false);
+  ivaEnabled = signal<boolean>(true);
+  ivaRate = signal<number>(21);
+  irpfEnabled = signal<boolean>(false);
+  irpfRate = signal<number>(15);
   
   // Preview
   showPreview = signal(false);
@@ -143,6 +154,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     this.loadServices();
     this.loadTemplates();
   this.loadProducts();
+    this.loadTaxSettings();
     this.setupAutoCalculations();
     
     this.route.params.subscribe(params => {
@@ -270,7 +282,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       description: ['', Validators.required],
       quantity: [1, [Validators.required, Validators.min(1)]],
       unit_price: [0, [Validators.required, Validators.min(0)]],
-      tax_rate: [21, [Validators.required, Validators.min(0), Validators.max(100)]],
+      tax_rate: [this.ivaEnabled() ? this.ivaRate() : 0, [Validators.required, Validators.min(0), Validators.max(100)]],
       discount_percent: [0, [Validators.min(0), Validators.max(100)]],
       notes: ['']
     });
@@ -288,6 +300,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     const items = this.items.value;
     let subtotal = 0;
     let taxAmount = 0;
+    let baseNetForIrpf = 0;
 
     items.forEach((item: any) => {
       const qty = parseFloat(item.quantity) || 0;
@@ -295,18 +308,33 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       const discount = parseFloat(item.discount_percent) || 0;
       const taxRate = parseFloat(item.tax_rate) || 0;
 
-      const itemSubtotal = qty * price;
-      const itemDiscount = itemSubtotal * (discount / 100);
-      const itemSubtotalAfterDiscount = itemSubtotal - itemDiscount;
-      const itemTax = itemSubtotalAfterDiscount * (taxRate / 100);
-
-      subtotal += itemSubtotalAfterDiscount;
-      taxAmount += itemTax;
+      if (this.pricesIncludeTax() && this.ivaEnabled() && taxRate > 0) {
+        // Convert tax-included price to net before discount
+        const gross = qty * price;
+        const netBeforeDiscount = gross / (1 + taxRate / 100);
+        const itemDiscount = netBeforeDiscount * (discount / 100);
+        const itemNet = netBeforeDiscount - itemDiscount;
+        const itemTax = itemNet * (taxRate / 100);
+        subtotal += itemNet;
+        taxAmount += itemTax;
+        baseNetForIrpf += itemNet;
+      } else {
+        // Tax excluded prices (default)
+        const itemSubtotal = qty * price;
+        const itemDiscount = itemSubtotal * (discount / 100);
+        const itemNet = itemSubtotal - itemDiscount;
+        const itemTax = (this.ivaEnabled() ? itemNet * (taxRate / 100) : 0);
+        subtotal += itemNet;
+        taxAmount += itemTax;
+        baseNetForIrpf += itemNet;
+      }
     });
 
     this.subtotal.set(subtotal);
     this.taxAmount.set(taxAmount);
-    this.totalAmount.set(subtotal + taxAmount);
+    const irpf = this.irpfEnabled() ? baseNetForIrpf * (this.irpfRate() / 100) : 0;
+    this.irpfAmount.set(irpf);
+    this.totalAmount.set(subtotal + taxAmount - irpf);
   }
 
   loadClients() {
@@ -528,7 +556,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     item.patchValue({
       description: service.name,
       unit_price: service.base_price,
-      quantity: 1
+      quantity: 1,
+      tax_rate: this.ivaEnabled() ? this.ivaRate() : 0
     });
     this.serviceDropdownOpen.set(false);
     this.selectedItemIndex.set(null);
@@ -558,7 +587,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     item.patchValue({
       description: product.name,
       unit_price: product.price,
-      quantity: 1
+      quantity: 1,
+      tax_rate: this.ivaEnabled() ? this.ivaRate() : 0
     });
     this.productDropdownOpen.set(false);
     this.selectedProductIndex.set(null);
@@ -687,5 +717,40 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
 
   formatCurrency(amount: number): string {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
+  }
+
+  private async loadTaxSettings() {
+    try {
+      const [app, company] = await Promise.all([
+        firstValueFrom(this.settingsService.getAppSettings()),
+        firstValueFrom(this.settingsService.getCompanySettings())
+      ]);
+
+      // Resolve effective settings: company overrides when set (and enforce_company_defaults if needed)
+      const effectivePricesIncludeTax = (company?.prices_include_tax ?? null) ?? (app?.default_prices_include_tax ?? false);
+      const effectiveIvaEnabled = (company?.iva_enabled ?? null) ?? (app?.default_iva_enabled ?? true);
+      const effectiveIvaRate = (company?.iva_rate ?? null) ?? (app?.default_iva_rate ?? 21);
+      const effectiveIrpfEnabled = (company?.irpf_enabled ?? null) ?? (app?.default_irpf_enabled ?? false);
+      const effectiveIrpfRate = (company?.irpf_rate ?? null) ?? (app?.default_irpf_rate ?? 15);
+
+      this.pricesIncludeTax.set(!!effectivePricesIncludeTax);
+      this.ivaEnabled.set(!!effectiveIvaEnabled);
+      this.ivaRate.set(Number(effectiveIvaRate || 0));
+      this.irpfEnabled.set(!!effectiveIrpfEnabled);
+      this.irpfRate.set(Number(effectiveIrpfRate || 0));
+
+      // Update defaults in existing first item if fresh form
+      if (this.items.length === 1) {
+        const ctrl = this.items.at(0);
+        if (ctrl && ctrl.get('tax_rate')?.value === 21) {
+          ctrl.patchValue({ tax_rate: this.ivaEnabled() ? this.ivaRate() : 0 }, { emitEvent: false });
+        }
+      }
+
+      this.calculateTotals();
+    } catch (e) {
+      // Keep safe defaults on error
+      this.calculateTotals();
+    }
   }
 }
