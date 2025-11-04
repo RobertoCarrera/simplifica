@@ -7,8 +7,17 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 function cors(origin?: string){
   const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS')||'false').toLowerCase()==='true';
   const allowed = (Deno.env.get('ALLOWED_ORIGINS')||'').split(',').map(s=>s.trim()).filter(Boolean);
+  // Dev-friendly fallback: if nothing configured, allow common localhost origin
+  if (allowed.length === 0 && !allowAll) allowed.push('http://localhost:4200');
   const isAllowed = allowAll || (origin && allowed.includes(origin));
-  return { 'Access-Control-Allow-Origin': isAllowed && origin ? origin : allowAll ? '*' : '', 'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods':'POST, OPTIONS', 'Vary':'Origin' } as Record<string,string>;
+  const acao = isAllowed && origin ? origin : allowAll ? '*' : '';
+  return {
+    'Access-Control-Allow-Origin': acao,
+    'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods':'POST, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+    'Vary':'Origin'
+  } as Record<string,string>;
 }
 
 const MAX_ATTEMPTS = Number(Deno.env.get('VERIFACTU_MAX_ATTEMPTS') || 7);
@@ -108,6 +117,25 @@ serve( async (req)=>{
     if (body && body.action === 'config') {
       return new Response(
         JSON.stringify({ ok: true, maxAttempts: MAX_ATTEMPTS, backoffMinutes: BACKOFF_MIN }),
+        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Health summary for UI without exposing verifactu schema over PostgREST
+    if (body && body.action === 'health') {
+      const evTable = admin.from('verifactu.events');
+      const [pendingRes, lastRes, lastAccRes, lastRejRes] = await Promise.all([
+        evTable.select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+        evTable.select('created_at').order('created_at', { ascending: false }).limit(1),
+        evTable.select('created_at').eq('status','accepted').order('created_at', { ascending: false }).limit(1),
+        evTable.select('created_at').eq('status','rejected').order('created_at', { ascending: false }).limit(1)
+      ]);
+      const pending = pendingRes.count || 0;
+      const lastEventAt = (lastRes.data && (lastRes.data as any[])[0]?.created_at) || null;
+      const lastAcceptedAt = (lastAccRes.data && (lastAccRes.data as any[])[0]?.created_at) || null;
+      const lastRejectedAt = (lastRejRes.data && (lastRejRes.data as any[])[0]?.created_at) || null;
+      return new Response(
+        JSON.stringify({ ok:true, pending, lastEventAt, lastAcceptedAt, lastRejectedAt }),
         { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
       );
     }

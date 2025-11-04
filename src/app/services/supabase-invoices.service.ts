@@ -44,7 +44,8 @@ export class SupabaseInvoicesService {
   getVerifactuMeta(invoiceId: string): Observable<any | null> {
     return from(
       this.supabase
-        .from('verifactu.invoice_meta')
+        .schema('verifactu')
+        .from('invoice_meta')
         .select('*')
         .eq('invoice_id', invoiceId)
         .single()
@@ -66,7 +67,8 @@ export class SupabaseInvoicesService {
   getVerifactuEvents(invoiceId: string, limit: number = 5): Observable<any[]> {
     return from(
       this.supabase
-        .from('verifactu.events')
+        .schema('verifactu')
+        .from('events')
         .select('*')
         .eq('invoice_id', invoiceId)
         .order('created_at', { ascending: false })
@@ -131,6 +133,28 @@ export class SupabaseInvoicesService {
   }
 
   /**
+   * Estado de salud del dispatcher (conteos y última actividad)
+   */
+  getDispatcherHealth(): Observable<{ pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; }> {
+    return from(
+      fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'health' })
+      }).then(async r => {
+        const json = await r.json();
+        if (!r.ok) throw new Error(json?.error || 'VF health error');
+        return {
+          pending: Number(json.pending || 0),
+          lastEventAt: json.lastEventAt || null,
+          lastAcceptedAt: json.lastAcceptedAt || null,
+          lastRejectedAt: json.lastRejectedAt || null
+        } as { pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; };
+      })
+    );
+  }
+
+  /**
    * Enviar factura por email (Amazon SES) con enlace seguro al PDF
    */
   sendInvoiceEmail(invoiceId: string, to: string, subject?: string, message?: string): Observable<any> {
@@ -178,6 +202,31 @@ export class SupabaseInvoicesService {
           observer.complete();
         } catch (e) {
           console.error('Error cancelInvoiceWithAEAT:', e);
+          observer.error(e);
+        }
+      })();
+    });
+  }
+
+  /**
+   * Obtener URL firmada del PDF de una factura (lo genera si no existe)
+   */
+  getInvoicePdfUrl(invoiceId: string, force: boolean = false): Observable<string> {
+    return new Observable(observer => {
+      (async () => {
+        try {
+          const { data: { session } } = await this.supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) throw new Error('Sesión no válida');
+          const url = `${environment.edgeFunctionsBaseUrl}/invoices-pdf?invoice_id=${encodeURIComponent(invoiceId)}${force ? '&force=1' : ''}`;
+          const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+          const json = await res.json();
+          if (!res.ok) throw new Error(json?.error || 'No se pudo obtener PDF');
+          const signedUrl = json?.url;
+          if (!signedUrl) throw new Error('Respuesta sin URL firmada');
+          observer.next(signedUrl);
+          observer.complete();
+        } catch (e) {
           observer.error(e);
         }
       })();

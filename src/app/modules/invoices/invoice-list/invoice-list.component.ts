@@ -11,7 +11,17 @@ import { environment } from '../../../../environments/environment';
   imports: [CommonModule, RouterModule],
   template: `
   <div class="p-4">
-    <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Facturación</h1>
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Facturación</h1>
+      <div *ngIf="dispatcherHealth() as h" class="flex items-center gap-2">
+        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+              [ngClass]="h.pending > 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'">
+          <span class="w-2 h-2 rounded-full mr-1.5" [ngClass]="h.pending > 0 ? 'bg-amber-500' : 'bg-emerald-500'"></span>
+          {{ h.pending > 0 ? (h.pending + ' eventos pendientes') : 'Dispatcher OK' }}
+        </span>
+        <button class="text-sm px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" (click)="runDispatcher()">Ejecutar</button>
+      </div>
+    </div>
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
       <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
         <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200">Facturas</h2>
@@ -56,16 +66,30 @@ import { environment } from '../../../../environments/environment';
 export class InvoiceListComponent implements OnInit {
   private invoicesService = inject(SupabaseInvoicesService);
   invoices = signal<Invoice[]>([]);
+  dispatcherHealth = signal<{ pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; } | null>(null);
 
   ngOnInit(): void {
     this.invoicesService.getInvoices().subscribe({
       next: (list) => this.invoices.set(list || []),
       error: (err) => console.error('Error loading invoices', err)
     });
+    this.invoicesService.getDispatcherHealth().subscribe({
+      next: (h) => this.dispatcherHealth.set(h),
+      error: () => this.dispatcherHealth.set({ pending: 0, lastEventAt: null, lastAcceptedAt: null, lastRejectedAt: null })
+    });
   }
 
   downloadPdf(invoiceId: string){
-    const url = `${environment.edgeFunctionsBaseUrl}/invoices-pdf?invoice_id=${invoiceId}&download=1`;
-    window.open(url, '_blank');
+    this.invoicesService.getInvoicePdfUrl(invoiceId).subscribe({
+      next: (signed) => window.open(signed, '_blank'),
+      error: (e) => console.error('PDF error', e)
+    });
+  }
+
+  runDispatcher(){
+    this.invoicesService.runDispatcherNow().subscribe({
+      next: () => this.invoicesService.getDispatcherHealth().subscribe(h => this.dispatcherHealth.set(h)),
+      error: (e) => console.error('Dispatcher error', e)
+    });
   }
 }

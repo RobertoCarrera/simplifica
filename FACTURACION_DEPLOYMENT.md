@@ -208,7 +208,7 @@ invoiceService.createInvoice(dto).subscribe(
 
 - [ ] Series se obtienen
 - [ ] Factura se crea
-- [ ] Número se asigna (`2025-A-00001`)
+- [ ] Número se asigna (`2025-F-00001`)
 - [ ] Total correcto (121.00)
 
 ### **4.2 Test en Staging**

@@ -9,8 +9,17 @@ import qrcodeGenerator from "https://esm.sh/qrcode-generator@1.4.4";
 function cors(origin?: string){
   const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS')||'false').toLowerCase()==='true';
   const allowed = (Deno.env.get('ALLOWED_ORIGINS')||'').split(',').map(s=>s.trim()).filter(Boolean);
+  // Dev-friendly fallback: if nothing configured, allow common localhost origin
+  if (allowed.length === 0 && !allowAll) allowed.push('http://localhost:4200');
   const isAllowed = allowAll || (origin && allowed.includes(origin));
-  return { 'Access-Control-Allow-Origin': isAllowed && origin ? origin : allowAll ? '*' : '', 'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods':'GET, OPTIONS', 'Vary':'Origin' } as Record<string,string>;
+  const acao = isAllowed && origin ? origin : allowAll ? '*' : '';
+  return {
+    'Access-Control-Allow-Origin': acao,
+    'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods':'GET, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+    'Vary':'Origin'
+  } as Record<string,string>;
 }
 
 const A4 = { width: 595.28, height: 841.89 }; // points
@@ -43,7 +52,7 @@ function drawQRCode(page: any, x: number, y: number, size: number, text: string)
 async function renderInvoicePdf(payload: { invoice: any, items: any[], client: any, company: any, meta: any }){
   const { invoice, items, client, company, meta } = payload;
   const pdf = await PDFDocument.create();
-  const page = pdf.addPage([A4.width, A4.height]);
+  let page = pdf.addPage([A4.width, A4.height]);
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
@@ -169,8 +178,9 @@ serve(async (req)=>{
     if (clErr) return new Response(JSON.stringify({ error: clErr.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
     const { data: company, error: coErr } = await user.from('companies').select('*').eq('id', invoice.company_id).maybeSingle();
     if (coErr) return new Response(JSON.stringify({ error: coErr.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
-    const { data: meta, error: metaErr } = await user.from('verifactu.invoice_meta').select('*').eq('invoice_id', invoiceId).maybeSingle();
-    if (metaErr) return new Response(JSON.stringify({ error: metaErr.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
+  // verifactu schema may not be exposed via PostgREST; read using service role after RLS ownership is confirmed above
+  const { data: meta, error: metaErr } = await admin.from('verifactu.invoice_meta').select('*').eq('invoice_id', invoiceId).maybeSingle();
+  if (metaErr) return new Response(JSON.stringify({ error: metaErr.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
 
     // Compute storage path
     const series = meta?.series || invoice?.invoice_series || 'SER';

@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
+import { ToastService } from '../../../services/toast.service';
 import { Invoice } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
 
@@ -13,7 +14,15 @@ import { environment } from '../../../../environments/environment';
   <div class="p-4" *ngIf="invoice() as inv">
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Factura {{ inv.full_invoice_number || (inv.invoice_series + '-' + inv.invoice_number) }}</h1>
-      <div class="flex gap-2">
+      <div class="flex items-center gap-3">
+        <!-- Dispatcher health pill -->
+        <span *ngIf="dispatcherHealth() as h"
+              class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+              [ngClass]="h.pending > 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'">
+          <span class="w-2 h-2 rounded-full mr-1.5"
+                [ngClass]="h.pending > 0 ? 'bg-amber-500' : 'bg-emerald-500'"></span>
+          {{ h.pending > 0 ? (h.pending + ' pendientes') : 'Dispatcher OK' }}
+        </span>
         <a class="px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100" routerLink="/facturacion">Volver</a>
         <button class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700" (click)="downloadPdf(inv.id)">Descargar PDF</button>
         <button class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700" (click)="cancelInvoice(inv.id)">Anular</button>
@@ -127,11 +136,13 @@ import { environment } from '../../../../environments/environment';
 export class InvoiceDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private invoicesService = inject(SupabaseInvoicesService);
+  private toast = inject(ToastService);
   invoice = signal<Invoice | null>(null);
   verifactuMeta = signal<any | null>(null);
   verifactuEvents = signal<any[]>([]);
   vfConfig = signal<{ maxAttempts: number; backoffMinutes: number[] } | null>(null);
   sendingEmail = signal(false);
+  dispatcherHealth = signal<{ pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; } | null>(null);
 
   attemptsDisplay = computed(() => {
     const last = this.latestRelevantEvent();
@@ -177,11 +188,20 @@ export class InvoiceDetailComponent implements OnInit {
       next: (cfg) => this.vfConfig.set(cfg),
       error: (e) => console.warn('VF config err', e)
     });
+    // Dispatcher health pill
+    this.invoicesService.getDispatcherHealth().subscribe({
+      next: (h) => this.dispatcherHealth.set(h),
+      error: () => this.dispatcherHealth.set({ pending: 0, lastEventAt: null, lastAcceptedAt: null, lastRejectedAt: null })
+    });
   }
 
   downloadPdf(invoiceId: string){
-    const url = `${environment.edgeFunctionsBaseUrl}/invoices-pdf?invoice_id=${invoiceId}&download=1`;
-    window.open(url, '_blank');
+    this.invoicesService.getInvoicePdfUrl(invoiceId).subscribe({
+      next: (signed) => window.open(signed, '_blank'),
+      error: (e) => {
+        try { this.toast.error('No se pudo generar el PDF', e?.message || String(e)); } catch {}
+      }
+    });
   }
 
   refreshVerifactu(invoiceId: string) {
@@ -241,6 +261,7 @@ export class InvoiceDetailComponent implements OnInit {
     if (!confirm('¿Anular esta factura? Se enviará anulación a AEAT.')) return;
     this.invoicesService.cancelInvoiceWithAEAT(invoiceId).subscribe({
       next: () => {
+        try { this.toast.success('Anulación enviada', 'Se ha solicitado la anulación a AEAT'); } catch {}
         // Reload invoice and verifactu state
         this.invoicesService.getInvoice(invoiceId).subscribe({
           next: (inv) => this.invoice.set(inv),
@@ -248,7 +269,11 @@ export class InvoiceDetailComponent implements OnInit {
         });
         this.refreshVerifactu(invoiceId);
       },
-      error: (e) => alert('Error al anular: ' + (e?.message || e))
+      error: (e) => {
+        const msg = 'Error al anular: ' + (e?.message || e);
+        try { this.toast.error('Error', msg); } catch {}
+        console.error(msg);
+      }
     });
   }
 
@@ -256,7 +281,7 @@ export class InvoiceDetailComponent implements OnInit {
     const inv = this.invoice();
     const to = inv?.client?.email?.trim();
     if (!to) {
-      alert('El cliente no tiene un email configurado. Añádelo en la ficha del cliente para poder enviar la factura.');
+      try { this.toast.error('No se puede enviar', 'El cliente no tiene email configurado'); } catch {}
       return;
     }
     const num = inv?.full_invoice_number || (inv?.invoice_series && inv?.invoice_number ? `${inv.invoice_series}-${inv.invoice_number}` : undefined);
@@ -266,11 +291,12 @@ export class InvoiceDetailComponent implements OnInit {
     this.invoicesService.sendInvoiceEmail(invoiceId, to, subject, message).subscribe({
       next: () => {
         this.sendingEmail.set(false);
-        alert('Email enviado correctamente');
+        try { this.toast.success('Email enviado', 'La factura ha sido enviada'); } catch {}
       },
       error: (e) => {
         this.sendingEmail.set(false);
-        alert('Error al enviar email: ' + (e?.message || e));
+        const msg = 'Error al enviar email: ' + (e?.message || e);
+        try { this.toast.error('Error al enviar', msg); } catch {}
       }
     });
   }

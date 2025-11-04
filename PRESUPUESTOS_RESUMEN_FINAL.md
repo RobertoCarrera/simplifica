@@ -13,7 +13,7 @@
 - ✅ 550 líneas de código SQL profesional
 
 **Capacidades**:
-- Numeración automática: `2025-Q-00001`
+- Numeración automática: `2025-P-00001`
 - Cálculo automático de totales (subtotal + IVA + descuentos)
 - Conversión automática a facturas
 - Expiración automática de presupuestos
@@ -149,7 +149,7 @@ SELECT tablename FROM pg_tables WHERE tablename LIKE 'quote%';
    - Clic "Convertir a Factura"
    - Verifica:
      * Se crea factura nueva
-     * Número: 2025-A-00XXX
+     * Número: 2025-F-00XXX
      * Items copiados
      * Totales iguales
      * Hash Veri*Factu generado
@@ -172,7 +172,7 @@ SELECT tablename FROM pg_tables WHERE tablename LIKE 'quote%';
 ┌────────────────────────────────────────────────────────────┐
 │ 1. EMPRESA crea PRESUPUESTO                                │
 │    Estado: DRAFT                                           │
-│    Número: 2025-Q-00015                                    │
+│    Número: 2025-P-00015                                    │
 └────────────────────────────────────────────────────────────┘
                           ▼
 ┌────────────────────────────────────────────────────────────┐
@@ -196,7 +196,7 @@ SELECT tablename FROM pg_tables WHERE tablename LIKE 'quote%';
 ┌────────────────────────────────────────────────────────────┐
 │ 5. EMPRESA convierte a FACTURA                             │
 │    Función SQL: convert_quote_to_invoice()                 │
-│    ├─ Crea factura: 2025-A-00042                          │
+│    ├─ Crea factura: 2025-F-00042                          │
 │    ├─ Copia items (precios congelados)                    │
 │    ├─ Genera hash Veri*Factu                              │
 │    ├─ Actualiza quote: ACCEPTED → INVOICED                │

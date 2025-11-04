@@ -2,6 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ClientPortalService } from '../../services/client-portal.service';
+import { SupabaseQuotesService } from '../../services/supabase-quotes.service';
+import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-portal-quote-detail',
@@ -115,7 +117,17 @@ import { ClientPortalService } from '../../services/client-portal.service';
               </div>
 
               <!-- Action buttons (only show if quote is in 'sent' or 'viewed' status) -->
-              <div *ngIf="canRespond()" class="flex gap-3">
+              <div class="flex flex-wrap gap-3 items-center">
+                <button 
+                  (click)="downloadPdf()"
+                  class="px-6 py-3 rounded-lg font-medium text-sm transition-all 
+                         bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 
+                         border-2 border-gray-300 dark:border-gray-600 
+                         hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-400 dark:hover:border-gray-500
+                         shadow-sm hover:shadow">
+                  Descargar PDF
+                </button>
+                <div *ngIf="canRespond()" class="flex gap-3">
                 <button 
                   (click)="onReject()"
                   [disabled]="processing()"
@@ -142,6 +154,7 @@ import { ClientPortalService } from '../../services/client-portal.service';
                   <span *ngIf="!processing()">✓ Aceptar presupuesto</span>
                   <span *ngIf="processing()">Procesando...</span>
                 </button>
+                </div>
               </div>
 
               <!-- Already responded message -->
@@ -213,6 +226,8 @@ export class PortalQuoteDetailComponent implements OnInit {
   private svc = inject(ClientPortalService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private toast = inject(ToastService);
+  private quotes = inject(SupabaseQuotesService);
 
   quote = signal<any | null>(null);
   loading = signal<boolean>(true);
@@ -224,13 +239,24 @@ export class PortalQuoteDetailComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('id') as string;
     console.log('📄 Loading quote detail for ID:', id);
     const { data, error } = await this.svc.getQuote(id);
-    if (error) {
+      if (error) {
       console.error('❌ Error loading quote:', error);
     } else {
       console.log('✅ Quote loaded:', data);
       this.quote.set(data);
     }
     this.loading.set(false);
+  }
+
+  downloadPdf() {
+    const q = this.quote();
+    if (!q) return;
+    this.quotes.getQuotePdfUrl(q.id).subscribe({
+      next: (signed) => window.open(signed, '_blank'),
+      error: (e) => {
+        try { this.toast.error('No se pudo generar el PDF', e?.message || String(e)); } catch {}
+      }
+    });
   }
 
   canRespond(): boolean {
@@ -267,17 +293,17 @@ export class PortalQuoteDetailComponent implements OnInit {
       
       if (error) {
         console.error(`❌ Error ${action}ing quote:`, error);
-        alert(`Error al ${action === 'accept' ? 'aceptar' : 'rechazar'} el presupuesto: ${error.message}`);
+        try { this.toast.error('Error', `No se pudo ${action === 'accept' ? 'aceptar' : 'rechazar'} el presupuesto: ${error.message || 'Inténtalo de nuevo'}`);} catch {}
       } else {
         console.log(`✅ Quote ${action}ed successfully:`, data);
         // Update local quote state
         this.quote.set(data);
         // Show success message
-        alert(`Presupuesto ${action === 'accept' ? 'aceptado' : 'rechazado'} correctamente`);
+        try { this.toast.success('Acción completada', `Presupuesto ${action === 'accept' ? 'aceptado' : 'rechazado'} correctamente`);} catch {}
       }
     } catch (err: any) {
       console.error(`❌ Unexpected error ${action}ing quote:`, err);
-      alert(`Error inesperado: ${err.message}`);
+      try { this.toast.error('Error inesperado', err?.message || 'Operación no completada'); } catch {}
     } finally {
       this.processing.set(false);
       this.showConfirmModal.set(false);

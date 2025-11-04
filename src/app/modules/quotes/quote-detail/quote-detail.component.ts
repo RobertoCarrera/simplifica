@@ -98,8 +98,14 @@ export class QuoteDetailComponent implements OnInit {
   downloadPDF() {
     const q = this.quote();
     if (q) {
-      // TODO: Implement PDF generation
-      alert('Función de descarga PDF en desarrollo');
+      this.quotesService.getQuotePdfUrl(q.id).subscribe({
+        next: (signed) => window.open(signed, '_blank'),
+        error: (e) => {
+          const msg = 'No se pudo generar el PDF: ' + (e?.message || e);
+          this.error.set(msg);
+          try { this.toastService.error('Error', msg); } catch {}
+        }
+      });
     }
   }
 
@@ -144,7 +150,7 @@ export class QuoteDetailComponent implements OnInit {
       if (confirm('¿Convertir este presupuesto en factura?')) {
         this.quotesService.convertToInvoice(q.id).subscribe({
           next: (result) => {
-            alert('Presupuesto convertido a factura exitosamente');
+            try { this.toastService.success('Conversión completada', 'Presupuesto convertido a factura'); } catch {}
             this.router.navigate(['/invoices', result.invoice_id]);
           },
           error: (err) => this.error.set('Error: ' + err.message)

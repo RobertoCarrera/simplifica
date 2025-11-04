@@ -107,5 +107,15 @@ export class QuoteListComponent implements OnInit {
       });
     }
   }
+
+  downloadPdf(id: string){
+    this.quotesService.getQuotePdfUrl(id).subscribe({
+      next: (signed) => window.open(signed, '_blank'),
+      error: (e) => {
+        const msg = 'No se pudo generar el PDF: ' + (e?.message || e);
+        this.error.set(msg);
+      }
+    });
+  }
 }
 

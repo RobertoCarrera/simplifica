@@ -36,7 +36,7 @@ CREATE TABLE quotes (
   year INTEGER NOT NULL DEFAULT EXTRACT(YEAR FROM CURRENT_DATE),
   sequence_number INTEGER NOT NULL,
   full_quote_number VARCHAR(100) GENERATED ALWAYS AS (
-    year || '-Q-' || LPAD(sequence_number::TEXT, 5, '0')
+    year || '-P-' || LPAD(sequence_number::TEXT, 5, '0')
   ) STORED,
   
   -- Estado y fechas

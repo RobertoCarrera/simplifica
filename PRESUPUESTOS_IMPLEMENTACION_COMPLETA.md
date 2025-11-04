@@ -591,7 +591,7 @@ export class QuotesRoutingModule { }
 ## 📊 FUNCIONALIDADES CLAVE
 
 ### 1. Numeración Automática
-- Formato: `2025-Q-00001`
+- Formato: `2025-P-00001`
 - Secuencia por año y empresa
 - Función SQL: `get_next_quote_number()`
 

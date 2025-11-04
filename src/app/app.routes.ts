@@ -45,6 +45,8 @@ import { PortalDashboardComponent } from './components/portal-dashboard/portal-d
 import { ClientPortalAdminComponent } from './components/client-portal-admin/client-portal-admin.component';
 import { ClientPasswordSetupComponent } from './components/client-password-setup/client-password-setup.component';
 import { PortalQuotesComponent } from './components/portal-quotes/portal-quotes.component';
+import { PortalInvoicesComponent } from './components/portal-invoices/portal-invoices.component';
+import { PortalInvoiceDetailComponent } from './components/portal-invoice-detail/portal-invoice-detail.component';
 import { PortalQuoteDetailComponent } from './components/portal-quote-detail/portal-quote-detail.component';
 
 export const routes: Routes = [
@@ -101,6 +103,9 @@ export const routes: Routes = [
     {path: 'portal/presupuestos', component: PortalQuotesComponent, canActivate: [AuthGuard, ClientRoleGuard]},
     // Client portal quote detail
     {path: 'portal/presupuestos/:id', component: PortalQuoteDetailComponent, canActivate: [AuthGuard, ClientRoleGuard]},
+    // Client portal invoices list and detail
+    {path: 'portal/facturas', component: PortalInvoicesComponent, canActivate: [AuthGuard, ClientRoleGuard]},
+    {path: 'portal/facturas/:id', component: PortalInvoiceDetailComponent, canActivate: [AuthGuard, ClientRoleGuard]},
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [DevGuard]},

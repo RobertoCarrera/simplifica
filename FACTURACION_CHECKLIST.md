@@ -203,7 +203,7 @@ this.invoiceService.createInvoice(testInvoice).subscribe({
 ```
 
 - [ ] Factura se crea correctamente
-- [ ] Número se asigna automáticamente (ej: "2025-A-00001")
+- [ ] Número se asigna automáticamente (ej: "2025-F-00001")
 - [ ] Total se calcula correctamente (121.00 = 100 + 21% IVA)
 
 ---

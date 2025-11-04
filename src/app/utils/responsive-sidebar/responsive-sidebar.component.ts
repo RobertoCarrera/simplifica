@@ -496,6 +496,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       return [
         { id: 2001, label: 'Tickets', icon: 'confirmation_number', route: '/tickets', module: 'production' },
         { id: 2002, label: 'Presupuestos', icon: 'description', route: '/portal/presupuestos', module: 'production' },
+        { id: 2004, label: 'Facturas', icon: 'receipt_long', route: '/portal/facturas', module: 'production' },
         { id: 2003, label: 'Configuración', icon: 'settings', route: '/configuracion', module: 'core' }
       ];
     }

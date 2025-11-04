@@ -45,8 +45,38 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
-    // Call RPC finalize_invoice (public wrapper)
-    const { data, error } = await admin.rpc('finalize_invoice', { p_invoice_id: invoice_id, p_series: series, p_device_id: device_id ?? null, p_software_id: software_id ?? null }, { headers: { Authorization: `Bearer ${token}` } });
+    // Decode JWT and map auth user -> company
+    const { data: authData, error: authErr } = await admin.auth.getUser(token);
+    if (authErr || !authData?.user?.id) {
+      return new Response(JSON.stringify({ error: 'Invalid user token' }), { status: 401, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    const authUserId = authData.user.id;
+
+    const { data: profile, error: profErr } = await admin
+      .from('users')
+      .select('id, company_id, active')
+      .eq('auth_user_id', authUserId)
+      .maybeSingle();
+    if (profErr || !profile?.company_id || profile.active === false) {
+      return new Response(JSON.stringify({ error: 'Forbidden: user has no active company' }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    const userCompanyId = profile.company_id;
+
+    // Load invoice and ensure it belongs to user's company
+    const { data: inv, error: invErr } = await admin
+      .from('invoices')
+      .select('id, company_id, state, full_invoice_number, series_id')
+      .eq('id', invoice_id)
+      .maybeSingle();
+    if (invErr || !inv) {
+      return new Response(JSON.stringify({ error: 'Invoice not found' }), { status: 404, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+    if (inv.company_id !== userCompanyId) {
+      return new Response(JSON.stringify({ error: 'Forbidden: invoice belongs to another company' }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    // Call RPC finalize_invoice (execute with service role to access verifactu schema)
+    const { data, error } = await admin.rpc('finalize_invoice', { p_invoice_id: invoice_id, p_series: series, p_device_id: device_id ?? null, p_software_id: software_id ?? null });
     if (error) {
       return new Response(JSON.stringify({ error: error.message, details: error }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
     }

@@ -26,6 +26,20 @@ export interface ClientPortalQuote {
   total_amount: number;
 }
 
+export interface ClientPortalInvoice {
+  id: string;
+  company_id: string;
+  client_id: string;
+  full_invoice_number?: string | null;
+  invoice_series?: string | null;
+  invoice_number?: number | null;
+  status: string;
+  invoice_date: string;
+  due_date?: string | null;
+  total: number;
+  currency?: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ClientPortalService {
   private sb = inject(SupabaseClientService);
@@ -59,6 +73,26 @@ export class ClientPortalService {
     } catch (e: any) {
       // Final fallback: empty list with error message
       return { data: [], error: { message: e?.message || 'listQuotes failed' } };
+    }
+  }
+
+  async listInvoices(): Promise<{ data: ClientPortalInvoice[]; error?: any }> {
+    try {
+      const { data, error } = await this.supabase.functions.invoke('client-invoices', { body: undefined });
+      if (error) return { data: [], error };
+      return { data: (data?.data || []) as any, error: null };
+    } catch (e: any) {
+      return { data: [], error: { message: e?.message || 'listInvoices failed' } };
+    }
+  }
+
+  async getInvoice(id: string): Promise<{ data: any | null; error?: any }> {
+    try {
+      const { data, error } = await this.supabase.functions.invoke('client-invoices', { body: { id } });
+      if (error) return { data: null, error };
+      return { data: data?.data || null };
+    } catch (e: any) {
+      return { data: null, error: { message: e?.message || 'getInvoice failed' } };
     }
   }
 

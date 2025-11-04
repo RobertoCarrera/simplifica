@@ -60,7 +60,7 @@ export interface Quote {
   quote_number: string;
   year: number;
   sequence_number: number;
-  full_quote_number: string; // Generado: 2025-Q-00001
+  full_quote_number: string; // Generado: 2025-P-00001
   
   // Estado y fechas
   status: QuoteStatus;
@@ -425,5 +425,5 @@ export function getDefaultValidUntil(fromDate: Date = new Date()): string {
  * Formatea número de presupuesto para mostrar
  */
 export function formatQuoteNumber(quote: Quote): string {
-  return quote.full_quote_number || `${quote.year}-Q-${String(quote.sequence_number).padStart(5, '0')}`;
+  return quote.full_quote_number || `${quote.year}-P-${String(quote.sequence_number).padStart(5, '0')}`;
 }

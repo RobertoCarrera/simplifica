@@ -144,7 +144,8 @@ export class SupabaseQuotesService {
     const client = this.supabaseClient.instance;
     const { data, error } = await client
       .from('quotes')
-      .select('*, client:clients(*), items:quote_items(*), invoice:invoices(*)')
+      // Disambiguate invoices relationship: use quotes.invoice_id -> invoices.id FK
+      .select('*, client:clients(*), items:quote_items(*), invoice:invoices!quotes_invoice_id_fkey(*)')
       .eq('id', id)
       .single();
 
@@ -410,6 +411,27 @@ export class SupabaseQuotesService {
               throw new Error(msg || 'Error al enviar email');
             }
             return json;
+          })
+        );
+      })
+    );
+  }
+
+  /**
+   * Obtener URL firmada del PDF del presupuesto (lo genera si no existe)
+   */
+  getQuotePdfUrl(quoteId: string, force: boolean = false): Observable<string> {
+    return from(this.supabaseClient.instance.auth.getSession()).pipe(
+      switchMap(({ data: { session } }) => {
+        const token = session?.access_token;
+        if (!token) throw new Error('Sesión no válida');
+        const url = `${environment.edgeFunctionsBaseUrl}/quotes-pdf?quote_id=${encodeURIComponent(quoteId)}${force ? '&force=1' : ''}`;
+        return from(fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+          .then(async r => {
+            const json = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(json?.error || 'No se pudo generar PDF');
+            if (!json?.url) throw new Error('Respuesta sin URL firmada');
+            return json.url as string;
           })
         );
       })

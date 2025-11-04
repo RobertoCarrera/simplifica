@@ -1,0 +1,102 @@
+// @ts-nocheck
+// Edge Function: client-invoices
+// Returns invoices visible to the authenticated client user using mapping via client_portal_users.
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+function cors(origin?: string){
+  const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS')||'false').toLowerCase()==='true';
+  const allowed = (Deno.env.get('ALLOWED_ORIGINS')||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const isAllowed = allowAll || (origin && allowed.includes(origin));
+  return { 'Access-Control-Allow-Origin': isAllowed && origin ? origin : allowAll ? '*' : '', 'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type', 'Access-Control-Allow-Methods':'GET, POST, OPTIONS', 'Vary':'Origin' } as Record<string,string>;
+}
+
+serve(async (req) => {
+  const origin = req.headers.get('Origin') || undefined;
+  const headers = cors(origin);
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+  if (req.method !== 'GET' && req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status:405, headers:{...headers,'Content-Type':'application/json'}});
+
+  try{
+    const authHeader = req.headers.get('authorization') || '';
+    const token = (authHeader.match(/^Bearer\s+(.+)$/i)||[])[1];
+    if (!token) return new Response(JSON.stringify({ error:'Missing Bearer token'}), { status:401, headers:{...headers,'Content-Type':'application/json'}});
+
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')||'';
+    const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')||'';
+    const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
+    if (!SUPABASE_URL || !ANON_KEY || !SERVICE_KEY) {
+      return new Response(JSON.stringify({ error:'Supabase not configured' }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
+    }
+
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false }});
+    const { data: appUser, error: uErr } = await userClient
+      .from('users')
+      .select('id, email, role, company_id')
+      .single();
+    if (uErr || !appUser) return new Response(JSON.stringify({ error:'User profile not found' }), { status:403, headers:{...headers,'Content-Type':'application/json'}});
+    if (appUser.role !== 'client') return new Response(JSON.stringify({ error:'Forbidden: only client users' }), { status:403, headers:{...headers,'Content-Type':'application/json'}});
+
+    const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false }});
+
+    // Resolve client_id mapping
+    let clientId: string | null = null;
+    {
+      const { data: mapRow } = await admin
+        .from('client_portal_users')
+        .select('client_id, is_active')
+        .eq('company_id', appUser.company_id)
+        .eq('email', (appUser.email||'').toLowerCase())
+        .eq('is_active', true)
+        .maybeSingle();
+      if (mapRow && (mapRow as any).client_id) clientId = (mapRow as any).client_id as string;
+    }
+    if (!clientId) {
+      const { data: c } = await admin
+        .from('clients')
+        .select('id')
+        .eq('company_id', appUser.company_id)
+        .eq('email', (appUser.email||'').toLowerCase())
+        .maybeSingle();
+      if (c?.id) clientId = c.id as string;
+    }
+
+    if (!clientId) return new Response(JSON.stringify({ data: [] }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
+
+    // Read requested id
+    let requestedId: string | null = null;
+    try {
+      if (req.method === 'GET') {
+        const u = new URL(req.url);
+        requestedId = u.searchParams.get('id');
+      } else if (req.method === 'POST') {
+        const body = await req.json().catch(()=>({}));
+        if (body && typeof body.id === 'string') requestedId = body.id;
+      }
+    } catch(_) {}
+
+    if (requestedId) {
+      const { data, error } = await admin
+        .from('invoices')
+        .select('id, company_id, client_id, full_invoice_number, invoice_series, invoice_number, status, invoice_date, due_date, total, currency, items:invoice_items(id,line_order,description,quantity,unit_price,tax_rate,total)')
+        .eq('company_id', appUser.company_id)
+        .eq('client_id', clientId)
+        .eq('id', requestedId)
+        .single();
+      if (error) return new Response(JSON.stringify({ error: error.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
+      return new Response(JSON.stringify({ data }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
+    }
+
+    const { data, error } = await admin
+      .from('invoices')
+      .select('id, company_id, client_id, full_invoice_number, invoice_series, invoice_number, status, invoice_date, total, currency')
+      .eq('company_id', appUser.company_id)
+      .eq('client_id', clientId)
+      .order('invoice_date', { ascending: false });
+    if (error) return new Response(JSON.stringify({ error: error.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
+
+    return new Response(JSON.stringify({ data: data || [] }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
+  }catch(e){
+    return new Response(JSON.stringify({ error: e?.message || String(e) }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
+  }
+});

@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS invoice_series (
   series_code TEXT NOT NULL, -- "A", "B", "RECT", etc.
   series_name TEXT NOT NULL, -- "Serie General", "Rectificativas"
   year INTEGER NOT NULL DEFAULT EXTRACT(YEAR FROM CURRENT_DATE),
-  prefix TEXT NOT NULL, -- "2025-A-"
+  prefix TEXT NOT NULL, -- "2025-F-"
   next_number INTEGER NOT NULL DEFAULT 1,
   
   -- Control
@@ -671,7 +671,7 @@ SELECT
   'A',
   'Serie General',
   EXTRACT(YEAR FROM CURRENT_DATE)::INTEGER,
-  EXTRACT(YEAR FROM CURRENT_DATE)::TEXT || '-A-',
+  EXTRACT(YEAR FROM CURRENT_DATE)::TEXT || '-F-',
   true,
   true
 FROM companies

@@ -120,7 +120,7 @@
 - series_code (TEXT) -- "A", "B", "RECT", etc.
 - series_name (TEXT) -- "Serie General", "Rectificativas"
 - year (INTEGER) -- 2025
-- prefix (TEXT) -- "2025-A-"
+- prefix (TEXT) -- "2025-F-"
 - next_number (INTEGER) -- Auto-increment
 - is_active (BOOLEAN)
 - is_default (BOOLEAN)
@@ -255,7 +255,7 @@ QR Code → URL verificación AEAT
 ```xml
 <FacturaVerifactu>
   <Cabecera>
-    <NumFactura>2025-A-00001</NumFactura>
+    <NumFactura>2025-F-00001</NumFactura>
     <FechaExpedicion>2025-10-15</FechaExpedicion>
   </Cabecera>
   <Huella>

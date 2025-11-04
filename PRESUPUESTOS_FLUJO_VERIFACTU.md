@@ -57,7 +57,7 @@ Este documento explica cómo funciona el sistema de presupuestos y su conversió
 │  FUNCIÓN SQL: convert_quote_to_invoice()            │
 │  ├─ 1. Valida estado = ACCEPTED                    │
 │  ├─ 2. Obtiene serie de factura                    │
-│  ├─ 3. Genera número: 2025-A-00042                 │
+│  ├─ 3. Genera número: 2025-F-00042                 │
 │  ├─ 4. Crea registro en tabla invoices             │
 │  ├─ 5. Copia items con precios exactos             │
 │  ├─ 6. Actualiza quote: status=INVOICED            │
@@ -75,10 +75,10 @@ Este documento explica cómo funciona el sistema de presupuestos y su conversió
          ▼
 ┌─────────────────────────────────────────────────────┐
 │  FACTURA REGISTRADA                                 │
-│  ├─ Número: 2025-A-00042                           │
+│  ├─ Número: 2025-F-00042                           │
 │  ├─ Hash Veri*Factu: SHA-256(...)                  │
 │  ├─ Estado: DRAFT                                   │
-│  ├─ Referencia: "Desde presupuesto 2025-Q-00015"  │
+│  ├─ Referencia: "Desde presupuesto 2025-P-00015"  │
 │  └─ Quote: invoice_id = abc-factura-123            │
 └─────────────────────────────────────────────────────┘
 ```
@@ -212,7 +212,7 @@ quotesService.rejectQuote(id);
 
 ```sql
 SELECT 
-  full_quote_number,        -- 2025-Q-00015
+  full_quote_number,        -- 2025-P-00015
   client_id,                -- Referencia cliente
   status,                   -- INVOICED
   accepted_at,              -- 2025-10-20T10:30:00Z
@@ -227,9 +227,9 @@ WHERE id = 'abc-quote-123';
 
 ```sql
 SELECT 
-  full_invoice_number,      -- 2025-A-00042
+  full_invoice_number,      -- 2025-F-00042
   client_id,                -- Mismo cliente
-  notes,                    -- "Generada desde presupuesto 2025-Q-00015"
+  notes,                    -- "Generada desde presupuesto 2025-P-00015"
   total_amount,             -- 1210.00 (mismo importe)
   verifactu_hash,           -- SHA-256(...)
   verifactu_qr_code,        -- Base64(...)
