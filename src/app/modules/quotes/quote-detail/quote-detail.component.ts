@@ -2,7 +2,9 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
+import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { ToastService } from '../../../services/toast.service';
+import { firstValueFrom } from 'rxjs';
 import { 
   Quote, 
   QuoteItem,
@@ -22,6 +24,7 @@ import {
 })
 export class QuoteDetailComponent implements OnInit {
   private quotesService = inject(SupabaseQuotesService);
+  private settingsService = inject(SupabaseSettingsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private toastService = inject(ToastService);
@@ -36,12 +39,44 @@ export class QuoteDetailComponent implements OnInit {
   statusLabels = QUOTE_STATUS_LABELS;
   statusColors = QUOTE_STATUS_COLORS;
 
+  // Tax configuration (derived from settings)
+  pricesIncludeTax = signal<boolean>(false);
+  ivaEnabled = signal<boolean>(true);
+  ivaRate = signal<number>(21);
+  irpfEnabled = signal<boolean>(false);
+  irpfRate = signal<number>(15);
+
   ngOnInit() {
-    this.route.params.subscribe(params => {
-      if (params['id']) {
-        this.loadQuote(params['id']);
-      }
+    // Load tax settings first, then load quote
+    this.loadTaxSettings().finally(() => {
+      this.route.params.subscribe(params => {
+        if (params['id']) {
+          this.loadQuote(params['id']);
+        }
+      });
     });
+  }
+
+  private async loadTaxSettings(): Promise<void> {
+    try {
+      const [app, company] = await Promise.all([
+        firstValueFrom(this.settingsService.getAppSettings()),
+        firstValueFrom(this.settingsService.getCompanySettings())
+      ]);
+      const effectivePricesIncludeTax = (company?.prices_include_tax ?? null) ?? (app?.default_prices_include_tax ?? false);
+      const effectiveIvaEnabled = (company?.iva_enabled ?? null) ?? (app?.default_iva_enabled ?? true);
+      const effectiveIvaRate = (company?.iva_rate ?? null) ?? (app?.default_iva_rate ?? 21);
+      const effectiveIrpfEnabled = (company?.irpf_enabled ?? null) ?? (app?.default_irpf_enabled ?? false);
+      const effectiveIrpfRate = (company?.irpf_rate ?? null) ?? (app?.default_irpf_rate ?? 15);
+
+      this.pricesIncludeTax.set(!!effectivePricesIncludeTax);
+      this.ivaEnabled.set(!!effectiveIvaEnabled);
+      this.ivaRate.set(Number(effectiveIvaRate || 0));
+      this.irpfEnabled.set(!!effectiveIrpfEnabled);
+      this.irpfRate.set(Number(effectiveIrpfRate || 0));
+    } catch {
+      // keep defaults
+    }
   }
 
   loadQuote(id: string) {
@@ -171,21 +206,88 @@ export class QuoteDetailComponent implements OnInit {
     }
   }
 
-  calculateItemTotal(item: QuoteItem): number {
-    let total = item.quantity * item.unit_price;
-    
-    // Apply discount
-    if (item.discount_percent && item.discount_percent > 0) {
-      total = total * (1 - item.discount_percent / 100);
+  // Display helpers aligned with tax settings
+  private calcBreakdown(): { subtotal: number; taxAmount: number; irpf: number; total: number } {
+    const q = this.quote();
+    const items = (q?.items || []) as any[];
+    if (!items.length) {
+      const subtotal = Number(q?.subtotal || 0);
+      const taxAmount = Number(q?.tax_amount || 0);
+      const irpf = 0;
+      const total = Number(q?.total_amount || subtotal + taxAmount);
+      return { subtotal, taxAmount, irpf, total };
     }
-    
-    // Apply tax
-    if (item.tax_rate && item.tax_rate > 0) {
-      total = total * (1 + item.tax_rate / 100);
+
+    let subtotal = 0;
+    let taxAmount = 0;
+    let baseNetForIrpf = 0;
+
+    for (const item of items) {
+      const qty = Number(item.quantity) || 0;
+      const price = Number((item.unit_price ?? item.price ?? item.price_per_unit) || 0);
+      const discount = Number(item.discount_percent || 0);
+      const taxRate = Number(item.tax_rate || 0);
+
+      if (this.pricesIncludeTax() && this.ivaEnabled() && taxRate > 0) {
+        const gross = qty * price;
+        const netBeforeDiscount = gross / (1 + taxRate / 100);
+        const itemDiscount = netBeforeDiscount * (discount / 100);
+        const itemNet = netBeforeDiscount - itemDiscount;
+        const itemTax = itemNet * (taxRate / 100);
+        subtotal += itemNet;
+        taxAmount += itemTax;
+        baseNetForIrpf += itemNet;
+      } else {
+        const itemSubtotal = qty * price;
+        const itemDiscount = itemSubtotal * (discount / 100);
+        const itemNet = itemSubtotal - itemDiscount;
+        const itemTax = (this.ivaEnabled() ? itemNet * (taxRate / 100) : 0);
+        subtotal += itemNet;
+        taxAmount += itemTax;
+        baseNetForIrpf += itemNet;
+      }
     }
-    
-    return total;
+
+    const irpf = this.irpfEnabled() ? baseNetForIrpf * (this.irpfRate() / 100) : 0;
+    const total = subtotal + taxAmount - irpf;
+    return {
+      subtotal: Math.round(subtotal * 100) / 100,
+      taxAmount: Math.round(taxAmount * 100) / 100,
+      irpf: Math.round(irpf * 100) / 100,
+      total: Math.round(total * 100) / 100
+    };
   }
+
+  displayItemUnitPrice(item: QuoteItem): number {
+    return Number((item.unit_price ?? (item as any).price ?? (item as any).price_per_unit) || 0);
+  }
+
+  displayItemTotal(item: QuoteItem): number {
+    const qty = Number(item.quantity) || 0;
+    const price = this.displayItemUnitPrice(item);
+    const discount = Number(item.discount_percent || 0);
+    const taxRate = Number(item.tax_rate || 0);
+
+    if (this.pricesIncludeTax() && this.ivaEnabled() && taxRate > 0) {
+      const gross = qty * price;
+      const netBeforeDiscount = gross / (1 + taxRate / 100);
+      const itemDiscount = netBeforeDiscount * (discount / 100);
+      const itemNet = netBeforeDiscount - itemDiscount;
+      const itemTax = itemNet * (taxRate / 100);
+      return Math.round((itemNet + itemTax) * 100) / 100;
+    } else {
+      const itemSubtotal = qty * price;
+      const itemDiscount = itemSubtotal * (discount / 100);
+      const itemNet = itemSubtotal - itemDiscount;
+      const itemTax = (this.ivaEnabled() ? itemNet * (taxRate / 100) : 0);
+      return Math.round((itemNet + itemTax) * 100) / 100;
+    }
+  }
+
+  displaySubtotal(): number { return this.calcBreakdown().subtotal; }
+  displayTaxAmount(): number { return this.calcBreakdown().taxAmount; }
+  displayIrpfAmount(): number { return this.calcBreakdown().irpf; }
+  displayTotal(): number { return this.calcBreakdown().total; }
 
   formatQuoteNumber(quote: Quote) {
     return formatQuoteNumber(quote);

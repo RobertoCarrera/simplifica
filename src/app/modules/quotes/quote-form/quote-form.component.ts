@@ -11,6 +11,7 @@ import { CreateQuoteDTO, CreateQuoteItemDTO, QuoteItem } from '../../../models/q
 import { debounceTime } from 'rxjs/operators';
 import { SupabaseSettingsService, type AppSettings, type CompanySettings } from '../../../services/supabase-settings.service';
 import { firstValueFrom } from 'rxjs';
+import { ToastService } from '../../../services/toast.service';
 
 interface ClientOption {
   id: string;
@@ -63,6 +64,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private settingsService = inject(SupabaseSettingsService);
+  private toast = inject(ToastService);
 
   quoteForm!: FormGroup;
   loading = signal(false);
@@ -282,9 +284,11 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       description: ['', Validators.required],
       quantity: [1, [Validators.required, Validators.min(1)]],
       unit_price: [0, [Validators.required, Validators.min(0)]],
-      tax_rate: [this.ivaEnabled() ? this.ivaRate() : 0, [Validators.required, Validators.min(0), Validators.max(100)]],
+      tax_rate: [{ value: this.ivaEnabled() ? this.ivaRate() : 0, disabled: !this.ivaEnabled() }, [Validators.required, Validators.min(0), Validators.max(100)]],
       discount_percent: [0, [Validators.min(0), Validators.max(100)]],
-      notes: ['']
+      notes: [''],
+      service_id: [null],
+      product_id: [null]
     });
   }
 
@@ -451,10 +455,13 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
             itemGroup.patchValue({
               description: item.description,
               quantity: item.quantity,
-              unit_price: item.unit_price,
+              // Fallback for legacy data that might use different field names
+              unit_price: (item as any).unit_price ?? (item as any).price ?? (item as any).price_per_unit ?? 0,
               tax_rate: item.tax_rate,
               discount_percent: item.discount_percent || 0,
-              notes: item.notes || ''
+              notes: item.notes || '',
+              service_id: (item as any).service_id || null,
+              product_id: (item as any).product_id || null
             });
             this.items.push(itemGroup);
           });
@@ -553,11 +560,19 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
 
   selectService(service: ServiceOption, itemIndex: number) {
     const item = this.items.at(itemIndex);
+    // Compute unit price respecting settings
+    const base = Number(service.base_price || 0);
+    const taxRate = this.ivaEnabled() ? this.ivaRate() : 0;
+    const finalUnit = (this.pricesIncludeTax() && this.ivaEnabled() && taxRate > 0)
+      ? Math.round(base * (1 + taxRate / 100) * 100) / 100
+      : base;
     item.patchValue({
       description: service.name,
-      unit_price: service.base_price,
+      unit_price: finalUnit,
       quantity: 1,
-      tax_rate: this.ivaEnabled() ? this.ivaRate() : 0
+      tax_rate: this.ivaEnabled() ? this.ivaRate() : 0,
+      service_id: service.id,
+      product_id: null
     });
     this.serviceDropdownOpen.set(false);
     this.selectedItemIndex.set(null);
@@ -584,11 +599,19 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
 
   selectProduct(product: ProductOption, itemIndex: number) {
     const item = this.items.at(itemIndex);
+    // Compute unit price respecting settings
+    const base = Number(product.price || 0);
+    const taxRate = this.ivaEnabled() ? this.ivaRate() : 0;
+    const finalUnit = (this.pricesIncludeTax() && this.ivaEnabled() && taxRate > 0)
+      ? Math.round(base * (1 + taxRate / 100) * 100) / 100
+      : base;
     item.patchValue({
       description: product.name,
-      unit_price: product.price,
+      unit_price: finalUnit,
       quantity: 1,
-      tax_rate: this.ivaEnabled() ? this.ivaRate() : 0
+      tax_rate: this.ivaEnabled() ? this.ivaRate() : 0,
+      product_id: product.id,
+      service_id: null
     });
     this.productDropdownOpen.set(false);
     this.selectedProductIndex.set(null);
@@ -599,6 +622,29 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   closeProductDropdown() {
     this.productDropdownOpen.set(false);
     this.selectedProductIndex.set(null);
+  }
+
+  // Helpers to show selected names in template
+  getSelectedServiceName(index: number): string {
+    try {
+      const id = this.items.at(index)?.get('service_id')?.value as string | null;
+      if (!id) return 'Buscar servicio...';
+      const s = this.services().find(x => x.id === id);
+      return s?.name || 'Buscar servicio...';
+    } catch {
+      return 'Buscar servicio...';
+    }
+  }
+
+  getSelectedProductName(index: number): string {
+    try {
+      const id = this.items.at(index)?.get('product_id')?.value as string | null;
+      if (!id) return 'Buscar producto...';
+      const p = this.products().find(x => x.id === id);
+      return p?.name || 'Buscar producto...';
+    } catch {
+      return 'Buscar producto...';
+    }
   }
 
   togglePreview() {
@@ -661,7 +707,9 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
               unit_price: item.unit_price,
               tax_rate: item.tax_rate || 21,
               discount_percent: item.discount_percent || 0,
-              notes: item.notes || ''
+              notes: item.notes || '',
+              service_id: item.service_id || null,
+              product_id: item.product_id || null
             }));
             
             await client
@@ -670,16 +718,19 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
             
             this.loading.set(false);
             console.log('✅ Presupuesto actualizado correctamente');
+            this.toast.success('Presupuesto actualizado', 'Los cambios fueron guardados correctamente.');
             this.router.navigate(['/presupuestos', quote.id]);
           } catch (err: any) {
             console.error('❌ Error al actualizar items:', err);
             this.error.set('Error al actualizar items: ' + err.message);
+            this.toast.error('Error al actualizar', err?.message || 'No se pudo actualizar el presupuesto');
             this.loading.set(false);
           }
         },
         error: (err) => {
           console.error('❌ Error al actualizar presupuesto:', err);
           this.error.set('Error al actualizar: ' + err.message);
+          this.toast.error('Error al actualizar', err?.message || 'No se pudo actualizar el presupuesto');
           this.loading.set(false);
         }
       });
@@ -700,11 +751,13 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         next: (quote) => {
           this.loading.set(false);
           console.log('✅ Presupuesto creado correctamente');
+          this.toast.success('Presupuesto creado', 'El presupuesto se creó correctamente.');
           this.router.navigate(['/presupuestos', quote.id]);
         },
         error: (err) => {
           console.error('❌ Error al crear presupuesto:', err);
           this.error.set('Error al guardar: ' + err.message);
+          this.toast.error('Error al crear', err?.message || 'No se pudo crear el presupuesto');
           this.loading.set(false);
         }
       });

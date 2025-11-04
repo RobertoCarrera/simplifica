@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
-import { Invoice } from '../../../models/invoice.model';
+import { Invoice, formatInvoiceNumber } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -41,7 +41,7 @@ import { environment } from '../../../../environments/environment';
           <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
             @for (inv of invoices(); track inv.id) {
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                <td class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">{{ inv.full_invoice_number || (inv.invoice_series + '-' + inv.invoice_number) }}</td>
+                <td class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">{{ formatNumber(inv) }}</td>
                 <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ inv.client?.name || inv.client_id }}</td>
                 <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ inv.invoice_date }}</td>
                 <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100 font-medium">{{ inv.total | number:'1.2-2' }} {{ inv.currency || 'EUR' }}</td>
@@ -91,5 +91,9 @@ export class InvoiceListComponent implements OnInit {
       next: () => this.invoicesService.getDispatcherHealth().subscribe(h => this.dispatcherHealth.set(h)),
       error: (e) => console.error('Dispatcher error', e)
     });
+  }
+
+  formatNumber(inv: Invoice): string {
+    return formatInvoiceNumber(inv);
   }
 }

@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ClientPortalService } from '../../services/client-portal.service';
+import { formatInvoiceNumber } from '../../models/invoice.model';
 import { SupabaseInvoicesService } from '../../services/supabase-invoices.service';
 
 @Component({
@@ -20,7 +21,7 @@ import { SupabaseInvoicesService } from '../../services/supabase-invoices.servic
             Volver a facturas
           </a>
           <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
-            Factura {{ inv.full_invoice_number || (inv.invoice_series + '-' + inv.invoice_number) }}
+            Factura {{ displayInvoiceNumber(inv) }}
           </h1>
         </div>
         <div class="flex gap-3">
@@ -105,5 +106,10 @@ export class PortalInvoiceDetailComponent implements OnInit {
     const inv = this.invoice();
     if (!inv) return;
     this.invoicesSvc.getInvoicePdfUrl(inv.id).subscribe({ next: (signed) => window.open(signed, '_blank') });
+  }
+
+  displayInvoiceNumber(inv: any): string {
+    const raw = inv?.full_invoice_number || (inv?.invoice_series && inv?.invoice_number ? `${inv.invoice_series}-${inv.invoice_number}` : '');
+    return formatInvoiceNumber(raw);
   }
 }

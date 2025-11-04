@@ -1,4 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
+import { environment } from '../../environments/environment';
 
 /**
  * Deprecated notification system (replaced by toast-notification).
@@ -13,7 +14,8 @@ export class NotificationService {
   readonly unreadCount = computed(() => 0);
 
   constructor() {
-    if (typeof window !== 'undefined') {
+    // Only warn in development to keep prod console clean
+    if (!environment.production && typeof window !== 'undefined') {
       // eslint-disable-next-line no-console
       console.warn('[Deprecated] NotificationService is disabled. Use ToastService instead.');
     }

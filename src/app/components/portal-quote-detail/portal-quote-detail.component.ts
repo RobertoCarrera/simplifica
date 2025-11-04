@@ -22,7 +22,7 @@ import { ToastService } from '../../services/toast.service';
               Volver a presupuestos
             </a>
             <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
-              Presupuesto {{ quote()?.full_quote_number }}
+              Presupuesto {{ displayQuoteNumber() }}
             </h1>
           </div>
         </div>
@@ -246,6 +246,11 @@ export class PortalQuoteDetailComponent implements OnInit {
       this.quote.set(data);
     }
     this.loading.set(false);
+  }
+
+  displayQuoteNumber(): string {
+    const num = this.quote()?.full_quote_number || '';
+    return num.replace('-Q-', '-P-');
   }
 
   downloadPdf() {

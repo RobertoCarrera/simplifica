@@ -1,0 +1,116 @@
+<div class="home-container">
+  <header class="home-header">
+    <h1><i class="fas fa-home"></i> Inicio</h1>
+    <p class="subtitle">Resumen del sistema</p>
+  </header>
+
+  <!-- Sección de Clientes - 3 Cards -->
+  @if (stats()) {
+    <div class="clients-section">
+      <h2 class="section-title">
+        <i class="fas fa-users"></i> Clientes
+      </h2>
+      <div class="clients-grid">
+        <a routerLink="/clientes" class="client-card card-total">
+          <div class="card-icon-wrapper">
+            <div class="card-icon">
+              <i class="fas fa-users"></i>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-value">{{ stats()?.total || 0 }}</div>
+            <div class="card-label">Total Clientes</div>
+          </div>
+          <div class="card-accent"></div>
+        </a>
+
+        <a routerLink="/clientes" class="client-card card-week">
+          <div class="card-icon-wrapper">
+            <div class="card-icon">
+              <i class="fas fa-user-plus"></i>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-value">{{ stats()?.newThisWeek || 0 }}</div>
+            <div class="card-label">Esta Semana</div>
+          </div>
+          <div class="card-accent"></div>
+        </a>
+
+        <a routerLink="/clientes" class="client-card card-month">
+          <div class="card-icon-wrapper">
+            <div class="card-icon">
+              <i class="fas fa-calendar-plus"></i>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-value">{{ stats()?.newThisMonth || 0 }}</div>
+            <div class="card-label">Este Mes</div>
+          </div>
+          <div class="card-accent"></div>
+        </a>
+      </div>
+    </div>
+  }
+
+  <!-- Grid de Módulos -->
+  <div class="modules-grid">
+    <a routerLink="/tickets" class="module-card card-tickets">
+      <div class="module-icon">
+        <i class="fas fa-ticket-alt"></i>
+      </div>
+      <div class="module-content">
+        <h3>Tickets</h3>
+        <span class="count">{{ ticketsStats?.total ?? 0 }}</span>
+        @if (ticketsStats) {
+          <div class="stats">
+            <span class="stat-item">
+              <i class="fas fa-folder-open"></i>
+              {{ ticketsStats.open }} abiertos
+            </span>
+            <span class="stat-item">
+              <i class="fas fa-spinner"></i>
+              {{ ticketsStats.inProgress }} en progreso
+            </span>
+          </div>
+        }
+      </div>
+    </a>
+
+    <a routerLink="/servicios" class="module-card card-services">
+      <div class="module-icon">
+        <i class="fas fa-cogs"></i>
+      </div>
+      <div class="module-content">
+        <h3>Servicios</h3>
+        <span class="count">{{ servicesCount }}</span>
+      </div>
+    </a>
+
+    <a routerLink="/productos" class="module-card card-products">
+      <div class="module-icon">
+        <i class="fas fa-box"></i>
+      </div>
+      <div class="module-content">
+        <h3>Productos</h3>
+        <span class="count">{{ productsCount }}</span>
+      </div>
+    </a>
+  </div>
+
+  <!-- Últimos Tickets -->
+  @if (recentTickets.length > 0) {
+    <section class="recent-section">
+      <h4 class="recent-title">
+        <i class="fas fa-clock"></i> Últimos tickets
+      </h4>
+      <div class="tickets-list">
+        <a *ngFor="let t of recentTickets" class="ticket-item" [routerLink]="['/ticket', t.id]">
+          <span class="ticket-number">#{{ t.ticket_number }}</span>
+          <span class="ticket-title">{{ t.title }}</span>
+          <i class="fas fa-arrow-right ticket-arrow"></i>
+        </a>
+      </div>
+    </section>
+  }
+</div>

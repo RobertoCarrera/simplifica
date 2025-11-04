@@ -140,42 +140,6 @@
           }
         </div>
       }
-
-      <!-- Stats Cards -->
-      @if (stats()) {
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon users">
-              <i class="fas fa-users"></i>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ stats()?.total || 0 }}</div>
-              <div class="stat-label">Total Clientes</div>
-            </div>
-          </div>
-          
-          <div class="stat-card">
-            <div class="stat-icon new">
-              <i class="fas fa-user-plus"></i>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ stats()?.newThisWeek || 0 }}</div>
-              <div class="stat-label">Nuevos esta Semana</div>
-            </div>
-          </div>
-          
-          <div class="stat-card">
-            <div class="stat-icon active">
-              <i class="fas fa-calendar-plus"></i>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value">{{ stats()?.newThisMonth || 0 }}</div>
-              <div class="stat-label">Nuevos este Mes</div>
-            </div>
-          </div>
-        </div>
-      }
-
       <!-- Loading State -->
       @if (isLoading() && !customers().length) {
         <div class="loading-section">

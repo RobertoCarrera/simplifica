@@ -10,7 +10,7 @@ import { Customer, CreateCustomerDev } from '../../models/customer';
 import { AddressesService } from '../../services/addresses.service';
 import { LocalitiesService } from '../../services/localities.service';
 import { Locality } from '../../models/locality';
-import { SupabaseCustomersService, CustomerFilters, CustomerStats } from '../../services/supabase-customers.service';
+import { SupabaseCustomersService, CustomerFilters } from '../../services/supabase-customers.service';
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../services/gdpr-compliance.service';
 import { ToastService } from '../../services/toast.service';
 import { DevRoleService } from '../../services/dev-role.service';
@@ -58,7 +58,6 @@ export class SupabaseCustomersComponent implements OnInit {
   // State signals
   customers = signal<Customer[]>([]);
   isLoading = signal(false);
-  stats = signal<CustomerStats | null>(null);
   showForm = signal(false);
   selectedCustomer = signal<Customer | null>(null);
   
@@ -441,11 +440,6 @@ onMappingConfirmed(mappings: any[]): void {
     // Subscribe to loading state
     this.customersService.loading$.subscribe(loading => {
       this.isLoading.set(loading);
-    });
-
-    // Subscribe to stats
-    this.customersService.stats$.subscribe(stats => {
-      this.stats.set(stats);
     });
 
     // Load localities for address selector

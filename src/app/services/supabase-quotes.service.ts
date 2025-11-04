@@ -198,7 +198,7 @@ export class SupabaseQuotesService {
         client_id: dto.client_id,
         year,
         sequence_number: nextNumber,
-        quote_number: `${year}-F-${String(nextNumber).padStart(5, '0')}`,
+        quote_number: `${year}-P-${String(nextNumber).padStart(5, '0')}`,
         title: dto.title,
         description: dto.description,
         notes: dto.notes,
@@ -209,7 +209,9 @@ export class SupabaseQuotesService {
         language: dto.language || 'es',
         discount_percent: dto.discount_percent || 0,
         status: 'draft',
-        created_by: createdBy
+        created_by: createdBy,
+        // ticket_id is optional on DTO; TS may not declare it yet
+        ...(dto as any).ticket_id ? { ticket_id: (dto as any).ticket_id } : {}
       })
       .select()
       .single();
@@ -227,7 +229,9 @@ export class SupabaseQuotesService {
         unit_price: item.unit_price,
         tax_rate: item.tax_rate || 21,
         discount_percent: item.discount_percent || 0,
-        notes: item.notes
+        notes: item.notes,
+        service_id: (item as any).service_id || null,
+        product_id: (item as any).product_id || null
       }));
 
       const { error: itemsError } = await client
@@ -330,7 +334,9 @@ export class SupabaseQuotesService {
         unit_price: dto.unit_price,
         tax_rate: dto.tax_rate || 21,
         discount_percent: dto.discount_percent || 0,
-        notes: dto.notes
+        notes: dto.notes,
+        service_id: (dto as any).service_id || null,
+        product_id: (dto as any).product_id || null
       })
       .select()
       .single();

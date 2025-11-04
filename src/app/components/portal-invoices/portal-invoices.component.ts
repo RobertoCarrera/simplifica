@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { ClientPortalService, ClientPortalInvoice } from '../../services/client-portal.service';
+import { formatInvoiceNumber } from '../../models/invoice.model';
 import { SupabaseInvoicesService } from '../../services/supabase-invoices.service';
 
 @Component({
@@ -35,7 +36,7 @@ import { SupabaseInvoicesService } from '../../services/supabase-invoices.servic
             </thead>
             <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
               <tr *ngFor="let inv of invoices()" class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                <td class="px-6 py-3 text-sm text-gray-900 dark:text-gray-100">{{ inv.full_invoice_number || (inv.invoice_series + '-' + inv.invoice_number) }}</td>
+                <td class="px-6 py-3 text-sm text-gray-900 dark:text-gray-100">{{ displayInvoiceNumber(inv) }}</td>
                 <td class="px-6 py-3 text-sm text-gray-700 dark:text-gray-300">{{ inv.invoice_date | date:'dd/MM/yyyy' }}</td>
                 <td class="px-6 py-3 text-sm text-right font-medium text-gray-900 dark:text-gray-100">{{ inv.total | number:'1.2-2' }} {{ inv.currency || 'EUR' }}</td>
                 <td class="px-6 py-3 text-right">
@@ -70,5 +71,11 @@ export class PortalInvoicesComponent implements OnInit {
 
   downloadPdf(id: string){
     this.invoicesSvc.getInvoicePdfUrl(id).subscribe({ next: (signed) => window.open(signed, '_blank') });
+  }
+
+  displayInvoiceNumber(inv: ClientPortalInvoice): string {
+    // Normaliza a prefijo F en la vista del portal
+    const raw = inv.full_invoice_number || (inv.invoice_series && inv.invoice_number ? `${inv.invoice_series}-${inv.invoice_number}` : '');
+    return formatInvoiceNumber(raw);
   }
 }

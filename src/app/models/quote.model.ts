@@ -123,12 +123,16 @@ export interface Quote {
   client?: any; // Client interface
   invoice?: any; // Invoice interface
   items?: QuoteItem[];
+  // Vinculación a ticket (si aplica)
+  ticket_id?: string | null;
 }
 
 export interface QuoteItem {
   id: string;
   quote_id: string;
   company_id: string;
+  service_id?: string | null;
+  product_id?: string | null;
   
   // Ordenamiento
   line_number: number;
@@ -214,6 +218,8 @@ export interface CreateQuoteDTO {
   language?: string; // default: es
   items: CreateQuoteItemDTO[];
   discount_percent?: number;
+  // Link to ticket for server-side uniqueness
+  ticket_id?: string | null;
 }
 
 export interface CreateQuoteItemDTO {
@@ -223,6 +229,8 @@ export interface CreateQuoteItemDTO {
   tax_rate?: number; // default: 21
   discount_percent?: number;
   notes?: string;
+  service_id?: string | null;
+  product_id?: string | null;
 }
 
 export interface UpdateQuoteDTO {
@@ -242,6 +250,8 @@ export interface UpdateQuoteItemDTO {
   tax_rate?: number;
   discount_percent?: number;
   notes?: string;
+  service_id?: string | null;
+  product_id?: string | null;
 }
 
 export interface QuoteFilters {
@@ -425,5 +435,7 @@ export function getDefaultValidUntil(fromDate: Date = new Date()): string {
  * Formatea número de presupuesto para mostrar
  */
 export function formatQuoteNumber(quote: Quote): string {
-  return quote.full_quote_number || `${quote.year}-P-${String(quote.sequence_number).padStart(5, '0')}`;
+  // Prefer DB-provided number but normalize any legacy "Q" prefix to "P"
+  const raw = quote.full_quote_number || `${quote.year}-P-${String(quote.sequence_number).padStart(5, '0')}`;
+  return raw.replace('-Q-', '-P-');
 }

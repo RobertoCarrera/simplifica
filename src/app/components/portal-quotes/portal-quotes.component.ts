@@ -39,7 +39,7 @@ import { ClientPortalService, ClientPortalQuote } from '../../services/client-po
           </thead>
           <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
             <tr *ngFor="let q of quotes()" class="hover:bg-gray-50 dark:hover:bg-gray-800/60 cursor-pointer" [routerLink]="['/portal/presupuestos', q.id]">
-              <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{{ q.full_quote_number }}</td>
+              <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-100">{{ displayQuoteNumber(q) }}</td>
               <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ q.title }}</td>
               <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ q.quote_date | date:'dd/MM/yyyy' }}</td>
               <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ q.valid_until | date:'dd/MM/yyyy' }}</td>
@@ -81,6 +81,10 @@ export class PortalQuotesComponent implements OnInit {
       // Navigate to detail route without reloading
       this.router.navigate(['/portal/presupuestos', openId]);
     }
+  }
+
+  displayQuoteNumber(q: ClientPortalQuote): string {
+    return (q.full_quote_number || '').replace('-Q-', '-P-');
   }
 
   statusLabel(status: string): string {

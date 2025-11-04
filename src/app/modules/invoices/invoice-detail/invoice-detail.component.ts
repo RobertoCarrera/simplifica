@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
 import { ToastService } from '../../../services/toast.service';
-import { Invoice } from '../../../models/invoice.model';
+import { Invoice, formatInvoiceNumber } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -13,7 +13,7 @@ import { environment } from '../../../../environments/environment';
   template: `
   <div class="p-4" *ngIf="invoice() as inv">
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Factura {{ inv.full_invoice_number || (inv.invoice_series + '-' + inv.invoice_number) }}</h1>
+  <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Factura {{ formatNumber(inv) }}</h1>
       <div class="flex items-center gap-3">
         <!-- Dispatcher health pill -->
         <span *ngIf="dispatcherHealth() as h"
@@ -284,7 +284,7 @@ export class InvoiceDetailComponent implements OnInit {
       try { this.toast.error('No se puede enviar', 'El cliente no tiene email configurado'); } catch {}
       return;
     }
-    const num = inv?.full_invoice_number || (inv?.invoice_series && inv?.invoice_number ? `${inv.invoice_series}-${inv.invoice_number}` : undefined);
+  const num = this.formatNumber(inv || undefined) || undefined;
     const subject = num ? `Tu factura ${num}` : 'Tu factura';
     const message = 'Te enviamos tu factura. Puedes descargar el PDF desde el enlace seguro proporcionado.';
     this.sendingEmail.set(true);
@@ -299,5 +299,11 @@ export class InvoiceDetailComponent implements OnInit {
         try { this.toast.error('Error al enviar', msg); } catch {}
       }
     });
+  }
+
+  // Normaliza el número mostrado de la factura a prefijo F
+  formatNumber(inv?: Invoice | null): string {
+    if (!inv) return '';
+    return formatInvoiceNumber(inv);
   }
 }

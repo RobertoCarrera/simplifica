@@ -326,3 +326,18 @@ export function isOverdue(invoice: Invoice): boolean {
   today.setHours(0, 0, 0, 0);
   return dueDate < today;
 }
+
+// Normaliza la visualización de números de factura a prefijo "F"
+// Acepta el objeto Invoice o un string ya construido y reemplaza cualquier serie central por "F".
+export function formatInvoiceNumber(invoice: Invoice | string): string {
+  let raw: string | undefined;
+  if (typeof invoice === 'string') {
+    raw = invoice;
+  } else if (invoice) {
+    raw = invoice.full_invoice_number ||
+          (invoice.invoice_series && invoice.invoice_number ? `${invoice.invoice_series}-${invoice.invoice_number}` : undefined);
+  }
+  if (!raw) return '';
+  // Reemplazar el segmento central de serie por F: YYYY-X-##### -> YYYY-F-#####
+  return raw.replace(/-[A-Z]-/, '-F-');
+}

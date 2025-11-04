@@ -11,6 +11,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { environment } from '../../../environments/environment';
 import { SupabaseQuotesService } from '../../services/supabase-quotes.service';
 import { firstValueFrom } from 'rxjs';
+import { ToastService } from '../../services/toast.service';
 
 // TipTap imports
 import { Editor } from '@tiptap/core';
@@ -26,14 +27,6 @@ import Placeholder from '@tiptap/extension-placeholder';
   styleUrls: ['./ticket-detail.component.scss'],
   template: `
     <div class="min-h-screen bg-gray-50">
-      <!-- Toasts -->
-      <div class="fixed right-4 bottom-4 space-y-2 z-50">
-        <div *ngFor="let t of toasts" class="px-4 py-2 rounded shadow flex items-center justify-between space-x-4"
-             [ngClass]="{ 'bg-green-600 text-white': t.type === 'success', 'bg-red-600 text-white': t.type === 'error', 'bg-gray-800 text-white': t.type === 'info' }">
-          <div class="text-sm">{{ t.msg }}</div>
-          <button class="text-sm opacity-80 hover:opacity-100 ml-2" (click)="closeToast(t.id)">✕</button>
-        </div>
-      </div>
       <div class="mx-auto px-4">
         
         <!-- Header con navegación -->
@@ -52,7 +45,7 @@ import Placeholder from '@tiptap/extension-placeholder';
       <button (click)="convertToQuoteFromTicket()"
         [disabled]="!ticket || ticketServices.length === 0 || !(ticket && ticket.client && ticket.client.id)"
                     class="w-full px-2 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed">
-              🧾 Convertir en Presupuesto
+              {{ activeQuoteId ? 'Ir a Presupuesto' : '🧾 Convertir en Presupuesto' }}
             </button>
             <button (click)="printTicket()" 
                     class="w-full px-2 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100">
@@ -622,6 +615,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private ticketModalService = inject(TicketModalService);
   private sanitizer = inject(DomSanitizer);
   private quotesService = inject(SupabaseQuotesService);
+  private toastService = inject(ToastService);
+  
+  // Track if there is an existing active quote derived from this ticket
+  activeQuoteId: string | null = null;
 
   // Services Selection Modal state
   showServicesModal = false;
@@ -633,7 +630,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   selectedServiceQuantities: Map<string, number> = new Map();
 
   // Minimal in-component toast system
-  toasts: Array<{ id: number; msg: string; type: 'success' | 'error' | 'info' }> = [];
+  // Deprecated local toast ids (kept for backward compat, no longer used)
   private nextToastId = 1;
 
   // Track saving state per assigned service id when persisting inline quantity edits
@@ -1116,6 +1113,15 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // Crear un presupuesto a partir de los servicios asignados al ticket
   async convertToQuoteFromTicket() {
     try {
+      // If there's already an active quote, navigate to it
+      if (this.activeQuoteId) {
+        try {
+          this.router.navigate(['/presupuestos', 'edit', this.activeQuoteId]);
+        } catch {
+          this.router.navigate(['/presupuestos', this.activeQuoteId]);
+        }
+        return;
+      }
       if (!this.ticket) { this.showToast('Ticket no cargado', 'error'); return; }
       const clientId = (this.ticket as any)?.client_id || (this.ticket as any)?.client?.id || null;
       if (!clientId) { this.showToast('El ticket no tiene cliente asociado', 'error'); return; }
@@ -1130,19 +1136,24 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         quantity: Math.max(1, Number(it?.quantity || 1)),
         unit_price: Math.max(0, Number(this.getUnitPrice(it) || 0)),
         tax_rate: 21,
-        notes: it?.service?.description || null
+        notes: it?.service?.description || null,
+        service_id: it?.service?.id || null,
+        product_id: null
       }));
 
       const dto = {
         client_id: String(clientId),
         title: `Presupuesto Ticket #${(this.ticket as any)?.ticket_number || ''} - ${(this.ticket as any)?.title || ''}`.trim(),
         description: (this.ticket as any)?.description || '',
-        items
+        items,
+        // Link to ticket for uniqueness enforcement server-side
+        ticket_id: (this.ticket as any)?.id || null
       } as any;
 
       this.showToast('Creando presupuesto...', 'info', 2500);
       const quote = await firstValueFrom(this.quotesService.createQuote(dto));
-      this.showToast('Presupuesto creado', 'success');
+      this.activeQuoteId = quote?.id || null;
+  this.showToast(`Se ha creado el presupuesto a partir del ticket #${(this.ticket as any)?.ticket_number || ''}`,'success');
       // Navegar al editor de presupuesto
       try {
         this.router.navigate(['/presupuestos', 'edit', quote.id]);
@@ -1254,6 +1265,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       if (ticketError) throw new Error('Error cargando ticket: ' + ticketError.message);
       this.ticket = ticketData;
 
+      // UI-level check: does a quote already exist for this ticket?
+      try {
+        await this.checkActiveQuoteForTicket();
+      } catch {}
+
       // Cargar servicios del ticket desde ticket_services
       // Mark as opened (non-blocking). Ignore result; UI will refresh from list next time.
       try {
@@ -1303,6 +1319,30 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           this.initializeEditor();
         } catch {}
       }, 0);
+    }
+  }
+
+  /**
+   * Look for an existing quote created from this ticket and set activeQuoteId if found.
+   * We match by client and a title pattern "Presupuesto Ticket #<ticket_number>".
+   */
+  private async checkActiveQuoteForTicket(): Promise<void> {
+    try {
+      const ticketId = (this.ticket as any)?.id;
+      if (!ticketId) { this.activeQuoteId = null; return; }
+      const client = this.supabase.getClient();
+      const { data, error } = await client
+        .from('quotes')
+        .select('id, status')
+        .eq('ticket_id', ticketId)
+        .in('status', ['draft','sent','viewed','accepted'])
+        .order('updated_at', { ascending: false })
+        .limit(1);
+      if (error) { this.activeQuoteId = null; return; }
+      const found = (data || [])[0];
+      this.activeQuoteId = found?.id || null;
+    } catch (e) {
+      this.activeQuoteId = null;
     }
   }
 
@@ -1703,15 +1743,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
   }
 
-  // Toast helpers
+  // Toast helpers (use global ToastService)
   showToast(msg: string, type: 'success' | 'error' | 'info' = 'info', duration = 4000) {
-    const id = this.nextToastId++;
-    this.toasts.push({ id, msg, type });
-    setTimeout(() => { this.toasts = this.toasts.filter(t => t.id !== id); }, duration);
-  }
-
-  closeToast(id: number) {
-    this.toasts = this.toasts.filter(t => t.id !== id);
+    const title = type === 'success' ? 'Éxito' : type === 'error' ? 'Error' : 'Info';
+    if (type === 'success') this.toastService.success(title, msg, duration);
+    else if (type === 'error') this.toastService.error(title, msg, duration);
+    else this.toastService.info(title, msg, duration);
   }
 
   setSelectedQuantity(svc: any, qty: number) {

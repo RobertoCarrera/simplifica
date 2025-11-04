@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { from, Observable } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
+import { environment } from '../../environments/environment';
 
 export type ConvertPolicy = 'manual' | 'automatic' | 'scheduled';
 
@@ -41,6 +42,7 @@ export interface CompanySettings {
 export class SupabaseSettingsService {
   private supabaseClient = inject(SupabaseClientService);
   private auth = inject(AuthService);
+  private get fnBase() { return (environment.edgeFunctionsBaseUrl || '').replace(/\/+$/, ''); }
 
   // Global app settings (single row)
   getAppSettings(): Observable<AppSettings | null> {
@@ -49,9 +51,16 @@ export class SupabaseSettingsService {
 
   private async executeGetAppSettings(): Promise<AppSettings | null> {
     const client = this.supabaseClient.instance;
-    const { data, error } = await client.from('app_settings').select('*').limit(1).maybeSingle();
-    if (error) throw error;
-    return (data || null) as AppSettings | null;
+    const { data: { session } } = await client.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(`${this.fnBase}/app-settings`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token ?? ''}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_action: 'get_app' })
+    });
+    const json = await res.json();
+    if (!res.ok || !json?.ok) throw new Error(json?.error || 'No se pudieron obtener los ajustes');
+    return (json.app || null) as AppSettings | null;
   }
 
   upsertAppSettings(values: Partial<AppSettings>): Observable<AppSettings> {
@@ -60,17 +69,16 @@ export class SupabaseSettingsService {
 
   private async executeUpsertAppSettings(values: Partial<AppSettings>): Promise<AppSettings> {
     const client = this.supabaseClient.instance;
-    // Try fetch existing row
-    const { data: existing } = await client.from('app_settings').select('*').limit(1).maybeSingle();
-    if (existing) {
-      const { data, error } = await client.from('app_settings').update({ ...values }).eq('id', existing.id).select('*').single();
-      if (error) throw error;
-      return data as AppSettings;
-    } else {
-      const { data, error } = await client.from('app_settings').insert({ ...values }).select('*').single();
-      if (error) throw error;
-      return data as AppSettings;
-    }
+    const { data: { session } } = await client.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(`${this.fnBase}/app-settings`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token ?? ''}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_action: 'upsert_app', values })
+    });
+    const json = await res.json();
+    if (!res.ok || !json?.ok) throw new Error(json?.error || 'No se pudieron guardar los ajustes');
+    return json.app as AppSettings;
   }
 
   // Company-level settings
@@ -82,9 +90,16 @@ export class SupabaseSettingsService {
     const cid = companyId || this.auth.companyId();
     if (!cid) throw new Error('No company ID available');
     const client = this.supabaseClient.instance;
-    const { data, error } = await client.from('company_settings').select('*').eq('company_id', cid).maybeSingle();
-    if (error && error.code !== 'PGRST116') throw error; // ignore not found
-    return (data || { company_id: cid }) as CompanySettings;
+    const { data: { session } } = await client.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(`${this.fnBase}/app-settings`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token ?? ''}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_action: 'get_company', company_id: cid })
+    });
+    const json = await res.json();
+    if (!res.ok || !json?.ok) throw new Error(json?.error || 'No se pudieron obtener los ajustes de empresa');
+    return (json.company || { company_id: cid }) as CompanySettings;
   }
 
   upsertCompanySettings(values: Partial<CompanySettings>, companyId?: string): Observable<CompanySettings> {
@@ -95,9 +110,15 @@ export class SupabaseSettingsService {
     const cid = companyId || this.auth.companyId();
     if (!cid) throw new Error('No company ID available');
     const client = this.supabaseClient.instance;
-    const payload = { ...values, company_id: cid };
-    const { data, error } = await client.from('company_settings').upsert(payload, { onConflict: 'company_id' }).select('*').single();
-    if (error) throw error;
-    return data as CompanySettings;
+    const { data: { session } } = await client.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(`${this.fnBase}/app-settings`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token ?? ''}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_action: 'upsert_company', company_id: cid, values })
+    });
+    const json = await res.json();
+    if (!res.ok || !json?.ok) throw new Error(json?.error || 'No se pudieron guardar los ajustes de empresa');
+    return json.company as CompanySettings;
   }
 }
