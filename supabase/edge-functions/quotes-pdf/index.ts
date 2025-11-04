@@ -13,6 +13,10 @@ function cors(origin?: string){
 }
 
 const A4 = { width: 595.28, height: 841.89 };
+const PRIMARY_COLOR = rgb(0.2, 0.4, 0.8); // Azul corporativo
+const SECONDARY_COLOR = rgb(0.95, 0.95, 0.97); // Gris muy claro para fondos
+const TEXT_DARK = rgb(0.15, 0.15, 0.15);
+const TEXT_LIGHT = rgb(0.45, 0.45, 0.45);
 
 function money(v: number | null | undefined, currency='EUR'){
   const n = typeof v === 'number' ? v : 0;
@@ -23,6 +27,11 @@ function drawText(page:any, text:string, x:number, y:number, font:any, size=10, 
   page.drawText(text ?? '', { x, y, size, font, color });
 }
 
+function drawTextRight(page:any, text:string, x:number, y:number, font:any, size=10, color=rgb(0,0,0)){
+  const width = font.widthOfTextAtSize(text, size);
+  page.drawText(text ?? '', { x: x - width, y, size, font, color });
+}
+
 async function renderQuotePdf(ctx: { quote:any, items:any[], client:any, company:any }){
   const { quote, items, client, company } = ctx;
   const pdf = await PDFDocument.create();
@@ -30,75 +39,195 @@ async function renderQuotePdf(ctx: { quote:any, items:any[], client:any, company
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
-  const margin = 36; let y = A4.height - margin;
+  const margin = 40;
+  let y = A4.height - margin;
 
-  // Header
-  drawText(page, company?.name || 'Empresa', margin, y, bold, 18);
-  drawText(page, `Presupuesto ${quote?.full_quote_number || quote?.quote_number || ''}`.trim(), A4.width - margin - 220, y, bold, 16);
-  y -= 20;
-  drawText(page, `Fecha: ${quote?.quote_date ?? ''}`, A4.width - margin - 220, y, font, 10, rgb(0.2,0.2,0.2));
-  y -= 24;
+  // Header bar con color corporativo
+  page.drawRectangle({
+    x: 0,
+    y: A4.height - 80,
+    width: A4.width,
+    height: 80,
+    color: PRIMARY_COLOR,
+  });
 
-  // Seller / Client
-  drawText(page, 'Emisor', margin, y, bold, 12); y -= 14;
-  drawText(page, company?.name ?? '', margin, y, font, 10); y -= 12;
-  if (company?.settings?.fiscal_address){ drawText(page, String(company.settings.fiscal_address), margin, y, font, 10); y -= 12; }
+  // Título en blanco sobre la banda azul
+  drawText(page, company?.name || 'Empresa', margin, A4.height - 45, bold, 20, rgb(1, 1, 1));
+  
+  // Número de presupuesto - derecha
+  const quoteNum = `Presupuesto ${quote?.full_quote_number || quote?.quote_number || ''}`.trim();
+  drawTextRight(page, quoteNum, A4.width - margin, A4.height - 45, bold, 18, rgb(1, 1, 1));
+  
+  // Fecha - debajo del número
+  drawTextRight(page, `Fecha: ${quote?.quote_date ?? ''}`, A4.width - margin, A4.height - 65, font, 10, rgb(0.9, 0.9, 0.9));
 
-  let rightY = A4.height - margin - 44;
-  drawText(page, 'Cliente', A4.width/2, rightY, bold, 12); rightY -= 14;
-  drawText(page, client?.name ?? '', A4.width/2, rightY, font, 10); rightY -= 12;
+  y = A4.height - 100;
+
+  // Emisor y Cliente en cajas con fondo claro
+  const boxY = y - 10;
+  const boxHeight = 70;
+  
+  // Caja Emisor
+  page.drawRectangle({
+    x: margin,
+    y: boxY - boxHeight,
+    width: 220,
+    height: boxHeight,
+    color: SECONDARY_COLOR,
+    borderColor: rgb(0.85, 0.85, 0.87),
+    borderWidth: 1,
+  });
+  
+  drawText(page, 'EMISOR', margin + 10, boxY - 18, bold, 10, PRIMARY_COLOR);
+  drawText(page, company?.name ?? '', margin + 10, boxY - 33, bold, 11, TEXT_DARK);
+  if (company?.settings?.fiscal_address){
+    const addr = String(company.settings.fiscal_address);
+    drawText(page, addr.slice(0, 35), margin + 10, boxY - 48, font, 9, TEXT_LIGHT);
+    if (addr.length > 35) drawText(page, addr.slice(35, 70), margin + 10, boxY - 60, font, 9, TEXT_LIGHT);
+  }
+
+  // Caja Cliente
+  const clientX = A4.width - margin - 220;
+  page.drawRectangle({
+    x: clientX,
+    y: boxY - boxHeight,
+    width: 220,
+    height: boxHeight,
+    color: SECONDARY_COLOR,
+    borderColor: rgb(0.85, 0.85, 0.87),
+    borderWidth: 1,
+  });
+  
+  drawText(page, 'CLIENTE', clientX + 10, boxY - 18, bold, 10, PRIMARY_COLOR);
+  drawText(page, client?.name ?? '', clientX + 10, boxY - 33, bold, 11, TEXT_DARK);
   const cAddr = client?.address?.line1 || client?.address?.street || client?.address_text || '';
-  if (cAddr){ drawText(page, String(cAddr), A4.width/2, rightY, font, 10); rightY -= 12; }
+  if (cAddr){
+    const addr = String(cAddr);
+    drawText(page, addr.slice(0, 35), clientX + 10, boxY - 48, font, 9, TEXT_LIGHT);
+    if (addr.length > 35) drawText(page, addr.slice(35, 70), clientX + 10, boxY - 60, font, 9, TEXT_LIGHT);
+  }
 
-  // Items table
-  y -= 20;
+  y = boxY - boxHeight - 30;
+
+  // Tabla de conceptos con cabecera destacada
   const tableX = margin;
-  const tableW = { desc: 280, qty: 50, unit: 80, tax: 50, total: 90 };
-  drawText(page, 'Concepto', tableX, y, bold, 11);
-  drawText(page, 'Cant.', tableX + tableW.desc + 8, y, bold, 11);
-  drawText(page, 'Precio', tableX + tableW.desc + tableW.qty + 16, y, bold, 11);
-  drawText(page, 'IVA', tableX + tableW.desc + tableW.qty + tableW.unit + 24, y, bold, 11);
-  drawText(page, 'Importe', tableX + tableW.desc + tableW.qty + tableW.unit + tableW.tax + 32, y, bold, 11);
-  y -= 12;
-  page.drawLine({ start:{ x:margin, y }, end:{ x:A4.width - margin, y }, thickness:0.5, color: rgb(0.8,0.8,0.8) });
-  y -= 8;
+  const tableW = { desc: 265, qty: 45, unit: 75, tax: 45, total: 85 };
+  const headerY = y;
+  
+  // Fondo de cabecera
+  page.drawRectangle({
+    x: tableX - 5,
+    y: headerY - 5,
+    width: A4.width - (2 * margin) + 10,
+    height: 20,
+    color: SECONDARY_COLOR,
+  });
 
-  const rowH = 14;
+  drawText(page, 'Concepto', tableX, headerY, bold, 10, TEXT_DARK);
+  drawTextRight(page, 'Cant.', tableX + tableW.desc + tableW.qty, headerY, bold, 10, TEXT_DARK);
+  drawTextRight(page, 'Precio', tableX + tableW.desc + tableW.qty + tableW.unit, headerY, bold, 10, TEXT_DARK);
+  drawTextRight(page, 'IVA', tableX + tableW.desc + tableW.qty + tableW.unit + tableW.tax, headerY, bold, 10, TEXT_DARK);
+  drawTextRight(page, 'Importe', tableX + tableW.desc + tableW.qty + tableW.unit + tableW.tax + tableW.total, headerY, bold, 10, TEXT_DARK);
+  
+  y -= 20;
+  page.drawLine({ start:{ x:margin, y }, end:{ x:A4.width - margin, y }, thickness: 1.5, color: PRIMARY_COLOR });
+  y -= 10;
+
+  const rowH = 16;
+  let rowIndex = 0;
   for (const it of items || []){
-    if (y < margin + 160){
+    if (y < margin + 180){
       page = pdf.addPage([A4.width, A4.height]);
-      y = A4.height - margin;
-      drawText(page, 'Continuación', margin, y, bold, 12); y -= 20;
+      y = A4.height - margin - 20;
+      drawText(page, 'Continuación', margin, y, bold, 11, TEXT_LIGHT);
+      y -= 30;
     }
+    
+    // Fila alternada (zebra striping)
+    if (rowIndex % 2 === 0){
+      page.drawRectangle({
+        x: tableX - 5,
+        y: y - 4,
+        width: A4.width - (2 * margin) + 10,
+        height: rowH,
+        color: rgb(0.98, 0.98, 0.99),
+      });
+    }
+    
     const desc = it.description ?? '';
     const qty = Number(it.quantity ?? 1);
     const unit = Number(it.unit_price ?? it.price ?? 0);
     const tax = Number(it.tax_rate ?? 0);
     const total = Number(it.total ?? (qty * unit * (1 + tax/100)));
-    drawText(page, String(desc).slice(0,120), tableX, y, font, 10);
-    drawText(page, `${qty}`, tableX + tableW.desc + 8, y, font, 10);
-    drawText(page, money(unit, quote?.currency), tableX + tableW.desc + tableW.qty + 16, y, font, 10);
-    drawText(page, `${tax}%`, tableX + tableW.desc + tableW.qty + tableW.unit + 24, y, font, 10);
-    drawText(page, money(total, quote?.currency), tableX + tableW.desc + tableW.qty + tableW.unit + tableW.tax + 32, y, font, 10);
+    
+    drawText(page, String(desc).slice(0, 45), tableX, y, font, 9, TEXT_DARK);
+    drawTextRight(page, `${qty}`, tableX + tableW.desc + tableW.qty, y, font, 9, TEXT_DARK);
+    drawTextRight(page, money(unit, quote?.currency), tableX + tableW.desc + tableW.qty + tableW.unit, y, font, 9, TEXT_DARK);
+    drawTextRight(page, `${tax}%`, tableX + tableW.desc + tableW.qty + tableW.unit + tableW.tax, y, font, 9, TEXT_DARK);
+    drawTextRight(page, money(total, quote?.currency), tableX + tableW.desc + tableW.qty + tableW.unit + tableW.tax + tableW.total, y, bold, 9, TEXT_DARK);
+    
     y -= rowH;
+    rowIndex++;
   }
 
-  // Totals
-  y -= 8;
-  page.drawLine({ start:{ x:margin, y }, end:{ x:A4.width - margin, y }, thickness:0.5, color: rgb(0.8,0.8,0.8) });
-  y -= 12;
-  const totalsX = A4.width - margin - 200;
-  drawText(page, 'Subtotal:', totalsX, y, bold, 11); drawText(page, money(quote?.subtotal, quote?.currency), totalsX + 100, y, font, 11); y -= 14;
-  drawText(page, 'Impuestos:', totalsX, y, bold, 11); drawText(page, money(quote?.tax_amount, quote?.currency), totalsX + 100, y, font, 11); y -= 14;
-  page.drawLine({ start:{ x:totalsX, y }, end:{ x: totalsX + 180, y }, thickness:0.8, color: rgb(0.2,0.2,0.2) });
+  // Totales con fondo y destacados
   y -= 10;
-  drawText(page, 'Total:', totalsX, y, bold, 13); drawText(page, money(quote?.total_amount, quote?.currency), totalsX + 100, y, bold, 13);
-
-  // Footer
+  page.drawLine({ start:{ x:margin, y }, end:{ x:A4.width - margin, y }, thickness: 1, color: rgb(0.7,0.7,0.7) });
   y -= 20;
-  drawText(page, 'Condiciones y notas', margin, y, bold, 11); y -= 12;
-  const notes = quote?.terms_conditions || quote?.notes || '';
-  if (notes) drawText(page, String(notes).slice(0,300), margin, y, font, 9, rgb(0.25,0.25,0.25));
+  
+  const totalsX = A4.width - margin - 200;
+  const totalsBoxX = totalsX - 15;
+  
+  page.drawRectangle({
+    x: totalsBoxX,
+    y: y - 60,
+    width: 215,
+    height: 70,
+    color: SECONDARY_COLOR,
+    borderColor: rgb(0.85, 0.85, 0.87),
+    borderWidth: 1,
+  });
+  
+  drawText(page, 'Subtotal:', totalsX, y, font, 10, TEXT_DARK);
+  drawTextRight(page, money(quote?.subtotal, quote?.currency), totalsX + 190, y, font, 10, TEXT_DARK);
+  y -= 18;
+  
+  drawText(page, 'Impuestos:', totalsX, y, font, 10, TEXT_DARK);
+  drawTextRight(page, money(quote?.tax_amount, quote?.currency), totalsX + 190, y, font, 10, TEXT_DARK);
+  y -= 22;
+  
+  const lineY = y + 2;
+  page.drawLine({ start:{ x:totalsX, y: lineY }, end:{ x: totalsX + 190, y: lineY }, thickness: 1.5, color: PRIMARY_COLOR });
+  y -= 5;
+  
+  drawText(page, 'TOTAL:', totalsX, y, bold, 13, PRIMARY_COLOR);
+  drawTextRight(page, money(quote?.total_amount, quote?.currency), totalsX + 190, y, bold, 13, PRIMARY_COLOR);
+
+  // Footer con notas
+  y -= 35;
+  if (y > margin + 40) {
+    const notes = quote?.terms_conditions || quote?.notes || '';
+    if (notes) {
+      page.drawLine({ start:{ x:margin, y }, end:{ x:A4.width - margin, y }, thickness: 0.5, color: rgb(0.85,0.85,0.85) });
+      y -= 15;
+      drawText(page, 'Condiciones y notas', margin, y, bold, 10, TEXT_DARK);
+      y -= 14;
+      
+      // Dividir notas en líneas
+      const maxChars = 95;
+      const noteLines = [];
+      let remaining = String(notes);
+      while (remaining.length > 0 && noteLines.length < 4) {
+        noteLines.push(remaining.slice(0, maxChars));
+        remaining = remaining.slice(maxChars);
+      }
+      
+      for (const line of noteLines) {
+        drawText(page, line, margin, y, font, 8, TEXT_LIGHT);
+        y -= 11;
+      }
+    }
+  }
 
   return await pdf.save();
 }

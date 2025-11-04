@@ -390,7 +390,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Facturación',
       icon: 'description',
       route: '/facturacion',
-      module: 'production'
+      // Mostrar sólo en modo 'development' para evitar que aparezca en producción
+      module: 'development'
     },
     {
       id: 41, // Nuevo ID entre servicios y productos
@@ -493,12 +494,19 @@ export class ResponsiveSidebarComponent implements OnInit {
 
     // Client role: show Tickets, Presupuestos (client portal), Configuración
     if (isClient) {
-      return [
+      // Mostrar módulo de facturas en modo desarrollo únicamente (isDev)
+      const clientMenu: MenuItem[] = [
         { id: 2001, label: 'Tickets', icon: 'confirmation_number', route: '/tickets', module: 'production' },
         { id: 2002, label: 'Presupuestos', icon: 'description', route: '/portal/presupuestos', module: 'production' },
-        { id: 2004, label: 'Facturas', icon: 'receipt_long', route: '/portal/facturas', module: 'production' },
         { id: 2003, label: 'Configuración', icon: 'settings', route: '/configuracion', module: 'core' }
       ];
+
+      if (isDev) {
+        // Añadir acceso a facturas sólo en entornos de desarrollo
+        clientMenu.splice(2, 0, { id: 2004, label: 'Facturas', icon: 'receipt_long', route: '/portal/facturas', module: 'development' });
+      }
+
+      return clientMenu;
     }
 
     return this.allMenuItems.filter(item => {

@@ -32,14 +32,38 @@ fi
 echo "✅ Logged in to Supabase"
 echo ""
 
-# Deploy specific function (upsert-client)
-echo "📦 Deploying upsert-client (RLS-compatible)..."
-cd supabase/functions/upsert-client
-supabase functions deploy upsert-client --no-verify-jwt
-cd ../../..
+echo "📦 Deploying Edge Functions (invoices/verifactu)..."
+
+# Ensure functions exist in supabase/functions (we keep sources in supabase/edge-functions too)
+
+set -e
+
+# Deploy invoices-pdf (JWT required; OPTIONS handled inside)
+if [ -d "supabase/functions/invoices-pdf" ]; then
+    echo "➡️  Deploying invoices-pdf..."
+    (cd supabase/functions/invoices-pdf && supabase functions deploy invoices-pdf)
+else
+    echo "⚠️  Directory supabase/functions/invoices-pdf not found"
+fi
+
+# Deploy invoices-email (JWT required; OPTIONS handled inside)
+if [ -d "supabase/functions/invoices-email" ]; then
+    echo "➡️  Deploying invoices-email..."
+    (cd supabase/functions/invoices-email && supabase functions deploy invoices-email)
+else
+    echo "⚠️  Directory supabase/functions/invoices-email not found"
+fi
+
+# Deploy verifactu-dispatcher (JWT not required for config/health/retry, but OPTIONS handled)
+if [ -d "supabase/functions/verifactu-dispatcher" ]; then
+    echo "➡️  Deploying verifactu-dispatcher..."
+    (cd supabase/functions/verifactu-dispatcher && supabase functions deploy verifactu-dispatcher)
+else
+    echo "⚠️  Directory supabase/functions/verifactu-dispatcher not found"
+fi
 
 echo ""
-echo "✅ Edge Function deployed successfully!"
+echo "✅ Edge Functions deployed successfully!"
 echo ""
 echo "🧪 Test it with:"
 echo "   1. Open your app"

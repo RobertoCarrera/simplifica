@@ -42,47 +42,58 @@ export class SupabaseInvoicesService {
    * Obtener metadatos VeriFactu de una factura
    */
   getVerifactuMeta(invoiceId: string): Observable<any | null> {
-    return from(
-      this.supabase
-        .schema('verifactu')
-        .from('invoice_meta')
-        .select('*')
-        .eq('invoice_id', invoiceId)
-        .single()
-    ).pipe(
-      map(res => {
-        if (res.error) throw res.error;
-        return res.data;
-      }),
-      catchError(err => {
-        console.warn('VeriFactu meta no disponible:', err?.message || err);
-        return from([null]);
-      })
-    );
+    // Proxy via Edge Function to avoid 406 on verifactu schema from the browser
+    return new Observable(observer => {
+      (async () => {
+        try {
+          const { data: { session } } = await this.supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) throw new Error('Sesión no válida');
+          const res = await fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'meta', invoice_id: invoiceId })
+          });
+          const json = await res.json();
+          if (!res.ok || !json.ok) throw new Error(json?.error || 'VF meta error');
+          observer.next(json.meta || null);
+          observer.complete();
+        } catch (e) {
+          console.warn('VeriFactu meta no disponible:', (e as any)?.message || e);
+          observer.next(null);
+          observer.complete();
+        }
+      })();
+    });
   }
 
   /**
    * Obtener últimos eventos VeriFactu de una factura
    */
   getVerifactuEvents(invoiceId: string, limit: number = 5): Observable<any[]> {
-    return from(
-      this.supabase
-        .schema('verifactu')
-        .from('events')
-        .select('*')
-        .eq('invoice_id', invoiceId)
-        .order('created_at', { ascending: false })
-        .limit(limit)
-    ).pipe(
-      map(res => {
-        if (res.error) throw res.error;
-        return res.data || [];
-      }),
-      catchError(err => {
-        console.warn('VeriFactu events no disponibles:', err?.message || err);
-        return from([[]]);
-      })
-    );
+    // Proxy via Edge Function to avoid 406 on verifactu schema from the browser
+    return new Observable(observer => {
+      (async () => {
+        try {
+          const { data: { session } } = await this.supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) throw new Error('Sesión no válida');
+          const res = await fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'events', invoice_id: invoiceId, limit })
+          });
+          const json = await res.json();
+          if (!res.ok || !json.ok) throw new Error(json?.error || 'VF events error');
+          observer.next(json.events || []);
+          observer.complete();
+        } catch (e) {
+          console.warn('VeriFactu events no disponibles:', (e as any)?.message || e);
+          observer.next([]);
+          observer.complete();
+        }
+      })();
+    });
   }
 
   /**

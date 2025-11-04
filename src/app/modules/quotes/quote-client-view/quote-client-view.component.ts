@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
+import { ClientPortalService } from '../../../services/client-portal.service';
 import { 
   Quote, 
   QuoteItem,
@@ -21,6 +22,7 @@ import {
 export class QuoteClientViewComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private quotesService = inject(SupabaseQuotesService);
+  private portal = inject(ClientPortalService);
 
   quote = signal<Quote | null>(null);
   loading = signal(true);
@@ -43,15 +45,18 @@ export class QuoteClientViewComponent implements OnInit {
 
   loadQuote(id: string) {
     this.loading.set(true);
-    this.quotesService.getQuote(id).subscribe({
-      next: (res) => {
-        this.quote.set(res);
-        this.loading.set(false);
-      },
-      error: () => {
+    // Use client portal endpoint (Edge Function) to respect client RLS and mapping
+    this.portal.getQuote(id).then(({ data, error }) => {
+      if (error || !data) {
         this.error.set('No se pudo cargar el presupuesto.');
         this.loading.set(false);
+        return;
       }
+      this.quote.set(data as any);
+      this.loading.set(false);
+    }).catch(() => {
+      this.error.set('No se pudo cargar el presupuesto.');
+      this.loading.set(false);
     });
   }
 
@@ -60,18 +65,19 @@ export class QuoteClientViewComponent implements OnInit {
     if (q && canAcceptQuote(q)) {
       if (confirm('¿Estás seguro de que deseas aceptar este presupuesto?')) {
         this.processing.set(true);
-        this.quotesService.acceptQuote(q.id).subscribe({
-          next: (res) => {
-            // reflect acceptance locally
-            const updatedQuote: Quote = { ...q, status: QuoteStatus.ACCEPTED, accepted_at: new Date().toISOString() } as any;
-            this.quote.set(updatedQuote);
+        this.portal.respondToQuote(q.id, 'accept').then(({ data, error }) => {
+          if (error) {
+            this.error.set('Error al aceptar: ' + (error?.message || error));
             this.processing.set(false);
-            this.successMessage.set('¡Presupuesto aceptado!');
-          },
-          error: (err) => {
-            this.error.set('Error al aceptar: ' + (err?.message || err));
-            this.processing.set(false);
+            return;
           }
+          const updatedQuote: Quote = (data as any) || { ...q, status: QuoteStatus.ACCEPTED, accepted_at: new Date().toISOString() } as any;
+          this.quote.set(updatedQuote);
+          this.processing.set(false);
+          this.successMessage.set('¡Presupuesto aceptado!');
+        }).catch((err)=>{
+          this.error.set('Error al aceptar: ' + (err?.message || err));
+          this.processing.set(false);
         });
       }
     }
@@ -82,17 +88,19 @@ export class QuoteClientViewComponent implements OnInit {
     if (q && canAcceptQuote(q)) {
       if (confirm('¿Estás seguro de que deseas rechazar este presupuesto?')) {
         this.processing.set(true);
-        // Rejection for public portal could be future; keep internal call if available
-        this.quotesService.rejectQuote(q.id).subscribe({
-          next: (updated) => {
-            this.quote.set(updated);
+        this.portal.respondToQuote(q.id, 'reject').then(({ data, error }) => {
+          if (error) {
+            this.error.set('Error al rechazar: ' + (error?.message || error));
             this.processing.set(false);
-            this.successMessage.set('Presupuesto rechazado.');
-          },
-          error: (err) => {
-            this.error.set('Error al rechazar: ' + err.message);
-            this.processing.set(false);
+            return;
           }
+          const updated = (data as any) || { ...q, status: QuoteStatus.REJECTED, rejected_at: new Date().toISOString() } as any;
+          this.quote.set(updated);
+          this.processing.set(false);
+          this.successMessage.set('Presupuesto rechazado.');
+        }).catch((err)=>{
+          this.error.set('Error al rechazar: ' + (err?.message || err));
+          this.processing.set(false);
         });
       }
     }

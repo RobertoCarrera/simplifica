@@ -5,10 +5,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 function cors(origin?: string){
   const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS')||'false').toLowerCase()==='true';
   const allowed = (Deno.env.get('ALLOWED_ORIGINS')||'').split(',').map(s=>s.trim()).filter(Boolean);
+  // Dev-friendly fallback: if nothing configured, allow common localhost origin
+  if (allowed.length === 0 && !allowAll) allowed.push('http://localhost:4200');
   const isAllowed = allowAll || (origin && allowed.includes(origin));
-  const allowOrigin = isAllowed && origin ? origin : (allowAll ? '*' : '');
+  const acao = isAllowed && origin ? origin : allowAll ? '*' : '';
   return {
-    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Origin': acao,
     'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods':'POST, OPTIONS',
     'Access-Control-Max-Age':'86400',
@@ -18,8 +20,9 @@ function cors(origin?: string){
 
 serve(async (req) => {
   const origin = req.headers.get('Origin') || undefined;
-  const headers = { ...cors(origin), 'Content-Type':'application/json' };
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+  const baseHeaders = cors(origin);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: baseHeaders });
+  const headers = { ...baseHeaders, 'Content-Type':'application/json' };
   if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status:405, headers });
 
   try {
@@ -86,13 +89,13 @@ serve(async (req) => {
 
     // Resolve current app user (public.users) for created_by FK
     const { data: authUser } = await sb.auth.getUser();
-    const authUserId = authUser?.user?.id || null;
+    const sessionUserId = authUser?.user?.id || null;
     let appUserId: string | null = null;
-    if (authUserId) {
+    if (sessionUserId) {
       const { data: appUser } = await sb
         .from('users')
         .select('id')
-        .eq('auth_user_id', authUserId)
+        .eq('auth_user_id', sessionUserId)
         .limit(1)
         .maybeSingle();
       appUserId = appUser?.id || null;
