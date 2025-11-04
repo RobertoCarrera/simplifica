@@ -310,6 +310,80 @@
                       }
                     </div>
                     
+                    <!-- Product Selector -->
+                    <div class="md:col-span-2 relative service-dropdown-container mt-2">
+                      <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Producto
+                        <span class="text-gray-500 text-xs ml-2">(Opcional - Seleccione para autocompletar)</span>
+                      </label>
+                      <button 
+                        type="button"
+                        (click)="toggleProductDropdown(i)"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white hover:bg-gray-50 transition-colors duration-150 flex items-center justify-between"
+                      >
+                        <span class="text-gray-700">
+                          <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                          </svg>
+                          Buscar producto...
+                        </span>
+                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                      </button>
+
+                      <!-- Product Dropdown -->
+                      @if (productDropdownOpen() && selectedProductIndex() === i) {
+                        <div class="absolute z-50 w-full mt-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-hidden">
+                          <div class="p-3 border-b border-gray-200">
+                            <div class="relative">
+                              <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                              </svg>
+                              <input 
+                                type="text"
+                                [value]="productSearch()"
+                                (input)="productSearch.set($any($event.target).value)"
+                                placeholder="Buscar productos..."
+                                class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                (click)="$event.stopPropagation()"
+                              >
+                            </div>
+                          </div>
+                          <div class="max-h-48 overflow-y-auto">
+                            @if (filteredProducts().length === 0) {
+                              <div class="px-4 py-8 text-center text-gray-500 text-sm">
+                                <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
+                                </svg>
+                                No se encontraron productos
+                              </div>
+                            }
+                            @for (product of filteredProducts(); track product.id) {
+                              <button
+                                type="button"
+                                (click)="selectProduct(product, i)"
+                                class="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors duration-150 border-b border-gray-100 last:border-b-0"
+                              >
+                                <div class="font-medium text-gray-900">{{ product.name }}</div>
+                                @if (product.description) {
+                                  <div class="text-sm text-gray-500 mt-1">{{ product.description }}</div>
+                                }
+                                <div class="text-xs text-gray-400 mt-1">
+                                  <span *ngIf="product.brand">Marca: {{ product.brand }} </span>
+                                  <span *ngIf="product.model">Modelo: {{ product.model }} </span>
+                                  <span *ngIf="product.category">Categoría: {{ product.category }}</span>
+                                </div>
+                                @if (product.price > 0) {
+                                  <div class="text-sm text-blue-600 font-semibold mt-1">{{ formatCurrency(product.price) }}</div>
+                                }
+                              </button>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                    
                     <div class="md:col-span-2">
                       <label class="block text-sm font-medium text-gray-700 mb-2">Descripción <span class="text-red-600">*</span></label>
                       <input 

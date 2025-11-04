@@ -9,6 +9,8 @@ import { DevicesService, Device } from '../../services/devices.service';
 import { TicketModalService } from '../../services/ticket-modal.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { environment } from '../../../environments/environment';
+import { SupabaseQuotesService } from '../../services/supabase-quotes.service';
+import { firstValueFrom } from 'rxjs';
 
 // TipTap imports
 import { Editor } from '@tiptap/core';
@@ -47,6 +49,11 @@ import Placeholder from '@tiptap/extension-placeholder';
                     class="w-full px-4 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100">
               ⏱️ Actualizar Horas
             </button> -->
+      <button (click)="convertToQuoteFromTicket()"
+        [disabled]="!ticket || ticketServices.length === 0 || !(ticket && ticket.client && ticket.client.id)"
+                    class="w-full px-2 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed">
+              🧾 Convertir en Presupuesto
+            </button>
             <button (click)="printTicket()" 
                     class="w-full px-2 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100">
               🖨️ Imprimir
@@ -614,6 +621,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private devicesService = inject(DevicesService);
   private ticketModalService = inject(TicketModalService);
   private sanitizer = inject(DomSanitizer);
+  private quotesService = inject(SupabaseQuotesService);
 
   // Services Selection Modal state
   showServicesModal = false;
@@ -1103,6 +1111,49 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // Navigation and actions
   goBack() {
     this.router.navigate(['/tickets']);
+  }
+
+  // Crear un presupuesto a partir de los servicios asignados al ticket
+  async convertToQuoteFromTicket() {
+    try {
+      if (!this.ticket) { this.showToast('Ticket no cargado', 'error'); return; }
+      const clientId = (this.ticket as any)?.client_id || (this.ticket as any)?.client?.id || null;
+      if (!clientId) { this.showToast('El ticket no tiene cliente asociado', 'error'); return; }
+      if (!this.ticketServices || this.ticketServices.length === 0) {
+        this.showToast('No hay servicios asignados para convertir', 'info');
+        return;
+      }
+
+      // Construir DTO de creación de presupuesto
+      const items = (this.ticketServices || []).map((it: any) => ({
+        description: (it?.service?.name || 'Servicio'),
+        quantity: Math.max(1, Number(it?.quantity || 1)),
+        unit_price: Math.max(0, Number(this.getUnitPrice(it) || 0)),
+        tax_rate: 21,
+        notes: it?.service?.description || null
+      }));
+
+      const dto = {
+        client_id: String(clientId),
+        title: `Presupuesto Ticket #${(this.ticket as any)?.ticket_number || ''} - ${(this.ticket as any)?.title || ''}`.trim(),
+        description: (this.ticket as any)?.description || '',
+        items
+      } as any;
+
+      this.showToast('Creando presupuesto...', 'info', 2500);
+      const quote = await firstValueFrom(this.quotesService.createQuote(dto));
+      this.showToast('Presupuesto creado', 'success');
+      // Navegar al editor de presupuesto
+      try {
+        this.router.navigate(['/presupuestos', 'edit', quote.id]);
+      } catch {
+        // Fallback a detalle si el editor no está disponible
+        this.router.navigate(['/presupuestos', quote.id]);
+      }
+    } catch (err: any) {
+      console.error('Error creando presupuesto desde ticket:', err);
+      this.showToast('Error creando presupuesto: ' + (err?.message || ''), 'error');
+    }
   }
 
 

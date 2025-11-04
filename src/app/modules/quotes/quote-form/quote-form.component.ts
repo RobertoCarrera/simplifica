@@ -5,6 +5,7 @@ import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } fr
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { SupabaseServicesService, Service } from '../../../services/supabase-services.service';
+import { ProductsService } from '../../../services/products.service';
 import { Customer } from '../../../models/customer';
 import { CreateQuoteDTO, CreateQuoteItemDTO, QuoteItem } from '../../../models/quote.model';
 import { debounceTime } from 'rxjs/operators';
@@ -28,6 +29,16 @@ interface ServiceOption {
   category?: string;
 }
 
+interface ProductOption {
+  id: string;
+  name: string;
+  description?: string | null;
+  price: number;
+  brand?: string | null;
+  model?: string | null;
+  category?: string | null;
+}
+
 interface QuoteTemplate {
   id: string;
   name: string;
@@ -46,6 +57,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   private quotesService = inject(SupabaseQuotesService);
   private customersService = inject(SupabaseCustomersService);
   private servicesService = inject(SupabaseServicesService);
+  private productsService = inject(ProductsService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
@@ -87,6 +99,23 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     );
   });
   
+  // Selector de productos
+  products = signal<ProductOption[]>([]);
+  productSearch = signal('');
+  productDropdownOpen = signal(false);
+  selectedProductIndex = signal<number | null>(null);
+  filteredProducts = computed(() => {
+    const search = this.productSearch().toLowerCase();
+    if (!search) return this.products();
+    return this.products().filter(p =>
+      p.name.toLowerCase().includes(search) ||
+      (p.description || '').toLowerCase().includes(search) ||
+      (p.brand || '').toLowerCase().includes(search) ||
+      (p.model || '').toLowerCase().includes(search) ||
+      (p.category || '').toLowerCase().includes(search)
+    );
+  });
+  
   // Templates
   templates = signal<QuoteTemplate[]>([]);
   selectedTemplate = signal<string | null>(null);
@@ -113,6 +142,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     this.loadClients();
     this.loadServices();
     this.loadTemplates();
+  this.loadProducts();
     this.setupAutoCalculations();
     
     this.route.params.subscribe(params => {
@@ -316,6 +346,29 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     }
   }
 
+  async loadProducts() {
+    try {
+      this.productsService.getProducts().subscribe({
+        next: (prods) => {
+          this.products.set(prods.map(p => ({
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            price: p.price,
+            brand: p.brand,
+            model: p.model,
+            category: p.category
+          })));
+        },
+        error: (err) => {
+          console.warn('Error al cargar productos:', err);
+        }
+      });
+    } catch (err) {
+      console.warn('Error al cargar productos:', err);
+    }
+  }
+
   loadTemplates() {
     // Mock data - reemplazar con servicio real
     this.templates.set([
@@ -486,6 +539,36 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   closeServiceDropdown() {
     this.serviceDropdownOpen.set(false);
     this.selectedItemIndex.set(null);
+  }
+
+  // Métodos para selector de productos
+  toggleProductDropdown(itemIndex: number) {
+    if (this.selectedProductIndex() === itemIndex && this.productDropdownOpen()) {
+      this.productDropdownOpen.set(false);
+      this.selectedProductIndex.set(null);
+    } else {
+      this.selectedProductIndex.set(itemIndex);
+      this.productDropdownOpen.set(true);
+      this.productSearch.set('');
+    }
+  }
+
+  selectProduct(product: ProductOption, itemIndex: number) {
+    const item = this.items.at(itemIndex);
+    item.patchValue({
+      description: product.name,
+      unit_price: product.price,
+      quantity: 1
+    });
+    this.productDropdownOpen.set(false);
+    this.selectedProductIndex.set(null);
+    this.productSearch.set('');
+    this.calculateTotals();
+  }
+
+  closeProductDropdown() {
+    this.productDropdownOpen.set(false);
+    this.selectedProductIndex.set(null);
   }
 
   togglePreview() {

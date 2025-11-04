@@ -3,28 +3,60 @@
 // This doesn't disable locks—just prevents logs from flooding the console.
 (() => {
   try {
-    const locks: any = (navigator as any).locks;
-    if (!locks || typeof locks.request !== 'function') return;
-    const original = locks.request.bind(locks);
-    (navigator as any).locks.request = async function(name: string, optionsOrCb: any, maybeCb?: any) {
-      try {
-        // Support both signatures: (name, options, cb) and (name, cb)
-        if (typeof optionsOrCb === 'function') {
-          return await original(name, optionsOrCb);
-        }
-        return await original(name, optionsOrCb, maybeCb);
-      } catch (e: any) {
-        // Swallow common lock acquisition errors seen in some browsers
-        const msg = String(e?.message || e?.name || '');
-        if (
-          msg.includes('NavigatorLockAcquireTimeoutError') ||
-          msg.includes('Acquiring an exclusive Navigator LockManager lock') ||
-          msg.includes('lock:sb-main-auth-token')
-        ) {
+    const nav: any = navigator as any;
+    const locks: any = nav.locks;
+    // Provide a minimal stub if Locks API is missing
+    if (!locks) {
+      nav.locks = {
+        request: async (name: string, optionsOrCb: any, maybeCb?: any) => {
+          const cb = typeof optionsOrCb === 'function' ? optionsOrCb : maybeCb;
+          if (typeof cb === 'function') {
+            const mode = optionsOrCb && typeof optionsOrCb === 'object' ? optionsOrCb.mode || 'exclusive' : 'exclusive';
+            return await cb({ name, mode } as any);
+          }
           return undefined;
         }
-        throw e;
+      } as any;
+      return;
+    }
+
+    const original = typeof locks.request === 'function' ? locks.request.bind(locks) : null;
+
+    // Replace request with a safer version: for Supabase auth locks, bypass the real lock and run the callback.
+    nav.locks.request = async function(name: string, optionsOrCb: any, maybeCb?: any) {
+      const isSupabaseAuthLock = typeof name === 'string' && (name.startsWith('lock:sb-') || name.endsWith('-auth-token'));
+      if (isSupabaseAuthLock) {
+        const cb = typeof optionsOrCb === 'function' ? optionsOrCb : maybeCb;
+        if (typeof cb === 'function') {
+          const mode = optionsOrCb && typeof optionsOrCb === 'object' ? optionsOrCb.mode || 'exclusive' : 'exclusive';
+          try { return await cb({ name, mode } as any); } catch { return undefined; }
+        }
+        return undefined;
       }
+      // Non-Supabase locks: try original if available, guard from failures
+      if (original) {
+        try {
+          if (typeof optionsOrCb === 'function') {
+            return await original(name, optionsOrCb);
+          }
+          return await original(name, optionsOrCb, maybeCb);
+        } catch {
+          // Silently ignore lock failures for non-critical locks
+          const cb = typeof optionsOrCb === 'function' ? optionsOrCb : maybeCb;
+          if (typeof cb === 'function') {
+            const mode = optionsOrCb && typeof optionsOrCb === 'object' ? optionsOrCb.mode || 'exclusive' : 'exclusive';
+            try { return await cb({ name, mode } as any); } catch { return undefined; }
+          }
+          return undefined;
+        }
+      }
+      // No original available; attempt best-effort callback execution
+      const cb = typeof optionsOrCb === 'function' ? optionsOrCb : maybeCb;
+      if (typeof cb === 'function') {
+        const mode = optionsOrCb && typeof optionsOrCb === 'object' ? optionsOrCb.mode || 'exclusive' : 'exclusive';
+        try { return await cb({ name, mode } as any); } catch { return undefined; }
+      }
+      return undefined;
     };
   } catch {
     // no-op
