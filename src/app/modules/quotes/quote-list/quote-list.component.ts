@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
@@ -24,10 +24,17 @@ export class QuoteListComponent implements OnInit {
   private quotesService = inject(SupabaseQuotesService);
   private settingsService = inject(SupabaseSettingsService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   quotes = signal<Quote[]>([]);
+  filteredQuotes = signal<Quote[]>([]);
   loading = signal(true);
   error = signal<string | null>(null);
+
+  // Search and filters
+  searchTerm = '';
+  statusFilter = '';
+  dateFilter = '';
 
   statusLabels = QUOTE_STATUS_LABELS;
   statusColors = QUOTE_STATUS_COLORS;
@@ -40,6 +47,20 @@ export class QuoteListComponent implements OnInit {
   irpfRate = signal<number>(15);
 
   ngOnInit() {
+    // Check for query params (status filter from home)
+    this.route.queryParams.subscribe(params => {
+      if (params['status']) {
+        // Map Spanish status names to internal status values
+        const statusMap: { [key: string]: string } = {
+          'pendiente': 'draft',
+          'enviado': 'sent',
+          'aceptado': 'accepted',
+          'rechazado': 'rejected'
+        };
+        this.statusFilter = statusMap[params['status']] || params['status'];
+      }
+    });
+
     this.loadTaxSettings().finally(() => this.loadQuotes());
   }
 
@@ -70,6 +91,7 @@ export class QuoteListComponent implements OnInit {
     this.quotesService.getQuotes().subscribe({
       next: (result) => {
         this.quotes.set(result.data);
+        this.applyFilters();
         this.loading.set(false);
       },
       error: (err) => {
@@ -77,6 +99,58 @@ export class QuoteListComponent implements OnInit {
         this.loading.set(false);
       }
     });
+  }
+
+  onSearchChange(term: string) {
+    this.searchTerm = term;
+    this.applyFilters();
+  }
+
+  onFilterChange() {
+    this.applyFilters();
+  }
+
+  private applyFilters() {
+    let filtered = this.quotes();
+
+    // Search filter
+    if (this.searchTerm.trim()) {
+      const term = this.searchTerm.toLowerCase();
+      filtered = filtered.filter(q => {
+        const number = formatQuoteNumber(q).toLowerCase();
+        const client = (q.client?.name || q.client_name || '').toLowerCase();
+        const title = (q.title || '').toLowerCase();
+        return number.includes(term) || client.includes(term) || title.includes(term);
+      });
+    }
+
+    // Status filter
+    if (this.statusFilter) {
+      filtered = filtered.filter(q => q.status === this.statusFilter);
+    }
+
+    // Date filter
+    if (this.dateFilter) {
+      const now = new Date();
+      filtered = filtered.filter(q => {
+        const quoteDate = new Date(q.created_at || q.issue_date);
+        switch (this.dateFilter) {
+          case 'today':
+            return quoteDate.toDateString() === now.toDateString();
+          case 'week':
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            return quoteDate >= weekAgo;
+          case 'month':
+            return quoteDate.getMonth() === now.getMonth() && quoteDate.getFullYear() === now.getFullYear();
+          case 'year':
+            return quoteDate.getFullYear() === now.getFullYear();
+          default:
+            return true;
+        }
+      });
+    }
+
+    this.filteredQuotes.set(filtered);
   }
 
   createQuote() {

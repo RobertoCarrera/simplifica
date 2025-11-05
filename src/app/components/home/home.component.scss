@@ -244,12 +244,59 @@
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
 
-.card-services {
+.card-quotes-pending {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  cursor: pointer;
+}
+
+.card-quotes-accepted {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  cursor: pointer;
 }
 
 .card-products {
   background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+}
+
+/* Products Ranking */
+.products-ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.product-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 0.5rem;
+  backdrop-filter: blur(10px);
+  font-size: 0.875rem;
+}
+
+.product-rank {
+  font-weight: 700;
+  font-size: 1rem;
+  min-width: 1.5rem;
+}
+
+.product-name {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-quantity {
+  font-weight: 600;
+  font-size: 0.875rem;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
 }
 
 /* Últimos Tickets */

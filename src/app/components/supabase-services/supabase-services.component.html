@@ -49,48 +49,7 @@
     </div>
   </div>
 
-  <!-- Statistics Section -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-icon users">
-        <i class="fas fa-cogs"></i>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ stats.total }}</div>
-        <div class="stat-label">Total Servicios</div>
-      </div>
-    </div>
-    
-    <div class="stat-card">
-      <div class="stat-icon active">
-        <i class="fas fa-check-circle"></i>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ stats.active }}</div>
-        <div class="stat-label">Servicios Activos</div>
-      </div>
-    </div>
-    
-    <div class="stat-card">
-      <div class="stat-icon new">
-        <i class="fas fa-euro-sign"></i>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ formatCurrency(stats.averagePrice) }}</div>
-        <div class="stat-label">Precio Promedio</div>
-      </div>
-    </div>
-    
-    <div class="stat-card">
-      <div class="stat-icon">
-        <i class="fas fa-clock"></i>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ formatHours(stats.averageHours) }}</div>
-        <div class="stat-label">{{ getAverageUnitDisplay() }} Promedio</div>
-      </div>
-    </div>
-  </div>
+  <!-- Statistics Section removed - now only in home -->
 
   <!-- Loading State -->
   <div *ngIf="loading" class="loading-state">

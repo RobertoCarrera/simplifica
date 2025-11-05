@@ -77,23 +77,63 @@
       </div>
     </a>
 
-    <a routerLink="/servicios" class="module-card card-services">
+    <a (click)="navigateToQuotes('pendiente')" class="module-card card-quotes-pending">
       <div class="module-icon">
-        <i class="fas fa-cogs"></i>
+        <i class="fas fa-clock"></i>
       </div>
       <div class="module-content">
-        <h3>Servicios</h3>
-        <span class="count">{{ servicesCount }}</span>
+        <h3>Presupuestos Pendientes</h3>
+        <span class="count">{{ quoteStats().pendingSinceLastSession }}</span>
+        <div class="stats">
+          <span class="stat-item">
+            <i class="fas fa-calendar-alt"></i>
+            Desde última sesión
+          </span>
+        </div>
+      </div>
+    </a>
+
+    <a (click)="navigateToQuotes('aceptado')" class="module-card card-quotes-accepted">
+      <div class="module-icon">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <div class="module-content">
+        <h3>Presupuestos Aceptados</h3>
+        <span class="count">{{ quoteStats().acceptedSinceLastSession }}</span>
+        <div class="stats">
+          <span class="stat-item">
+            <i class="fas fa-calendar-check"></i>
+            Desde última sesión
+          </span>
+        </div>
       </div>
     </a>
 
     <a routerLink="/productos" class="module-card card-products">
       <div class="module-icon">
-        <i class="fas fa-box"></i>
+        <i class="fas fa-star"></i>
       </div>
       <div class="module-content">
-        <h3>Productos</h3>
-        <span class="count">{{ productsCount }}</span>
+        <h3>Top Productos</h3>
+        @if (topProducts().length > 0) {
+          <div class="products-ranking">
+            @for (product of topProducts(); track product.productId; let idx = $index) {
+              <div class="product-item">
+                <span class="product-rank">{{ idx + 1 }}.</span>
+                <span class="product-name">{{ product.productName }}</span>
+                <span class="product-quantity">{{ product.totalQuantitySold }} uds.</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <span class="count">0</span>
+          <div class="stats">
+            <span class="stat-item">
+              <i class="fas fa-info-circle"></i>
+              Sin ventas todavía
+            </span>
+          </div>
+        }
       </div>
     </a>
   </div>

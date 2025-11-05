@@ -1,7 +1,7 @@
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 py-8">
   <div>
     <!-- Header -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6 border border-gray-200 dark:border-gray-700">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6 border border-gray-200 dark:border-gray-700">
       <div class="flex justify-between items-center flex-wrap gap-4">
         <div>
           <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -12,16 +12,59 @@
           </h1>
           <p class="text-gray-600 dark:text-gray-300 mt-1">Gestiona tus presupuestos y propuestas comerciales</p>
         </div>
-        <button 
-          (click)="createQuote()"
-          class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-          </svg>
-          Nuevo Presupuesto
-        </button>
+        
+        <!-- Advanced Search -->
+        <div class="flex gap-3 items-center flex-wrap">
+          <div class="relative flex-1 min-w-[300px]">
+            <input
+              type="text"
+              [(ngModel)]="searchTerm"
+              (ngModelChange)="onSearchChange($event)"
+              placeholder="Buscar por número, cliente, título..."
+              class="w-full px-4 py-2 pl-10 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100"
+            >
+            <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+          
+          <select
+            [(ngModel)]="statusFilter"
+            (ngModelChange)="onFilterChange()"
+            class="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+          >
+            <option value="">Todos los estados</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="aceptado">Aceptado</option>
+            <option value="rechazado">Rechazado</option>
+            <option value="enviado">Enviado</option>
+          </select>
+          
+          <select
+            [(ngModel)]="dateFilter"
+            (ngModelChange)="onFilterChange()"
+            class="px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-gray-100"
+          >
+            <option value="">Todas las fechas</option>
+            <option value="today">Hoy</option>
+            <option value="week">Esta semana</option>
+            <option value="month">Este mes</option>
+            <option value="year">Este año</option>
+          </select>
+        </div>
       </div>
     </div>
+
+    <!-- Floating New Button -->
+    <button 
+      (click)="createQuote()"
+      class="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 z-50 flex items-center justify-center"
+      title="Nuevo Presupuesto"
+    >
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+      </svg>
+    </button>
 
     <!-- Loading State -->
     @if (loading()) {
@@ -142,7 +185,7 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-              @for (quote of quotes(); track quote.id) {
+              @for (quote of filteredQuotes(); track quote.id) {
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150">
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                     {{ formatQuoteNumber(quote) }}

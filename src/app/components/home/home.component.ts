@@ -1,11 +1,21 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { SupabaseCustomersService } from '../../services/supabase-customers.service';
 import { SupabaseTicketsService, TicketStats } from '../../services/supabase-tickets.service';
-import { SupabaseServicesService } from '../../services/supabase-services.service';
-import { ProductsService } from '../../services/products.service';
 import { CustomerStats } from '../../services/supabase-customers.service';
+import { SupabaseClient, createClient } from '@supabase/supabase-js';
+
+interface QuoteStats {
+  pendingSinceLastSession: number;
+  acceptedSinceLastSession: number;
+}
+
+interface TopProduct {
+  productId: string;
+  productName: string;
+  totalQuantitySold: number;
+}
 
 @Component({
   selector: 'app-home',
@@ -17,18 +27,31 @@ import { CustomerStats } from '../../services/supabase-customers.service';
 export class HomeComponent implements OnInit {
   private customersService = inject(SupabaseCustomersService);
   private ticketsService = inject(SupabaseTicketsService);
-  private servicesService = inject(SupabaseServicesService);
-  private productsService = inject(ProductsService);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   customersCount = 0;
-  servicesCount = 0;
-  productsCount = 0;
   ticketsStats: TicketStats | null = null;
   recentTickets: any[] = [];
   stats = signal<CustomerStats | null>(null);
+  quoteStats = signal<QuoteStats>({ pendingSinceLastSession: 0, acceptedSinceLastSession: 0 });
+  topProducts = signal<TopProduct[]>([]);
+
+  private supabase: SupabaseClient;
+
+  private supabase: SupabaseClient;
+
+  constructor() {
+    this.supabase = createClient(
+      'https://xqpxkxmtykwqnmcxoknr.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxcHhreG10eWt3cW5tY3hva25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjQzMzc5MjUsImV4cCI6MjAzOTkxMzkyNX0.wZQRWcpjv6bCqzz0iNZLMd9stkWxQEYAjIqJ_kFYiLM'
+    );
+  }
 
   ngOnInit(): void {
     this.loadCounts();
+    this.loadQuoteStats();
+    this.loadTopProducts();
   }
 
   private async loadCounts() {
@@ -67,21 +90,45 @@ export class HomeComponent implements OnInit {
       this.customersService.stats$.subscribe(stats => {
         this.stats.set(stats);
       });
-  
-
-      // Products (observable)
-      try {
-        this.productsService.getProducts().subscribe(list => {
-          this.productsCount = Array.isArray(list) ? list.length : 0;
-        }, err => {
-          console.warn('Home: error cargando productos', err);
-        });
-      } catch (err) {
-        console.warn('Home: error cargando productos', err);
-      }
 
     } catch (error) {
       console.error('Home: error en loadCounts', error);
+    }
+  }
+
+  private async loadQuoteStats() {
+    try {
+      const { data: session } = await this.supabase.auth.getSession();
+      if (!session?.session) return;
+
+      const response = await this.supabase.functions.invoke('quotes-stats');
+      if (response.data) {
+        this.quoteStats.set(response.data);
+      }
+    } catch (error) {
+      console.warn('Home: error cargando estadísticas de presupuestos', error);
+    }
+  }
+
+  private async loadTopProducts() {
+    try {
+      const { data: session } = await this.supabase.auth.getSession();
+      if (!session?.session) return;
+
+      const response = await this.supabase.functions.invoke('top-products');
+      if (response.data?.topProducts) {
+        this.topProducts.set(response.data.topProducts);
+      }
+    } catch (error) {
+      console.warn('Home: error cargando top productos', error);
+    }
+  }
+
+  navigateToQuotes(status?: string) {
+    if (status) {
+      this.router.navigate(['/presupuestos'], { queryParams: { status } });
+    } else {
+      this.router.navigate(['/presupuestos']);
     }
   }
 }
