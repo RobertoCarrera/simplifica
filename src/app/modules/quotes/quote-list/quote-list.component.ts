@@ -118,7 +118,7 @@ export class QuoteListComponent implements OnInit {
       const term = this.searchTerm.toLowerCase();
       filtered = filtered.filter(q => {
         const number = formatQuoteNumber(q).toLowerCase();
-        const client = (q.client?.name || q.client_name || '').toLowerCase();
+        const client = (q.client?.business_name || q.client?.name || '').toLowerCase();
         const title = (q.title || '').toLowerCase();
         return number.includes(term) || client.includes(term) || title.includes(term);
       });
@@ -133,7 +133,7 @@ export class QuoteListComponent implements OnInit {
     if (this.dateFilter) {
       const now = new Date();
       filtered = filtered.filter(q => {
-        const quoteDate = new Date(q.created_at || q.issue_date);
+        const quoteDate = new Date(q.quote_date || q.created_at);
         switch (this.dateFilter) {
           case 'today':
             return quoteDate.toDateString() === now.toDateString();

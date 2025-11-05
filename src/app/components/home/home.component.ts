@@ -1,10 +1,11 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router, ActivatedRoute } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { SupabaseCustomersService } from '../../services/supabase-customers.service';
 import { SupabaseTicketsService, TicketStats } from '../../services/supabase-tickets.service';
 import { CustomerStats } from '../../services/supabase-customers.service';
-import { SupabaseClient, createClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClientService } from '../../services/supabase-client.service';
 
 interface QuoteStats {
   pendingSinceLastSession: number;
@@ -28,7 +29,8 @@ export class HomeComponent implements OnInit {
   private customersService = inject(SupabaseCustomersService);
   private ticketsService = inject(SupabaseTicketsService);
   private router = inject(Router);
-  private route = inject(ActivatedRoute);
+  // Use centralized Supabase client to reuse auth session
+  private supabase: SupabaseClient = inject(SupabaseClientService).instance;
 
   customersCount = 0;
   ticketsStats: TicketStats | null = null;
@@ -36,17 +38,6 @@ export class HomeComponent implements OnInit {
   stats = signal<CustomerStats | null>(null);
   quoteStats = signal<QuoteStats>({ pendingSinceLastSession: 0, acceptedSinceLastSession: 0 });
   topProducts = signal<TopProduct[]>([]);
-
-  private supabase: SupabaseClient;
-
-  private supabase: SupabaseClient;
-
-  constructor() {
-    this.supabase = createClient(
-      'https://xqpxkxmtykwqnmcxoknr.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxcHhreG10eWt3cW5tY3hva25yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjQzMzc5MjUsImV4cCI6MjAzOTkxMzkyNX0.wZQRWcpjv6bCqzz0iNZLMd9stkWxQEYAjIqJ_kFYiLM'
-    );
-  }
 
   ngOnInit(): void {
     this.loadCounts();
@@ -78,14 +69,6 @@ export class HomeComponent implements OnInit {
         console.warn('Home: error cargando tickets', err);
       }
 
-      // Services
-      try {
-        const services = await this.servicesService.getServices(undefined as any);
-        this.servicesCount = Array.isArray(services) ? services.length : 0;
-      } catch (err) {
-        console.warn('Home: error cargando servicios', err);
-      }
-  
       // Subscribe to stats
       this.customersService.stats$.subscribe(stats => {
         this.stats.set(stats);
