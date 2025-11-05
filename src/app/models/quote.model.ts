@@ -125,6 +125,15 @@ export interface Quote {
   items?: QuoteItem[];
   // Vinculación a ticket (si aplica)
   ticket_id?: string | null;
+
+  // Recurrencia (para presupuestos recurrentes)
+  recurrence_type?: 'none' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  recurrence_interval?: number; // cada N unidades (por defecto 1)
+  recurrence_day?: number | null; // semanal: 0-6 (Dom=0); mensual/anual: 1-28
+  recurrence_start_date?: string | null; // ISO date
+  recurrence_end_date?: string | null; // ISO date
+  next_run_at?: string | null;
+  last_run_at?: string | null;
 }
 
 export interface QuoteItem {
@@ -220,6 +229,13 @@ export interface CreateQuoteDTO {
   discount_percent?: number;
   // Link to ticket for server-side uniqueness
   ticket_id?: string | null;
+
+  // Recurrencia (opcional)
+  recurrence_type?: 'none' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  recurrence_interval?: number;
+  recurrence_day?: number | null;
+  recurrence_start_date?: string | null;
+  recurrence_end_date?: string | null;
 }
 
 export interface CreateQuoteItemDTO {
@@ -241,6 +257,13 @@ export interface UpdateQuoteDTO {
   valid_until?: string;
   status?: QuoteStatus;
   discount_percent?: number;
+
+  // Recurrencia (opcional)
+  recurrence_type?: 'none' | 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+  recurrence_interval?: number;
+  recurrence_day?: number | null;
+  recurrence_start_date?: string | null;
+  recurrence_end_date?: string | null;
 }
 
 export interface UpdateQuoteItemDTO {

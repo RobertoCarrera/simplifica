@@ -210,6 +210,12 @@ export class SupabaseQuotesService {
         discount_percent: dto.discount_percent || 0,
         status: 'draft',
         created_by: createdBy,
+        // Recurrencia (si se envían campos, se almacenan; por defecto 'none')
+        recurrence_type: (dto as any).recurrence_type ?? 'none',
+        recurrence_interval: (dto as any).recurrence_interval ?? 1,
+        recurrence_day: (dto as any).recurrence_day ?? null,
+        recurrence_start_date: (dto as any).recurrence_start_date ?? null,
+        recurrence_end_date: (dto as any).recurrence_end_date ?? null,
         // ticket_id is optional on DTO; TS may not declare it yet
         ...(dto as any).ticket_id ? { ticket_id: (dto as any).ticket_id } : {}
       })

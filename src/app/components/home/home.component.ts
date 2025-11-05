@@ -8,7 +8,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseClientService } from '../../services/supabase-client.service';
 
 interface QuoteStats {
-  pendingSinceLastSession: number;
+  pendingTotal: number;
   acceptedSinceLastSession: number;
 }
 
@@ -36,7 +36,7 @@ export class HomeComponent implements OnInit {
   ticketsStats: TicketStats | null = null;
   recentTickets: any[] = [];
   stats = signal<CustomerStats | null>(null);
-  quoteStats = signal<QuoteStats>({ pendingSinceLastSession: 0, acceptedSinceLastSession: 0 });
+  quoteStats = signal<QuoteStats>({ pendingTotal: 0, acceptedSinceLastSession: 0 });
   topProducts = signal<TopProduct[]>([]);
 
   ngOnInit(): void {

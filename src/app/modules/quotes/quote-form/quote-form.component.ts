@@ -266,6 +266,12 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       template_id: [null],
       notes: [''],
       terms_conditions: [''],
+      // Recurrencia
+      recurrence_type: ['none'], // none | weekly | monthly | quarterly | yearly
+      recurrence_day: [null],    // semanal: 0-6; mensual/anual: 1-28
+      recurrence_start_date: [null],
+      recurrence_end_date: [null],
+      recurrence_interval: [1],
       items: this.fb.array([this.createItemFormGroup()])
     });
 
@@ -275,6 +281,34 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       // Manejar valores null o cadena 'null' desde el <select>
       if (val && val !== 'null') {
         this.applyTemplate(String(val));
+      }
+    });
+
+    // Reglas de habilitado/limpieza para recurrencia
+    const recTypeCtrl = this.quoteForm.get('recurrence_type');
+    recTypeCtrl?.valueChanges.subscribe((type) => {
+      const dayCtrl = this.quoteForm.get('recurrence_day');
+      const startCtrl = this.quoteForm.get('recurrence_start_date');
+      const endCtrl = this.quoteForm.get('recurrence_end_date');
+      const intervalCtrl = this.quoteForm.get('recurrence_interval');
+
+      if (type === 'none') {
+        dayCtrl?.setValue(null, { emitEvent: false });
+        startCtrl?.setValue(null, { emitEvent: false });
+        endCtrl?.setValue(null, { emitEvent: false });
+        intervalCtrl?.setValue(1, { emitEvent: false });
+      } else if (type === 'weekly') {
+        // por defecto Lunes (1), valores 0-6 con Domingo=0
+        if (dayCtrl?.value === null || dayCtrl?.value === undefined) {
+          dayCtrl?.setValue(1, { emitEvent: false });
+        }
+        intervalCtrl?.setValue(1, { emitEvent: false });
+      } else {
+        // mensual/trimestral/anual -> día del mes (1-28)
+        if (!dayCtrl?.value || dayCtrl?.value < 1) {
+          dayCtrl?.setValue(1, { emitEvent: false });
+        }
+        intervalCtrl?.setValue(1, { emitEvent: false });
       }
     });
   }
@@ -440,7 +474,13 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
           valid_until: quote.valid_until,
           status: quote.status,
           notes: quote.notes || '',
-          terms_conditions: quote.terms_conditions || ''
+          terms_conditions: quote.terms_conditions || '',
+          // Recurrencia
+          recurrence_type: (quote as any).recurrence_type || 'none',
+          recurrence_day: (quote as any).recurrence_day ?? null,
+          recurrence_start_date: (quote as any).recurrence_start_date ?? null,
+          recurrence_end_date: (quote as any).recurrence_end_date ?? null,
+          recurrence_interval: (quote as any).recurrence_interval ?? 1
         });
 
         // Limpiar items actuales
@@ -667,7 +707,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     const formValue = this.quoteForm.value;
 
     // Si estamos en modo edición, actualizar en lugar de crear
-    if (this.editMode() && this.quoteId()) {
+  if (this.editMode() && this.quoteId()) {
       console.log('📝 Actualizando presupuesto existente:', this.quoteId());
       
       // Primero actualizar los campos básicos del presupuesto
@@ -681,7 +721,13 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         // Permitir modificar estado y fechas/cliente si cambia
         status: formValue.status,
         quote_date: formValue.issue_date,
-        client_id: formValue.client_id
+        client_id: formValue.client_id,
+        // Recurrencia
+        recurrence_type: formValue.recurrence_type || 'none',
+        recurrence_interval: formValue.recurrence_interval ?? 1,
+        recurrence_day: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_day ?? null),
+        recurrence_start_date: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_start_date ?? null),
+        recurrence_end_date: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_end_date ?? null)
       };
 
       this.quotesService.updateQuote(this.quoteId()!, updateDto).subscribe({
@@ -744,7 +790,13 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         valid_until: formValue.valid_until,
         notes: formValue.notes,
         terms_conditions: formValue.terms_conditions,
-        items: formValue.items as CreateQuoteItemDTO[]
+        items: formValue.items as CreateQuoteItemDTO[],
+        // Recurrencia
+        recurrence_type: formValue.recurrence_type || 'none',
+        recurrence_interval: formValue.recurrence_interval ?? 1,
+        recurrence_day: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_day ?? null),
+        recurrence_start_date: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_start_date ?? null),
+        recurrence_end_date: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_end_date ?? null)
       };
 
       this.quotesService.createQuote(dto).subscribe({

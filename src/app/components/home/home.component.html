@@ -1,10 +1,4 @@
 <div class="home-container">
-  <header class="home-header">
-    <h1><i class="fas fa-home"></i> Inicio</h1>
-    <p class="subtitle">Resumen del sistema</p>
-  </header>
-
-  <!-- Sección de Clientes - 3 Cards -->
   @if (stats()) {
     <div class="clients-section">
       <h2 class="section-title">
@@ -53,8 +47,37 @@
     </div>
   }
 
+    <h2 class="section-title">
+        <i class="fas fa-users"></i> Presupuestos
+    </h2>
   <!-- Grid de Módulos -->
   <div class="modules-grid">
+    <a (click)="navigateToQuotes('pendiente')" class="module-card card-quotes-pending">
+      <div class="module-icon">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="module-content">
+        <h3>Presupuestos Pendientes</h3>
+        <span class="count">{{ quoteStats().pendingTotal }}</span>
+      </div>
+    </a>
+
+    <a (click)="navigateToQuotes('aceptado')" class="module-card card-quotes-accepted">
+      <div class="module-icon">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <div class="module-content">
+        <h3>Presupuestos Aceptados</h3>
+        <span class="count">{{ quoteStats().acceptedSinceLastSession }}</span>
+        <div class="stats">
+          <span class="stat-item">
+            <i class="fas fa-calendar-check"></i>
+            Desde última sesión
+          </span>
+        </div>
+      </div>
+    </a>
+
     <a routerLink="/tickets" class="module-card card-tickets">
       <div class="module-icon">
         <i class="fas fa-ticket-alt"></i>
@@ -74,38 +97,6 @@
             </span>
           </div>
         }
-      </div>
-    </a>
-
-    <a (click)="navigateToQuotes('pendiente')" class="module-card card-quotes-pending">
-      <div class="module-icon">
-        <i class="fas fa-clock"></i>
-      </div>
-      <div class="module-content">
-        <h3>Presupuestos Pendientes</h3>
-        <span class="count">{{ quoteStats().pendingSinceLastSession }}</span>
-        <div class="stats">
-          <span class="stat-item">
-            <i class="fas fa-calendar-alt"></i>
-            Desde última sesión
-          </span>
-        </div>
-      </div>
-    </a>
-
-    <a (click)="navigateToQuotes('aceptado')" class="module-card card-quotes-accepted">
-      <div class="module-icon">
-        <i class="fas fa-check-circle"></i>
-      </div>
-      <div class="module-content">
-        <h3>Presupuestos Aceptados</h3>
-        <span class="count">{{ quoteStats().acceptedSinceLastSession }}</span>
-        <div class="stats">
-          <span class="stat-item">
-            <i class="fas fa-calendar-check"></i>
-            Desde última sesión
-          </span>
-        </div>
       </div>
     </a>
 

@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 interface QuoteStats {
-  pendingSinceLastSession: number;
+  pendingTotal: number;
   acceptedSinceLastSession: number;
 }
 
@@ -60,13 +60,12 @@ serve(async (req) => {
       throw new Error('Usuario sin compañía asignada');
     }
 
-    // Count pending quotes since last session
-    const { count: pendingCount, error: pendingError } = await supabaseClient
+    // Count pending quotes (total, regardless of last session)
+    const { count: pendingTotal, error: pendingError } = await supabaseClient
       .from('quotes')
       .select('*', { count: 'exact', head: true })
       .eq('company_id', companyId)
-      .in('status', ['draft', 'sent'])
-      .gte('created_at', lastSessionAt.toISOString());
+      .in('status', ['draft', 'sent']);
 
     if (pendingError) throw pendingError;
 
@@ -87,7 +86,7 @@ serve(async (req) => {
       .eq('id', user.id);
 
     const stats: QuoteStats = {
-      pendingSinceLastSession: pendingCount || 0,
+      pendingTotal: pendingTotal || 0,
       acceptedSinceLastSession: acceptedCount || 0,
     };
 
