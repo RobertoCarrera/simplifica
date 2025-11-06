@@ -55,7 +55,7 @@ export class SupabaseSettingsService {
     const token = session?.access_token;
     const res = await fetch(`${this.fnBase}/app-settings`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token ?? ''}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${token ?? ''}`, 'Content-Type': 'application/json', 'apikey': environment.supabase.anonKey },
       body: JSON.stringify({ p_action: 'get_app' })
     });
     const json = await res.json();
@@ -73,7 +73,7 @@ export class SupabaseSettingsService {
     const token = session?.access_token;
     const res = await fetch(`${this.fnBase}/app-settings`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token ?? ''}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${token ?? ''}`, 'Content-Type': 'application/json', 'apikey': environment.supabase.anonKey },
       body: JSON.stringify({ p_action: 'upsert_app', values })
     });
     const json = await res.json();
@@ -94,7 +94,7 @@ export class SupabaseSettingsService {
     const token = session?.access_token;
     const res = await fetch(`${this.fnBase}/app-settings`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token ?? ''}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${token ?? ''}`, 'Content-Type': 'application/json', 'apikey': environment.supabase.anonKey },
       body: JSON.stringify({ p_action: 'get_company', company_id: cid })
     });
     const json = await res.json();
@@ -114,7 +114,7 @@ export class SupabaseSettingsService {
     const token = session?.access_token;
     const res = await fetch(`${this.fnBase}/app-settings`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token ?? ''}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${token ?? ''}`, 'Content-Type': 'application/json', 'apikey': environment.supabase.anonKey },
       body: JSON.stringify({ p_action: 'upsert_company', company_id: cid, values })
     });
     const json = await res.json();

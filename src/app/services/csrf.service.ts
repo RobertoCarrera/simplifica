@@ -64,7 +64,8 @@ export class CsrfService {
    * Fetch a new CSRF token from the backend
    */
   private fetchCsrfToken(): Observable<string> {
-    this.fetchingToken$ = this.http.get<CsrfTokenResponse>(this.csrfEndpoint).pipe(
+    const anonKey = inject(RuntimeConfigService).get().supabase.anonKey;
+    this.fetchingToken$ = this.http.get<CsrfTokenResponse>(this.csrfEndpoint, { headers: { apikey: anonKey } }).pipe(
       tap(response => {
         this.tokenSubject.next(response.csrfToken);
         this.tokenExpiry = Date.now() + response.expiresIn;

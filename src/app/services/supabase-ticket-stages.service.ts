@@ -143,6 +143,7 @@ export class SupabaseTicketStagesService {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
+            'apikey': this.runtimeConfig.get().supabase.anonKey,
           },
         }
       );
@@ -175,6 +176,7 @@ export class SupabaseTicketStagesService {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
+          'apikey': this.runtimeConfig.get().supabase.anonKey,
         },
         body: JSON.stringify({ stage_ids: stageIds })
       });
@@ -292,6 +294,7 @@ export class SupabaseTicketStagesService {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
+          'apikey': this.runtimeConfig.get().supabase.anonKey,
         },
         body: JSON.stringify({ p_stage_id: stageId })
       });
@@ -319,6 +322,7 @@ export class SupabaseTicketStagesService {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
+          'apikey': this.runtimeConfig.get().supabase.anonKey,
         },
         body: JSON.stringify({ p_stage_id: stageId, p_reassign_to: reassignToStageId })
       });
@@ -370,6 +374,7 @@ export class SupabaseTicketStagesService {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
+            'apikey': this.runtimeConfig.get().supabase.anonKey,
           },
           body: JSON.stringify({
             p_stage_id: stageId,
@@ -408,6 +413,7 @@ export class SupabaseTicketStagesService {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
+            'apikey': this.runtimeConfig.get().supabase.anonKey,
           },
           body: JSON.stringify({ p_stage_id: stageId, p_operation: 'hide', p_reassign_to: reassignToStageId })
         }
@@ -443,6 +449,7 @@ export class SupabaseTicketStagesService {
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
             'Content-Type': 'application/json',
+            'apikey': this.runtimeConfig.get().supabase.anonKey,
           },
           body: JSON.stringify({
             p_stage_id: stageId,
@@ -486,6 +493,7 @@ export class SupabaseTicketStagesService {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
+          'apikey': this.runtimeConfig.get().supabase.anonKey,
         },
       });
       const efJson = await efResp.json().catch(() => ({}));

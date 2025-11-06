@@ -923,7 +923,8 @@ export class SupabaseServicesService {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken}`
+              'Authorization': `Bearer ${accessToken}`,
+              'apikey': cfg.get().supabase.anonKey
             },
             body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
           });
@@ -934,7 +935,8 @@ export class SupabaseServicesService {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken}`
+                'Authorization': `Bearer ${accessToken}`,
+                'apikey': cfg.get().supabase.anonKey
               },
               body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
             });
@@ -1101,13 +1103,13 @@ export class SupabaseServicesService {
 
     let resp = await fetch(proxyUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}`, 'apikey': cfg.get().supabase.anonKey },
       body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
     });
     if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
       resp = await fetch(functionUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}`, 'apikey': cfg.get().supabase.anonKey },
         body: JSON.stringify({ rows: payloadRows, upsertCategory: true })
       });
     }

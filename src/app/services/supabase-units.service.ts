@@ -129,7 +129,7 @@ export class SupabaseUnitsService {
     if (!session?.access_token) return { units: [], error: { message: 'No active session' } };
     const resp = await fetch(`${environment.supabase.url}/functions/v1/get-config-units`, {
       method: 'GET',
-      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': environment.supabase.anonKey },
     });
     const json = await resp.json();
     if (!resp.ok) return { units: [], error: json?.error || json };
@@ -142,7 +142,7 @@ export class SupabaseUnitsService {
     if (!session?.access_token) return { error: { message: 'No active session' } };
     const resp = await fetch(`${environment.supabase.url}/functions/v1/hide-unit`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': environment.supabase.anonKey },
       body: JSON.stringify({ p_unit_id: unitId, p_operation: 'hide' })
     });
     const json = await resp.json();
@@ -155,7 +155,7 @@ export class SupabaseUnitsService {
     if (!session?.access_token) return { error: { message: 'No active session' } };
     const resp = await fetch(`${environment.supabase.url}/functions/v1/hide-unit`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': environment.supabase.anonKey },
       body: JSON.stringify({ p_unit_id: unitId, p_operation: 'unhide' })
     });
     const json = await resp.json();

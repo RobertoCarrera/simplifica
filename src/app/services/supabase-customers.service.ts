@@ -1098,9 +1098,10 @@ importFromCSV(file: File): Observable<Customer[]> {
         }
         headers['Authorization'] = `Bearer ${accessToken}`;
 
-        const proxyUrl = '/api/import-customers';
+    const proxyUrl = '/api/import-customers';
   const cfg = inject(RuntimeConfigService).get();
   const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
+    headers['apikey'] = cfg.supabase.anonKey;
 
         let resp = await fetch(proxyUrl, {
           method: 'POST',
@@ -1444,6 +1445,7 @@ importFromCSV(file: File): Observable<Customer[]> {
             throw new Error('No active session found. Please sign in before importing CSV files.');
           }
           headers['Authorization'] = `Bearer ${accessToken}`;
+          headers['apikey'] = cfg.supabase.anonKey;
 
           let resp = await fetch(proxyUrl, {
             method: 'POST',
@@ -1505,6 +1507,7 @@ importFromCSV(file: File): Observable<Customer[]> {
   const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
     const samplePayload = { rows: [{ name: 'DEBUG', surname: 'USER', email: 'debug@example.com' }] };
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    headers['apikey'] = cfg.supabase.anonKey;
     // Try to include auth if available using AuthService-managed client
     let accessToken: string | undefined;
     try {
