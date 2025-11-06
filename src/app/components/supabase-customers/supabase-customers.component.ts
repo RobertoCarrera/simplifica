@@ -1526,10 +1526,10 @@ onMappingConfirmed(mappings: any[]): void {
   // Prevent Escape key from closing the customer modal unintentionally.
   // Some global handlers may close modals on Escape; intercept it while our modal is open.
   @HostListener('document:keydown.escape', ['$event'])
-  onEscape(event: KeyboardEvent) {
+  onEscape(event: any) {
     if (this.showForm()) {
       // Stop propagation so global listeners don't close the modal.
-      event.stopPropagation();
+      if (event?.stopPropagation) event.stopPropagation();
       // Intentionally do not call closeForm() so only explicit UI actions close the modal.
     }
   }

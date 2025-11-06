@@ -80,7 +80,7 @@ export class ResponsiveLayoutComponent {
   isMobile = signal(false);
 
   @HostListener('window:resize', ['$event'])
-  onResize() {
+  onResize(_event: Event) {
     this.updateMobileStatus();
   }
 

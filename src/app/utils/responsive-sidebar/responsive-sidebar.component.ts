@@ -5,6 +5,7 @@ import { PWAService } from '../../services/pwa.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
 import { DevRoleService } from '../../services/dev-role.service';
 import { AuthService } from '../../services/auth.service';
+import { SupabaseModulesService, EffectiveModule } from '../../services/supabase-modules.service';
 
 interface MenuItem {
   id: number;
@@ -339,6 +340,10 @@ export class ResponsiveSidebarComponent implements OnInit {
   private router = inject(Router);
   private devRoleService = inject(DevRoleService);
   authService = inject(AuthService); // Hacer público para usar en template
+  private modulesService = inject(SupabaseModulesService);
+
+  // Server-side modules allowed for this user
+  private _allowedModuleKeys = signal<Set<string> | null>(null);
 
   // Local state
   private _activeItem = signal(1);
@@ -481,6 +486,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     const isAdmin = userRole === 'admin';
     const isClient = userRole === 'client';
     const isDev = this.devRoleService.isDev();
+    const allowed = this._allowedModuleKeys();
 
     console.log('🔍 Menu filtering - Real user role:', userRole, 'Is adminOnly:', isAdmin, 'Is dev:', isDev);
 
@@ -495,7 +501,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     // Client role: show Tickets, Presupuestos (client portal), Configuración
     if (isClient) {
       // Mostrar módulo de facturas en modo desarrollo únicamente (isDev)
-      const clientMenu: MenuItem[] = [
+      let clientMenu: MenuItem[] = [
         { id: 2001, label: 'Tickets', icon: 'confirmation_number', route: '/tickets', module: 'production' },
         { id: 2002, label: 'Presupuestos', icon: 'description', route: '/portal/presupuestos', module: 'production' },
         { id: 2003, label: 'Configuración', icon: 'settings', route: '/configuracion', module: 'core' }
@@ -506,6 +512,10 @@ export class ResponsiveSidebarComponent implements OnInit {
         clientMenu.splice(2, 0, { id: 2004, label: 'Facturas', icon: 'receipt_long', route: '/portal/facturas', module: 'development' });
       }
 
+      // Si tenemos módulos efectivos, filtrar también por ellos
+      if (allowed) {
+        clientMenu = clientMenu.filter(item => this.isMenuItemAllowedByModules(item, allowed));
+      }
       return clientMenu;
     }
 
@@ -518,8 +528,11 @@ export class ResponsiveSidebarComponent implements OnInit {
         return true;
       }
       
-      // Production modules for everyone
-      if (item.module === 'production') return true;
+      // Production modules: requieren verificación contra módulos efectivos si hay
+      if (item.module === 'production') {
+        if (!allowed) return true; // mientras cargan, mostramos por defecto
+        return this.isMenuItemAllowedByModules(item, allowed);
+      }
       
   // Development modules only for admin (o señal dev explícita)
   if (item.module === 'development') return isAdmin || isDev;
@@ -537,10 +550,22 @@ export class ResponsiveSidebarComponent implements OnInit {
       // Restore collapsed state from localStorage
       this.sidebarState.loadSavedState();
     }
+
+    // Cargar módulos efectivos (server-side) y construir set de claves permitidas
+    this.modulesService.fetchEffectiveModules().subscribe({
+      next: (mods: EffectiveModule[]) => {
+        const allowed = new Set<string>(mods.filter(m => m.enabled).map(m => m.key));
+        this._allowedModuleKeys.set(allowed);
+      },
+      error: (e) => {
+        console.warn('No se pudieron cargar los módulos efectivos:', e);
+        this._allowedModuleKeys.set(null);
+      }
+    });
   }
 
   @HostListener('window:resize', ['$event'])
-  onResize() {
+  onResize(_event: Event) {
     if (this.isMobile()) {
       this.sidebarState.setCollapsed(false);
       this.sidebarState.setOpen(false);
@@ -622,5 +647,29 @@ export class ResponsiveSidebarComponent implements OnInit {
     } catch (error) {
       console.error('Error durante logout:', error);
     }
+  }
+
+  // Mapear rutas a claves de módulo (ajustar si cambian rutas)
+  private routeToModuleKey(route: string): string | null {
+    switch (route) {
+      case '/presupuestos':
+      case '/portal/presupuestos':
+        return 'moduloPresupuestos';
+      case '/servicios':
+        return 'moduloServicios';
+      case '/productos':
+        return 'moduloMaterial';
+      case '/facturacion':
+      case '/portal/facturas':
+        return 'moduloFacturas';
+      default:
+        return null; // elementos sin control por módulo
+    }
+  }
+
+  private isMenuItemAllowedByModules(item: MenuItem, allowed: Set<string>): boolean {
+    const key = this.routeToModuleKey(item.route);
+    if (!key) return true; // no requiere gating
+    return allowed.has(key);
   }
 }

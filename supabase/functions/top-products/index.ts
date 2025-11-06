@@ -49,34 +49,41 @@ serve(async (req) => {
       throw new Error('Usuario sin compañía asignada');
     }
 
-    // Get all invoice items for the company
-    // We'll aggregate by product_id from invoice_items
+    // Fetch paid invoices for the company
     const { data: invoices, error: invoicesError } = await supabaseClient
       .from('invoices')
-      .select('id, items')
+      .select('id')
       .eq('company_id', companyId)
       .eq('status', 'paid'); // Only paid invoices
 
     if (invoicesError) throw invoicesError;
 
-    // Aggregate products
+    if (!invoices || invoices.length === 0) {
+      return new Response(JSON.stringify({ topProducts: [] }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
+
+    // Retrieve line items from invoice_items table for the selected invoices
+    const invoiceIds = invoices.map((i: any) => i.id);
+    // Chunk to avoid overly long URL (PostgREST supports up to some length)
+    const chunkSize = 200;
     const productMap = new Map<string, { name: string; quantity: number }>();
+    for (let i = 0; i < invoiceIds.length; i += chunkSize) {
+      const chunk = invoiceIds.slice(i, i + chunkSize);
+      const { data: items, error: itemsError } = await supabaseClient
+        .from('invoice_items')
+        .select('product_id,name,quantity,description,invoice_id')
+        .in('invoice_id', chunk);
+      if (itemsError) throw itemsError;
 
-    for (const invoice of invoices || []) {
-      const items = (invoice.items || []) as any[];
-      for (const item of items) {
-        const prodId = item.product_id;
-        const prodName = item.name || item.description || 'Producto sin nombre';
-        const qty = Number(item.quantity) || 0;
-
-        if (prodId) {
-          const existing = productMap.get(prodId);
-          if (existing) {
-            existing.quantity += qty;
-          } else {
-            productMap.set(prodId, { name: prodName, quantity: qty });
-          }
-        }
+      for (const it of items || []) {
+        const prodId = it.product_id || `name:${it.name || it.description || 'Producto sin nombre'}`;
+        const prodName = it.name || it.description || 'Producto sin nombre';
+        const qty = Number(it.quantity) || 0;
+        const prev = productMap.get(prodId);
+        if (prev) prev.quantity += qty; else productMap.set(prodId, { name: prodName, quantity: qty });
       }
     }
 
