@@ -1,7 +1,7 @@
-const CACHE_NAME = 'simplifica-crm-v2.0';
-const STATIC_CACHE = 'simplifica-static-v2.0';
-const DYNAMIC_CACHE = 'simplifica-dynamic-v2.0';
-const API_CACHE = 'simplifica-api-v2.0';
+const CACHE_NAME = 'simplifica-crm-v2.1';
+const STATIC_CACHE = 'simplifica-static-v2.1';
+const DYNAMIC_CACHE = 'simplifica-dynamic-v2.1';
+const API_CACHE = 'simplifica-api-v2.1';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -75,6 +75,12 @@ self.addEventListener('fetch', event => {
 
   // Skip non-GET requests
   if (request.method !== 'GET') {
+    return;
+  }
+
+  // Always bypass cache for runtime config to avoid stale Supabase keys
+  if (url.pathname === '/assets/runtime-config.json') {
+    event.respondWith(fetch(new Request(request, { cache: 'no-store' })));
     return;
   }
 

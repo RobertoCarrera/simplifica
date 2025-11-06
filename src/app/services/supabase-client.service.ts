@@ -15,6 +15,15 @@ export class SupabaseClientService {
   constructor() {
     // Derive a unique storage key per Supabase project to avoid cross-app lock collisions
     const rc = this.cfg.get();
+    try {
+      const redactedKey = (rc.supabase.anonKey || '').toString();
+      const preview = redactedKey
+        ? `${redactedKey.slice(0, 6)}…${redactedKey.slice(-4)}`
+        : '(empty)';
+      console.info('[SupabaseClientService] Using Supabase URL:', rc.supabase.url);
+      console.info('[SupabaseClientService] Using Supabase anon/publishable key (redacted):', preview);
+      ;(globalThis as any).__SUPABASE_CFG__ = { url: rc.supabase.url, anonKeyPreview: preview };
+    } catch { /* noop */ }
     const projectRef = (() => {
       try {
         const host = new URL(rc.supabase.url).host; // e.g., ufutyj...supabase.co
