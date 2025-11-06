@@ -65,4 +65,25 @@ export class SupabaseModulesService {
     if (!res.ok) throw new Error(json?.error || 'No se pudo actualizar el módulo del usuario');
     return { success: true };
   }
+
+  // Admin list matrix of users, modules and assignments
+  adminListUserModules(): Observable<{ users: any[]; modules: any[]; assignments: any[] }> {
+    return from(this.executeAdminListUserModules());
+  }
+
+  private async executeAdminListUserModules(): Promise<{ users: any[]; modules: any[]; assignments: any[] }> {
+    const client = this.supabaseClient.instance;
+    const { data: { session } } = await client.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(`${this.fnBase}/admin-list-user-modules`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token ?? ''}`,
+        'apikey': environment.supabase.anonKey,
+      }
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error || 'No se pudo obtener la matriz de módulos por usuario');
+    return { users: json?.users || [], modules: json?.modules || [], assignments: json?.assignments || [] };
+  }
 }

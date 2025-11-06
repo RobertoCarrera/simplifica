@@ -46,6 +46,7 @@ import { PortalQuotesComponent } from './components/portal-quotes/portal-quotes.
 import { PortalInvoicesComponent } from './components/portal-invoices/portal-invoices.component';
 import { PortalInvoiceDetailComponent } from './components/portal-invoice-detail/portal-invoice-detail.component';
 import { PortalQuoteDetailComponent } from './components/portal-quote-detail/portal-quote-detail.component';
+import { ModulesAdminComponent } from './components/modules-admin/modules-admin.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -64,6 +65,8 @@ export const routes: Routes = [
     {path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full'},
     {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    // Admin modules management (solo admin)
+    {path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard]},
     // Client portal admin (owner/admin only)
     {path: 'empresa/portal-clientes', component: ClientPortalAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     // Ruta de invitaciones eliminada (modelo de auto-registro activo)

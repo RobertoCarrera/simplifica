@@ -52,6 +52,7 @@
     </h2>
   <!-- Grid de Módulos -->
   <div class="modules-grid">
+    @if (hasModule('moduloPresupuestos')) {
     <a (click)="navigateToQuotes('pendiente')" class="module-card card-quotes-pending">
       <div class="module-icon">
         <i class="fas fa-clock"></i>
@@ -77,6 +78,7 @@
         </div>
       </div>
     </a>
+    }
 
     <a routerLink="/tickets" class="module-card card-tickets">
       <div class="module-icon">
@@ -100,6 +102,7 @@
       </div>
     </a>
 
+    @if (hasModule('moduloMaterial')) {
     <a routerLink="/productos" class="module-card card-products">
       <div class="module-icon">
         <i class="fas fa-star"></i>
@@ -127,6 +130,7 @@
         }
       </div>
     </a>
+    }
   </div>
 
   <!-- Últimos Tickets -->

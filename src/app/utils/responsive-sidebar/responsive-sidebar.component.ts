@@ -15,7 +15,7 @@ interface MenuItem {
   badge?: number;
   children?: MenuItem[];
   module?: string;
-  roleOnly?: 'ownerAdmin';
+  roleOnly?: 'ownerAdmin' | 'adminOnly';
 }
 
 @Component({
@@ -96,7 +96,8 @@ interface MenuItem {
 
   <!-- Navigation -->
   <nav class="flex-1 px-2 py-4 space-y-1 bg-white dark:bg-gray-800 overflow-y-auto overflow-x-hidden">
-        @for (item of menuItems(); track item.id) {
+    @if (isModulesLoaded()) {
+    @for (item of menuItems(); track item.id) {
           <!-- Main menu item -->
           <div class="relative">
               <a
@@ -187,6 +188,10 @@ interface MenuItem {
               </div>
             }
           </div>
+        }
+        } @else {
+          <!-- Loading state to avoid initial flicker while modules are fetched -->
+          <div class="text-xs text-gray-400 px-3 py-2 select-none">Cargando menú…</div>
         }
       </nav>
 
@@ -344,6 +349,8 @@ export class ResponsiveSidebarComponent implements OnInit {
 
   // Server-side modules allowed for this user
   private _allowedModuleKeys = signal<Set<string> | null>(null);
+  // Loaded flag derived from allowed set presence
+  readonly isModulesLoaded = computed(() => this._allowedModuleKeys() !== null);
 
   // Local state
   private _activeItem = signal(1);
@@ -476,6 +483,14 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/configuracion',
       module: 'core'
     },
+    {
+      id: 45,
+      label: 'Gestión Módulos',
+      icon: 'auto_awesome',
+      route: '/admin/modulos',
+      module: 'core',
+      roleOnly: 'adminOnly'
+    },
     // Empresa y Ayuda se integran en Configuración para simplificar el menú
   ];
 
@@ -524,6 +539,9 @@ export class ResponsiveSidebarComponent implements OnInit {
       if (item.module === 'core') {
         if (item.roleOnly === 'ownerAdmin') {
           return userRole === 'owner' || userRole === 'admin';
+        }
+        if (item.roleOnly === 'adminOnly') {
+          return userRole === 'admin';
         }
         return true;
       }

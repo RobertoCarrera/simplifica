@@ -14,6 +14,7 @@ import { HelpComponent } from '../help/help.component';
 import { ToastService } from '../../services/toast.service';
 import { UserModulesService, type UserModule, type ModuleStatus } from '../../services/user-modules.service';
 import { SupabaseSettingsService, type AppSettings, type CompanySettings } from '../../services/supabase-settings.service';
+import { SupabaseModulesService, type EffectiveModule } from '../../services/supabase-modules.service';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -50,7 +51,11 @@ export class ConfiguracionComponent implements OnInit {
   devMessages: Array<{type: string, text: string, timestamp: Date}> = [];
   private supabase: SupabaseClient;
   // User modules state
-  private userModules: UserModule[] = [];
+  public userModules: UserModule[] = [];
+  // Modules diagnostics
+  effectiveModules: EffectiveModule[] | null = null;
+  allowedModuleKeysSet: Set<string> | null = null;
+  modulesDiagnosticsLoading = false;
   // Settings forms
   appSettingsForm: FormGroup;
   companySettingsForm: FormGroup;
@@ -66,6 +71,8 @@ export class ConfiguracionComponent implements OnInit {
     private toast: ToastService,
     private userModulesService: UserModulesService,
     private settingsService: SupabaseSettingsService
+    ,
+    private modulesService: SupabaseModulesService
   ) {
     this.supabase = this.sbClient.instance;
     this.profileForm = this.fb.group({
@@ -120,6 +127,8 @@ export class ConfiguracionComponent implements OnInit {
     this.loadUserProfile();
     this.loadUnits();
     this.loadUserModules();
+    this.loadModulesCatalog();
+    this.loadModulesDiagnostics();
     this.loadSettings();
   }
 
@@ -388,34 +397,79 @@ export class ConfiguracionComponent implements OnInit {
     }
   }
 
-  // Devuelve una lista ordenada de módulos conocidos con su estado (activo/inactivo)
+  // Catálogo de módulos (labels) y estado desde user_modules (override explícito)
+  private _modulesCatalog: Array<{ key: string; name: string }> | null = null;
+
+  // Devuelve lista basada en tabla modules_catalog y estado según user_modules
   get modulesList(): Array<{ key: string; label: string; status: ModuleStatus }> {
-    const statusByKey: Record<string, ModuleStatus> = {};
-    for (const um of this.userModules) {
+    const catalog = this._modulesCatalog || [];
+    const statusByKey: Record<string, ModuleStatus> = {} as any;
+    for (const um of (this.userModules || [])) {
       statusByKey[um.module_key] = um.status;
     }
-
-    const known = [
-      { key: 'moduloFacturas', label: 'Facturación' },
-      { key: 'moduloPresupuestos', label: 'Presupuestos' },
-      { key: 'moduloServicios', label: 'Servicios' },
-      { key: 'moduloMaterial', label: 'Material' }
-    ];
-
-    return known.map(m => ({
+    return catalog.map(m => ({
       key: m.key,
-      label: m.label,
+      label: m.name,
+      // Si no hay fila en user_modules, mostrar Desactivado (según petición)
       status: statusByKey[m.key] || 'desactivado'
     }));
+  }
+
+  // Carga el catálogo activo de módulos (labels dinámicos)
+  private async loadModulesCatalog() {
+    try {
+      const { data, error } = await this.supabase
+        .from('modules')
+        .select('key,name')
+        .eq('is_active', true)
+        .order('position', { ascending: true });
+      if (error) throw error;
+      this._modulesCatalog = (data || []).map((d: any) => ({ key: d.key, name: d.name }));
+    } catch (e) {
+      console.warn('No se pudo cargar modules catalog', e);
+      this._modulesCatalog = [
+        { key: 'moduloFacturas', name: 'Facturación' },
+        { key: 'moduloPresupuestos', name: 'Presupuestos' },
+        { key: 'moduloServicios', name: 'Servicios' },
+        { key: 'moduloMaterial', name: 'Material' }
+      ];
+    }
   }
 
   private async loadUserModules() {
     try {
       // Cargar estados de módulos del usuario actual
       this.userModules = await this.userModulesService.listForCurrentUser();
+      // keep modules diagnostics up-to-date if already loaded
+      if (this.effectiveModules && !this.allowedModuleKeysSet) {
+        this.allowedModuleKeysSet = new Set(this.effectiveModules.filter(m => m.enabled).map(m => m.key));
+      }
     } catch (e) {
       console.warn('No se pudieron cargar módulos del usuario:', e);
     }
+  }
+
+  // Load effective modules from server and compute allowed keys set
+  loadModulesDiagnostics() {
+    this.modulesDiagnosticsLoading = true;
+    this.modulesService.fetchEffectiveModules().subscribe({
+      next: (mods: EffectiveModule[]) => {
+        this.effectiveModules = mods;
+        this.allowedModuleKeysSet = new Set(mods.filter(m => m.enabled).map(m => m.key));
+        this.modulesDiagnosticsLoading = false;
+      },
+      error: (err) => {
+        console.warn('Error cargando módulos efectivos:', err);
+        this.effectiveModules = null;
+        this.allowedModuleKeysSet = new Set(); // mark as loaded but no permissions
+        this.modulesDiagnosticsLoading = false;
+      }
+    });
+  }
+
+  // Expose allowed keys as array for template consumption
+  get allowedModuleKeysArray(): string[] | null {
+    return this.allowedModuleKeysSet ? Array.from(this.allowedModuleKeysSet) : null;
   }
 
   // ===============================

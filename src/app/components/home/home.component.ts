@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { SupabaseCustomersService } from '../../services/supabase-customers.service';
@@ -6,6 +6,7 @@ import { SupabaseTicketsService, TicketStats } from '../../services/supabase-tic
 import { CustomerStats } from '../../services/supabase-customers.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseClientService } from '../../services/supabase-client.service';
+import { SupabaseModulesService } from '../../services/supabase-modules.service';
 
 interface QuoteStats {
   pendingTotal: number;
@@ -31,6 +32,7 @@ export class HomeComponent implements OnInit {
   private router = inject(Router);
   // Use centralized Supabase client to reuse auth session
   private supabase: SupabaseClient = inject(SupabaseClientService).instance;
+  private modulesService = inject(SupabaseModulesService);
 
   customersCount = 0;
   ticketsStats: TicketStats | null = null;
@@ -38,11 +40,24 @@ export class HomeComponent implements OnInit {
   stats = signal<CustomerStats | null>(null);
   quoteStats = signal<QuoteStats>({ pendingTotal: 0, acceptedSinceLastSession: 0 });
   topProducts = signal<TopProduct[]>([]);
+  // Allowed modules for gating Home cards (null while loading)
+  private allowedModuleKeys = computed<Set<string> | null>(() => {
+    const mods = this.modulesService.modulesSignal();
+    if (!mods) return null;
+    return new Set<string>(mods.filter(m => m.enabled).map(m => m.key));
+  });
 
   ngOnInit(): void {
     this.loadCounts();
     this.loadQuoteStats();
     this.loadTopProducts();
+    // Ensure modules are loaded at least once to gate Home cards
+    if (!this.modulesService.modulesSignal()) {
+      this.modulesService.fetchEffectiveModules().subscribe({
+        next: () => {},
+        error: () => {}
+      });
+    }
   }
 
   private async loadCounts() {
@@ -113,5 +128,11 @@ export class HomeComponent implements OnInit {
     } else {
       this.router.navigate(['/presupuestos']);
     }
+  }
+
+  // Module gating helper: returns true only if module is enabled and loaded
+  hasModule(key: string): boolean {
+    const set = this.allowedModuleKeys();
+    return !!set && set.has(key);
   }
 }
