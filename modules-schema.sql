@@ -1,42 +1,43 @@
 -- Modules catalog for server-side feature flags
 -- Run this SQL in your Supabase database
 
-create table if not exists public.modules (
-  id uuid primary key default gen_random_uuid(),
-  key text not null unique,
-  name text not null,
-  description text,
-  category text,
-  position integer not null default 0,
-  enabled_by_default boolean not null default false,
-  is_active boolean not null default true,
-  plan_required text,
-  price numeric,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+CREATE TABLE IF NOT EXISTS public.modules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  description TEXT,
+  category TEXT,
+  position INTEGER NOT NULL DEFAULT 0,
+  enabled_by_default BOOLEAN NOT NULL DEFAULT false,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  plan_required TEXT,
+  price NUMERIC,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS and allow read for authenticated; service role unrestricted
-alter table public.modules enable row level security;
-create policy if not exists modules_select_active
-  on public.modules for select
-  using (is_active = true or auth.role() = 'service_role');
+-- Enable RLS
+ALTER TABLE public.modules ENABLE ROW LEVEL SECURITY;
 
--- Optional: ensure (user_id, module_key) uniqueness on user_modules
--- Uncomment if you want to prevent duplicates
--- alter table public.user_modules add constraint user_modules_user_key_unique unique (user_id, module_key);
+-- Drop policy if exists (idempotent)
+DROP POLICY IF EXISTS modules_select_active ON public.modules;
 
--- Seed basic modules (adjust to your needs)
-insert into public.modules (key, name, description, category, position, enabled_by_default, is_active) values
-  ('moduloPresupuestos', 'Presupuestos', 'Gestión de presupuestos', 'ventas', 10, true, true)
-, ('moduloServicios', 'Servicios', 'Catálogo de servicios', 'ventas', 20, true, true)
-, ('moduloMaterial', 'Material/Productos', 'Gestión de productos y material', 'inventario', 30, true, true)
-, ('moduloFacturas', 'Facturación', 'Emitir y gestionar facturas', 'facturacion', 40, false, true)
-ON CONFLICT (key) DO UPDATE set
-  name = excluded.name,
-  description = excluded.description,
-  category = excluded.category,
-  position = excluded.position,
-  enabled_by_default = excluded.enabled_by_default,
-  is_active = excluded.is_active,
+-- Create policy: authenticated users see active modules; service role sees all
+CREATE POLICY modules_select_active
+  ON public.modules FOR SELECT
+  USING (is_active = true OR auth.role() = 'service_role');
+
+-- Seed basic modules (idempotent with ON CONFLICT)
+INSERT INTO public.modules (key, name, description, category, position, enabled_by_default, is_active) VALUES
+  ('moduloPresupuestos', 'Presupuestos', 'Gestión de presupuestos', 'ventas', 10, true, true),
+  ('moduloServicios', 'Servicios', 'Catálogo de servicios', 'ventas', 20, true, true),
+  ('moduloMaterial', 'Material/Productos', 'Gestión de productos y material', 'inventario', 30, true, true),
+  ('moduloFacturas', 'Facturación', 'Emitir y gestionar facturas', 'facturacion', 40, false, true)
+ON CONFLICT (key) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  category = EXCLUDED.category,
+  position = EXCLUDED.position,
+  enabled_by_default = EXCLUDED.enabled_by_default,
+  is_active = EXCLUDED.is_active,
   updated_at = now();
