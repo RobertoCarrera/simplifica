@@ -16,6 +16,12 @@
   ],
   "routes": [
     {
+      "src": "/assets/runtime-config.json",
+      "headers": {
+        "cache-control": "no-store, no-cache, must-revalidate, proxy-revalidate"
+      }
+    },
+    {
       "src": "/api/import-services",
       "methods": ["OPTIONS", "POST", "GET"],
       "dest": "/api/import-services.ts"

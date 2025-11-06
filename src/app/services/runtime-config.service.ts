@@ -22,8 +22,10 @@ export class RuntimeConfigService {
 
   async load(): Promise<void> {
     try {
+      // Add a cache-buster to avoid CDN caching old keys after rotations/deploys
+      const cacheBuster = `ts=${Date.now()}`;
       const cfg = await this.http
-        .get<RuntimeConfig>('/assets/runtime-config.json', { withCredentials: false })
+        .get<RuntimeConfig>(`/assets/runtime-config.json?${cacheBuster}`, { withCredentials: false })
         .toPromise();
       // Defaults from compile-time environment for local/dev, or as fallback
       const defaults: RuntimeConfig = {
