@@ -5,7 +5,6 @@ import { PwaInstallComponent } from './components/pwa-install/pwa-install.compon
 import { MobileStatusComponent } from './components/mobile-status/mobile-status.component';
 import { DevNavComponent } from './components/dev-nav/dev-nav.component';
 import { ToastService } from './services/toast.service';
-import { NotificationService } from './services/notification.service';
 import { PWAService } from './services/pwa.service';
 import { DevRoleService } from './services/dev-role.service';
 import { CommonModule } from '@angular/common';
@@ -31,7 +30,6 @@ import { CommonModule } from '@angular/common';
 export class AppComponent {
   title = 'simplifica';
   private toastService = inject(ToastService);
-  private notificationService = inject(NotificationService);
   pwaService = inject(PWAService);
   devRoleService = inject(DevRoleService);
 

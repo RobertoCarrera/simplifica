@@ -32,6 +32,18 @@ export class SupabaseClientService {
         return 'default';
       }
     })();
+    // Optional sanity check: ensure anon key belongs to the same project as URL
+    try {
+      const parts = (rc.supabase.anonKey || '').split('.');
+      if (parts.length >= 2) {
+        const payload = JSON.parse(atob(parts[1]));
+        const keyRef = payload?.ref || payload?.project_id || payload?.iss?.split('/')?.pop();
+        if (keyRef && typeof keyRef === 'string' && !projectRef.startsWith('default') && keyRef !== projectRef) {
+          console.error('[SupabaseClientService] Mismatch between SUPABASE_URL project ref and anon key:', { urlRef: projectRef, keyRef });
+          console.error('This will cause 401 Invalid API key. Ensure the runtime config uses matching URL and publishable (anon) key from the same Supabase project.');
+        }
+      }
+    } catch { /* ignore decode errors */ }
     const storageKey = `sb-${projectRef}-auth-token`;
 
     // Migrate any previous hostname-suffixed session to the canonical key if needed
