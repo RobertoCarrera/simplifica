@@ -1,0 +1,68 @@
+/* Styles extracted from inline component styles to a dedicated SCSS file */
+.router-link-active {
+  @apply bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-r-2 border-blue-500;
+}
+
+/* Forzar sidebar fija con CSS puro */
+:host {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  height: 100vh !important;
+  z-index: 1000 !important;
+  transition: width 0.3s ease !important;
+  overflow: visible !important;
+}
+
+:host(.collapsed) {
+  width: 4rem !important; /* 64px = w-16 */
+}
+
+:host(.expanded) {
+  width: 16rem !important; /* 256px = w-64 */
+}
+
+:host(.mobile-hidden) {
+  transform: translateX(-100%) !important;
+}
+
+:host(.mobile-visible) {
+  transform: translateX(0) !important;
+}
+
+/* Prevent horizontal scroll from long labels when collapsed */
+:host(.collapsed) nav {
+  overflow-x: hidden !important;
+}
+
+/* Truncate labels and hide them visually when collapsed */
+:host(.collapsed) .truncate {
+  max-width: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  display: inline-block !important;
+  transform: translateX(-4px);
+}
+
+/* Ensure collapsed items have reduced padding so no overflow */
+:host(.collapsed) a {
+  padding-left: 0.5rem !important; /* px-2 */
+  padding-right: 0.5rem !important;
+}
+
+/* Small expand button visibility when collapsed */
+:host(.collapsed) .sidebar-expand-btn {
+  display: flex !important;
+}
+
+:host(:not(.collapsed)) .sidebar-expand-btn {
+  display: none !important;
+}
+
+/* Make sure the expand button is visible outside the sidebar edge */
+.sidebar-expand-btn {
+  right: -12px; /* nudge outside the sidebar */
+  top: 50px;
+  box-shadow: 0 6px 16px rgba(15,23,42,0.12);
+  z-index: 1100;
+}

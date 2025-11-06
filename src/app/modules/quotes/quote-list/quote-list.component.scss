@@ -1,1 +1,82 @@
-/* Estilos personalizados si son necesarios - usando Tailwind CSS */
+/* Optimización de viewport y scroll para quote-list */
+
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+// Asegurar que el contenedor principal ocupa todo el viewport disponible
+.h-full {
+  height: 100%;
+}
+
+// Mejorar scrollbar en desktop
+@media (min-width: 768px) {
+  .overflow-auto {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(156 163 175) transparent;
+    
+    &::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background-color: rgb(156 163 175);
+      border-radius: 4px;
+      
+      &:hover {
+        background-color: rgb(107 114 128);
+      }
+    }
+  }
+  
+  // Dark mode scrollbar
+  :host-context(.dark) .overflow-auto {
+    scrollbar-color: rgb(75 85 99) transparent;
+    
+    &::-webkit-scrollbar-thumb {
+      background-color: rgb(75 85 99);
+      
+      &:hover {
+        background-color: rgb(107 114 128);
+      }
+    }
+  }
+}
+
+// Animaciones suaves para las tarjetas móviles
+@media (max-width: 767px) {
+  .bg-white.dark\:bg-gray-800 {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+}
+
+// Asegurar que la tabla no cause scroll horizontal innecesario
+table {
+  min-width: 100%;
+  
+  th, td {
+    white-space: nowrap;
+    
+    &:nth-child(3) { // Columna Título
+      max-width: 300px;
+      white-space: normal;
+      word-break: break-word;
+      
+      @media (max-width: 1280px) {
+        max-width: 200px;
+      }
+    }
+  }
+}

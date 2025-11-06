@@ -33,6 +33,8 @@ export class QuoteDetailComponent implements OnInit {
   loading = signal(true);
   error = signal<string | null>(null);
   sendingEmail = signal(false);
+  mobileMenuOpen = signal(false);
+  historyExpanded = signal(false);
   
 
   QuoteStatus = QuoteStatus;
@@ -345,6 +347,17 @@ export class QuoteDetailComponent implements OnInit {
   backToList() {
     this.router.navigate(['/presupuestos']);
   }
-}
 
+  toggleMobileMenu() {
+    this.mobileMenuOpen.set(!this.mobileMenuOpen());
+  }
+
+  closeMobileMenu() {
+    this.mobileMenuOpen.set(false);
+  }
+
+  toggleHistory() {
+    this.historyExpanded.set(!this.historyExpanded());
+  }
+}
 
