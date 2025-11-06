@@ -76,8 +76,14 @@ serve(async (req) => {
     if (meRes.error || !me?.company_id || me.active === false) {
       return new Response(JSON.stringify({ error: 'User not associated/active' }), { status: 400, headers: corsHeaders });
     }
-    if (me.role !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Forbidden: only admin can manage modules' }), { status: 403, headers: corsHeaders });
+    // Allowed admin roles list (env override) e.g. "admin,superadmin"
+    const allowedRoles = (Deno.env.get('PLATFORM_ADMIN_ROLES') || 'admin,superadmin')
+      .split(',')
+      .map(r => r.trim().toLowerCase())
+      .filter(Boolean);
+    const myRole = String(me.role).toLowerCase();
+    if (!allowedRoles.includes(myRole)) {
+      return new Response(JSON.stringify({ error: 'Forbidden: admin role required' }), { status: 403, headers: corsHeaders });
     }
 
     const body = await req.json().catch(() => null) as { target_user_id?: string, module_key?: string, status?: string } | null;
@@ -89,14 +95,19 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Invalid status' }), { status: 400, headers: corsHeaders });
     }
 
-    // Verify target user belongs to same company
+    // Verify target user exists. If not found -> 404
     const tgtRes = await supabaseAdmin
       .from('users')
       .select('id, company_id')
       .eq('id', body.target_user_id)
-      .single();
-    const target = tgtRes.data;
-    if (tgtRes.error || !target?.company_id || target.company_id !== me.company_id) {
+      .maybeSingle();
+    if (!tgtRes.data?.id) {
+      return new Response(JSON.stringify({ error: 'Target user not found' }), { status: 404, headers: corsHeaders });
+    }
+    // Optional restriction: If env PLATFORM_STRICT_SAME_COMPANY === 'true' then enforce same company for non-superadmin
+    const strictSameCompany = (Deno.env.get('PLATFORM_STRICT_SAME_COMPANY') || 'false').toLowerCase() === 'true';
+    const isSuperAdmin = myRole === 'superadmin';
+    if (strictSameCompany && !isSuperAdmin && tgtRes.data.company_id !== me.company_id) {
       return new Response(JSON.stringify({ error: 'Forbidden: user not in same company' }), { status: 403, headers: corsHeaders });
     }
 

@@ -1,140 +1,160 @@
 <div class="home-container">
-  @if (stats()) {
-    <div class="clients-section">
-      <h2 class="section-title">
-        <i class="fas fa-users"></i> Clientes
-      </h2>
-      <div class="clients-grid">
-        <a routerLink="/clientes" class="client-card card-total">
-          <div class="card-icon-wrapper">
-            <div class="card-icon">
-              <i class="fas fa-users"></i>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="card-value">{{ stats()?.total || 0 }}</div>
-            <div class="card-label">Total Clientes</div>
-          </div>
-          <div class="card-accent"></div>
-        </a>
-
-        <a routerLink="/clientes" class="client-card card-week">
-          <div class="card-icon-wrapper">
-            <div class="card-icon">
-              <i class="fas fa-user-plus"></i>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="card-value">{{ stats()?.newThisWeek || 0 }}</div>
-            <div class="card-label">Esta Semana</div>
-          </div>
-          <div class="card-accent"></div>
-        </a>
-
-        <a routerLink="/clientes" class="client-card card-month">
-          <div class="card-icon-wrapper">
-            <div class="card-icon">
-              <i class="fas fa-calendar-plus"></i>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="card-value">{{ stats()?.newThisMonth || 0 }}</div>
-            <div class="card-label">Este Mes</div>
-          </div>
-          <div class="card-accent"></div>
-        </a>
-      </div>
-    </div>
-  }
-
-    <h2 class="section-title">
-        <i class="fas fa-users"></i> Presupuestos
-    </h2>
-  <!-- Grid de Módulos -->
-  <div class="modules-grid">
-    @if (hasModule('moduloPresupuestos')) {
-    <a (click)="navigateToQuotes('pendiente')" class="module-card card-quotes-pending">
-      <div class="module-icon">
-        <i class="fas fa-clock"></i>
-      </div>
-      <div class="module-content">
-        <h3>Presupuestos Pendientes</h3>
-        <span class="count">{{ quoteStats().pendingTotal }}</span>
-      </div>
-    </a>
-
-    <a (click)="navigateToQuotes('aceptado')" class="module-card card-quotes-accepted">
-      <div class="module-icon">
-        <i class="fas fa-check-circle"></i>
-      </div>
-      <div class="module-content">
-        <h3>Presupuestos Aceptados</h3>
-        <span class="count">{{ quoteStats().acceptedSinceLastSession }}</span>
-        <div class="stats">
-          <span class="stat-item">
-            <i class="fas fa-calendar-check"></i>
-            Desde última sesión
-          </span>
-        </div>
-      </div>
-    </a>
-    }
-
-    <a routerLink="/tickets" class="module-card card-tickets">
-      <div class="module-icon">
-        <i class="fas fa-ticket-alt"></i>
-      </div>
-      <div class="module-content">
-        <h3>Tickets</h3>
-        <span class="count">{{ ticketsStats?.total ?? 0 }}</span>
-        @if (ticketsStats) {
-          <div class="stats">
-            <span class="stat-item">
-              <i class="fas fa-folder-open"></i>
-              {{ ticketsStats.open }} abiertos
-            </span>
-            <span class="stat-item">
-              <i class="fas fa-spinner"></i>
-              {{ ticketsStats.inProgress }} en progreso
-            </span>
-          </div>
-        }
-      </div>
-    </a>
-
-    @if (hasModule('moduloMaterial')) {
-    <a routerLink="/productos" class="module-card card-products">
-      <div class="module-icon">
-        <i class="fas fa-star"></i>
-      </div>
-      <div class="module-content">
-        <h3>Top Productos</h3>
-        @if (topProducts().length > 0) {
-          <div class="products-ranking">
-            @for (product of topProducts(); track product.productId; let idx = $index) {
-              <div class="product-item">
-                <span class="product-rank">{{ idx + 1 }}.</span>
-                <span class="product-name">{{ product.productName }}</span>
-                <span class="product-quantity">{{ product.totalQuantitySold }} uds.</span>
+  <div class="primary-row">
+    <div class="primary-col">
+      @if (stats()) {
+        <div class="clients-section">
+          <h2 class="section-title">
+            <i class="fas fa-users"></i> Clientes
+          </h2>
+          <div class="clients-grid">
+            <a routerLink="/clientes" class="client-card card-total">
+              <div class="card-icon-wrapper">
+                <div class="card-icon">
+                  <i class="fas fa-users"></i>
+                </div>
               </div>
-            }
+              <div class="card-body">
+                <div class="card-value">{{ stats()?.total || 0 }}</div>
+                <div class="card-label">Total Clientes</div>
+              </div>
+              <div class="card-accent"></div>
+            </a>
+
+            <a routerLink="/clientes" class="client-card card-week">
+              <div class="card-icon-wrapper">
+                <div class="card-icon">
+                  <i class="fas fa-user-plus"></i>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="card-value">{{ stats()?.newThisWeek || 0 }}</div>
+                <div class="card-label">Esta Semana</div>
+              </div>
+              <div class="card-accent"></div>
+            </a>
+
+            <a routerLink="/clientes" class="client-card card-month">
+              <div class="card-icon-wrapper">
+                <div class="card-icon">
+                  <i class="fas fa-calendar-plus"></i>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="card-value">{{ stats()?.newThisMonth || 0 }}</div>
+                <div class="card-label">Este Mes</div>
+              </div>
+              <div class="card-accent"></div>
+            </a>
           </div>
-        } @else {
-          <span class="count">0</span>
-          <div class="stats">
-            <span class="stat-item">
-              <i class="fas fa-info-circle"></i>
-              Sin ventas todavía
-            </span>
-          </div>
-        }
-      </div>
-    </a>
+        </div>
+      }
+    </div>
+
+    @if (loadingModules() || hasModule('moduloPresupuestos')) {
+    <div class="primary-col">
+      @if (loadingModules()) {
+        <div class="section-title-skeleton"></div>
+        <div class="quotes-grid-skeleton">
+          <div class="skeleton-card"></div>
+          <div class="skeleton-card"></div>
+        </div>
+      } @else {
+        <h2 class="section-title">
+          <i class="fas fa-users"></i> Presupuestos
+        </h2>
+        <div class="quotes-grid">
+          <a (click)="navigateToQuotes('pendiente')" class="module-card card-quotes-pending">
+            <div class="module-icon">
+              <i class="fas fa-clock"></i>
+            </div>
+            <div class="module-content">
+              <h3>Presupuestos Pendientes</h3>
+              <span class="count">{{ quoteStats().pendingTotal }}</span>
+            </div>
+          </a>
+
+          <a (click)="navigateToQuotes('aceptado')" class="module-card card-quotes-accepted">
+            <div class="module-icon">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="module-content">
+              <h3>Presupuestos Aceptados</h3>
+              <span class="count">{{ quoteStats().acceptedSinceLastSession }}</span>
+              <div class="stats">
+                <span class="stat-item">
+                  <i class="fas fa-calendar-check"></i>
+                  Desde última sesión
+                </span>
+              </div>
+            </div>
+          </a>
+        </div>
+      }
+    </div>
     }
   </div>
 
+  <!-- Grid de Módulos restantes (Tickets, Productos) -->
+  @if (!loadingModules()) {
+    <div class="modules-grid">
+      @if (hasModule('moduloSat')) {
+      <a routerLink="/tickets" class="module-card card-tickets">
+        <div class="module-icon">
+          <i class="fas fa-ticket-alt"></i>
+        </div>
+        <div class="module-content">
+          <h3>Tickets</h3>
+          <span class="count">{{ ticketsStats?.total ?? 0 }}</span>
+          @if (ticketsStats) {
+            <div class="stats">
+              <span class="stat-item">
+                <i class="fas fa-folder-open"></i>
+                {{ ticketsStats.open }} abiertos
+              </span>
+              <span class="stat-item">
+                <i class="fas fa-spinner"></i>
+                {{ ticketsStats.inProgress }} en progreso
+              </span>
+            </div>
+          }
+        </div>
+      </a>
+      }
+
+      @if (hasModule('moduloMaterial')) {
+      <a routerLink="/productos" class="module-card card-products">
+        <div class="module-icon">
+          <i class="fas fa-star"></i>
+        </div>
+        <div class="module-content">
+          <h3>Top Productos</h3>
+          @if (topProducts().length > 0) {
+            <div class="products-ranking">
+              @for (product of topProducts(); track product.productId; let idx = $index) {
+                <div class="product-item">
+                  <span class="product-rank">{{ idx + 1 }}.</span>
+                  <span class="product-name">{{ product.productName }}</span>
+                  <span class="product-quantity">{{ product.totalQuantitySold }} uds.</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <span class="count">0</span>
+            <div class="stats">
+              <span class="stat-item">
+                <i class="fas fa-info-circle"></i>
+                Sin ventas todavía
+              </span>
+            </div>
+          }
+        </div>
+      </a>
+      }
+    </div>
+  }
+
   <!-- Últimos Tickets -->
-  @if (recentTickets.length > 0) {
+  @if (hasModule('moduloSat') && recentTickets.length > 0) {
     <section class="recent-section">
       <h4 class="recent-title">
         <i class="fas fa-clock"></i> Últimos tickets

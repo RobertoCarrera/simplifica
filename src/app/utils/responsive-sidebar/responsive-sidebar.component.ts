@@ -39,7 +39,7 @@ interface MenuItem {
 
     <!-- Sidebar -->
     <div 
-      class="flex flex-col h-dvh transition-all duration-300 ease-in-out bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
+      class="flex flex-col h-dvh transition-all duration-300 ease-in-out bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-3"
       [class]="getSidebarClasses()"
     >
       <!-- Header -->
@@ -377,13 +377,6 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'production'
     },
     {
-      id: 16,
-      label: 'Presupuestos',
-      icon: 'description',
-      route: '/presupuestos',
-      module: 'production'
-    },
-    {
       id: 3,
       label: 'Tickets',
       icon: 'confirmation_number',
@@ -395,6 +388,20 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Servicios',
       icon: 'build',
       route: '/servicios',
+      module: 'production'
+    },
+    {
+      id: 5,
+      label: 'Productos',
+      icon: 'inventory_2',
+      route: '/productos',
+      module: 'production'
+    },
+    {
+      id: 16,
+      label: 'Presupuestos',
+      icon: 'description',
+      route: '/presupuestos',
       module: 'production'
     },
     {
@@ -418,13 +425,6 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'people',
       route: '/contactos',
       module: 'development'
-    },
-    {
-      id: 5,
-      label: 'Productos',
-      icon: 'inventory_2',
-      route: '/productos',
-      module: 'production'
     },
     {
       id: 6,
@@ -670,6 +670,9 @@ export class ResponsiveSidebarComponent implements OnInit {
   // Mapear rutas a claves de módulo (ajustar si cambian rutas)
   private routeToModuleKey(route: string): string | null {
     switch (route) {
+      case '/tickets':
+        // Tickets (SAT) depende de un módulo dedicado
+        return 'moduloSat';
       case '/presupuestos':
       case '/portal/presupuestos':
         return 'moduloPresupuestos';

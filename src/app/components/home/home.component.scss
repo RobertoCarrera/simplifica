@@ -1,6 +1,7 @@
 .home-container {
   padding: 2rem;
-  max-width: 1400px;
+  width: 100%;
+  max-width: none;
   margin: 0 auto;
 }
 
@@ -29,6 +30,22 @@
   margin-bottom: 3rem;
 }
 
+/* Primera fila: Clientes y Presupuestos lado a lado */
+.primary-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.primary-col {
+  min-width: 0;
+}
+
 .section-title {
   font-size: 1.5rem;
   font-weight: 600;
@@ -41,7 +58,8 @@
 
 .clients-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  /* Force three cards per row on wide screens so the Clientes section shows 3 cards in one line */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.5rem;
 }
 
@@ -145,9 +163,100 @@
 /* Grid de Módulos */
 .modules-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
   margin-bottom: 3rem;
+  
+  // When only 2 cards present (quotes), make them span equally
+  &:has(.module-card:nth-child(2):last-child) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  // When only 1 card present
+  &:has(.module-card:first-child:last-child) {
+    grid-template-columns: 1fr;
+    max-width: 600px;
+  }
+  
+  // Responsive adjustments
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Skeleton loading state */
+.modules-grid-skeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.skeleton-card {
+  height: 180px;
+  border-radius: 1rem;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure different dashboard card types have a consistent min-height so grids line up */
+.client-card,
+.module-card,
+.skeleton-card {
+  min-height: 180px;
+}
+
+/* Make module cards stretch to fill their grid cell when needed */
+.module-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Presupuestos grid (dos cards) */
+.quotes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.quotes-grid-skeleton {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 0.75rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.section-title-skeleton {
+  height: 28px;
+  width: 220px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .module-card {
@@ -410,6 +519,7 @@
   }
 
   .clients-grid {
+    /* Stack to single column on small screens */
     grid-template-columns: 1fr;
     gap: 1rem;
   }

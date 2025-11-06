@@ -63,11 +63,42 @@ serve(async (req) => {
     if (meRes.error || !me?.company_id || me.active === false) {
       return new Response(JSON.stringify({ error: 'User not associated/active' }), { status: 400, headers });
     }
-    if (String(me.role).toLowerCase() !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Forbidden: only admin can list company modules' }), { status: 403, headers });
+    // Allow multiple admin roles via env PLATFORM_ADMIN_ROLES (default admin,superadmin)
+    const allowedRoles = (Deno.env.get('PLATFORM_ADMIN_ROLES') || 'admin,superadmin')
+      .split(',')
+      .map(r => r.trim().toLowerCase())
+      .filter(Boolean);
+    const myRole = String(me.role).toLowerCase();
+    if (!allowedRoles.includes(myRole)) {
+      return new Response(JSON.stringify({ error: 'Forbidden: admin role required' }), { status: 403, headers });
     }
 
-    const companyId = me.company_id as string;
+    // Optional: list owners across DB
+    const urlObj = new URL(req.url);
+    const ownersMode = urlObj.searchParams.get('owners') === '1';
+    const ownerIdParam = urlObj.searchParams.get('owner_id');
+
+    // If owners list requested
+    if (ownersMode) {
+      const { data: owners } = await admin
+        .from('users')
+        .select('id,email,name,company_id,active')
+        .eq('role', 'owner')
+        .order('created_at', { ascending: true });
+      return new Response(JSON.stringify({ owners: owners || [] }), { status: 200, headers });
+    }
+
+    // Determine company id to operate on
+    let companyId = me.company_id as string;
+    if (ownerIdParam) {
+      const { data: owner } = await admin
+        .from('users')
+        .select('id,company_id')
+        .eq('id', ownerIdParam)
+        .eq('role', 'owner')
+        .maybeSingle();
+      if (owner?.company_id) companyId = owner.company_id;
+    }
 
     const { data: users } = await admin
       .from('users')
@@ -86,7 +117,7 @@ serve(async (req) => {
       ? await admin.from('user_modules').select('user_id,module_key,status').in('user_id', userIds)
       : { data: [] } as any;
 
-    return new Response(JSON.stringify({ users: users || [], modules: modules || [], assignments: assignments || [] }), { status: 200, headers });
+  return new Response(JSON.stringify({ users: users || [], modules: modules || [], assignments: assignments || [] }), { status: 200, headers });
   } catch (e: any) {
     return new Response(JSON.stringify({ error: 'Internal server error', details: e?.message }), { status: 500, headers });
   }

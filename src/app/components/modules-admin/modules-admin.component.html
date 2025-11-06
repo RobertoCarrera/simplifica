@@ -5,12 +5,23 @@
     </span>
     Gestión de Módulos
   </h1>
-  <p class="text-sm text-gray-600 dark:text-gray-400">Administra qué módulos están activados o desactivados por usuario dentro de tu empresa. Estados: activado, desactivado o heredado (sin override explícito).</p>
+  <p class="text-sm text-gray-600 dark:text-gray-400">Administra qué módulos están activados o desactivados por usuario. Puedes filtrar por owner para ver sus usuarios (clients) asociados. Estados: activado, desactivado o heredado.</p>
+
+  <div *ngIf="owners.length > 0" class="space-y-2">
+    <label class="text-xs font-medium text-gray-500 dark:text-gray-400">Owner seleccionado</label>
+    <div class="flex items-center gap-2">
+      <input [(ngModel)]="ownerQuery" placeholder="Buscar owner por nombre, email o compañía" class="flex-1 px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" />
+      <select (change)="onOwnerChangeSelect($event)" [value]="selectedOwnerId || ''" class="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm min-w-64">
+        <option value="">(Mi compañía)</option>
+        <option *ngFor="let o of filteredOwners" [value]="o.id">{{ o.name || o.email }} - {{ o.company_id | slice:0:8 }}</option>
+      </select>
+    </div>
+  </div>
 
   <div *ngIf="loading" class="text-sm text-gray-500">Cargando usuarios…</div>
 
   <div class="space-y-4">
-    <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Matriz de módulos por usuario</h2>
+  <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Matriz de módulos por usuario</h2>
     <div class="overflow-auto border rounded-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <table class="min-w-full text-sm">
         <thead class="bg-gray-50 dark:bg-gray-700">

@@ -67,15 +67,17 @@ export class SupabaseModulesService {
   }
 
   // Admin list matrix of users, modules and assignments
-  adminListUserModules(): Observable<{ users: any[]; modules: any[]; assignments: any[] }> {
-    return from(this.executeAdminListUserModules());
+  adminListUserModules(ownerId?: string): Observable<{ users: any[]; modules: any[]; assignments: any[] }> {
+    return from(this.executeAdminListUserModules(ownerId));
   }
 
-  private async executeAdminListUserModules(): Promise<{ users: any[]; modules: any[]; assignments: any[] }> {
+  private async executeAdminListUserModules(ownerId?: string): Promise<{ users: any[]; modules: any[]; assignments: any[] }> {
     const client = this.supabaseClient.instance;
     const { data: { session } } = await client.auth.getSession();
     const token = session?.access_token;
-    const res = await fetch(`${this.fnBase}/admin-list-user-modules`, {
+    const url = new URL(`${this.fnBase}/admin-list-user-modules`);
+    if (ownerId) url.searchParams.set('owner_id', ownerId);
+    const res = await fetch(url.toString(), {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token ?? ''}`,
@@ -85,5 +87,28 @@ export class SupabaseModulesService {
     const json = await res.json();
     if (!res.ok) throw new Error(json?.error || 'No se pudo obtener la matriz de módulos por usuario');
     return { users: json?.users || [], modules: json?.modules || [], assignments: json?.assignments || [] };
+  }
+
+  // List all owners (platform-level admin use)
+  adminListOwners(): Observable<{ owners: any[] }> {
+    return from(this.executeAdminListOwners());
+  }
+
+  private async executeAdminListOwners(): Promise<{ owners: any[] }> {
+    const client = this.supabaseClient.instance;
+    const { data: { session } } = await client.auth.getSession();
+    const token = session?.access_token;
+    const url = new URL(`${this.fnBase}/admin-list-user-modules`);
+    url.searchParams.set('owners', '1');
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token ?? ''}`,
+        'apikey': environment.supabase.anonKey,
+      }
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json?.error || 'No se pudo obtener la lista de owners');
+    return { owners: json?.owners || [] };
   }
 }

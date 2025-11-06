@@ -432,6 +432,8 @@ export class ConfiguracionComponent implements OnInit {
         { key: 'moduloPresupuestos', name: 'Presupuestos' },
         { key: 'moduloServicios', name: 'Servicios' },
         { key: 'moduloMaterial', name: 'Material' }
+        // módulo SAT (Tickets) placeholder; se mostrará cuando exista en catálogo
+        ,{ key: 'moduloSat', name: 'SAT / Tickets' }
       ];
     }
   }

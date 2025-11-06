@@ -26,7 +26,17 @@
             >
               <i class="fas fa-shield-alt"></i>
               GDPR
-            </button>      }      
+            </button>      }   
+            <div class="search-input-container">
+              <i class="fas fa-search search-icon"></i>
+              <input
+                type="text"
+                [(ngModel)]="searchTerm"
+                (ngModelChange)="onSearchChange($event)"
+                placeholder="Buscar clientes por nombre, email o DNI..."
+                class="search-input-full"
+              >
+            </div>   
             <button
               (click)="exportCustomers()"
               class="btn btn-secondary col-4"
@@ -53,16 +63,6 @@
               Importar CSV
               <i class="fas fa-info-circle info-icon" (click)="showImportInfo($event)"></i>
             </button>
-            <div class="search-input-container">
-              <i class="fas fa-search search-icon"></i>
-              <input
-                type="text"
-                [(ngModel)]="searchTerm"
-                (ngModelChange)="onSearchChange($event)"
-                placeholder="Buscar clientes por nombre, email o DNI..."
-                class="search-input-full"
-              >
-            </div>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseClientService } from '../../services/supabase-client.service';
@@ -38,15 +38,31 @@ export class ModulesAdminComponent implements OnInit {
   // assignments map: userId -> moduleKey -> state
   private assignments = signal<Map<string, Map<string, ModuleToggle['state']>>>(new Map());
   saveStatus: string | null = null;
+  owners: Array<{ id: string, email: string, name: string, company_id: string }> = [];
+  selectedOwnerId: string | null = null;
+  ownerQuery: string = '';
 
   ngOnInit(): void {
-    this.loadMatrix();
+    this.loadOwnersAndMatrix();
+  }
+
+  async loadOwnersAndMatrix() {
+    // Owners list (optional admin view across companies)
+    try {
+      const ownersRes = await this.modulesService.adminListOwners().toPromise();
+      this.owners = (ownersRes && ownersRes.owners) ? ownersRes.owners : [];
+      // Try to preselect my owner if present (same company)
+      const me = this.auth.userProfile;
+      const myOwner = this.owners.find(o => o.company_id === me?.company_id) || null;
+      this.selectedOwnerId = myOwner?.id || null;
+    } catch {}
+    await this.loadMatrix();
   }
 
   async loadMatrix() {
     this.loading = true;
     try {
-  const res: any = await this.modulesService.adminListUserModules().toPromise();
+      const res = await this.modulesService.adminListUserModules(this.selectedOwnerId || undefined).toPromise();
   this.users = (res?.users || []) as CompanyUser[];
   const mods = (res?.modules || []).map((m: any) => ({ key: m.key, label: m.name }));
       this.modules.set(mods);
@@ -64,6 +80,16 @@ export class ModulesAdminComponent implements OnInit {
     } finally {
       this.loading = false;
     }
+  }
+
+  onOwnerChange() {
+    this.loadMatrix();
+  }
+
+  onOwnerChangeSelect(event: Event) {
+    const value = (event.target as HTMLSelectElement | null)?.value || '';
+    this.selectedOwnerId = value || null;
+    this.onOwnerChange();
   }
 
   stateFor(userId: string, modKey: string): ModuleToggle['state'] {
@@ -91,5 +117,17 @@ export class ModulesAdminComponent implements OnInit {
       this.saveStatus = 'error';
       setTimeout(() => this.saveStatus = null, 2000);
     }
+  }
+
+  // Filtered owners for search box
+  get filteredOwners() {
+    const q = (this.ownerQuery || '').toLowerCase().trim();
+    if (!q) return this.owners;
+    return this.owners.filter(o =>
+      (o.name || '').toLowerCase().includes(q) ||
+      (o.email || '').toLowerCase().includes(q) ||
+      (o.company_id || '').toLowerCase().includes(q) ||
+      (o.id || '').toLowerCase().includes(q)
+    );
   }
 }

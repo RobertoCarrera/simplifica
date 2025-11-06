@@ -65,6 +65,22 @@ fi
 echo ""
 echo "✅ Edge Functions deployed successfully!"
 echo ""
+echo "➡️  Deploying admin module management functions (if present)..."
+if [ -d "supabase/functions/admin-list-user-modules" ]; then
+    echo "➡️  Deploying admin-list-user-modules..."
+    (cd supabase/functions/admin-list-user-modules && supabase functions deploy admin-list-user-modules)
+else
+    echo "⚠️  Directory supabase/functions/admin-list-user-modules not found"
+fi
+if [ -d "supabase/functions/admin-set-user-module" ]; then
+    echo "➡️  Deploying admin-set-user-module..."
+    (cd supabase/functions/admin-set-user-module && supabase functions deploy admin-set-user-module)
+else
+    echo "⚠️  Directory supabase/functions/admin-set-user-module not found"
+fi
+echo ""
+echo "🔐 Remember to set PLATFORM_ADMIN_ROLES (e.g. admin,superadmin) and PLATFORM_STRICT_SAME_COMPANY if needed in Supabase Function secrets."
+echo ""
 echo "🧪 Test it with:"
 echo "   1. Open your app"
 echo "   2. Try to create a new client"

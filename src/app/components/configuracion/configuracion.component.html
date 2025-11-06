@@ -117,8 +117,8 @@
       </div>
     </div>
 
-    <!-- Card: Módulos (con estado desde backend) -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+  <!-- Card: Módulos (con estado desde backend) -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 lg:col-span-2">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
           <i class="fas fa-th-large mr-3 text-teal-600"></i>
@@ -154,28 +154,7 @@
             </div>
           </ng-container>
         </div>
-        <!-- Diagnostics panel (dev) -->
-        <div class="mt-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900 dark:border-gray-700">
-          <div class="flex items-center justify-between mb-2">
-            <h3 class="text-sm font-medium">Diagnóstico de Módulos</h3>
-            <button (click)="loadModulesDiagnostics()" class="text-xs px-2 py-1 bg-blue-600 text-white rounded">Actualizar</button>
-          </div>
-          <div class="text-xs text-gray-600 dark:text-gray-300 mb-2">Carga: {{ modulesDiagnosticsLoading ? 'Cargando…' : 'Listo' }}</div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <div class="text-xs font-semibold mb-1">Effective modules (server)</div>
-              <pre class="text-xs p-2 bg-white dark:bg-gray-800 border rounded text-xs overflow-auto" style="max-height:200px">{{ effectiveModules | json }}</pre>
-            </div>
-            <div>
-              <div class="text-xs font-semibold mb-1">Allowed keys (computed)</div>
-              <pre class="text-xs p-2 bg-white dark:bg-gray-800 border rounded text-xs">{{ allowedModuleKeysArray | json }}</pre>
-            </div>
-            <div class="md:col-span-2">
-              <div class="text-xs font-semibold mb-1">User modules overrides (raw)</div>
-              <pre class="text-xs p-2 bg-white dark:bg-gray-800 border rounded text-xs overflow-auto" style="max-height:200px">{{ userModules | json }}</pre>
-            </div>
-          </div>
-        </div>
+        
       </div>
     </div>
 

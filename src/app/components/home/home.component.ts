@@ -40,6 +40,7 @@ export class HomeComponent implements OnInit {
   stats = signal<CustomerStats | null>(null);
   quoteStats = signal<QuoteStats>({ pendingTotal: 0, acceptedSinceLastSession: 0 });
   topProducts = signal<TopProduct[]>([]);
+  loadingModules = signal<boolean>(true);
   // Allowed modules for gating Home cards (null while loading)
   private allowedModuleKeys = computed<Set<string> | null>(() => {
     const mods = this.modulesService.modulesSignal();
@@ -48,16 +49,27 @@ export class HomeComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.loadCounts();
-    this.loadQuoteStats();
-    this.loadTopProducts();
-    // Ensure modules are loaded at least once to gate Home cards
-    if (!this.modulesService.modulesSignal()) {
-      this.modulesService.fetchEffectiveModules().subscribe({
-        next: () => {},
-        error: () => {}
-      });
-    }
+    // First load modules to gate cards properly before loading any data
+    this.modulesService.fetchEffectiveModules().subscribe({
+      next: () => {
+        this.loadingModules.set(false);
+        // Once modules are loaded, load data only for enabled modules
+        this.loadCounts();
+        if (this.hasModule('moduloPresupuestos')) {
+          this.loadQuoteStats();
+        }
+        if (this.hasModule('moduloMaterial')) {
+          this.loadTopProducts();
+        }
+      },
+      error: () => {
+        this.loadingModules.set(false);
+        // Fallback: load anyway if modules fetch fails
+        this.loadCounts();
+        this.loadQuoteStats();
+        this.loadTopProducts();
+      }
+    });
   }
 
   private async loadCounts() {
@@ -69,19 +81,21 @@ export class HomeComponent implements OnInit {
         console.warn('Home: error cargando clientes', err);
       });
 
-      // Tickets (async) - solo cargar si hay datos reales
-      try {
-        const tickets = await this.ticketsService.getTickets(undefined as any);
-        // Verificar que no son tickets mock (tienen IDs que empiezan con 'ticket-')
-        const realTickets = Array.isArray(tickets) ? tickets.filter(t => !t.id.startsWith('ticket-')) : [];
-        this.recentTickets = realTickets.slice(0, 3);
-        
-        if (realTickets.length > 0) {
-          const stats = await this.ticketsService.getTicketStats(undefined as any);
-          this.ticketsStats = stats;
+      // Tickets (async) - only load if SAT module enabled
+      if (this.hasModule('moduloSat')) {
+        try {
+          const tickets = await this.ticketsService.getTickets(undefined as any);
+          // Verificar que no son tickets mock (tienen IDs que empiezan con 'ticket-')
+          const realTickets = Array.isArray(tickets) ? tickets.filter(t => !t.id.startsWith('ticket-')) : [];
+          this.recentTickets = realTickets.slice(0, 3);
+          
+          if (realTickets.length > 0) {
+            const stats = await this.ticketsService.getTicketStats(undefined as any);
+            this.ticketsStats = stats;
+          }
+        } catch (err) {
+          console.warn('Home: error cargando tickets', err);
         }
-      } catch (err) {
-        console.warn('Home: error cargando tickets', err);
       }
 
       // Subscribe to stats
