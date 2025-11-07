@@ -72,6 +72,14 @@
   }
 }
 
+/* Botón para cabeceras: altura alineada con inputs (≈40px) */
+.btn-header {
+  height: 40px; /* match input with py-2 + border */
+  font-size: 0.875rem; /* text-sm */
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
 /* ===========================================
    FORMULARIOS COMUNES
    =========================================== */

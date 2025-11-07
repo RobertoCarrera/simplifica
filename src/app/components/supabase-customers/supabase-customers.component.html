@@ -55,11 +55,11 @@
 
               <button
                 (click)="exportCustomers()"
-                class="btn btn-secondary text-sm font-medium"
+                class="btn btn-secondary btn-header text-sm font-medium"
                 [disabled]="isLoading()"
                 title="Exportar clientes"
               >
-                <i class="fas fa-download"></i>
+                <i class="fas fa-download text-sm"></i>
                 <span class="ml-1">Exportar</span>
               </button>
 
@@ -73,23 +73,23 @@
 
               <button
                 (click)="fileInput.click()"
-                class="btn btn-secondary text-sm font-medium"
+                class="btn btn-secondary btn-header text-sm font-medium"
                 [disabled]="isLoading()"
                 title="Importar clientes desde CSV"
               >
-                <i class="fas fa-upload"></i>
+                <i class="fas fa-upload text-sm"></i>
                 <span class="ml-1">Importar CSV</span>
               </button>
 
               @if (devRoleService.canSeeDevTools()) {
                 <button
                   (click)="goToGdpr()"
-                  class="btn text-sm font-medium"
+                  class="btn btn-header text-sm font-medium"
                   [class.btn-primary]="!gdprPanelVisible()"
                   [class.btn-secondary]="gdprPanelVisible()"
                   title="Panel GDPR"
                 >
-                  <i class="fas fa-shield-alt"></i>
+                  <i class="fas fa-shield-alt text-sm"></i>
                   <span class="ml-1">GDPR</span>
                 </button>
               }
@@ -242,93 +242,11 @@
             <!-- Customer Card - Optimized Density -->
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-5 hover:shadow-md transition-shadow">
               
-              <!-- Mobile Layout -->
-              <div class="md:hidden">
-                <!-- Avatar + Name + Status -->
-                <div class="flex items-center gap-3 mb-3">
-                  <!-- Avatar -->
-                  <div class="relative flex-shrink-0">
-                    @if (customer.avatar_url) {
-                      <img 
-                        [src]="customer.avatar_url"
-                        [alt]="customer.name + ' ' + customer.apellidos"
-                        class="w-10 h-10 rounded-full object-cover"
-                      >
-                    } @else {
-                      <div class="w-10 h-10 rounded-full bg-gradient-to-br {{ getAvatarGradient(customer) }} text-white font-bold text-sm flex items-center justify-center">
-                        {{ getCustomerInitials(customer) }}
-                      </div>
-                    }
-                    <!-- Online/Active Indicator -->
-                    @if (customer.activo) {
-                      <div class="w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full absolute bottom-0 right-0"></div>
-                    }
-                  </div>
-                  
-                  <!-- Name + Badge -->
-                  <div class="flex-1 min-w-0">
-                    <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                      {{ customer.name }} {{ customer.apellidos }}
-                    </h3>
-                    @if (getGdprBadgeConfig(customer); as badge) {
-                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
-                        <i class="fas {{ badge.icon }} text-[10px]"></i>
-                        {{ badge.label }}
-                      </span>
-                    }
-                  </div>
-                </div>
-                
-                <!-- Contact Info (Max 2 fields) -->
-                <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  <div class="flex items-center gap-1.5 truncate">
-                    <i class="fas fa-envelope text-gray-400 text-xs flex-shrink-0"></i>
-                    <span class="truncate">{{ customer.email }}</span>
-                  </div>
-                  @if (customer.phone) {
-                    <div class="flex items-center gap-1.5">
-                      <i class="fas fa-phone text-gray-400 text-xs flex-shrink-0"></i>
-                      <span>{{ customer.phone }}</span>
-                    </div>
-                  }
-                </div>
-                
-                <!-- Action Buttons - Icon Only -->
-                <div class="flex gap-2">
-                  <button
-                    (click)="editCustomer(customer)"
-                    class="flex-1 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors flex items-center justify-center gap-1.5"
-                    title="Editar"
-                  >
-                    <i class="fas fa-edit text-sm"></i>
-                    <span class="text-xs font-medium">Editar</span>
-                  </button>
-                  <button
-                    (click)="openGdprModal(customer)"
-                    class="px-3 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
-                    [class.opacity-50]="customer?.metadata?.inactive_on_import"
-                    [disabled]="customer?.metadata?.inactive_on_import"
-                    title="RGPD"
-                  >
-                    <i class="fas fa-shield-alt text-sm"></i>
-                  </button>
-                  <button
-                    (click)="deleteCustomer(customer)"
-                    class="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                    [class.opacity-50]="customer?.metadata?.inactive_on_import"
-                    [disabled]="customer?.metadata?.inactive_on_import"
-                    title="Eliminar"
-                  >
-                    <i class="fas fa-trash text-sm"></i>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Desktop Layout -->
-              <div class="hidden md:block">
-                <div class="flex items-start justify-between mb-3">
-                  <!-- Avatar + Info -->
-                  <div class="flex items-center gap-3">
+              <!-- Mobile Layout: 2-column (info left, actions right vertical) -->
+              <div class="md:hidden flex gap-3">
+                <!-- Left column: Avatar + Info -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-3 mb-3">
                     <!-- Avatar -->
                     <div class="relative flex-shrink-0">
                       @if (customer.avatar_url) {
@@ -348,8 +266,90 @@
                     </div>
                     
                     <!-- Name + Badge -->
-                    <div>
-                      <h3 class="font-semibold text-gray-900 dark:text-gray-100">
+                    <div class="flex-1 min-w-0">
+                      <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                        {{ customer.name }} {{ customer.apellidos }}
+                      </h3>
+                      @if (getGdprBadgeConfig(customer); as badge) {
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
+                          <i class="fas {{ badge.icon }} text-[10px]"></i>
+                          {{ badge.label }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+                  
+                  <!-- Contact Info (Max 2 fields) -->
+                  <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                    <div class="flex items-center gap-1.5 truncate">
+                      <i class="fas fa-envelope text-gray-400 text-xs flex-shrink-0"></i>
+                      <span class="truncate">{{ customer.email }}</span>
+                    </div>
+                    @if (customer.phone) {
+                      <div class="flex items-center gap-1.5">
+                        <i class="fas fa-phone text-gray-400 text-xs flex-shrink-0"></i>
+                        <span>{{ customer.phone }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+                
+                <!-- Right column: Action Buttons Vertical -->
+                <div class="flex flex-col gap-1 flex-shrink-0">
+                  <button
+                    (click)="editCustomer(customer)"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                    title="Editar cliente"
+                  >
+                    <i class="fas fa-edit text-sm"></i>
+                  </button>
+                  <button
+                    (click)="openGdprModal(customer)"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                    [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                    [disabled]="customer?.metadata?.inactive_on_import"
+                    title="Acciones RGPD"
+                  >
+                    <i class="fas fa-shield-alt text-sm"></i>
+                  </button>
+                  <button
+                    (click)="deleteCustomer(customer)"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                    [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                    [disabled]="customer?.metadata?.inactive_on_import"
+                    title="Eliminar cliente"
+                  >
+                    <i class="fas fa-trash text-sm"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Desktop Layout: 2-column (info left, actions right vertical) -->
+              <div class="hidden md:flex gap-3">
+                <!-- Left column: Avatar + Info (flex-1 takes most space) -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-3 mb-3">
+                    <!-- Avatar -->
+                    <div class="relative flex-shrink-0">
+                      @if (customer.avatar_url) {
+                        <img 
+                          [src]="customer.avatar_url"
+                          [alt]="customer.name + ' ' + customer.apellidos"
+                          class="w-10 h-10 rounded-full object-cover"
+                        >
+                      } @else {
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br {{ getAvatarGradient(customer) }} text-white font-bold text-sm flex items-center justify-center">
+                          {{ getCustomerInitials(customer) }}
+                        </div>
+                      }
+                      @if (customer.activo) {
+                        <div class="w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full absolute bottom-0 right-0"></div>
+                      }
+                    </div>
+                    
+                    <!-- Name + Badge -->
+                    <div class="flex-1 min-w-0">
+                      <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">
                         {{ customer.name }} {{ customer.apellidos }}
                       </h3>
                       @if (getGdprBadgeConfig(customer); as badge) {
@@ -361,77 +361,77 @@
                     </div>
                   </div>
                   
-                  <!-- Action Buttons - Icon Only Compact -->
-                  <div class="flex gap-1">
-                    <button
-                      (click)="editCustomer(customer)"
-                      class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-                      title="Editar cliente"
-                    >
-                      <i class="fas fa-edit text-sm"></i>
-                    </button>
-                    @if (customer.email; as cEmail) {
-                      @if (!hasPortalAccess(customer, cEmail)) {
-                        <button
-                          (click)="openInviteModal(customer)"
-                          class="w-8 h-8 flex items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
-                          [class.opacity-50]="customer?.metadata?.inactive_on_import"
-                          [disabled]="customer?.metadata?.inactive_on_import"
-                          title="Invitar al portal"
-                        >
-                          <i class="fas fa-user-plus text-sm"></i>
-                        </button>
-                      } @else {
-                        <button
-                          (click)="togglePortalAccess(customer, false, $event)"
-                          class="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
-                          [class.opacity-50]="customer?.metadata?.inactive_on_import"
-                          [disabled]="customer?.metadata?.inactive_on_import"
-                          title="Quitar acceso al portal"
-                        >
-                          <i class="fas fa-user-times text-sm"></i>
-                        </button>
-                      }
+                  <!-- Contact Info Vertical (Max 3 fields) -->
+                  <div class="space-y-1.5 text-sm text-gray-600 dark:text-gray-400">
+                    <div class="flex items-center gap-1.5">
+                      <i class="fas fa-envelope text-gray-400 w-4 flex-shrink-0"></i>
+                      <span class="truncate">{{ customer.email }}</span>
+                    </div>
+                    @if (customer.phone) {
+                      <div class="flex items-center gap-1.5">
+                        <i class="fas fa-phone text-gray-400 w-4 flex-shrink-0"></i>
+                        <span>{{ customer.phone }}</span>
+                      </div>
                     }
-                    <button
-                      (click)="openGdprModal(customer)"
-                      class="w-8 h-8 flex items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
-                      [class.opacity-50]="customer?.metadata?.inactive_on_import"
-                      [disabled]="customer?.metadata?.inactive_on_import"
-                      title="Acciones RGPD"
-                    >
-                      <i class="fas fa-shield-alt text-sm"></i>
-                    </button>
-                    <button
-                      (click)="deleteCustomer(customer)"
-                      class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                      [class.opacity-50]="customer?.metadata?.inactive_on_import"
-                      [disabled]="customer?.metadata?.inactive_on_import"
-                      title="Eliminar cliente"
-                    >
-                      <i class="fas fa-trash text-sm"></i>
-                    </button>
+                    @if (customer.dni) {
+                      <div class="flex items-center gap-1.5">
+                        <i class="fas fa-id-card text-gray-400 w-4 flex-shrink-0"></i>
+                        <span>{{ customer.dni }}</span>
+                      </div>
+                    }
                   </div>
                 </div>
                 
-                <!-- Contact Info Vertical (Max 3 fields) -->
-                <div class="space-y-1.5 text-sm text-gray-600 dark:text-gray-400">
-                  <div class="flex items-center gap-1.5">
-                    <i class="fas fa-envelope text-gray-400 w-4"></i>
-                    <span class="truncate">{{ customer.email }}</span>
-                  </div>
-                  @if (customer.phone) {
-                    <div class="flex items-center gap-1.5">
-                      <i class="fas fa-phone text-gray-400 w-4"></i>
-                      <span>{{ customer.phone }}</span>
-                    </div>
+                <!-- Right column: Action Buttons Vertical (Hierarchy: important top, dangerous bottom) -->
+                <div class="flex flex-col gap-1 flex-shrink-0">
+                  <button
+                    (click)="editCustomer(customer)"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                    title="Editar cliente"
+                  >
+                    <i class="fas fa-edit text-sm"></i>
+                  </button>
+                  @if (customer.email; as cEmail) {
+                    @if (!hasPortalAccess(customer, cEmail)) {
+                      <button
+                        (click)="openInviteModal(customer)"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                        [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                        [disabled]="customer?.metadata?.inactive_on_import"
+                        title="Invitar al portal"
+                      >
+                        <i class="fas fa-user-plus text-sm"></i>
+                      </button>
+                    } @else {
+                      <button
+                        (click)="togglePortalAccess(customer, false, $event)"
+                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+                        [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                        [disabled]="customer?.metadata?.inactive_on_import"
+                        title="Quitar acceso al portal"
+                      >
+                        <i class="fas fa-user-times text-sm"></i>
+                      </button>
+                    }
                   }
-                  @if (customer.dni) {
-                    <div class="flex items-center gap-1.5">
-                      <i class="fas fa-id-card text-gray-400 w-4"></i>
-                      <span>{{ customer.dni }}</span>
-                    </div>
-                  }
+                  <button
+                    (click)="openGdprModal(customer)"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                    [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                    [disabled]="customer?.metadata?.inactive_on_import"
+                    title="Acciones RGPD"
+                  >
+                    <i class="fas fa-shield-alt text-sm"></i>
+                  </button>
+                  <button
+                    (click)="deleteCustomer(customer)"
+                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                    [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                    [disabled]="customer?.metadata?.inactive_on_import"
+                    title="Eliminar cliente"
+                  >
+                    <i class="fas fa-trash text-sm"></i>
+                  </button>
                 </div>
               </div>
 
