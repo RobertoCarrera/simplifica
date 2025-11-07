@@ -1,22 +1,65 @@
-/* Optimizaciones móvil para quote-detail */
+/* ============================================
+   QUOTE DETAIL - SISTEMA DE ESPACIADO UNIFICADO
+   ============================================ */
+
+/* CONSTANTES DE DISEÑO (equivalentes Tailwind)
+   Desktop:
+   - sectionGap: 1.5rem (24px) - gap-6
+   - cardGap: 1rem (16px) - space-y-4
+   - cardPadding: 1.25rem (20px) - p-5
+   - cardRadius: 0.75rem (12px) - rounded-xl
+   
+   Móvil:
+   - screenPadding: 1rem (16px) - mx-4
+   - sectionGap: 1rem (16px) - space-y-4
+   - cardPadding: 1rem (16px) - p-4
+   - cardRadius: 0.75rem (12px) - rounded-xl para cards flotantes
+   - cardRadius: 0 - para elementos full-width
+*/
 
 :host {
   display: block;
+  /* NO usar height: 100% - causa scrollbar fantasma */
+  /* El contenido fluye naturalmente sin forzar altura */
 }
 
-// Ocultar overflow del men\u00fa dropdown m\u00f3vil
+/* ============================================
+   MÓVIL (< 768px)
+   ============================================ */
 @media (max-width: 767px) {
-  // Header compacto m\u00f3vil: altura reducida ~120px total
+  
+  /* Header azul compacto: ~120px, sin border-radius (full-width) */
   .bg-gradient-to-r.from-blue-600 {
     min-height: 120px;
+    border-radius: 0;
+    margin-bottom: 0; // Pegado al siguiente elemento
   }
 
-  // Scroll suave
-  .overflow-auto {
+  /* Resumen financiero sticky: card flotante con radius y borde destacado */
+  .sticky.bottom-16 {
+    bottom: 4rem; // Por encima de bottom nav
+    border-radius: 0.75rem; // 12px
+  }
+
+  /* Historial colapsable: animación suave */
+  .history-collapsed {
+    max-height: 56px; // Solo header visible
+    overflow: hidden;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .history-expanded {
+    max-height: 800px;
+    transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Smooth scrolling táctil */
+  .overflow-auto,
+  .overflow-y-auto {
     -webkit-overflow-scrolling: touch;
   }
 
-  // Backdrop para men\u00fa m\u00f3vil
+  /* Backdrop menú móvil */
   .mobile-menu-backdrop {
     position: fixed;
     inset: 0;
@@ -24,42 +67,19 @@
     z-index: 40;
   }
 
-  // Sticky financial summary: flotante sobre navegaci\u00f3n
-  .sticky.bottom-16 {
-    bottom: 4rem; // Por encima de bottom nav (64px)
-  }
-
-  // Reducir padding general en m\u00f3vil
-  .bg-white.dark\:bg-gray-800 {
-    &:not(.sticky) {
-      border-radius: 0;
-    }
-  }
-
-  // Cards de items compactas
-  .item-card {
-    &:active {
-      transform: scale(0.99);
-      transition: transform 0.1s ease;
-    }
-  }
-
-  // Historial colapsable
-  .history-collapsed {
-    max-height: 60px;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
-  }
-
-  .history-expanded {
-    max-height: 1000px;
-    transition: max-height 0.5s ease;
+  /* Touch feedback en cards */
+  .item-card:active {
+    transform: scale(0.99);
+    transition: transform 0.1s ease;
   }
 }
 
-// Desktop: mantener espaciado normal
+/* ============================================
+   DESKTOP (≥ 768px)
+   ============================================ */
 @media (min-width: 768px) {
-  // Smooth scrolling desktop
+  
+  /* Scrollbar horizontal en tablas */
   .overflow-x-auto {
     scrollbar-width: thin;
     scrollbar-color: rgb(156 163 175) transparent;
@@ -92,5 +112,14 @@
         background-color: rgb(107 114 128);
       }
     }
+  }
+}
+
+/* ============================================
+   MODO OSCURO - AJUSTES GLOBALES
+   ============================================ */
+:host-context(.dark) {
+  .collapsible-section-header {
+    background-color: rgba(55, 65, 81, 0.5); // dark:bg-gray-700/50
   }
 }
