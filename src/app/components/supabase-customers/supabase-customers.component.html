@@ -1,73 +1,141 @@
-<div class="customers-container container-fluid"
+<div class="customers-container container-fluid h-full flex flex-col overflow-hidden pb-20 md:pb-8 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
   [attr.data-sidebar-collapsed]="sidebarService.isCollapsed() ? '1' : '0'">
+
+  <!-- Inner wrapper: contains header and content; keeps scroll confined to content area like Servicios -->
+  <div class="flex-1 flex flex-col p-0 md:p-6 overflow-hidden">
       
     @if (devRoleService.canSeeDevTools()) {
       <app-dev-user-selector></app-dev-user-selector>
     }
       
       <!-- Header -->
-      <div class="header-section row">
-        <div class="header-content col-12">
-          <div class="title-section row">
-            <h1 class="page-title col-12">Gestión de Clientes</h1>
-            <p class="page-subtitle col-8">Administra toda la información de tus clientes</p>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 mb-4 md:mb-6 border border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <!-- Mobile: Compact Header -->
+        <div class="md:hidden mb-4">
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 leading-none mb-3">
+            <i class="fas fa-users text-[24px]"></i>
+            Clientes
+          </h1>
+          <div class="relative w-full">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+            <input
+              type="text"
+              [(ngModel)]="searchTerm"
+              (ngModelChange)="onSearchChange($event)"
+              placeholder="Buscar clientes..."
+              class="w-full px-3 py-2 pl-9 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 text-sm"
+            >
           </div>
-          
-          <!-- Actions -->
-          <div class="header-actions row">
-            <!-- GDPR Toggle Button -->
-            @if (devRoleService.canSeeDevTools()) {
+        </div>
+
+        <!-- Desktop: Full Header (title left, search+actions right on same row) -->
+        <div class="hidden md:block">
+          <div class="flex items-center justify-between mb-4">
+            <!-- Title + subtitle (left) -->
+            <div>
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 leading-none mb-1">
+                <i class="fas fa-users text-[24px]"></i>
+                Gestión de Clientes
+              </h1>
+              <p class="text-gray-600 dark:text-gray-300 text-sm">Administra toda la información de tus clientes</p>
+            </div>
+
+            <!-- Search + Actions (right) -->
+            <div class="flex items-center gap-3 flex-shrink-0">
+              <div class="relative">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input
+                  type="text"
+                  [(ngModel)]="searchTerm"
+                  (ngModelChange)="onSearchChange($event)"
+                  placeholder="Buscar clientes por nombre, email o DNI..."
+                  class="w-80 px-3 md:px-4 py-2 pl-9 md:pl-10 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 text-sm"
+                />
+              </div>
+
+              <button
+                (click)="exportCustomers()"
+                class="btn btn-secondary"
+                [disabled]="isLoading()"
+                title="Exportar clientes"
+              >
+                <i class="fas fa-download"></i>
+                <span class="hidden md:inline ml-1">Exportar</span>
+              </button>
+
+              <input
+                #fileInput
+                type="file"
+                accept=".csv"
+                (change)="onCsvFileSelected($event)"
+                class="hidden"
+              />
+
+              <button
+                (click)="fileInput.click()"
+                class="btn btn-secondary"
+                [disabled]="isLoading()"
+                title="Importar clientes desde CSV"
+              >
+                <i class="fas fa-upload"></i>
+                <span class="hidden md:inline ml-1">Importar CSV</span>
+              </button>
+
+              @if (devRoleService.canSeeDevTools()) {
+                <button
+                  (click)="goToGdpr()"
+                  class="btn"
+                  [class.btn-primary]="!gdprPanelVisible()"
+                  [class.btn-secondary]="gdprPanelVisible()"
+                  title="Panel GDPR"
+                >
+                  <i class="fas fa-shield-alt"></i>
+                  <span class="hidden md:inline ml-1">GDPR</span>
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile: Action Buttons Row -->
+        <div class="md:hidden flex gap-2 mt-3">
+          @if (devRoleService.canSeeDevTools()) {
             <button
               (click)="goToGdpr()"
-              class="btn"
-              [class.btn-primary]="!gdprPanelVisible()"
-              [class.btn-secondary]="gdprPanelVisible()"
-              title="Mostrar/Ocultar panel GDPR"
+              class="btn btn-secondary flex-1 text-xs"
+              title="Panel GDPR"
             >
               <i class="fas fa-shield-alt"></i>
               GDPR
-            </button>      }   
-            <div class="search-input-container">
-              <i class="fas fa-search search-icon"></i>
-              <input
-                type="text"
-                [(ngModel)]="searchTerm"
-                (ngModelChange)="onSearchChange($event)"
-                placeholder="Buscar clientes por nombre, email o DNI..."
-                class="search-input-full"
-              >
-            </div>   
-            <button
-              (click)="exportCustomers()"
-              class="btn btn-secondary col-4"
-              [disabled]="isLoading()"
-            >
-              <i class="fas fa-download"></i>
-              Exportar
             </button>
-            
-            <input
-              #fileInput
-              type="file"
-              accept=".csv"
-              (change)="onCsvFileSelected($event)"
-              class="hidden"
-            >
-            <button
-              (click)="fileInput.click()"
-              class="btn btn-secondary"
-              [disabled]="isLoading()"
-              title="Importar clientes desde CSV"
-            >
-              <i class="fas fa-upload"></i>
-              Importar CSV
-              <i class="fas fa-info-circle info-icon" (click)="showImportInfo($event)"></i>
-            </button>
-          </div>
+          }
+          <button
+            (click)="exportCustomers()"
+            class="btn btn-secondary flex-1 text-xs"
+            [disabled]="isLoading()"
+          >
+            <i class="fas fa-download"></i>
+          </button>
+          <input
+            #fileInputMobile
+            type="file"
+            accept=".csv"
+            (change)="onCsvFileSelected($event)"
+            class="hidden"
+          >
+          <button
+            (click)="fileInputMobile.click()"
+            class="btn btn-secondary flex-1 text-xs"
+            [disabled]="isLoading()"
+          >
+            <i class="fas fa-upload"></i>
+          </button>
         </div>
       </div>
 
-      <!-- GDPR Panel (Collapsible) -->
+  <div class="flex-1 overflow-auto">
+
+  <!-- GDPR Panel (Collapsible) -->
       @if (devRoleService.canSeeDevTools() && gdprPanelVisible()) {
         <div class="gdpr-panel mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div class="flex items-center justify-between mb-4">
@@ -151,256 +219,202 @@
       @if (!isLoading() || customers().length) {
         <div class="customers-grid">
           @for (customer of filteredCustomers(); track customer.id; let i = $index) {
-            <div class="customer-card-container" [class.flipped]="flippedCardId() === customer.id">
+            <!-- Customer Card - Optimized Density -->
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-5 hover:shadow-md transition-shadow">
               
-              <!-- Card Inner (for 3D flip) -->
-              <div class="customer-card-inner">
-                
-                <!-- FRONT FACE - Customer Info -->
-                <div class="customer-card customer-card-front">
-                  
+              <!-- Mobile Layout -->
+              <div class="md:hidden">
+                <!-- Avatar + Name + Status -->
+                <div class="flex items-center gap-3 mb-3">
                   <!-- Avatar -->
-                  <div class="customer-avatar" (click)="selectCustomer(customer)">
+                  <div class="relative flex-shrink-0">
                     @if (customer.avatar_url) {
                       <img 
                         [src]="customer.avatar_url"
                         [alt]="customer.name + ' ' + customer.apellidos"
-                        class="avatar-img"
+                        class="w-10 h-10 rounded-full object-cover"
                       >
                     } @else {
-                      <div class="avatar-placeholder">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br {{ getAvatarGradient(customer) }} text-white font-bold text-sm flex items-center justify-center">
                         {{ getCustomerInitials(customer) }}
                       </div>
                     }
-                    
-                    <!-- Status Badge -->
-                    <div 
-                      class="status-badge"
-                      [class.active]="customer.activo"
-                      [class.inactive]="!customer.activo"
-                      [title]="customer.activo ? 'Cliente activo' : 'Cliente inactivo'"
-                    ></div>
-                  </div>
-
-                  <!-- Customer Info -->
-                  <div class="customer-info">
-                <h3 class="customer-name">
-                  {{ customer.name }} {{ customer.apellidos }}
-                </h3>
-
-                <!-- Incomplete/Needs Attention Chip -->
-                @if (customer?.metadata?.needs_attention || customer?.metadata?.inactive_on_import) {
-                  <div class="mb-2">
-                    <span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 border border-red-200" [title]="formatAttentionReasons(customer)">
-                      <i class="fas fa-exclamation-circle mr-1"></i>
-                      Incompleto
-                    </span>
-                  </div>
-                }
-                
-                <!-- GDPR Status Indicator -->
-                <div class="gdpr-status mb-2">
-                  <span 
-                    class="text-xs px-2 py-1 rounded-full {{ getGdprStatusClass(customer) }}"
-                    [title]="getGdprStatusText(customer)"
-                  >
-                    <i class="fas fa-shield-alt mr-1"></i>
-                    {{ getGdprStatusText(customer) }}
-                  </span>
-                  @if (getGdprComplianceStatus(customer) === 'pending' && customer.email) {
-                    <button
-                      class="ml-2 inline-flex items-center text-xs px-2 py-1 rounded border border-blue-300 text-blue-700 hover:bg-blue-50"
-                      title="Obtener enlace de consentimiento (copiar al portapapeles)"
-                      (click)="sendConsentRequest(customer); $event.stopPropagation()"
-                    >
-                      <i class="fas fa-link mr-1"></i>
-                      Obtener enlace
-                    </button>
-                  }
-                </div>
-                
-                <div class="customer-details">
-                  <div class="detail-item">
-                    <i class="fas fa-envelope detail-icon"></i>
-                    <span class="detail-text">{{ customer.email }}</span>
+                    <!-- Online/Active Indicator -->
+                    @if (customer.activo) {
+                      <div class="w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full absolute bottom-0 right-0"></div>
+                    }
                   </div>
                   
+                  <!-- Name + Badge -->
+                  <div class="flex-1 min-w-0">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                      {{ customer.name }} {{ customer.apellidos }}
+                    </h3>
+                    @if (getGdprBadgeConfig(customer); as badge) {
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
+                        <i class="fas {{ badge.icon }} text-[10px]"></i>
+                        {{ badge.label }}
+                      </span>
+                    }
+                  </div>
+                </div>
+                
+                <!-- Contact Info (Max 2 fields) -->
+                <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  <div class="flex items-center gap-1.5 truncate">
+                    <i class="fas fa-envelope text-gray-400 text-xs flex-shrink-0"></i>
+                    <span class="truncate">{{ customer.email }}</span>
+                  </div>
                   @if (customer.phone) {
-                    <div class="detail-item">
-                      <i class="fas fa-phone detail-icon"></i>
-                      <span class="detail-text">{{ customer.phone }}</span>
-                    </div>
-                  }
-                  
-                  @if (customer.dni) {
-                    <div class="detail-item">
-                      <i class="fas fa-id-card detail-icon"></i>
-                      <span class="detail-text">{{ customer.dni }}</span>
-                    </div>
-                  }
-                  
-                  <div class="detail-item">
-                    <i class="fas fa-calendar detail-icon"></i>
-                    <span class="detail-text">{{ formatDate(customer.created_at) }}</span>
-                  </div>
-                  
-                  <!-- GDPR Data Protection Info -->
-                  @if (customer.data_retention_until) {
-                    <div class="detail-item">
-                      <i class="fas fa-hourglass detail-icon"></i>
-                      <span class="detail-text text-xs">Retención hasta: {{ formatDate(customer.data_retention_until) }}</span>
-                    </div>
-                  }
-                  
-                  @if (customer.is_minor) {
-                    <div class="detail-item">
-                      <i class="fas fa-child detail-icon text-orange-600"></i>
-                      <span class="detail-text text-xs text-orange-600">Menor de edad - Consentimiento parental requerido</span>
+                    <div class="flex items-center gap-1.5">
+                      <i class="fas fa-phone text-gray-400 text-xs flex-shrink-0"></i>
+                      <span>{{ customer.phone }}</span>
                     </div>
                   }
                 </div>
-
                 
+                <!-- Action Buttons - Icon Only -->
+                <div class="flex gap-2">
+                  <button
+                    (click)="editCustomer(customer)"
+                    class="flex-1 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors flex items-center justify-center gap-1.5"
+                    title="Editar"
+                  >
+                    <i class="fas fa-edit text-sm"></i>
+                    <span class="text-xs font-medium">Editar</span>
+                  </button>
+                  <button
+                    (click)="openGdprModal(customer)"
+                    class="px-3 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                    [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                    [disabled]="customer?.metadata?.inactive_on_import"
+                    title="RGPD"
+                  >
+                    <i class="fas fa-shield-alt text-sm"></i>
+                  </button>
+                  <button
+                    (click)="deleteCustomer(customer)"
+                    class="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                    [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                    [disabled]="customer?.metadata?.inactive_on_import"
+                    title="Eliminar"
+                  >
+                    <i class="fas fa-trash text-sm"></i>
+                  </button>
+                </div>
               </div>
 
-                  <!-- Actions -->
-                  <div class="customer-actions">
+              <!-- Desktop Layout -->
+              <div class="hidden md:block">
+                <div class="flex items-start justify-between mb-3">
+                  <!-- Avatar + Info -->
+                  <div class="flex items-center gap-3">
+                    <!-- Avatar -->
+                    <div class="relative flex-shrink-0">
+                      @if (customer.avatar_url) {
+                        <img 
+                          [src]="customer.avatar_url"
+                          [alt]="customer.name + ' ' + customer.apellidos"
+                          class="w-10 h-10 rounded-full object-cover"
+                        >
+                      } @else {
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br {{ getAvatarGradient(customer) }} text-white font-bold text-sm flex items-center justify-center">
+                          {{ getCustomerInitials(customer) }}
+                        </div>
+                      }
+                      @if (customer.activo) {
+                        <div class="w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full absolute bottom-0 right-0"></div>
+                      }
+                    </div>
                     
+                    <!-- Name + Badge -->
+                    <div>
+                      <h3 class="font-semibold text-gray-900 dark:text-gray-100">
+                        {{ customer.name }} {{ customer.apellidos }}
+                      </h3>
+                      @if (getGdprBadgeConfig(customer); as badge) {
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
+                          <i class="fas {{ badge.icon }} text-[10px]"></i>
+                          {{ badge.label }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+                  
+                  <!-- Action Buttons - Icon Only Compact -->
+                  <div class="flex gap-1">
                     <button
-                      (click)="editCustomer(customer); $event.stopPropagation()"
-                      class="action-btn edit"
+                      (click)="editCustomer(customer)"
+                      class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                       title="Editar cliente"
-                      aria-label="Editar cliente"
                     >
-                      <i class="fas fa-edit"></i>
+                      <i class="fas fa-edit text-sm"></i>
                     </button>
-                    
-                    <!-- Invite/Quitar acceso Client Portal Button -->
-                    <ng-container *ngIf="customer.email as cEmail">
-                      <button
-                        (click)="openInviteModal(customer); $event.stopPropagation()"
-                        class="action-btn invite"
-                        [class.opacity-50]="customer?.metadata?.inactive_on_import"
-                        [disabled]="customer?.metadata?.inactive_on_import"
-                        *ngIf="!hasPortalAccess(customer, cEmail)"
-                        title="Invitar al portal de clientes"
-                        aria-label="Invitar al portal de clientes"
-                      >
-                        <i class="fas fa-user-plus"></i>
-                      </button>
-                      <button
-                        (click)="togglePortalAccess(customer, false, $event)"
-                        class="action-btn delete"
-                        [class.opacity-50]="customer?.metadata?.inactive_on_import"
-                        [disabled]="customer?.metadata?.inactive_on_import"
-                        *ngIf="hasPortalAccess(customer, cEmail)"
-                        title="Quitar acceso al portal"
-                        aria-label="Quitar acceso al portal"
-                      >
-                        <i class="fas fa-user-times"></i>
-                      </button>
-                    </ng-container>
-
-                    <!-- GDPR Flip Button -->
+                    @if (customer.email; as cEmail) {
+                      @if (!hasPortalAccess(customer, cEmail)) {
+                        <button
+                          (click)="openInviteModal(customer)"
+                          class="w-8 h-8 flex items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                          [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                          [disabled]="customer?.metadata?.inactive_on_import"
+                          title="Invitar al portal"
+                        >
+                          <i class="fas fa-user-plus text-sm"></i>
+                        </button>
+                      } @else {
+                        <button
+                          (click)="togglePortalAccess(customer, false, $event)"
+                          class="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+                          [class.opacity-50]="customer?.metadata?.inactive_on_import"
+                          [disabled]="customer?.metadata?.inactive_on_import"
+                          title="Quitar acceso al portal"
+                        >
+                          <i class="fas fa-user-times text-sm"></i>
+                        </button>
+                      }
+                    }
                     <button
-                      (click)="flipCardToGdpr($event, customer.id)"
-                      class="action-btn gdpr"
+                      (click)="openGdprModal(customer)"
+                      class="w-8 h-8 flex items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
                       [class.opacity-50]="customer?.metadata?.inactive_on_import"
                       [disabled]="customer?.metadata?.inactive_on_import"
                       title="Acciones RGPD"
-                      aria-label="Acciones RGPD"
                     >
-                      <i class="fas fa-shield-alt"></i>
+                      <i class="fas fa-shield-alt text-sm"></i>
                     </button>
-                    
                     <button
-                      (click)="deleteCustomer(customer); $event.stopPropagation()"
-                      class="action-btn delete"
+                      (click)="deleteCustomer(customer)"
+                      class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                       [class.opacity-50]="customer?.metadata?.inactive_on_import"
                       [disabled]="customer?.metadata?.inactive_on_import"
                       title="Eliminar cliente"
-                      aria-label="Eliminar cliente"
                     >
-                      <i class="fas fa-trash"></i>
+                      <i class="fas fa-trash text-sm"></i>
                     </button>
                   </div>
                 </div>
                 
-                <!-- BACK FACE - GDPR Menu -->
-                <div class="customer-card customer-card-back">
-                  
-                  <!-- Close Button -->
-                  <button
-                    (click)="closeGdprCard($event)"
-                    class="gdpr-close-btn"
-                    title="Cerrar"
-                  >
-                    <i class="fas fa-times"></i>
-                  </button>
-                  
-                  <!-- GDPR Header -->
-                  <div class="gdpr-back-header">
-                    <div class="gdpr-back-icon">
-                      <i class="fas fa-shield-alt"></i>
-                    </div>
-                    <div>
-                      <h3 class="gdpr-back-title">Acciones RGPD</h3>
-                      <p class="gdpr-back-subtitle">{{ customer.name }} {{ customer.apellidos }}</p>
-                    </div>
+                <!-- Contact Info Vertical (Max 3 fields) -->
+                <div class="space-y-1.5 text-sm text-gray-600 dark:text-gray-400">
+                  <div class="flex items-center gap-1.5">
+                    <i class="fas fa-envelope text-gray-400 w-4"></i>
+                    <span class="truncate">{{ customer.email }}</span>
                   </div>
-                  
-                  <!-- GDPR Actions -->
-                  <div class="gdpr-back-actions">
-                    
-                    <button
-                      (click)="sendConsentRequest(customer); $event.stopPropagation()"
-                      class="gdpr-back-btn"
-                    >
-                      <i class="fas fa-envelope-open-text"></i>
-                      <span>Solicitar Consentimiento</span>
-                    </button>
-
-                    <button
-                      (click)="requestDataAccess(customer); $event.stopPropagation()"
-                      class="gdpr-back-btn"
-                    >
-                      <i class="fas fa-file-alt"></i>
-                      <span>Solicitar Acceso Datos</span>
-                    </button>
-                    
-                    <button
-                      (click)="exportCustomerData(customer); $event.stopPropagation()"
-                      class="gdpr-back-btn"
-                    >
-                      <i class="fas fa-download"></i>
-                      <span>Exportar Datos RGPD</span>
-                    </button>
-                    
-                    <div class="gdpr-back-divider"></div>
-                    
-                    <button
-                      (click)="openGdprModal(customer); $event.stopPropagation()"
-                      class="gdpr-back-btn primary"
-                    >
-                      <i class="fas fa-cog"></i>
-                      <span>Gestionar GDPR Completo</span>
-                    </button>
-                    
-                    <button
-                      (click)="anonymizeCustomer(customer); $event.stopPropagation()"
-                      class="gdpr-back-btn danger"
-                      [disabled]="isCustomerAnonymized(customer)"
-                      [class.opacity-50]="isCustomerAnonymized(customer)"
-                      [title]="isCustomerAnonymized(customer) ? 'Cliente ya anonimizado' : 'Anonimizar datos del cliente (irreversible)'"
-                    >
-                      <i class="fas fa-user-slash"></i>
-                      <span>{{ isCustomerAnonymized(customer) ? 'Ya Anonimizado' : 'Derecho al Olvido' }}</span>
-                    </button>
-                    
-                  </div>
+                  @if (customer.phone) {
+                    <div class="flex items-center gap-1.5">
+                      <i class="fas fa-phone text-gray-400 w-4"></i>
+                      <span>{{ customer.phone }}</span>
+                    </div>
+                  }
+                  @if (customer.dni) {
+                    <div class="flex items-center gap-1.5">
+                      <i class="fas fa-id-card text-gray-400 w-4"></i>
+                      <span>{{ customer.dni }}</span>
+                    </div>
+                  }
                 </div>
-                
               </div>
+
             </div>
           }
         </div>
@@ -455,7 +469,10 @@
       }
     </div>
 
-    <!-- Customer Form Modal -->
+        </div>
+      </div>
+
+      <!-- Customer Form Modal -->
     @if (showForm()) {
       <div class="modal-overlay">
         <div class="modal-content" (click)="$event.stopPropagation()">

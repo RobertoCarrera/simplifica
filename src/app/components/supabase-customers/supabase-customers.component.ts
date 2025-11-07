@@ -1393,35 +1393,68 @@ onMappingConfirmed(mappings: any[]): void {
   }
 
   // Show GDPR compliance status for a customer
-  getGdprComplianceStatus(customer: Customer): string {
+  getGdprComplianceStatus(customer: Customer): 'compliant' | 'partial' | 'nonCompliant' {
     // This would typically check various compliance factors
     if (customer.marketing_consent && customer.data_processing_consent) {
       return 'compliant';
     } else if (customer.data_processing_consent) {
       return 'partial';
     } else {
-      return 'pending';
+      return 'nonCompliant';
     }
   }
 
+  // Unified RGPD badge configuration - follows style guide semantic palette
+  rgpdStatusConfig = {
+    compliant: {
+      label: 'Conforme RGPD',
+      classes: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+      icon: 'fa-shield-check'
+    },
+    partial: {
+      label: 'Parcial',
+      classes: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+      icon: 'fa-shield-alt'
+    },
+    nonCompliant: {
+      label: 'No conforme',
+      classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+      icon: 'fa-shield-exclamation'
+    }
+  };
+
+  getGdprBadgeConfig(customer: Customer) {
+    const status = this.getGdprComplianceStatus(customer);
+    return this.rgpdStatusConfig[status];
+  }
+
+  // Avatar gradient generator - consistent hash-based color selection
+  getAvatarGradient(customer: Customer): string {
+    const name = `${customer.name}${customer.apellidos}`;
+    const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const gradients = [
+      'from-blue-500 to-purple-600',
+      'from-green-500 to-teal-600',
+      'from-orange-500 to-red-600',
+      'from-pink-500 to-purple-600'
+    ];
+    return gradients[hash % gradients.length];
+  }
+
   getGdprStatusClass(customer: Customer): string {
+    // Deprecated: kept for backwards compatibility, use getGdprBadgeConfig instead
     const status = this.getGdprComplianceStatus(customer);
     switch (status) {
       case 'compliant': return 'text-green-600 bg-green-100';
       case 'partial': return 'text-yellow-600 bg-yellow-100';
-      case 'pending': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      default: return 'text-red-600 bg-red-100';
     }
   }
 
   getGdprStatusText(customer: Customer): string {
-    const status = this.getGdprComplianceStatus(customer);
-    switch (status) {
-      case 'compliant': return 'Conforme RGPD';
-      case 'partial': return 'Parcialmente conforme';
-      case 'pending': return 'Pendiente consentimiento';
-      default: return 'Estado desconocido';
-    }
+    // Deprecated: kept for backwards compatibility, use getGdprBadgeConfig instead
+    const config = this.getGdprBadgeConfig(customer);
+    return config.label;
   }
 
   toggleGdprMenu(event: Event, customerId: string) {
