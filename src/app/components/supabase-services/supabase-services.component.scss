@@ -813,45 +813,7 @@
   100% { transform: rotate(360deg); }
 }
 
-/* FAB Button */
-.fab-button {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  width: 56px;
-  height: 56px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  border: none;
-  border-radius: 50%;
-  color: white;
-  font-size: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 2000;
-  
-  &:hover {
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5);
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  }
-  
-  &:active {
-    transform: translateY(-1px) scale(1.02);
-    transition: all 0.1s ease;
-  }
-  
-  i {
-    transition: transform 0.2s ease;
-  }
-  
-  &:hover i {
-    transform: rotate(90deg);
-  }
-}
+/* FAB Button: now uses global styles from src/styles.scss (.fab-button) */
 
 /* Responsive Design */
 @media (max-width: 768px) {
@@ -887,14 +849,7 @@
     flex-direction: column-reverse;
   }
 
-  .fab-button {
-    bottom: 70px;
-    right: 8px;
-    width: 52px;
-    height: 52px;
-    font-size: 1.1rem;
-    z-index: 2000;
-  }
+
 }
 
 /* Search Section */

@@ -36,6 +36,9 @@ Adopción realizada:
 
 ## Contenedores y cabeceras
 
+- Contenedor de página (wrapper interior): `flex-1 flex flex-col p-0 md:p-6 overflow-hidden`.
+  - Razonamiento: sin padding lateral en móvil (p-0) y con paddings amplios en desktop (md:p-6), como en Presupuestos.
+  - El root suele llevar `h-full flex flex-col overflow-hidden` y, si hay bottom nav o FAB, `pb-20 md:pb-8` para no solapar en móvil.
 - Tarjetas/headers: `bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700` con padding `p-4 md:p-6` y separación `mb-4 md:mb-6`.
 - Tipografía de título: `text-2xl font-bold text-gray-900 dark:text-gray-100`.
 - Subtítulo/ayuda: `text-gray-600 dark:text-gray-300`.
@@ -51,6 +54,19 @@ Adopción realizada:
 - Icono dentro de círculo: `w-20 h-20 md:w-24 md:h-24 bg-blue-100 dark:bg-blue-900/30 rounded-full`.
 - CTA primaria (actual): `bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 inline-flex items-center gap-2 shadow-md hover:shadow-lg`.
   - Alternativa: usar `.btn-primary` (definida en `styles.scss`) si se prefiere uniformar los botones primarios.
+
+## Alertas de error y estados de carga
+
+- Error (alerta unificada):
+  - Contenedor: `bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg mb-6 flex items-start gap-3`.
+  - Icono: SVG 20×20 con `fill="currentColor"`.
+  - Cuerpo: `font-semibold` para el título y `text-sm` para el detalle.
+  - Acción: botón `.btn-primary` para reintentos (o utilidades Tailwind equivalentes).
+
+- Carga (centrado):
+  - Wrapper: `flex justify-center items-center py-12`.
+  - Spinner: `animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600`.
+  - Texto: `text-gray-600 dark:text-gray-300 mt-4`.
 
 ## Listado de Presupuestos — Escritorio
 
