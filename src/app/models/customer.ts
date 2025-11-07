@@ -9,6 +9,15 @@ export interface Customer {
   apellidos: string;
   dni: string;
   phone: string;
+  // Tipo de cliente: persona física ('individual') o empresa ('business')
+  client_type: 'individual' | 'business';
+  // Campos específicos para empresas
+  business_name?: string;              // Razón social (requerido si client_type = business)
+  cif_nif?: string;                    // CIF/NIF empresarial (requerido si client_type = business)
+  trade_name?: string;                 // Nombre comercial
+  legal_representative_name?: string;  // Nombre del representante legal
+  legal_representative_dni?: string;   // DNI del representante legal
+  mercantile_registry_data?: any;      // Datos del registro mercantil (JSONB)
   // Legacy/localized aliases used across older components
   nombre?: string;
   telefono?: string;

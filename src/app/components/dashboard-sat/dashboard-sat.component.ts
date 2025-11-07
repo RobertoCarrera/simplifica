@@ -86,10 +86,13 @@ export class DashboardSatComponent implements OnInit{
       const fechaCreacionFormateada3 = `${diaCreacion} ${mesNombreCreacion} ${añoCreacion}`;
       
       // Filtrar por servicios
-      const serviciosMatch = ticket.servicios.some(servicio => 
-        normalize(servicio.servicio.nombre || '').startsWith(searchTerm) ||
-        normalize(servicio.producto?.nombre || '').startsWith(searchTerm)
-      );
+      const serviciosMatch = ticket.servicios.some(servicio => {
+  const serviceName = servicio.servicio?.nombre || '';
+        // Producto puede venir con propiedad name; usar indexación para evitar error TS sobre 'nombre'
+        const rawProduct: any = servicio.producto || {};
+        const productName = rawProduct.nombre || rawProduct.name || '';
+        return normalize(serviceName).startsWith(searchTerm) || normalize(productName).startsWith(searchTerm);
+      });
 
       return  (
         normalize(ticket.created_at.toString()).startsWith(searchTerm) ||

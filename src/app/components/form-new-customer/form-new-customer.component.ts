@@ -113,6 +113,7 @@ export class FormNewCustomerComponent  implements OnInit{
       apellidos: '', // puedes agregar otro ngModel si lo necesitas
       usuario_id: this.selectedCustomerUsuario_id,
       dni: this.selectedCustomerDNI,
+      client_type: 'individual'
     };
   }
 
@@ -158,7 +159,8 @@ export class FormNewCustomerComponent  implements OnInit{
       telefono: this.selectedCustomerTelephone,
       email: `${this.selectedCustomerEmail}@${this.selectedCustomerDomain}`,
       favicon: null,
-      usuario_id: this.selectedCustomerUsuario_id
+      usuario_id: this.selectedCustomerUsuario_id,
+      client_type: 'individual'
     };
   
     this.customersService.createCustomer(cliente).subscribe(res => {

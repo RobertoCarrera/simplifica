@@ -104,7 +104,8 @@ export class DashboardWorkshopComponent implements OnInit{
     telefono: '',
     email: '',
     favicon: null,
-    usuario_id: ''
+    usuario_id: '',
+    client_type: 'individual'
   };
 
   constructor(private servicesService: ServicesService,

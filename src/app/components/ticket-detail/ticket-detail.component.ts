@@ -10,6 +10,7 @@ import { TicketModalService } from '../../services/ticket-modal.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { environment } from '../../../environments/environment';
 import { SupabaseQuotesService } from '../../services/supabase-quotes.service';
+import { SupabaseCustomersService } from '../../services/supabase-customers.service';
 import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
 
@@ -278,7 +279,7 @@ import Placeholder from '@tiptap/extension-placeholder';
             <!-- Client Contact -->
             <div class="bg-white shadow rounded-lg p-6">
               <h3 class="text-lg font-medium text-gray-900 mb-4">Cliente</h3>
-              <div *ngIf="ticket?.client as client; else noClientInfo">
+              <div *ngIf="ticket.client as client; else noClientInfo">
                 <div class="text-sm text-gray-700 font-medium">{{ client.name}}</div>
                 <div class="mt-3 space-y-2">
                   <div *ngIf="client.email">
@@ -615,6 +616,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private ticketModalService = inject(TicketModalService);
   private sanitizer = inject(DomSanitizer);
   private quotesService = inject(SupabaseQuotesService);
+  private customersService = inject(SupabaseCustomersService);
   private toastService = inject(ToastService);
   
   // Track if there is an existing active quote derived from this ticket
@@ -1127,6 +1129,20 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       if (!clientId) { this.showToast('El ticket no tiene cliente asociado', 'error'); return; }
       if (!this.ticketServices || this.ticketServices.length === 0) {
         this.showToast('No hay servicios asignados para convertir', 'info');
+        return;
+      }
+
+      // Validar completitud del cliente antes de crear presupuesto
+      try {
+        const customer = await firstValueFrom(this.customersService.getCustomer(String(clientId)));
+        const comp = this.customersService.computeCompleteness(customer);
+        if (!comp.complete) {
+          // 'warning' no es tipo permitido en showToast -> usar 'info'
+          this.showToast('El cliente está incompleto y no puede generar presupuestos. Faltan: ' + comp.missingFields.join(', '), 'info');
+          return;
+        }
+      } catch (e: any) {
+        this.showToast('No se pudo validar el cliente para el presupuesto: ' + (e?.message || ''), 'error');
         return;
       }
 

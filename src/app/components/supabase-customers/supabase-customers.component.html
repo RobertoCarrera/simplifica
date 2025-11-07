@@ -2,12 +2,7 @@
   [attr.data-sidebar-collapsed]="sidebarService.isCollapsed() ? '1' : '0'">
 
   <!-- Inner wrapper: contains header and content; keeps scroll confined to content area like Servicios -->
-  <div class="flex-1 flex flex-col p-0 md:p-6 overflow-hidden">
-      
-    @if (devRoleService.canSeeDevTools()) {
-      <app-dev-user-selector></app-dev-user-selector>
-    }
-      
+  <div class="flex-1 flex flex-col p-0 md:p-6 overflow-hidden">      
       <!-- Header -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 mb-4 md:mb-6 border border-gray-200 dark:border-gray-700 flex-shrink-0">
         <!-- Mobile: Compact Header -->
@@ -28,6 +23,7 @@
           </div>
         </div>
 
+        @if (!isLoading() || customers().length) {
         <!-- Desktop: Full Header (title left, search+actions right on same row) -->
         <div class="hidden md:block">
           <div class="flex items-center justify-between mb-4">
@@ -80,22 +76,10 @@
                 <i class="fas fa-upload text-sm"></i>
                 <span class="ml-1">Importar CSV</span>
               </button>
-
-              @if (devRoleService.canSeeDevTools()) {
-                <button
-                  (click)="goToGdpr()"
-                  class="btn btn-header text-sm font-medium"
-                  [class.btn-primary]="!gdprPanelVisible()"
-                  [class.btn-secondary]="gdprPanelVisible()"
-                  title="Panel GDPR"
-                >
-                  <i class="fas fa-shield-alt text-sm"></i>
-                  <span class="ml-1">GDPR</span>
-                </button>
-              }
             </div>
           </div>
         </div>
+        } 
 
         <!-- Mobile: Action Buttons Row -->
         <div class="md:hidden flex gap-2 mt-3">
@@ -267,13 +251,24 @@
                     
                     <!-- Name + Badge -->
                     <div class="flex-1 min-w-0">
-                      <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                        {{ customer.name }} {{ customer.apellidos }}
+                      <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate flex items-center gap-2">
+                        <span>
+                          {{ customer.client_type === 'business' ? (customer.business_name || customer.name) : (customer.name + ' ' + (customer.apellidos || '')) }}
+                        </span>
+                        @if (!isCustomerComplete(customer)) {
+                          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200" [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">Incompleto</span>
+                        }
                       </h3>
                       @if (getGdprBadgeConfig(customer); as badge) {
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
                           <i class="fas {{ badge.icon }} text-[10px]"></i>
                           {{ badge.label }}
+                        </span>
+                      }
+                      @if (!isCustomerComplete(customer)) {
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200" [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">
+                          <i class="fas fa-exclamation-triangle text-[10px]"></i>
+                          Incompleto
                         </span>
                       }
                     </div>
@@ -349,13 +344,24 @@
                     
                     <!-- Name + Badge -->
                     <div class="flex-1 min-w-0">
-                      <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                        {{ customer.name }} {{ customer.apellidos }}
+                      <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate flex items-center gap-2">
+                        <span>
+                          {{ customer.client_type === 'business' ? (customer.business_name || customer.name) : (customer.name + ' ' + (customer.apellidos || '')) }}
+                        </span>
+                        @if (!isCustomerComplete(customer)) {
+                          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200" [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">Incompleto</span>
+                        }
                       </h3>
                       @if (getGdprBadgeConfig(customer); as badge) {
                         <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
                           <i class="fas {{ badge.icon }} text-[10px]"></i>
                           {{ badge.label }}
+                        </span>
+                      }
+                      @if (!isCustomerComplete(customer)) {
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200" [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">
+                          <i class="fas fa-exclamation-triangle text-[10px]"></i>
+                          Incompleto
                         </span>
                       }
                     </div>
@@ -373,10 +379,10 @@
                         <span>{{ customer.phone }}</span>
                       </div>
                     }
-                    @if (customer.dni) {
+                    @if (customer.client_type === 'business' ? customer.cif_nif : customer.dni) {
                       <div class="flex items-center gap-1.5">
-                        <i class="fas fa-id-card text-gray-400 w-4 flex-shrink-0"></i>
-                        <span>{{ customer.dni }}</span>
+                        <i class="fas" [class.fa-id-card]="customer.client_type !== 'business'" [class.fa-building]="customer.client_type === 'business'" class="text-gray-400 w-4 flex-shrink-0"></i>
+                        <span>{{ customer.client_type === 'business' ? customer.cif_nif : customer.dni }}</span>
                       </div>
                     }
                   </div>
@@ -512,6 +518,73 @@
               
               <div class="form-row">
                 <div class="form-group">
+                  <label for="clientType" class="form-label">
+                    <i class="fas fa-user-tag"></i>
+                    Tipo de cliente
+                  </label>
+                  <select id="clientType" name="clientType" [(ngModel)]="formData.client_type" class="form-input">
+                    <option value="individual">Persona física</option>
+                    <option value="business">Empresa</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Campos para EMPRESA -->
+              @if (formData.client_type === 'business') {
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="business_name" class="form-label">
+                      <i class="fas fa-building"></i>
+                      Razón social *
+                    </label>
+                    <input type="text" id="business_name" name="business_name" [(ngModel)]="formData.business_name" required class="form-input" placeholder="Mi Empresa S.L.">
+                  </div>
+                  <div class="form-group">
+                    <label for="cif_nif" class="form-label">
+                      <i class="fas fa-id-card"></i>
+                      CIF/NIF *
+                    </label>
+                    <input type="text" id="cif_nif" name="cif_nif" [(ngModel)]="formData.cif_nif" required class="form-input" placeholder="B12345678">
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="trade_name" class="form-label">
+                      <i class="fas fa-store"></i>
+                      Nombre comercial
+                    </label>
+                    <input type="text" id="trade_name" name="trade_name" [(ngModel)]="formData.trade_name" class="form-input" placeholder="Comercial">
+                  </div>
+                  <div class="form-group">
+                    <label for="legal_representative_name" class="form-label">
+                      <i class="fas fa-user-tie"></i>
+                      Representante legal
+                    </label>
+                    <input type="text" id="legal_representative_name" name="legal_representative_name" [(ngModel)]="formData.legal_representative_name" class="form-input" placeholder="Nombre del representante">
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="legal_representative_dni" class="form-label">
+                      <i class="fas fa-id-badge"></i>
+                      DNI representante
+                    </label>
+                    <input type="text" id="legal_representative_dni" name="legal_representative_dni" [(ngModel)]="formData.legal_representative_dni" class="form-input" placeholder="12345678Z">
+                  </div>
+                  <div class="form-group">
+                    <label for="mercantile_registry_data" class="form-label">
+                      <i class="fas fa-file-alt"></i>
+                      Registro mercantil (JSON)
+                    </label>
+                    <textarea id="mercantile_registry_data" name="mercantile_registry_data" [(ngModel)]="formData.mercantile_registry_data" class="form-textarea" rows="3" placeholder='{"tomo": "...", "folio": "..."}'></textarea>
+                  </div>
+                </div>
+              }
+
+              <!-- Campos para PERSONA FÍSICA -->
+              @if (formData.client_type === 'individual') {
+              <div class="form-row">
+                <div class="form-group">
                   <label for="nombre" class="form-label">
                     <i class="fas fa-user"></i>
                     Nombre *
@@ -543,6 +616,7 @@
                   >
                 </div>
               </div>
+              }
 
               <div class="form-row">
                 <div class="form-group">
@@ -577,7 +651,7 @@
                 </div>
               </div>
 
-              <div class="form-group">
+              <div class="form-group" *ngIf="formData.client_type === 'individual'">
                 <label for="dni" class="form-label">
                   <i class="fas fa-id-card"></i>
                   DNI/NIF
@@ -712,7 +786,7 @@
               type="button" 
               (click)="saveCustomer()"
               class="btn btn-primary"
-              [disabled]="!customerForm.form.valid || isLoading()"
+              [disabled]="isLoading() || (formData.client_type === 'business' ? !(formData.business_name && formData.cif_nif && formData.email) : !(formData.name && formData.email))"
             >
               <i class="fas fa-save"></i>
               {{ selectedCustomer() ? 'Actualizar' : 'Crear' }}

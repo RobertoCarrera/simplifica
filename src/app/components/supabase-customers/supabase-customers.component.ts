@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { SkeletonComponent } from '../skeleton/skeleton.component';
 import { LoadingComponent } from '../loading/loading.component';
 import { AnimationService } from '../../services/animation.service';
-import { DevUserSelectorComponent } from '../dev-user-selector/dev-user-selector.component';
 import { CsvHeaderMapperComponent, CsvMappingResult } from '../csv-header-mapper/csv-header-mapper.component';
 import { Customer, CreateCustomerDev } from '../../models/customer';
 import { AddressesService } from '../../services/addresses.service';
@@ -21,6 +20,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ClientPortalService } from '../../services/client-portal.service';
 import { ClientGdprModalComponent } from '../client-gdpr-modal/client-gdpr-modal.component';
+import { SupabaseCustomersService as CustomersSvc } from '../../services/supabase-customers.service';
 
 @Component({
   selector: 'app-supabase-customers',
@@ -30,7 +30,6 @@ import { ClientGdprModalComponent } from '../client-gdpr-modal/client-gdpr-modal
     FormsModule, 
     SkeletonComponent, 
     LoadingComponent,
-    DevUserSelectorComponent,
     CsvHeaderMapperComponent,
     AppModalComponent,
     ClientGdprModalComponent,
@@ -54,6 +53,7 @@ export class SupabaseCustomersComponent implements OnInit {
   devRoleService = inject(DevRoleService);
   private auth = inject(AuthService);
   portal = inject(ClientPortalService);
+  private completenessSvc = inject(CustomersSvc);
 
   // State signals
   customers = signal<Customer[]>([]);
@@ -125,6 +125,13 @@ export class SupabaseCustomersComponent implements OnInit {
     email: '',
     phone: '',
     dni: '',
+    client_type: 'individual',
+    business_name: '',
+    cif_nif: '',
+    trade_name: '',
+    legal_representative_name: '',
+    legal_representative_dni: '',
+    mercantile_registry_data: '',
     // structured address fields
     addressTipoVia: '',
     addressNombre: '',
@@ -285,6 +292,15 @@ onMappingConfirmed(mappings: any[]): void {
     
     return filtered;
   });
+
+  // Completeness helpers for template
+  isCustomerComplete(c: Customer): boolean {
+    return this.completenessSvc.computeCompleteness(c).complete;
+  }
+
+  getCustomerMissingFields(c: Customer): string[] {
+    return this.completenessSvc.computeCompleteness(c).missingFields;
+  }
 
   onOnlyIncompleteChange(_val: any) {
     // Trigger recompute; searchTerm is a signal, resetting to same value is enough for change detection in computed
@@ -841,14 +857,34 @@ onMappingConfirmed(mappings: any[]): void {
     // Send raw values - server will sanitize, validate and normalize
     
     const createCustomerWithDireccion = (direccion_id?: string) => {
-      const customerData: CreateCustomerDev = {
+      // Validaciones condicionales
+      if (this.formData.client_type === 'business') {
+        if (!this.formData.business_name?.trim() || !this.formData.cif_nif?.trim()) {
+          this.toastService.error('Empresa requiere razón social y CIF/NIF', 'Campos obligatorios');
+          return;
+        }
+      } else {
+        if (!this.formData.name?.trim()) {
+          this.toastService.error('Nombre requerido', 'Campos obligatorios');
+          return;
+        }
+      }
+
+      const customerData: any = {
         name: this.formData.name,
         apellidos: this.formData.apellidos,
         email: this.formData.email,
         phone: this.formData.phone,
-        dni: this.formData.dni,
+        dni: this.formData.dni || (this.formData.client_type === 'individual' ? '99999999X' : ''),
+        client_type: this.formData.client_type,
+        business_name: this.formData.business_name || undefined,
+        cif_nif: this.formData.cif_nif || (this.formData.client_type === 'business' ? 'B99999999' : undefined),
+        trade_name: this.formData.trade_name || undefined,
+        legal_representative_name: this.formData.legal_representative_name || undefined,
+        legal_representative_dni: this.formData.legal_representative_dni || undefined,
+        mercantile_registry_data: this.safeParseRegistryData(this.formData.mercantile_registry_data),
         direccion_id: direccion_id
-      };
+      } as CreateCustomerDev & { [k:string]: any };
 
       this.customersService.createCustomer(customerData).subscribe({
         next: (customer) => {
@@ -907,7 +943,14 @@ onMappingConfirmed(mappings: any[]): void {
         apellidos: this.formData.apellidos,
         email: this.formData.email,
         phone: this.formData.phone,
-        dni: this.formData.dni,
+        dni: this.formData.dni || (this.formData.client_type === 'individual' ? '99999999X' : ''),
+        client_type: this.formData.client_type,
+        business_name: this.formData.business_name || undefined,
+        cif_nif: this.formData.cif_nif || (this.formData.client_type === 'business' ? 'B99999999' : undefined),
+        trade_name: this.formData.trade_name || undefined,
+        legal_representative_name: this.formData.legal_representative_name || undefined,
+        legal_representative_dni: this.formData.legal_representative_dni || undefined,
+        mercantile_registry_data: this.safeParseRegistryData(this.formData.mercantile_registry_data)
       };
 
       // If customer had inactive_on_import or needs_attention, clear them on save
@@ -987,6 +1030,13 @@ onMappingConfirmed(mappings: any[]): void {
       email: '',
       phone: '',
       dni: '',
+      client_type: 'individual',
+      business_name: '',
+      cif_nif: '',
+      trade_name: '',
+      legal_representative_name: '',
+      legal_representative_dni: '',
+      mercantile_registry_data: '',
       addressTipoVia: '',
       addressNombre: '',
       addressNumero: '',
@@ -1004,6 +1054,13 @@ onMappingConfirmed(mappings: any[]): void {
       email: customer.email || '',
       phone: customer.phone || '',
       dni: customer.dni || '',
+      client_type: (customer as any).client_type || 'individual',
+      business_name: (customer as any).business_name || '',
+      cif_nif: (customer as any).cif_nif || '',
+      trade_name: (customer as any).trade_name || '',
+      legal_representative_name: (customer as any).legal_representative_name || '',
+      legal_representative_dni: (customer as any).legal_representative_dni || '',
+      mercantile_registry_data: this.stringifyRegistryData((customer as any).mercantile_registry_data),
   // try to show an address string if the customer has a direccion relation
   // populate structured address fields from the direccion relation if available
   addressTipoVia: customer.direccion?.tipo_via || '',
@@ -1012,6 +1069,16 @@ onMappingConfirmed(mappings: any[]): void {
   addressLocalidadId: customer.direccion?.localidad_id || '',
       honeypot: '' // Always empty when populating (not visible to user)
     };
+  }
+
+  // Helpers reused from service (duplicated here for form handling)
+  private safeParseRegistryData(input: string): any {
+    if (!input) return undefined;
+    try { return JSON.parse(input); } catch { return { raw: input }; }
+  }
+  private stringifyRegistryData(data: any): string {
+    if (!data) return '';
+    try { return typeof data === 'string' ? data : JSON.stringify(data, null, 2); } catch { return ''; }
   }
 
   onCustomerSaved(customer: Customer) {

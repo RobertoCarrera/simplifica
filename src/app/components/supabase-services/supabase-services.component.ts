@@ -672,7 +672,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   @HostListener('document:keydown.escape', ['$event'])
-  onEscapeKey(event: KeyboardEvent) {
+  onEscapeKey(event: Event) {
     if (this.showCategoryInput) {
       this.showCategoryInput = false;
       this.categoryFilterText = '';

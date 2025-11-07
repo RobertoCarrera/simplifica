@@ -119,17 +119,30 @@ function isOriginAllowed(origin) {
   return ALLOWED_ORIGINS.includes(origin);
 }
 
-// Map canonical p_* inputs to DB columns for clients table
-// NOTA: direccion_id removido - no existe en schema de clients
-const FIELD_MAP = {
+// Map canonical inputs to DB columns for clients table (v2 compatibility)
+// Backwards compatible: accepts old p_* underscore style and new compact p<field> style.
+const FIELD_MAP: Record<string,string> = {
+  // Legacy keys
   p_id: 'id',
   p_name: 'name',
   p_apellidos: 'apellidos',
   p_email: 'email',
   p_phone: 'phone',
   p_dni: 'dni',
-  // p_direccion_id: 'direccion_id', // REMOVED - column doesn't exist
-  p_metadata: 'metadata'
+  p_metadata: 'metadata',
+  // New spec keys (without underscore after p)
+  pclienttype: 'client_type',
+  pname: 'name',
+  papellidos: 'apellidos',
+  pemail: 'email',
+  pphone: 'phone',
+  pdni: 'dni',
+  pbusinessname: 'business_name',
+  pcifnif: 'cif_nif',
+  ptradename: 'trade_name',
+  plegalrepresentativename: 'legal_representative_name',
+  plegalrepresentativedni: 'legal_representative_dni',
+  pmercantileregistrydata: 'mercantile_registry_data'
 };
 
 // Security: Sanitize string to prevent XSS and injection
@@ -281,11 +294,35 @@ serve(async (req) => {
       }
     }
 
-    // Map normalized p_* fields to DB columns
-    const row = {};
+    // Determine client type (default INDIVIDUAL)
+    const rawType = (normalized.pclienttype || normalized.p_client_type || 'INDIVIDUAL');
+    const clientType = String(rawType).toUpperCase() === 'BUSINESS' ? 'BUSINESS' : 'INDIVIDUAL';
+    normalized.pclienttype = clientType;
+
+    // Map normalized fields
+    const row: any = {};
     for (const [pk, col] of Object.entries(FIELD_MAP)) {
-      if (pk in normalized) {
+      if (pk in normalized && normalized[pk] !== undefined) {
         row[col] = normalized[pk];
+      }
+    }
+    if (!row.client_type) row.client_type = clientType;
+
+    // Defaults per type
+    if (clientType === 'INDIVIDUAL') {
+      if (!row.dni) row.dni = '99999999X';
+    } else if (clientType === 'BUSINESS') {
+      if (!row.cif_nif) row.cif_nif = 'B99999999';
+    }
+
+    // Validate required per type
+    if (clientType === 'BUSINESS') {
+      if (!row.business_name || !row.cif_nif || !row.email) {
+        return new Response(JSON.stringify({ error: 'Missing required business fields: pbusinessname, pcifnif, pemail' }), { status: 400, headers });
+      }
+    } else {
+      if (!row.name || !row.email) {
+        return new Response(JSON.stringify({ error: 'Missing required individual fields: pname (or p_name) and pemail (or p_email)' }), { status: 400, headers });
       }
     }
 
@@ -312,11 +349,7 @@ serve(async (req) => {
       }
       return new Response(JSON.stringify({ ok: true, method: 'update', client: updated }), { status: 200, headers });
     } else {
-      // Create new client
-      // Security: enforce required fields
-      if (!row.name || !row.email) {
-        return new Response(JSON.stringify({ error: 'Missing required fields: p_name and p_email are mandatory' }), { status: 400, headers });
-      }
+      // Create new client (row already has required validated above)
       
       // Security: check for duplicate email within company
       const { data: dupCheck, error: dupErr } = await supabaseUser

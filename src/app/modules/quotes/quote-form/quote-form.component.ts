@@ -21,6 +21,10 @@ interface ClientOption {
   tax_id?: string;
   email?: string;
   phone?: string;
+  // Flag de completitud Verifactu (todos los datos fiscales mínimos presentes)
+  complete: boolean;
+  // Lista de campos faltantes para mostrar en UI o diagnósticos
+  missingFields: string[];
 }
 
 interface ServiceOption {
@@ -88,6 +92,24 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       c.phone?.includes(search)
     );
   });
+
+  // Helpers para estado de cliente seleccionado (evita funciones arrow en template)
+  getSelectedClient(): ClientOption | undefined {
+    if (!this.quoteForm) return undefined;
+    const id = this.quoteForm.get('client_id')?.value;
+    if (!id) return undefined;
+    return this.clients().find(c => c.id === id);
+  }
+
+  isSelectedClientIncomplete(): boolean {
+    const c = this.getSelectedClient();
+    return !!c && !c.complete;
+  }
+
+  getSelectedClientMissingFields(): string[] {
+    const c = this.getSelectedClient();
+    return c?.missingFields || [];
+  }
   
   // Selector de servicios
   services = signal<ServiceOption[]>([]);
@@ -378,15 +400,22 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   loadClients() {
     this.customersService.getCustomers().subscribe({
       next: (customers: Customer[]) => {
-        this.clients.set(customers.map(c => ({
-          id: c.id,
-          name: c.nombre || c.name || 'Sin nombre',
-          apellidos: c.apellidos,
-          business_name: c.empresa,
-          tax_id: c.dni,
-          email: c.email,
-          phone: c.telefono || c.phone
-        })));
+        this.clients.set(customers.map(c => {
+          const { complete, missingFields } = this.customersService.computeCompleteness(c);
+          const nombre = c.nombre || c.name;
+          const telefono = c.telefono || c.phone;
+          return {
+            id: c.id,
+            name: nombre || 'Sin nombre',
+            apellidos: c.apellidos,
+            business_name: c.empresa || c.business_name,
+            tax_id: c.dni || c.cif_nif,
+            email: c.email,
+            phone: telefono,
+            complete,
+            missingFields
+          } as ClientOption;
+        }));
       },
       error: (err) => {
         console.error('Error al cargar clientes:', err);
@@ -706,6 +735,25 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     this.loading.set(true);
     const formValue = this.quoteForm.value;
 
+    // Validar completitud del cliente sólo en creación (no bloqueamos edición de históricos)
+    if (!this.editMode()) {
+      const selectedClient = this.clients().find(c => c.id === formValue.client_id);
+      if (!selectedClient) {
+        this.loading.set(false);
+        this.error.set('Seleccione un cliente válido');
+        return;
+      }
+      if (!selectedClient.complete) {
+        this.loading.set(false);
+        // Mensaje detallado con campos faltantes
+        const faltan = selectedClient.missingFields.join(', ');
+        const msg = `El cliente no tiene datos fiscales completos para emitir el presupuesto (faltan: ${faltan}). Complete la ficha antes de continuar.`;
+        this.error.set(msg);
+        this.toast.error('Cliente incompleto', msg);
+        return;
+      }
+    }
+
     // Si estamos en modo edición, actualizar en lugar de crear
   if (this.editMode() && this.quoteId()) {
       console.log('📝 Actualizando presupuesto existente:', this.quoteId());
@@ -781,7 +829,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         }
       });
     } else {
-      console.log('📝 Creando nuevo presupuesto');
+  console.log('📝 Creando nuevo presupuesto (cliente verificado completo)');
       const dto: CreateQuoteDTO = {
         client_id: formValue.client_id,
         title: formValue.title,

@@ -172,6 +172,31 @@ export class SupabaseQuotesService {
 
     const client = this.supabaseClient.instance;
 
+    // Verificar completitud del cliente antes de crear presupuesto (bloqueo fiscal)
+    const clientRow = await client
+      .from('clients')
+      .select('id, client_type, name, apellidos, business_name, cif_nif, dni, email, phone')
+      .eq('id', dto.client_id)
+      .eq('company_id', companyId)
+      .maybeSingle();
+    if (clientRow.error) throw clientRow.error;
+    if (!clientRow.data) throw new Error('Cliente no encontrado');
+    const c = clientRow.data as any;
+    const missing: string[] = [];
+    if (c.client_type === 'business') {
+      if (!(c.business_name)) missing.push('Razón social');
+      if (!(c.cif_nif || c.dni)) missing.push('CIF/NIF');
+    } else {
+      if (!(c.name)) missing.push('Nombre');
+      if (!(c.apellidos)) missing.push('Apellidos');
+      if (!(c.dni)) missing.push('DNI');
+    }
+    if (!c.email) missing.push('Email');
+    if (!c.phone) missing.push('Teléfono');
+    if (missing.length) {
+      throw new Error('Cliente incompleto. Faltan: ' + missing.join(', '));
+    }
+
     // Obtener siguiente número de presupuesto
     const year = new Date(dto.quote_date || new Date()).getFullYear();
     const { data: nextNumber, error: numberError } = await client

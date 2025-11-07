@@ -75,6 +75,31 @@ export class SupabaseCustomersService {
     this.loadCustomers();
   }
 
+  /**
+   * Calcula si un cliente está "completo" para emisión de documentos fiscales (Verifactu)
+   * y devuelve también los campos faltantes para mostrar en la UI.
+   */
+  computeCompleteness(c: Customer | null | undefined): { complete: boolean; missingFields: string[] } {
+    if (!c) return { complete: false, missingFields: ['Cliente inexistente'] };
+    const missing: string[] = [];
+    const isBusiness = c.client_type === 'business';
+    const nombre = c.nombre || c.name;
+    const telefono = c.telefono || (c as any).phone;
+
+    if (isBusiness) {
+      if (!(c.business_name || (c as any).empresa)) missing.push('Razón social');
+      if (!(c.cif_nif || c.dni)) missing.push('CIF/NIF');
+    } else {
+      if (!nombre) missing.push('Nombre');
+      if (!c.apellidos) missing.push('Apellidos');
+      if (!c.dni) missing.push('DNI');
+    }
+    if (!c.email) missing.push('Email');
+    if (!telefono) missing.push('Teléfono');
+
+    return { complete: missing.length === 0, missingFields: missing };
+  }
+
   // Small UUID validator to avoid appending invalid company_id filters
   private isValidUuid(id: string | null | undefined): boolean {
     if (!id) return false;
@@ -171,9 +196,10 @@ export class SupabaseCustomersService {
       query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
     }
 
-    // Ordenamiento: activos (deleted_at NULL) primero, luego fecha
+    // Filtrar sólo activos (deleted_at IS NULL) y ordenar
     // Nota: la tabla 'clients' no tiene columna is_active; usamos deleted_at para ordenar activos primero
     query = query
+      .is('deleted_at', null)
       .order('deleted_at', { ascending: true, nullsFirst: true })
       .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
 
@@ -198,6 +224,7 @@ export class SupabaseCustomersService {
           if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
           if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
           q2 = q2
+            .is('deleted_at', null)
             .order('deleted_at', { ascending: true, nullsFirst: true })
             .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
           if (filters.limit) {
@@ -235,6 +262,13 @@ export class SupabaseCustomersService {
         phone: client.phone,
         // Prefer the real column; fallback to metadata only if needed
         dni: client.dni || this.extractFromMetadata(client.metadata, 'dni') || '',
+        client_type: client.client_type || 'individual',
+        business_name: client.business_name || undefined,
+        cif_nif: client.cif_nif || undefined,
+        trade_name: client.trade_name || undefined,
+        legal_representative_name: client.legal_representative_name || undefined,
+        legal_representative_dni: client.legal_representative_dni || undefined,
+        mercantile_registry_data: client.mercantile_registry_data || undefined,
         usuario_id: client.company_id,
         created_at: client.created_at,
         updated_at: client.updated_at,
@@ -283,6 +317,7 @@ export class SupabaseCustomersService {
 
     // Ordenamiento consistente con estándar: activos (deleted_at NULL) primero
     query = query
+      .is('deleted_at', null)
       .order('deleted_at', { ascending: true, nullsFirst: true })
       .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
 
@@ -505,11 +540,25 @@ export class SupabaseCustomersService {
     if (!token) throw new Error('No auth token for Edge Function');
 
     const payload: any = {
-      p_name: customer.name,
-      p_apellidos: customer.apellidos ?? null,
-      p_email: customer.email ?? null,
-      p_phone: customer.phone ?? null,
-      p_dni: customer.dni ?? null,
+      // Backwards compatible (old keys)
+      p_name: (customer as any).name,
+      p_apellidos: (customer as any).apellidos ?? null,
+      p_email: (customer as any).email ?? null,
+      p_phone: (customer as any).phone ?? null,
+      p_dni: (customer as any).dni ?? null,
+      // New canonical keys (spec v2)
+      pclienttype: (customer as any).client_type || 'individual',
+      pname: (customer as any).name,
+      papellidos: (customer as any).apellidos ?? null,
+      pemail: (customer as any).email ?? null,
+      pphone: (customer as any).phone ?? null,
+      pdni: (customer as any).dni ?? null,
+      pbusinessname: (customer as any).business_name ?? null,
+      pcifnif: (customer as any).cif_nif ?? null,
+      ptradename: (customer as any).trade_name ?? null,
+      plegalrepresentativename: (customer as any).legal_representative_name ?? null,
+      plegalrepresentativedni: (customer as any).legal_representative_dni ?? null,
+      pmercantileregistrydata: (customer as any).mercantile_registry_data ?? null,
     };
 
     // If updating, include ID
@@ -692,20 +741,26 @@ export class SupabaseCustomersService {
    * Eliminar cliente usando método estándar
    */
   private deleteCustomerStandard(id: string): Observable<void> {
-    devLog('Eliminando cliente via método estándar', { id });
-    
+    devLog('Eliminando cliente via método estándar (soft delete)', { id });
+
+    // Realizar SOFT DELETE para evitar conflictos de FK: set deleted_at y updated_at
     return from(
       this.supabase
         .from('clients')
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
+        .select('id')
+        .maybeSingle()
     ).pipe(
       map(({ error }) => {
         if (error) throw error;
       }),
       tap(() => {
-        devSuccess('Cliente eliminado via método estándar', id);
-        // Actualizar lista local
+        devSuccess('Cliente marcado como eliminado (soft delete)', id);
+        // Actualizar lista local (remover de la vista actual)
         const currentCustomers = this.customersSubject.value;
         this.customersSubject.next(currentCustomers.filter(c => c.id !== id));
         this.loadingSubject.next(false);
@@ -713,7 +768,8 @@ export class SupabaseCustomersService {
       }),
       catchError(error => {
         this.loadingSubject.next(false);
-        devError('Error al eliminar cliente', error);
+        // Si por alguna razón el UPDATE falla por políticas/permiso, registrar claramente
+        devError('Error al aplicar soft delete del cliente', error);
         return throwError(() => error);
       })
     );

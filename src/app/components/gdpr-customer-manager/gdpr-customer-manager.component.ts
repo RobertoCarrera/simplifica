@@ -163,7 +163,8 @@ export class GdprCustomerManagerComponent implements OnInit {
   }
 
   private populateForm(customer: Customer) {
-    this.customerForm = {
+    // Extend shape dynamically without changing local interface typing
+    const base: any = {
       name: customer.name || '',
       apellidos: customer.apellidos || '',
       email: customer.email || '',
@@ -171,6 +172,10 @@ export class GdprCustomerManagerComponent implements OnInit {
       dni: customer.dni || '',
       address: (customer.direccion && (customer.direccion as any).nombre) ? (customer.direccion as any).nombre : (customer.address || '')
     };
+    base.client_type = (customer as any).client_type || 'individual';
+    base.business_name = (customer as any).business_name || '';
+    base.cif_nif = (customer as any).cif_nif || '';
+    this.customerForm = base;
   }
 
   saveCustomer() {
@@ -202,6 +207,9 @@ export class GdprCustomerManagerComponent implements OnInit {
         email: this.customerForm.email,
         phone: this.customerForm.phone,
         dni: this.customerForm.dni,
+        client_type: (this.customerForm as any).client_type || 'individual',
+        business_name: (this.customerForm as any).business_name || undefined,
+        cif_nif: (this.customerForm as any).cif_nif || ((this.customerForm as any).client_type === 'business' ? 'B99999999' : undefined),
         direccion_id: direccion_id,
         activo: true,
         usuario_id: ''
