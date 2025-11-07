@@ -329,3 +329,106 @@ html, body {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* Floating Action Button (FAB) - global copy to reuse across app */
+.fab-button {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border: none;
+  color: white;
+  font-size: 1.25rem;
+  cursor: pointer;
+  box-shadow: 
+    0 8px 32px rgba(59, 130, 246, 0.4),
+    0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fabSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  &:hover:not(:disabled) {
+    transform: scale(1.1);
+    box-shadow: 
+      0 12px 48px rgba(59, 130, 246, 0.5),
+      0 6px 24px rgba(0, 0, 0, 0.2);
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(1.05);
+    transition: transform 0.1s;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 
+      0 4px 16px rgba(59, 130, 246, 0.2),
+      0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Icon rotation supports both <i> and <svg> inside */
+  i, svg {
+    transition: transform 0.2s ease;
+  }
+
+  &:hover:not(:disabled) i,
+  &:hover:not(:disabled) svg {
+    transform: rotate(90deg);
+  }
+}
+
+@keyframes fabSlideIn {
+  0% {
+    transform: translateY(100px) scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-8px) scale(1.05);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .fab-button {
+    bottom: 70px;
+    right: 8px;
+    width: 52px;
+    height: 52px;
+    font-size: 1.1rem;
+    z-index: 5000;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .fab-button {
+    background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #4338ca 0%, #312e81 100%);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fab-button {
+    animation: none;
+    transition: opacity 0.3s;
+    &:hover:not(:disabled) {
+      transform: none;
+      i, svg { transform: none; }
+    }
+    &:active:not(:disabled) { transform: none; }
+  }
+}
