@@ -37,7 +37,7 @@
                 <i class="fas fa-users text-[24px]"></i>
                 Gestión de Clientes
               </h1>
-              <p class="text-gray-600 dark:text-gray-300 text-sm">Administra toda la información de tus clientes</p>
+              <p class="text-gray-600 dark:text-gray-300 text-sm mt-1 hidden md:block">Administra toda la información de tus clientes</p>
             </div>
 
             <!-- Search + Actions (right) -->
@@ -55,12 +55,12 @@
 
               <button
                 (click)="exportCustomers()"
-                class="btn btn-secondary"
+                class="btn btn-secondary text-sm font-medium"
                 [disabled]="isLoading()"
                 title="Exportar clientes"
               >
                 <i class="fas fa-download"></i>
-                <span class="hidden md:inline ml-1">Exportar</span>
+                <span class="ml-1">Exportar</span>
               </button>
 
               <input
@@ -73,24 +73,24 @@
 
               <button
                 (click)="fileInput.click()"
-                class="btn btn-secondary"
+                class="btn btn-secondary text-sm font-medium"
                 [disabled]="isLoading()"
                 title="Importar clientes desde CSV"
               >
                 <i class="fas fa-upload"></i>
-                <span class="hidden md:inline ml-1">Importar CSV</span>
+                <span class="ml-1">Importar CSV</span>
               </button>
 
               @if (devRoleService.canSeeDevTools()) {
                 <button
                   (click)="goToGdpr()"
-                  class="btn"
+                  class="btn text-sm font-medium"
                   [class.btn-primary]="!gdprPanelVisible()"
                   [class.btn-secondary]="gdprPanelVisible()"
                   title="Panel GDPR"
                 >
                   <i class="fas fa-shield-alt"></i>
-                  <span class="hidden md:inline ml-1">GDPR</span>
+                  <span class="ml-1">GDPR</span>
                 </button>
               }
             </div>
@@ -208,10 +208,30 @@
           }
         </div>
       }
-      <!-- Loading State -->
+      <!-- Loading State (Skeletons for header + list) -->
       @if (isLoading() && !customers().length) {
-        <div class="loading-section">
-          <app-skeleton type="list" [count]="6"></app-skeleton>
+        <div class="space-y-4">
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
+            <!-- Header skeleton: icon + two lines + actions -->
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-3">
+                <app-skeleton type="avatar"></app-skeleton>
+                <div class="space-y-2">
+                  <app-skeleton type="text" width="160px"></app-skeleton>
+                  <app-skeleton type="text" width="220px"></app-skeleton>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <app-skeleton type="button" width="80px"></app-skeleton>
+                <app-skeleton type="button" width="100px"></app-skeleton>
+                <app-skeleton type="button" width="90px"></app-skeleton>
+              </div>
+            </div>
+            <app-skeleton type="rect" height="40px" width="100%"></app-skeleton>
+          </div>
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
+            <app-skeleton type="list" [count]="6"></app-skeleton>
+          </div>
         </div>
       }
 

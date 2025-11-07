@@ -52,6 +52,68 @@ Adopción realizada:
 - Tipografía de título: `text-2xl font-bold text-gray-900 dark:text-gray-100`.
 - Subtítulo/ayuda: `text-gray-600 dark:text-gray-300`.
 
+## Tipografía Unificada (Referencia: Presupuestos)
+
+Escala base (Tailwind):
+
+| Elemento | Clases | Uso |
+|----------|--------|-----|
+| H1 Página | `text-2xl font-bold leading-none text-gray-900 dark:text-gray-100` | Títulos principales de vista (Presupuestos, Clientes, Servicios) |
+| H2 Sección | `text-xl font-semibold text-gray-900 dark:text-gray-100` | Sub-secciones dentro de una vista ("Servicios Inactivos", paneles) |
+| H3 Card / Modal | `text-lg font-semibold text-gray-900 dark:text-gray-100` | Títulos de tarjetas densas y encabezados de modales |
+| Subtítulo / Descripción corta | `text-gray-600 dark:text-gray-300 text-sm` | Líneas secundarias bajo H1 (ej. frase descriptiva) |
+| Texto cuerpo (default) | `text-sm text-gray-700 dark:text-gray-300` | Contenido de listas / celdas con buena densidad |
+| Metadatos / Ayuda | `text-xs text-gray-500 dark:text-gray-400` | Etiquetas pequeñas, DNI, códigos, timestamps |
+| Botón primario texto | `text-sm font-medium` | CTA consistente, evita variar el tamaño entre vistas |
+| Botón icono compacto | `text-sm` (icono `text-sm` o `w-5 h-5`) | Acciones densas en cards |
+
+Reglas:
+1. No usar `text-base` salvo necesidad puntual de énfasis intermedio (preferir jerarquía clara entre `text-lg` y `text-sm`).
+2. Evitar mezclar `font-medium` y `font-semibold` arbitrariamente: `font-bold` solo para H1, `font-semibold` para H2/H3/card titles, `font-medium` para botones o datos clave en tablas.
+3. Mantener `leading-none` en H1 para reducir espacio vertical y mejorar densidad.
+4. Iconos en H1 siempre 24px (`w-6 h-6` o `text-[24px]`); en acciones y tablas usar 20px (`text-lg` / `w-5 h-5`).
+5. Badges internos: texto siempre `text-xs font-medium`.
+
+## Botones Unificados
+
+Patrones:
+- Botón primario: `.btn.btn-primary` (usa tokens y ring de enfoque si procede).
+- Botón secundario: `.btn.btn-secondary`.
+- Botón outline (acciones suaves): `.btn.btn-outline`.
+- Botón icono compacto: `<button class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 ...">` con icono `text-sm`.
+
+Consistencia en Clientes / Servicios:
+- Eliminar variaciones ocultas como `hidden md:inline` en textos de botones si no es estrictamente necesario; sólo ocultar texto cuando haya problemas de espacio severos en móvil.
+- Mantener spans de texto con `ml-1` tras el icono para alineación uniforme.
+
+Ejemplos:
+```html
+<h1 class="text-2xl font-bold leading-none flex items-center gap-2">
+  <i class="fas fa-users text-[24px]"></i>
+  Clientes
+</h1>
+<button class="btn btn-secondary">
+  <i class="fas fa-upload"></i>
+  <span class="ml-1">Importar CSV</span>
+</button>
+```
+
+## Aplicación de la Guía a Clientes y Servicios
+
+Cambios aplicados / a aplicar:
+- Normalizar H1 en Clientes y Servicios para usar exactamente las clases de Presupuestos.
+- Sustituir títulos de cards por `text-sm font-semibold` (ya aplicado para densidad en Clientes) y evitar mezclas de `font-medium`.
+- Actualizar botones de exportar/importar en Clientes eliminando la condición `hidden md:inline` para mostrar texto también en móvil (si hay suficiente ancho); si no, dejar sólo icono pero documentarlo.
+- Alinear tamaños de iconos de acción: edición (azul), RGPD (morado), invitación (verde), eliminar (rojo) con `w-8 h-8` y `text-sm`.
+
+Checklist rápida para nuevos módulos:
+- [ ] H1 con patrón definido (tabla arriba)
+- [ ] Subtítulo presente y opcionalmente oculto en móvil si excede 1 línea
+- [ ] Botones usan `.btn-*` y texto consistente `text-sm font-medium`
+- [ ] Iconos en acciones densas `w-5 h-5` / `text-sm`
+- [ ] Badges `text-xs font-medium`
+- [ ] Evitar `text-base` salvo justificación clara
+
 ## Controles de búsqueda y filtros (Presupuestos > Listado)
 
 - Input búsqueda: `w-full px-3 md:px-4 py-2 pl-9 md:pl-10 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 text-sm`.

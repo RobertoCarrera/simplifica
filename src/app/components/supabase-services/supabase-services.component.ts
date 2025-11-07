@@ -7,11 +7,12 @@ import { DevRoleService } from '../../services/dev-role.service';
 import { CsvHeaderMapperComponent, CsvMappingResult } from '../csv-header-mapper/csv-header-mapper.component';
 import { ToastService } from '../../services/toast.service';
 import { SupabaseUnitsService, UnitOfMeasure } from '../../services/supabase-units.service';
+import { SkeletonComponent } from '../skeleton/skeleton.component';
 
 @Component({
   selector: 'app-supabase-services',
   standalone: true,
-  imports: [CommonModule, FormsModule, CsvHeaderMapperComponent],
+  imports: [CommonModule, FormsModule, CsvHeaderMapperComponent, SkeletonComponent],
   templateUrl: './supabase-services.component.html',
   styleUrl: './supabase-services.component.scss'
 })

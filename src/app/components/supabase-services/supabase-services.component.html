@@ -4,11 +4,11 @@
   <div class="header-section bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 mb-4 md:mb-6 border border-gray-200 dark:border-gray-700 flex-shrink-0">
     <div class="header-content">
       <div class="header-text">
-        <h1 class="page-title text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 leading-none">
+        <h1 class="text-2xl font-bold leading-none text-gray-900 dark:text-gray-100 flex items-center gap-2">
           <i class="fas fa-tools text-[24px]"></i>
           Servicios
         </h1>
-        <p class="page-subtitle text-gray-600 dark:text-gray-300 mt-1">Gestiona los servicios técnicos disponibles</p>
+        <p class="text-gray-600 dark:text-gray-300 text-sm mt-1 hidden md:block">Gestiona los servicios técnicos disponibles</p>
       </div>
       <div class="header-actions">
         @if (devRoleService.isDev()){
@@ -52,11 +52,10 @@
 
   <!-- Scrollable Content -->
   <div class="flex-1 overflow-auto">
-    <!-- Loading State -->
-    <div *ngIf="loading" class="flex justify-center items-center py-12">
-      <div class="text-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p class="text-gray-600 dark:text-gray-300 mt-4">Cargando servicios...</p>
+    <!-- Loading State (Skeletons) -->
+    <div *ngIf="loading && !error" class="mb-6">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
+        <app-skeleton type="list" [count]="4"></app-skeleton>
       </div>
     </div>
 
@@ -77,14 +76,14 @@
       </div>
     </div>
 
-    <!-- Active Services Grid -->
-    <div *ngIf="!loading && !error" class="services-section">
+  <!-- Active Services Grid -->
+  <div *ngIf="!loading && !error" class="services-section">
     <div class="services-grid">
       <div *ngFor="let service of getActiveServices()" class="service-card bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
         <!-- Service Header -->
         <div class="service-header">
           <div class="service-info">
-            <h3 class="service-name">{{ service.name }}</h3>
+            <h3 class="service-name text-sm font-semibold text-gray-900 dark:text-gray-100">{{ service.name }}</h3>
             <div class="service-category" [style.background-color]="getCategoryColor(service.category || '')">
               {{ service.category }}
             </div>
@@ -143,8 +142,8 @@
     </div>
     </div>
 
-    <!-- Inactive Services Section -->
-    <div *ngIf="!loading && !error && getInactiveServices().length > 0" class="services-section inactive-section">
+  <!-- Inactive Services Section -->
+  <div *ngIf="!loading && !error && getInactiveServices().length > 0" class="services-section inactive-section">
     <h2 class="section-title inactive-title">
       <i class="fas fa-eye-slash"></i>
       Servicios Inactivos
@@ -154,7 +153,7 @@
         <!-- Service Header -->
         <div class="service-header">
           <div class="service-info">
-            <h3 class="service-name">{{ service.name }}</h3>
+            <h3 class="service-name text-sm font-semibold text-gray-900 dark:text-gray-100">{{ service.name }}</h3>
             <div class="service-category inactive" [style.background-color]="getCategoryColor(service.category || '')">
               {{ service.category }}
             </div>

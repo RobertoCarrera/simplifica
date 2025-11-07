@@ -13,10 +13,11 @@ import {
   formatQuoteNumber,
   isQuoteExpired
 } from '../../../models/quote.model';
+import { SkeletonComponent } from '../../../components/skeleton/skeleton.component';
 
 @Component({
   selector: 'app-quote-list',
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, SkeletonComponent],
   templateUrl: './quote-list.component.html',
   styleUrl: './quote-list.component.scss'
 })

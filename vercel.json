@@ -55,5 +55,11 @@
       "dest": "/index.html"
     }
   ],
-  "env": {}
+  "env": {},
+  "git": {
+    "deploymentEnabled": {
+      "*": false,
+      "main": true
+    }
+  }
 }
