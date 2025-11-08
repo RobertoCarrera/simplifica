@@ -253,7 +253,7 @@
                     <div class="flex-1 min-w-0">
                       <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate flex items-center gap-2">
                         <span>
-                          {{ customer.client_type === 'business' ? (customer.business_name || customer.name) : (customer.name + ' ' + (customer.apellidos || '')) }}
+                          {{ getDisplayName(customer) }}
                         </span>
                         @if (!isCustomerComplete(customer)) {
                           <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200" [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">Incompleto</span>
@@ -263,12 +263,6 @@
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
                           <i class="fas {{ badge.icon }} text-[10px]"></i>
                           {{ badge.label }}
-                        </span>
-                      }
-                      @if (!isCustomerComplete(customer)) {
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200" [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">
-                          <i class="fas fa-exclamation-triangle text-[10px]"></i>
-                          Incompleto
                         </span>
                       }
                     </div>
@@ -346,11 +340,8 @@
                     <div class="flex-1 min-w-0">
                       <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate flex items-center gap-2">
                         <span>
-                          {{ customer.client_type === 'business' ? (customer.business_name || customer.name) : (customer.name + ' ' + (customer.apellidos || '')) }}
+                          {{ getDisplayName(customer) }}
                         </span>
-                        @if (!isCustomerComplete(customer)) {
-                          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200" [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">Incompleto</span>
-                        }
                       </h3>
                       @if (getGdprBadgeConfig(customer); as badge) {
                         <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
@@ -359,10 +350,7 @@
                         </span>
                       }
                       @if (!isCustomerComplete(customer)) {
-                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200" [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">
-                          <i class="fas fa-exclamation-triangle text-[10px]"></i>
-                          Incompleto
-                        </span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-200 text-red-800 border border-red-500" [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">Incompleto</span>
                       }
                     </div>
                   </div>

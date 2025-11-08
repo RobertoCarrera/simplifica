@@ -1122,10 +1122,16 @@ importFromCSV(file: File): Observable<Customer[]> {
         // Construcción de payload y token
         const payloadRows = customers.map(c => ({
           name: c.name,
-          apellidos: c.apellidos,
+          surname: c.apellidos, // unified field for Edge Function
           email: c.email,
           phone: c.phone,
           dni: c.dni,
+          client_type: (c as any).client_type || 'individual',
+          business_name: (c as any).business_name || undefined,
+          cif_nif: (c as any).cif_nif || undefined,
+          trade_name: (c as any).trade_name || undefined,
+          metadata: (c as any).metadata,
+          direccion_id: (c as any).direccion_id || null,
           company_id: (this.getCurrentUserFromSystemUsers?.(this.currentDevUserId || 'default-user')?.company_id) || this.authService.companyId() || undefined
         }));
 
@@ -1155,18 +1161,20 @@ importFromCSV(file: File): Observable<Customer[]> {
         headers['Authorization'] = `Bearer ${accessToken}`;
 
     const proxyUrl = '/api/import-customers';
-  const cfg = inject(RuntimeConfigService).get();
+    const cfg = this.runtimeConfig.get();
   const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
     headers['apikey'] = cfg.supabase.anonKey;
 
+        // First try proxy (if configured in hosting). If it returns non-JSON, fallback to direct.
         let resp = await fetch(proxyUrl, {
           method: 'POST',
           headers,
           body: JSON.stringify({ rows: payloadRows })
         });
 
-        // Soporte fallback directo si el proxy no responde correctamente
-        if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
+        // Fallback directo si el proxy no responde correctamente o devuelve HTML
+        const ct = resp.headers.get('content-type') || '';
+        if ((!resp.ok && (resp.status === 404 || resp.status === 405)) || !ct.includes('application/json')) {
           resp = await fetch(functionUrl, {
             method: 'POST',
             headers,
@@ -1179,7 +1187,7 @@ importFromCSV(file: File): Observable<Customer[]> {
           throw new Error(`Error en importación masiva: ${resp.status} ${text || ''}`);
         }
 
-        const json = await resp.json();
+  const json = await resp.json();
         const inserted = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
         const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
           id: row.id,
@@ -1462,13 +1470,17 @@ importFromCSV(file: File): Observable<Customer[]> {
         email: c.email,
         phone: c.phone,
         dni: c.dni,
+        client_type: (c as any).client_type || 'individual',
+        business_name: (c as any).business_name || undefined,
+        cif_nif: (c as any).cif_nif || undefined,
+        trade_name: (c as any).trade_name || undefined,
         metadata: (c as any).metadata,
         direccion_id: (c as any).direccion_id || null,
         company_id: (this.getCurrentUserFromSystemUsers(this.currentDevUserId || 'default-user')?.company_id) || this.authService.companyId() || undefined
       }));
 
-      const proxyUrl = '/api/import-customers';
-  const cfg = inject(RuntimeConfigService).get();
+    const proxyUrl = '/api/import-customers';
+    const cfg = this.runtimeConfig.get();
   const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
 
       (async () => {
@@ -1503,13 +1515,15 @@ importFromCSV(file: File): Observable<Customer[]> {
           headers['Authorization'] = `Bearer ${accessToken}`;
           headers['apikey'] = cfg.supabase.anonKey;
 
+          // Try proxy first; if not JSON or method not allowed, fallback to direct function
           let resp = await fetch(proxyUrl, {
             method: 'POST',
             headers,
             body: JSON.stringify({ rows: payloadRows })
           });
 
-          if (!resp.ok && (resp.status === 404 || resp.status === 405)) {
+          const ct = resp.headers.get('content-type') || '';
+          if ((!resp.ok && (resp.status === 404 || resp.status === 405)) || !ct.includes('application/json')) {
             resp = await fetch(functionUrl, {
               method: 'POST',
               headers,
@@ -1559,7 +1573,7 @@ importFromCSV(file: File): Observable<Customer[]> {
    */
   async testImportEndpoints(): Promise<{ proxy?: { status: number; text: string }, direct?: { status: number; text: string }, errors?: any[] }> {
     const proxyUrl = '/api/import-customers';
-  const cfg = inject(RuntimeConfigService).get();
+    const cfg = this.runtimeConfig.get();
   const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
     const samplePayload = { rows: [{ name: 'DEBUG', surname: 'USER', email: 'debug@example.com' }] };
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -1598,8 +1612,13 @@ importFromCSV(file: File): Observable<Customer[]> {
 
     try {
       const resp = await fetch(proxyUrl, { method: 'POST', headers, body: JSON.stringify(samplePayload) });
+      const ct = resp.headers.get('content-type') || '';
       const text = await resp.text().catch(() => '');
       result.proxy = { status: resp.status, text };
+      if (!ct.includes('application/json')) {
+        // Not JSON → treat as bad proxy
+        result.errors.push('Proxy returned non-JSON');
+      }
     } catch (err) {
       result.errors.push({ proxy: String(err) });
     }
@@ -1884,7 +1903,8 @@ importFromCSV(file: File): Observable<Customer[]> {
                 latestImported: null,
                 error
               });
-              return of([] as Customer[]);
+              // Propagar el error para que el suscriptor superior pueda reaccionar y NO mostrar falso positivo
+              throw error;
             })
           )
         )

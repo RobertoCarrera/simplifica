@@ -54,6 +54,8 @@ export class SupabaseCustomersComponent implements OnInit {
   private auth = inject(AuthService);
   portal = inject(ClientPortalService);
   private completenessSvc = inject(CustomersSvc);
+  // Toast de importación (único y actualizable)
+  private importToastId: string | null = null;
 
   // State signals
   customers = signal<Customer[]>([]);
@@ -1211,7 +1213,9 @@ onMappingConfirmed(mappings: any[]): void {
     }
 
     this.showCsvMapper.set(false);
-    this.toastService.info('Procesando...', 'Importando clientes con el mapeo configurado');
+  // Toast persistente de progreso (se cerrará al terminar o error)
+  // Crear un único toast persistente que iremos actualizando
+  this.importToastId = this.toastService.info('Importación iniciada', 'Importando clientes con el mapeo configurado', 8000, true, 'customers-import');
 
     // Construir array de clientes a partir del mapeo
     const mappedCustomers = this.customersService.buildPayloadRowsFromMapping(
@@ -1228,28 +1232,49 @@ onMappingConfirmed(mappings: any[]): void {
       return;
     }
 
-    const total = mappedCustomers.length;
-    console.log('[CSV-MAP] Mapped customers ready to import:', total);
-    this.toastService.info('Listo para importar', `Se importarán ${total} filas`, 2000);
-    const batchSize = 5;
-    let lastToast: any = null;
+  const total = mappedCustomers.length;
+  console.log('[CSV-MAP] Mapped customers ready to import:', total);
+  if (this.importToastId) {
+    this.toastService.updateToast(this.importToastId, { title: 'Importación iniciada', message: `Se importarán ${total} filas` });
+  }
+  const batchSize = 5;
+  let importedCount = 0;
 
     this.customersService.importCustomersInBatches(mappedCustomers, batchSize).subscribe({
       next: (p) => {
         const msg = `Importados ${p.importedCount}/${p.totalCount} (lote ${p.batchNumber}, tamaño ${p.batchSize})`;
         console.log('[Import progreso]', p);
-        this.toastService.info('Progreso', msg, 2500);
+  // Actualiza mostrando progreso (persistente)
+  if (this.importToastId) {
+    const progress = p.totalCount > 0 ? p.importedCount / p.totalCount : 0;
+    this.toastService.updateToast(this.importToastId, { title: 'Progreso importación', message: msg, progress });
+  }
+        importedCount = p.importedCount;
       },
       complete: () => {
-        this.toastService.success('¡Éxito!', `Importación completada (${total} clientes)`);
+  if (this.importToastId) {
+    this.toastService.updateToast(this.importToastId, { type: 'success', title: '¡Éxito!', message: `Importación completada (${importedCount}/${total} clientes)`, duration: 6000 });
+    this.importToastId = null;
+  } else {
+    this.toastService.success('¡Éxito!', `Importación completada (${importedCount}/${total} clientes)`, 6000);
+  }
+  // refrescar lista para ver los nuevos clientes inmediatamente
+  this.customersService.loadCustomers();
         this.pendingCsvFile = null;
+        this.fullCsvData.set([]);
         // refrescar datos visibles
         this.customersService.getCustomers({ sortBy: this.sortBy(), sortOrder: this.sortOrder() }).subscribe();
       },
       error: (err) => {
         console.error('Error importando por lotes:', err);
-        this.toastService.error('Error de Importación', String(err?.message || err));
+  if (this.importToastId) {
+    this.toastService.updateToast(this.importToastId, { type: 'error', title: 'Error de Importación', message: String(err?.message || err), duration: 8000 });
+    this.importToastId = null;
+  } else {
+    this.toastService.error('Error de Importación', String(err?.message || err), 8000);
+  }
         this.pendingCsvFile = null;
+        this.fullCsvData.set([]);
       }
     });
   }
@@ -1301,6 +1326,32 @@ onMappingConfirmed(mappings: any[]): void {
   // Utility methods
   getCustomerInitials(customer: Customer): string {
     return `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
+  }
+
+  // Nombre amigable para mostrar en la card evitando UUIDs u otros identificadores técnicos
+  getDisplayName(customer: Customer): string {
+    if (!customer) return '';
+    // Preferir razón social si es empresa
+    let base = customer.client_type === 'business'
+      ? (customer.business_name || customer.trade_name || customer.name)
+      : [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
+
+    if (!base || !base.trim()) {
+      base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+    }
+
+    // Detectar patrón UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(base.trim())) {
+      base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+    }
+
+    // Evitar mostrar correos como nombre si accidentalmente se mapearon
+    if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(base)) {
+      base = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
+    }
+
+    return base;
   }
 
   formatDate(date: string | Date | null | undefined): string {

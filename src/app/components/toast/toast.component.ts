@@ -48,6 +48,17 @@ import { AnimationService } from '../../services/animation.service';
             <div class="mt-1 text-sm text-gray-500 dark:text-gray-300">
               {{ toast.message }}
             </div>
+            <!-- Optional progress bar -->
+            <div *ngIf="toast.progress !== undefined" class="mt-2">
+              <div class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div class="h-2 bg-blue-500 dark:bg-blue-400 transition-all duration-300"
+                     [style.width]="progressWidth(toast)">
+                </div>
+              </div>
+              <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ (progressPct(toast) | number:'1.0-0') }}%
+              </div>
+            </div>
           </div>
           
           <!-- Close button -->
@@ -123,5 +134,16 @@ export class ToastComponent {
       info: 'icon-info'
     };
     return classes[type];
+  }
+
+  // Helpers for progress rendering
+  progressPct(toast: Toast): number {
+    const v = typeof toast.progress === 'number' ? toast.progress : 0;
+    const clamped = Math.max(0, Math.min(1, v));
+    return clamped * 100;
+  }
+
+  progressWidth(toast: Toast): string {
+    return this.progressPct(toast) + '%';
   }
 }
