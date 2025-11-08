@@ -320,18 +320,19 @@ export class GdprCustomerManagerComponent implements OnInit {
   }
 
   deleteCustomer(customer: Customer) {
-    if (!confirm(`¿Estás seguro de que quieres eliminar a ${customer.name} ${customer.apellidos}?`)) {
-      return;
-    }
+    const msg = `¿Proceder con la eliminación de ${customer.name} ${customer.apellidos}?\n\n` +
+      `• Con facturas: se desactiva y se conserva para cumplimiento fiscal.\n` +
+      `• Sin facturas: se elimina definitivamente (lead).`;
+    if (!confirm(msg)) return;
 
     this.customersService.deleteCustomer(customer.id).subscribe({
       next: () => {
-        this.toastService.success('Éxito', 'Cliente eliminado correctamente');
+        this.toastService.success('Éxito', 'Operación completada (eliminado o desactivado)');
         this.loadCustomers();
       },
       error: (error) => {
-        console.error('Error deleting customer:', error);
-        this.toastService.error('Error', 'No se pudo eliminar el cliente');
+        console.error('Error remove/deactivate:', error);
+        this.toastService.error('Error', 'No se pudo completar la operación');
       }
     });
   }

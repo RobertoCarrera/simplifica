@@ -1134,16 +1134,15 @@ onMappingConfirmed(mappings: any[]): void {
   }
 
   async deleteCustomer(customer: Customer) {
-    if (!confirm(`¿Estás seguro de que quieres eliminar a ${customer.name} ${customer.apellidos}?`)) {
-      return;
-    }
+    const message = `¿Eliminar definitivamente a ${customer.name} ${customer.apellidos}?\n\n` +
+      `Si tiene facturas se desactivará conservando el historial. Si es sólo un lead (sin facturas) se eliminará totalmente.`;
+    if (!confirm(message)) return;
 
     this.customersService.deleteCustomer(customer.id).subscribe({
-      next: () => {
-        // Success handled by service
-      },
+      next: () => { /* handled in service */ },
       error: (error) => {
-        console.error('Error deleting customer:', error);
+        console.error('Error en eliminación/desactivación:', error);
+        alert('No se pudo eliminar/desactivar el cliente: ' + (error?.message || error));
       }
     });
   }

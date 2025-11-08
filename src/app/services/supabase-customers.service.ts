@@ -700,8 +700,8 @@ export class SupabaseCustomersService {
       return this.deleteCustomerRpc(id);
     }
     
-    // Método estándar
-    return this.deleteCustomerStandard(id);
+    // Método estándar (legacy soft delete) replaced by conditional remove/deactivate
+    return this.removeOrDeactivateCustomer(id);
   }
 
   /**
@@ -771,6 +771,62 @@ export class SupabaseCustomersService {
         // Si por alguna razón el UPDATE falla por políticas/permiso, registrar claramente
         devError('Error al aplicar soft delete del cliente', error);
         return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Conditionally remove (hard delete) or deactivate a customer depending on invoice presence.
+   * - If no invoices: physical DELETE
+   * - If invoices exist: set is_active=false and retain row
+   */
+  removeOrDeactivateCustomer(id: string): Observable<void> {
+    devLog('Invocando Edge Function remove-or-deactivate-client', { id });
+    return from((async () => {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('No auth token for Edge Function');
+      const cfg = this.runtimeConfig.get();
+      const base = (cfg.edgeFunctionsBaseUrl || `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1`).replace(/\/$/, '');
+      const url = `${base}/remove-or-deactivate-client`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey': cfg.supabase.anonKey,
+          'x-client-info': 'simplifica-app'
+        },
+        body: JSON.stringify({ p_id: id })
+      });
+      const json = await res.json().catch(()=>({}));
+      if (!res.ok || !json.ok) {
+        const err = json?.error || `Edge Function error (${res.status})`;
+        throw new Error(err);
+      }
+      return json as { action: string; invoiceCount: number; clientId: string };
+    })()).pipe(
+      tap(result => {
+        const { action, clientId } = result;
+        if (action === 'deleted') {
+          devSuccess('Cliente eliminado físicamente', clientId);
+          const current = this.customersSubject.value;
+          this.customersSubject.next(current.filter(c => c.id !== clientId));
+        } else {
+          devLog('Cliente desactivado (retención de facturas)', result);
+          // Update local list: mark is_active=false if we keep object
+          const current = this.customersSubject.value;
+          const updated = current.map(c => c.id === clientId ? { ...c, is_active: false } as any : c);
+          this.customersSubject.next(updated.filter(c => c.id !== clientId)); // Remove from visible list for now
+        }
+        this.loadingSubject.next(false);
+        this.updateStats();
+      }),
+      map(() => void 0),
+      catchError(err => {
+        this.loadingSubject.next(false);
+        devError('Error en removeOrDeactivateCustomer', err);
+        return throwError(() => err);
       })
     );
   }
