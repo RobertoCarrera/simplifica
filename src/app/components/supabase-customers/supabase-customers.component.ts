@@ -88,34 +88,74 @@ export class SupabaseCustomersComponent implements OnInit {
   // CSV Mapper signals
   showCsvMapper = signal(false);
   csvHeaders = signal<string[]>([]);
+  // csvData: sólo para PREVIEW (limitada)
   csvData = signal<string[][]>([]);
+  // fullCsvData: dataset completo para importación
+  fullCsvData = signal<string[][]>([]);
   pendingCsvFile: File | null = null;
   // UI filter toggle for incomplete imports
   onlyIncomplete: boolean = false;
 
-  // Customers CSV mapper config
+  // Customers CSV mapper config (unified model: individual + business)
   customerFieldOptions = [
-    { value: 'name', label: 'Nombre *', required: true },
-    { value: 'surname', label: 'Apellidos *', required: true },
-    { value: 'email', label: 'Email *', required: true },
-    { value: 'phone', label: 'Teléfono' },
-    { value: 'dni', label: 'DNI/NIF' },
-    { value: 'address', label: 'Dirección' },
-    { value: 'company', label: 'Empresa' },
-    { value: 'notes', label: 'Notas' },
-    { value: 'metadata', label: 'Metadata (otros datos)' }
+    // Campos comunes (opcionales pero recomendados)
+    { value: 'email', label: 'Email', required: false },
+    { value: 'phone', label: 'Teléfono', required: false },
+    
+    // Campos de Persona Física
+    { value: 'name', label: 'Nombre (persona física)', required: false },
+    { value: 'surname', label: 'Apellidos (persona física)', required: false },
+    { value: 'dni', label: 'DNI (persona física)', required: false },
+    
+    // Campos de Empresa/Persona Jurídica
+    { value: 'client_type', label: 'Tipo de Cliente (individual/business)', required: false },
+    { value: 'business_name', label: 'Razón Social (empresa)', required: false },
+    { value: 'cif_nif', label: 'CIF/NIF (empresa)', required: false },
+    { value: 'trade_name', label: 'Nombre Comercial (empresa)', required: false },
+    { value: 'legal_representative_name', label: 'Representante Legal - Nombre', required: false },
+    { value: 'legal_representative_dni', label: 'Representante Legal - DNI', required: false },
+    { value: 'mercantile_registry_data', label: 'Datos Registro Mercantil', required: false },
+    
+    // Dirección
+    { value: 'address', label: 'Dirección Completa', required: false },
+    { value: 'addressTipoVia', label: 'Tipo Vía', required: false },
+    { value: 'addressNombre', label: 'Nombre Vía', required: false },
+    { value: 'addressNumero', label: 'Número', required: false },
+    
+    // Otros
+    { value: 'notes', label: 'Notas', required: false },
+    { value: 'metadata', label: 'Metadata (otros datos)', required: false }
   ];
-  customerRequiredFields = ['name', 'surname', 'email'];
+  // Ahora no hay campos estrictamente obligatorios para permitir importación mínima
+  customerRequiredFields = [];
   customerAliasMap: Record<string, string[]> = {
-    name: ['name', 'nombre', 'first_name', 'firstname', 'first name', 'bill_to:first_name', 'bill to first name', 'billto:first_name', 'ship_to:first_name', 'ship to first name', 'shipto:first_name'],
-    surname: ['surname', 'last_name', 'lastname', 'last name', 'apellidos', 'bill_to:last_name', 'bill to last name', 'billto:last_name', 'ship_to:last_name', 'ship to last name', 'shipto:last_name'],
+    // Campos comunes
     email: ['email', 'correo', 'e-mail', 'mail', 'bill_to:email', 'bill to email', 'billto:email', 'ship_to:email', 'ship to email', 'shipto:email'],
     phone: ['phone', 'telefono', 'teléfono', 'tel', 'mobile', 'movil', 'móvil', 'bill_to:phone', 'bill to phone', 'billto:phone', 'ship_to:phone', 'ship to phone', 'shipto:phone'],
+    
+    // Persona física
+    name: ['name', 'nombre', 'first_name', 'firstname', 'first name', 'bill_to:first_name', 'bill to first name', 'billto:first_name', 'ship_to:first_name', 'ship to first name', 'shipto:first_name'],
+    surname: ['surname', 'last_name', 'lastname', 'last name', 'apellidos', 'bill_to:last_name', 'bill to last name', 'billto:last_name', 'ship_to:last_name', 'ship to last name', 'shipto:last_name'],
     dni: ['dni', 'nif', 'documento', 'id', 'legal', 'bill_to:legal', 'bill to legal', 'billto:legal', 'ship_to:legal', 'ship to legal', 'shipto:legal'],
+    
+    // Empresa
+    client_type: ['client_type', 'tipo_cliente', 'tipo cliente', 'type', 'customer_type', 'customer type'],
+    business_name: ['business_name', 'razon_social', 'razón social', 'razon social', 'company_name', 'company name', 'empresa', 'bill_to:company', 'bill to company', 'billto:company'],
+    cif_nif: ['cif_nif', 'cif', 'nif empresa', 'tax_id', 'taxid', 'vat', 'fiscal_id', 'id_fiscal'],
+    trade_name: ['trade_name', 'nombre_comercial', 'nombre comercial', 'trading_name', 'trading name'],
+    legal_representative_name: ['legal_representative_name', 'representante_legal', 'representante legal', 'representative', 'rep_name'],
+    legal_representative_dni: ['legal_representative_dni', 'representante_dni', 'dni representante', 'dni_rep', 'rep_dni'],
+    mercantile_registry_data: ['mercantile_registry_data', 'registro_mercantil', 'registro mercantil', 'registry', 'mercantile_data'],
+    
+    // Dirección
     address: ['address', 'direccion', 'dirección', 'domicilio', 'bill_to:address', 'bill to address', 'billto:address', 'ship_to:address', 'ship to address', 'shipto:address'],
-    company: ['company', 'empresa', 'bill_to:company', 'bill to company', 'billto:company', 'ship_to:company', 'ship to company', 'shipto:company'],
-    notes: ['notes', 'notas', 'observaciones'],
-    metadata: ['metadata', 'metadatos']
+    addressTipoVia: ['addressTipoVia', 'tipo_via', 'tipo vía', 'tipo via', 'street_type', 'via'],
+    addressNombre: ['addressNombre', 'nombre_via', 'nombre vía', 'nombre via', 'street_name', 'calle'],
+    addressNumero: ['addressNumero', 'numero', 'número', 'number', 'num'],
+    
+    // Otros
+    notes: ['notes', 'notas', 'observaciones', 'comments', 'comentarios'],
+    metadata: ['metadata', 'metadatos', 'otros', 'additional', 'extra']
   };
 
   // Form data
@@ -212,9 +252,14 @@ onCsvFileSelected(event: Event): void {
 
   this.customersService.parseCSVForMapping(file).subscribe({
     next: ({ headers, data }) => {
-      this.csvHeaders.set(headers);
-      this.csvData.set(data.slice(0, 10)); // preview solo primeros 10 datos
-      this.showCsvMapper.set(true); // muestra el modal
+        // Guardamos cabeceras
+        this.csvHeaders.set(headers);
+        // Guardamos dataset completo para importación posterior
+        this.fullCsvData.set(data);
+        // Para preview limitamos (cabecera + primeras 9 filas de datos => total 10)
+        const preview = data.slice(0, Math.min(10, data.length));
+        this.csvData.set(preview);
+        this.showCsvMapper.set(true); // muestra el modal
     },
     error: (err) => {
       this.toastService.error('Error leyendo CSV: ' + (err.message || err), 'Error');
@@ -1171,7 +1216,9 @@ onMappingConfirmed(mappings: any[]): void {
     // Construir array de clientes a partir del mapeo
     const mappedCustomers = this.customersService.buildPayloadRowsFromMapping(
       this.csvHeaders(),
-      this.csvData().slice(1), // omitir cabecera si está incluida en data
+      // Usar el dataset COMPLETO (fullCsvData) y no sólo el preview.
+      // fullCsvData incluye cabecera en posición 0 → slice(1) para omitirla.
+      this.fullCsvData().slice(1),
       result.mappings as any
     );
 
@@ -1211,6 +1258,7 @@ onMappingConfirmed(mappings: any[]): void {
     console.log('CSV mapping cancelled by user');
     this.showCsvMapper.set(false);
     this.pendingCsvFile = null;
+    this.fullCsvData.set([]);
     this.toastService.info('Cancelado', 'Importación CSV cancelada');
   }
 

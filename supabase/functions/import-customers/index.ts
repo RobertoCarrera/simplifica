@@ -145,6 +145,17 @@ serve(async (req: Request) => {
       return null;
     };
 
+    // Detect business vs individual based on fields/keywords
+    const detectClientType = (row: any): 'business' | 'individual' => {
+      const businessName = findAnyField(row, [/business.*name/i, /razon.*social/i, /company/i, /empresa/i]);
+      const cif = row.cif_nif || row.cif || row.nif_empresa || findAnyField(row, [/\b(cif|cif_nif|vat|tax[_ ]?id)\b/i]);
+      const dniMaybe = row.dni || row.nif;
+      const looksLikeCIF = dniMaybe && /^[A-Z]\d{8}$/.test(String(dniMaybe).trim().toUpperCase());
+      const name = row.name || row.nombre || '';
+      const businessKeywords = /S\.L\.|S\.A\.|S\.L\.U\.|S\.COOP|LIMITED|LTD|INC|CORP/i.test(String(name));
+      return (businessName || cif || looksLikeCIF || businessKeywords) ? 'business' : 'individual';
+    };
+
     for (const r of rows) {
       // tolerant lookup: accept keys like 'bill_to:email', 'ship_to:email', 'bill_to:first_name', etc.
       let email = r.email || r.correo || findAnyField(r, [/(:|\b)email$/i, /^email$/i, /:correo$/i, /correo$/i]) || null;
@@ -152,6 +163,12 @@ serve(async (req: Request) => {
       let surname = r.surname || r.apellidos || r.last_name || findAnyField(r, [/(:|\b)last_name$/i, /(:|\b)last$/i, /last_name$/i, /apellidos$/i]) || "";
       const phone = r.phone || r.telefono || findAnyField(r, [/(:|\b)phone$/i, /telefono$/i, /tel$/i]) || null;
       const dni = r.dni || r.nif || findAnyField(r, [/\b(dni|nif|document)/i]) || null;
+
+      // Business fields
+      const clientType: 'business' | 'individual' = (r.client_type === 'business' || r.client_type === 'individual') ? r.client_type : detectClientType(r);
+      const businessName = r.business_name || findAnyField(r, [/business.*name/i, /razon.*social/i, /company/i, /empresa/i]) || null;
+      const cifNif = r.cif_nif || r.cif || r.nif_empresa || null;
+      const tradeName = r.trade_name || r.nombre_comercial || null;
 
       // Security: sanitize all string inputs
       if (name) name = sanitizeString(String(name));
@@ -171,23 +188,31 @@ serve(async (req: Request) => {
         // Security: sanitize and normalize email
         email = sanitizeString(String(email)).toLowerCase();
       }
-      if (!name || String(name).trim() === '') {
-        name = 'Cliente';
-        attention_reasons.push('name_missing');
-      }
-      if (!surname || String(surname).trim() === '') {
-        surname = 'Apellidos';
-        attention_reasons.push('surname_missing');
-      }
       const row: any = {
-        name: sanitizeString((name || "Cliente importado").toUpperCase()),
-        apellidos: surname ? sanitizeString(surname.toUpperCase()) : undefined,
         email,
         phone: phone,
-        dni: dni ? sanitizeString(dni.toUpperCase()) : dni,
         company_id: authoritativeCompanyId,
         created_at: new Date().toISOString(),
+        client_type: clientType,
       };
+
+      if (clientType === 'business') {
+        let finalBusinessName = businessName ? sanitizeString(String(businessName)) : 'Empresa importada';
+        let finalCif = cifNif ? sanitizeString(String(cifNif)) : 'B99999999';
+        if (!businessName) attention_reasons.push('businessname_missing');
+        if (!cifNif) attention_reasons.push('cif_missing');
+        row.business_name = finalBusinessName.toUpperCase();
+        row.cif_nif = finalCif.toUpperCase();
+        row.trade_name = tradeName ? sanitizeString(String(tradeName)).toUpperCase() : null;
+        // Align name with business_name for compatibility
+        row.name = row.business_name;
+      } else {
+        if (!name || String(name).trim() === '') { name = 'Cliente'; attention_reasons.push('name_missing'); }
+        if (!surname || String(surname).trim() === '') { surname = 'Apellidos'; attention_reasons.push('surname_missing'); }
+        row.name = sanitizeString((name || 'Cliente importado').toUpperCase());
+        row.apellidos = surname ? sanitizeString(surname.toUpperCase()) : undefined;
+        row.dni = dni ? sanitizeString(dni.toUpperCase()) : dni;
+      }
       // Prefer provided FK if present, otherwise leave null (address creation is handled elsewhere)
       if (r.direccion_id || r.address_id) {
         row.direccion_id = r.direccion_id || r.address_id;

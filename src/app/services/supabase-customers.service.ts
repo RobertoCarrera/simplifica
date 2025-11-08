@@ -1782,15 +1782,37 @@ importFromCSV(file: File): Observable<Customer[]> {
         };
 
         const item: Partial<Customer> = {
-          name: pick('name'),
-          apellidos: pick('apellidos') || pick('surname'),
+          // Campos comunes
           email: pick('email'),
           phone: pick('phone') || pick('telefono'),
-          dni: pick('dni') || pick('nif') || pick('documento')
+          
+          // Campos persona física
+          name: pick('name'),
+          apellidos: pick('apellidos') || pick('surname'),
+          dni: pick('dni') || pick('nif') || pick('documento'),
+          
+          // Campos empresa/persona jurídica
+          client_type: (pick('client_type') as 'individual' | 'business') || 'individual', // default a 'individual' si no se especifica
+          business_name: pick('business_name'),
+          cif_nif: pick('cif_nif'),
+          trade_name: pick('trade_name'),
+          legal_representative_name: pick('legal_representative_name'),
+          legal_representative_dni: pick('legal_representative_dni'),
+          mercantile_registry_data: pick('mercantile_registry_data')
         };
 
+        // Legacy address field (dirección completa como texto) - ahora en variable adicional
         const address = pick('address') || pick('direccion');
         if (address) (item as any).address = address;
+        
+        // Campos de dirección estructurada (si los necesitamos más adelante)
+        const addressTipoVia = pick('addressTipoVia');
+        const addressNombre = pick('addressNombre');
+        const addressNumero = pick('addressNumero');
+        if (addressTipoVia) (item as any).addressTipoVia = addressTipoVia;
+        if (addressNombre) (item as any).addressNombre = addressNombre;
+        if (addressNumero) (item as any).addressNumero = addressNumero;
+        
         return item;
       });
 

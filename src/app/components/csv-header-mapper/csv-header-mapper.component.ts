@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, Input, Output, EventEmitter, signal, SimpleChanges } from '@angular/core';
+import { Component, OnInit, OnChanges, Input, Output, EventEmitter, signal, SimpleChanges, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -18,8 +18,8 @@ export interface CsvMappingResult {
   imports: [CommonModule, FormsModule],
   template: `
     <div class="csv-mapper-modal" *ngIf="visible">
-      <div class="modal-overlay" (click)="cancel()"></div>
-      <div class="modal-content">
+      <div class="modal-overlay" (click)="cancel()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h3 class="modal-title">
             <i class="fas fa-table"></i>
@@ -144,12 +144,13 @@ export interface CsvMappingResult {
             Confirmar e Importar
           </button>
         </div>
+        </div>
       </div>
     </div>
   `,
   styleUrls: ['./csv-header-mapper.component.scss']
 })
-export class CsvHeaderMapperComponent implements OnInit, OnChanges {
+export class CsvHeaderMapperComponent implements OnInit, OnChanges, OnDestroy {
   @Input() visible = false;
   @Input() csvHeaders: string[] = [];
   @Input() csvData: string[][] = [];
@@ -175,6 +176,10 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges {
     this.preparePreviewData();
     this.refreshOptionLists();
     this.autoMapHeaders();
+    // Ensure body class is set if initially visible
+    if (this.visible) {
+      document.body.classList.add('modal-open');
+    }
   }
 
   ngOnChanges(changes: SimpleChanges) {
@@ -186,6 +191,19 @@ export class CsvHeaderMapperComponent implements OnInit, OnChanges {
       this.refreshOptionLists();
       this.autoMapHeaders();
     }
+
+    if (changes['visible'] && !changes['visible'].firstChange) {
+      if (this.visible) {
+        document.body.classList.add('modal-open');
+      } else {
+        document.body.classList.remove('modal-open');
+      }
+    }
+  }
+
+  ngOnDestroy() {
+    // Clean up modal-open class if component is destroyed while open
+    document.body.classList.remove('modal-open');
   }
 
   private initializeMappings() {
