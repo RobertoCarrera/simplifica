@@ -613,10 +613,12 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   async toggleHasVariants() {
+    // El valor ya fue cambiado por ngModel, usar el valor actual
+    const newValue = this.formData.has_variants;
+    
     if (!this.editingService?.id) {
-      // For new services, just toggle the flag
-      this.formData.has_variants = !this.formData.has_variants;
-      if (!this.formData.has_variants) {
+      // For new services, just clear variants if disabled
+      if (!newValue) {
         this.serviceVariants = [];
       }
       return;
@@ -625,8 +627,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     // For existing services, enable/disable variants in the database
     this.loading = true;
     try {
-      const newValue = !this.formData.has_variants;
-      
       if (newValue) {
         // Enable variants with base features
         const baseFeatures = {
@@ -641,8 +641,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         this.serviceVariants = [];
       }
       
-      this.formData.has_variants = newValue;
-      
       this.toastService.success(
         newValue ? 'Variantes activadas' : 'Variantes desactivadas',
         newValue ? 'Ahora puedes crear variantes para este servicio' : 'Las variantes han sido desactivadas'
@@ -651,6 +649,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.error = error.message;
       console.error('Error toggling variants:', error);
       this.toastService.error('Error', 'No se pudo cambiar el estado de variantes');
+      // Revertir el cambio en caso de error
+      this.formData.has_variants = !newValue;
     } finally {
       this.loading = false;
     }
