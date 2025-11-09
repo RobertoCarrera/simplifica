@@ -186,7 +186,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 40; /* Lower than toast (z-50) */
   padding: 1rem;
 }
 
@@ -198,6 +198,7 @@
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  z-index: 41; /* Still lower than toast */
 }
 
 .modal-header {

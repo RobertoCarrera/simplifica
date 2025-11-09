@@ -615,18 +615,45 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   async onVariantSave(variant: ServiceVariant) {
-    // Variants are saved directly in the service-variants component
-    // We just need to reload them
-    if (this.editingService?.id) {
-      await this.loadServiceVariants(this.editingService.id);
+    this.loading = true;
+    try {
+      if (variant.id) {
+        // Update existing variant
+        await this.servicesService.updateServiceVariant(variant.id, variant);
+        this.toastService.success('Variante actualizada', 'La variante se ha actualizado correctamente');
+      } else {
+        // Create new variant
+        await this.servicesService.createServiceVariant(variant);
+        this.toastService.success('Variante creada', 'La variante se ha creado correctamente');
+      }
+      
+      // Reload variants
+      if (this.editingService?.id) {
+        await this.loadServiceVariants(this.editingService.id);
+      }
+    } catch (error) {
+      console.error('Error saving variant:', error);
+      this.toastService.error('Error al guardar', 'No se pudo guardar la variante');
+    } finally {
+      this.loading = false;
     }
   }
 
   async onVariantDelete(variantId: string) {
-    // Variants are deleted directly in the service-variants component
-    // We just need to reload them
-    if (this.editingService?.id) {
-      await this.loadServiceVariants(this.editingService.id);
+    this.loading = true;
+    try {
+      await this.servicesService.deleteServiceVariant(variantId);
+      this.toastService.success('Variante eliminada', 'La variante se ha eliminado correctamente');
+      
+      // Reload variants
+      if (this.editingService?.id) {
+        await this.loadServiceVariants(this.editingService.id);
+      }
+    } catch (error) {
+      console.error('Error deleting variant:', error);
+      this.toastService.error('Error al eliminar', 'No se pudo eliminar la variante');
+    } finally {
+      this.loading = false;
     }
   }
 
