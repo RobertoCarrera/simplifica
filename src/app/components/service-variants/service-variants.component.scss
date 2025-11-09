@@ -222,6 +222,7 @@
   justify-content: center;
   z-index: 40; /* Lower than toast (z-50) */
   padding: 1rem;
+  backdrop-filter: blur(2px); /* Add subtle blur */
 }
 
 .modal-content {

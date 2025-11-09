@@ -76,7 +76,7 @@
   </div>
 
   <!-- Variant Form Modal -->
-  <div class="modal" *ngIf="showForm" (click)="closeForm()" (mousedown)="$event.stopPropagation()">
+  <div class="modal" *ngIf="showForm">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h3>{{ editingVariant ? 'Editar Variante' : 'Nueva Variante' }}</h3>
