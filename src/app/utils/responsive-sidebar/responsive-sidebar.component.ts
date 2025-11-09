@@ -16,6 +16,7 @@ interface MenuItem {
   badge?: number;
   children?: MenuItem[];
   module?: string; // 'core' | 'production' | 'development'
+  moduleKey?: string; // Optional key to check in modules_catalog (e.g., 'moduloTickets')
   // roleOnly can be used to restrict visibility to specific roles
   roleOnly?: 'ownerAdmin' | 'adminOnly';
 }
@@ -75,7 +76,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Tickets',
       icon: 'confirmation_number',
       route: '/tickets',
-      module: 'production'
+      module: 'production',
+      moduleKey: 'moduloTickets' // Map to moduloTickets in modules_catalog
     },
     {
       id: 4,
@@ -365,8 +367,8 @@ export class ResponsiveSidebarComponent implements OnInit {
   private routeToModuleKey(route: string): string | null {
     switch (route) {
       case '/tickets':
-        // Tickets (SAT) depende de un módulo dedicado
-        return 'moduloSat';
+        // Tickets module key (can also be specified via item.moduleKey)
+        return 'moduloTickets';
       case '/presupuestos':
       case '/portal/presupuestos':
         return 'moduloPresupuestos';
@@ -383,6 +385,11 @@ export class ResponsiveSidebarComponent implements OnInit {
   }
 
   private isMenuItemAllowedByModules(item: MenuItem, allowed: Set<string>): boolean {
+    // If item has explicit moduleKey, use it directly
+    if (item.moduleKey) {
+      return allowed.has(item.moduleKey);
+    }
+    // Otherwise, map route to module key
     const key = this.routeToModuleKey(item.route);
     if (!key) return true; // no requiere gating
     return allowed.has(key);
