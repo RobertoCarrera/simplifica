@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, HostListener, OnDestroy, ViewChild } from '@angular/core';
+import { Component, OnInit, inject, HostListener, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseServicesService, Service, ServiceCategory, ServiceTag, ServiceVariant } from '../../services/supabase-services.service';
@@ -18,6 +18,10 @@ import { ServiceVariantsComponent } from '../service-variants/service-variants.c
   styleUrl: './supabase-services.component.scss'
 })
 export class SupabaseServicesComponent implements OnInit, OnDestroy {
+  @ViewChild('variantsComp') variantsComp?: ServiceVariantsComponent | any; // child reference
+  @ViewChild('modalBody') modalBody?: ElementRef;
+  @ViewChild('categorySearchInput') categorySearchInput?: ElementRef;
+  @ViewChild('tagSearchInput') tagSearchInput?: ElementRef;
   
   // Company selector (loaded from DB)
   selectedCompanyId: string = '';
@@ -252,12 +256,23 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   onCategoryFilterChange() {
     this.updateCategoryFilter();
+    // Auto-focus en el input de búsqueda cuando se abre
+    if (this.showCategoryInput && this.categorySearchInput) {
+      setTimeout(() => this.categorySearchInput?.nativeElement.focus(), 0);
+    }
   }
 
   selectCategory(category: ServiceCategory) {
     this.formData.category = category.name;
     this.showCategoryInput = false;
     this.categoryFilterText = '';
+  }
+
+  // Método auxiliar para abrir dropdown de categorías y hacer focus
+  openCategoryDropdown() {
+    this.showCategoryInput = true;
+    this.categoryFilterText = '';
+    setTimeout(() => this.categorySearchInput?.nativeElement.focus(), 100);
   }
 
   async createNewCategory() {
@@ -351,6 +366,17 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.filteredTags = this.serviceTags.filter(tag =>
       tag.name.toLowerCase().includes(this.tagFilterText.toLowerCase())
     );
+    // Auto-focus en el input de búsqueda cuando se abre
+    if (this.showTagInput && this.tagSearchInput) {
+      setTimeout(() => this.tagSearchInput?.nativeElement.focus(), 0);
+    }
+  }
+
+  // Método auxiliar para abrir dropdown de tags y hacer focus
+  openTagDropdown() {
+    this.showTagInput = true;
+    this.tagFilterText = '';
+    setTimeout(() => this.tagSearchInput?.nativeElement.focus(), 100);
   }
 
   removeTag(tag: string) {
@@ -381,6 +407,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       console.error('❌ Error loading services:', error);
     } finally {
       this.loading = false;
+      // Ajustar scrollbar de la página tras cargar los servicios
+      this.adjustRootScroll();
     }
   }
 
@@ -392,6 +420,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       
       return matchesSearch;
     });
+    // Recalcular visibilidad del scrollbar cuando cambia el filtrado
+    this.adjustRootScroll();
   }
 
   getActiveServices(): Service[] {
@@ -481,6 +511,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     document.body.style.width = '100%';
     document.body.style.height = '100%';
     document.documentElement.style.overflow = 'hidden';
+    // No ajustar scroll aquí porque forzamos el modo modal
   }  closeForm() {
     this.showForm = false;
     this.editingService = null;
@@ -510,6 +541,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
+    // Restaurar control dinámico del scrollbar
+    this.adjustRootScroll();
   }
 
   validateForm(): boolean {
@@ -519,8 +552,11 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.formErrors['name'] = 'El nombre es obligatorio';
     }
     
-    if (!this.formData.base_price || this.formData.base_price < 0) {
-      this.formErrors['base_price'] = 'El precio debe ser mayor a 0';
+    // If service uses variants, base_price is managed per-variant and is not required here
+    if (!this.formData.has_variants) {
+      if (!this.formData.base_price || this.formData.base_price < 0) {
+        this.formErrors['base_price'] = 'El precio debe ser mayor a 0';
+      }
     }
     
     if (!this.formData.estimated_hours || this.formData.estimated_hours <= 0) {
@@ -587,7 +623,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       } else {
         const newService = await this.servicesService.createService(dataWithCompany);
         savedServiceId = newService.id;
-        
+
+        // If user enabled variants but didn't add any yet, reopen the created service so they can add variants
+        const wantsVariantsButNone = !!this.formData.has_variants && this.pendingVariants.length === 0;
+
         // Si hay variantes pendientes, crearlas ahora que tenemos el service_id
         if (this.pendingVariants.length > 0) {
           console.log(`🔄 Creando ${this.pendingVariants.length} variantes pendientes para el servicio ${savedServiceId}`);
@@ -610,6 +649,44 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
           // Limpiar variantes pendientes
           this.pendingVariants = [];
           this.toastService.success('Servicio y variantes creados', `Se creó el servicio con sus variantes`);
+        }
+        
+        if (wantsVariantsButNone) {
+          // Inform the user and reopen the service edit modal so they can add variants
+          this.toastService.info('Servicio creado', 'El servicio se creó — añade las variantes para completarlo');
+          // Reload services so the new service is available, then open the form for it
+          await this.loadServices();
+          const created = this.services.find(s => s.id === savedServiceId);
+          if (created) {
+            // Open the modal in edit mode for the newly created service so the user can add variants
+            this.openForm(created);
+
+            // After the view updates, expand the variants accordion, scroll to it and open the variant form
+            setTimeout(() => {
+              try {
+                this.accordionState.variants = true;
+
+                // Scroll the modal body to the variants section
+                const modalEl = this.modalBody?.nativeElement || document.querySelector('.modal-body');
+                const variantsEl = modalEl?.querySelector('#variants-section');
+                if (variantsEl && typeof variantsEl.scrollIntoView === 'function') {
+                  variantsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+
+                // Open the child variant form to force user to create the first variant
+                if (this.variantsComp && typeof this.variantsComp.openForm === 'function') {
+                  // Call with no args to create a new variant
+                  this.variantsComp.openForm();
+                }
+              } catch (e) {
+                console.error('❌ Error auto-opening variants section:', e);
+              }
+            }, 120);
+
+            // Do not close the form flow here — exit early
+            this.loading = false;
+            return;
+          }
         }
       }
       
@@ -960,5 +1037,42 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   onServicesCsvMappingCancelled() {
     this.showCsvMapper = false;
     this.pendingCsvFile = null;
+  }
+
+  // ---------------------------
+  // Control dinámico del scrollbar
+  // Ocultamos el scrollbar global sólo si el contenido completo de la página
+  // cabe en el alto del viewport. Si hay overflow real, lo dejamos visible.
+  // Evita el "scrollbar fantasma" cuando hay pocos servicios.
+  private adjustRootScroll() {
+    // Si el modal está abierto dejamos que la lógica del modal gestione el scroll
+    if (this.showForm) return;
+
+    // Reset previo para medir correctamente
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+
+    // Usamos rAF para esperar al layout final antes de medir
+    requestAnimationFrame(() => {
+      if (this.showForm) return; // doble verificación
+      try {
+        const totalHeight = document.documentElement.scrollHeight;
+        const viewportHeight = window.innerHeight;
+        if (totalHeight <= viewportHeight + 1) { // +1 por posibles diferencias de redondeo
+          document.body.style.overflow = 'hidden';
+          document.documentElement.style.overflow = 'hidden';
+        } else {
+          document.body.style.overflow = '';
+          document.documentElement.style.overflow = '';
+        }
+      } catch (e) {
+        console.warn('adjustRootScroll error', e);
+      }
+    });
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.adjustRootScroll();
   }
 }

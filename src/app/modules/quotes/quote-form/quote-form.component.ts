@@ -653,10 +653,20 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         const service = this.services().find(s => s.id === serviceId);
         const variant = service?.variants?.find(v => v.id === variantId);
         
-        if (variant && ['monthly', 'annually'].includes(variant.billing_period)) {
-          hasLockedVariant = true;
-          lockedVariant = variant;
-          break;
+        if (variant) {
+          // Prefer pricing array (new model). If absent, fall back to deprecated billing_period.
+          const pricingPeriods: string[] = Array.isArray((variant as any).pricing)
+            ? (variant as any).pricing.map((p: any) => p.billing_period)
+            : [];
+
+          const hasRecurringInPricing = pricingPeriods.some(p => ['monthly', 'annually'].includes(p));
+          const hasDeprecatedRecurring = ['monthly', 'annually'].includes(variant.billing_period as any);
+
+          if (hasRecurringInPricing || hasDeprecatedRecurring) {
+            hasLockedVariant = true;
+            lockedVariant = variant;
+            break;
+          }
         }
       }
     }
@@ -822,7 +832,10 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
    * Map variant billing_period to quote recurrence_type and lock if applicable
    */
   private updateRecurrenceFromVariant(variant: ServiceVariant) {
-    const billingPeriod = variant.billing_period;
+    // Prefer pricing array (new model). If absent, fall back to deprecated billing_period.
+    const billingPeriod = (Array.isArray((variant as any).pricing) && (variant as any).pricing.length > 0)
+      ? (variant as any).pricing[0].billing_period
+      : variant.billing_period;
     
     // Map billing_period to recurrence_type
     const recurrenceMap: Record<string, string> = {

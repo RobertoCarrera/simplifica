@@ -1241,7 +1241,8 @@ export class SupabaseTicketsComponent implements OnInit {
     this.filteredServices = this.availableServices.filter(service =>
       service.name.toLowerCase().includes(searchText) ||
       service.description?.toLowerCase().includes(searchText) ||
-      service.category?.toLowerCase().includes(searchText)
+      service.category?.toLowerCase().includes(searchText) ||
+      (Array.isArray(service.tags) && service.tags.some((t: string) => t.toLowerCase().includes(searchText)))
     );
   }
 

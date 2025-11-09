@@ -1343,6 +1343,27 @@ textarea.form-control {
       color: #64748b;
     }
   }
+
+  .service-tags {
+    margin-top: 6px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .service-tag {
+    background: #eef2ff;
+    color: #4338ca;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  
+    @media (prefers-color-scheme: dark) {
+      background: #1e293b;
+      color: #c7d2fe;
+    }
+  }
 }
 
 .service-actions {

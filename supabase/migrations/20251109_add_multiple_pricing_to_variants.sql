@@ -24,7 +24,14 @@ SET pricing = jsonb_build_array(
 )
 WHERE pricing IS NULL;
 
--- 3. Comentar (no eliminar aún) las columnas antiguas para backwards compatibility
+-- 3. Hacer las columnas antiguas NULLABLE (ya no son obligatorias)
+ALTER TABLE service_variants 
+ALTER COLUMN billing_period DROP NOT NULL;
+
+ALTER TABLE service_variants 
+ALTER COLUMN base_price DROP NOT NULL;
+
+-- Comentar las columnas para indicar que están deprecadas
 COMMENT ON COLUMN service_variants.billing_period IS 'DEPRECATED: Use pricing array instead';
 COMMENT ON COLUMN service_variants.base_price IS 'DEPRECATED: Use pricing array instead';
 

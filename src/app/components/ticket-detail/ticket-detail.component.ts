@@ -10,6 +10,7 @@ import { TicketModalService } from '../../services/ticket-modal.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { environment } from '../../../environments/environment';
 import { SupabaseQuotesService } from '../../services/supabase-quotes.service';
+import { SupabaseServicesService } from '../../services/supabase-services.service';
 import { SupabaseCustomersService } from '../../services/supabase-customers.service';
 import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
@@ -548,7 +549,13 @@ import Placeholder from '@tiptap/extension-placeholder';
                     <div class="min-w-0 pr-4">
                       <div class="font-medium">{{ svc.name }}</div>
                       <div class="text-xs text-gray-500 line-clamp-2">{{ svc.description }}</div>
-                      <div class="text-xs text-gray-500 mt-1">🏷️ {{ svc.category || 'Sin categoría' }}</div>
+                      <div class="text-xs text-gray-500 mt-1">
+                        <ng-container *ngIf="svc.tags?.length; else showCategory">
+                          <i class="fas fa-tag"></i>
+                          <span *ngFor="let t of svc.tags; let i = index">{{ t }}<span *ngIf="i < (svc.tags.length - 1)">, </span></span>
+                        </ng-container>
+                        <ng-template #showCategory>🏷️ {{ svc.category || 'Sin categoría' }}</ng-template>
+                      </div>
                     </div>
                     <div class="flex items-center space-x-4">
                       <div class="text-right text-sm text-gray-700">
@@ -612,6 +619,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private router = inject(Router);
   private supabase = inject(SimpleSupabaseService);
   private ticketsService = inject(SupabaseTicketsService);
+  private servicesService = inject(SupabaseServicesService);
   private devicesService = inject(DevicesService);
   private ticketModalService = inject(TicketModalService);
   private sanitizer = inject(DomSanitizer);
@@ -942,8 +950,16 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // Load services catalog (for selection modal)
   private async loadServicesCatalog() {
     try {
-      const { data: services } = await this.supabase.getClient().from('services').select('*').order('name');
-      this.servicesCatalog = services || [];
+      // Use SupabaseServicesService to get mapped services (category names, tags, etc.)
+      const companyId = String((this.ticket as any)?.company_id || (this.ticket as any)?.company?.id || '');
+      try {
+        const services = await this.servicesService.getServices(companyId);
+        this.servicesCatalog = services || [];
+      } catch (e) {
+        // Fallback to direct query if the service helper fails
+        const { data: services } = await this.supabase.getClient().from('services').select('*').order('name');
+        this.servicesCatalog = services || [];
+      }
       this.filterServices();
     } catch (err) {
       console.warn('Error loading services catalog', err);
@@ -960,7 +976,13 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.filteredServices = this.servicesCatalog.slice(0, 10);
       return;
     }
-    this.filteredServices = this.servicesCatalog.filter(s => (s.name||'').toLowerCase().includes(q) || (s.description||'').toLowerCase().includes(q) || (s.category||'').toLowerCase().includes(q)).slice(0, 200);
+    this.filteredServices = this.servicesCatalog.filter(s => {
+      const nameMatch = (s.name || '').toLowerCase().includes(q);
+      const descMatch = (s.description || '').toLowerCase().includes(q);
+      const catMatch = (s.category || '').toLowerCase().includes(q);
+      const tagsMatch = Array.isArray((s as any).tags) && (s as any).tags.some((t: string) => (t || '').toLowerCase().includes(q));
+      return nameMatch || descMatch || catMatch || tagsMatch;
+    }).slice(0, 200);
   }
 
   isServiceIdSelected(id: string) { return this.selectedServiceIds.has(id); }

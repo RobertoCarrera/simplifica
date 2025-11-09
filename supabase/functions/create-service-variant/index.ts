@@ -134,6 +134,9 @@ serve(async (req: Request) => {
       variant_name: variant.variant_name,
       service_id: variant.service_id,
       has_id: !!variant.id,
+      has_pricing: !!variant.pricing,
+      pricing_length: variant.pricing?.length,
+      pricing_sample: variant.pricing?.[0],
       user_id: user.id,
     });
 
@@ -147,7 +150,13 @@ serve(async (req: Request) => {
     // Validate pricing array
     if (!variant.pricing || !Array.isArray(variant.pricing) || variant.pricing.length === 0) {
       return jsonResponse(400, { 
-        error: 'Missing or empty pricing array. At least one price configuration is required.' 
+        error: 'Missing or empty pricing array. At least one price configuration is required.',
+        received: {
+          has_pricing: !!variant.pricing,
+          is_array: Array.isArray(variant.pricing),
+          length: variant.pricing?.length,
+          type: typeof variant.pricing
+        }
       }, allowedOrigin);
     }
 

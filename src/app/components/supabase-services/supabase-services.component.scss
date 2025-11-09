@@ -1,6 +1,7 @@
 // Professional Services Component Styles
 .services-container {
-  min-height: 100vh;
+  /* Evitar crecer más que el viewport para no forzar scrollbar del body */
+  height: 100%;
   background: #f8fafc;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   
@@ -8,6 +9,14 @@
     background: #0f172a;
   }
 }
+
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+/* (Eliminado corchete sobrante que causaba error de sintaxis) */
 
 /* Header Section */
 .header-section {
@@ -645,7 +654,7 @@
 
 .modal-body {
   padding: 0;
-  overflow: auto;
+  overflow: auto; /* Restaurado: permitir scroll dentro del modal */
   flex: 1 1 auto;
   
   @media (max-width: 640px) {
@@ -968,6 +977,7 @@
   background: #f9fafb;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
+  overflow: visible; /* Permitir que dropdowns salgan del contenedor */
 
   &:last-child {
     margin-bottom: 0;
@@ -1010,7 +1020,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   margin-bottom: 16px;
-  overflow: hidden;
+  overflow: visible; /* Permitir que dropdowns salgan del accordion */
   transition: all 0.2s ease;
 
   &:hover {
@@ -1166,6 +1176,7 @@
   &.expanded {
     max-height: 3000px; /* Valor alto para permitir contenido dinámico */
     padding: 20px;
+    overflow: visible; /* Permitir que dropdowns salgan del contenedor */
   }
 }
 
@@ -1599,6 +1610,80 @@
   flex-shrink: 0;
   background: white;
   border-radius: 0 0 8px 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tag-actions {
+    border-top-color: #334155;
+    background: #0f172a;
+  }
+}
+
+/* Nuevos estilos para category-display y tag-display (input visual sin historial) */
+.category-display,
+.tag-display {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #9ca3af;
+    background: #f9fafb;
+  }
+
+  &:focus,
+  &:active {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  &.empty {
+    color: #9ca3af;
+  }
+
+  .selected-value {
+    color: #374151;
+    font-weight: 500;
+  }
+
+  .placeholder-text {
+    color: #9ca3af;
+    font-style: normal;
+  }
+
+  .dropdown-icon {
+    color: #6b7280;
+    font-size: 0.875rem;
+    transition: transform 0.2s ease;
+  }
+
+  &:hover .dropdown-icon {
+    color: #374151;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .category-display,
+  .tag-display {
+    &:hover {
+      border-color: #475569;
+      background: #0b1220;
+    }
+    &:focus,
+    &:active {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+    }
+    &.empty { color: #94a3b8; }
+    .selected-value { color: #e5e7eb; }
+    .placeholder-text { color: #94a3b8; }
+    .dropdown-icon { color: #94a3b8; }
+    &:hover .dropdown-icon { color: #cbd5e1; }
+  }
 }
 
 @media (prefers-color-scheme: dark) {

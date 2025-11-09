@@ -1260,6 +1260,8 @@ export class SupabaseServicesService {
     try {
       const client = this.supabase.getClient();
       
+      console.log('📤 Sending variant to Edge Function:', JSON.stringify(variant, null, 2));
+      
       // Get the function URL
       const { data: functionData, error: functionError } = await client.functions.invoke(
         'create-service-variant',

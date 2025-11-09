@@ -484,6 +484,9 @@
                       <span *ngIf="service.category" class="service-category">• {{ service.category }}</span>
                     </div>
                     <div *ngIf="service.description" class="service-description">{{ service.description }}</div>
+                    <div *ngIf="service.tags?.length" class="service-tags">
+                      <span *ngFor="let t of service.tags" class="service-tag">{{ t }}</span>
+                    </div>
                   </div>
                   <div class="service-actions">
                     <button type="button" class="btn-add">

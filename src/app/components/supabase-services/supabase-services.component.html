@@ -222,11 +222,11 @@
         </button>
       </div>
       
-      <div class="modal-body">
+  <div class="modal-body" #modalBody>
         <form class="service-form" (ngSubmit)="saveService()">
         
         <!-- Información Básica -->
-        <div class="form-section accordion-section">
+  <div class="form-section accordion-section" id="variants-section">
           <div class="accordion-header" (click)="toggleAccordion('basicInfo')" [class.active]="accordionState.basicInfo">
             <div class="accordion-title">
               <i class="fas fa-info-circle"></i>
@@ -253,26 +253,29 @@
             <div class="form-group">
               <label for="category">Categoría *</label>
               <div class="category-input-container">
-                <input 
-                  type="text" 
-                  id="category"
-                  class="form-control"
-                  [(ngModel)]="formData.category"
-                  name="category"
+                <!-- Mostrar valor seleccionado o botón para abrir -->
+                <div 
+                  class="form-control category-display"
                   [class.error]="formErrors['category']"
-                  (focus)="showCategoryInput = true"
-                  placeholder="Ej: Diagnóstico, Software, Mantenimiento">
+                  [class.empty]="!formData.category"
+                  (click)="openCategoryDropdown()">
+                  <span *ngIf="formData.category" class="selected-value">{{ formData.category }}</span>
+                  <span *ngIf="!formData.category" class="placeholder-text">Seleccionar categoría...</span>
+                  <i class="fas fa-chevron-down dropdown-icon"></i>
+                </div>
                 
                 <!-- Category Dropdown -->
                 <div *ngIf="showCategoryInput" class="category-dropdown">
                   <div class="category-search">
                     <input 
+                      #categorySearchInput
                       type="text"
                       class="form-control small"
                       [(ngModel)]="categoryFilterText"
                       (ngModelChange)="onCategoryFilterChange()"
                       placeholder="Buscar o crear categoría..."
-                      name="categoryFilter">
+                      name="categoryFilter"
+                      autocomplete="off">
                   </div>
                   
                   <div class="category-options">
@@ -322,25 +325,27 @@
                   </span>
                 </div>
                 
-                <!-- Tag Input -->
+                <!-- Tag Input (ahora es un botón visual que abre el dropdown) -->
                 <div class="tag-input-container">
-                  <input 
-                    type="text" 
-                    class="form-control"
-                    (focus)="showTagInput = true"
-                    placeholder="Añadir tags..."
-                    readonly>
+                  <div 
+                    class="form-control tag-display"
+                    (click)="openTagDropdown()">
+                    <span class="placeholder-text">Añadir tags...</span>
+                    <i class="fas fa-chevron-down dropdown-icon"></i>
+                  </div>
                   
                   <!-- Tag Dropdown -->
                   <div *ngIf="showTagInput" class="tag-dropdown">
                     <div class="tag-search">
                       <input 
+                        #tagSearchInput
                         type="text"
                         class="form-control small"
                         [(ngModel)]="tagFilterText"
                         (ngModelChange)="onTagFilterChange()"
                         placeholder="Buscar o crear tag..."
-                        name="tagFilter">
+                        name="tagFilter"
+                        autocomplete="off">
                     </div>
                     
                     <div class="tag-options">
@@ -421,7 +426,7 @@
             </div>
 
             <div *ngIf="formData.has_variants && editingService?.id">
-              <app-service-variants
+              <app-service-variants #variantsComp
                 [serviceId]="editingService!.id"
                 [serviceName]="formData.name || ''"
                 [variants]="serviceVariants"
@@ -458,8 +463,8 @@
           </div><!-- Close accordion-content -->
         </div><!-- Close Variantes section -->
 
-        <!-- Precios y Facturación -->
-        <div class="form-section accordion-section">
+        <!-- Precios y Facturación (solo si NO hay variantes) -->
+        <div class="form-section accordion-section" *ngIf="!formData.has_variants">
           <div class="accordion-header" (click)="toggleAccordion('pricing')" [class.active]="accordionState.pricing">
             <div class="accordion-title">
               <i class="fas fa-euro-sign"></i>
