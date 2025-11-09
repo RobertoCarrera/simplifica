@@ -34,6 +34,29 @@ interface ServiceOption {
   base_price: number;
   estimated_hours?: number;
   category?: string;
+  has_variants?: boolean;
+  variants?: ServiceVariant[];
+}
+
+interface ServiceVariant {
+  id: string;
+  service_id: string;
+  variant_name: string;
+  billing_period: 'one-time' | 'monthly' | 'annually' | 'custom';
+  base_price: number;
+  estimated_hours?: number;
+  features?: {
+    included?: string[];
+    excluded?: string[];
+    limits?: Record<string, any>;
+  };
+  display_config?: {
+    highlight?: boolean;
+    badge?: string | null;
+    color?: string | null;
+  };
+  is_active: boolean;
+  sort_order: number;
 }
 
 interface ProductOption {
@@ -143,6 +166,10 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     );
   });
   
+  // Selector de variantes
+  variantDropdownOpen = signal(false);
+  selectedVariantIndex = signal<number | null>(null);
+  
   // Templates
   templates = signal<QuoteTemplate[]>([]);
   selectedTemplate = signal<string | null>(null);
@@ -210,6 +237,11 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     // Cerrar dropdown de servicios si se hace clic fuera
     if (!target.closest('.service-dropdown-container')) {
       this.closeServiceDropdown();
+    }
+    
+    // Cerrar dropdown de variantes si se hace clic fuera
+    if (!target.closest('.variant-dropdown-container')) {
+      this.closeVariantDropdown();
     }
   }
 
@@ -344,6 +376,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       discount_percent: [0, [Validators.min(0), Validators.max(100)]],
       notes: [''],
       service_id: [null],
+      variant_id: [null],
       product_id: [null]
     });
   }
@@ -427,14 +460,25 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   async loadServices() {
     try {
       const services = await this.servicesService.getServices();
-      this.services.set(services.map((s: Service) => ({
-        id: s.id,
-        name: s.name,
-        description: s.description,
-        base_price: s.base_price,
-        estimated_hours: s.estimated_hours,
-        category: s.category
-      })));
+      // Map services with variants
+      const servicesWithVariants = await Promise.all(
+        services.map(async (s: Service) => {
+          const variants = s.has_variants && s.id 
+            ? await this.servicesService.getServiceVariants(s.id)
+            : [];
+          return {
+            id: s.id,
+            name: s.name,
+            description: s.description,
+            base_price: s.base_price,
+            estimated_hours: s.estimated_hours,
+            category: s.category,
+            has_variants: s.has_variants,
+            variants: variants.filter(v => v.is_active).sort((a, b) => a.sort_order - b.sort_order)
+          } as ServiceOption;
+        })
+      );
+      this.services.set(servicesWithVariants);
     } catch (err) {
       console.error('Error al cargar servicios:', err);
       // No mostramos error para no bloquear el formulario
@@ -641,6 +685,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       quantity: 1,
       tax_rate: this.ivaEnabled() ? this.ivaRate() : 0,
       service_id: service.id,
+      variant_id: null, // Reset variant when service changes
       product_id: null
     });
     this.serviceDropdownOpen.set(false);
@@ -691,6 +736,86 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   closeProductDropdown() {
     this.productDropdownOpen.set(false);
     this.selectedProductIndex.set(null);
+  }
+
+  // Métodos para selector de variantes
+  toggleVariantDropdown(itemIndex: number) {
+    if (this.selectedVariantIndex() === itemIndex && this.variantDropdownOpen()) {
+      this.variantDropdownOpen.set(false);
+      this.selectedVariantIndex.set(null);
+    } else {
+      this.selectedVariantIndex.set(itemIndex);
+      this.variantDropdownOpen.set(true);
+    }
+  }
+
+  selectVariant(variant: ServiceVariant, itemIndex: number) {
+    const item = this.items.at(itemIndex);
+    // Compute unit price respecting settings
+    const base = Number(variant.base_price || 0);
+    const taxRate = this.ivaEnabled() ? this.ivaRate() : 0;
+    const finalUnit = (this.pricesIncludeTax() && this.ivaEnabled() && taxRate > 0)
+      ? Math.round(base * (1 + taxRate / 100) * 100) / 100
+      : base;
+    
+    // Get current service description
+    const currentDesc = item.get('description')?.value || '';
+    const newDesc = currentDesc + (currentDesc ? ' - ' : '') + variant.variant_name;
+    
+    item.patchValue({
+      description: newDesc,
+      unit_price: finalUnit,
+      variant_id: variant.id
+    });
+    this.variantDropdownOpen.set(false);
+    this.selectedVariantIndex.set(null);
+    this.calculateTotals();
+  }
+
+  closeVariantDropdown() {
+    this.variantDropdownOpen.set(false);
+    this.selectedVariantIndex.set(null);
+  }
+
+  getSelectedVariantName(index: number): string {
+    try {
+      const variantId = this.items.at(index)?.get('variant_id')?.value as string | null;
+      const serviceId = this.items.at(index)?.get('service_id')?.value as string | null;
+      
+      if (!variantId || !serviceId) return 'Seleccionar variante...';
+      
+      const service = this.services().find(s => s.id === serviceId);
+      if (!service || !service.variants) return 'Seleccionar variante...';
+      
+      const variant = service.variants.find(v => v.id === variantId);
+      return variant ? variant.variant_name : 'Seleccionar variante...';
+    } catch {
+      return 'Seleccionar variante...';
+    }
+  }
+
+  getServiceVariants(index: number): ServiceVariant[] {
+    try {
+      const serviceId = this.items.at(index)?.get('service_id')?.value as string | null;
+      if (!serviceId) return [];
+      
+      const service = this.services().find(s => s.id === serviceId);
+      return service?.variants || [];
+    } catch {
+      return [];
+    }
+  }
+
+  serviceHasVariants(index: number): boolean {
+    try {
+      const serviceId = this.items.at(index)?.get('service_id')?.value as string | null;
+      if (!serviceId) return false;
+      
+      const service = this.services().find(s => s.id === serviceId);
+      return !!service?.has_variants && !!service?.variants?.length;
+    } catch {
+      return false;
+    }
   }
 
   // Helpers to show selected names in template
