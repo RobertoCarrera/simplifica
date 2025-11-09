@@ -3,6 +3,11 @@
   background: var(--bg-primary, #ffffff);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  @media (prefers-color-scheme: dark) {
+    background: #1e293b;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
 }
 
 .variants-header {
@@ -18,6 +23,14 @@
     font-size: 1.5rem;
     font-weight: 600;
     color: var(--text-primary, #1f2937);
+
+    @media (prefers-color-scheme: dark) {
+      color: #f9fafb;
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    border-bottom-color: #475569;
   }
 }
 
@@ -36,6 +49,14 @@
   &:hover {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    background: #334155;
+
+    &:hover {
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
   }
 }
 
@@ -57,6 +78,10 @@
     font-size: 1.25rem;
     font-weight: 600;
     color: var(--text-primary, #1f2937);
+
+    @media (prefers-color-scheme: dark) {
+      color: #f9fafb;
+    }
   }
 }
 
@@ -69,6 +94,11 @@
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-secondary, #6b7280);
+
+  @media (prefers-color-scheme: dark) {
+    background: #475569;
+    color: #cbd5e1;
+  }
 }
 
 .variant-badge {
@@ -173,6 +203,10 @@
     margin: 1rem 0;
     font-size: 1rem;
   }
+
+  @media (prefers-color-scheme: dark) {
+    color: #9ca3af;
+  }
 }
 
 /* Modal Styles */
@@ -271,6 +305,16 @@
     @media (prefers-color-scheme: dark) {
       color: #f9fafb;
     }
+  }
+}
+
+.form-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #6b7280);
+  margin-top: -0.25rem;
+
+  @media (prefers-color-scheme: dark) {
+    color: #94a3b8;
   }
 }
 

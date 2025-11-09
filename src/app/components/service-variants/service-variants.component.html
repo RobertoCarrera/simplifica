@@ -90,10 +90,15 @@
           <div class="form-row">
             <div class="form-group">
               <label>Nombre de la Variante *</label>
-              <select [(ngModel)]="formData.variant_name" name="variant_name" class="form-control" required>
-                <option value="">Selecciona...</option>
-                <option *ngFor="let level of variantLevels" [value]="level">{{ level }}</option>
-              </select>
+              <input 
+                type="text" 
+                [(ngModel)]="formData.variant_name" 
+                name="variant_name" 
+                class="form-control" 
+                required
+                placeholder="Ej: Plan Básico, Paquete Premium, etc."
+                maxlength="100">
+              <small class="form-hint">Escribe el nombre que identifique esta variante de servicio</small>
             </div>
 
             <div class="form-group">

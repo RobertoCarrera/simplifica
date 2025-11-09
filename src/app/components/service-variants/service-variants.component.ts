@@ -29,17 +29,6 @@ export class ServiceVariantsComponent implements OnInit {
     { value: 'custom', label: 'Personalizado' }
   ];
 
-  variantLevels = [
-    'Esencial',
-    'Básico',
-    'Inicial',
-    'Standard',
-    'Avanzado',
-    'Superior',
-    'Premium',
-    'Empresarial'
-  ];
-
   ngOnInit() {
     this.sortVariants();
   }
