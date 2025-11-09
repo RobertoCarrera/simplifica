@@ -41,11 +41,6 @@ export interface MoreMenuItem {
         <div class="px-5 py-3 border-t border-gray-200 dark:border-gray-800 flex justify-end">
           <button (click)="close.emit()" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Cerrar</button>
         </div>
-        <div *ngIf="debugRole || debugModules" class="px-4 pb-4 text-[11px] text-gray-600 dark:text-gray-400">
-          <div><strong>Debug</strong></div>
-          <div>role: {{ debugRole || 'unknown' }}</div>
-          <div>modules: {{ debugModules ? (debugModules.join(', ')) : 'loading' }}</div>
-        </div>
       </div>
     </div>
   `,
