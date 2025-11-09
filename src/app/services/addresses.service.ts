@@ -4,14 +4,16 @@ import { Observable, from, of, throwError } from 'rxjs';
 import { map, mergeMap } from 'rxjs/operators';
 import { SupabaseClientService } from './supabase-client.service';
 import { RuntimeConfigService } from './runtime-config.service';
-import { inject } from '@angular/core';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AddressesService {
 
-  constructor(private sbClient: SupabaseClientService){}
+  constructor(
+    private sbClient: SupabaseClientService,
+    private runtimeConfig: RuntimeConfigService
+  ){}
 
   getAddresses(): Observable<Address[]>{
     return from(this.sbClient.instance.from('addresses').select('*')).pipe(
@@ -124,7 +126,7 @@ export class AddressesService {
     };
 
     // Prefer Edge Function first to avoid RLS 403 noise in the browser
-    const cfg = inject(RuntimeConfigService).get();
+    const cfg = this.runtimeConfig.get();
     const base = (cfg.edgeFunctionsBaseUrl || '').replace(/\/+$/, '');
     if (base) {
       const funcUrl = base + '/create-address';
