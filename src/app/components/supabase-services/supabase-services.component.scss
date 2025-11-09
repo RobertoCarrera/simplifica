@@ -1045,6 +1045,12 @@
   }
 }
 
+.accordion-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .accordion-title {
   display: flex;
   align-items: center;
@@ -1066,6 +1072,88 @@
     color: #92400e;
     border-radius: 9999px;
     margin-left: 8px;
+  }
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  cursor: pointer;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+
+    &:checked + .toggle-slider {
+      background-color: #3b82f6;
+    }
+
+    &:checked + .toggle-slider:before {
+      transform: translateX(22px);
+    }
+
+    &:focus + .toggle-slider {
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+  }
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1;
+  border-radius: 26px;
+  transition: all 0.3s ease;
+
+  &:before {
+    content: '';
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+}
+
+.empty-variants-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 2px dashed #d1d5db;
+
+  i {
+    font-size: 2.5rem;
+    color: #9ca3af;
+    margin-bottom: 12px;
+  }
+
+  p {
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0 0 8px 0;
+    color: #374151;
+  }
+
+  small {
+    font-size: 0.875rem;
+    color: #6b7280;
+    display: block;
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.5;
   }
 }
 
@@ -1114,6 +1202,28 @@
     .badge-new {
       background: #713f12;
       color: #fef3c7;
+    }
+  }
+
+  .toggle-slider {
+    background-color: #475569;
+  }
+
+  .empty-variants-message {
+    background: #1e293b;
+    border-color: #475569;
+    color: #94a3b8;
+
+    i {
+      color: #64748b;
+    }
+
+    p {
+      color: #cbd5e1;
+    }
+
+    small {
+      color: #94a3b8;
     }
   }
 
