@@ -426,7 +426,23 @@ export class ConfiguracionComponent implements OnInit {
       if (error) throw error;
       this._modulesCatalog = (data || []).map((d: any) => ({ key: d.key, name: d.name }));
     } catch (e) {
-      console.warn('No se pudo cargar modules catalog', e);
+      console.warn('No se pudo cargar modules catalog from "modules" table, trying "modules_catalog"', e);
+      try {
+        // Some deployments use a separate modules_catalog table (migration -> modules_catalog.key,label)
+        const { data: catalogData, error: catalogError } = await this.supabase
+          .from('modules_catalog')
+          .select('key,label')
+          .order('key', { ascending: true });
+        if (catalogError) throw catalogError;
+        if (catalogData && (catalogData as any[]).length > 0) {
+          this._modulesCatalog = (catalogData || []).map((d: any) => ({ key: d.key, name: d.label }));
+          return;
+        }
+      } catch (innerErr) {
+        console.warn('No se pudo cargar modules_catalog, falling back to defaults', innerErr);
+      }
+
+      // Final fallback: static list
       this._modulesCatalog = [
         { key: 'moduloFacturas', name: 'Facturación' },
         { key: 'moduloPresupuestos', name: 'Presupuestos' },
