@@ -431,14 +431,26 @@
               </app-service-variants>
             </div>
 
-            <!-- Info message for new services with variants -->
-            <div *ngIf="formData.has_variants && !editingService" class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 px-4 py-3 rounded-lg">
-              <div class="flex items-start gap-3">
-                <i class="fas fa-info-circle text-lg mt-0.5"></i>
-                <div>
-                  <div class="font-semibold">Variantes del servicio</div>
-                  <div class="text-sm mt-1">
-                    Primero guarda el servicio base. Después podrás crear las variantes (Esencial, Avanzado, Superior) con sus diferentes precios y periodicidades.
+            <!-- Variantes para servicios nuevos (sin ID aún) -->
+            <div *ngIf="formData.has_variants && !editingService">
+              <app-service-variants
+                [serviceId]="''"
+                [serviceName]="formData.name || 'Nuevo servicio'"
+                [variants]="serviceVariants"
+                (variantsChange)="onVariantsChange($event)"
+                (onSave)="onVariantSave($event)"
+                (onDelete)="onVariantDelete($event)">
+              </app-service-variants>
+              
+              <!-- Info message for new services with pending variants -->
+              <div *ngIf="pendingVariants.length > 0" class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 px-4 py-3 rounded-lg mt-4">
+                <div class="flex items-start gap-3">
+                  <i class="fas fa-info-circle text-lg mt-0.5"></i>
+                  <div>
+                    <div class="font-semibold">{{ pendingVariants.length }} variante{{ pendingVariants.length > 1 ? 's' : '' }} pendiente{{ pendingVariants.length > 1 ? 's' : '' }}</div>
+                    <div class="text-sm mt-1">
+                      {{ pendingVariants.length > 1 ? 'Estas variantes se crearán' : 'Esta variante se creará' }} automáticamente al guardar el servicio.
+                    </div>
                   </div>
                 </div>
               </div>

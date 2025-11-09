@@ -2,16 +2,31 @@ import { Injectable, inject } from '@angular/core';
 import { SimpleSupabaseService } from './simple-supabase.service';
 import { environment } from '../../environments/environment';
 
-export interface ServiceVariant {
-  id: string;
-  service_id: string;
-  variant_name: string;
-  billing_period: 'one-time' | 'monthly' | 'annually' | 'custom';
+export interface VariantPricing {
+  billing_period: 'one_time' | 'monthly' | 'quarterly' | 'biannual' | 'annual';
   base_price: number;
   estimated_hours?: number;
   cost_price?: number;
   profit_margin?: number;
   discount_percentage?: number;
+}
+
+export interface ServiceVariant {
+  id: string;
+  service_id: string;
+  variant_name: string;
+  
+  // NUEVO: Array de precios por periodicidad
+  pricing: VariantPricing[];
+  
+  // DEPRECATED: Mantener para backwards compatibility
+  billing_period?: 'one-time' | 'monthly' | 'annually' | 'custom';
+  base_price?: number;
+  estimated_hours?: number;
+  cost_price?: number;
+  profit_margin?: number;
+  discount_percentage?: number;
+  
   features?: {
     included?: string[];
     excluded?: string[];
@@ -319,15 +334,14 @@ export class SupabaseServicesService {
   warranty_days: service.warranty_days !== undefined && service.warranty_days !== null ? Number(service.warranty_days) : undefined,
   skill_requirements: service.skill_requirements || [],
   tools_required: service.tools_required || [],
-  can_be_remote: !!service.can_be_remote,
-  priority_level: service.priority_level !== undefined && service.priority_level !== null ? Number(service.priority_level) : undefined,
+      can_be_remote: !!service.can_be_remote,
+      priority_level: service.priority_level !== undefined && service.priority_level !== null ? Number(service.priority_level) : undefined,
+      has_variants: !!service.has_variants, // Campo de variantes
       // Preferir company_id almacenado en service cuando exista
       company_id: service.company_id ? service.company_id : companyId.toString(),
       created_at: service.created_at,
       updated_at: service.updated_at || service.created_at
-    }));
-
-    // Load tags relations from service_tag_relations -> service_tags
+    }));    // Load tags relations from service_tag_relations -> service_tags
     return await this.loadServiceTagsForServices(mapped);
   }
 
@@ -357,6 +371,7 @@ export class SupabaseServicesService {
   if (serviceData.tools_required !== undefined) serviceDataForDB.tools_required = serviceData.tools_required;
   if (serviceData.can_be_remote !== undefined) serviceDataForDB.can_be_remote = serviceData.can_be_remote;
   if (serviceData.priority_level !== undefined) serviceDataForDB.priority_level = serviceData.priority_level;
+  if (serviceData.has_variants !== undefined) serviceDataForDB.has_variants = serviceData.has_variants;
 
     // If a category is provided, try to resolve it to a category id
     if (serviceData.category) {
@@ -399,6 +414,7 @@ export class SupabaseServicesService {
       estimated_hours: data.estimated_hours || 0,
       category: data.category || serviceData.category || 'Servicio Técnico',
       is_active: true,
+      has_variants: data.has_variants || false,
       company_id: data.company_id || serviceData.company_id || this.currentCompanyId,
       created_at: data.created_at,
       updated_at: data.updated_at || data.created_at
@@ -429,6 +445,7 @@ export class SupabaseServicesService {
   if (updates.tools_required !== undefined) serviceData.tools_required = updates.tools_required;
   if (updates.can_be_remote !== undefined) serviceData.can_be_remote = updates.can_be_remote;
   if (updates.priority_level !== undefined) serviceData.priority_level = updates.priority_level;
+  if (updates.has_variants !== undefined) serviceData.has_variants = updates.has_variants;
     // Resolve category name to id if needed
     if (updates.category) {
       try {
@@ -470,6 +487,7 @@ export class SupabaseServicesService {
       estimated_hours: data.estimated_hours || 0,
       category: data.category || updates.category || 'Servicio Técnico',
       is_active: updates.is_active !== false,
+      has_variants: data.has_variants || false,
       company_id: updates.company_id || this.currentCompanyId,
       created_at: data.created_at,
       updated_at: data.updated_at || data.created_at
@@ -520,7 +538,8 @@ export class SupabaseServicesService {
       estimated_hours: data.estimated_hours || 0,
       category: data.category || 'Servicio Técnico',
       is_active: data.is_active,
-  company_id: data.company_id || this.currentCompanyId,
+      has_variants: data.has_variants || false,
+      company_id: data.company_id || this.currentCompanyId,
       created_at: data.created_at,
       updated_at: data.updated_at || data.created_at
     };
@@ -1235,19 +1254,27 @@ export class SupabaseServicesService {
   }
 
   /**
-   * Create a new service variant
+   * Create a new service variant using Edge Function
    */
   async createServiceVariant(variant: Partial<ServiceVariant>): Promise<ServiceVariant> {
     try {
       const client = this.supabase.getClient();
-      const { data, error } = await client
-        .from('service_variants')
-        .insert([variant])
-        .select()
-        .single();
+      
+      // Get the function URL
+      const { data: functionData, error: functionError } = await client.functions.invoke(
+        'create-service-variant',
+        {
+          body: variant,
+        }
+      );
 
-      if (error) throw error;
-      return data;
+      if (functionError) {
+        console.error('❌ Edge function error:', functionError);
+        throw functionError;
+      }
+
+      console.log('✅ Variant created via Edge Function:', functionData);
+      return functionData as ServiceVariant;
     } catch (error) {
       console.error('❌ Error creating service variant:', error);
       throw error;
@@ -1255,20 +1282,29 @@ export class SupabaseServicesService {
   }
 
   /**
-   * Update a service variant
+   * Update a service variant using Edge Function
    */
   async updateServiceVariant(variantId: string, updates: Partial<ServiceVariant>): Promise<ServiceVariant> {
     try {
       const client = this.supabase.getClient();
-      const { data, error } = await client
-        .from('service_variants')
-        .update(updates)
-        .eq('id', variantId)
-        .select()
-        .single();
+      
+      // Add the variant ID to the updates object
+      const variantData = { ...updates, id: variantId };
+      
+      const { data: functionData, error: functionError } = await client.functions.invoke(
+        'create-service-variant',
+        {
+          body: variantData,
+        }
+      );
 
-      if (error) throw error;
-      return data;
+      if (functionError) {
+        console.error('❌ Edge function error:', functionError);
+        throw functionError;
+      }
+
+      console.log('✅ Variant updated via Edge Function:', functionData);
+      return functionData as ServiceVariant;
     } catch (error) {
       console.error('❌ Error updating service variant:', error);
       throw error;

@@ -13,7 +13,17 @@
       <div class="variant-header">
         <div class="variant-title">
           <h4>{{ variant.variant_name }}</h4>
-          <span class="variant-period">{{ getPeriodLabel(variant.billing_period) }}</span>
+          <!-- Pills de precios -->
+          <div class="pricing-pills" *ngIf="variant.pricing && variant.pricing.length > 0">
+            <span class="pricing-pill" *ngFor="let price of variant.pricing"
+                  [class.has-discount]="price.discount_percentage && price.discount_percentage > 0">
+              <span class="period">{{ getPeriodLabel(price.billing_period) }}</span>: 
+              <span class="price">{{ calculateDiscountedPrice(price) | number:'1.2-2' }}€</span>
+              <span class="discount" *ngIf="price.discount_percentage && price.discount_percentage > 0">
+                (-{{ price.discount_percentage }}%)
+              </span>
+            </span>
+          </div>
           <span class="variant-badge" *ngIf="variant.display_config?.badge"
                 [style.background-color]="getVariantBadgeColor(variant)">
             {{ variant.display_config?.badge }}
@@ -34,25 +44,6 @@
           <button type="button" class="btn-icon btn-danger" (click)="deleteVariant(variant.id)" title="Eliminar">
             <i class="fas fa-trash"></i>
           </button>
-        </div>
-      </div>
-
-      <div class="variant-details">
-        <div class="detail-row">
-          <span class="detail-label">Precio:</span>
-          <span class="detail-value price">{{ variant.base_price | number:'1.2-2' }} €</span>
-        </div>
-        <div class="detail-row" *ngIf="variant.estimated_hours">
-          <span class="detail-label">Horas estimadas:</span>
-          <span class="detail-value">{{ variant.estimated_hours }}</span>
-        </div>
-        <div class="detail-row" *ngIf="variant.discount_percentage && variant.discount_percentage > 0">
-          <span class="detail-label">Descuento:</span>
-          <span class="detail-value discount">{{ variant.discount_percentage }}%</span>
-        </div>
-        <div class="detail-row" *ngIf="variant.billing_period === 'monthly'">
-          <span class="detail-label">Precio anual (16% desc):</span>
-          <span class="detail-value">{{ calculateAnnualPrice(variant.base_price) | number:'1.2-2' }} €</span>
         </div>
       </div>
 
@@ -88,7 +79,7 @@
       <div class="modal-body">
         <form (ngSubmit)="saveVariant(); $event.preventDefault()">
           <div class="form-row">
-            <div class="form-group">
+            <div class="form-group full-width">
               <label>Nombre de la Variante *</label>
               <input 
                 type="text" 
@@ -100,52 +91,115 @@
                 maxlength="100">
               <small class="form-hint">Escribe el nombre que identifique esta variante de servicio</small>
             </div>
+          </div>
 
-            <div class="form-group">
-              <label>Periodicidad *</label>
-              <select [(ngModel)]="formData.billing_period" name="billing_period" class="form-control">
-                <option *ngFor="let period of billingPeriods" [value]="period.value">
-                  {{ period.label }}
-                </option>
-              </select>
+          <!-- Sección de Precios Múltiples -->
+          <div class="pricing-section">
+            <div class="section-header">
+              <h4>Configuración de Precios</h4>
+              <button type="button" class="btn btn-sm btn-primary" (click)="addPricingEntry()">
+                <i class="fas fa-plus"></i> Añadir Precio
+              </button>
+            </div>
+
+            <div class="pricing-entries" *ngIf="formData.pricing && formData.pricing.length > 0">
+              <div class="pricing-entry" *ngFor="let price of formData.pricing; let idx = index">
+                <div class="pricing-entry-header">
+                  <h5>Precio #{{ idx + 1 }}</h5>
+                  <button type="button" class="btn-icon-sm btn-danger" (click)="removePricingEntry(idx)">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Periodicidad *</label>
+                    <select [(ngModel)]="price.billing_period" 
+                            [name]="'billing_period_' + idx" 
+                            class="form-control">
+                      <option *ngFor="let period of getAvailablePeriods(price.billing_period)" 
+                              [value]="period.value">
+                        {{ period.label }}
+                      </option>
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label>Precio Base (€) *</label>
+                    <input type="number" 
+                           [(ngModel)]="price.base_price" 
+                           [name]="'base_price_' + idx" 
+                           class="form-control" 
+                           step="0.01" 
+                           min="0" 
+                           required>
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Horas Estimadas</label>
+                    <input type="number" 
+                           [(ngModel)]="price.estimated_hours" 
+                           [name]="'estimated_hours_' + idx" 
+                           class="form-control" 
+                           step="0.5" 
+                           min="0">
+                  </div>
+
+                  <div class="form-group">
+                    <label>Precio de Coste (€)</label>
+                    <input type="number" 
+                           [(ngModel)]="price.cost_price" 
+                           [name]="'cost_price_' + idx" 
+                           class="form-control" 
+                           step="0.01" 
+                           min="0">
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label>Margen de Beneficio (%)</label>
+                    <input type="number" 
+                           [(ngModel)]="price.profit_margin" 
+                           [name]="'profit_margin_' + idx" 
+                           class="form-control" 
+                           step="1" 
+                           min="0" 
+                           max="100">
+                    <small class="form-hint" *ngIf="price.cost_price">
+                      Margen calculado: {{ calculateProfitMargin(price) }}%
+                    </small>
+                  </div>
+
+                  <div class="form-group">
+                    <label>Descuento (%)</label>
+                    <input type="number" 
+                           [(ngModel)]="price.discount_percentage" 
+                           [name]="'discount_percentage_' + idx" 
+                           class="form-control" 
+                           step="1" 
+                           min="0" 
+                           max="100">
+                    <small class="form-hint" *ngIf="price.discount_percentage && price.discount_percentage > 0">
+                      Precio final: {{ calculateDiscountedPrice(price) | number:'1.2-2' }}€
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="empty-pricing" *ngIf="!formData.pricing || formData.pricing.length === 0">
+              <i class="fas fa-euro-sign fa-2x"></i>
+              <p>No hay precios configurados</p>
+              <button type="button" class="btn btn-primary" (click)="addPricingEntry()">
+                <i class="fas fa-plus"></i> Añadir Primer Precio
+              </button>
             </div>
           </div>
 
           <div class="form-row">
-            <div class="form-group">
-              <label>Precio Base (€) *</label>
-              <input type="number" [(ngModel)]="formData.base_price" name="base_price" 
-                     class="form-control" step="0.01" min="0">
-            </div>
-
-            <div class="form-group">
-              <label>Horas Estimadas</label>
-              <input type="number" [(ngModel)]="formData.estimated_hours" name="estimated_hours" 
-                     class="form-control" step="0.5" min="0">
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Precio de Coste (€)</label>
-              <input type="number" [(ngModel)]="formData.cost_price" name="cost_price" 
-                     class="form-control" step="0.01" min="0">
-            </div>
-
-            <div class="form-group">
-              <label>Margen de Beneficio (%)</label>
-              <input type="number" [(ngModel)]="formData.profit_margin" name="profit_margin" 
-                     class="form-control" step="1" min="0" max="100">
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label>Descuento (%)</label>
-              <input type="number" [(ngModel)]="formData.discount_percentage" name="discount_percentage" 
-                     class="form-control" step="1" min="0" max="100">
-            </div>
-
             <div class="form-group">
               <label>Orden de Visualización</label>
               <input type="number" [(ngModel)]="formData.sort_order" name="sort_order" 

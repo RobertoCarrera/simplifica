@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ServiceVariant } from '../../services/supabase-services.service';
+import { ServiceVariant, VariantPricing } from '../../services/supabase-services.service';
 
 @Component({
   selector: 'app-service-variants',
@@ -20,20 +20,30 @@ export class ServiceVariantsComponent implements OnInit {
 
   showForm = false;
   editingVariant: ServiceVariant | null = null;
-  formData: Partial<ServiceVariant> = this.getEmptyFormData();
+  formData: Partial<ServiceVariant> = {}; // Inicializar vacío, se llena en openForm
 
   billingPeriods = [
-    { value: 'one-time', label: 'Pago único' },
+    { value: 'one_time', label: 'Pago único' },
     { value: 'monthly', label: 'Mensual' },
-    { value: 'annually', label: 'Anual' },
-    { value: 'custom', label: 'Personalizado' }
+    { value: 'quarterly', label: 'Trimestral' },
+    { value: 'biannual', label: 'Semestral' },
+    { value: 'annual', label: 'Anual' }
   ];
 
   ngOnInit() {
     this.sortVariants();
+    console.log('🔧 ServiceVariants ngOnInit:', {
+      serviceId: this.serviceId,
+      serviceName: this.serviceName,
+      variantsCount: this.variants?.length || 0
+    });
   }
 
   sortVariants() {
+    if (!this.variants || !Array.isArray(this.variants)) {
+      this.variants = [];
+      return;
+    }
     this.variants.sort((a, b) => {
       if (a.sort_order !== b.sort_order) {
         return a.sort_order - b.sort_order;
@@ -46,12 +56,7 @@ export class ServiceVariantsComponent implements OnInit {
     return {
       service_id: this.serviceId,
       variant_name: '',
-      billing_period: 'one-time',
-      base_price: 0,
-      estimated_hours: 0,
-      cost_price: 0,
-      profit_margin: 30,
-      discount_percentage: 0,
+      pricing: [], // Array vacío de precios
       features: {
         included: [],
         excluded: [],
@@ -68,15 +73,26 @@ export class ServiceVariantsComponent implements OnInit {
   }
 
   openForm(variant?: ServiceVariant) {
-    console.log('🔧 Opening variant form. serviceId:', this.serviceId, 'editingService:', variant);
+    console.log('🔧 Opening variant form. serviceId:', this.serviceId, 'variant:', variant);
     
     if (variant) {
       this.editingVariant = variant;
-      this.formData = { ...variant };
+      // Asegurar que pricing existe y es array
+      this.formData = { 
+        ...variant,
+        pricing: Array.isArray(variant.pricing) ? [...variant.pricing] : []
+      };
     } else {
       this.editingVariant = null;
       this.formData = this.getEmptyFormData();
     }
+    
+    console.log('📋 Form data initialized:', {
+      variant_name: this.formData.variant_name,
+      pricing: this.formData.pricing,
+      service_id: this.formData.service_id
+    });
+    
     this.showForm = true;
   }
 
@@ -90,27 +106,30 @@ export class ServiceVariantsComponent implements OnInit {
     console.log('💾 Saving variant. formData:', this.formData);
     console.log('💾 serviceId:', this.serviceId);
     
-    if (!this.formData.variant_name || !this.formData.billing_period) {
-      alert('Por favor completa los campos requeridos');
+    if (!this.formData.variant_name) {
+      alert('Por favor completa el nombre de la variante');
       return;
     }
 
-    if (!this.serviceId) {
-      alert('Error: No se puede crear una variante sin un servicio asociado');
-      console.error('serviceId is empty:', this.serviceId);
+    // Validar que hay al menos un precio configurado
+    if (!this.formData.pricing || this.formData.pricing.length === 0) {
+      alert('Debes añadir al menos una configuración de precio');
       return;
+    }
+
+    // Validar que cada precio tiene billing_period y base_price
+    for (const price of this.formData.pricing) {
+      if (!price.billing_period || price.base_price === undefined) {
+        alert('Todos los precios deben tener periodicidad y precio base');
+        return;
+      }
     }
 
     const variant: ServiceVariant = {
       id: this.editingVariant?.id || '',
-      service_id: this.serviceId,
+      service_id: this.serviceId, // Puede ser "" para variantes pendientes
       variant_name: this.formData.variant_name!,
-      billing_period: this.formData.billing_period as any,
-      base_price: this.formData.base_price || 0,
-      estimated_hours: this.formData.estimated_hours,
-      cost_price: this.formData.cost_price,
-      profit_margin: this.formData.profit_margin,
-      discount_percentage: this.formData.discount_percentage,
+      pricing: this.formData.pricing,
       features: this.formData.features || { included: [], excluded: [], limits: {} },
       display_config: this.formData.display_config || { highlight: false, badge: null, color: null },
       is_active: this.formData.is_active !== undefined ? this.formData.is_active : true,
@@ -128,6 +147,83 @@ export class ServiceVariantsComponent implements OnInit {
       this.onDelete.emit(variantId);
     }
   }
+
+  // ============= GESTIÓN DE PRECIOS MÚLTIPLES =============
+  
+  addPricingEntry() {
+    if (!this.formData.pricing) {
+      this.formData.pricing = [];
+    }
+    
+    // Obtener periodicidades disponibles
+    const usedPeriods = this.formData.pricing.map(p => p.billing_period);
+    const availablePeriod = this.billingPeriods.find(
+      bp => !usedPeriods.includes(bp.value as any)
+    );
+    
+    if (!availablePeriod) {
+      alert('Ya has añadido todas las periodicidades disponibles');
+      return;
+    }
+    
+    this.formData.pricing.push({
+      billing_period: availablePeriod.value as any,
+      base_price: 0,
+      estimated_hours: 0,
+      cost_price: 0,
+      profit_margin: 30,
+      discount_percentage: 0
+    });
+  }
+
+  removePricingEntry(index: number) {
+    if (this.formData.pricing && this.formData.pricing.length > 0) {
+      this.formData.pricing.splice(index, 1);
+    }
+  }
+
+  getAvailablePeriods(currentPeriod?: string): typeof this.billingPeriods {
+    if (!this.formData.pricing) {
+      return this.billingPeriods;
+    }
+    
+    const usedPeriods = this.formData.pricing
+      .map(p => p.billing_period)
+      .filter(p => p !== currentPeriod);
+    
+    return this.billingPeriods.filter(
+      bp => !usedPeriods.includes(bp.value as any)
+    );
+  }
+
+  calculateDiscountedPrice(price: VariantPricing): number {
+    if (!price.discount_percentage || price.discount_percentage === 0) {
+      return price.base_price;
+    }
+    return Math.round(price.base_price * (1 - price.discount_percentage / 100) * 100) / 100;
+  }
+
+  calculateProfitMargin(price: VariantPricing): number {
+    if (!price.cost_price || price.cost_price === 0) {
+      return 0;
+    }
+    return Math.round(((price.base_price - price.cost_price) / price.cost_price) * 100 * 100) / 100;
+  }
+
+  // Helpers para mostrar pills en el listado de variantes
+  getPricingPills(variant: ServiceVariant): string[] {
+    if (!variant.pricing || variant.pricing.length === 0) {
+      return [];
+    }
+    
+    return variant.pricing.map(p => {
+      const periodLabel = this.getPeriodLabel(p.billing_period);
+      const price = this.calculateDiscountedPrice(p);
+      return `${periodLabel}: ${price}€`;
+    });
+  }
+
+  // ============= FIN GESTIÓN DE PRECIOS MÚLTIPLES =============
 
   calculateAnnualPrice(monthlyPrice: number): number {
     return Math.round((monthlyPrice * 12) * 0.84 * 100) / 100; // 16% discount

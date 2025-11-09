@@ -62,6 +62,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   
   // Variants management
   serviceVariants: ServiceVariant[] = [];
+  pendingVariants: Partial<ServiceVariant>[] = []; // Variantes creadas antes de guardar el servicio
   
   // Accordion management
   accordionState = {
@@ -457,8 +458,15 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     // Load variants if service has them
     if (service?.has_variants && service.id) {
       this.loadServiceVariants(service.id);
+      this.pendingVariants = []; // Limpiar variantes pendientes al editar
     } else {
       this.serviceVariants = [];
+      // Si es un servicio nuevo y tiene variantes pendientes, mostrarlas
+      if (!service && this.pendingVariants.length > 0) {
+        this.serviceVariants = [...this.pendingVariants] as ServiceVariant[];
+      } else {
+        this.pendingVariants = []; // Limpiar variantes pendientes al crear nuevo
+      }
     }
     
     this.formErrors = {};
@@ -484,6 +492,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.tagFilterText = '';
     this.selectedTags = [];
     this.serviceVariants = [];
+    this.pendingVariants = []; // Limpiar variantes pendientes
     
     // Reset accordion state
     this.accordionState = {
@@ -570,10 +579,38 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         tags: this.selectedTags
       };
 
+      let savedServiceId: string;
+
       if (this.editingService) {
         await this.servicesService.updateService(this.editingService.id, dataWithCompany);
+        savedServiceId = this.editingService.id;
       } else {
-        await this.servicesService.createService(dataWithCompany);
+        const newService = await this.servicesService.createService(dataWithCompany);
+        savedServiceId = newService.id;
+        
+        // Si hay variantes pendientes, crearlas ahora que tenemos el service_id
+        if (this.pendingVariants.length > 0) {
+          console.log(`🔄 Creando ${this.pendingVariants.length} variantes pendientes para el servicio ${savedServiceId}`);
+          
+          for (const pendingVariant of this.pendingVariants) {
+            const variantWithServiceId: ServiceVariant = {
+              ...pendingVariant,
+              id: '', // Será generado por la DB
+              service_id: savedServiceId
+            } as ServiceVariant;
+            
+            try {
+              await this.servicesService.createServiceVariant(variantWithServiceId);
+            } catch (variantError) {
+              console.error('❌ Error creating pending variant:', variantError);
+              // Continuar con las demás variantes aunque una falle
+            }
+          }
+          
+          // Limpiar variantes pendientes
+          this.pendingVariants = [];
+          this.toastService.success('Servicio y variantes creados', `Se creó el servicio con sus variantes`);
+        }
       }
       
       this.closeForm();
@@ -617,6 +654,30 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   async onVariantSave(variant: ServiceVariant) {
     this.loading = true;
     try {
+      // Si el servicio aún no existe (no tiene ID), guardar como pendiente
+      if (!this.editingService?.id) {
+        console.log('💾 Guardando variante como pendiente (servicio no creado aún)');
+        
+        // Buscar si ya existe una variante pendiente con el mismo nombre para actualizarla
+        const existingIndex = this.pendingVariants.findIndex(v => v.variant_name === variant.variant_name);
+        
+        if (existingIndex >= 0) {
+          // Actualizar variante pendiente existente
+          this.pendingVariants[existingIndex] = variant;
+          this.toastService.success('Variante actualizada', 'La variante se guardará al crear el servicio');
+        } else {
+          // Agregar nueva variante pendiente
+          this.pendingVariants.push(variant);
+          this.toastService.success('Variante guardada', 'La variante se guardará al crear el servicio');
+        }
+        
+        // Actualizar la lista visual de variantes
+        this.serviceVariants = [...this.pendingVariants] as ServiceVariant[];
+        this.loading = false;
+        return;
+      }
+      
+      // Si el servicio ya existe, guardar directamente en la BD
       if (variant.id) {
         // Update existing variant
         await this.servicesService.updateServiceVariant(variant.id, variant);
@@ -642,6 +703,26 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   async onVariantDelete(variantId: string) {
     this.loading = true;
     try {
+      // Si el servicio aún no existe, eliminar de pendientes
+      if (!this.editingService?.id) {
+        console.log('🗑️ Eliminando variante pendiente');
+        
+        // Buscar por variant_name si variantId no es un UUID válido
+        const index = this.pendingVariants.findIndex(v => 
+          v.id === variantId || v.variant_name === variantId
+        );
+        
+        if (index >= 0) {
+          this.pendingVariants.splice(index, 1);
+          this.serviceVariants = [...this.pendingVariants] as ServiceVariant[];
+          this.toastService.success('Variante eliminada', 'La variante pendiente ha sido eliminada');
+        }
+        
+        this.loading = false;
+        return;
+      }
+      
+      // Si el servicio existe, eliminar de la BD
       await this.servicesService.deleteServiceVariant(variantId);
       this.toastService.success('Variante eliminada', 'La variante se ha eliminado correctamente');
       
@@ -649,7 +730,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       if (this.editingService?.id) {
         await this.loadServiceVariants(this.editingService.id);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting variant:', error);
       this.toastService.error('Error al eliminar', 'No se pudo eliminar la variante');
     } finally {
