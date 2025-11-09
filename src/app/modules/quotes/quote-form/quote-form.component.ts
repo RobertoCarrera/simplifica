@@ -170,6 +170,10 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   variantDropdownOpen = signal(false);
   selectedVariantIndex = signal<number | null>(null);
   
+  // Recurrence lock (when variant has billing_period)
+  recurrenceLocked = signal(false);
+  recurrenceLockedReason = signal<string | null>(null);
+  
   // Templates
   templates = signal<QuoteTemplate[]>([]);
   selectedTemplate = signal<string | null>(null);
@@ -627,6 +631,40 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     if (this.items.length > 1) {
       this.items.removeAt(index);
       this.calculateTotals();
+      
+      // Recheck if recurrence should still be locked
+      this.recheckRecurrenceLock();
+    }
+  }
+
+  /**
+   * Recheck if any remaining variant requires recurrence lock
+   */
+  private recheckRecurrenceLock() {
+    let hasLockedVariant = false;
+    let lockedVariant: ServiceVariant | null = null;
+    
+    // Check all items for variants with billing periods
+    for (let i = 0; i < this.items.length; i++) {
+      const variantId = this.items.at(i).get('variant_id')?.value;
+      const serviceId = this.items.at(i).get('service_id')?.value;
+      
+      if (variantId && serviceId) {
+        const service = this.services().find(s => s.id === serviceId);
+        const variant = service?.variants?.find(v => v.id === variantId);
+        
+        if (variant && ['monthly', 'annually'].includes(variant.billing_period)) {
+          hasLockedVariant = true;
+          lockedVariant = variant;
+          break;
+        }
+      }
+    }
+    
+    if (hasLockedVariant && lockedVariant) {
+      this.updateRecurrenceFromVariant(lockedVariant);
+    } else {
+      this.unlockRecurrence();
     }
   }
 
@@ -691,6 +729,10 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     this.serviceDropdownOpen.set(false);
     this.selectedItemIndex.set(null);
     this.serviceSearch.set('');
+    
+    // Recheck recurrence lock after service change
+    this.recheckRecurrenceLock();
+    
     this.calculateTotals();
   }
 
@@ -769,7 +811,68 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     });
     this.variantDropdownOpen.set(false);
     this.selectedVariantIndex.set(null);
+    
+    // Auto-set recurrence based on variant billing_period
+    this.updateRecurrenceFromVariant(variant);
+    
     this.calculateTotals();
+  }
+
+  /**
+   * Map variant billing_period to quote recurrence_type and lock if applicable
+   */
+  private updateRecurrenceFromVariant(variant: ServiceVariant) {
+    const billingPeriod = variant.billing_period;
+    
+    // Map billing_period to recurrence_type
+    const recurrenceMap: Record<string, string> = {
+      'one-time': 'none',
+      'monthly': 'monthly',
+      'annually': 'yearly',
+      'custom': 'none' // Custom remains as none, user can configure manually
+    };
+    
+    const recurrenceType = recurrenceMap[billingPeriod] || 'none';
+    
+    // Lock recurrence if variant has specific billing period (not one-time or custom)
+    const shouldLock = ['monthly', 'annually'].includes(billingPeriod);
+    
+    if (shouldLock) {
+      this.recurrenceLocked.set(true);
+      
+      // Set user-friendly reason
+      const periodNames: Record<string, string> = {
+        'monthly': 'Mensual',
+        'annually': 'Anual'
+      };
+      const periodName = periodNames[billingPeriod] || billingPeriod;
+      this.recurrenceLockedReason.set(`Este servicio tiene facturación ${periodName}`);
+      
+      // Update form and disable recurrence controls
+      this.quoteForm.patchValue({
+        recurrence_type: recurrenceType
+      });
+      this.quoteForm.get('recurrence_type')?.disable();
+      
+      // Set default day if needed
+      if (recurrenceType === 'monthly' || recurrenceType === 'yearly') {
+        if (!this.quoteForm.get('recurrence_day')?.value) {
+          this.quoteForm.patchValue({ recurrence_day: 1 });
+        }
+      }
+    } else {
+      // Unlock if variant is one-time or custom
+      this.unlockRecurrence();
+    }
+  }
+
+  /**
+   * Unlock recurrence controls
+   */
+  private unlockRecurrence() {
+    this.recurrenceLocked.set(false);
+    this.recurrenceLockedReason.set(null);
+    this.quoteForm.get('recurrence_type')?.enable();
   }
 
   closeVariantDropdown() {

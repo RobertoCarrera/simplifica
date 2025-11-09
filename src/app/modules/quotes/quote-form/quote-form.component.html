@@ -209,71 +209,6 @@
             </div>
           </div>
 
-          <!-- Recurrence Card -->
-          <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-              </svg>
-              Recurrencia
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo</label>
-                <select formControlName="recurrence_type" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
-                  <option value="none">Puntual (por defecto)</option>
-                  <option value="weekly">Semanal</option>
-                  <option value="monthly">Mensual</option>
-                  <option value="quarterly">Trimestral</option>
-                  <option value="yearly">Anual</option>
-                </select>
-              </div>
-
-              <!-- Weekly: day of week -->
-              @if (quoteForm.get('recurrence_type')?.value === 'weekly') {
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Día de la semana</label>
-                  <select formControlName="recurrence_day" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
-                    <option [ngValue]="0">Domingo</option>
-                    <option [ngValue]="1">Lunes</option>
-                    <option [ngValue]="2">Martes</option>
-                    <option [ngValue]="3">Miércoles</option>
-                    <option [ngValue]="4">Jueves</option>
-                    <option [ngValue]="5">Viernes</option>
-                    <option [ngValue]="6">Sábado</option>
-                  </select>
-                </div>
-              }
-
-              <!-- Monthly/Quarterly/Yearly: day of month -->
-              @if (['monthly','quarterly','yearly'].includes(quoteForm.get('recurrence_type')?.value)) {
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Día de ejecución (1-28)</label>
-                  <input type="number" min="1" max="28" formControlName="recurrence_day" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="1" />
-                </div>
-              }
-
-              <!-- Start/End dates shown for any recurring type -->
-              @if (quoteForm.get('recurrence_type')?.value !== 'none') {
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Fecha inicio</label>
-                  <input type="date" formControlName="recurrence_start_date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">Fecha fin</label>
-                  <input type="date" formControlName="recurrence_end_date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                </div>
-              }
-            </div>
-
-            <p class="text-xs text-gray-500 mt-3">
-              • Puntual: no se programa repetición.
-              • Semanal: selecciona un día de la semana.
-              • Mensual/Trimestral/Anual: ejecuta el día del mes indicado (1-28).
-            </p>
-          </div>
-
           <!-- Items Card -->
           <div class="bg-white rounded-lg shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
@@ -758,6 +693,91 @@
                   </button>
                 </div>
               </div>
+
+          <!-- Recurrence Card -->
+          <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+              </svg>
+              Recurrencia
+            </h2>
+
+            <div class="grid grid-cols-1 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Tipo
+                  @if (recurrenceLocked()) {
+                    <span class="ml-2 px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                      🔒 Bloqueado
+                    </span>
+                  }
+                </label>
+                <select 
+                  formControlName="recurrence_type" 
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  [class.bg-gray-100]="recurrenceLocked()"
+                  [class.cursor-not-allowed]="recurrenceLocked()"
+                >
+                  <option value="none">Puntual (por defecto)</option>
+                  <option value="weekly">Semanal</option>
+                  <option value="monthly">Mensual</option>
+                  <option value="quarterly">Trimestral</option>
+                  <option value="yearly">Anual</option>
+                </select>
+                @if (recurrenceLocked() && recurrenceLockedReason()) {
+                  <p class="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                    </svg>
+                    {{ recurrenceLockedReason() }}
+                  </p>
+                }
+              </div>
+
+              <!-- Weekly: day of week -->
+              @if (quoteForm.get('recurrence_type')?.value === 'weekly') {
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Día de la semana</label>
+                  <select formControlName="recurrence_day" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white">
+                    <option [ngValue]="0">Domingo</option>
+                    <option [ngValue]="1">Lunes</option>
+                    <option [ngValue]="2">Martes</option>
+                    <option [ngValue]="3">Miércoles</option>
+                    <option [ngValue]="4">Jueves</option>
+                    <option [ngValue]="5">Viernes</option>
+                    <option [ngValue]="6">Sábado</option>
+                  </select>
+                </div>
+              }
+
+              <!-- Monthly/Quarterly/Yearly: day of month -->
+              @if (['monthly','quarterly','yearly'].includes(quoteForm.get('recurrence_type')?.value)) {
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Día de ejecución (1-28)</label>
+                  <input type="number" min="1" max="28" formControlName="recurrence_day" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="1" />
+                </div>
+              }
+
+              <!-- Start/End dates shown for any recurring type -->
+              @if (quoteForm.get('recurrence_type')?.value !== 'none') {
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Fecha inicio</label>
+                  <input type="date" formControlName="recurrence_start_date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Fecha fin</label>
+                  <input type="date" formControlName="recurrence_end_date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                </div>
+              }
+            </div>
+
+            <p class="text-xs text-gray-500 mt-3">
+              • Puntual: no se programa repetición.
+              • Semanal: selecciona un día de la semana.
+              • Mensual/Trimestral/Anual: ejecuta el día del mes indicado (1-28).
+            </p>
+          </div>
             </div>
 
             <!-- Info Card -->
