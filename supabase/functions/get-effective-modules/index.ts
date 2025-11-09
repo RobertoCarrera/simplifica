@@ -6,7 +6,9 @@
 // para el usuario autenticado. Reglas:
 // - client: hereda los módulos del owner de su empresa
 // - owner/admin/member: usa sus propios módulos asignados
-// Los metadatos vienen de la tabla global 'modules'.
+// Los metadatos vienen de la tabla 'modules_catalog'.
+// Por defecto, todos los módulos están activados si no hay
+// entrada en user_modules (seedeado en desactivado).
 // ==============================================
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -113,12 +115,11 @@ serve(async (req) => {
       }
     }
 
-    // Fetch modules catalog (only active ones)
+    // Fetch modules catalog
     const { data: modulesCatalog, error: modErr } = await supabaseAdmin
-      .from("modules")
-      .select("key,name,description,category,position,enabled_by_default,is_active")
-      .eq("is_active", true)
-      .order("position", { ascending: true });
+      .from("modules_catalog")
+      .select("key, label")
+      .order("key", { ascending: true });
     if (modErr) {
       return new Response(JSON.stringify({ error: modErr.message }), { status: 500, headers: corsHeaders });
     }
@@ -136,13 +137,11 @@ serve(async (req) => {
 
     const result = (modulesCatalog || []).map((m: any) => {
       const raw = statusMap.get(m.key);
-      const enabled = raw ? raw === "activado" || raw === "active" || raw === "enabled" : Boolean(m.enabled_by_default);
+      // Default to enabled (activado) if no user_modules entry exists
+      const enabled = raw ? raw === "activado" || raw === "active" || raw === "enabled" : true;
       return {
         key: m.key,
-        name: m.name,
-        description: m.description,
-        category: m.category,
-        position: m.position,
+        name: m.label,
         enabled,
       };
     });
