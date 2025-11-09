@@ -68,6 +68,8 @@ export class ServiceVariantsComponent implements OnInit {
   }
 
   openForm(variant?: ServiceVariant) {
+    console.log('🔧 Opening variant form. serviceId:', this.serviceId, 'editingService:', variant);
+    
     if (variant) {
       this.editingVariant = variant;
       this.formData = { ...variant };
@@ -85,8 +87,17 @@ export class ServiceVariantsComponent implements OnInit {
   }
 
   saveVariant() {
+    console.log('💾 Saving variant. formData:', this.formData);
+    console.log('💾 serviceId:', this.serviceId);
+    
     if (!this.formData.variant_name || !this.formData.billing_period) {
       alert('Por favor completa los campos requeridos');
+      return;
+    }
+
+    if (!this.serviceId) {
+      alert('Error: No se puede crear una variante sin un servicio asociado');
+      console.error('serviceId is empty:', this.serviceId);
       return;
     }
 
