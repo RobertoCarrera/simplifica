@@ -63,6 +63,15 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   // Variants management
   serviceVariants: ServiceVariant[] = [];
   
+  // Accordion management
+  accordionState = {
+    basicInfo: true,      // Abierta por defecto
+    variants: false,
+    pricing: false,
+    timeQuantity: false,
+    difficulty: false
+  };
+  
   // Form validation
   formErrors: Record<string, string> = {};
   
@@ -476,6 +485,15 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.selectedTags = [];
     this.serviceVariants = [];
     
+    // Reset accordion state
+    this.accordionState = {
+      basicInfo: true,
+      variants: false,
+      pricing: false,
+      timeQuantity: false,
+      difficulty: false
+    };
+    
     // Restaurar scroll de la página principal
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
@@ -654,6 +672,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     } finally {
       this.loading = false;
     }
+  }
+
+  toggleAccordion(section: keyof typeof this.accordionState) {
+    this.accordionState[section] = !this.accordionState[section];
   }
 
   formatCurrency(amount: number): string {

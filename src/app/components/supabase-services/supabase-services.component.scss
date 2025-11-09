@@ -1005,6 +1005,123 @@
   }
 }
 
+/* Accordion Styles */
+.accordion-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #cbd5e1;
+  }
+}
+
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #f9fafb;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+
+  &.active {
+    background: #eff6ff;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  i.fa-chevron-down,
+  i.fa-chevron-up {
+    color: #6b7280;
+    font-size: 0.875rem;
+    transition: transform 0.2s ease;
+  }
+}
+
+.accordion-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #374151;
+
+  i {
+    color: #3b82f6;
+    font-size: 1.1rem;
+  }
+
+  .badge-new {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 2px 8px;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 9999px;
+    margin-left: 8px;
+  }
+}
+
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  background: white;
+
+  &.expanded {
+    max-height: 3000px; /* Valor alto para permitir contenido dinámico */
+    padding: 20px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .accordion-section {
+    border-color: #334155;
+
+    &:hover {
+      border-color: #475569;
+    }
+  }
+
+  .accordion-header {
+    background: #1e293b;
+
+    &:hover {
+      background: #27364b;
+    }
+
+    &.active {
+      background: #1e3a5f;
+      border-bottom-color: #334155;
+    }
+
+    i.fa-chevron-down,
+    i.fa-chevron-up {
+      color: #94a3b8;
+    }
+  }
+
+  .accordion-title {
+    color: #e5e7eb;
+
+    .badge-new {
+      background: #713f12;
+      color: #fef3c7;
+    }
+  }
+
+  .accordion-content {
+    background: #0f172a;
+  }
+}
+
 /* Category Input Container */
 .category-input-container {
   position: relative;
