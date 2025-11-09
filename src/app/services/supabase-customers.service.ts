@@ -540,25 +540,19 @@ export class SupabaseCustomersService {
     if (!token) throw new Error('No auth token for Edge Function');
 
     const payload: any = {
-      // Backwards compatible (old keys)
+      // All keys must start with p_ (canonical format required by Edge Function)
+      p_client_type: (customer as any).client_type || 'individual',
       p_name: (customer as any).name,
       p_apellidos: (customer as any).apellidos ?? null,
       p_email: (customer as any).email ?? null,
       p_phone: (customer as any).phone ?? null,
       p_dni: (customer as any).dni ?? null,
-      // New canonical keys (spec v2)
-      pclienttype: (customer as any).client_type || 'individual',
-      pname: (customer as any).name,
-      papellidos: (customer as any).apellidos ?? null,
-      pemail: (customer as any).email ?? null,
-      pphone: (customer as any).phone ?? null,
-      pdni: (customer as any).dni ?? null,
-      pbusinessname: (customer as any).business_name ?? null,
-      pcifnif: (customer as any).cif_nif ?? null,
-      ptradename: (customer as any).trade_name ?? null,
-      plegalrepresentativename: (customer as any).legal_representative_name ?? null,
-      plegalrepresentativedni: (customer as any).legal_representative_dni ?? null,
-      pmercantileregistrydata: (customer as any).mercantile_registry_data ?? null,
+      p_business_name: (customer as any).business_name ?? null,
+      p_cif_nif: (customer as any).cif_nif ?? null,
+      p_trade_name: (customer as any).trade_name ?? null,
+      p_legal_representative_name: (customer as any).legal_representative_name ?? null,
+      p_legal_representative_dni: (customer as any).legal_representative_dni ?? null,
+      p_mercantile_registry_data: (customer as any).mercantile_registry_data ?? null,
     };
 
     // If updating, include ID
