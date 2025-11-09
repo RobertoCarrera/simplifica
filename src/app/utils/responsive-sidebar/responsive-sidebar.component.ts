@@ -77,7 +77,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'confirmation_number',
       route: '/tickets',
       module: 'production',
-      moduleKey: 'moduloTickets' // Map to moduloTickets in modules_catalog
+      moduleKey: 'moduloSAT'
     },
     {
       id: 4,
@@ -368,7 +368,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     switch (route) {
       case '/tickets':
         // Tickets module key (can also be specified via item.moduleKey)
-        return 'moduloTickets';
+        return 'moduloSAT';
       case '/presupuestos':
       case '/portal/presupuestos':
         return 'moduloPresupuestos';

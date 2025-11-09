@@ -432,7 +432,7 @@ export class ConfiguracionComponent implements OnInit {
         { key: 'moduloPresupuestos', name: 'Presupuestos' },
         { key: 'moduloServicios', name: 'Servicios' },
         { key: 'moduloMaterial', name: 'Material' },
-        { key: 'moduloTickets', name: 'Tickets' }
+        { key: 'moduloSAT', name: 'Tickets' }
       ];
     }
   }

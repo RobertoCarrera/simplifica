@@ -236,6 +236,7 @@ export class MobileBottomNavComponent implements OnInit {
     // Build promoted items (preserve order) - these should appear before extras and before 'Más'
     const promoted: NavItem[] = [];
     if (!isClient && allowed) {
+      if (allowed.has('moduloSAT')) promoted.push({ id: 'tickets', label: 'Tickets', icon: 'ticket-alt', route: '/tickets' });
       if (allowed.has('moduloPresupuestos')) promoted.push({ id: 'presupuestos', label: 'Presupuestos', icon: 'file-alt', route: '/presupuestos' });
       if (allowed.has('moduloServicios')) promoted.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios' });
     }
@@ -340,7 +341,7 @@ export class MobileBottomNavComponent implements OnInit {
   private routeToModuleKey(route: string): string | null {
     switch (route) {
       case '/tickets':
-        return 'moduloSat';
+        return 'moduloSAT';
       case '/presupuestos':
       case '/portal/presupuestos':
         return 'moduloPresupuestos';
