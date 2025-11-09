@@ -1,18 +1,19 @@
 import { Component, OnInit, inject, HostListener, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SupabaseServicesService, Service, ServiceCategory, ServiceTag } from '../../services/supabase-services.service';
+import { SupabaseServicesService, Service, ServiceCategory, ServiceTag, ServiceVariant } from '../../services/supabase-services.service';
 import { SimpleSupabaseService, SimpleCompany } from '../../services/simple-supabase.service';
 import { DevRoleService } from '../../services/dev-role.service';
 import { CsvHeaderMapperComponent, CsvMappingResult } from '../csv-header-mapper/csv-header-mapper.component';
 import { ToastService } from '../../services/toast.service';
 import { SupabaseUnitsService, UnitOfMeasure } from '../../services/supabase-units.service';
 import { SkeletonComponent } from '../skeleton/skeleton.component';
+import { ServiceVariantsComponent } from '../service-variants/service-variants.component';
 
 @Component({
   selector: 'app-supabase-services',
   standalone: true,
-  imports: [CommonModule, FormsModule, CsvHeaderMapperComponent, SkeletonComponent],
+  imports: [CommonModule, FormsModule, CsvHeaderMapperComponent, SkeletonComponent, ServiceVariantsComponent],
   templateUrl: './supabase-services.component.html',
   styleUrl: './supabase-services.component.scss'
 })
@@ -58,6 +59,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   tagFilterText = '';
   filteredTags: ServiceTag[] = [];
   selectedTags: string[] = [];
+  
+  // Variants management
+  serviceVariants: ServiceVariant[] = [];
   
   // Form validation
   formErrors: Record<string, string> = {};
@@ -434,11 +438,19 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       skill_requirements: [],
       tools_required: [],
       can_be_remote: true,
-      priority_level: 3
+      priority_level: 3,
+      has_variants: false
     };
     
     // Inicializar tags seleccionados
     this.selectedTags = service?.tags ? [...service.tags] : [];
+    
+    // Load variants if service has them
+    if (service?.has_variants && service.id) {
+      this.loadServiceVariants(service.id);
+    } else {
+      this.serviceVariants = [];
+    }
     
     this.formErrors = {};
     this.loadServiceCategories();
@@ -462,6 +474,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.showTagInput = false;
     this.tagFilterText = '';
     this.selectedTags = [];
+    this.serviceVariants = [];
     
     // Restaurar scroll de la página principal
     document.body.classList.remove('modal-open');
@@ -565,6 +578,79 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     } catch (error: any) {
       this.error = error.message;
       console.error('❌ Error toggling service status:', error);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async loadServiceVariants(serviceId: string) {
+    try {
+      this.serviceVariants = await this.servicesService.getServiceVariants(serviceId);
+    } catch (error: any) {
+      console.error('Error loading service variants:', error);
+      this.serviceVariants = [];
+    }
+  }
+
+  onVariantsChange(variants: ServiceVariant[]) {
+    this.serviceVariants = variants;
+  }
+
+  async onVariantSave(variant: ServiceVariant) {
+    // Variants are saved directly in the service-variants component
+    // We just need to reload them
+    if (this.editingService?.id) {
+      await this.loadServiceVariants(this.editingService.id);
+    }
+  }
+
+  async onVariantDelete(variantId: string) {
+    // Variants are deleted directly in the service-variants component
+    // We just need to reload them
+    if (this.editingService?.id) {
+      await this.loadServiceVariants(this.editingService.id);
+    }
+  }
+
+  async toggleHasVariants() {
+    if (!this.editingService?.id) {
+      // For new services, just toggle the flag
+      this.formData.has_variants = !this.formData.has_variants;
+      if (!this.formData.has_variants) {
+        this.serviceVariants = [];
+      }
+      return;
+    }
+
+    // For existing services, enable/disable variants in the database
+    this.loading = true;
+    try {
+      const newValue = !this.formData.has_variants;
+      
+      if (newValue) {
+        // Enable variants with base features
+        const baseFeatures = {
+          description: this.formData.description || '',
+          category: this.formData.category || ''
+        };
+        await this.servicesService.enableServiceVariants(this.editingService.id, baseFeatures);
+        await this.loadServiceVariants(this.editingService.id);
+      } else {
+        // Disable variants
+        await this.servicesService.updateService(this.editingService.id, { has_variants: false });
+        this.serviceVariants = [];
+      }
+      
+      this.formData.has_variants = newValue;
+      
+      this.toastService.success(
+        newValue ? 'Variantes activadas' : 'Variantes desactivadas',
+        newValue ? 'Ahora puedes crear variantes para este servicio' : 'Las variantes han sido desactivadas'
+      );
+    } catch (error: any) {
+      this.error = error.message;
+      console.error('Error toggling variants:', error);
+      this.toastService.error('Error', 'No se pudo cambiar el estado de variantes');
     } finally {
       this.loading = false;
     }

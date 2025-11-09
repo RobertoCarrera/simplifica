@@ -2,6 +2,32 @@ import { Injectable, inject } from '@angular/core';
 import { SimpleSupabaseService } from './simple-supabase.service';
 import { environment } from '../../environments/environment';
 
+export interface ServiceVariant {
+  id: string;
+  service_id: string;
+  variant_name: string;
+  billing_period: 'one-time' | 'monthly' | 'annually' | 'custom';
+  base_price: number;
+  estimated_hours?: number;
+  cost_price?: number;
+  profit_margin?: number;
+  discount_percentage?: number;
+  features?: {
+    included?: string[];
+    excluded?: string[];
+    limits?: Record<string, any>;
+  };
+  display_config?: {
+    highlight?: boolean;
+    badge?: string | null;
+    color?: string | null;
+  };
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Service {
   id: string;
   name: string;
@@ -38,6 +64,11 @@ export interface Service {
   
   // Campos para tags
   tags?: string[];
+  
+  // Campos para sistema de variantes
+  has_variants?: boolean;
+  base_features?: Record<string, any>;
+  variants?: ServiceVariant[];
 }
 
 export interface ServiceCategory {
@@ -1121,4 +1152,176 @@ export class SupabaseServicesService {
     const insertedRows = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
     return insertedRows.length || 0;
   }
+
+  // =====================================================
+  // SERVICE VARIANTS METHODS
+  // =====================================================
+
+  /**
+   * Get all variants for a specific service
+   */
+  async getServiceVariants(serviceId: string): Promise<ServiceVariant[]> {
+    try {
+      const client = this.supabase.getClient();
+      const { data, error } = await client
+        .from('service_variants')
+        .select('*')
+        .eq('service_id', serviceId)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+        .order('variant_name', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error getting service variants:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get service with all its variants
+   */
+  async getServiceWithVariants(serviceId: string): Promise<Service> {
+    try {
+      const client = this.supabase.getClient();
+      
+      // Get service
+      const { data: service, error: serviceError } = await client
+        .from('services')
+        .select('*')
+        .eq('id', serviceId)
+        .single();
+
+      if (serviceError) throw serviceError;
+
+      // Get variants
+      const variants = await this.getServiceVariants(serviceId);
+      
+      return {
+        ...service,
+        variants
+      };
+    } catch (error) {
+      console.error('❌ Error getting service with variants:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all services with their variants for a company
+   */
+  async getServicesWithVariants(companyId?: string): Promise<Service[]> {
+    try {
+      const targetCompanyId = companyId || this.currentCompanyId;
+      const services = await this.getServices(targetCompanyId);
+
+      // Get variants for all services
+      const servicesWithVariants = await Promise.all(
+        services.map(async (service) => {
+          const variants = await this.getServiceVariants(service.id);
+          return {
+            ...service,
+            variants
+          };
+        })
+      );
+
+      return servicesWithVariants;
+    } catch (error) {
+      console.error('❌ Error getting services with variants:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new service variant
+   */
+  async createServiceVariant(variant: Partial<ServiceVariant>): Promise<ServiceVariant> {
+    try {
+      const client = this.supabase.getClient();
+      const { data, error } = await client
+        .from('service_variants')
+        .insert([variant])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('❌ Error creating service variant:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a service variant
+   */
+  async updateServiceVariant(variantId: string, updates: Partial<ServiceVariant>): Promise<ServiceVariant> {
+    try {
+      const client = this.supabase.getClient();
+      const { data, error } = await client
+        .from('service_variants')
+        .update(updates)
+        .eq('id', variantId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('❌ Error updating service variant:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a service variant (soft delete)
+   */
+  async deleteServiceVariant(variantId: string): Promise<void> {
+    try {
+      const client = this.supabase.getClient();
+      const { error } = await client
+        .from('service_variants')
+        .update({ is_active: false })
+        .eq('id', variantId);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('❌ Error deleting service variant:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate annual price with discount
+   */
+  calculateAnnualPrice(monthlyPrice: number, discountPercentage: number = 16): number {
+    return Math.round((monthlyPrice * 12) * (1 - discountPercentage / 100) * 100) / 100;
+  }
+
+  /**
+   * Update service to enable variants
+   */
+  async enableServiceVariants(serviceId: string, baseFeatures?: Record<string, any>): Promise<Service> {
+    try {
+      const client = this.supabase.getClient();
+      const { data, error } = await client
+        .from('services')
+        .update({ 
+          has_variants: true,
+          base_features: baseFeatures || {}
+        })
+        .eq('id', serviceId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('❌ Error enabling service variants:', error);
+      throw error;
+    }
+  }
 }
+
