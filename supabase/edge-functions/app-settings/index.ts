@@ -62,15 +62,99 @@ serve(async (req) => {
       const { data } = await sbAdmin.from('app_settings').select('*').limit(1).maybeSingle();
       return data || null;
     }
+    function cleanAppValues(raw: Record<string, unknown>) {
+      // Whitelist allowed columns and drop null/undefined to avoid NOT NULL violations
+      const allowed = new Set([
+        'default_convert_policy',
+        'ask_before_convert',
+        'enforce_globally',
+        'default_payment_terms',
+        'default_invoice_delay_days',
+        // tax defaults
+        'default_prices_include_tax',
+        'default_iva_enabled',
+        'default_iva_rate',
+        'default_irpf_enabled',
+        'default_irpf_rate'
+      ]);
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(raw || {})) {
+        if (!allowed.has(k)) continue;
+        if (v === null || typeof v === 'undefined') continue; // omit nulls to keep DB defaults/current values
+        // Coerce numeric text values
+        if (['default_invoice_delay_days', 'default_iva_rate', 'default_irpf_rate'].includes(k)) {
+          if (typeof v === 'string' && v.trim() === '') continue;
+          const num = typeof v === 'number' ? v : Number(v);
+          if (!Number.isFinite(num)) continue;
+          out[k] = num;
+          continue;
+        }
+        if (k === 'default_convert_policy') {
+          // Normalize alias 'automatic'/'on_accept' kept as-is (both allowed by constraint)
+          const val = String(v);
+          if (!['manual', 'automatic', 'on_accept', 'scheduled'].includes(val)) continue;
+          out[k] = val;
+          continue;
+        }
+        out[k] = v;
+      }
+      return out;
+    }
+
+    function cleanCompanyValues(raw: Record<string, unknown>) {
+      const allowed = new Set([
+        'convert_policy',
+        'ask_before_convert',
+        'enforce_company_defaults',
+        'payment_terms',
+        'invoice_on_date',
+        'default_invoice_delay_days',
+        'deposit_percentage',
+        // tax overrides
+        'prices_include_tax',
+        'iva_enabled',
+        'iva_rate',
+        'irpf_enabled',
+        'irpf_rate'
+      ]);
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(raw || {})) {
+        if (!allowed.has(k)) continue;
+        if (v === null || typeof v === 'undefined') continue;
+        if (['default_invoice_delay_days', 'deposit_percentage', 'iva_rate', 'irpf_rate'].includes(k)) {
+          if (typeof v === 'string' && v.trim() === '') continue;
+          const num = typeof v === 'number' ? v : Number(v);
+          if (!Number.isFinite(num)) continue;
+          out[k] = num;
+          continue;
+        }
+        if (k === 'convert_policy') {
+          const val = String(v);
+          if (!['manual', 'automatic', 'on_accept', 'scheduled'].includes(val)) continue;
+          out[k] = val;
+          continue;
+        }
+        out[k] = v;
+      }
+      return out;
+    }
+
     async function upsertAppSettings(values: Record<string, unknown>) {
+      const cleaned = cleanAppValues(values);
       if (!isAdmin) return new Response(JSON.stringify({ error: 'Only admin/owner can update global settings' }), { status: 403, headers });
       const { data: existing } = await sbAdmin.from('app_settings').select('id').limit(1).maybeSingle();
       if (existing?.id) {
-        const { data, error } = await sbAdmin.from('app_settings').update(values).eq('id', existing.id).select('*').single();
+        if (Object.keys(cleaned).length === 0) {
+          // Nothing to update; return current row
+          const { data } = await sbAdmin.from('app_settings').select('*').eq('id', existing.id).single();
+          return new Response(JSON.stringify({ ok: true, app: data }), { status: 200, headers });
+        }
+        const { data, error } = await sbAdmin.from('app_settings').update(cleaned).eq('id', existing.id).select('*').single();
         if (error) return new Response(JSON.stringify({ error: error.message || 'update_failed' }), { status: 400, headers });
         return new Response(JSON.stringify({ ok: true, app: data }), { status: 200, headers });
       } else {
-        const { data, error } = await sbAdmin.from('app_settings').insert(values).select('*').single();
+        const insertPayload = Object.keys(cleaned).length === 0 ? {} : cleaned;
+        const { data, error } = await sbAdmin.from('app_settings').insert(insertPayload).select('*').single();
         if (error) return new Response(JSON.stringify({ error: error.message || 'insert_failed' }), { status: 400, headers });
         return new Response(JSON.stringify({ ok: true, app: data }), { status: 200, headers });
       }
@@ -80,7 +164,8 @@ serve(async (req) => {
       return data || { company_id: cid };
     }
     async function upsertCompanySettings(values: Record<string, unknown>, cid: string) {
-      const payload = { ...values, company_id: cid };
+      const cleaned = cleanCompanyValues(values);
+      const payload = { ...cleaned, company_id: cid } as Record<string, unknown>;
       const { data, error } = await sbAdmin.from('company_settings').upsert(payload, { onConflict: 'company_id' }).select('*').single();
       if (error) return new Response(JSON.stringify({ error: error.message || 'upsert_failed' }), { status: 400, headers });
       return new Response(JSON.stringify({ ok: true, company: data }), { status: 200, headers });

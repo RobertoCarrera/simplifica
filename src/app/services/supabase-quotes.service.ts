@@ -262,7 +262,9 @@ export class SupabaseQuotesService {
         discount_percent: item.discount_percent || 0,
         notes: item.notes,
         service_id: (item as any).service_id || null,
-        product_id: (item as any).product_id || null
+        product_id: (item as any).product_id || null,
+        variant_id: (item as any).variant_id || null,
+        billing_period: (item as any).billing_period || null
       }));
 
       const { error: itemsError } = await client
@@ -367,7 +369,9 @@ export class SupabaseQuotesService {
         discount_percent: dto.discount_percent || 0,
         notes: dto.notes,
         service_id: (dto as any).service_id || null,
-        product_id: (dto as any).product_id || null
+        product_id: (dto as any).product_id || null,
+        variant_id: (dto as any).variant_id || null,
+        billing_period: (dto as any).billing_period || null
       })
       .select()
       .single();

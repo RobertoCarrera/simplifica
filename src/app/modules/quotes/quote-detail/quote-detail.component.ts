@@ -295,6 +295,39 @@ export class QuoteDetailComponent implements OnInit {
     return formatQuoteNumber(quote);
   }
 
+  // Display helpers for periodicidad/variante
+  getBillingPeriodLabel(period?: string | null): string | null {
+    if (!period) return null;
+    const map: Record<string, string> = {
+      'one-time': 'Pago único',
+      'one_time': 'Pago único',
+      'monthly': 'Mensual',
+      'quarterly': 'Trimestral',
+      'annually': 'Anual',
+      'annual': 'Anual',
+      'yearly': 'Anual',
+      'custom': 'Personalizado'
+    };
+    return map[period] || period;
+  }
+
+  extractVariantName(item: QuoteItem): string | null {
+    try {
+      const anyItem: any = item as any;
+      if (!anyItem.variant_id) return null;
+      const desc = item.description || '';
+      const parts = desc.split(' - ');
+      return parts.length > 1 ? parts[parts.length - 1] : null;
+    } catch {
+      return null;
+    }
+  }
+
+  hasAnyBillingPeriod(): boolean {
+    const q = this.quote();
+    return !!q?.items?.some((i: any) => i?.billing_period);
+  }
+
   getStatusLabel(status: QuoteStatus): string {
     return this.statusLabels[status] || status;
   }
@@ -326,6 +359,38 @@ export class QuoteDetailComponent implements OnInit {
 
   getStatusBadgeClass(status: QuoteStatus) {
     return `badge bg-${this.statusColors[status]}`;
+  }
+
+  // Recurrence helpers
+  hasRecurrence(): boolean {
+    const t = (this.quote()?.recurrence_type as string) || 'none';
+    return !!t && t !== 'none';
+  }
+
+  getRecurrenceLabel(): string | null {
+    const q = this.quote();
+    if (!q) return null;
+    const t = (q.recurrence_type as any) || 'none';
+    const map: Record<string, string> = {
+      none: 'Puntual',
+      weekly: 'Semanal',
+      monthly: 'Mensual',
+      quarterly: 'Trimestral',
+      yearly: 'Anual'
+    };
+    const base = map[t] || 'Puntual';
+    if (t === 'none') return base;
+    let details = '';
+    // Día: para weekly (0-6) o mensual/anual (1-28)
+    if (q.recurrence_day !== null && q.recurrence_day !== undefined) {
+      if (t === 'weekly') {
+        const days = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+        details = ` · ${days[Math.max(0, Math.min(6, q.recurrence_day as number))]}`;
+      } else if (['monthly','quarterly','yearly'].includes(t)) {
+        details = ` · día ${q.recurrence_day}`;
+      }
+    }
+    return `${base}${details}`;
   }
 
   getConversionStatusLabel(): string | null {

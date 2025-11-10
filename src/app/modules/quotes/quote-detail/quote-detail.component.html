@@ -209,6 +209,12 @@
             </h2>
           </div>
           <div class="p-4">
+            @if (hasRecurrence()) {
+              <div class="mb-3 flex items-center gap-2 text-xs font-medium text-purple-700 dark:text-purple-300">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span>Recurrencia: {{ getRecurrenceLabel() }}</span>
+              </div>
+            }
             <div class="flex items-start gap-3">
               <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-lg flex items-center justify-center text-white text-lg font-bold shadow-lg flex-shrink-0">
                 {{ (quote()!.client?.business_name || quote()!.client?.name || 'N')[0].toUpperCase() }}
@@ -310,6 +316,14 @@
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                       <td class="px-5 py-4">
                         <div class="text-sm font-medium text-gray-900 dark:text-white">{{ item.description }}</div>
+                        <div class="mt-1 flex flex-wrap gap-2">
+                          @if (item.variant_id) {
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300">Variante: {{ extractVariantName(item) || 'N/D' }}</span>
+                          }
+                          @if (item.billing_period) {
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">Periodicidad: {{ getBillingPeriodLabel(item.billing_period) }}</span>
+                          }
+                        </div>
                       </td>
                       <td class="px-5 py-4 text-center text-sm text-gray-900 dark:text-white">{{ item.quantity }}</td>
                       <td class="px-5 py-4 text-right text-sm text-gray-900 dark:text-white">{{ formatCurrency(displayItemUnitPrice(item)) }}</td>
@@ -353,6 +367,14 @@
                   <!-- Item name -->
                   <div class="font-semibold text-gray-900 dark:text-white text-sm mb-2">
                     {{ item.description }}
+                  </div>
+                  <div class="flex flex-wrap gap-2 mb-2">
+                    @if (item.variant_id) {
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300">{{ extractVariantName(item) }}</span>
+                    }
+                    @if (item.billing_period) {
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">{{ getBillingPeriodLabel(item.billing_period) }}</span>
+                    }
                   </div>
                   
                   <!-- Quantity and price -->
@@ -398,6 +420,12 @@
               </h2>
             </div>
             <div class="p-5">
+              @if (hasRecurrence()) {
+                <div class="mb-4 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-700">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  <span>Recurrencia: {{ getRecurrenceLabel() }}</span>
+                </div>
+              }
               <div class="flex items-start gap-4">
                 <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl flex items-center justify-center text-white text-xl font-bold shadow-lg flex-shrink-0">
                   {{ (quote()!.client?.business_name || quote()!.client?.name || 'N')[0].toUpperCase() }}
@@ -453,6 +481,15 @@
                 <span>Subtotal</span>
                 <span class="font-medium">{{ formatCurrency(displaySubtotal()) }}</span>
               </div>
+              @if (hasAnyBillingPeriod()) {
+                <div class="flex justify-between items-center text-gray-700 dark:text-gray-300">
+                  <span class="flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Periodicidad
+                  </span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">Mixta</span>
+                </div>
+              }
               
               @if (hasDiscount(quote()!)) {
                 <div class="flex justify-between items-center text-emerald-600 dark:text-emerald-400">

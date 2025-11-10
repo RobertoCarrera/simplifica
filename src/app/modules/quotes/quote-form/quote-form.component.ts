@@ -398,7 +398,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
 
   createItemFormGroup(): FormGroup {
     return this.fb.group({
-      description: ['', Validators.required],
+      description: [''],
       quantity: [1, [Validators.required, Validators.min(1)]],
       unit_price: [0, [Validators.required, Validators.min(0)]],
       tax_rate: [{ value: this.ivaEnabled() ? this.ivaRate() : 0, disabled: !this.ivaEnabled() }, [Validators.required, Validators.min(0), Validators.max(100)]],
@@ -406,7 +406,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       notes: [''],
       service_id: [null],
       variant_id: [null],
-      product_id: [null]
+      product_id: [null],
+      billing_period: [null]
     });
   }
 
@@ -429,9 +430,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       const price = parseFloat(item.unit_price) || 0;
       const discount = parseFloat(item.discount_percent) || 0;
       const taxRate = parseFloat(item.tax_rate) || 0;
-
       if (this.pricesIncludeTax() && this.ivaEnabled() && taxRate > 0) {
-        // Convert tax-included price to net before discount
+        // unit_price is GROSS (IVA incluido) -> convertir a neto para subtotal
         const gross = qty * price;
         const netBeforeDiscount = gross / (1 + taxRate / 100);
         const itemDiscount = netBeforeDiscount * (discount / 100);
@@ -441,7 +441,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         taxAmount += itemTax;
         baseNetForIrpf += itemNet;
       } else {
-        // Tax excluded prices (default)
+        // unit_price es NETO (sin IVA)
         const itemSubtotal = qty * price;
         const itemDiscount = itemSubtotal * (discount / 100);
         const itemNet = itemSubtotal - itemDiscount;
@@ -603,7 +603,9 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
               discount_percent: item.discount_percent || 0,
               notes: item.notes || '',
               service_id: (item as any).service_id || null,
-              product_id: (item as any).product_id || null
+              product_id: (item as any).product_id || null,
+              variant_id: (item as any).variant_id || null,
+              billing_period: (item as any).billing_period || null
             });
             this.items.push(itemGroup);
           });
@@ -612,6 +614,9 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
           this.items.push(this.createItemFormGroup());
         }
 
+        // Recheck recurrence lock based on loaded variants
+        this.recheckRecurrenceLock();
+        
         this.calculateTotals();
         this.loading.set(false);
         console.log('✅ Presupuesto cargado correctamente en el formulario');
@@ -747,20 +752,37 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   selectService(service: ServiceOption, itemIndex: number) {
     const item = this.items.at(itemIndex);
     // Compute unit price respecting settings
-    const base = Number(service.base_price || 0);
-    const taxRate = this.ivaEnabled() ? this.ivaRate() : 0;
-    const finalUnit = (this.pricesIncludeTax() && this.ivaEnabled() && taxRate > 0)
-      ? Math.round(base * (1 + taxRate / 100) * 100) / 100
-      : base;
-    item.patchValue({
-      description: service.name,
-      unit_price: finalUnit,
-      quantity: 1,
-      tax_rate: this.ivaEnabled() ? this.ivaRate() : 0,
-      service_id: service.id,
-      variant_id: null, // Reset variant when service changes
-      product_id: null
-    });
+    const base = Number(service.base_price || 0); // asumimos base siempre NETO
+    const finalUnit = base; // nunca inflar aquí; la vista calculará IVA incluido si se requiere
+    
+    // Si el servicio tiene variantes, seleccionar automáticamente la primera activa
+    let autoVariant: ServiceVariant | null = null;
+    if (service.has_variants && service.variants && service.variants.length > 0) {
+      autoVariant = service.variants[0];
+    }
+    
+    if (autoVariant) {
+      // Establecer service_id primero, antes de seleccionar variante
+      item.patchValue({
+        service_id: service.id,
+        product_id: null
+      });
+      // Auto-seleccionar primera variante
+      this.selectVariant(autoVariant, itemIndex);
+    } else {
+      // Servicio sin variantes: uso normal
+      item.patchValue({
+        description: service.name,
+        unit_price: finalUnit,
+        quantity: 1,
+        tax_rate: this.ivaEnabled() ? this.ivaRate() : 0,
+        service_id: service.id,
+        variant_id: null,
+        product_id: null,
+        billing_period: 'one-time'
+      });
+    }
+    
     this.serviceDropdownOpen.set(false);
     this.selectedItemIndex.set(null);
     this.serviceSearch.set('');
@@ -791,18 +813,16 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   selectProduct(product: ProductOption, itemIndex: number) {
     const item = this.items.at(itemIndex);
     // Compute unit price respecting settings
-    const base = Number(product.price || 0);
-    const taxRate = this.ivaEnabled() ? this.ivaRate() : 0;
-    const finalUnit = (this.pricesIncludeTax() && this.ivaEnabled() && taxRate > 0)
-      ? Math.round(base * (1 + taxRate / 100) * 100) / 100
-      : base;
+    const base = Number(product.price || 0); // precio neto
+    const finalUnit = base;
     item.patchValue({
       description: product.name,
       unit_price: finalUnit,
       quantity: 1,
       tax_rate: this.ivaEnabled() ? this.ivaRate() : 0,
       product_id: product.id,
-      service_id: null
+      service_id: null,
+      billing_period: 'one-time'
     });
     this.productDropdownOpen.set(false);
     this.selectedProductIndex.set(null);
@@ -831,26 +851,47 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     // Compute unit price respecting settings
     // Prefer new pricing array (first element) when available, otherwise fall back to deprecated base_price
     let base = 0;
+    let chosenPeriod: string | null = null;
     if (Array.isArray((variant as any).pricing) && (variant as any).pricing.length > 0) {
-      const p = (variant as any).pricing[0];
-      base = Number(p?.base_price ?? variant.base_price ?? 0);
+      // Elegir entrada de pricing más adecuada (prioridad mensual > anual > quarterly > one_time > primera)
+      const entries = (variant as any).pricing as any[];
+      const preferred = entries.find(e => e.billing_period === 'monthly')
+        || entries.find(e => e.billing_period === 'annual')
+        || entries.find(e => e.billing_period === 'quarterly')
+        || entries.find(e => e.billing_period === 'one_time')
+        || entries[0];
+      base = Number(preferred?.base_price ?? 0);
+      chosenPeriod = preferred?.billing_period || null;
     } else {
       base = Number(variant.base_price || 0);
+      chosenPeriod = variant.billing_period || 'one-time';
     }
-    const taxRate = this.ivaEnabled() ? this.ivaRate() : 0;
-    const finalUnit = (this.pricesIncludeTax() && this.ivaEnabled() && taxRate > 0)
-      ? Math.round(base * (1 + taxRate / 100) * 100) / 100
-      : base;
+    const finalUnit = base; // almacenar siempre neto
     
-    // Get current service description
+    // Build description avoiding duplicate variant names.
     const currentDesc = item.get('description')?.value || '';
-    const newDesc = currentDesc + (currentDesc ? ' - ' : '') + variant.variant_name;
-    
+    let baseDesc = currentDesc;
+    const serviceId = item.get('service_id')?.value;
+    if (serviceId) {
+      const svc = this.services().find(s => s.id === serviceId);
+      if (svc) baseDesc = svc.name;
+    } else {
+      // If no service set, remove any existing occurrences of this variant name
+      // so we don't keep appending the same variant repeatedly.
+  const parts = baseDesc.split(' - ').filter((p: string) => p !== variant.variant_name);
+      baseDesc = parts.join(' - ');
+    }
+
+    const newDesc = (baseDesc ? baseDesc + ' - ' : '') + variant.variant_name;
+
     item.patchValue({
       description: newDesc,
       unit_price: finalUnit,
-      variant_id: variant.id
+      variant_id: variant.id,
+      service_id: variant.service_id // Preservar/establecer service_id desde la variante
     });
+    // Guardar periodicidad normalizada
+    item.patchValue({ billing_period: this.normalizeBillingPeriod(chosenPeriod) });
     this.variantDropdownOpen.set(false);
     this.selectedVariantIndex.set(null);
     
@@ -858,6 +899,22 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     this.updateRecurrenceFromVariant(variant);
     
     this.calculateTotals();
+  }
+
+  /** Normaliza valores distintos de periodicidad a un set consistente */
+  private normalizeBillingPeriod(period: string | null | undefined): string | null {
+    if (!period) return null;
+    const map: Record<string, string> = {
+      'one-time': 'one-time',
+      'one_time': 'one-time',
+      'monthly': 'monthly',
+      'annually': 'annually',
+      'annual': 'annually',
+      'quarterly': 'quarterly',
+      'custom': 'custom',
+      'yearly': 'annually'
+    };
+    return map[period] || period;
   }
 
   /**
@@ -872,15 +929,17 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     // Map billing_period to recurrence_type
     const recurrenceMap: Record<string, string> = {
       'one-time': 'none',
+      'one_time': 'none',
       'monthly': 'monthly',
       'annually': 'yearly',
+      'annual': 'yearly',
       'custom': 'none' // Custom remains as none, user can configure manually
     };
     
     const recurrenceType = recurrenceMap[billingPeriod] || 'none';
     
     // Lock recurrence if variant has specific billing period (not one-time or custom)
-    const shouldLock = ['monthly', 'annually'].includes(billingPeriod);
+  const shouldLock = ['monthly', 'annually', 'annual'].includes(billingPeriod);
     
     if (shouldLock) {
       this.recurrenceLocked.set(true);
@@ -888,7 +947,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       // Set user-friendly reason
       const periodNames: Record<string, string> = {
         'monthly': 'Mensual',
-        'annually': 'Anual'
+        'annually': 'Anual',
+        'annual': 'Anual'
       };
       const periodName = periodNames[billingPeriod] || billingPeriod;
       this.recurrenceLockedReason.set(`Este servicio tiene facturación ${periodName}`);
@@ -905,6 +965,17 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
           this.quoteForm.patchValue({ recurrence_day: 1 });
         }
       }
+      // Store normalized billing_period on matching item if variant already selected
+      try {
+        const vId = variant.id;
+        for (let i = 0; i < this.items.length; i++) {
+          const itemVariant = this.items.at(i).get('variant_id')?.value;
+          if (itemVariant === vId) {
+            this.items.at(i).patchValue({ billing_period: this.normalizeBillingPeriod(billingPeriod) });
+            break;
+          }
+        }
+      } catch {}
     } else {
       // Unlock if variant is one-time or custom
       this.unlockRecurrence();
@@ -1006,7 +1077,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     }
 
     this.loading.set(true);
-    const formValue = this.quoteForm.value;
+    const formValue = this.quoteForm.getRawValue(); // Use getRawValue to include disabled fields
 
     // Validar completitud del cliente sólo en creación (no bloqueamos edición de históricos)
     if (!this.editMode()) {
@@ -1076,7 +1147,9 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
               discount_percent: item.discount_percent || 0,
               notes: item.notes || '',
               service_id: item.service_id || null,
-              product_id: item.product_id || null
+              product_id: item.product_id || null,
+              variant_id: item.variant_id || null,
+              billing_period: item.billing_period || null
             }));
             
             await client
@@ -1200,15 +1273,29 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       // Update defaults in existing first item if fresh form
       if (this.items.length === 1) {
         const ctrl = this.items.at(0);
-        if (ctrl && ctrl.get('tax_rate')?.value === 21) {
-          ctrl.patchValue({ tax_rate: this.ivaEnabled() ? this.ivaRate() : 0 }, { emitEvent: false });
-        }
+        ctrl.patchValue({ tax_rate: this.ivaEnabled() ? this.ivaRate() : 0 }, { emitEvent: false });
       }
 
       this.calculateTotals();
     } catch (e) {
       // Keep safe defaults on error
       this.calculateTotals();
+    }
+  }
+
+  // Helper para mostrar precio unitario con IVA incluido en UI cuando corresponde
+  displayUnitPriceWithTax(index: number): number {
+    try {
+      const itemGroup = this.items.at(index);
+      const unit = Number(itemGroup.get('unit_price')?.value || 0);
+      const rate = this.ivaEnabled() ? Number(itemGroup.get('tax_rate')?.value || this.ivaRate()) : 0;
+      // Si la preferencia es IVA incluido, el unit ya es bruto
+      if (this.pricesIncludeTax()) return unit;
+      // Si la preferencia es sin IVA, mostrar bruto derivado
+      if (this.ivaEnabled() && rate > 0) return Math.round(unit * (1 + rate / 100) * 100) / 100;
+      return unit;
+    } catch {
+      return 0;
     }
   }
 }

@@ -142,6 +142,8 @@ export interface QuoteItem {
   company_id: string;
   service_id?: string | null;
   product_id?: string | null;
+  variant_id?: string | null; // Variante seleccionada (si aplica)
+  billing_period?: string | null; // Periodicidad aplicada ('monthly','annually','quarterly','one-time','custom', etc)
   
   // Ordenamiento
   line_number: number;
@@ -247,6 +249,8 @@ export interface CreateQuoteItemDTO {
   notes?: string;
   service_id?: string | null;
   product_id?: string | null;
+  variant_id?: string | null;
+  billing_period?: string | null; // misma codificación que en quote_items
 }
 
 export interface UpdateQuoteDTO {
@@ -275,6 +279,8 @@ export interface UpdateQuoteItemDTO {
   notes?: string;
   service_id?: string | null;
   product_id?: string | null;
+  variant_id?: string | null;
+  billing_period?: string | null;
 }
 
 export interface QuoteFilters {
