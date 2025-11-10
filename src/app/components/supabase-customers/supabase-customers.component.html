@@ -229,7 +229,7 @@
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-5 hover:shadow-md transition-shadow">
               
               <!-- Mobile Layout: 2-column (info left, actions right vertical) -->
-              <div class="md:hidden flex gap-3">
+              <div class="md:hidden flex gap-3 items-center justify-center">
                 <!-- Left column: Avatar + Info -->
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-3 mb-3">
@@ -285,8 +285,8 @@
                   </div>
                 </div>
                 
-                <!-- Right column: Action Buttons Grid (2 columns in mobile for better accessibility) -->
-                <div class="grid grid-cols-2 gap-1 flex-shrink-0 ml-auto self-start">
+                <!-- Right column: Action Buttons Flex (auto-wrap, right-aligned) -->
+                <div class="flex flex-col gap-1 flex-shrink-0 ml-auto justify-end">
                   <button
                     (click)="editCustomer(customer)"
                     class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
