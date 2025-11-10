@@ -87,60 +87,80 @@ import Placeholder from '@tiptap/extension-placeholder';
           <div class="space-y-6 lg:col-span-3">
             
             <!-- Ticket Header -->
-            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <div class="flex justify-between items-start mb-4">
-                <div>
-                  <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3 mb-2">
-                    <i class="fas fa-ticket-alt text-orange-500"></i>
-                    #{{ ticket.ticket_number }} - {{ ticket.title }}
-                  </h1>
-                  <div class="prose prose-sm text-gray-700 dark:text-gray-300 mt-2" [innerHTML]="formatDescription(ticket.description)"></div>
+            <div class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl p-8 hover:shadow-xl transition-shadow duration-300">
+              <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-6">
+                <div class="flex-1">
+                  <div class="flex items-center gap-3 mb-3">
+                    <div class="bg-gradient-to-br from-orange-400 to-orange-600 text-white p-3 rounded-lg shadow-md">
+                      <i class="fas fa-ticket-alt text-2xl"></i>
+                    </div>
+                    <div>
+                      <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                        {{ ticket.title }}
+                      </h1>
+                      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        <span class="font-mono font-semibold">#{{ ticket.ticket_number }}</span>
+                        <span class="mx-2">•</span>
+                        Creado {{ formatDate(ticket.created_at) }}
+                      </p>
+                    </div>
+                  </div>
+                  <div class="prose prose-sm text-gray-700 dark:text-gray-300 mt-4 ml-1" [innerHTML]="formatDescription(ticket.description)"></div>
                 </div>
-                <div class="flex flex-col items-end space-y-2">
+                <div class="flex flex-row lg:flex-col items-center lg:items-end gap-3">
                   <span [class]="getPriorityClasses(ticket.priority)"
-                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium">
-                    <i class="fas {{ getPriorityIcon(ticket.priority) }} w-3"></i>
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm">
+                    <i class="fas {{ getPriorityIcon(ticket.priority) }}"></i>
                     {{ getPriorityLabel(ticket.priority) }}
                   </span>
+                  <button (click)="showChangeStageModal = true" 
+                          class="btn btn-secondary px-4 py-2 text-sm">
+                    <i class="fas fa-arrows-alt mr-2"></i>
+                    Cambiar Etapa
+                  </button>
                 </div>
               </div>
               
-              <!-- Tags: moved to sidebar -->
-              
-              <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
-              <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
-                <span>Progreso</span>
-                <span>{{ getProgressPercentage() | number:'1.0-0' }}%</span>
-              </div>
-              <div class="relative">
+              <!-- Progress Section -->
+              <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <div class="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  <span class="flex items-center gap-2">
+                    <i class="fas fa-chart-line text-blue-500"></i>
+                    Progreso del Ticket
+                  </span>
+                  <span class="text-lg font-bold text-blue-600 dark:text-blue-400">{{ getProgressPercentage() | number:'1.0-0' }}%</span>
+                </div>
+                <div class="relative">
                   <!-- Progress Bar Background -->
-                  <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 relative">
+                  <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 relative overflow-hidden shadow-inner">
                     <div 
-                      class="bg-blue-500 dark:bg-blue-600 h-3 rounded-full transition-all duration-300"
+                      class="bg-gradient-to-r from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 h-4 rounded-full transition-all duration-500 ease-out"
                       [style.width.%]="getProgressPercentage()"
                     ></div>
                     
                     <!-- Stage Markers -->
                     <div *ngFor="let stage of allStages; let i = index" 
-                         class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2"
+                         class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 z-10"
                          [style.left.%]="getStagePosition(i)">
                       <div 
                         [class]="getStageMarkerClass(stage)"
-                        class="w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center"
+                        class="w-5 h-5 rounded-full border-3 border-white dark:border-gray-800 flex items-center justify-center shadow-md cursor-pointer hover:scale-110 transition-transform duration-200"
                         [title]="stage.name"
+                        (click)="showChangeStageModal = true; selectedStageId = stage.id"
                       >
-                        <div *ngIf="isStageCompleted(stage)" class="w-2 h-2 bg-white rounded-full"></div>
+                        <div *ngIf="isStageCompleted(stage)" class="w-2.5 h-2.5 bg-white rounded-full"></div>
                       </div>
                     </div>
                   </div>
                   
                   <!-- Stage Labels -->
-                  <div class="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  <div class="flex justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
                     <div *ngFor="let stage of getVisibleStages(); let i = index" 
-                         class="text-center flex-1"
-                         [class.font-medium]="stage.id === ticket.stage_id"
+                         class="text-center flex-1 transition-all duration-200"
+                         [class.font-semibold]="stage.id === ticket.stage_id"
                          [class.text-blue-600]="stage.id === ticket.stage_id"
-                         [class.dark:text-blue-400]="stage.id === ticket.stage_id">
+                         [class.dark:text-blue-400]="stage.id === ticket.stage_id"
+                         [class.scale-105]="stage.id === ticket.stage_id">
                       {{ stage.name }}
                     </div>
                   </div>
@@ -148,218 +168,294 @@ import Placeholder from '@tiptap/extension-placeholder';
               </div>
             </div>
 
-            <!-- Services -->
-            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Servicios Asignados</h3>
-                <button (click)="openServicesModal()"
-                        class="btn btn-primary">
-                  <i class="fas fa-wrench"></i>
-                  Modificar Servicios
+            <!-- Tabs Navigation -->
+            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+              <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <button 
+                  (click)="activeTab = 'services'"
+                  [class.active-tab]="activeTab === 'services'"
+                  class="tab-button flex-1 px-6 py-4 text-sm font-medium transition-all duration-200 relative">
+                  <i class="fas fa-wrench mr-2"></i>
+                  <span>Servicios</span>
+                  <span *ngIf="ticketServices.length > 0" class="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    {{ ticketServices.length }}
+                  </span>
+                </button>
+                <button 
+                  (click)="activeTab = 'products'"
+                  [class.active-tab]="activeTab === 'products'"
+                  class="tab-button flex-1 px-6 py-4 text-sm font-medium transition-all duration-200 relative">
+                  <i class="fas fa-box mr-2"></i>
+                  <span>Productos</span>
+                  <span *ngIf="ticketProducts.length > 0" class="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                    {{ ticketProducts.length }}
+                  </span>
+                </button>
+                <button 
+                  (click)="activeTab = 'devices'"
+                  [class.active-tab]="activeTab === 'devices'"
+                  class="tab-button flex-1 px-6 py-4 text-sm font-medium transition-all duration-200 relative">
+                  <i class="fas fa-mobile-alt mr-2"></i>
+                  <span>Dispositivos</span>
+                  <span *ngIf="linkedDeviceIds.size > 0" class="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    {{ linkedDeviceIds.size }}
+                  </span>
+                </button>
+                <button 
+                  (click)="activeTab = 'comments'"
+                  [class.active-tab]="activeTab === 'comments'"
+                  class="tab-button flex-1 px-6 py-4 text-sm font-medium transition-all duration-200 relative">
+                  <i class="fas fa-comments mr-2"></i>
+                  <span>Comentarios</span>
+                  <span *ngIf="comments.length > 0" class="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                    {{ comments.length }}
+                  </span>
                 </button>
               </div>
-              <div *ngIf="ticketServices.length === 0" class="text-center py-6 text-gray-500 dark:text-gray-400">
-                <i class="fas fa-box-open text-4xl mb-3 opacity-50"></i>
-                <p>No hay servicios asignados a este ticket</p>
-              </div>
-              <div *ngIf="ticketServices.length > 0" class="space-y-4">
-                <div *ngFor="let serviceItem of ticketServices" 
-                     class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <div class="flex justify-between items-start">
-                    <div class="flex-1">
-                      <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ serviceItem.service?.name || 'Servicio no especificado' }}</h4>
-                      <p *ngIf="serviceItem.service?.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {{ serviceItem.service.description }}
-                      </p>
-                      <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
-                        <div class="flex items-center space-x-2">
-                          <div class="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
-                            <button class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="decreaseAssignedQty(serviceItem)">-</button>
-                            <input type="number" class="w-16 text-center bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-x border-gray-300 dark:border-gray-600" [(ngModel)]="serviceItem.quantity" (ngModelChange)="onAssignedQuantityChange(serviceItem, $event)" />
-                            <button class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="increaseAssignedQty(serviceItem)">+</button>
-                          </div>
-                          <span *ngIf="savingAssignedServiceIds.has(serviceItem.service?.id)" class="text-xs text-gray-500 dark:text-gray-400">Guardando...</span>
-                        </div>
-                        <span><i class="fas fa-clock w-4"></i> {{ getLineEstimatedHours(serviceItem) }}h</span>
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
-                          <i class="fas fa-tag w-3"></i>
-                          {{ serviceItem.service?.category_name || serviceItem.service?.category || 'Sin categoría' }}
-                        </span>
-                      </div>
-                    </div>
-                    <div class="text-right">
-                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatPrice(getUnitPrice(serviceItem)) }}</p>
-                      <p class="text-sm text-gray-600 dark:text-gray-400">Total: {{ formatPrice(getLineTotal(serviceItem)) }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            <!-- Products -->
-            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Productos Asignados</h3>
-                <button (click)="openProductsModal()"
-                        class="btn btn-primary">
-                  <i class="fas fa-box"></i>
-                  Modificar Productos
-                </button>
-              </div>
-              <div *ngIf="ticketProducts.length === 0" class="text-center py-6 text-gray-500 dark:text-gray-400">
-                <i class="fas fa-box-open text-4xl mb-3 opacity-50"></i>
-                <p>No hay productos asignados a este ticket</p>
-              </div>
-              <div *ngIf="ticketProducts.length > 0" class="space-y-4">
-                <div *ngFor="let productItem of ticketProducts" 
-                     class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <div class="flex justify-between items-start">
-                    <div class="flex-1">
-                      <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ productItem.product?.name || 'Producto no especificado' }}</h4>
-                      <p *ngIf="productItem.product?.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {{ productItem.product.description }}
-                      </p>
-                      <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
-                        <span><i class="fas fa-boxes w-4"></i> Cantidad: {{ productItem.quantity }}</span>
-                        <span *ngIf="productItem.product?.brand" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
-                          <i class="fas fa-copyright w-3"></i>
-                          {{ productItem.product.brand }}
-                        </span>
-                        <span *ngIf="productItem.product?.category" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
-                          <i class="fas fa-tag w-3"></i>
-                          {{ productItem.product.category }}
-                        </span>
-                      </div>
-                    </div>
-                    <div class="text-right">
-                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatPrice(getProductUnitPrice(productItem)) }}</p>
-                      <p class="text-sm text-gray-600 dark:text-gray-400">Total: {{ formatPrice(getProductLineTotal(productItem)) }}</p>
-                      <button (click)="removeProductFromTicket(productItem.product?.id)"
-                              class="mt-2 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-                        <i class="fas fa-trash"></i>
-                        Eliminar
+              <!-- Tab Content -->
+              <div class="p-6">
+                <!-- Services Tab -->
+                @if (activeTab === 'services') {
+                  <div class="tab-content-animate">
+                    <div class="flex justify-between items-center mb-4">
+                      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Servicios Asignados</h3>
+                      <button (click)="openServicesModal()"
+                              class="btn btn-primary">
+                        <i class="fas fa-wrench"></i>
+                        Modificar Servicios
                       </button>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Devices: show devices that belong to the ticket's company -->
-            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Dispositivos Vinculados</h3>
-                <button (click)="openDevicesModal()"
-                        class="btn btn-primary">
-                  <i class="fas fa-mobile-alt"></i>
-                  Modificar Dispositivos
-                </button>
-              </div>
-              <div *ngIf="companyDevices.length === 0" class="text-center py-6 text-gray-500 dark:text-gray-400">
-                <i class="fas fa-mobile-alt text-4xl mb-3 opacity-50"></i>
-                <p>No hay dispositivos vinculados a este ticket</p>
-              </div>
-              <div *ngIf="companyDevices.length > 0" class="space-y-4">
-                <div *ngFor="let device of companyDevices" 
-                     class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex justify-between items-start hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <div class="flex-1">
-                    <div class="flex items-center space-x-2">
-                      <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ device.brand }} {{ device.model }}</h4>
-                      <span *ngIf="isDeviceLinked(device.id)" class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded">Vinculado</span>
+                    <div *ngIf="ticketServices.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
+                      <i class="fas fa-box-open text-5xl mb-4 opacity-50"></i>
+                      <p class="text-lg">No hay servicios asignados a este ticket</p>
+                      <button (click)="openServicesModal()" class="mt-4 btn btn-secondary">
+                        <i class="fas fa-plus mr-2"></i>
+                        Añadir Servicios
+                      </button>
                     </div>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ device.device_type }}</p>
-                    <p *ngIf="device.imei" class="text-sm text-gray-600 dark:text-gray-400">IMEI: {{ device.imei }}</p>
-                    <p *ngIf="device.color" class="text-sm text-gray-600 dark:text-gray-400">Color: {{ device.color }}</p>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                      <span class="font-medium">Problema reportado:</span> {{ device.reported_issue }}
-                    </p>
-                  </div>
-                  <div class="text-right">
-                    <span [class]="getDeviceStatusClass(device.status)"
-                          class="inline-block px-2 py-1 text-xs font-medium rounded">
-                      {{ getDeviceStatusLabel(device.status) }}
-                    </span>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ formatDate(device.received_at) }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Comments Section -->
-            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Comentarios</h3>
-              
-              <!-- Add Comment Form -->
-              <div class="mb-6">
-
-                <!-- TipTap Editor -->
-                <div class="relative">
-                  <div 
-                    #editorElement
-                    id="editorElement"
-                    class="tiptap-editor w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[100px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent"
-                    (dragover)="onNativeDragOver($event)"
-                    (drop)="onNativeDrop($event)"
-                  >
-                  </div>
-                </div>
-                
-                <div class="mt-2 flex justify-between items-center">
-                  <label class="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                    <input type="checkbox" [(ngModel)]="isInternalComment" class="mr-2 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
-                    Comentario interno (no visible para el cliente)
-                  </label>
-                  <div class="flex items-center gap-3">
-                    <span *ngIf="isUploadingImage" class="text-xs text-gray-500 dark:text-gray-400">Subiendo imagen...</span>
-                    <button (click)="addComment()" 
-                            [disabled]="isUploadingImage || !hasEditorContent()"
-                            class="btn btn-primary">
-                      <i class="fas fa-comment"></i>
-                      Añadir Comentario
-                    </button>
-                  </div>
-                </div>
-              </div>              <!-- Comments List -->
-              <div *ngIf="comments.length === 0" class="text-center py-6 text-gray-500 dark:text-gray-400">
-                <i class="fas fa-comments text-4xl mb-3 opacity-50"></i>
-                <p>No hay comentarios aún</p>
-              </div>
-              <div *ngIf="comments.length > 0" class="space-y-4">
-                <div *ngFor="let comment of comments" 
-                     [class]="comment.is_internal ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700' : 'bg-gray-50 dark:bg-gray-700'"
-                     class="rounded-lg p-4 border">
-                  <div class="flex justify-between items-start mb-2">
-                    <div class="flex items-center space-x-2">
-                      <span class="font-medium text-gray-900 dark:text-gray-100">{{ comment.user?.name || 'Usuario' }}</span>
-                      <span *ngIf="comment.is_internal" 
-                            class="px-2 py-1 text-xs bg-yellow-200 dark:bg-yellow-800/50 text-yellow-800 dark:text-yellow-200 rounded inline-flex items-center gap-1">
-                        <i class="fas fa-lock w-3"></i>
-                        Interno
-                      </span>
+                    <div *ngIf="ticketServices.length > 0" class="space-y-4">
+                      <div *ngFor="let serviceItem of ticketServices" 
+                           class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md dark:hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200">
+                        <div class="flex justify-between items-start">
+                          <div class="flex-1">
+                            <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ serviceItem.service?.name || 'Servicio no especificado' }}</h4>
+                            <p *ngIf="serviceItem.service?.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              {{ serviceItem.service.description }}
+                            </p>
+                            <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
+                              <div class="flex items-center space-x-2">
+                                <div class="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                                  <button class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="decreaseAssignedQty(serviceItem)">-</button>
+                                  <input type="number" class="w-16 text-center bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-x border-gray-300 dark:border-gray-600" [(ngModel)]="serviceItem.quantity" (ngModelChange)="onAssignedQuantityChange(serviceItem, $event)" />
+                                  <button class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="increaseAssignedQty(serviceItem)">+</button>
+                                </div>
+                                <span *ngIf="savingAssignedServiceIds.has(serviceItem.service?.id)" class="text-xs text-gray-500 dark:text-gray-400">Guardando...</span>
+                              </div>
+                              <span><i class="fas fa-clock w-4"></i> {{ getLineEstimatedHours(serviceItem) }}h</span>
+                              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                                <i class="fas fa-tag w-3"></i>
+                                {{ serviceItem.service?.category_name || serviceItem.service?.category || 'Sin categoría' }}
+                              </span>
+                            </div>
+                          </div>
+                          <div class="text-right">
+                            <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatPrice(getUnitPrice(serviceItem)) }}</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Total: {{ formatPrice(getLineTotal(serviceItem)) }}</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
                   </div>
-                  <div class="prose prose-sm max-w-none text-gray-800 dark:text-gray-300" [innerHTML]="renderComment(comment.comment)"></div>
-                </div>
+                }
+
+                <!-- Products Tab -->
+                @if (activeTab === 'products') {
+                  <div class="tab-content-animate">
+                    <div class="flex justify-between items-center mb-4">
+                      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Productos Asignados</h3>
+                      <button (click)="openProductsModal()"
+                              class="btn btn-primary">
+                        <i class="fas fa-box"></i>
+                        Modificar Productos
+                      </button>
+                    </div>
+                    <div *ngIf="ticketProducts.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
+                      <i class="fas fa-box-open text-5xl mb-4 opacity-50"></i>
+                      <p class="text-lg">No hay productos asignados a este ticket</p>
+                      <button (click)="openProductsModal()" class="mt-4 btn btn-secondary">
+                        <i class="fas fa-plus mr-2"></i>
+                        Añadir Productos
+                      </button>
+                    </div>
+                    <div *ngIf="ticketProducts.length > 0" class="space-y-4">
+                      <div *ngFor="let productItem of ticketProducts" 
+                           class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md dark:hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-200">
+                        <div class="flex justify-between items-start">
+                          <div class="flex-1">
+                            <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ productItem.product?.name || 'Producto no especificado' }}</h4>
+                            <p *ngIf="productItem.product?.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              {{ productItem.product.description }}
+                            </p>
+                            <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
+                              <span><i class="fas fa-boxes w-4"></i> Cantidad: {{ productItem.quantity }}</span>
+                              <span *ngIf="productItem.product?.brand" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
+                                <i class="fas fa-copyright w-3"></i>
+                                {{ productItem.product.brand }}
+                              </span>
+                              <span *ngIf="productItem.product?.category" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
+                                <i class="fas fa-tag w-3"></i>
+                                {{ productItem.product.category }}
+                              </span>
+                            </div>
+                          </div>
+                          <div class="text-right">
+                            <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatPrice(getProductUnitPrice(productItem)) }}</p>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Total: {{ formatPrice(getProductLineTotal(productItem)) }}</p>
+                            <button (click)="removeProductFromTicket(productItem.product?.id)"
+                                    class="mt-2 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
+                              <i class="fas fa-trash"></i>
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                <!-- Devices Tab -->
+                @if (activeTab === 'devices') {
+                  <div class="tab-content-animate">
+                    <div class="flex justify-between items-center mb-4">
+                      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Dispositivos Vinculados</h3>
+                      <button (click)="openDevicesModal()"
+                              class="btn btn-primary">
+                        <i class="fas fa-mobile-alt"></i>
+                        Modificar Dispositivos
+                      </button>
+                    </div>
+                    <div *ngIf="companyDevices.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
+                      <i class="fas fa-mobile-alt text-5xl mb-4 opacity-50"></i>
+                      <p class="text-lg">No hay dispositivos vinculados a este ticket</p>
+                      <button (click)="openDevicesModal()" class="mt-4 btn btn-secondary">
+                        <i class="fas fa-plus mr-2"></i>
+                        Añadir Dispositivos
+                      </button>
+                    </div>
+                    <div *ngIf="companyDevices.length > 0" class="space-y-4">
+                      <div *ngFor="let device of companyDevices" 
+                           class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex justify-between items-start hover:shadow-md dark:hover:shadow-lg hover:border-green-300 dark:hover:border-green-700 transition-all duration-200">
+                        <div class="flex-1">
+                          <div class="flex items-center space-x-2">
+                            <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ device.brand }} {{ device.model }}</h4>
+                            <span *ngIf="isDeviceLinked(device.id)" class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded">Vinculado</span>
+                          </div>
+                          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ device.device_type }}</p>
+                          <p *ngIf="device.imei" class="text-sm text-gray-600 dark:text-gray-400">IMEI: {{ device.imei }}</p>
+                          <p *ngIf="device.color" class="text-sm text-gray-600 dark:text-gray-400">Color: {{ device.color }}</p>
+                          <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                            <span class="font-medium">Problema reportado:</span> {{ device.reported_issue }}
+                          </p>
+                        </div>
+                        <div class="text-right">
+                          <span [class]="getDeviceStatusClass(device.status)"
+                                class="inline-block px-2 py-1 text-xs font-medium rounded">
+                            {{ getDeviceStatusLabel(device.status) }}
+                          </span>
+                          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ formatDate(device.received_at) }}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                <!-- Comments Tab -->
+                @if (activeTab === 'comments') {
+                  <div class="tab-content-animate">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Comentarios</h3>
+                    
+                    <!-- Add Comment Form -->
+                    <div class="mb-6">
+                      <!-- TipTap Editor -->
+                      <div class="relative">
+                        <div 
+                          #editorElement
+                          id="editorElement"
+                          class="tiptap-editor w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[100px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent"
+                          (dragover)="onNativeDragOver($event)"
+                          (drop)="onNativeDrop($event)"
+                        >
+                        </div>
+                      </div>
+                      
+                      <div class="mt-2 flex justify-between items-center">
+                        <label class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                          <input type="checkbox" [(ngModel)]="isInternalComment" class="mr-2 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                          Comentario interno (no visible para el cliente)
+                        </label>
+                        <div class="flex items-center gap-3">
+                          <span *ngIf="isUploadingImage" class="text-xs text-gray-500 dark:text-gray-400">Subiendo imagen...</span>
+                          <button (click)="addComment()" 
+                                  [disabled]="isUploadingImage || !hasEditorContent()"
+                                  class="btn btn-primary">
+                            <i class="fas fa-comment"></i>
+                            Añadir Comentario
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Comments List -->
+                    <div *ngIf="comments.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
+                      <i class="fas fa-comments text-5xl mb-4 opacity-50"></i>
+                      <p class="text-lg">No hay comentarios aún</p>
+                    </div>
+                    <div *ngIf="comments.length > 0" class="space-y-4">
+                      <div *ngFor="let comment of comments" 
+                           [class]="comment.is_internal ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700' : 'bg-gray-50 dark:bg-gray-700'"
+                           class="rounded-lg p-4 border">
+                        <div class="flex justify-between items-start mb-2">
+                          <div class="flex items-center space-x-2">
+                            <span class="font-medium text-gray-900 dark:text-gray-100">{{ comment.user?.name || 'Usuario' }}</span>
+                            <span *ngIf="comment.is_internal" 
+                                  class="px-2 py-1 text-xs bg-yellow-200 dark:bg-yellow-800/50 text-yellow-800 dark:text-yellow-200 rounded inline-flex items-center gap-1">
+                              <i class="fas fa-lock w-3"></i>
+                              Interno
+                            </span>
+                          </div>
+                          <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
+                        </div>
+                        <div class="prose prose-sm max-w-none text-gray-800 dark:text-gray-300" [innerHTML]="renderComment(comment.comment)"></div>
+                      </div>
+                    </div>
+                  </div>
+                }
               </div>
             </div>
-          </div>
           
 
           <!-- Sidebar (Right Side) -->
           <div class="space-y-6 lg:col-span-1">
 
             <!-- Client Contact -->
-            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Cliente</h3>
+            <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 shadow-md border border-blue-200 dark:border-blue-700 rounded-xl p-6 hover:shadow-lg transition-shadow duration-300">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="bg-blue-500 text-white p-3 rounded-lg shadow-md">
+                  <i class="fas fa-user text-xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Cliente</h3>
+              </div>
               <div *ngIf="ticket.client as client; else noClientInfo">
-                <div class="text-sm text-gray-900 dark:text-gray-100 font-medium">{{ client.name}}</div>
-                <div class="mt-3 space-y-2">
-                  <div *ngIf="client.email">
-                    <a [href]="'mailto:' + client.email" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">{{ client.email }}</a>
+                <div class="text-base text-gray-900 dark:text-gray-100 font-semibold mb-3">{{ client.name }}</div>
+                <div class="space-y-2">
+                  <div *ngIf="client.email" class="flex items-center gap-2 text-sm">
+                    <i class="fas fa-envelope text-blue-600 dark:text-blue-400 w-4"></i>
+                    <a [href]="'mailto:' + client.email" class="text-blue-600 dark:text-blue-400 hover:underline">{{ client.email }}</a>
                   </div>
-                  <div *ngIf="client.phone" class="flex items-center space-x-2">
-                    <a [href]="'tel:' + client.phone" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">{{ client.phone }}</a>
+                  <div *ngIf="client.phone" class="flex items-center gap-2 text-sm">
+                    <i class="fas fa-phone text-blue-600 dark:text-blue-400 w-4"></i>
+                    <a [href]="'tel:' + client.phone" class="text-blue-600 dark:text-blue-400 hover:underline">{{ client.phone }}</a>
                   </div>
                 </div>
               </div>
@@ -369,45 +465,55 @@ import Placeholder from '@tiptap/extension-placeholder';
             </div>
             
             <!-- Quick Stats -->
-            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Resumen</h3>
-              <div class="space-y-3">
-                <div class="flex justify-between">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">Total Servicios:</span>
-                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ formatPrice(calculateServicesTotal()) }}</span>
+            <div class="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-800/20 shadow-md border border-green-200 dark:border-green-700 rounded-xl p-6 hover:shadow-lg transition-shadow duration-300">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="bg-green-500 text-white p-3 rounded-lg shadow-md">
+                  <i class="fas fa-chart-pie text-xl"></i>
                 </div>
-                <div class="flex justify-between">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">Total Ticket:</span>
-                  <span class="text-lg font-bold text-green-600 dark:text-green-400">{{ formatPrice(ticket.total_amount || calculateServicesTotal()) }}</span>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Resumen</h3>
+              </div>
+              <div class="space-y-4">
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Total Servicios</span>
+                    <span class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ formatPrice(calculateServicesTotal()) }}</span>
+                  </div>
                 </div>
-                <hr class="border-gray-200 dark:border-gray-700">
-                <div class="flex justify-between">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">Horas Estimadas:</span>
-                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ getEstimatedHours() }}h</span>
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border-2 border-green-500 dark:border-green-600">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Total Ticket</span>
+                    <span class="text-xl font-bold text-green-600 dark:text-green-400">{{ formatPrice(ticket.total_amount || calculateServicesTotal()) }}</span>
+                  </div>
                 </div>
-                <!-- <div class="flex justify-between">
-                  <span class="text-sm text-gray-600 dark:text-gray-400">Horas Reales:</span>
-                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ getActualHours() }}h</span>
-                </div> -->
+                <div class="flex justify-between items-center pt-2 border-t border-green-200 dark:border-green-800">
+                  <span class="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                    <i class="fas fa-clock"></i>
+                    Horas Estimadas
+                  </span>
+                  <span class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ getEstimatedHours() }}h</span>
+                </div>
               </div>
             </div>
 
             <!-- Timeline -->
-            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <div class="flex justify-between items-center">
-                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Timeline</h3>
+            <div class="bg-gradient-to-br from-purple-50 to-pink-100 dark:from-purple-900/20 dark:to-pink-800/20 shadow-md border border-purple-200 dark:border-purple-700 rounded-xl p-6 hover:shadow-lg transition-shadow duration-300">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="bg-purple-500 text-white p-3 rounded-lg shadow-md">
+                  <i class="fas fa-history text-xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Timeline</h3>
               </div>
               <div class="space-y-4">
-                <div class="flex items-start space-x-3">
-                  <div class="flex-shrink-0 w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full mt-2"></div>
+                <div class="flex items-start gap-3 bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                  <div class="flex-shrink-0 w-3 h-3 bg-green-500 dark:bg-green-400 rounded-full mt-1.5 shadow-sm"></div>
                   <div>
                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Ticket creado</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(ticket.created_at) }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ formatDate(ticket.created_at) }}</p>
                   </div>
                 </div>
                 
-                <div *ngIf="ticket.updated_at !== ticket.created_at" class="flex items-start space-x-3">
-                  <div class="flex-shrink-0 w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full mt-2"></div>
+                <div *ngIf="ticket.updated_at !== ticket.created_at" class="flex items-start gap-3 bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+                  <div class="flex-shrink-0 w-3 h-3 bg-blue-500 dark:bg-blue-400 rounded-full mt-1.5 shadow-sm"></div>
                   <div>
                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Última actualización</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(ticket.updated_at) }}</p>

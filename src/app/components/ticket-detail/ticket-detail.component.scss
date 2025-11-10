@@ -11,6 +11,84 @@
   width: 100vw;
   height: var(--dvh, 100vh);
   padding: clamp(12px, 4vw, 24px) clamp(12px, 4vw, 24px) max(env(safe-area-inset-bottom), clamp(12px, 4vw, 24px)) clamp(12px, 4vw, 24px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* Tab Styles */
+.tab-button {
+  color: rgb(107, 114, 128);
+  border-bottom: 3px solid transparent;
+  
+  &:hover {
+    color: rgb(59, 130, 246);
+    background-color: rgba(59, 130, 246, 0.05);
+  }
+  
+  &.active-tab {
+    color: rgb(59, 130, 246);
+    border-bottom-color: rgb(59, 130, 246);
+    background-color: rgba(59, 130, 246, 0.1);
+    font-weight: 600;
+  }
+}
+
+:host-context(.dark) .tab-button {
+  color: rgb(156, 163, 175);
+  
+  &:hover {
+    color: rgb(96, 165, 250);
+    background-color: rgba(96, 165, 250, 0.1);
+  }
+  
+  &.active-tab {
+    color: rgb(96, 165, 250);
+    border-bottom-color: rgb(96, 165, 250);
+    background-color: rgba(96, 165, 250, 0.15);
+  }
+}
+
+.tab-content-animate {
+  animation: slideUp 0.3s ease-out;
 }
 
 /* Rich Text Editor Styles */
