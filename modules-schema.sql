@@ -31,7 +31,7 @@ CREATE POLICY modules_select_active
 INSERT INTO public.modules (key, name, description, category, position, enabled_by_default, is_active) VALUES
   ('moduloPresupuestos', 'Presupuestos', 'Gestión de presupuestos', 'ventas', 10, true, true),
   ('moduloServicios', 'Servicios', 'Catálogo de servicios', 'ventas', 20, true, true),
-  ('moduloMaterial', 'Material/Productos', 'Gestión de productos y material', 'inventario', 30, true, true),
+  ('moduloMaterial', 'Productos', 'Gestión de productos y material', 'inventario', 30, true, true),
   ('moduloFacturas', 'Facturación', 'Emitir y gestionar facturas', 'facturacion', 40, false, true)
 ON CONFLICT (key) DO UPDATE SET
   name = EXCLUDED.name,

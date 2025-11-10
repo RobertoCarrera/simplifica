@@ -114,13 +114,16 @@
 /* Modal Styles */
 .modal-overlay {
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
+  inset: 0;
   background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 1rem;
+  width: 100vw;
+  height: var(--dvh, 100vh);
+  padding: clamp(12px, 4vw, 24px) clamp(12px, 4vw, 24px) max(env(safe-area-inset-bottom), clamp(12px, 4vw, 24px)) clamp(12px, 4vw, 24px);
   overflow-y: auto;
   @media (prefers-color-scheme: dark) { background-color: rgba(0, 0, 0, 0.7); }
 }
@@ -131,8 +134,10 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   max-width: 800px;
   width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-height: calc(var(--dvh, 100vh) - max(env(safe-area-inset-bottom), 20px) - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   position: relative;
   @media (prefers-color-scheme: dark) {
     background: #1e293b;
@@ -184,16 +189,30 @@
 
 .modal-body {
   padding: 1.5rem;
+  flex: 1 1 auto;
+  overflow: auto;
+  padding-bottom: calc(clamp(64px, 10vw, 88px) + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .modal-actions {
   display: flex;
   gap: 0.75rem;
   justify-content: flex-end;
-  padding-top: 1rem;
-  margin-top: 1rem;
+  padding: 1rem 1.5rem;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  margin: 0;
   border-top: 1px solid #e5e7eb;
-  @media (prefers-color-scheme: dark) { border-top-color: #374151; }
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), #ffffff);
+  backdrop-filter: blur(6px);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  @media (prefers-color-scheme: dark) {
+    border-top-color: #374151;
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.92), #1e293b);
+  }
 }
 
 /* Form Styles */

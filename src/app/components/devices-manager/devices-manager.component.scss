@@ -456,24 +456,26 @@
 
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 1rem;
+  width: 100vw;
+  height: var(--dvh, 100vh);
+  padding: clamp(12px, 4vw, 24px) clamp(12px, 4vw, 24px) max(env(safe-area-inset-bottom), clamp(12px, 4vw, 24px)) clamp(12px, 4vw, 24px);
 }
 
 .modal-content {
   background: white;
   border-radius: 12px;
   box-shadow: var(--shadow-lg);
-  max-height: 90vh;
-  overflow-y: auto;
+  max-height: calc(var(--dvh, 100vh) - max(env(safe-area-inset-bottom), 20px) - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   width: 100%;
   
   &.device-modal {
@@ -519,6 +521,11 @@
 
 .modal-body {
   padding: 1.5rem;
+  flex: 1 1 auto;
+  overflow: auto;
+  padding-bottom: calc(clamp(64px, 10vw, 88px) + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .modal-footer {
@@ -526,6 +533,13 @@
   justify-content: flex-end;
   gap: 1rem;
   padding: 1.5rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), #ffffff);
+  backdrop-filter: blur(6px);
+  border-top: 1px solid var(--border-color);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
   border-top: 1px solid var(--border-color);
 }
 

@@ -565,16 +565,16 @@
 /* Modal Styles */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 20px;
+  width: 100vw;
+  height: var(--dvh, 100vh);
+  padding: clamp(12px, 4vw, 24px) clamp(12px, 4vw, 24px) max(env(safe-area-inset-bottom), clamp(12px, 4vw, 24px)) clamp(12px, 4vw, 24px);
   
   /* Mejorar transición y animación */
   animation: fadeIn 0.2s ease-out;
@@ -597,7 +597,8 @@
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
   width: 100%;
   max-width: 700px;
-  max-height: calc(var(--vh, 1vh) * 85);
+  max-height: calc(var(--dvh, 100vh) - max(env(safe-area-inset-bottom), 20px) - 48px);
+  overflow: hidden;
   
   /* Layout: header, body (scrollable), footer (sticky) */
   display: flex;
@@ -656,9 +657,13 @@
   padding: 0;
   overflow: auto; /* Restaurado: permitir scroll dentro del modal */
   flex: 1 1 auto;
+  padding-bottom: calc(clamp(64px, 10vw, 88px) + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   
   @media (max-width: 640px) {
     padding: 0;
+    padding-bottom: calc(clamp(64px, 10vw, 88px) + env(safe-area-inset-bottom));
   }
 }
 
@@ -667,6 +672,14 @@
   gap: 12px;
   align-items: center;
   justify-content: flex-end;
+  padding: 16px 24px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), #ffffff);
+  backdrop-filter: blur(6px);
+  border-top: 1px solid #e5e7eb;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
   padding: 16px 24px;
   border-top: 1px solid #e5e7eb;
   background: #ffffff;
@@ -688,7 +701,7 @@
   }
   .modal-footer {
     border-top: 1px solid #334155;
-    background: #1f2937;
+    background: linear-gradient(180deg, rgba(31, 41, 55, 0.92), #1f2937);
   }
   .form-group label { color: #e2e8f0; }
   .form-group input,
@@ -847,7 +860,15 @@
   }
   
   .modal-content {
-    max-height: calc(100vh - 40px);
+    max-height: calc(var(--dvh, 100vh) - max(env(safe-area-inset-bottom), 20px) - 48px);
+  }
+  
+  .modal-body {
+    padding-bottom: calc(clamp(64px, 10vw, 88px) + env(safe-area-inset-bottom));
+  }
+  
+  .modal-footer {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
   
   .service-footer {
