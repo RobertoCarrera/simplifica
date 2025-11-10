@@ -36,7 +36,7 @@ import Placeholder from '@tiptap/extension-placeholder';
           <button (click)="goBack()" 
                   class="btn btn-secondary">
             <i class="fas fa-arrow-left"></i>
-            Volver a Tickets
+            <span class="hidden sm:inline">Volver a Tickets</span>
           </button>
           
           <!-- Quick Actions -->
@@ -50,7 +50,7 @@ import Placeholder from '@tiptap/extension-placeholder';
             <button (click)="printTicket()" 
                     class="btn btn-secondary">
               <i class="fas fa-print"></i>
-              Imprimir
+              <span class="hidden sm:inline">Imprimir</span>
             </button>
             <button (click)="deleteTicket()" 
                     class="btn btn-danger">
@@ -666,25 +666,25 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   // Unified Badge Configurations (following app style guide)
   ticketStatusConfig: Record<string, { label: string; classes: string; icon: string }> = {
-    pending: {
-      label: 'En Espera',
+    open: {
+      label: 'Abierto',
       classes: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-      icon: 'fa-clock'
+      icon: 'fa-folder-open'
     },
-    inProgress: {
+    in_progress: {
       label: 'En Progreso',
       classes: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
       icon: 'fa-spinner'
+    },
+    on_hold: {
+      label: 'En Espera',
+      classes: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+      icon: 'fa-pause-circle'
     },
     completed: {
       label: 'Completado',
       classes: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
       icon: 'fa-check-circle'
-    },
-    cancelled: {
-      label: 'Cancelado',
-      classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
-      icon: 'fa-times-circle'
     }
   };
 
@@ -1954,6 +1954,22 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   getPriorityIcon(priority?: string): string {
     const key = priority || 'normal';
     return this.ticketPriorityConfig[key]?.icon || this.ticketPriorityConfig['normal'].icon;
+  }
+  
+  // Status/Stage category helpers (using stage_category from ticket_stages table)
+  getStatusClasses(stageCategory?: string): string {
+    const key = stageCategory || 'open';
+    return this.ticketStatusConfig[key]?.classes || this.ticketStatusConfig['open'].classes;
+  }
+  
+  getStatusLabel(stageCategory?: string): string {
+    const key = stageCategory || 'open';
+    return this.ticketStatusConfig[key]?.label || this.ticketStatusConfig['open'].label;
+  }
+  
+  getStatusIcon(stageCategory?: string): string {
+    const key = stageCategory || 'open';
+    return this.ticketStatusConfig[key]?.icon || this.ticketStatusConfig['open'].icon;
   }
 
   getTagColor(tagName: string): string {
