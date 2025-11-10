@@ -29,7 +29,7 @@ import Placeholder from '@tiptap/extension-placeholder';
   styleUrls: ['./ticket-detail.component.scss'],
   template: `
     <div class="min-h-0 bg-gray-50 dark:bg-gray-900">
-      <div class="mx-auto px-4">
+      <div class="mx-auto">
         
         <!-- Header con navegación -->
         <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 mb-6 flex justify-between items-center">
