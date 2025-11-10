@@ -315,12 +315,14 @@ body.modal-open {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
-  min-height: 600px;
+  /* Avoid forcing a large min-height so the page doesn't show a scrollbar when content is short */
+  min-height: 0;
 }
 
 /* Tickets Content */
 .tickets-content {
-  min-height: 400px;
+  /* Allow content to size naturally; prevent artificial tall minimums that create scrollbars */
+  min-height: 0;
 }
 
 /* List View */
