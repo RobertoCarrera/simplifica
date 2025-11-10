@@ -6,6 +6,7 @@ import { SimpleSupabaseService } from '../../services/simple-supabase.service';
 import { SupabaseTicketsService, Ticket } from '../../services/supabase-tickets.service';
 import { SupabaseTicketStagesService, TicketStage as ConfigStage } from '../../services/supabase-ticket-stages.service';
 import { DevicesService, Device } from '../../services/devices.service';
+import { ProductsService } from '../../services/products.service';
 import { TicketModalService } from '../../services/ticket-modal.service';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { environment } from '../../../environments/environment';
@@ -195,10 +196,70 @@ import Placeholder from '@tiptap/extension-placeholder';
               </div>
             </div>
 
+            <!-- Products -->
+            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Productos Asignados</h3>
+                <button (click)="openProductsModal()"
+                        class="btn btn-primary">
+                  <i class="fas fa-box"></i>
+                  Modificar Productos
+                </button>
+              </div>
+              <div *ngIf="ticketProducts.length === 0" class="text-center py-6 text-gray-500 dark:text-gray-400">
+                <i class="fas fa-box-open text-4xl mb-3 opacity-50"></i>
+                <p>No hay productos asignados a este ticket</p>
+              </div>
+              <div *ngIf="ticketProducts.length > 0" class="space-y-4">
+                <div *ngFor="let productItem of ticketProducts" 
+                     class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                  <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                      <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ productItem.product?.name || 'Producto no especificado' }}</h4>
+                      <p *ngIf="productItem.product?.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {{ productItem.product.description }}
+                      </p>
+                      <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
+                        <span><i class="fas fa-boxes w-4"></i> Cantidad: {{ productItem.quantity }}</span>
+                        <span *ngIf="productItem.product?.brand" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
+                          <i class="fas fa-copyright w-3"></i>
+                          {{ productItem.product.brand }}
+                        </span>
+                        <span *ngIf="productItem.product?.category" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
+                          <i class="fas fa-tag w-3"></i>
+                          {{ productItem.product.category }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatPrice(getProductUnitPrice(productItem)) }}</p>
+                      <p class="text-sm text-gray-600 dark:text-gray-400">Total: {{ formatPrice(getProductLineTotal(productItem)) }}</p>
+                      <button (click)="removeProductFromTicket(productItem.product?.id)"
+                              class="mt-2 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
+                        <i class="fas fa-trash"></i>
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Devices: show devices that belong to the ticket's company -->
-            <div *ngIf="companyDevices.length > 0" class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Dispositivos de la Empresa</h3>
-              <div class="space-y-4">
+            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Dispositivos Vinculados</h3>
+                <button (click)="openDevicesModal()"
+                        class="btn btn-primary">
+                  <i class="fas fa-mobile-alt"></i>
+                  Modificar Dispositivos
+                </button>
+              </div>
+              <div *ngIf="companyDevices.length === 0" class="text-center py-6 text-gray-500 dark:text-gray-400">
+                <i class="fas fa-mobile-alt text-4xl mb-3 opacity-50"></i>
+                <p>No hay dispositivos vinculados a este ticket</p>
+              </div>
+              <div *ngIf="companyDevices.length > 0" class="space-y-4">
                 <div *ngFor="let device of companyDevices" 
                      class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex justify-between items-start hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <div class="flex-1">
@@ -589,6 +650,118 @@ import Placeholder from '@tiptap/extension-placeholder';
           </div>
         </div>
       }
+
+      <!-- Products Selection Modal -->
+      @if (showProductsModal) {
+        <div class="modal-overlay">
+          <div class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2 class="modal-title">📦 Seleccionar Productos</h2>
+              <button (click)="closeProductsModal()" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body space-y-3">
+              <div>
+                <input type="text" class="form-input" placeholder="Buscar productos..." [(ngModel)]="productSearchText" (input)="filterProductsList()" />
+              </div>
+              <div class="max-h-80 overflow-auto divide-y">
+                <div *ngFor="let product of filteredProducts" class="py-3 px-2 hover:bg-gray-50">
+                  <div class="flex items-center justify-between">
+                    <div class="min-w-0 pr-4 flex-1">
+                      <div class="font-medium">{{ product.name }}</div>
+                      <div class="text-xs text-gray-500 line-clamp-2">{{ product.description }}</div>
+                      <div class="flex gap-2 mt-1">
+                        <span *ngIf="product.brand" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                          {{ product.brand }}
+                        </span>
+                        <span *ngIf="product.category" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                          {{ product.category }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                      <div class="text-right text-sm text-gray-700">
+                        <div class="font-medium">{{ formatPrice(getProductUnitPrice(product)) }}</div>
+                        <div class="text-xs text-gray-500">Unidad</div>
+                      </div>
+                      @if (selectedProductIds.has(product.id)) {
+                        <div class="flex items-center space-x-2 border rounded-lg px-2 py-1">
+                          <button type="button" (click)="decreaseProductQty(product.id)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600">
+                            <i class="fas fa-minus text-xs"></i>
+                          </button>
+                          <input type="number" min="1" [value]="getProductQuantity(product.id)" (input)="setProductQuantity(product.id, $any($event.target).value)" 
+                                 class="w-12 text-center border-0 focus:ring-0 text-sm" />
+                          <button type="button" (click)="increaseProductQty(product.id)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600">
+                            <i class="fas fa-plus text-xs"></i>
+                          </button>
+                        </div>
+                      }
+                      <div class="pl-3">
+                        <input type="checkbox" [checked]="selectedProductIds.has(product.id)" (change)="toggleProductSelection(product)" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer flex justify-end space-x-2 p-2">
+              <button class="btn btn-secondary" (click)="closeProductsModal()">Cancelar</button>
+              <button class="btn btn-primary" [disabled]="selectedProductIds.size === 0" (click)="saveProductsSelection()">Guardar</button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Devices Selection Modal -->
+      @if (showDevicesModal) {
+        <div class="modal-overlay">
+          <div class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2 class="modal-title">💻 Seleccionar Dispositivos</h2>
+              <button (click)="closeDevicesModal()" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body space-y-3">
+              <div>
+                <input type="text" class="form-input" placeholder="Buscar dispositivos..." [(ngModel)]="deviceSearchText" (input)="filterDevicesList()" />
+              </div>
+              <div class="max-h-80 overflow-auto divide-y">
+                <div *ngFor="let device of filteredDevices" class="py-3 px-2 hover:bg-gray-50">
+                  <div class="flex items-center justify-between">
+                    <div class="min-w-0 pr-4 flex-1">
+                      <div class="font-medium">{{ device.brand }} {{ device.model }}</div>
+                      <div class="text-xs text-gray-500">
+                        <span *ngIf="device.serial_number">SN: {{ device.serial_number }}</span>
+                        <span *ngIf="device.imei"> • IMEI: {{ device.imei }}</span>
+                      </div>
+                      <div class="flex gap-2 mt-1">
+                        <span *ngIf="device.status" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                              [ngClass]="{
+                                'bg-gray-100 text-gray-800': device.status === 'received',
+                                'bg-blue-100 text-blue-800': device.status === 'in_progress',
+                                'bg-green-100 text-green-800': device.status === 'completed',
+                                'bg-purple-100 text-purple-800': device.status === 'delivered',
+                                'bg-red-100 text-red-800': device.status === 'cancelled'
+                              }">
+                          {{ device.status }}
+                        </span>
+                        <span *ngIf="linkedDeviceIds.has(device.id)" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                          <i class="fas fa-link mr-1"></i> Ya vinculado
+                        </span>
+                      </div>
+                    </div>
+                    <div class="pl-3">
+                      <input type="checkbox" [checked]="selectedDeviceIds.has(device.id)" (change)="toggleDeviceSelection(device)" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer flex justify-end space-x-2 p-2">
+              <button class="btn btn-secondary" (click)="closeDevicesModal()">Cancelar</button>
+              <button class="btn btn-primary" (click)="saveDevicesSelection()">Guardar</button>
+            </div>
+          </div>
+        </div>
+      }
   `
 })
 export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
@@ -596,6 +769,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   error: string | null = null;
   ticket: Ticket | null = null;
   ticketServices: any[] = [];
+  ticketProducts: any[] = [];
   ticketDevices: Device[] = [];
   // All devices for the ticket's company (authoritative)
   companyDevices: Device[] = [];
@@ -633,6 +807,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private ticketsService = inject(SupabaseTicketsService);
   private servicesService = inject(SupabaseServicesService);
   private devicesService = inject(DevicesService);
+  private productsService = inject(ProductsService);
   private ticketModalService = inject(TicketModalService);
   private sanitizer = inject(DomSanitizer);
   private quotesService = inject(SupabaseQuotesService);
@@ -648,6 +823,24 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   filteredServices: any[] = [];
   serviceSearchText = '';
   selectedServiceIds: Set<string> = new Set();
+  
+  // Products Selection Modal state
+  showProductsModal = false;
+  productsCatalog: any[] = [];
+  filteredProducts: any[] = [];
+  productSearchText = '';
+  selectedProductIds: Set<string> = new Set();
+  tempProductQuantities: Map<string, number> = new Map();
+  
+  // Devices Selection Modal state
+  showDevicesModal = false;
+  availableDevices: Device[] = [];
+  filteredDevices: Device[] = [];
+  deviceSearchText = '';
+  selectedDeviceIds: Set<string> = new Set();
+  
+  // History management for modals
+  private popStateListener: any = null;
   // Keep quantities for selected services
   selectedServiceQuantities: Map<string, number> = new Map();
 
@@ -657,6 +850,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   // Track saving state per assigned service id when persisting inline quantity edits
   savingAssignedServiceIds: Set<string> = new Set();
+  
+  // Tab management for content organization
+  activeTab: 'services' | 'products' | 'devices' | 'comments' = 'services';
 
   // TipTap Editor
   editor: Editor | null = null;
@@ -1392,6 +1588,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       } catch {}
 
       await this.loadTicketServices();
+      
+      // Cargar productos del ticket
+      await this.loadTicketProducts();
       
       // Cargar tags del ticket
       await this.loadTicketTags();
@@ -2138,5 +2337,263 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (typeof item?.total_price === 'number') return item.total_price;
     const qty = Math.max(1, Number(item?.quantity || 1));
     return this.getUnitPrice(item) * qty;
+  }
+
+  // ============================================
+  // PRODUCTS MANAGEMENT
+  // ============================================
+  
+  async openProductsModal() {
+    try {
+      this.showProductsModal = true;
+      document.body.classList.add('modal-open');
+      
+      // Add to history for back button
+      history.pushState({ modal: 'products-modal' }, '');
+      if (!this.popStateListener) {
+        this.popStateListener = (event: PopStateEvent) => {
+          if (this.showProductsModal) this.closeProductsModal();
+          else if (this.showServicesModal) this.closeServicesModal();
+          else if (this.showDevicesModal) this.closeDevicesModal();
+        };
+        window.addEventListener('popstate', this.popStateListener);
+      }
+      
+      // Load products catalog
+      this.productsService.getProducts().subscribe({
+        next: (products) => {
+          this.productsCatalog = products || [];
+          this.filteredProducts = [...this.productsCatalog];
+          
+          // Pre-select currently assigned products
+          this.selectedProductIds.clear();
+          this.tempProductQuantities.clear();
+          for (const item of this.ticketProducts || []) {
+            if (item.product?.id) {
+              this.selectedProductIds.add(item.product.id);
+              this.tempProductQuantities.set(item.product.id, item.quantity || 1);
+            }
+          }
+        },
+        error: (err) => {
+          console.error('Error loading products:', err);
+          this.showToast('Error cargando productos', 'error');
+        }
+      });
+    } catch (err) {
+      console.error('Error opening products modal:', err);
+    }
+  }
+
+  closeProductsModal() {
+    this.showProductsModal = false;
+    document.body.classList.remove('modal-open');
+    if (window.history.state && window.history.state.modal) {
+      window.history.back();
+    }
+  }
+
+  filterProductsList() {
+    if (!this.productSearchText.trim()) {
+      this.filteredProducts = [...this.productsCatalog];
+      return;
+    }
+    const search = this.productSearchText.toLowerCase();
+    this.filteredProducts = this.productsCatalog.filter(p =>
+      p.name?.toLowerCase().includes(search) ||
+      p.brand?.toLowerCase().includes(search) ||
+      p.category?.toLowerCase().includes(search)
+    );
+  }
+
+  toggleProductSelection(product: any) {
+    const id = product?.id;
+    if (!id) return;
+    if (this.selectedProductIds.has(id)) {
+      this.selectedProductIds.delete(id);
+      this.tempProductQuantities.delete(id);
+    } else {
+      this.selectedProductIds.add(id);
+      this.tempProductQuantities.set(id, 1);
+    }
+  }
+
+  getProductQuantity(product: any): number {
+    return this.tempProductQuantities.get(product?.id) || 1;
+  }
+
+  setProductQuantity(product: any, qty: number) {
+    const n = Math.max(1, Math.floor(Number(qty) || 1));
+    this.tempProductQuantities.set(product?.id, n);
+  }
+
+  increaseProductQty(product: any) {
+    this.setProductQuantity(product, this.getProductQuantity(product) + 1);
+  }
+
+  decreaseProductQty(product: any) {
+    this.setProductQuantity(product, Math.max(1, this.getProductQuantity(product) - 1));
+  }
+
+  async saveProductsSelection() {
+    if (!this.ticket) return;
+    try {
+      // Build items array
+      const items = Array.from(this.selectedProductIds).map(productId => ({
+        product_id: productId,
+        quantity: this.tempProductQuantities.get(productId) || 1
+      }));
+      
+      // Get company ID
+      const companyId = String((this.ticket as any).company_id || (this.ticket as any).company?.id || '');
+      
+      // Use tickets service to save products
+      await this.ticketsService.replaceTicketProducts(this.ticket.id, companyId, items);
+      await this.loadTicketProducts();
+      
+      this.closeProductsModal();
+      this.showToast('Productos actualizados correctamente', 'success');
+    } catch (err: any) {
+      console.error('Error saving products:', err);
+      this.showToast('Error guardando productos: ' + (err?.message || ''), 'error');
+    }
+  }
+
+  async loadTicketProducts() {
+    if (!this.ticket) return;
+    try {
+      const { data, error } = await this.supabase.getClient()
+        .from('ticket_products')
+        .select('*, product:products(*)')
+        .eq('ticket_id', this.ticket.id);
+      
+      if (error) throw error;
+      this.ticketProducts = data || [];
+    } catch (err) {
+      console.error('Error loading ticket products:', err);
+      this.ticketProducts = [];
+    }
+  }
+
+  getProductUnitPrice(item: any): number {
+    return item?.price_per_unit ?? item?.product?.price ?? 0;
+  }
+
+  getProductLineTotal(item: any): number {
+    const qty = Math.max(1, Number(item?.quantity || 1));
+    return this.getProductUnitPrice(item) * qty;
+  }
+
+  async removeProductFromTicket(productId: string) {
+    if (!this.ticket || !confirm('¿Eliminar este producto del ticket?')) return;
+    try {
+      const { error } = await this.supabase.getClient()
+        .from('ticket_products')
+        .delete()
+        .eq('ticket_id', this.ticket.id)
+        .eq('product_id', productId);
+      
+      if (error) throw error;
+      await this.loadTicketProducts();
+      this.showToast('Producto eliminado', 'success');
+    } catch (err: any) {
+      console.error('Error removing product:', err);
+      this.showToast('Error eliminando producto', 'error');
+    }
+  }
+
+  // ============================================
+  // DEVICES MANAGEMENT
+  // ============================================
+  
+  async openDevicesModal() {
+    try {
+      this.showDevicesModal = true;
+      document.body.classList.add('modal-open');
+      
+      // Add to history
+      history.pushState({ modal: 'devices-modal' }, '');
+      if (!this.popStateListener) {
+        this.popStateListener = (event: PopStateEvent) => {
+          if (this.showDevicesModal) this.closeDevicesModal();
+          else if (this.showProductsModal) this.closeProductsModal();
+          else if (this.showServicesModal) this.closeServicesModal();
+        };
+        window.addEventListener('popstate', this.popStateListener);
+      }
+      
+      // Load available devices
+      this.availableDevices = [...this.companyDevices];
+      this.filteredDevices = [...this.availableDevices];
+      
+      // Pre-select linked devices
+      this.selectedDeviceIds = new Set(this.linkedDeviceIds);
+    } catch (err) {
+      console.error('Error opening devices modal:', err);
+    }
+  }
+
+  closeDevicesModal() {
+    this.showDevicesModal = false;
+    document.body.classList.remove('modal-open');
+    if (window.history.state && window.history.state.modal) {
+      window.history.back();
+    }
+  }
+
+  filterDevicesList() {
+    if (!this.deviceSearchText.trim()) {
+      this.filteredDevices = [...this.availableDevices];
+      return;
+    }
+    const search = this.deviceSearchText.toLowerCase();
+    this.filteredDevices = this.availableDevices.filter(d =>
+      d.brand?.toLowerCase().includes(search) ||
+      d.model?.toLowerCase().includes(search) ||
+      d.device_type?.toLowerCase().includes(search) ||
+      d.imei?.toLowerCase().includes(search)
+    );
+  }
+
+  toggleDeviceSelection(device: Device) {
+    const id = device?.id;
+    if (!id) return;
+    if (this.selectedDeviceIds.has(id)) {
+      this.selectedDeviceIds.delete(id);
+    } else {
+      this.selectedDeviceIds.add(id);
+    }
+  }
+
+  async saveDevicesSelection() {
+    if (!this.ticket) return;
+    try {
+      // Delete all existing links
+      await this.supabase.getClient()
+        .from('ticket_devices')
+        .delete()
+        .eq('ticket_id', this.ticket.id);
+      
+      // Insert new links
+      if (this.selectedDeviceIds.size > 0) {
+        const links = Array.from(this.selectedDeviceIds).map(deviceId => ({
+          ticket_id: this.ticket!.id,
+          device_id: deviceId
+        }));
+        
+        const { error } = await this.supabase.getClient()
+          .from('ticket_devices')
+          .insert(links);
+        
+        if (error) throw error;
+      }
+      
+      await this.loadTicketDevices();
+      this.closeDevicesModal();
+      this.showToast('Dispositivos actualizados correctamente', 'success');
+    } catch (err: any) {
+      console.error('Error saving devices:', err);
+      this.showToast('Error guardando dispositivos: ' + (err?.message || ''), 'error');
+    }
   }
 }
