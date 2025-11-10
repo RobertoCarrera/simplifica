@@ -10,6 +10,7 @@ import { Customer } from '../../../models/customer';
 import { CreateQuoteDTO, CreateQuoteItemDTO, QuoteItem } from '../../../models/quote.model';
 import { debounceTime } from 'rxjs/operators';
 import { SupabaseSettingsService, type AppSettings, type CompanySettings } from '../../../services/supabase-settings.service';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../../services/toast.service';
 
@@ -91,6 +92,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private settingsService = inject(SupabaseSettingsService);
+  private modulesService = inject(SupabaseModulesService);
   private toast = inject(ToastService);
 
   quoteForm!: FormGroup;
@@ -194,6 +196,16 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   // Preview
   showPreview = signal(false);
 
+  // Server-side allowed modules set for this user/company
+  allowedModuleKeysSet = signal<Set<string> | null>(null);
+
+  productModuleEnabled(): boolean {
+    const s = this.allowedModuleKeysSet();
+    // If modules not loaded yet, be conservative and treat as disabled
+    if (!s) return false;
+    return s.has('moduloMaterial');
+  }
+
   // Sticky sidebar handling
   @ViewChild('rightCol') rightCol!: ElementRef<HTMLDivElement>;
   @ViewChild('summaryAside') summaryAside!: ElementRef<HTMLElement>;
@@ -217,6 +229,19 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         this.editMode.set(true);
         this.quoteId.set(params['id']);
         this.loadQuote(params['id']);
+      }
+    });
+
+    // Load effective modules and build allowed set
+    this.modulesService.fetchEffectiveModules().subscribe({
+      next: (mods) => {
+        const allowed = new Set(mods.filter((m: any) => m.enabled).map((m: any) => m.key));
+        this.allowedModuleKeysSet.set(allowed);
+      },
+      error: (e) => {
+        console.warn('No se pudieron cargar los módulos efectivos (quotes):', e);
+        // mark as loaded with empty set -> modules disabled
+        this.allowedModuleKeysSet.set(new Set());
       }
     });
   }
@@ -804,7 +829,14 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   selectVariant(variant: ServiceVariant, itemIndex: number) {
     const item = this.items.at(itemIndex);
     // Compute unit price respecting settings
-    const base = Number(variant.base_price || 0);
+    // Prefer new pricing array (first element) when available, otherwise fall back to deprecated base_price
+    let base = 0;
+    if (Array.isArray((variant as any).pricing) && (variant as any).pricing.length > 0) {
+      const p = (variant as any).pricing[0];
+      base = Number(p?.base_price ?? variant.base_price ?? 0);
+    } else {
+      base = Number(variant.base_price || 0);
+    }
     const taxRate = this.ivaEnabled() ? this.ivaRate() : 0;
     const finalUnit = (this.pricesIncludeTax() && this.ivaEnabled() && taxRate > 0)
       ? Math.round(base * (1 + taxRate / 100) * 100) / 100
@@ -1111,6 +1143,38 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
 
   formatCurrency(amount: number): string {
     return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount);
+  }
+
+  /**
+   * Return a numeric base price to display for a variant.
+   * Prefers the first entry in the new `pricing` array when present,
+   * otherwise falls back to the deprecated `base_price` field.
+   */
+  getVariantDisplayPrice(variant: ServiceVariant): number {
+    try {
+      if (Array.isArray((variant as any).pricing) && (variant as any).pricing.length > 0) {
+        const p = (variant as any).pricing[0];
+        return Number(p?.base_price ?? variant.base_price ?? 0);
+      }
+      return Number(variant.base_price ?? 0);
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * Return the billing_period for display for a variant.
+   * Prefers the first pricing entry's billing_period when available.
+   */
+  getVariantBillingPeriod(variant: ServiceVariant): string {
+    try {
+      if (Array.isArray((variant as any).pricing) && (variant as any).pricing.length > 0) {
+        return (variant as any).pricing[0].billing_period || variant.billing_period || 'one-time';
+      }
+      return variant.billing_period || 'one-time';
+    } catch {
+      return 'one-time';
+    }
   }
 
   private async loadTaxSettings() {
