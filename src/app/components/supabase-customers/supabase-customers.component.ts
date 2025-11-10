@@ -63,6 +63,9 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
   showForm = signal(false);
   selectedCustomer = signal<Customer | null>(null);
   
+  // History management for modals
+  private popStateListener: any = null;
+  
   // GDPR signals
   gdprPanelVisible = signal(false);
   complianceStats = signal<any>(null);
@@ -385,6 +388,12 @@ onMappingConfirmed(mappings: any[]): void {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
+    
+    // Limpiar listener de popstate
+    if (this.popStateListener) {
+      window.removeEventListener('popstate', this.popStateListener);
+      this.popStateListener = null;
+    }
   }
 
   // Open invite modal prefilled with customer email
@@ -782,6 +791,19 @@ onMappingConfirmed(mappings: any[]): void {
     this.selectedCustomer.set(null);
     this.showForm.set(true);
     
+    // Añadir entrada al historial para que el botón "atrás" cierre el modal
+    history.pushState({ modal: 'customer-form' }, '');
+    
+    // Configurar listener de popstate si no existe
+    if (!this.popStateListener) {
+      this.popStateListener = (event: PopStateEvent) => {
+        if (this.showForm()) {
+          this.closeForm();
+        }
+      };
+      window.addEventListener('popstate', this.popStateListener);
+    }
+    
     // Bloquear scroll de la página principal de forma más agresiva
     document.body.classList.add('modal-open');
     document.body.style.overflow = 'hidden';
@@ -798,6 +820,20 @@ onMappingConfirmed(mappings: any[]): void {
     // ensure dropdowns are closed on open
     this.viaDropdownOpen = false;
     this.localityDropdownOpen = false;
+    
+    // Añadir entrada al historial para que el botón "atrás" cierre el modal
+    history.pushState({ modal: 'customer-form' }, '');
+    
+    // Configurar listener de popstate si no existe
+    if (!this.popStateListener) {
+      this.popStateListener = (event: PopStateEvent) => {
+        if (this.showForm()) {
+          this.closeForm();
+        }
+      };
+      window.addEventListener('popstate', this.popStateListener);
+    }
+    
     // Prefill dirección: try customer's linked direccion_id first; if absent, fallback to latest for current auth user
     try {
       const direccionId = (customer as any).direccion_id;
@@ -888,6 +924,11 @@ onMappingConfirmed(mappings: any[]): void {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
+    
+    // Retroceder en el historial solo si hay entrada de modal
+    if (window.history.state && window.history.state.modal) {
+      window.history.back();
+    }
   }
 
   saveCustomer() {

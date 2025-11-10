@@ -43,6 +43,9 @@ export class ProductsComponent implements OnInit, OnDestroy {
 
   private productsService = inject(ProductsService);
   private productMetadataService = inject(ProductMetadataService);
+  
+  // History management for modals
+  private popStateListener: any = null;
 
   // Helpers to mimic Services modal behavior (prevent background scroll and hide bottom nav)
   private lockBody() {
@@ -79,6 +82,12 @@ export class ProductsComponent implements OnInit, OnDestroy {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
+    
+    // Limpiar listener de popstate
+    if (this.popStateListener) {
+      window.removeEventListener('popstate', this.popStateListener);
+      this.popStateListener = null;
+    }
   }
 
   async loadProducts() {
@@ -203,6 +212,11 @@ export class ProductsComponent implements OnInit, OnDestroy {
     this.showBrandInput = false;
     this.showCategoryInput = false;
     this.unlockBody();
+    
+    // Retroceder en el historial solo si hay entrada de modal
+    if (window.history.state && window.history.state.modal) {
+      window.history.back();
+    }
   }
 
   toggleForm() {
@@ -219,6 +233,20 @@ export class ProductsComponent implements OnInit, OnDestroy {
     this.showNewProductForm = true;
     this.loadBrands();
     this.loadCategories();
+    
+    // Añadir entrada al historial para que el botón "atrás" cierre el modal
+    history.pushState({ modal: 'product-form' }, '');
+    
+    // Configurar listener de popstate si no existe
+    if (!this.popStateListener) {
+      this.popStateListener = (event: PopStateEvent) => {
+        if (this.showNewProductForm) {
+          this.resetForm();
+        }
+      };
+      window.addEventListener('popstate', this.popStateListener);
+    }
+    
     this.lockBody();
   }
 

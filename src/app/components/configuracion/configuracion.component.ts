@@ -46,6 +46,9 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
   private _modalOriginalParent: Node | null = null;
   private _modalNextSibling: Node | null = null;
   
+  // History management for modals
+  private popStateListener: any = null;
+  
   // Dev setup properties
   isSettingUpDev = false;
   devMessages: Array<{type: string, text: string, timestamp: Date}> = [];
@@ -140,6 +143,12 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
+    
+    // Limpiar listener de popstate
+    if (this.popStateListener) {
+      window.removeEventListener('popstate', this.popStateListener);
+      this.popStateListener = null;
+    }
   }
 
   private loadUserProfile() {
@@ -332,6 +341,20 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     if (!this.editingUnit) {
       this.unitForm.reset({ name: '', code: '', description: '', is_active: true });
     }
+    
+    // Añadir entrada al historial para que el botón "atrás" cierre el modal
+    history.pushState({ modal: 'unit-form' }, '');
+    
+    // Configurar listener de popstate si no existe
+    if (!this.popStateListener) {
+      this.popStateListener = (event: PopStateEvent) => {
+        if (this.showUnitModal) {
+          this.closeUnitModal();
+        }
+      };
+      window.addEventListener('popstate', this.popStateListener);
+    }
+    
     // prevent background scroll while modal open
     document.body.classList.add('modal-open');
     document.body.style.overflow = 'hidden';
@@ -355,6 +378,11 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     this.showUnitModal = false;
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
+    
+    // Retroceder en el historial solo si hay entrada de modal
+    if (window.history.state && window.history.state.modal) {
+      window.history.back();
+    }
 
     // restore modal to its original location in the DOM if we moved it
     try {

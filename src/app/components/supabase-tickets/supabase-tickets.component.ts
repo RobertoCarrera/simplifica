@@ -82,6 +82,9 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   editingTicket: Ticket | null = null;
   formData: Partial<Ticket> = {};
   
+  // History management for modals
+  private popStateListener: any = null;
+  
   // Services management
   availableServices: Service[] = [];
   filteredServices: Service[] = [];
@@ -301,6 +304,12 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
+    
+    // Limpiar listener de popstate
+    if (this.popStateListener) {
+      window.removeEventListener('popstate', this.popStateListener);
+      this.popStateListener = null;
+    }
   }
 
   private async loadCompanies() {
@@ -945,6 +954,23 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     
     this.showForm = true;
     
+    // Añadir entrada al historial para que el botón "atrás" cierre el modal
+    history.pushState({ modal: 'ticket-form' }, '');
+    
+    // Configurar listener de popstate si no existe
+    if (!this.popStateListener) {
+      this.popStateListener = (event: PopStateEvent) => {
+        if (this.showProductForm) {
+          this.closeProductForm();
+        } else if (this.showServiceForm) {
+          this.closeServiceForm();
+        } else if (this.showForm) {
+          this.closeForm();
+        }
+      };
+      window.addEventListener('popstate', this.popStateListener);
+    }
+    
     // Bloquear scroll de la página principal de forma más agresiva
     document.body.classList.add('modal-open');
     document.body.style.overflow = 'hidden';
@@ -971,6 +997,11 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
+    
+    // Retroceder en el historial solo si hay entrada de modal
+    if (window.history.state && window.history.state.modal) {
+      window.history.back();
+    }
   }
 
   // Services management methods
@@ -1100,11 +1131,19 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     this.loadCategories();
     
     this.showProductForm = true;
+    
+    // Añadir entrada al historial para modales anidados
+    history.pushState({ modal: 'product-form' }, '');
   }
 
   closeProductForm() {
     this.showProductForm = false;
     this.productFormData = {};
+    
+    // Retroceder en el historial solo si hay entrada de modal
+    if (window.history.state && window.history.state.modal) {
+      window.history.back();
+    }
   }
 
   async createProductFromTicket() {
@@ -1438,11 +1477,19 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       company_id: this.selectedCompanyId
     };
     this.showServiceForm = true;
+    
+    // Añadir entrada al historial para modales anidados
+    history.pushState({ modal: 'service-form' }, '');
   }
 
   closeServiceForm() {
     this.showServiceForm = false;
     this.serviceFormData = {};
+    
+    // Retroceder en el historial solo si hay entrada de modal
+    if (window.history.state && window.history.state.modal) {
+      window.history.back();
+    }
   }
 
   async createServiceFromTicket() {

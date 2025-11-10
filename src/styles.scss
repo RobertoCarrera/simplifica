@@ -420,6 +420,32 @@ html, body {
   }
 }
 
+/* PWA specific adjustment - when running as standalone app */
+@media all and (display-mode: standalone) {
+  .fab-button {
+    /* En PWA, el menú inferior ocupa más espacio, así que subimos el botón */
+    bottom: 90px !important;
+  }
+  
+  @media (max-width: 768px) {
+    .fab-button {
+      /* En mobile PWA necesitamos aún más espacio */
+      bottom: 100px !important;
+    }
+  }
+  
+  /* Ajuste para botones flotantes que usan Tailwind bottom-8 (32px) */
+  .fixed.bottom-8 {
+    bottom: 90px !important;
+  }
+  
+  @media (max-width: 768px) {
+    .fixed.bottom-8 {
+      bottom: 100px !important;
+    }
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   .fab-button {
     background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);

@@ -113,6 +113,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   // Units of measure for dynamic select
   units: UnitOfMeasure[] = [];
   unitsLoaded = false;
+  
+  // History management for modals
+  private popStateListener: any = null;
 
   ngOnInit() {
     this.loadCompanies().then(() => {
@@ -142,6 +145,12 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
+    
+    // Limpiar listener de popstate
+    if (this.popStateListener) {
+      window.removeEventListener('popstate', this.popStateListener);
+      this.popStateListener = null;
+    }
   }
 
   async loadCompanies() {
@@ -504,6 +513,19 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.loadServiceTags();
     this.loadUnits();
     
+    // Añadir entrada al historial para que el botón "atrás" cierre el modal
+    history.pushState({ modal: 'service-form' }, '');
+    
+    // Configurar listener de popstate si no existe
+    if (!this.popStateListener) {
+      this.popStateListener = (event: PopStateEvent) => {
+        if (this.showForm) {
+          this.closeForm();
+        }
+      };
+      window.addEventListener('popstate', this.popStateListener);
+    }
+    
     // Bloquear scroll de la página principal de forma más agresiva
     document.body.classList.add('modal-open');
     document.body.style.overflow = 'hidden';
@@ -543,6 +565,11 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     document.documentElement.style.overflow = '';
     // Restaurar control dinámico del scrollbar
     this.adjustRootScroll();
+    
+    // Retroceder en el historial solo si hay entrada de modal
+    if (window.history.state && window.history.state.modal) {
+      window.history.back();
+    }
   }
 
   validateForm(): boolean {
