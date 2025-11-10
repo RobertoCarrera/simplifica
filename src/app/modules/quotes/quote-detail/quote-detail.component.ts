@@ -311,6 +311,49 @@ export class QuoteDetailComponent implements OnInit {
     return map[period] || period;
   }
 
+  // Normalize known billing period values to a canonical key used for comparison
+  private normalizeBillingPeriod(period?: string | null): string | null {
+    if (!period) return null;
+    const p = period.toString().toLowerCase();
+    if (p === 'one-time' || p === 'one_time' || p === 'one time' || p === 'one') return 'one_time';
+    if (p === 'monthly' || p === 'month') return 'monthly';
+    if (p === 'quarterly' || p === 'quarter') return 'quarterly';
+    if (p === 'annually' || p === 'annual' || p === 'yearly' || p === 'year') return 'annual';
+    if (p === 'custom') return 'custom';
+    return p;
+  }
+
+  /**
+   * Determine a single label for the quote billing period.
+   * - If no items have billing_period -> null (the template won't show the row)
+   * - If all items with billing_period share the same normalized period -> return its label
+   * - Otherwise return 'Mixta'
+   */
+  getQuoteBillingPeriodLabel(): string | null {
+    const q = this.quote();
+    if (!q || !q.items || !q.items.length) return null;
+    const periods = new Set<string>();
+    for (const it of q.items) {
+      const norm = this.normalizeBillingPeriod((it as any).billing_period);
+      if (norm) periods.add(norm);
+    }
+    if (periods.size === 0) return null;
+    if (periods.size === 1) {
+      // single period -> map back to label
+      const only = Array.from(periods)[0];
+      // map canonical keys to labels (reuse getBillingPeriodLabel keys)
+      switch (only) {
+        case 'one_time': return this.getBillingPeriodLabel('one_time') || 'Pago único';
+        case 'monthly': return this.getBillingPeriodLabel('monthly') || 'Mensual';
+        case 'quarterly': return this.getBillingPeriodLabel('quarterly') || 'Trimestral';
+        case 'annual': return this.getBillingPeriodLabel('annual') || 'Anual';
+        case 'custom': return this.getBillingPeriodLabel('custom') || 'Personalizado';
+        default: return this.getBillingPeriodLabel(only) || only;
+      }
+    }
+    return 'Mixta';
+  }
+
   extractVariantName(item: QuoteItem): string | null {
     try {
       const anyItem: any = item as any;

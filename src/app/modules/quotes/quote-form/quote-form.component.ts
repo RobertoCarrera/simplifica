@@ -1001,6 +1001,15 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       variant_id: variant.id,
       service_id: variant.service_id
     };
+    // Auto-fill description from service when empty (do not overwrite custom text)
+    try {
+      const existingDesc = (item.get('description')?.value || '').toString().trim();
+      if (!existingDesc) {
+        const svc = this.services().find(s => s.id === variant.service_id);
+        const baseDesc = svc ? (svc.description || svc.name) : '';
+        if (baseDesc) patchObj.description = baseDesc;
+      }
+    } catch {}
     // Do NOT modify description anymore; keep it strictly as service description or user custom text.
     // (If empty, we leave it empty so backfill can supply service description later.)
     item.patchValue(patchObj);
@@ -1028,12 +1037,22 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     const item = this.items.at(itemIndex);
     const period = pricing?.billing_period || null;
     const unit = Number(pricing?.base_price ?? 0);
-    item.patchValue({
+    // If description is empty, auto-fill from service
+    const toPatch: any = {
       unit_price: unit,
       variant_id: variant.id,
       service_id: variant.service_id,
       billing_period: this.normalizeBillingPeriod(period)
-    });
+    };
+    try {
+      const existing = (item.get('description')?.value || '').toString().trim();
+      if (!existing) {
+        const svc = this.services().find(s => s.id === variant.service_id);
+        const baseDesc = svc ? (svc.description || svc.name) : '';
+        if (baseDesc) toPatch.description = baseDesc;
+      }
+    } catch {}
+    item.patchValue(toPatch);
     // Refresco explícito del control para evitar que se quede mostrando 0
     const unitCtrl = item.get('unit_price');
     if (unitCtrl) {
