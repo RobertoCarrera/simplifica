@@ -28,53 +28,53 @@ import Placeholder from '@tiptap/extension-placeholder';
   imports: [CommonModule, FormsModule],
   styleUrls: ['./ticket-detail.component.scss'],
   template: `
-    <div class="min-h-screen bg-gray-50">
+    <div class="min-h-0 bg-gray-50 dark:bg-gray-900">
       <div class="mx-auto px-4">
         
         <!-- Header con navegación -->
-        <div class="mb-6 flex justify-between items-center">
+        <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 mb-6 flex justify-between items-center">
           <button (click)="goBack()" 
-                  class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-            ← Volver a Tickets
+                  class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i>
+            Volver a Tickets
           </button>
           
           <!-- Quick Actions -->
-          <div *ngIf="!loading && !error && ticket" class="flex space-x-2">
-            <!-- <button (click)="updateHours()" 
-                    class="w-full px-4 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-md hover:bg-green-100">
-              ⏱️ Actualizar Horas
-            </button> -->
-      <button (click)="convertToQuoteFromTicket()"
-        [disabled]="!ticket || ticketServices.length === 0 || !(ticket && ticket.client && ticket.client.id)"
-                    class="w-full px-2 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed">
-              {{ activeQuoteId ? 'Ir a Presupuesto' : '🧾 Convertir en Presupuesto' }}
+          <div *ngIf="!loading && !error && ticket" class="flex gap-3">
+            <button (click)="convertToQuoteFromTicket()"
+                    [disabled]="!ticket || ticketServices.length === 0 || !(ticket && ticket.client && ticket.client.id)"
+                    class="btn btn-primary">
+              <i class="fas fa-file-invoice"></i>
+              {{ activeQuoteId ? 'Ir a Presupuesto' : 'Convertir en Presupuesto' }}
             </button>
             <button (click)="printTicket()" 
-                    class="w-full px-2 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100">
-              🖨️ Imprimir
+                    class="btn btn-secondary">
+              <i class="fas fa-print"></i>
+              Imprimir
             </button>
             <button (click)="deleteTicket()" 
-                    class="w-full inline-flex items-center px-2 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700">
-              🗑️ Eliminar
+                    class="btn btn-danger">
+              <i class="fas fa-trash"></i>
+              Eliminar
             </button>
           </div>
         </div>
 
         <!-- Loading State -->
         <div *ngIf="loading" class="text-center py-12">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p class="mt-4 text-gray-600">Cargando ticket...</p>
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+          <p class="mt-4 text-gray-600 dark:text-gray-400">Cargando ticket...</p>
         </div>
 
         <!-- Error State -->
-        <div *ngIf="error" class="bg-red-50 border border-red-200 rounded-lg p-6">
+        <div *ngIf="error" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-6">
           <div class="flex">
             <div class="flex-shrink-0">
-              <span class="text-red-600 text-xl">❌</span>
+              <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-xl"></i>
             </div>
             <div class="ml-3">
-              <h3 class="text-sm font-medium text-red-800">Error</h3>
-              <p class="mt-1 text-sm text-red-700">{{ error }}</p>
+              <h3 class="text-sm font-medium text-red-800 dark:text-red-300">Error</h3>
+              <p class="mt-1 text-sm text-red-700 dark:text-red-400">{{ error }}</p>
             </div>
           </div>
         </div>
@@ -86,17 +86,19 @@ import Placeholder from '@tiptap/extension-placeholder';
           <div class="space-y-6 lg:col-span-3">
             
             <!-- Ticket Header -->
-            <div class="bg-white shadow rounded-lg p-6">
+            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
               <div class="flex justify-between items-start mb-4">
                 <div>
-                  <h1 class="text-2xl font-bold text-gray-900">
-                    🎫 #{{ ticket.ticket_number }} - {{ ticket.title }}
+                  <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3 mb-2">
+                    <i class="fas fa-ticket-alt text-orange-500"></i>
+                    #{{ ticket.ticket_number }} - {{ ticket.title }}
                   </h1>
-                  <div class="prose prose-sm text-gray-700 mt-2" [innerHTML]="formatDescription(ticket.description)"></div>
+                  <div class="prose prose-sm text-gray-700 dark:text-gray-300 mt-2" [innerHTML]="formatDescription(ticket.description)"></div>
                 </div>
                 <div class="flex flex-col items-end space-y-2">
                   <span [class]="getPriorityClasses(ticket.priority)"
-                        class="px-2 py-1 rounded text-xs font-medium">
+                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium">
+                    <i class="fas {{ getPriorityIcon(ticket.priority) }} w-3"></i>
                     {{ getPriorityLabel(ticket.priority) }}
                   </span>
                 </div>
@@ -105,15 +107,15 @@ import Placeholder from '@tiptap/extension-placeholder';
               <!-- Tags: moved to sidebar -->
               
               <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
-              <div class="flex justify-between text-sm text-gray-600">
+              <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400">
                 <span>Progreso</span>
                 <span>{{ getProgressPercentage() | number:'1.0-0' }}%</span>
               </div>
               <div class="relative">
                   <!-- Progress Bar Background -->
-                  <div class="w-full bg-gray-200 rounded-full h-3 relative">
+                  <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 relative">
                     <div 
-                      class="bg-blue-500 h-3 rounded-full transition-all duration-300"
+                      class="bg-blue-500 dark:bg-blue-600 h-3 rounded-full transition-all duration-300"
                       [style.width.%]="getProgressPercentage()"
                     ></div>
                     
@@ -123,7 +125,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                          [style.left.%]="getStagePosition(i)">
                       <div 
                         [class]="getStageMarkerClass(stage)"
-                        class="w-4 h-4 rounded-full border-2 border-white flex items-center justify-center"
+                        class="w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center"
                         [title]="stage.name"
                       >
                         <div *ngIf="isStageCompleted(stage)" class="w-2 h-2 bg-white rounded-full"></div>
@@ -132,11 +134,12 @@ import Placeholder from '@tiptap/extension-placeholder';
                   </div>
                   
                   <!-- Stage Labels -->
-                  <div class="flex justify-between mt-2 text-xs text-gray-500">
+                  <div class="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400">
                     <div *ngFor="let stage of getVisibleStages(); let i = index" 
                          class="text-center flex-1"
                          [class.font-medium]="stage.id === ticket.stage_id"
-                         [class.text-blue-600]="stage.id === ticket.stage_id">
+                         [class.text-blue-600]="stage.id === ticket.stage_id"
+                         [class.dark:text-blue-400]="stage.id === ticket.stage_id">
                       {{ stage.name }}
                     </div>
                   </div>
@@ -145,42 +148,47 @@ import Placeholder from '@tiptap/extension-placeholder';
             </div>
 
             <!-- Services -->
-            <div class="bg-white shadow rounded-lg p-6">
+            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
               <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-medium text-gray-900">Servicios Asignados</h3>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Servicios Asignados</h3>
                 <button (click)="openServicesModal()"
-                        class="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700">
-                  ✏️ Modificar Servicios
+                        class="btn btn-primary">
+                  <i class="fas fa-wrench"></i>
+                  Modificar Servicios
                 </button>
               </div>
-              <div *ngIf="ticketServices.length === 0" class="text-center py-6 text-gray-500">
-                📭 No hay servicios asignados a este ticket
+              <div *ngIf="ticketServices.length === 0" class="text-center py-6 text-gray-500 dark:text-gray-400">
+                <i class="fas fa-box-open text-4xl mb-3 opacity-50"></i>
+                <p>No hay servicios asignados a este ticket</p>
               </div>
               <div *ngIf="ticketServices.length > 0" class="space-y-4">
                 <div *ngFor="let serviceItem of ticketServices" 
-                     class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                     class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <div class="flex justify-between items-start">
                     <div class="flex-1">
-                      <h4 class="font-medium text-gray-900">{{ serviceItem.service?.name || 'Servicio no especificado' }}</h4>
-                      <p *ngIf="serviceItem.service?.description" class="text-sm text-gray-600 mt-1">
+                      <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ serviceItem.service?.name || 'Servicio no especificado' }}</h4>
+                      <p *ngIf="serviceItem.service?.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
                         {{ serviceItem.service.description }}
                       </p>
-                      <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600">
+                      <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
                         <div class="flex items-center space-x-2">
-                          <div class="flex items-center border rounded-lg overflow-hidden">
-                            <button class="px-2 bg-gray-100" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="decreaseAssignedQty(serviceItem)">-</button>
-                            <input type="number" class="w-16 text-center" [(ngModel)]="serviceItem.quantity" (ngModelChange)="onAssignedQuantityChange(serviceItem, $event)" />
-                            <button class="px-2 bg-gray-100" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="increaseAssignedQty(serviceItem)">+</button>
+                          <div class="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
+                            <button class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="decreaseAssignedQty(serviceItem)">-</button>
+                            <input type="number" class="w-16 text-center bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-x border-gray-300 dark:border-gray-600" [(ngModel)]="serviceItem.quantity" (ngModelChange)="onAssignedQuantityChange(serviceItem, $event)" />
+                            <button class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="increaseAssignedQty(serviceItem)">+</button>
                           </div>
-                          <span *ngIf="savingAssignedServiceIds.has(serviceItem.service?.id)" class="text-xs text-gray-500">Guardando...</span>
+                          <span *ngIf="savingAssignedServiceIds.has(serviceItem.service?.id)" class="text-xs text-gray-500 dark:text-gray-400">Guardando...</span>
                         </div>
-                        <span>⏱️ {{ getLineEstimatedHours(serviceItem) }}h</span>
-                        <span>🏷️ {{ serviceItem.service?.category_name || serviceItem.service?.category || 'Sin categoría' }}</span>
+                        <span><i class="fas fa-clock w-4"></i> {{ getLineEstimatedHours(serviceItem) }}h</span>
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                          <i class="fas fa-tag w-3"></i>
+                          {{ serviceItem.service?.category_name || serviceItem.service?.category || 'Sin categoría' }}
+                        </span>
                       </div>
                     </div>
                     <div class="text-right">
-                      <p class="font-medium text-gray-900">{{ formatPrice(getUnitPrice(serviceItem)) }}</p>
-                      <p class="text-sm text-gray-600">Total: {{ formatPrice(getLineTotal(serviceItem)) }}</p>
+                      <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatPrice(getUnitPrice(serviceItem)) }}</p>
+                      <p class="text-sm text-gray-600 dark:text-gray-400">Total: {{ formatPrice(getLineTotal(serviceItem)) }}</p>
                     </div>
                   </div>
                 </div>
@@ -188,20 +196,20 @@ import Placeholder from '@tiptap/extension-placeholder';
             </div>
 
             <!-- Devices: show devices that belong to the ticket's company -->
-            <div *ngIf="companyDevices.length > 0" class="bg-white shadow rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Dispositivos de la Empresa</h3>
+            <div *ngIf="companyDevices.length > 0" class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Dispositivos de la Empresa</h3>
               <div class="space-y-4">
                 <div *ngFor="let device of companyDevices" 
-                     class="border border-gray-200 rounded-lg p-4 flex justify-between items-start">
+                     class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex justify-between items-start hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <div class="flex-1">
                     <div class="flex items-center space-x-2">
-                      <h4 class="font-medium text-gray-900">{{ device.brand }} {{ device.model }}</h4>
-                      <span *ngIf="isDeviceLinked(device.id)" class="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">Vinculado</span>
+                      <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ device.brand }} {{ device.model }}</h4>
+                      <span *ngIf="isDeviceLinked(device.id)" class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded">Vinculado</span>
                     </div>
-                    <p class="text-sm text-gray-600 mt-1">{{ device.device_type }}</p>
-                    <p *ngIf="device.imei" class="text-sm text-gray-600">IMEI: {{ device.imei }}</p>
-                    <p *ngIf="device.color" class="text-sm text-gray-600">Color: {{ device.color }}</p>
-                    <p class="text-sm text-gray-600 mt-2">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ device.device_type }}</p>
+                    <p *ngIf="device.imei" class="text-sm text-gray-600 dark:text-gray-400">IMEI: {{ device.imei }}</p>
+                    <p *ngIf="device.color" class="text-sm text-gray-600 dark:text-gray-400">Color: {{ device.color }}</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
                       <span class="font-medium">Problema reportado:</span> {{ device.reported_issue }}
                     </p>
                   </div>
@@ -210,15 +218,15 @@ import Placeholder from '@tiptap/extension-placeholder';
                           class="inline-block px-2 py-1 text-xs font-medium rounded">
                       {{ getDeviceStatusLabel(device.status) }}
                     </span>
-                    <p class="text-xs text-gray-500 mt-1">{{ formatDate(device.received_at) }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ formatDate(device.received_at) }}</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- Comments Section -->
-            <div class="bg-white shadow rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Comentarios</h3>
+            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Comentarios</h3>
               
               <!-- Add Comment Form -->
               <div class="mb-6">
@@ -228,7 +236,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                   <div 
                     #editorElement
                     id="editorElement"
-                    class="tiptap-editor w-full p-3 border border-gray-300 rounded-lg min-h-[100px] focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent"
+                    class="tiptap-editor w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[100px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent"
                     (dragover)="onNativeDragOver($event)"
                     (drop)="onNativeDrop($event)"
                   >
@@ -236,38 +244,41 @@ import Placeholder from '@tiptap/extension-placeholder';
                 </div>
                 
                 <div class="mt-2 flex justify-between items-center">
-                  <label class="flex items-center text-sm text-gray-600">
-                    <input type="checkbox" [(ngModel)]="isInternalComment" class="mr-2">
+                  <label class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                    <input type="checkbox" [(ngModel)]="isInternalComment" class="mr-2 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
                     Comentario interno (no visible para el cliente)
                   </label>
                   <div class="flex items-center gap-3">
-                    <span *ngIf="isUploadingImage" class="text-xs text-gray-500">Subiendo imagen...</span>
+                    <span *ngIf="isUploadingImage" class="text-xs text-gray-500 dark:text-gray-400">Subiendo imagen...</span>
                     <button (click)="addComment()" 
                             [disabled]="isUploadingImage || !hasEditorContent()"
-                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-300">
-                      💬 Añadir Comentario
+                            class="btn btn-primary">
+                      <i class="fas fa-comment"></i>
+                      Añadir Comentario
                     </button>
                   </div>
                 </div>
               </div>              <!-- Comments List -->
-              <div *ngIf="comments.length === 0" class="text-center py-6 text-gray-500">
-                💬 No hay comentarios aún
+              <div *ngIf="comments.length === 0" class="text-center py-6 text-gray-500 dark:text-gray-400">
+                <i class="fas fa-comments text-4xl mb-3 opacity-50"></i>
+                <p>No hay comentarios aún</p>
               </div>
               <div *ngIf="comments.length > 0" class="space-y-4">
                 <div *ngFor="let comment of comments" 
-                     [class]="comment.is_internal ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50'"
+                     [class]="comment.is_internal ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700' : 'bg-gray-50 dark:bg-gray-700'"
                      class="rounded-lg p-4 border">
                   <div class="flex justify-between items-start mb-2">
                     <div class="flex items-center space-x-2">
-                      <span class="font-medium text-gray-900">{{ comment.user?.name || 'Usuario' }}</span>
+                      <span class="font-medium text-gray-900 dark:text-gray-100">{{ comment.user?.name || 'Usuario' }}</span>
                       <span *ngIf="comment.is_internal" 
-                            class="px-2 py-1 text-xs bg-yellow-200 text-yellow-800 rounded">
-                        🔒 Interno
+                            class="px-2 py-1 text-xs bg-yellow-200 dark:bg-yellow-800/50 text-yellow-800 dark:text-yellow-200 rounded inline-flex items-center gap-1">
+                        <i class="fas fa-lock w-3"></i>
+                        Interno
                       </span>
                     </div>
-                    <span class="text-xs text-gray-500">{{ formatDate(comment.created_at) }}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
                   </div>
-                  <div class="prose prose-sm max-w-none text-gray-800" [innerHTML]="renderComment(comment.comment)"></div>
+                  <div class="prose prose-sm max-w-none text-gray-800 dark:text-gray-300" [innerHTML]="renderComment(comment.comment)"></div>
                 </div>
               </div>
             </div>
@@ -278,87 +289,88 @@ import Placeholder from '@tiptap/extension-placeholder';
           <div class="space-y-6 lg:col-span-1">
 
             <!-- Client Contact -->
-            <div class="bg-white shadow rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Cliente</h3>
+            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Cliente</h3>
               <div *ngIf="ticket.client as client; else noClientInfo">
-                <div class="text-sm text-gray-700 font-medium">{{ client.name}}</div>
+                <div class="text-sm text-gray-900 dark:text-gray-100 font-medium">{{ client.name}}</div>
                 <div class="mt-3 space-y-2">
                   <div *ngIf="client.email">
-                    <a [href]="'mailto:' + client.email" class="text-sm text-blue-600 underline">{{ client.email }}</a>
+                    <a [href]="'mailto:' + client.email" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">{{ client.email }}</a>
                   </div>
                   <div *ngIf="client.phone" class="flex items-center space-x-2">
-                    <a [href]="'tel:' + client.phone" class="text-sm text-blue-600 underline">{{ client.phone }}</a>
+                    <a [href]="'tel:' + client.phone" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">{{ client.phone }}</a>
                   </div>
                 </div>
               </div>
               <ng-template #noClientInfo>
-                <div class="text-sm text-gray-500">No hay información del cliente</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400">No hay información del cliente</div>
               </ng-template>
             </div>
             
             <!-- Quick Stats -->
-            <div class="bg-white shadow rounded-lg p-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Resumen</h3>
+            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Resumen</h3>
               <div class="space-y-3">
                 <div class="flex justify-between">
-                  <span class="text-sm text-gray-600">Total Servicios:</span>
-                  <span class="text-sm font-medium">{{ formatPrice(calculateServicesTotal()) }}</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">Total Servicios:</span>
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ formatPrice(calculateServicesTotal()) }}</span>
                 </div>
                 <div class="flex justify-between">
-                  <span class="text-sm text-gray-600">Total Ticket:</span>
-                  <span class="text-lg font-bold text-green-600">{{ formatPrice(ticket.total_amount || calculateServicesTotal()) }}</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">Total Ticket:</span>
+                  <span class="text-lg font-bold text-green-600 dark:text-green-400">{{ formatPrice(ticket.total_amount || calculateServicesTotal()) }}</span>
                 </div>
-                <hr>
+                <hr class="border-gray-200 dark:border-gray-700">
                 <div class="flex justify-between">
-                  <span class="text-sm text-gray-600">Horas Estimadas:</span>
-                  <span class="text-sm font-medium">{{ getEstimatedHours() }}h</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">Horas Estimadas:</span>
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ getEstimatedHours() }}h</span>
                 </div>
                 <!-- <div class="flex justify-between">
-                  <span class="text-sm text-gray-600">Horas Reales:</span>
-                  <span class="text-sm font-medium">{{ getActualHours() }}h</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400">Horas Reales:</span>
+                  <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ getActualHours() }}h</span>
                 </div> -->
               </div>
             </div>
 
             <!-- Timeline -->
-            <div class="bg-white shadow rounded-lg p-6">
+            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6">
               <div class="flex justify-between items-center">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Timeline</h3>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Timeline</h3>
               </div>
               <div class="space-y-4">
                 <div class="flex items-start space-x-3">
-                  <div class="flex-shrink-0 w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                  <div class="flex-shrink-0 w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full mt-2"></div>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Ticket creado</p>
-                    <p class="text-xs text-gray-500">{{ formatDate(ticket.created_at) }}</p>
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Ticket creado</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(ticket.created_at) }}</p>
                   </div>
                 </div>
                 
                 <div *ngIf="ticket.updated_at !== ticket.created_at" class="flex items-start space-x-3">
-                  <div class="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div class="flex-shrink-0 w-2 h-2 bg-blue-500 dark:bg-blue-400 rounded-full mt-2"></div>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">Última actualización</p>
-                    <p class="text-xs text-gray-500">{{ formatDate(ticket.updated_at) }}</p>
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Última actualización</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(ticket.updated_at) }}</p>
                   </div>
                 </div>
                 
                 <div *ngFor="let activity of recentActivity" class="flex items-start space-x-3">
-                  <div class="flex-shrink-0 w-2 h-2 bg-gray-400 rounded-full mt-2"></div>
+                  <div class="flex-shrink-0 w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full mt-2"></div>
                   <div>
-                    <p class="text-sm font-medium text-gray-900">{{ activity.action }}</p>
-                    <p class="text-xs text-gray-500">{{ formatDate(activity.created_at) }}</p>
+                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ activity.action }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(activity.created_at) }}</p>
                   </div>
                 </div>
                 <button (click)="changeStage()" 
-                        class="px-1 py-1 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100">
-                  🔄 Cambiar Estado
+                        class="btn btn-secondary">
+                  <i class="fas fa-exchange-alt"></i>
+                  Cambiar Estado
                 </button>
               </div>
             </div>
             <!-- Tags Section (moved from header) -->
-            <div class="bg-white shadow rounded-lg p-6 mt-4">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Tags</h3>
-              <div *ngIf="!ticketTags || ticketTags.length === 0" class="text-sm text-gray-500">No hay tags asignadas</div>
+            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6 mt-4">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Tags</h3>
+              <div *ngIf="!ticketTags || ticketTags.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No hay tags asignadas</div>
               <div *ngIf="ticketTags && ticketTags.length > 0" class="flex flex-wrap gap-2">
                 <span *ngFor="let tag of ticketTags" [style.background-color]="getTagColor(tag)" class="px-2 py-1 rounded text-xs font-medium text-white">{{ tag }}</span>
               </div>
@@ -651,6 +663,62 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   @ViewChild('editorElement', { static: false }) editorElement!: ElementRef;
   private editorTried = false;
   private cdr = inject(ChangeDetectorRef);
+
+  // Unified Badge Configurations (following app style guide)
+  ticketStatusConfig: Record<string, { label: string; classes: string; icon: string }> = {
+    pending: {
+      label: 'En Espera',
+      classes: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+      icon: 'fa-clock'
+    },
+    inProgress: {
+      label: 'En Progreso',
+      classes: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+      icon: 'fa-spinner'
+    },
+    completed: {
+      label: 'Completado',
+      classes: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+      icon: 'fa-check-circle'
+    },
+    cancelled: {
+      label: 'Cancelado',
+      classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+      icon: 'fa-times-circle'
+    }
+  };
+
+  ticketPriorityConfig: Record<string, { label: string; classes: string; icon: string }> = {
+    low: {
+      label: 'Baja',
+      classes: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+      icon: 'fa-arrow-down'
+    },
+    normal: {
+      label: 'Normal',
+      classes: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+      icon: 'fa-minus'
+    },
+    high: {
+      label: 'Alta',
+      classes: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+      icon: 'fa-arrow-up'
+    },
+    urgent: {
+      label: 'Urgente',
+      classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+      icon: 'fa-exclamation-circle'
+    }
+  };
+
+  timelineEventColors: Record<string, string> = {
+    created: 'bg-green-500',
+    updated: 'bg-blue-500',
+    service: 'bg-purple-500',
+    status: 'bg-gray-400 dark:bg-gray-500',
+    comment: 'bg-orange-500',
+    completed: 'bg-green-600'
+  };
 
   // Custom Image extension to carry a temporary id attribute for preview replacement
   private ImageWithTemp = Image.extend({
@@ -1874,18 +1942,18 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   getPriorityClasses(priority?: string): string {
-    const map: any = {
-      low: 'bg-green-100 text-green-800',
-      medium: 'bg-yellow-100 text-yellow-800',
-      high: 'bg-orange-100 text-orange-800',
-      urgent: 'bg-red-100 text-red-800'
-    };
-    return map[priority || 'medium'] || 'bg-gray-100 text-gray-800';
+    const key = priority || 'normal';
+    return this.ticketPriorityConfig[key]?.classes || this.ticketPriorityConfig['normal'].classes;
   }
 
   getPriorityLabel(priority?: string): string {
-    const map: any = { low: 'Baja', medium: 'Media', high: 'Alta', urgent: 'Urgente' };
-    return map[priority || 'medium'] || (priority || '');
+    const key = priority || 'normal';
+    return this.ticketPriorityConfig[key]?.label || this.ticketPriorityConfig['normal'].label;
+  }
+
+  getPriorityIcon(priority?: string): string {
+    const key = priority || 'normal';
+    return this.ticketPriorityConfig[key]?.icon || this.ticketPriorityConfig['normal'].icon;
   }
 
   getTagColor(tagName: string): string {

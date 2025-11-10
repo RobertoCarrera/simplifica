@@ -151,6 +151,30 @@ export class SupabaseTicketsComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private ticketModalService = inject(TicketModalService);
   private devicesService = inject(DevicesService);
+  
+  // Badge configurations
+  ticketPriorityConfig: { [key: string]: { label: string; classes: string; icon: string } } = {
+    low: { 
+      label: 'Baja', 
+      classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300', 
+      icon: 'fa-flag' 
+    },
+    normal: { 
+      label: 'Normal', 
+      classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400', 
+      icon: 'fa-flag' 
+    },
+    high: { 
+      label: 'Alta', 
+      classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400', 
+      icon: 'fa-flag' 
+    },
+    urgent: { 
+      label: 'Crítica', 
+      classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400', 
+      icon: 'fa-flag' 
+    }
+  };
 
   private isValidUuid(id: string | undefined | null): boolean {
     if (!id) return false;
@@ -1688,7 +1712,18 @@ export class SupabaseTicketsComponent implements OnInit {
   }
 
   getPriorityLabel(priority: string): string {
-    return this.ticketsService.getPriorityLabel(priority);
+    const key = (priority || 'normal').toLowerCase();
+    return this.ticketPriorityConfig[key]?.label || this.ticketPriorityConfig['normal'].label;
+  }
+  
+  getPriorityClasses(priority: string): string {
+    const key = (priority || 'normal').toLowerCase();
+    return this.ticketPriorityConfig[key]?.classes || this.ticketPriorityConfig['normal'].classes;
+  }
+  
+  getPriorityIcon(priority: string): string {
+    const key = (priority || 'normal').toLowerCase();
+    return this.ticketPriorityConfig[key]?.icon || this.ticketPriorityConfig['normal'].icon;
   }
 
   formatDate(dateString: string): string {

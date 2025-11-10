@@ -198,6 +198,13 @@ body.modal-open {
     &:hover:not(:disabled) {
       background: #d97706;
     }
+    
+    @media (prefers-color-scheme: dark) {
+      background: #f59e0b;
+      &:hover:not(:disabled) {
+        background: #ea580c;
+      }
+    }
   }
   
   &.btn-secondary {
@@ -207,6 +214,13 @@ body.modal-open {
     &:hover:not(:disabled) {
       background: #4b5563;
     }
+    
+    @media (prefers-color-scheme: dark) {
+      background: #374151;
+      &:hover:not(:disabled) {
+        background: #1f2937;
+      }
+    }
   }
   
   &.btn-danger {
@@ -215,6 +229,13 @@ body.modal-open {
     
     &:hover:not(:disabled) {
       background: #dc2626;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      background: #dc2626;
+      &:hover:not(:disabled) {
+        background: #b91c1c;
+      }
     }
   }
   
