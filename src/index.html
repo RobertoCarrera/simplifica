@@ -88,6 +88,20 @@
         // ignore shim errors
       }
     })();
+      // Dynamic viewport height fix for iOS Safari & modern browsers
+      (function viewportHeightFix(){
+        function setVH(){
+          try {
+            var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+            document.documentElement.style.setProperty('--dvh', vh + 'px');
+          } catch(e) { /* ignore */ }
+        }
+        setVH();
+        window.addEventListener('resize', setVH);
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', setVH);
+        }
+      })();
   </script>
   <app-root></app-root>
 

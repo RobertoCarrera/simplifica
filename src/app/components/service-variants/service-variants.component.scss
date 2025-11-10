@@ -278,16 +278,15 @@
 /* Modal Styles */
 .modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 40; /* Lower than toast (z-50) */
-  padding: 1rem;
+  width: 100vw;
+  height: var(--dvh, 100vh);
+  padding: clamp(12px,4vw,24px) clamp(12px,4vw,24px) max(env(safe-area-inset-bottom), clamp(12px,4vw,24px)) clamp(12px,4vw,24px);
   backdrop-filter: blur(2px); /* Add subtle blur */
 }
 
@@ -296,8 +295,10 @@
   border-radius: 12px;
   width: 100%;
   max-width: 800px;
-  max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(var(--dvh, 100vh) - max(env(safe-area-inset-bottom),20px) - 48px);
+  overflow: hidden;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   z-index: 41; /* Still lower than toast */
 
@@ -332,17 +333,24 @@
 
 .modal-body {
   padding: 1.5rem;
+  flex: 1 1 auto;
+  overflow: auto;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 
   @media (prefers-color-scheme: dark) {
     background: #1e293b;
   }
 }
 
+
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
   padding: 1.5rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
   border-top: 1px solid var(--border-color, #e5e7eb);
 
   @media (prefers-color-scheme: dark) {

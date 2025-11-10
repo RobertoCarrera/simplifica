@@ -5,6 +5,11 @@
   align-items: center;
   justify-content: center;
   z-index: 99999;
+  width: 100vw;
+  height: var(--dvh, 100vh);
+  padding: clamp(12px,4vw,24px) clamp(12px,4vw,24px) max(env(safe-area-inset-bottom), clamp(12px,4vw,24px)) clamp(12px,4vw,24px);
+  background: rgba(15,23,42,0.55);
+  backdrop-filter: blur(4px);
 }
 .app-modal-backdrop {
   position: fixed;
@@ -19,14 +24,50 @@
   position: relative;
   z-index: 100000;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  border-radius: 12px;
+  box-shadow: 0 18px 40px rgba(15,23,42,0.18);
   width: 100%;
   max-width: 640px;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(var(--dvh, 100vh) - max(env(safe-area-inset-bottom),20px) - 48px);
+  overflow: hidden;
   
   @media (prefers-color-scheme: dark) {
-    background: #1e293b;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    background: #0f172a;
+    box-shadow: 0 18px 40px rgba(2,6,23,0.55);
+  }
+  
+  > *:not(:last-child) {
+    /* Ensure children don't overflow horizontally */
+    width: 100%;
+  }
+}
+
+/* Generic body/footer slots inside projected content (if consumer uses .modal-body/.modal-footer naming) */
+.app-modal-panel .modal-body {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: clamp(16px,4vw,24px);
+  padding-bottom: calc(clamp(64px,10vw,88px) + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.app-modal-panel .modal-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: .75rem;
+  padding: .75rem clamp(16px,4vw,24px);
+  padding-bottom: calc(.75rem + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(255,255,255,0.92), #ffffff);
+  border-top: 1px solid rgba(226,232,240,1);
+  backdrop-filter: blur(6px);
+  z-index: 1;
+  @media (prefers-color-scheme: dark) {
+    background: linear-gradient(180deg, rgba(15,23,42,0.92), #0f172a);
+    border-top-color: #334155;
   }
 }
