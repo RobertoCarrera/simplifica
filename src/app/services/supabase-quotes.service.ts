@@ -145,7 +145,7 @@ export class SupabaseQuotesService {
     const { data, error } = await client
       .from('quotes')
       // Disambiguate invoices relationship: use quotes.invoice_id -> invoices.id FK
-      .select('*, client:clients(*), items:quote_items(*), invoice:invoices!quotes_invoice_id_fkey(*)')
+      .select('*, client:clients(*), items:quote_items(*, service:services(id,name,description), variant:service_variants(id,variant_name,pricing)), invoice:invoices!quotes_invoice_id_fkey(*)')
       .eq('id', id)
       .single();
 

@@ -327,6 +327,9 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         zIndex: 40,
         transition: 'top 180ms ease-out, left 180ms ease-out, width 180ms ease-out'
       };
+
+  
+  
     } else {
       this.isFixed = false;
       this.fixedSpacerHeight = 0;
@@ -592,9 +595,10 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
 
         // Cargar items del presupuesto
         if (quote.items && quote.items.length > 0) {
+          console.log('🔍 Items recibidos de BD:', quote.items);
           quote.items.forEach((item: QuoteItem) => {
             const itemGroup = this.createItemFormGroup();
-            itemGroup.patchValue({
+            const patchData = {
               description: item.description,
               quantity: item.quantity,
               // Fallback for legacy data that might use different field names
@@ -606,7 +610,9 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
               product_id: (item as any).product_id || null,
               variant_id: (item as any).variant_id || null,
               billing_period: (item as any).billing_period || null
-            });
+            };
+            console.log('🔍 Datos a patchear en item:', patchData);
+            itemGroup.patchValue(patchData);
             this.items.push(itemGroup);
           });
         } else {
@@ -614,8 +620,12 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
           this.items.push(this.createItemFormGroup());
         }
 
-        // Recheck recurrence lock based on loaded variants
-        this.recheckRecurrenceLock();
+        // Recheck recurrence lock and backfill empty descriptions (ensure services present)
+        (async () => {
+          console.log('🔍 Services disponibles antes de recheck:', this.services().length);
+          await this.recheckRecurrenceLock();
+          await this.backfillEmptyItemDescriptions();
+        })();
         
         this.calculateTotals();
         this.loading.set(false);
@@ -627,6 +637,67 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         this.loading.set(false);
       }
     });
+  }
+
+  /**
+   * If some items come from DB with empty description, fill them using service description/name
+   * and append variant name when available. This improves UX on edit even if legacy rows exist.
+   */
+  private async backfillEmptyItemDescriptions() {
+    for (let i = 0; i < this.items.length; i++) {
+      const grp = this.items.at(i);
+      const current = (grp.get('description')?.value || '').toString().trim();
+      let serviceId = grp.get('service_id')?.value as string | null;
+      const variantId = grp.get('variant_id')?.value as string | null;
+      // Legacy: infer service_id from variant if missing
+      if (!serviceId && variantId) {
+        try {
+          const v = await this.servicesService.getVariantById(variantId);
+          if (v?.service_id) {
+            serviceId = v.service_id;
+            grp.patchValue({ service_id: serviceId });
+          }
+        } catch {}
+      }
+      // Ensure service is loaded if referenced
+      let service: ServiceOption | undefined;
+      if (serviceId) {
+        service = this.services().find(s => s.id === serviceId);
+        if (!service) {
+          try {
+            const s = await this.servicesService.getServiceWithVariants(serviceId);
+            service = {
+              id: s.id,
+              name: s.name,
+              description: s.description,
+              base_price: s.base_price,
+              estimated_hours: s.estimated_hours,
+              category: s.category,
+              has_variants: s.has_variants,
+              variants: (s.variants || []).filter(v => v.is_active).sort((a, b) => a.sort_order - b.sort_order)
+            } as ServiceOption;
+            const map = new Map(this.services().map(ss => [ss.id, ss] as [string, ServiceOption]));
+            map.set(service.id, service);
+            this.services.set(Array.from(map.values()));
+          } catch {}
+        }
+      }
+
+      const baseServiceDesc = service ? (service.description || service.name) : '';
+
+      // Desired behavior: description must remain ONLY the service description (or name) without variant suffix.
+      // 1. If empty and we have a service: set it.
+      if (!current && baseServiceDesc) {
+        grp.patchValue({ description: baseServiceDesc });
+        continue;
+      }
+
+      // 2. If description previously contained a variant suffix ("Servicio - Variante"), strip it.
+      if (current && baseServiceDesc && current.startsWith(baseServiceDesc + ' - ')) {
+        grp.patchValue({ description: baseServiceDesc });
+        continue;
+      }
+    }
   }
 
   applyTemplate(templateId: string) {
@@ -670,7 +741,44 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   /**
    * Recheck if any remaining variant requires recurrence lock
    */
-  private recheckRecurrenceLock() {
+  private async recheckRecurrenceLock() {
+    console.log('🔒 recheckRecurrenceLock() iniciado');
+
+    // Ensure services with variants are available. If not, load on-demand for the services used in items.
+    if (!this.services() || this.services().length === 0) {
+      const serviceIds = new Set<string>();
+      for (let i = 0; i < this.items.length; i++) {
+        const sid = this.items.at(i).get('service_id')?.value as string | null;
+        if (sid) serviceIds.add(sid);
+      }
+      if (serviceIds.size > 0) {
+        try {
+          const loaded = await Promise.all(
+            Array.from(serviceIds).map(async (sid) => {
+              const s = await this.servicesService.getServiceWithVariants(sid);
+              return {
+                id: s.id,
+                name: s.name,
+                description: s.description,
+                base_price: s.base_price,
+                estimated_hours: s.estimated_hours,
+                category: s.category,
+                has_variants: s.has_variants,
+                variants: (s.variants || []).filter(v => v.is_active).sort((a, b) => a.sort_order - b.sort_order)
+              } as ServiceOption;
+            })
+          );
+          // Merge with any existing services (avoid duplicates by id)
+          const existing = this.services();
+          const map = new Map<string, ServiceOption>();
+          [...existing, ...loaded].forEach(s => map.set(s.id, s));
+          this.services.set(Array.from(map.values()));
+        } catch (e) {
+          console.warn('No se pudieron cargar servicios para re-evaluar recurrencia:', e);
+        }
+      }
+    }
+
     let hasLockedVariant = false;
     let lockedVariant: ServiceVariant | null = null;
     
@@ -678,23 +786,27 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     for (let i = 0; i < this.items.length; i++) {
       const variantId = this.items.at(i).get('variant_id')?.value;
       const serviceId = this.items.at(i).get('service_id')?.value;
+      console.log(`🔍 Item ${i}: variantId=${variantId}, serviceId=${serviceId}`);
       
       if (variantId && serviceId) {
         const service = this.services().find(s => s.id === serviceId);
+        console.log('🔍 Service encontrado:', service?.name, 'con variants:', service?.variants?.length);
         const variant = service?.variants?.find(v => v.id === variantId);
+        console.log('🔍 Variant encontrada:', variant?.variant_name, 'billing_period:', variant?.billing_period);
         
         if (variant) {
           // Prefer pricing array (new model). If absent, fall back to deprecated billing_period.
-          const pricingPeriods: string[] = Array.isArray((variant as any).pricing)
-            ? (variant as any).pricing.map((p: any) => p.billing_period)
-            : [];
+          const parsed = this.variantPricing(variant);
+          const pricingPeriods: string[] = parsed.length > 0 ? parsed.map((p: any) => p.billing_period) : [];
 
           const hasRecurringInPricing = pricingPeriods.some(p => ['monthly', 'annually'].includes(p));
           const hasDeprecatedRecurring = ['monthly', 'annually'].includes(variant.billing_period as any);
+          console.log('🔍 hasRecurringInPricing:', hasRecurringInPricing, 'hasDeprecatedRecurring:', hasDeprecatedRecurring);
 
           if (hasRecurringInPricing || hasDeprecatedRecurring) {
             hasLockedVariant = true;
             lockedVariant = variant;
+            console.log('✅ Variant recurrente encontrada, bloqueando recurrencia');
             break;
           }
         }
@@ -702,8 +814,10 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     }
     
     if (hasLockedVariant && lockedVariant) {
+      console.log('🔒 Llamando updateRecurrenceFromVariant');
       this.updateRecurrenceFromVariant(lockedVariant);
     } else {
+      console.log('🔓 No hay variantes recurrentes, desbloqueando');
       this.unlockRecurrence();
     }
   }
@@ -771,8 +885,9 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       this.selectVariant(autoVariant, itemIndex);
     } else {
       // Servicio sin variantes: uso normal
-      item.patchValue({
-        description: service.name,
+      // Only auto-fill description if the user hasn't already entered one
+      const currentDesc = (item.get('description')?.value || '').toString().trim();
+      const toPatch: any = {
         unit_price: finalUnit,
         quantity: 1,
         tax_rate: this.ivaEnabled() ? this.ivaRate() : 0,
@@ -780,7 +895,11 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         variant_id: null,
         product_id: null,
         billing_period: 'one-time'
-      });
+      };
+      if (!currentDesc) {
+        toPatch.description = service.description;
+      }
+      item.patchValue(toPatch);
     }
     
     this.serviceDropdownOpen.set(false);
@@ -815,15 +934,20 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     // Compute unit price respecting settings
     const base = Number(product.price || 0); // precio neto
     const finalUnit = base;
-    item.patchValue({
-      description: product.name,
+    // Only auto-fill description if the user hasn't already entered one
+    const currentDescP = (item.get('description')?.value || '').toString().trim();
+    const toPatchP: any = {
       unit_price: finalUnit,
       quantity: 1,
       tax_rate: this.ivaEnabled() ? this.ivaRate() : 0,
       product_id: product.id,
       service_id: null,
       billing_period: 'one-time'
-    });
+    };
+    if (!currentDescP) {
+      toPatchP.description = product.description || product.name;
+    }
+    item.patchValue(toPatchP);
     this.productDropdownOpen.set(false);
     this.selectedProductIndex.set(null);
     this.productSearch.set('');
@@ -852,9 +976,10 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     // Prefer new pricing array (first element) when available, otherwise fall back to deprecated base_price
     let base = 0;
     let chosenPeriod: string | null = null;
-    if (Array.isArray((variant as any).pricing) && (variant as any).pricing.length > 0) {
+    const parsedPricing = this.variantPricing(variant);
+    if (parsedPricing.length > 0) {
       // Elegir entrada de pricing más adecuada (prioridad mensual > anual > quarterly > one_time > primera)
-      const entries = (variant as any).pricing as any[];
+      const entries = parsedPricing as any[];
       const preferred = entries.find(e => e.billing_period === 'monthly')
         || entries.find(e => e.billing_period === 'annual')
         || entries.find(e => e.billing_period === 'quarterly')
@@ -868,28 +993,24 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     }
     const finalUnit = base; // almacenar siempre neto
     
-    // Build description avoiding duplicate variant names.
-    const currentDesc = item.get('description')?.value || '';
-    let baseDesc = currentDesc;
-    const serviceId = item.get('service_id')?.value;
-    if (serviceId) {
-      const svc = this.services().find(s => s.id === serviceId);
-      if (svc) baseDesc = svc.name;
-    } else {
-      // If no service set, remove any existing occurrences of this variant name
-      // so we don't keep appending the same variant repeatedly.
-  const parts = baseDesc.split(' - ').filter((p: string) => p !== variant.variant_name);
-      baseDesc = parts.join(' - ');
-    }
-
-    const newDesc = (baseDesc ? baseDesc + ' - ' : '') + variant.variant_name;
-
-    item.patchValue({
-      description: newDesc,
+    // Description handling: append variant name if not present when description is
+    // (a) empty or (b) exactly the service description/name. Avoid overwriting full custom texts.
+    const existingDesc = (item.get('description')?.value || '').toString().trim();
+    const patchObj: any = {
       unit_price: finalUnit,
       variant_id: variant.id,
-      service_id: variant.service_id // Preservar/establecer service_id desde la variante
-    });
+      service_id: variant.service_id
+    };
+    // Do NOT modify description anymore; keep it strictly as service description or user custom text.
+    // (If empty, we leave it empty so backfill can supply service description later.)
+    item.patchValue(patchObj);
+    // Asegurar que el control refleja inmediatamente el precio (a veces patchValue no refresca visualmente en algunos escenarios de signals)
+    const unitCtrl = item.get('unit_price');
+    if (unitCtrl) {
+      unitCtrl.setValue(finalUnit, { emitEvent: true });
+      unitCtrl.markAsDirty();
+      unitCtrl.updateValueAndValidity({ emitEvent: false });
+    }
     // Guardar periodicidad normalizada
     item.patchValue({ billing_period: this.normalizeBillingPeriod(chosenPeriod) });
     this.variantDropdownOpen.set(false);
@@ -898,6 +1019,31 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     // Auto-set recurrence based on variant billing_period
     this.updateRecurrenceFromVariant(variant);
     
+    this.calculateTotals();
+  }
+
+  /** Seleccionar explícitamente una entrada de pricing (periodicidad concreta) */
+  selectVariantPeriod(variant: ServiceVariant, pricing: any, itemIndex: number, event?: Event) {
+    if (event) event.stopPropagation();
+    const item = this.items.at(itemIndex);
+    const period = pricing?.billing_period || null;
+    const unit = Number(pricing?.base_price ?? 0);
+    item.patchValue({
+      unit_price: unit,
+      variant_id: variant.id,
+      service_id: variant.service_id,
+      billing_period: this.normalizeBillingPeriod(period)
+    });
+    // Refresco explícito del control para evitar que se quede mostrando 0
+    const unitCtrl = item.get('unit_price');
+    if (unitCtrl) {
+      unitCtrl.setValue(unit, { emitEvent: true });
+      unitCtrl.markAsDirty();
+      unitCtrl.updateValueAndValidity({ emitEvent: false });
+    }
+    this.updateRecurrenceFromBillingPeriod(period);
+    this.variantDropdownOpen.set(false);
+    this.selectedVariantIndex.set(null);
     this.calculateTotals();
   }
 
@@ -917,13 +1063,43 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     return map[period] || period;
   }
 
+  /** Actualiza la recurrencia a partir de un billing_period directamente seleccionado */
+  private updateRecurrenceFromBillingPeriod(billingPeriod: string | null | undefined) {
+    if (!billingPeriod) {
+      this.unlockRecurrence();
+      return;
+    }
+    const norm = this.normalizeBillingPeriod(billingPeriod);
+    const map: Record<string, string> = {
+      'one-time': 'none',
+      'monthly': 'monthly',
+      'annually': 'yearly',
+      'annual': 'yearly'
+    };
+    const recurrenceType = map[norm || 'one-time'] || 'none';
+    const shouldLock = ['monthly', 'yearly'].includes(recurrenceType);
+    if (shouldLock) {
+      this.recurrenceLocked.set(true);
+      const periodNames: Record<string, string> = { monthly: 'Mensual', yearly: 'Anual' };
+      this.recurrenceLockedReason.set(`Este servicio tiene facturación ${periodNames[recurrenceType] || recurrenceType}`);
+      this.quoteForm.patchValue({ recurrence_type: recurrenceType });
+      this.quoteForm.get('recurrence_type')?.disable();
+      if ((recurrenceType === 'monthly' || recurrenceType === 'yearly') && !this.quoteForm.get('recurrence_day')?.value) {
+        this.quoteForm.patchValue({ recurrence_day: 1 });
+      }
+    } else {
+      this.unlockRecurrence();
+    }
+  }
+
   /**
    * Map variant billing_period to quote recurrence_type and lock if applicable
    */
   private updateRecurrenceFromVariant(variant: ServiceVariant) {
     // Prefer pricing array (new model). If absent, fall back to deprecated billing_period.
-    const billingPeriod = (Array.isArray((variant as any).pricing) && (variant as any).pricing.length > 0)
-      ? (variant as any).pricing[0].billing_period
+    const parsed = this.variantPricing(variant);
+    const billingPeriod = (parsed.length > 0)
+      ? parsed[0].billing_period
       : variant.billing_period;
     
     // Map billing_period to recurrence_type
@@ -996,10 +1172,23 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     this.selectedVariantIndex.set(null);
   }
 
+  // Helper visible to template: check if a given variant-period is the selected one for an item
+  isVariantPeriodSelected(variant: ServiceVariant, period: string | null | undefined, itemIndex: number): boolean {
+    try {
+      const grp = this.items.at(itemIndex);
+      const vId = grp.get('variant_id')?.value;
+      const pVal = grp.get('billing_period')?.value;
+      return vId === variant.id && this.normalizeBillingPeriod(pVal) === this.normalizeBillingPeriod(period || null);
+    } catch {
+      return false;
+    }
+  }
+
   getSelectedVariantName(index: number): string {
     try {
       const variantId = this.items.at(index)?.get('variant_id')?.value as string | null;
       const serviceId = this.items.at(index)?.get('service_id')?.value as string | null;
+      const billingPeriod = this.items.at(index)?.get('billing_period')?.value as string | null;
       
       if (!variantId || !serviceId) return 'Seleccionar variante...';
       
@@ -1007,7 +1196,10 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       if (!service || !service.variants) return 'Seleccionar variante...';
       
       const variant = service.variants.find(v => v.id === variantId);
-      return variant ? variant.variant_name : 'Seleccionar variante...';
+      if (!variant) return 'Seleccionar variante...';
+      // Append period label if available
+      const label = this.formatBillingPeriodLabel(this.normalizeBillingPeriod(billingPeriod));
+      return billingPeriod ? `${variant.variant_name} (${label})` : variant.variant_name;
     } catch {
       return 'Seleccionar variante...';
     }
@@ -1120,7 +1312,10 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         recurrence_day: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_day ?? null),
         recurrence_start_date: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_start_date ?? null),
         recurrence_end_date: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_end_date ?? null)
-      };
+    };
+
+    // Debug: log update payload to verify description and recurrence are present
+    console.log('🔁 updateDto payload:', updateDto);
 
       this.quotesService.updateQuote(this.quoteId()!, updateDto).subscribe({
         next: async (quote) => {
@@ -1193,6 +1388,9 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         recurrence_end_date: formValue.recurrence_type === 'none' ? null : (formValue.recurrence_end_date ?? null)
       };
 
+  // Debug: log create payload to verify description and items
+  console.log('✨ create DTO payload:', dto);
+
       this.quotesService.createQuote(dto).subscribe({
         next: (quote) => {
           this.loading.set(false);
@@ -1225,8 +1423,9 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
    */
   getVariantDisplayPrice(variant: ServiceVariant): number {
     try {
-      if (Array.isArray((variant as any).pricing) && (variant as any).pricing.length > 0) {
-        const p = (variant as any).pricing[0];
+      const pricing = this.variantPricing(variant);
+      if (pricing.length > 0) {
+        const p = pricing[0];
         return Number(p?.base_price ?? variant.base_price ?? 0);
       }
       return Number(variant.base_price ?? 0);
@@ -1241,13 +1440,44 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
    */
   getVariantBillingPeriod(variant: ServiceVariant): string {
     try {
-      if (Array.isArray((variant as any).pricing) && (variant as any).pricing.length > 0) {
-        return (variant as any).pricing[0].billing_period || variant.billing_period || 'one-time';
-      }
+      const pricing = this.variantPricing(variant);
+      if (pricing.length > 0) return pricing[0].billing_period || variant.billing_period || 'one-time';
       return variant.billing_period || 'one-time';
     } catch {
       return 'one-time';
     }
+  }
+
+  // Helper: return pricing list for variant (new model)
+  variantPricing(variant: ServiceVariant): any[] {
+    try {
+      const raw = (variant as any).pricing;
+      if (Array.isArray(raw)) return raw;
+      if (typeof raw === 'string') {
+        try {
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch { return []; }
+      }
+      return [];
+    } catch { return []; }
+  }
+
+  // Helper: map billing period key to Spanish label
+  formatBillingPeriodLabel(period: string | null | undefined): string {
+    const key = (period || '').toString();
+    const map: Record<string, string> = {
+      'one-time': 'Pago único',
+      'one_time': 'Pago único',
+      'monthly': 'Mensual',
+      'quarterly': 'Trimestral',
+      'biannual': 'Semestral',
+      'annual': 'Anual',
+      'annually': 'Anual',
+      'yearly': 'Anual',
+      'custom': 'Personalizado'
+    };
+    return map[key] || key;
   }
 
   private async loadTaxSettings() {

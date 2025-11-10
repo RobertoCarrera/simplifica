@@ -1199,6 +1199,25 @@ export class SupabaseServicesService {
   }
 
   /**
+   * Get a single variant by its id
+   */
+  async getVariantById(variantId: string): Promise<ServiceVariant | null> {
+    try {
+      const client = this.supabase.getClient();
+      const { data, error } = await client
+        .from('service_variants')
+        .select('*')
+        .eq('id', variantId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as any) || null;
+    } catch (error) {
+      console.error('❌ Error getting variant by id:', error);
+      return null;
+    }
+  }
+
+  /**
    * Get service with all its variants
    */
   async getServiceWithVariants(serviceId: string): Promise<Service> {

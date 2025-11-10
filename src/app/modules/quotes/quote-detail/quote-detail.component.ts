@@ -314,8 +314,13 @@ export class QuoteDetailComponent implements OnInit {
   extractVariantName(item: QuoteItem): string | null {
     try {
       const anyItem: any = item as any;
+      // Prefer populated relation from query
+      if (anyItem.variant && anyItem.variant.variant_name) {
+        return anyItem.variant.variant_name as string;
+      }
       if (!anyItem.variant_id) return null;
-      const desc = item.description || '';
+      // Fallback: attempt to parse from description suffix
+      const desc = (item.description || '').toString();
       const parts = desc.split(' - ');
       return parts.length > 1 ? parts[parts.length - 1] : null;
     } catch {
