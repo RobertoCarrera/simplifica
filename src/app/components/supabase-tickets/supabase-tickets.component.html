@@ -49,12 +49,12 @@
       </div>
       
       <!-- Filter Group -->
-      <div class="flex gap-3 items-center flex-wrap">
+      <div class="w-full flex gap-3 items-center flex-wrap">
         <select 
           name="filterStage"
           [(ngModel)]="filterStage" 
           (change)="onFilterChange()" 
-          class="flex-1 min-w-[140px] px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
+          class="flex-1 w-[50%] px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
           <option value="">Estados</option>
           <option *ngFor="let stage of stages" [value]="stage.id">{{ stage.name }}</option>
         </select>
@@ -63,7 +63,7 @@
           name="filterPriority"
           [(ngModel)]="filterPriority" 
           (change)="onFilterChange()" 
-          class="flex-1 min-w-[140px] px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
+          class="flex-1 w-[50%] px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
           <option value="">Prioridades</option>
           <option value="low">Baja</option>
           <option value="normal">Normal</option>
@@ -78,7 +78,7 @@
           [class]="showCompleted ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300'"
           (click)="toggleShowCompleted()">
           <i class="fas" [class.fa-eye]="showCompleted" [class.fa-eye-slash]="!showCompleted"></i>
-          <span class="hidden sm:inline">{{ showCompleted ? 'Ocultar Completados' : 'Mostrar Completados' }}</span>
+          <span class="hidden lg:inline ml-2">{{ showCompleted ? 'Ocultar Completados' : 'Mostrar Completados' }}</span>
         </button>
 
         <!-- Toggle deleted -->
@@ -88,7 +88,7 @@
           [class]="showDeleted ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300'"
           (click)="toggleShowDeleted()">
           <i class="fas" [class.fa-trash-restore]="showDeleted" [class.fa-trash]="!showDeleted"></i>
-          <span class="hidden sm:inline">{{ showDeleted ? 'Ocultar Eliminados' : 'Mostrar Eliminados' }}</span>
+          <span class="hidden lg:inline  ml-2">{{ showDeleted ? 'Ocultar Eliminados' : 'Mostrar Eliminados' }}</span>
         </button>
       </div>
     </div>
