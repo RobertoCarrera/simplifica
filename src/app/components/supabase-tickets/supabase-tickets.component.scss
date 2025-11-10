@@ -1121,13 +1121,22 @@ textarea.form-control {
   }
   
   .modal-content {
-    max-height: calc(90vh - 20px);
+    /* Use dynamic viewport height with safe-area for mobile */
+    max-height: calc(var(--dvh, 100vh) - max(env(safe-area-inset-bottom), 20px) - 48px);
   }
   
   .modal-header,
   .modal-body,
   .modal-footer {
     padding: 16px;
+  }
+  
+  .modal-body {
+    padding-bottom: calc(clamp(64px, 10vw, 88px) + env(safe-area-inset-bottom));
+  }
+  
+  .modal-footer {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
 }
 
@@ -1599,15 +1608,12 @@ textarea.form-control {
   overflow: hidden !important;
 }
 
-/* Aplicar estilos globales para bloquear completamente el scroll */
+/* Aplicar estilos globales para bloquear completamente el scroll - usa dynamic viewport height */
 .modal-overlay {
   position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
+  inset: 0 !important;
   width: 100vw !important;
-  height: 100vh !important;
+  height: var(--dvh, 100vh) !important;
   overflow: hidden !important;
 }
 
