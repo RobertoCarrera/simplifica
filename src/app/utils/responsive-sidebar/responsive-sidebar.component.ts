@@ -287,7 +287,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   }
 
   isMobile(): boolean {
-    return this.pwaService.isMobileDevice() || window.innerWidth < 1024;
+    return this.pwaService.isMobileDevice() || window.innerWidth < 768;
   }
 
   toggleSidebar() {

@@ -101,10 +101,10 @@ export class PWAService {
 
   private getScreenSize(): 'sm' | 'md' | 'lg' | 'xl' {
     const width = window.innerWidth;
-    if (width < 640) return 'sm';
-    if (width < 768) return 'md';
-    if (width < 1024) return 'lg';
-    return 'xl';
+    if (width < 768) return 'sm';  // Mobile: < 768px
+    if (width < 1024) return 'md'; // Tablet: 768-1023px
+    if (width < 1280) return 'lg'; // Desktop small: 1024-1279px
+    return 'xl';                    // Desktop large: >= 1280px
   }
 
   private updateScreenSize(): void {

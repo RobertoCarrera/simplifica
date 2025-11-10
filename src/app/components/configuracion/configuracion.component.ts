@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ElementRef, ViewChild, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -12,7 +12,7 @@ import { SupabaseUnitsService, UnitOfMeasure } from '../../services/supabase-uni
 import { CompanyAdminComponent } from '../company-admin/company-admin.component';
 import { HelpComponent } from '../help/help.component';
 import { ToastService } from '../../services/toast.service';
-import { UserModulesService, type UserModule, type ModuleStatus } from '../../services/user-modules.service';
+import { UserModulesService, UserModule, ModuleStatus } from '../../services/user-modules.service';
 import { SupabaseSettingsService, type AppSettings, type CompanySettings } from '../../services/supabase-settings.service';
 import { SupabaseModulesService, type EffectiveModule } from '../../services/supabase-modules.service';
 import { firstValueFrom } from 'rxjs';
@@ -72,10 +72,9 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     private sbClient: SupabaseClientService,
     private unitsService: SupabaseUnitsService,
     private toast: ToastService,
-    private userModulesService: UserModulesService,
-    private settingsService: SupabaseSettingsService
-    ,
-    private modulesService: SupabaseModulesService
+    @Inject(UserModulesService) private userModulesService: UserModulesService,
+    @Inject(SupabaseSettingsService) private settingsService: SupabaseSettingsService,
+    @Inject(SupabaseModulesService) private modulesService: SupabaseModulesService
   ) {
     this.supabase = this.sbClient.instance;
     this.profileForm = this.fb.group({

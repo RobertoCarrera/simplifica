@@ -91,6 +91,22 @@
   animation: slideUp 0.3s ease-out;
 }
 
+/* Smooth scroll for tabs on mobile */
+.tab-button {
+  scroll-snap-align: start;
+}
+
+/* Hide scrollbar but keep functionality */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Rich Text Editor Styles */
 [contenteditable="true"] {
   direction: ltr !important;
@@ -228,7 +244,7 @@
 
 /* Fallback styles for preview/prose area (without Tailwind Typography) */
 .prose {
-  color: #111827; /* gray-900 */
+  color: #e5e7eb; /* gray-900 */
   font-size: 0.875rem; /* text-sm */
   line-height: 1.5rem;
 }
@@ -384,7 +400,7 @@
 
 /* Button Styles */
 .btn {
-  padding: 12px 24px;
+  padding: 12px 12px;
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 600;

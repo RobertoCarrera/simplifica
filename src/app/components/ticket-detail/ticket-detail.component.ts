@@ -33,31 +33,34 @@ import Placeholder from '@tiptap/extension-placeholder';
       <div class="mx-auto">
         
         <!-- Header con navegación -->
-        <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 mb-6 flex justify-between items-center">
-          <button (click)="goBack()" 
-                  class="btn btn-secondary">
-            <i class="fas fa-arrow-left"></i>
-            <span class="hidden sm:inline">Volver a Tickets</span>
-          </button>
-          
-          <!-- Quick Actions -->
-          <div *ngIf="!loading && !error && ticket" class="flex gap-3">
-            <button (click)="convertToQuoteFromTicket()"
-                    [disabled]="!ticket || ticketServices.length === 0 || !(ticket && ticket.client && ticket.client.id)"
-                    class="btn btn-primary p-0 fs-6">
-              <i class="fas fa-file-invoice"></i>
-              {{ activeQuoteId ? 'Ir a Presupuesto' : 'Convertir en Presupuesto' }}
+        <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 mb-6">
+          <div class="flex flex-col sm:flex-row sm:justify-between gap-3">
+            <!-- Fila 1: Botón Atrás (ancho completo en móvil) -->
+            <button (click)="goBack()" 
+                    class="btn btn-secondary text-sm w-full sm:w-auto sm:self-start">
+              <i class="fas fa-arrow-left mr-2"></i>
+              <span>Atrás</span>
             </button>
-            <button (click)="printTicket()" 
-                    class="btn btn-secondary">
-              <i class="fas fa-print"></i>
-              <span class="hidden sm:inline">Imprimir</span>
-            </button>
-            <button (click)="deleteTicket()" 
-                    class="btn btn-danger">
-              <i class="fas fa-trash"></i>
-              <span class="hidden sm:inline">Eliminar</span>
-            </button>
+            
+            <!-- Fila 2: Quick Actions en grid 2 columnas hasta sm -->
+            <div *ngIf="!loading && !error && ticket" class="grid grid-cols-3 sm:flex gap-2 sm:gap-3">
+              <button (click)="convertToQuoteFromTicket()"
+                      [disabled]="!ticket || ticketServices.length === 0 || !(ticket && ticket.client && ticket.client.id)"
+                      class="btn btn-primary text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+                <i class="fas fa-file-invoice text-base sm:text-sm"></i>
+                <span class="text-[10px] sm:text-sm">{{ activeQuoteId ? 'Ir a Presup.' : 'Convertir' }}</span>
+              </button>
+              <button (click)="printTicket()" 
+                      class="btn btn-secondary text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+                <i class="fas fa-print text-base sm:text-sm"></i>
+                <span class="text-[10px] sm:text-sm">Imprimir</span>
+              </button>
+              <button (click)="deleteTicket()" 
+                      class="btn btn-danger text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+                <i class="fas fa-trash text-base sm:text-sm"></i>
+                <span class="text-[10px] sm:text-sm">Eliminar</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -81,42 +84,42 @@ import Placeholder from '@tiptap/extension-placeholder';
         </div>
 
   <!-- Ticket Detail -->
-  <div *ngIf="!loading && !error && ticket" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+  <div *ngIf="!loading && !error && ticket" class="grid grid-cols-1 xl:grid-cols-4 gap-6">
           
           <!-- Main Content (Left Side) -->
-          <div class="space-y-6 lg:col-span-3">
+          <div class="space-y-6 xl:col-span-3">
             
             <!-- Ticket Header -->
-            <div class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl p-8 hover:shadow-xl transition-shadow duration-300">
-              <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-6">
+            <div class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 lg:p-8 hover:shadow-xl transition-shadow duration-300">
+              <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-4 sm:mb-6">
                 <div class="flex-1">
-                  <div class="flex items-center gap-3 mb-3">
-                    <div class="bg-gradient-to-br from-orange-400 to-orange-600 text-white p-3 rounded-lg shadow-md">
-                      <i class="fas fa-ticket-alt text-2xl"></i>
+                  <div class="flex items-start sm:items-center gap-3 mb-3">
+                    <div class="bg-gradient-to-br from-orange-400 to-orange-600 text-white p-2 sm:p-3 rounded-lg shadow-md flex-shrink-0">
+                      <i class="fas fa-ticket-alt text-xl sm:text-2xl"></i>
                     </div>
-                    <div>
-                      <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                    <div class="flex-1 min-w-0">
+                      <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100 break-words">
                         {{ ticket.title }}
                       </h1>
-                      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
                         <span class="font-mono font-semibold">#{{ ticket.ticket_number }}</span>
                         <span class="mx-2">•</span>
-                        Creado {{ formatDate(ticket.created_at) }}
+                        <span class="hidden sm:inline">Creado {{ formatDate(ticket.created_at) }}</span>
                       </p>
                     </div>
                   </div>
-                  <div class="prose prose-sm text-gray-700 dark:text-gray-300 mt-4 ml-1" [innerHTML]="formatDescription(ticket.description)"></div>
+                  <div class="prose prose-sm text-gray-800 dark:text-gray-200 mt-4 ml-0 sm:ml-1" [innerHTML]="formatDescription(ticket.description)"></div>
                 </div>
-                <div class="flex flex-row lg:flex-col items-center lg:items-end gap-3">
+                <div class="flex flex-row lg:flex-col items-center lg:items-end gap-2 sm:gap-3">
                   <span [class]="getPriorityClasses(ticket.priority)"
-                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm">
+                        class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold shadow-sm">
                     <i class="fas {{ getPriorityIcon(ticket.priority) }}"></i>
-                    {{ getPriorityLabel(ticket.priority) }}
+                    <span class="hidden sm:inline">{{ getPriorityLabel(ticket.priority) }}</span>
                   </span>
                   <button (click)="showChangeStageModal = true" 
-                          class="btn btn-secondary px-4 py-2 text-sm">
-                    <i class="fas fa-arrows-alt mr-2"></i>
-                    Cambiar Etapa
+                          class="btn btn-secondary px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm whitespace-nowrap">
+                    <i class="fas fa-arrows-alt mr-1 sm:mr-2"></i>
+                    <span class="hidden sm:inline">Cambiar Etapa</span>
                   </button>
                 </div>
               </div>
@@ -170,44 +173,48 @@ import Placeholder from '@tiptap/extension-placeholder';
 
             <!-- Tabs Navigation -->
             <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-              <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-x-auto">
                 <button 
                   (click)="activeTab = 'services'"
                   [class.active-tab]="activeTab === 'services'"
-                  class="tab-button flex-1 px-6 py-4 text-sm font-medium transition-all duration-200 relative">
-                  <i class="fas fa-wrench mr-2"></i>
-                  <span>Servicios</span>
-                  <span *ngIf="ticketServices.length > 0" class="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
+                  <i class="fas fa-wrench mr-1 sm:mr-2"></i>
+                  <span class="hidden xs:inline">Servicios</span>
+                  <span class="xs:hidden">Serv.</span>
+                  <span *ngIf="ticketServices.length > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                     {{ ticketServices.length }}
                   </span>
                 </button>
                 <button 
                   (click)="activeTab = 'products'"
                   [class.active-tab]="activeTab === 'products'"
-                  class="tab-button flex-1 px-6 py-4 text-sm font-medium transition-all duration-200 relative">
-                  <i class="fas fa-box mr-2"></i>
-                  <span>Productos</span>
-                  <span *ngIf="ticketProducts.length > 0" class="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
+                  <i class="fas fa-box mr-1 sm:mr-2"></i>
+                  <span class="hidden xs:inline">Productos</span>
+                  <span class="xs:hidden">Prod.</span>
+                  <span *ngIf="ticketProducts.length > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
                     {{ ticketProducts.length }}
                   </span>
                 </button>
                 <button 
                   (click)="activeTab = 'devices'"
                   [class.active-tab]="activeTab === 'devices'"
-                  class="tab-button flex-1 px-6 py-4 text-sm font-medium transition-all duration-200 relative">
-                  <i class="fas fa-mobile-alt mr-2"></i>
-                  <span>Dispositivos</span>
-                  <span *ngIf="linkedDeviceIds.size > 0" class="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
+                  <i class="fas fa-mobile-alt mr-1 sm:mr-2"></i>
+                  <span class="hidden xs:inline">Dispositivos</span>
+                  <span class="xs:hidden">Disp.</span>
+                  <span *ngIf="linkedDeviceIds.size > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                     {{ linkedDeviceIds.size }}
                   </span>
                 </button>
                 <button 
                   (click)="activeTab = 'comments'"
                   [class.active-tab]="activeTab === 'comments'"
-                  class="tab-button flex-1 px-6 py-4 text-sm font-medium transition-all duration-200 relative">
-                  <i class="fas fa-comments mr-2"></i>
-                  <span>Comentarios</span>
-                  <span *ngIf="comments.length > 0" class="ml-2 inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
+                  <i class="fas fa-comments mr-1 sm:mr-2"></i>
+                  <span class="hidden xs:inline">Comentarios</span>
+                  <span class="xs:hidden">Comt.</span>
+                  <span *ngIf="comments.length > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
                     {{ comments.length }}
                   </span>
                 </button>
@@ -433,87 +440,87 @@ import Placeholder from '@tiptap/extension-placeholder';
                 }
               </div>
             </div>
-          
+          </div>
 
           <!-- Sidebar (Right Side) -->
-          <div class="space-y-6 lg:col-span-1">
+          <div class="space-y-4 sm:space-y-6 xl:col-span-1">
 
             <!-- Client Contact -->
-            <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 shadow-md border border-blue-200 dark:border-blue-700 rounded-xl p-6 hover:shadow-lg transition-shadow duration-300">
-              <div class="flex items-center gap-3 mb-4">
-                <div class="bg-blue-500 text-white p-3 rounded-lg shadow-md">
-                  <i class="fas fa-user text-xl"></i>
+            <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 shadow-md border border-blue-200 dark:border-blue-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
+              <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                <div class="bg-blue-500 text-white p-2 sm:p-3 rounded-lg shadow-md">
+                  <i class="fas fa-user text-lg sm:text-xl"></i>
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Cliente</h3>
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Cliente</h3>
               </div>
               <div *ngIf="ticket.client as client; else noClientInfo">
-                <div class="text-base text-gray-900 dark:text-gray-100 font-semibold mb-3">{{ client.name }}</div>
-                <div class="space-y-2">
-                  <div *ngIf="client.email" class="flex items-center gap-2 text-sm">
-                    <i class="fas fa-envelope text-blue-600 dark:text-blue-400 w-4"></i>
-                    <a [href]="'mailto:' + client.email" class="text-blue-600 dark:text-blue-400 hover:underline">{{ client.email }}</a>
+                <div class="text-sm sm:text-base text-gray-900 dark:text-gray-100 font-semibold mb-2 sm:mb-3">{{ client.name }}</div>
+                <div class="space-y-1.5 sm:space-y-2">
+                  <div *ngIf="client.email" class="flex items-center gap-2 text-xs sm:text-sm">
+                    <i class="fas fa-envelope text-blue-600 dark:text-blue-400 w-3 sm:w-4"></i>
+                    <a [href]="'mailto:' + client.email" class="text-blue-600 dark:text-blue-400 hover:underline truncate">{{ client.email }}</a>
                   </div>
-                  <div *ngIf="client.phone" class="flex items-center gap-2 text-sm">
-                    <i class="fas fa-phone text-blue-600 dark:text-blue-400 w-4"></i>
+                  <div *ngIf="client.phone" class="flex items-center gap-2 text-xs sm:text-sm">
+                    <i class="fas fa-phone text-blue-600 dark:text-blue-400 w-3 sm:w-4"></i>
                     <a [href]="'tel:' + client.phone" class="text-blue-600 dark:text-blue-400 hover:underline">{{ client.phone }}</a>
                   </div>
                 </div>
               </div>
               <ng-template #noClientInfo>
-                <div class="text-sm text-gray-500 dark:text-gray-400">No hay información del cliente</div>
+                <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">No hay información del cliente</div>
               </ng-template>
             </div>
             
             <!-- Quick Stats -->
-            <div class="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-800/20 shadow-md border border-green-200 dark:border-green-700 rounded-xl p-6 hover:shadow-lg transition-shadow duration-300">
-              <div class="flex items-center gap-3 mb-4">
-                <div class="bg-green-500 text-white p-3 rounded-lg shadow-md">
-                  <i class="fas fa-chart-pie text-xl"></i>
+            <div class="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-800/20 shadow-md border border-green-200 dark:border-green-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
+              <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                <div class="bg-green-500 text-white p-2 sm:p-3 rounded-lg shadow-md">
+                  <i class="fas fa-chart-pie text-lg sm:text-xl"></i>
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Resumen</h3>
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Resumen</h3>
               </div>
-              <div class="space-y-4">
-                <div class="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
+              <div class="space-y-3 sm:space-y-4">
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm">
                   <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600 dark:text-gray-400">Total Servicios</span>
-                    <span class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ formatPrice(calculateServicesTotal()) }}</span>
+                    <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Servicios</span>
+                    <span class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">{{ formatPrice(calculateServicesTotal()) }}</span>
                   </div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm border-2 border-green-500 dark:border-green-600">
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm border-2 border-green-500 dark:border-green-600">
                   <div class="flex justify-between items-center">
-                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Total Ticket</span>
-                    <span class="text-xl font-bold text-green-600 dark:text-green-400">{{ formatPrice(ticket.total_amount || calculateServicesTotal()) }}</span>
+                    <span class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Total Ticket</span>
+                    <span class="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">{{ formatPrice(ticket.total_amount || calculateServicesTotal()) }}</span>
                   </div>
                 </div>
                 <div class="flex justify-between items-center pt-2 border-t border-green-200 dark:border-green-800">
-                  <span class="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                  <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
                     <i class="fas fa-clock"></i>
                     Horas Estimadas
                   </span>
-                  <span class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ getEstimatedHours() }}h</span>
+                  <span class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">{{ getEstimatedHours() }}h</span>
                 </div>
               </div>
             </div>
 
             <!-- Timeline -->
-            <div class="bg-gradient-to-br from-purple-50 to-pink-100 dark:from-purple-900/20 dark:to-pink-800/20 shadow-md border border-purple-200 dark:border-purple-700 rounded-xl p-6 hover:shadow-lg transition-shadow duration-300">
-              <div class="flex items-center gap-3 mb-4">
-                <div class="bg-purple-500 text-white p-3 rounded-lg shadow-md">
-                  <i class="fas fa-history text-xl"></i>
+            <div class="bg-gradient-to-br from-purple-50 to-pink-100 dark:from-purple-900/20 dark:to-pink-800/20 shadow-md border border-purple-200 dark:border-purple-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
+              <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                <div class="bg-purple-500 text-white p-2 sm:p-3 rounded-lg shadow-md">
+                  <i class="fas fa-history text-lg sm:text-xl"></i>
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Timeline</h3>
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Timeline</h3>
               </div>
-              <div class="space-y-4">
-                <div class="flex items-start gap-3 bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
-                  <div class="flex-shrink-0 w-3 h-3 bg-green-500 dark:bg-green-400 rounded-full mt-1.5 shadow-sm"></div>
+              <div class="space-y-3 sm:space-y-4">
+                <div class="flex items-start gap-2 sm:gap-3 bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm">
+                  <div class="flex-shrink-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-500 dark:bg-green-400 rounded-full mt-1.5 shadow-sm"></div>
                   <div>
-                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Ticket creado</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ formatDate(ticket.created_at) }}</p>
+                    <p class="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">Ticket creado</p>
+                    <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ formatDate(ticket.created_at) }}</p>
                   </div>
                 </div>
                 
-                <div *ngIf="ticket.updated_at !== ticket.created_at" class="flex items-start gap-3 bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm">
-                  <div class="flex-shrink-0 w-3 h-3 bg-blue-500 dark:bg-blue-400 rounded-full mt-1.5 shadow-sm"></div>
+                <div *ngIf="ticket.updated_at !== ticket.created_at" class="flex items-start gap-2 sm:gap-3 bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm">
+                  <div class="flex-shrink-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-blue-500 dark:bg-blue-400 rounded-full mt-1.5 shadow-sm"></div>
                   <div>
                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Última actualización</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(ticket.updated_at) }}</p>
@@ -737,9 +744,9 @@ import Placeholder from '@tiptap/extension-placeholder';
                       </div>
                     </div>
                     <div class="flex items-center space-x-4">
-                      <div class="text-right text-sm text-gray-700">
+                      <div class="text-right text-sm text-gray-800 dark:text-gray-200">
                         <div class="font-medium">{{ formatPrice(getServiceUnitPrice(svc)) }}</div>
-                        <div class="text-xs text-gray-500">Unidad</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Unidad</div>
                       </div>
                       <div class="pl-3">
                         <input type="checkbox" [checked]="isServiceIdSelected(svc.id)" (click)="$event.stopPropagation(); toggleServiceSelection(svc)" />
@@ -776,27 +783,27 @@ import Placeholder from '@tiptap/extension-placeholder';
                       <div class="font-medium">{{ product.name }}</div>
                       <div class="text-xs text-gray-500 line-clamp-2">{{ product.description }}</div>
                       <div class="flex gap-2 mt-1">
-                        <span *ngIf="product.brand" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        <span *ngIf="product.brand" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
                           {{ product.brand }}
                         </span>
-                        <span *ngIf="product.category" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                        <span *ngIf="product.category" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
                           {{ product.category }}
                         </span>
                       </div>
                     </div>
                     <div class="flex items-center space-x-4">
-                      <div class="text-right text-sm text-gray-700">
+                      <div class="text-right text-sm text-gray-800 dark:text-gray-200">
                         <div class="font-medium">{{ formatPrice(getProductUnitPrice(product)) }}</div>
-                        <div class="text-xs text-gray-500">Unidad</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">Unidad</div>
                       </div>
                       @if (selectedProductIds.has(product.id)) {
-                        <div class="flex items-center space-x-2 border rounded-lg px-2 py-1">
-                          <button type="button" (click)="decreaseProductQty(product.id)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600">
+                        <div class="flex items-center space-x-2 border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1">
+                          <button type="button" (click)="decreaseProductQty(product.id)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
                             <i class="fas fa-minus text-xs"></i>
                           </button>
                           <input type="number" min="1" [value]="getProductQuantity(product.id)" (input)="setProductQuantity(product.id, $any($event.target).value)" 
-                                 class="w-12 text-center border-0 focus:ring-0 text-sm" />
-                          <button type="button" (click)="increaseProductQty(product.id)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 text-gray-600">
+                                 class="w-12 text-center border-0 focus:ring-0 text-sm bg-transparent text-gray-900 dark:text-gray-100" />
+                          <button type="button" (click)="increaseProductQty(product.id)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
                             <i class="fas fa-plus text-xs"></i>
                           </button>
                         </div>

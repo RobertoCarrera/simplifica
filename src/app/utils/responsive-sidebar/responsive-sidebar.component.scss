@@ -3,31 +3,42 @@
   @apply bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-r-2 border-blue-500;
 }
 
-/* Forzar sidebar fija con CSS puro */
+/* Forzar sidebar fija con CSS puro - solo en pantallas >= md (768px) */
 :host {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  height: 100vh !important;
-  z-index: 1000 !important;
-  transition: width 0.3s ease !important;
-  overflow: visible !important;
+  @media (min-width: 768px) {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    z-index: 1000 !important;
+    transition: width 0.3s ease !important;
+    overflow: visible !important;
+  }
 }
 
 :host(.collapsed) {
-  width: 4rem !important; /* 64px = w-16 */
+  @media (min-width: 768px) {
+    width: 4rem !important; /* 64px = w-16 */
+  }
 }
 
 :host(.expanded) {
-  width: 16rem !important; /* 256px = w-64 */
+  @media (min-width: 768px) {
+    width: 16rem !important; /* 256px = w-64 */
+  }
 }
 
+/* Mobile hidden solo aplica en pantallas < 768px */
 :host(.mobile-hidden) {
-  transform: translateX(-100%) !important;
+  @media (max-width: 767px) {
+    transform: translateX(-100%) !important;
+  }
 }
 
 :host(.mobile-visible) {
-  transform: translateX(0) !important;
+  @media (max-width: 767px) {
+    transform: translateX(0) !important;
+  }
 }
 
 /* Prevent horizontal scroll from long labels when collapsed */

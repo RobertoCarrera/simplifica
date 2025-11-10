@@ -466,3 +466,13 @@ body.ios-pwa {
     &:active:not(:disabled) { transform: none; }
   }
 }
+
+/* Extra small breakpoint for better mobile control */
+@media (min-width: 475px) {
+  .xs\:inline {
+    display: inline;
+  }
+  .xs\:hidden {
+    display: none;
+  }
+}

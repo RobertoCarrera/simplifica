@@ -6,7 +6,17 @@ import { AuthService } from '../../services/auth.service';
 import { DevRoleService } from '../../services/dev-role.service';
 import { SupabaseModulesService, EffectiveModule } from '../../services/supabase-modules.service';
 import { NotificationService } from '../../services/notification.service';
-import { MoreMenuSheetComponent, MoreMenuItem } from '../more-menu-sheet/more-menu-sheet.component';
+
+export interface MoreMenuItem {
+  id: string;
+  label: string;
+  icon: string;
+  route?: string;
+  badge?: number;
+  queryParams?: Record<string, any>;
+  devOnly?: boolean;
+  roleOnly?: 'ownerAdmin' | 'adminOnly';
+}
 
 interface NavItem {
   id: string;
@@ -21,48 +31,63 @@ interface NavItem {
 @Component({
   selector: 'app-mobile-bottom-nav',
   standalone: true,
-  imports: [CommonModule, RouterModule, MoreMenuSheetComponent],
+  imports: [CommonModule, RouterModule],
   template: `
-    @if (pwaService.deviceInfo().screenSize === 'sm' || pwaService.isMobileDevice()) {
-      <nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 safe-area-pb z-50" role="navigation" aria-label="Navegación principal móvil">
+    <ng-container>
+      <nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 safe-area-pb z-50 md:hidden" role="navigation" aria-label="Navegación principal móvil">
         <ul class="flex justify-around items-center h-16 px-4 m-0 list-none" role="menubar">
-          @for (item of filteredNavItems(); track item.id) {
-            <li class="flex-1 flex justify-center" role="none">
-              <button *ngIf="item.action === 'more'" (click)="toggleMoreSheet()" role="menuitem" aria-label="Más opciones"
-                class="relative flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                [class.text-blue-600]="showMoreSheet()">
-                <i [class]="'fas fa-' + item.icon + ' text-lg mb-1'"></i>
-                <span class="text-xs font-medium">{{ item.label }}</span>
-              </button>
-              <button *ngIf="item.action === 'notifications'" (click)="openNotifications()" role="menuitem" aria-label="Notificaciones"
-                class="relative flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <i [class]="'fas fa-' + item.icon + ' text-lg mb-1'"></i>
-                <span class="text-xs font-medium">{{ item.label }}</span>
-                @if (unreadCount() > 0) {
-                  <span class="absolute top-1 right-4 bg-red-500 text-white text-[10px] leading-none px-1 py-0.5 rounded-full min-w-[18px] text-center font-semibold">{{ unreadCount() }}</span>
-                }
-              </button>
-              <a *ngIf="!item.action" [routerLink]="item.route" routerLinkActive="active" #rla="routerLinkActive" role="menuitem"
-                class="flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                [class]="rla.isActive ? 'text-blue-600 dark:text-blue-400' : 'hover:text-gray-700 dark:hover:text-gray-300'">
-                <i [class]="'fas fa-' + item.icon + ' text-lg mb-1'"></i>
-                <span class="text-xs font-medium">{{ item.label }}</span>
-              </a>
-            </li>
-          }
+          <li *ngFor="let item of filteredNavItems(); let i = index" class="flex-1 flex justify-center" role="none">
+            <button *ngIf="item.action === 'more'" (click)="toggleMoreSheet()" role="menuitem" aria-label="Más opciones"
+              class="relative flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              [class.text-blue-600]="showMoreSheet()">
+              <i [class]="'fas fa-' + item.icon + ' text-lg mb-1'"></i>
+              <span class="text-xs font-medium">{{ item.label }}</span>
+            </button>
+
+            <button *ngIf="item.action === 'notifications'" (click)="openNotifications()" role="menuitem" aria-label="Notificaciones"
+              class="relative flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <i [class]="'fas fa-' + item.icon + ' text-lg mb-1'"></i>
+              <span class="text-xs font-medium">{{ item.label }}</span>
+              <span *ngIf="unreadCount() > 0" class="absolute top-1 right-4 bg-red-500 text-white text-[10px] leading-none px-1 py-0.5 rounded-full min-w-[18px] text-center font-semibold">{{ unreadCount() }}</span>
+            </button>
+
+            <a *ngIf="!item.action" [routerLink]="item.route" routerLinkActive="active" #rla="routerLinkActive" role="menuitem"
+              class="flex flex-col items-center justify-center w-full h-full text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              [class]="rla.isActive ? 'text-blue-600 dark:text-blue-400' : 'hover:text-gray-700 dark:hover:text-gray-300'">
+              <i [class]="'fas fa-' + item.icon + ' text-lg mb-1'"></i>
+              <span class="text-xs font-medium">{{ item.label }}</span>
+            </a>
+          </li>
         </ul>
       </nav>
 
-      <!-- Bottom Sheet Más -->
-      @if (showMoreSheet()) {
-        <app-more-menu-sheet
-          [items]="moreMenuItems()"
-          (close)="closeMoreSheet()"
-          [debugRole]="debugRole()"
-          [debugModules]="debugModules()"
-        ></app-more-menu-sheet>
-      }
-    }
+      <!-- Bottom Sheet Más (inline) -->
+      <div *ngIf="showMoreSheet()" class="fixed inset-0 z-50" aria-modal="true" role="dialog" aria-label="Menú adicional">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" (click)="closeMoreSheet()" aria-hidden="true"></div>
+        <div class="absolute left-0 right-0 bottom-0 bg-white dark:bg-[#1e293b] rounded-t-2xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[70vh] flex flex-col animate-slideUp">
+          <div class="flex items-center justify-between px-5 pt-4 pb-2">
+            <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Más opciones</h2>
+            <button (click)="closeMoreSheet()" aria-label="Cerrar" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="px-3 pb-6 overflow-y-auto flex-1">
+            <div class="grid grid-cols-3 gap-2">
+              <a *ngFor="let it of moreMenuItems()" [routerLink]="it.route" [queryParams]="it.queryParams" (click)="closeMoreSheet()" class="menu-btn" [attr.aria-label]="it.label">
+                <span class="relative">
+                  <i [class]="'fas fa-' + it.icon"></i>
+                  <span *ngIf="it.badge && it.badge > 0" class="badge">{{ it.badge }}</span>
+                </span>
+                <span>{{ it.label }}</span>
+              </a>
+            </div>
+          </div>
+          <div class="px-5 py-3 border-t border-gray-200 dark:border-gray-800 flex justify-end">
+            <button (click)="closeMoreSheet()" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
   `,
   styles: [`
     .safe-area-pb {
@@ -81,9 +106,12 @@ interface NavItem {
     :host {
       display: contents;
     }
-    .menu-btn { @apply flex flex-col items-center justify-center gap-1 p-3 rounded-xl text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors; }
+    .menu-btn { 
+      @apply flex flex-col items-center justify-center gap-1 p-3 rounded-xl text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors; 
+      min-height: 64px;
+    }
     .menu-btn i { @apply text-base; }
-    .badge { @apply absolute -top-1 -right-1 bg-red-500 text-white text-[10px] leading-none px-1 py-0.5 rounded-full min-w-[18px] text-center font-semibold; }
+    .badge { @apply absolute -top-1 -right-2 bg-red-500 text-white text-[10px] leading-none px-1 py-0.5 rounded-full min-w-[18px] text-center font-semibold; }
     @keyframes slideUp { from { transform: translateY(20px); opacity:0 } to { transform: translateY(0); opacity:1 } }
     .animate-slideUp { animation: slideUp .25s ease-out; }
   `]
@@ -99,21 +127,23 @@ export class MobileBottomNavComponent implements OnInit {
   // Server-side allowed modules set
   private _allowedModuleKeys = signal<Set<string> | null>(null);
 
-  // Staff primary nav: restrict to 5 slots: Inicio | Clientes | Facturación | Notificaciones | Más
+  // Staff primary nav: restrict to 5 slots: Inicio | Clientes | Facturación | Notificaciones | Configuración/Más
   private baseItems: NavItem[] = [
     { id: 'inicio', label: 'Inicio', icon: 'home', route: '/inicio', module: 'core' },
     { id: 'clientes', label: 'Clientes', icon: 'users', route: '/clientes', module: 'production' },
-  { id: 'facturacion', label: 'Facturación', icon: 'file-invoice-dollar', route: '/facturacion', module: 'development' },
-  // Notificaciones should be always available in the primary bar
-  { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', action: 'notifications', module: 'development' },
+    { id: 'facturacion', label: 'Facturación', icon: 'file-invoice-dollar', route: '/facturacion', module: 'development' },
+    // Notificaciones should be always available in the primary bar
+    { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', action: 'notifications', module: 'development' },
+    { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion', module: 'core' },
     { id: 'more', label: 'Más', icon: 'ellipsis-h', action: 'more', module: 'core' }
   ];
 
-  // Client portal users bottom nav (simplified): Inicio | Tickets | Presupuestos | Más
+  // Client portal users bottom nav (simplified): Inicio | Tickets | Presupuestos | Configuración/Más
   private clientItemsBase: NavItem[] = [
     { id: 'inicio', label: 'Inicio', icon: 'home', route: '/inicio', module: 'core' },
     { id: 'tickets', label: 'Tickets', icon: 'ticket-alt', route: '/tickets', module: 'production' },
     { id: 'presupuestos', label: 'Presupuestos', icon: 'file-alt', route: '/portal/presupuestos', module: 'production' },
+    { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion', module: 'core' },
     { id: 'more', label: 'Más', icon: 'ellipsis-h', action: 'more', module: 'core' }
   ];
 
@@ -145,20 +175,24 @@ export class MobileBottomNavComponent implements OnInit {
         { id: 'mobile-dashboard', label: 'Dashboard Móvil', icon: 'mobile-alt', route: '/portal', devOnly: true },
         // Advanced features are dev-only
         { id: 'advanced', label: 'Funciones Avanzadas', icon: 'rocket', route: '/advanced-features', devOnly: true },
-        { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' },
         // Gestión Módulos should be admin-only
         { id: 'modules', label: 'Gestión Módulos', icon: 'sliders-h', route: '/admin/modulos', roleOnly: 'adminOnly' },
       );
       // If the server enabled client-specific modules for this company, show quick links for them
       const allowed = this._allowedModuleKeys();
       if (allowed) {
+        if (allowed.has('moduloSAT')) {
+          items.push({ id: 'tickets', label: 'Tickets', icon: 'ticket-alt', route: '/tickets' });
+        }
         if (allowed.has('moduloPresupuestos')) {
-          items.push({ id: 'presupuestos', label: 'Presupuestos', icon: 'file-alt', route: '/portal/presupuestos' });
+          items.push({ id: 'presupuestos', label: 'Presupuestos', icon: 'file-alt', route: '/presupuestos' });
         }
         if (allowed.has('moduloServicios')) {
           items.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios' });
         }
       }
+      // Configuración siempre al final
+      items.push({ id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' });
     } else {
       // Client specific extra items (placeholder for future)
       items.push(
@@ -179,21 +213,16 @@ export class MobileBottomNavComponent implements OnInit {
       return true;
     });
 
-    // Avoid showing duplicates: remove items that are present in the primary nav (base or client) or
-    // that we would promote into the primary bar.
-    const primaryBase = (isClient ? this.clientItemsBase : this.baseItems).map(i => i.route || i.id);
-    const allowed = this._allowedModuleKeys();
-    const promotedRoutes: string[] = [];
-    if (!isClient && allowed) {
-      if (allowed.has('moduloPresupuestos')) promotedRoutes.push('/portal/presupuestos');
-      if (allowed.has('moduloServicios')) promotedRoutes.push('/servicios');
-    }
+    // Avoid showing duplicates: remove items that are present in the primary nav (including settings if it's shown)
+    // Get the actual rendered items from filteredNavItems
+    const renderedItems = this.filteredNavItems();
+    const renderedRoutes = renderedItems.map(i => i.route || i.id);
 
     const filtered = visible.filter(it => {
       const r = it.route || it.id;
       if (!r) return true;
-      if (primaryBase.includes(r)) return false;
-      if (promotedRoutes.includes(r)) return false;
+      // Don't show if already rendered in the bottom nav
+      if (renderedRoutes.includes(r)) return false;
       return true;
     });
 
@@ -207,11 +236,14 @@ export class MobileBottomNavComponent implements OnInit {
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const allowed = this._allowedModuleKeys();
-  // Start from filtered base items. We treat 'more' as a special overflow control and remove it
-  // from the initial candidate list so we can re-add it only if overflow exists.
-  let base = isClient ? [...this.clientItemsBase] : [...this.baseItems];
-  const morePrototype: NavItem | undefined = base.find(b => b.id === 'more');
-  base = base.filter(b => b.id !== 'more');
+    
+    // Start from filtered base items. We treat 'more' and 'settings' as special controls
+    let base = isClient ? [...this.clientItemsBase] : [...this.baseItems];
+    const morePrototype: NavItem | undefined = base.find(b => b.id === 'more');
+    const settingsPrototype: NavItem | undefined = base.find(b => b.id === 'settings');
+    
+    // Remove both 'more' and 'settings' from base - we'll decide which one to show
+    base = base.filter(b => b.id !== 'more' && b.id !== 'settings');
 
     // Filter base by roleOnly
     base = base.filter(it => {
@@ -254,13 +286,16 @@ export class MobileBottomNavComponent implements OnInit {
         { id: 'export-import', label: 'Export/Import', icon: 'exchange-alt', route: '/export-import', devOnly: true },
         { id: 'mobile-dashboard', label: 'Dashboard Móvil', icon: 'mobile-alt', route: '/portal', devOnly: true },
         { id: 'advanced', label: 'Funciones Avanzadas', icon: 'rocket', route: '/advanced-features', devOnly: true },
-        { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' },
         { id: 'modules', label: 'Gestión Módulos', icon: 'sliders-h', route: '/admin/modulos', roleOnly: 'adminOnly' },
       );
+      // Add module-specific items to extras so they appear in More menu when not in primary bar
       if (allowed) {
-        if (allowed.has('moduloPresupuestos')) extras.push({ id: 'presupuestos', label: 'Presupuestos', icon: 'file-alt', route: '/portal/presupuestos' });
+        if (allowed.has('moduloSAT')) extras.push({ id: 'tickets', label: 'Tickets', icon: 'ticket-alt', route: '/tickets' });
+        if (allowed.has('moduloPresupuestos')) extras.push({ id: 'presupuestos', label: 'Presupuestos', icon: 'file-alt', route: '/presupuestos' });
         if (allowed.has('moduloServicios')) extras.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios' });
       }
+      // Configuración siempre al final
+      extras.push({ id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' });
     } else {
       extras.push(
         { id: 'search', label: 'Búsqueda', icon: 'search', route: '/search' },
@@ -277,7 +312,7 @@ export class MobileBottomNavComponent implements OnInit {
       return true;
     });
 
-    // Build ordered allCandidates (without 'Más'): base (filtered) first, then promoted (avoid duplicates), then visibleExtras (avoid duplicates)
+    // Build ordered allCandidates (without 'Más' and 'settings'): base (filtered) first, then promoted (avoid duplicates), then visibleExtras (avoid duplicates)
     const allCandidates: NavItem[] = [];
     const pushIfNew = (n: NavItem) => {
       if (!allCandidates.some(a => (a.route && n.route && a.route === n.route) || a.id === n.id)) allCandidates.push(n);
@@ -287,15 +322,21 @@ export class MobileBottomNavComponent implements OnInit {
     promoted.forEach(p => pushIfNew(p));
     visibleExtras.forEach(e => pushIfNew(e as NavItem));
 
-    // If total candidates fit within the bar, show them all and hide 'Más'
-    if (allCandidates.length <= maxSlots) {
+    // Decision logic: if all candidates + settings fit, show settings directly
+    // Otherwise, show 'Más' button for overflow
+    if (allCandidates.length < maxSlots) {
+      // We have space: add 'Configuración' directly to the bar
+      if (settingsPrototype) {
+        allCandidates.push(settingsPrototype);
+      }
       return allCandidates;
     }
 
-    // Overflow: show first (maxSlots - 1) and add 'Más' as last slot.
+    // Overflow case: show first (maxSlots - 1) items and add 'Más' as last slot
     const primary = allCandidates.slice(0, maxSlots - 1);
-    // Use existing prototype if available, otherwise create a default 'more' item.
-    primary.push(morePrototype || { id: 'more', label: 'Más', icon: 'ellipsis-h', action: 'more', module: 'core' });
+    if (morePrototype) {
+      primary.push(morePrototype);
+    }
     return primary;
   });
 
