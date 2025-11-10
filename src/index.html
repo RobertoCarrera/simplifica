@@ -87,7 +87,7 @@
       } catch (e) {
         // ignore shim errors
       }
-    })();
+      })();
       // Dynamic viewport height fix for iOS Safari & modern browsers
       (function viewportHeightFix(){
         function setVH(){
@@ -102,10 +102,25 @@
           window.visualViewport.addEventListener('resize', setVH);
         }
       })();
+      
+      // Detect iOS and add class for specific styling
+      (function detectIOS(){
+        try {
+          var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+          var isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                             window.navigator.standalone === true;
+          
+          if (isIOS) {
+            document.body.classList.add('ios-device');
+            if (isStandalone) {
+              document.body.classList.add('ios-pwa');
+            }
+          }
+        } catch(e) { /* ignore */ }
+      })();
   </script>
-  <app-root></app-root>
-
-  <script>
+  <app-root></app-root>  <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')

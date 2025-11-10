@@ -420,16 +420,16 @@ html, body {
   }
 }
 
-/* PWA specific adjustment - when running as standalone app */
-@media all and (display-mode: standalone) {
+/* iOS PWA specific adjustment - Safari tiene un menú inferior que tapa los botones */
+body.ios-pwa {
   .fab-button {
-    /* En PWA, el menú inferior ocupa más espacio, así que subimos el botón */
+    /* En iOS PWA, el menú inferior de Safari ocupa más espacio */
     bottom: 90px !important;
   }
   
   @media (max-width: 768px) {
     .fab-button {
-      /* En mobile PWA necesitamos aún más espacio */
+      /* En mobile iOS PWA necesitamos aún más espacio */
       bottom: 100px !important;
     }
   }
