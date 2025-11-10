@@ -1,4 +1,4 @@
-import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -24,7 +24,7 @@ import { firstValueFrom } from 'rxjs';
   templateUrl: './configuracion.component.html',
   styleUrls: ['./configuracion.component.scss']
 })
-export class ConfiguracionComponent implements OnInit {
+export class ConfiguracionComponent implements OnInit, OnDestroy {
   // UI tabs
   activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' = 'perfil';
   userProfile: AppUser | null = null;
@@ -130,6 +130,16 @@ export class ConfiguracionComponent implements OnInit {
     this.loadModulesCatalog();
     this.loadModulesDiagnostics();
     this.loadSettings();
+  }
+
+  ngOnDestroy() {
+    // Asegurar que el scroll se restaure si el componente se destruye con modal abierto
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.height = '';
+    document.documentElement.style.overflow = '';
   }
 
   private loadUserProfile() {

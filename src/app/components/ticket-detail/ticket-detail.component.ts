@@ -769,6 +769,13 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (this.editor) {
       this.editor.destroy();
     }
+    // Asegurar que el scroll se restaure si el componente se destruye con modal abierto
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.height = '';
+    document.documentElement.style.overflow = '';
   }
 
   // Development-only logger: will be a no-op in production

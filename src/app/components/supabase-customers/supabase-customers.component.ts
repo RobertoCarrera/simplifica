@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, HostListener, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SkeletonComponent } from '../skeleton/skeleton.component';
@@ -37,7 +37,7 @@ import { SupabaseCustomersService as CustomersSvc } from '../../services/supabas
   templateUrl: './supabase-customers.component.html',
   styleUrls: ['./supabase-customers.component.scss']
 })
-export class SupabaseCustomersComponent implements OnInit {
+export class SupabaseCustomersComponent implements OnInit, OnDestroy {
   
   // Services
   private customersService = inject(SupabaseCustomersService);
@@ -375,6 +375,16 @@ onMappingConfirmed(mappings: any[]): void {
     this.loadGdprData();
     // Initialize portal access cache
     this.refreshPortalAccess();
+  }
+
+  ngOnDestroy() {
+    // Asegurar que el scroll se restaure si el componente se destruye con modal abierto
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.height = '';
+    document.documentElement.style.overflow = '';
   }
 
   // Open invite modal prefilled with customer email

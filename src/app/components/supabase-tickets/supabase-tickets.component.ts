@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, HostListener, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, HostListener, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -34,7 +34,7 @@ export interface TagWithCount extends TicketTag {
   templateUrl: './supabase-tickets.component.html',
   styleUrl: './supabase-tickets.component.scss'
 })
-export class SupabaseTicketsComponent implements OnInit {
+export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   // Emit when the internal modal is closed so dynamic hosts can cleanup
   modalClosed: EventEmitter<void> = new EventEmitter<void>();
   
@@ -291,6 +291,16 @@ export class SupabaseTicketsComponent implements OnInit {
     } finally {
       this.loading = false;
     }
+  }
+
+  ngOnDestroy() {
+    // Asegurar que el scroll se restaure si el componente se destruye con modal abierto
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.height = '';
+    document.documentElement.style.overflow = '';
   }
 
   private async loadCompanies() {

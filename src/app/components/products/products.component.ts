@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProductsService } from '../../services/products.service';
@@ -12,7 +12,7 @@ import { firstValueFrom } from 'rxjs';
   templateUrl: './products.component.html',
   styleUrls: ['./products.component.scss']
 })
-export class ProductsComponent implements OnInit {
+export class ProductsComponent implements OnInit, OnDestroy {
   products: any[] = [];
   filteredProducts: any[] = [];
   searchTerm: string = '';
@@ -69,6 +69,16 @@ export class ProductsComponent implements OnInit {
 
   ngOnInit() {
     this.loadProducts();
+  }
+
+  ngOnDestroy() {
+    // Asegurar que el scroll se restaure si el componente se destruye con modal abierto
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.height = '';
+    document.documentElement.style.overflow = '';
   }
 
   async loadProducts() {
