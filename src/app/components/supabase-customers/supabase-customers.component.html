@@ -253,32 +253,32 @@
                     
                     <!-- Name + Badge -->
                     <div class="flex-1 min-w-0">
-                      <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate flex items-center gap-2">
-                        <span>
-                          {{ getDisplayName(customer) }}
-                        </span>
+                      <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                        {{ getDisplayName(customer) }}
                       </h3>
-                      @if (getGdprBadgeConfig(customer); as badge) {
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
-                          <i class="fas {{ badge.icon }} text-[10px]"></i>
-                          {{ badge.label }}
-                        </span>
-                      }
-                      @if (!isCustomerComplete(customer)) {
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200" [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">Incompleto</span>
-                      }
+                      <div class="flex flex-wrap gap-1.5 mt-1">
+                        @if (getGdprBadgeConfig(customer); as badge) {
+                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
+                            <i class="fas {{ badge.icon }} text-[10px]"></i>
+                            {{ badge.label }}
+                          </span>
+                        }
+                        @if (!isCustomerComplete(customer)) {
+                          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200" [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">Incompleto</span>
+                        }
+                      </div>
                     </div>
                   </div>
                   
                   <!-- Contact Info (Max 2 fields) -->
                   <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                     <div class="flex items-center gap-1.5 truncate">
-                      <i class="fas fa-envelope text-gray-400 text-xs flex-shrink-0"></i>
+                      <i class="fas fa-envelope text-gray-400 text-xs flex-shrink-0 w-4 text-center"></i>
                       <span class="truncate">{{ customer.email }}</span>
                     </div>
                     @if (customer.phone) {
                       <div class="flex items-center gap-1.5">
-                        <i class="fas fa-phone text-gray-400 text-xs flex-shrink-0"></i>
+                        <i class="fas fa-phone text-gray-400 text-xs flex-shrink-0 w-4 text-center"></i>
                         <span>{{ customer.phone }}</span>
                       </div>
                     }
@@ -286,7 +286,7 @@
                 </div>
                 
                 <!-- Right column: Action Buttons Grid (2 columns in mobile for better accessibility) -->
-                <div class="grid grid-cols-2 gap-1 flex-shrink-0">
+                <div class="grid grid-cols-2 gap-1 flex-shrink-0 ml-auto self-start">
                   <button
                     (click)="editCustomer(customer)"
                     class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
