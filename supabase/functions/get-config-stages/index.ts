@@ -129,7 +129,7 @@ serve(async (req) => {
     // Obtener estados genéricos
     const { data: stages, error: stagesError } = await supabaseAdmin
       .from("ticket_stages")
-      .select("id, name, position, color, company_id, created_at, updated_at, deleted_at")
+      .select("id, name, position, color, company_id, stage_category, workflow_category, created_at, updated_at, deleted_at")
       .is("company_id", null)
       .is("deleted_at", null)
       .order("position", { ascending: true });

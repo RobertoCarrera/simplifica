@@ -43,7 +43,7 @@ import Placeholder from '@tiptap/extension-placeholder';
           <div *ngIf="!loading && !error && ticket" class="flex gap-3">
             <button (click)="convertToQuoteFromTicket()"
                     [disabled]="!ticket || ticketServices.length === 0 || !(ticket && ticket.client && ticket.client.id)"
-                    class="btn btn-primary">
+                    class="btn btn-primary p-0 fs-6">
               <i class="fas fa-file-invoice"></i>
               {{ activeQuoteId ? 'Ir a Presupuesto' : 'Convertir en Presupuesto' }}
             </button>
@@ -55,7 +55,7 @@ import Placeholder from '@tiptap/extension-placeholder';
             <button (click)="deleteTicket()" 
                     class="btn btn-danger">
               <i class="fas fa-trash"></i>
-              Eliminar
+              <span class="hidden sm:inline">Eliminar</span>
             </button>
           </div>
         </div>
