@@ -25,7 +25,13 @@ export class AnalyticsService {
   private projectedDraftMonthly = signal<{ total: number; draftCount: number } | null>(null);
 
   // Historical trend: last 6 months of quotes data (server-computed)
-  private historicalTrend = signal<Array<{ month: string; total: number; count: number }>>([]);
+  private historicalTrend = signal<Array<{ 
+    month: string; 
+    total: number; 
+    subtotal: number;
+    tax: number;
+    count: number;
+  }>>([]);
   
   // Loading state
   private loading = signal<boolean>(true);
@@ -40,7 +46,8 @@ export class AnalyticsService {
     const kpis = this.kpisMonthly();
     const proj = this.projectedDraftMonthly();
     const includeTax = this.pricesIncludeTax();
-    return [
+    
+    const metrics: DashboardMetric[] = [
       {
         id: 'quotes-month',
         title: 'Presupuestos Mes',
@@ -64,8 +71,12 @@ export class AnalyticsService {
         description: includeTax
           ? 'Base imponible presupuestada (mes actual)'
           : 'Importe total presupuestado (mes actual)'
-      },
-      {
+      }
+    ];
+
+    // Mostrar IVA solo si NO está incluido en precios (para evitar confusión)
+    if (!includeTax) {
+      metrics.push({
         id: 'tax-quoted-month',
         title: 'IVA Presupuestado',
         value: kpis ? this.formatCurrency(kpis.tax_sum) : '—',
@@ -74,7 +85,10 @@ export class AnalyticsService {
         icon: '🧾',
         color: '#f59e0b',
         description: 'IVA total presupuestado (mes actual)'
-      },
+      });
+    }
+
+    metrics.push(
       {
         id: 'conversion-rate-month',
         title: 'Tasa de Conversión',
@@ -95,7 +109,9 @@ export class AnalyticsService {
         color: '#0ea5e9',
         description: proj ? `Borradores: ${proj.draftCount}` : 'Suma de presupuestos en borrador (mes actual)'
       }
-    ];
+    );
+
+    return metrics;
   });
 
   getHistoricalTrend = computed(() => this.historicalTrend());
@@ -194,11 +210,13 @@ export class AnalyticsService {
 
     const rows = (data as any[] | null) || [];
     const includeTax = this.pricesIncludeTax();
-    // Map and sort by period_month
+    // Map and sort by period_month - include all data for enhanced chart
     const trend = rows
       .map(r => ({
         month: String(r.period_month || '').slice(0, 7), // YYYY-MM
-        total: Number((includeTax ? r.subtotal_sum : r.total_sum) || 0),
+        total: Number(r.total_sum || 0),
+        subtotal: Number(r.subtotal_sum || 0),
+        tax: Number(r.tax_sum || 0),
         count: Number(r.quotes_count || 0)
       }))
       .sort((a, b) => a.month.localeCompare(b.month));
