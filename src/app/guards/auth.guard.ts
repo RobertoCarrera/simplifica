@@ -19,7 +19,7 @@ export class AuthGuard implements CanActivate {
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Observable<boolean> | Promise<boolean> | boolean {
-    console.log('��� AuthGuard: Checking access to:', state.url);
+    console.log('🔐 AuthGuard: Checking access to:', state.url);
 
     return combineLatest([
       this.authService.currentUser$,
@@ -30,9 +30,9 @@ export class AuthGuard implements CanActivate {
   take(1),
   timeout(15000),
       switchMap(([user]) => {
-        console.log('��� AuthGuard: User state:', user ? 'authenticated' : 'not authenticated');
+        console.log('🔐 AuthGuard: User state:', user ? 'authenticated' : 'not authenticated');
         if (!user) {
-          console.log('��� AuthGuard: Redirecting to login');
+          console.log('🔐 AuthGuard: Redirecting to login');
           // Use navigation state to pass the original destination so the URL stays clean
           // (avoids ugly encoded `?returnUrl=...` query strings). The Login component
           // will read history.state.returnTo and fall back to the legacy query param.
@@ -52,19 +52,19 @@ export class AuthGuard implements CanActivate {
             if (profile && profile.active) {
               return true;
             }
-            console.warn('��� AuthGuard: Authenticated but no active app profile. Redirecting to confirmation.');
+            console.warn('🔐 AuthGuard: Authenticated but no active app profile. Redirecting to confirmation.');
             this.router.navigate(['/auth/confirm'], { queryParams: { pending: '1' } });
             return false;
           }),
           catchError(err => {
-            console.error('��� AuthGuard: Error checking user profile:', err);
+            console.error('🔐 AuthGuard: Error checking user profile:', err);
             this.router.navigate(['/auth/confirm'], { queryParams: { pending: '1' } });
             return of(false);
           })
         );
       }),
       catchError(error => {
-        console.error('��� AuthGuard: Error checking auth state:', error);
+        console.error('🔐 AuthGuard: Error checking auth state:', error);
         // Before redirecting, perform a last synchronous session check
         return this.authService.client.auth.getSession()
           .then(({ data }) => {

@@ -50,7 +50,7 @@ export class AnalyticsService {
         value: kpis ? this.formatCurrency(kpis.total_sum) : '—',
         change: 0,
         changeType: 'neutral',
-        icon: '�',
+        icon: '💰',
         color: '#10b981',
         description: 'Importe total presupuestado (mes actual)'
       },
