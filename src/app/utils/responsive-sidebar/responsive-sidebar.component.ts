@@ -94,10 +94,17 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'production'
     },
     {
-      id: 16,
+      id: 43,
       label: 'Presupuestos',
-      icon: 'description',
+      icon: 'request_quote',
       route: '/presupuestos',
+      module: 'production'
+    },
+    {
+      id: 6,
+      label: 'Analíticas',
+      icon: 'trending_up',
+      route: '/analytics',
       module: 'production'
     },
     {
@@ -121,13 +128,6 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'people',
       route: '/contactos',
       module: 'development'
-    },
-    {
-      id: 6,
-      label: 'Analytics',
-      icon: 'trending_up',
-      route: '/analytics',
-      module: 'production'
     },
     {
       id: 7,

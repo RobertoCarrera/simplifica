@@ -166,7 +166,7 @@ export class MobileBottomNavComponent implements OnInit {
         { id: 'chat', label: 'Chat', icon: 'comments', route: '/chat', devOnly: true },
         { id: 'contacts', label: 'Contactos', icon: 'address-book', route: '/anychat/contacts', devOnly: true },
         // Analytics is still in development; hide for non-devs/admins
-        { id: 'analytics', label: 'Analytics', icon: 'chart-line', route: '/analytics', devOnly: true },
+        { id: 'analytics', label: 'Analíticas', icon: 'chart-line', route: '/analytics', devOnly: true },
         { id: 'search', label: 'Búsqueda', icon: 'search', route: '/search', devOnly: true },
         { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() },
         // Workflows & Export/Import are development features for now
@@ -279,7 +279,7 @@ export class MobileBottomNavComponent implements OnInit {
       extras.push(
         { id: 'chat', label: 'Chat', icon: 'comments', route: '/chat', devOnly: true },
         { id: 'contacts', label: 'Contactos', icon: 'address-book', route: '/anychat/contacts', devOnly: true },
-        { id: 'analytics', label: 'Analytics', icon: 'chart-line', route: '/analytics', devOnly: true },
+        { id: 'analytics', label: 'Analíticas', icon: 'chart-line', route: '/analytics', devOnly: true },
         { id: 'search', label: 'Búsqueda', icon: 'search', route: '/search', devOnly: true },
         { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' } },
         { id: 'workflows', label: 'Workflows', icon: 'project-diagram', route: '/workflows', devOnly: true },

@@ -245,23 +245,23 @@ export class AdvancedFeaturesDashboardComponent implements OnInit {
   private featuresData = signal<FeatureCard[]>([
     {
       id: 'analytics',
-      name: 'Analytics Dashboard',
-      description: 'Panel de control con métricas y visualizaciones',
+      name: 'Analíticas',
+      description: 'Panel de control con métricas y visualizaciones de presupuestos',
       icon: '📊',
       color: 'bg-gradient-to-br from-blue-500 to-blue-600',
       route: '/analytics',
       status: 'completed',
       progress: 100,
       features: [
-        '6 métricas principales en tiempo real',
-        'Gráficos CSS sin dependencias externas',
-        'Estadísticas de tickets y clientes',
-        'Métricas de rendimiento del sistema',
-        'Dashboard responsive y interactivo'
+        'Métricas de presupuestos mensuales',
+        'Gráficos de evolución temporal',
+        'IVA presupuestado y totales',
+        'Borradores y conversión',
+        'Dashboard responsive mobile-first'
       ],
       stats: [
-        { label: 'Métricas', value: 6 },
-        { label: 'Widgets', value: 12 }
+        { label: 'Métricas', value: 4 },
+        { label: 'Histórico', value: 6 }
       ]
     },
     {

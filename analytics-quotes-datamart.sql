@@ -172,7 +172,42 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.f_quote_kpis_monthly(date, date) TO authenticated;
 
--- 5.2) Top items monthly (limit applies to both rankings)
+-- 5.2) Projected revenue from draft quotes
+CREATE OR REPLACE FUNCTION public.f_quote_projected_revenue(p_start date DEFAULT NULL, p_end date DEFAULT NULL)
+RETURNS TABLE (
+  company_id uuid,
+  created_by uuid,
+  period_month date,
+  draft_count bigint,
+  subtotal numeric,
+  tax_amount numeric,
+  grand_total numeric
+)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, analytics
+AS $$
+  SELECT 
+    qb.company_id,
+    qb.created_by,
+    DATE_TRUNC('month', qb.quote_ts)::date AS period_month,
+    COUNT(*) AS draft_count,
+    SUM(qb.subtotal) AS subtotal,
+    SUM(qb.tax_amount) AS tax_amount,
+    SUM(qb.total_amount) AS grand_total
+  FROM analytics.quote_base qb
+  WHERE qb.company_id = public.get_user_company_id()
+    AND qb.created_by = auth.uid()
+    AND qb.status = 'draft'
+    AND (p_start IS NULL OR DATE_TRUNC('month', qb.quote_ts)::date >= p_start)
+    AND (p_end IS NULL OR DATE_TRUNC('month', qb.quote_ts)::date <= p_end)
+  GROUP BY qb.company_id, qb.created_by, DATE_TRUNC('month', qb.quote_ts)
+  ORDER BY period_month DESC;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.f_quote_projected_revenue(date, date) TO authenticated;
+
+-- 5.3) Top items monthly (limit applies to both rankings)
 CREATE OR REPLACE FUNCTION public.f_quote_top_items_monthly(p_start date DEFAULT NULL, p_end date DEFAULT NULL, p_limit int DEFAULT 50)
 RETURNS TABLE (
   company_id uuid,
@@ -202,7 +237,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.f_quote_top_items_monthly(date, date, int) TO authenticated;
 
--- 5.3) Cube access
+-- 5.4) Cube access
 CREATE OR REPLACE FUNCTION public.f_quote_cube(p_start date DEFAULT NULL, p_end date DEFAULT NULL)
 RETURNS TABLE (
   company_id uuid,

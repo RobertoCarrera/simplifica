@@ -165,11 +165,13 @@ export class AnalyticsService {
       console.error('[AnalyticsService] f_quote_projected_revenue RPC error:', projRes.error);
       this.projectedDraftMonthly.set(null);
     } else {
-      // Sum grand_total if present, otherwise sum amount (should be one month)
+      // Sum based on prices_include_tax preference
       const monthStr = p_start.slice(0, 7);
       const rows = (projRes.data as any[] | null) || [];
       const monthRows = rows.filter(r => String(r.period_month || '').startsWith(monthStr));
-      const total = monthRows.reduce((acc, r) => acc + Number(r.grand_total ?? r.amount ?? 0), 0);
+      const includeTax = this.pricesIncludeTax();
+      // Use subtotal if prices include tax (show net), otherwise use grand_total
+      const total = monthRows.reduce((acc, r) => acc + Number((includeTax ? r.subtotal : r.grand_total) ?? 0), 0);
       const draftCount = monthRows.reduce((acc, r) => acc + Number(r.draft_count ?? 0), 0);
       this.projectedDraftMonthly.set({ total, draftCount });
     }
