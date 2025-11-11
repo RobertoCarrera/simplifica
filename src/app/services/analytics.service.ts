@@ -1,12 +1,15 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
 import { DashboardMetric } from '../models/analytics.interface';
+import { SupabaseSettingsService } from './supabase-settings.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AnalyticsService {
   private supabase = inject(SupabaseClientService);
+  private settings = inject(SupabaseSettingsService);
 
   // Server-driven analytics signals
   private kpisMonthly = signal<{
@@ -28,11 +31,15 @@ export class AnalyticsService {
   private loading = signal<boolean>(true);
   private error = signal<string | null>(null);
 
+  // Pricing preference: whether prices are set with VAT included at company/app level
+  private pricesIncludeTax = signal<boolean>(false);
+
   // Computed metrics for dashboard cards (all from backend)
   // Public accessors
   getMetrics = computed((): DashboardMetric[] => {
     const kpis = this.kpisMonthly();
     const proj = this.projectedDraftMonthly();
+    const includeTax = this.pricesIncludeTax();
     return [
       {
         id: 'quotes-month',
@@ -47,12 +54,26 @@ export class AnalyticsService {
       {
         id: 'total-quoted-month',
         title: 'Total Presupuestado',
-        value: kpis ? this.formatCurrency(kpis.total_sum) : '—',
+        // Si la empresa trabaja con "precios con IVA incluido", mostramos subtotal (base imponible)
+        // En caso contrario, mostramos el total con impuestos.
+        value: kpis ? this.formatCurrency(includeTax ? kpis.subtotal_sum : kpis.total_sum) : '—',
         change: 0,
         changeType: 'neutral',
         icon: '💰',
         color: '#10b981',
-        description: 'Importe total presupuestado (mes actual)'
+        description: includeTax
+          ? 'Base imponible presupuestada (mes actual)'
+          : 'Importe total presupuestado (mes actual)'
+      },
+      {
+        id: 'tax-quoted-month',
+        title: 'IVA Presupuestado',
+        value: kpis ? this.formatCurrency(kpis.tax_sum) : '—',
+        change: 0,
+        changeType: 'neutral',
+        icon: '🧾',
+        color: '#f59e0b',
+        description: 'IVA total presupuestado (mes actual)'
       },
       {
         id: 'conversion-rate-month',
@@ -83,6 +104,8 @@ export class AnalyticsService {
 
   constructor() {
     // Load server-side analytics on init
+    // Load pricing preference in parallel
+    this.loadPricingPreference();
     this.refreshAnalytics();
   }
 
@@ -168,11 +191,12 @@ export class AnalyticsService {
     }
 
     const rows = (data as any[] | null) || [];
+    const includeTax = this.pricesIncludeTax();
     // Map and sort by period_month
     const trend = rows
       .map(r => ({
         month: String(r.period_month || '').slice(0, 7), // YYYY-MM
-        total: Number(r.total_sum || 0),
+        total: Number((includeTax ? r.subtotal_sum : r.total_sum) || 0),
         count: Number(r.quotes_count || 0)
       }))
       .sort((a, b) => a.month.localeCompare(b.month));
@@ -204,6 +228,23 @@ export class AnalyticsService {
       return new Intl.NumberFormat('es-ES', { style: 'percent', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
     } catch {
       return `${Math.round(value * 100)}%`;
+    }
+  }
+
+  // Load company/app preference for prices including tax
+  private async loadPricingPreference(): Promise<void> {
+    try {
+      // Intentar obtener ambos y aplicar la misma lógica que en Quotes
+      const [company, app] = await Promise.all([
+        firstValueFrom(this.settings.getCompanySettings()),
+        firstValueFrom(this.settings.getAppSettings()),
+      ]);
+      const effective = (company?.prices_include_tax ?? null) ?? (app?.default_prices_include_tax ?? false);
+      this.pricesIncludeTax.set(Boolean(effective));
+    } catch (e) {
+      // Si falla, mantener false por defecto
+      console.warn('[AnalyticsService] No fue posible cargar la preferencia de IVA incluido. Usando total con impuestos.', e);
+      this.pricesIncludeTax.set(false);
     }
   }
 }

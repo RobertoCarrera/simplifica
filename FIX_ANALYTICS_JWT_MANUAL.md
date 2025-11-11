@@ -221,3 +221,51 @@ POST /rest/v1/rpc/f_quote_kpis_monthly 200 (OK)
 ---
 
 ✅ **Una vez completado todos los pasos, las analíticas deberían funcionar correctamente.**
+
+---
+
+## 🔄 Actualización (Nov 2025)
+
+En producción se ha adoptado una versión del Auth Hook alineada con el formato de payload más reciente de Supabase Hooks, donde el body incluye `user_id` y `claims` originales. La función extiende los claims (no los reemplaza) y devuelve `{ claims: { ... } }`.
+
+Puntos clave:
+- Lee `user_id` del payload y conserva `claims` existentes.
+- Agrega `company_id` a los claims si existe en `public.users`.
+- Devuelve siempre 200 con `{ claims }` para no bloquear el login.
+- Se ha configurado un secreto del Hook como `HOOK_SECRET` en Project Settings → API → Secrets.
+
+Ejemplo de implementación:
+
+```ts
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+serve(async (req) => {
+  try {
+    const payload = await req.json();
+    const userId = payload.user_id as string | undefined;
+    const claims = (payload.claims ?? {}) as Record<string, unknown>;
+
+    if (!userId) {
+      return new Response(JSON.stringify({ claims }), { headers: { 'Content-Type': 'application/json' }, status: 200 });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: userData } = await supabase
+      .from('users')
+      .select('company_id')
+      .eq('auth_user_id', userId)
+      .single();
+
+    const updatedClaims = { ...claims, company_id: userData?.company_id ?? null };
+    return new Response(JSON.stringify({ claims: updatedClaims }), { headers: { 'Content-Type': 'application/json' }, status: 200 });
+  } catch {
+    return new Response(JSON.stringify({ claims: {} }), { headers: { 'Content-Type': 'application/json' }, status: 200 });
+  }
+});
+```
+
+Nota: Si necesitas validar la firma del Hook usando `HOOK_SECRET`, consulta la guía oficial de Auth Hooks para verificar el header `Authorization`.
