@@ -56,7 +56,9 @@
       "dest": "/index.html"
     }
   ],
-  "env": {},
+  "env": {
+    "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+  },
   "git": {
     "deploymentEnabled": {
       "*": false,
