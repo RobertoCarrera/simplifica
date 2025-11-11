@@ -1010,6 +1010,28 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         if (baseDesc) patchObj.description = baseDesc;
       }
     } catch {}
+    // Auto-fill discount from variant/pricing if item doesn't already have a discount
+    try {
+      const currentDiscount = Number(item.get('discount_percent')?.value || 0);
+      // preferred was calculated above when choosing pricing; try to reuse it
+      const parsedPricing = this.variantPricing(variant);
+      let variantDiscount = 0;
+      // If parsed pricing exists, try to find the preferred entry used earlier
+      if (parsedPricing.length > 0) {
+        const entries = parsedPricing as any[];
+        const preferred = entries.find(e => e.billing_period === 'monthly')
+          || entries.find(e => e.billing_period === 'annual')
+          || entries.find(e => e.billing_period === 'quarterly')
+          || entries.find(e => e.billing_period === 'one_time')
+          || entries[0];
+        variantDiscount = Number(preferred?.discount_percentage ?? 0);
+      }
+      // Fallback to deprecated field on variant
+      if (!variantDiscount) variantDiscount = Number((variant as any).discount_percentage ?? 0);
+      if ((currentDiscount === 0 || currentDiscount === null || currentDiscount === undefined) && variantDiscount) {
+        patchObj.discount_percent = variantDiscount;
+      }
+    } catch {}
     // Do NOT modify description anymore; keep it strictly as service description or user custom text.
     // (If empty, we leave it empty so backfill can supply service description later.)
     item.patchValue(patchObj);
@@ -1050,6 +1072,15 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         const svc = this.services().find(s => s.id === variant.service_id);
         const baseDesc = svc ? (svc.description || svc.name) : '';
         if (baseDesc) toPatch.description = baseDesc;
+      }
+    } catch {}
+    // Auto-fill discount from pricing entry or variant if item doesn't already have a discount
+    try {
+      const currentDiscount = Number(item.get('discount_percent')?.value || 0);
+      let pricingDiscount = Number(pricing?.discount_percentage ?? 0);
+      if (!pricingDiscount) pricingDiscount = Number((variant as any).discount_percentage ?? 0);
+      if ((currentDiscount === 0 || currentDiscount === null || currentDiscount === undefined) && pricingDiscount) {
+        toPatch.discount_percent = pricingDiscount;
       }
     } catch {}
     item.patchValue(toPatch);
