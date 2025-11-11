@@ -242,9 +242,11 @@ body .modal-overlay .global-modal,
   width: 100%;
   background: #ffffff;
   border-radius: 12px;
+  /* Keep modal content clipped so layout remains stable; dropdowns are positioned relative to their containers */
   overflow: hidden;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
 }
+/* Keep dropdowns working as before; if you want them above the modal boundaries we should render them into <body> via a portal. */
 
 .modal-overlay .modal-body,
 .modal-dialog .modal-body,

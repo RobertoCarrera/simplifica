@@ -924,6 +924,31 @@ onMappingConfirmed(mappings: any[]): void {
     this.selectedCustomer.set(null);
     this.resetForm();
     
+    // Close and clear any dropdowns and nested modal state so reopening shows a clean form
+    try {
+      // Visible flags
+      this.viaDropdownOpen = false;
+      this.localityDropdownOpen = false;
+
+      // Reset suggestion lists
+      this.filteredVias = [...this.addressVias];
+      this.filteredLocalities = [...(this.localities || [])];
+
+      // Clear visible locality name (input binding) and any create-locality modal state
+      this.addressLocalityName = '';
+      this.showCreateLocalityModal = false;
+      this.newLocalityName = '';
+      this.newLocalityCP = '';
+      this.newLocalityProvince = '';
+      this.newLocalityCountry = 'España';
+      this.filteredNameSuggestions = [];
+      this.nameMatchesList = [];
+      this.cpExists = false;
+      this.existingLocalityByCP = null;
+    } catch (e) {
+      console.warn('Error clearing dropdowns on modal close', e);
+    }
+
     // Restaurar scroll de la página principal
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
@@ -931,7 +956,7 @@ onMappingConfirmed(mappings: any[]): void {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
-    
+
     // Retroceder en el historial solo si hay entrada de modal
     if (window.history.state && window.history.state.modal) {
       window.history.back();
