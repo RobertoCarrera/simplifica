@@ -185,15 +185,21 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
     const data = this.historicalData();
     const isDark = document.documentElement.classList.contains('dark');
     
+    // Responsive: limit months based on screen size
+    // Mobile: 4 months, Tablet/Desktop: 6 months
+    const isMobile = window.innerWidth < 768;
+    const maxMonths = isMobile ? 4 : 6;
+    const limitedData = data.slice(-maxMonths);
+    
     return {
       series: [
         {
           name: 'Base Imponible',
-          data: data.map(d => d.subtotal)
+          data: limitedData.map(d => d.subtotal)
         },
         {
           name: 'IVA',
-          data: data.map(d => d.tax)
+          data: limitedData.map(d => d.tax)
         }
       ],
       chart: {
@@ -226,14 +232,14 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
           }
         }
       },
-      colors: ['#10b981', '#fbbf24'],
+      colors: ['#10b981', '#f59e0b'],
       dataLabels: {
         enabled: true,
         formatter: (val: number, opt: any) => {
           // Show count only on the top series (IVA)
           if (opt.seriesIndex === 1) {
             const dataIndex = opt.dataPointIndex;
-            const count = data[dataIndex]?.count || 0;
+            const count = limitedData[dataIndex]?.count || 0;
             return count.toString();
           }
           return '';
@@ -242,7 +248,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
         style: {
           fontSize: '12px',
           fontWeight: 'bold',
-          colors: [isDark ? '#3b82f6' : '#2563eb']
+          colors: [isDark ? '#60a5fa' : '#3b82f6']
         },
         background: {
           enabled: true,
@@ -257,7 +263,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
         }
       },
       xaxis: {
-        categories: data.map(d => this.formatMonthShort(d.month)),
+        categories: limitedData.map(d => this.formatMonthShort(d.month)),
         labels: {
           style: {
             colors: isDark ? '#9ca3af' : '#6b7280',
@@ -321,7 +327,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
           formatter: (val: number) => this.formatCurrency(val)
         },
         custom: ({ series, seriesIndex, dataPointIndex, w }: any) => {
-          const point = data[dataPointIndex];
+          const point = limitedData[dataPointIndex];
           if (!point) return '';
           
           const bgColor = isDark ? '#1f2937' : '#ffffff';
@@ -344,7 +350,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 16px;">
                   <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">IVA:</span>
-                  <span style="font-weight: 600; color: #fbbf24;">${this.formatCurrency(point.tax)}</span>
+                  <span style="font-weight: 600; color: #f59e0b;">${this.formatCurrency(point.tax)}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 16px; padding-top: 6px; border-top: 1px solid ${borderColor}; margin-top: 2px;">
                   <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Total:</span>

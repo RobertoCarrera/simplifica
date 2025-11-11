@@ -90,14 +90,14 @@ export class AnalyticsService {
 
     metrics.push(
       {
-        id: 'conversion-rate-month',
-        title: 'Tasa de Conversión',
-        value: kpis && kpis.conversion_rate != null ? this.formatPercent(kpis.conversion_rate) : '—',
+        id: 'total-tax-month',
+        title: 'Total IVA',
+        value: kpis ? this.formatCurrency(kpis.tax_sum) : '—',
         change: 0,
         changeType: 'neutral',
-        icon: '✅',
-        color: '#84cc16',
-        description: 'Aceptados / Total (mes actual)'
+        icon: '🧾',
+        color: '#f59e0b',
+        description: 'Suma total de IVA (mes actual)'
       },
       {
         id: 'projected-draft',
