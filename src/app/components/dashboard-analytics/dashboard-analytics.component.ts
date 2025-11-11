@@ -1,19 +1,40 @@
-import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subject, takeUntil } from 'rxjs';
+import { NgApexchartsModule } from 'ng-apexcharts';
+import { ApexAxisChartSeries, ApexChart, ApexXAxis, ApexYAxis, ApexDataLabels, ApexTooltip, ApexStroke, ApexLegend, ApexGrid, ApexPlotOptions, ApexTheme } from 'ng-apexcharts';
 import { AnalyticsService } from '../../services/analytics.service';
 import { AnimationService } from '../../services/animation.service';
+import { SidebarStateService } from '../../services/sidebar-state.service';
 import { ToastService } from '../../services/toast.service';
+
+export type ChartOptions = {
+  series: ApexAxisChartSeries;
+  chart: ApexChart;
+  xaxis: ApexXAxis;
+  yaxis: ApexYAxis;
+  dataLabels: ApexDataLabels;
+  tooltip: ApexTooltip;
+  stroke: ApexStroke;
+  legend: ApexLegend;
+  grid: ApexGrid;
+  plotOptions: ApexPlotOptions;
+  colors: string[];
+  theme: ApexTheme;
+};
 
 @Component({
   selector: 'app-dashboard-analytics',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, NgApexchartsModule],
   template: `
-    <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div class="max-w-7xl mx-auto p-4 md:p-6 space-y-4 md:space-y-6">
+    <div class="container-fluid h-full flex flex-col overflow-hidden pb-20 md:pb-8 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+      [attr.data-sidebar-collapsed]="sidebarService.isCollapsed() ? '1' : '0'">
+      
+      <!-- Inner wrapper: contains header and content -->
+      <div class="flex-1 flex flex-col p-2 overflow-hidden">
         <!-- Header -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 border border-gray-200 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 mb-4 md:mb-6 border border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div class="flex justify-between items-center flex-wrap gap-4">
             <div>
               <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -38,7 +59,9 @@ import { ToastService } from '../../services/toast.service';
           </div>
         </div>
 
-        <!-- Error Alert -->
+        <!-- Scrollable content area -->
+        <div class="flex-1 overflow-auto">
+          <!-- Error Alert -->
         @if (error()) {
           <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg flex items-start gap-3">
             <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -98,80 +121,30 @@ import { ToastService } from '../../services/toast.service';
             }
           </div>
 
-          <!-- Historical Trend Chart - Enhanced -->
+          <!-- Historical Trend Chart - ApexCharts Professional -->
           @if (historicalData().length > 0) {
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 border border-gray-200 dark:border-gray-700">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 border border-gray-200 dark:border-gray-700 mt-4 md:mt-6">
               <h3 class="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
                 </svg>
                 Evolución Mensual (últimos 6 meses)
               </h3>
-              <div class="h-72 md:h-80 flex items-end justify-between gap-2 md:gap-4 relative pt-8">
-                @for (point of historicalData(); track point.month) {
-                  <div class="flex-1 flex flex-col items-center group relative">
-                    <!-- Count label above bar -->
-                    <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 text-xs font-semibold text-gray-700 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {{ point.count }} ppto{{ point.count !== 1 ? 's' : '' }}
-                    </div>
-                    
-                    <!-- Bar container with relative positioning -->
-                    <div class="w-full relative" [style.height.%]="getBarHeight(point.subtotal)">
-                      <!-- Base bar (subtotal/base imponible) -->
-                      <div 
-                        class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-emerald-500 to-emerald-300 dark:from-emerald-600 dark:to-emerald-400 rounded-t hover:from-emerald-600 hover:to-emerald-400 transition-all duration-300 cursor-pointer"
-                        [style.height]="'100%'">
-                        
-                        <!-- IVA indicator dot -->
-                        <div 
-                          class="absolute left-1/2 transform -translate-x-1/2 w-3 h-3 bg-amber-500 dark:bg-amber-400 rounded-full border-2 border-white dark:border-gray-800 shadow-lg group-hover:scale-125 transition-transform"
-                          [style.top.%]="getTaxPosition(point.subtotal, point.tax)">
-                        </div>
-                        
-                        <!-- Enhanced Tooltip -->
-                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 bg-gray-900 dark:bg-gray-700 text-white text-xs px-4 py-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-xl pointer-events-none z-20 min-w-[180px]">
-                          <div class="font-bold text-sm mb-2 border-b border-gray-600 pb-1">{{ formatMonthLabel(point.month) }}</div>
-                          <div class="space-y-1">
-                            <div class="flex justify-between gap-3">
-                              <span class="text-gray-400">Presupuestos:</span>
-                              <span class="font-semibold">{{ point.count }}</span>
-                            </div>
-                            <div class="flex justify-between gap-3">
-                              <span class="text-gray-400">Base:</span>
-                              <span class="font-semibold text-emerald-300">{{ formatCurrency(point.subtotal) }}</span>
-                            </div>
-                            <div class="flex justify-between gap-3">
-                              <span class="text-gray-400">IVA:</span>
-                              <span class="font-semibold text-amber-300">{{ formatCurrency(point.tax) }}</span>
-                            </div>
-                            <div class="flex justify-between gap-3 pt-1 border-t border-gray-600">
-                              <span class="text-gray-400">Total:</span>
-                              <span class="font-bold">{{ formatCurrency(point.total) }}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Month label -->
-                    <div class="mt-3 text-xs text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
-                      {{ formatMonthShort(point.month) }}
-                    </div>
-                  </div>
-                }
-              </div>
               
-              <!-- Legend -->
-              <div class="mt-6 flex items-center justify-center gap-6 text-xs text-gray-600 dark:text-gray-400">
-                <div class="flex items-center gap-2">
-                  <div class="w-4 h-4 bg-gradient-to-t from-emerald-500 to-emerald-300 dark:from-emerald-600 dark:to-emerald-400 rounded"></div>
-                  <span>Base Imponible</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <div class="w-3 h-3 bg-amber-500 dark:bg-amber-400 rounded-full border-2 border-white dark:border-gray-700"></div>
-                  <span>IVA</span>
-                </div>
-              </div>
+              <apx-chart
+                [series]="chartOptions().series"
+                [chart]="chartOptions().chart"
+                [xaxis]="chartOptions().xaxis"
+                [yaxis]="chartOptions().yaxis"
+                [dataLabels]="chartOptions().dataLabels"
+                [tooltip]="chartOptions().tooltip"
+                [stroke]="chartOptions().stroke"
+                [legend]="chartOptions().legend"
+                [grid]="chartOptions().grid"
+                [plotOptions]="chartOptions().plotOptions"
+                [colors]="chartOptions().colors"
+                [theme]="chartOptions().theme"
+              ></apx-chart>
             </div>
           }
 
@@ -188,6 +161,7 @@ import { ToastService } from '../../services/toast.service';
             </div>
           }
         }
+        </div>
       </div>
     </div>
   `,
@@ -198,12 +172,214 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   private analyticsService = inject(AnalyticsService);
   private animationService = inject(AnimationService);
   private toastService = inject(ToastService);
+  sidebarService = inject(SidebarStateService);
 
   // Computed signals from service
   dashboardMetrics = this.analyticsService.getMetrics;
   historicalData = this.analyticsService.getHistoricalTrend;
   isLoading = this.analyticsService.isLoading;
   error = signal<string | null>(null);
+
+  // ApexCharts configuration as computed signal
+  chartOptions = computed<ChartOptions>(() => {
+    const data = this.historicalData();
+    const isDark = document.documentElement.classList.contains('dark');
+    
+    return {
+      series: [
+        {
+          name: 'Base Imponible',
+          data: data.map(d => d.subtotal)
+        },
+        {
+          name: 'IVA',
+          data: data.map(d => d.tax)
+        }
+      ],
+      chart: {
+        type: 'bar',
+        height: 320,
+        stacked: true,
+        toolbar: {
+          show: false
+        },
+        background: 'transparent',
+        fontFamily: 'inherit',
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 800,
+          animateGradually: {
+            enabled: true,
+            delay: 150
+          }
+        }
+      },
+      plotOptions: {
+        bar: {
+          horizontal: false,
+          columnWidth: '60%',
+          borderRadius: 8,
+          borderRadiusApplication: 'end',
+          dataLabels: {
+            position: 'top'
+          }
+        }
+      },
+      colors: ['#10b981', '#fbbf24'],
+      dataLabels: {
+        enabled: true,
+        formatter: (val: number, opt: any) => {
+          // Show count only on the top series (IVA)
+          if (opt.seriesIndex === 1) {
+            const dataIndex = opt.dataPointIndex;
+            const count = data[dataIndex]?.count || 0;
+            return count.toString();
+          }
+          return '';
+        },
+        offsetY: -20,
+        style: {
+          fontSize: '12px',
+          fontWeight: 'bold',
+          colors: [isDark ? '#3b82f6' : '#2563eb']
+        },
+        background: {
+          enabled: true,
+          foreColor: '#ffffff',
+          padding: 4,
+          borderRadius: 4,
+          borderWidth: 0,
+          opacity: 1,
+          dropShadow: {
+            enabled: false
+          }
+        }
+      },
+      xaxis: {
+        categories: data.map(d => this.formatMonthShort(d.month)),
+        labels: {
+          style: {
+            colors: isDark ? '#9ca3af' : '#6b7280',
+            fontSize: '12px',
+            fontWeight: 500
+          }
+        },
+        axisBorder: {
+          show: true,
+          color: isDark ? '#4b5563' : '#d1d5db'
+        },
+        axisTicks: {
+          show: false
+        }
+      },
+      yaxis: {
+        labels: {
+          formatter: (val: number) => this.formatCurrency(val),
+          style: {
+            colors: isDark ? '#9ca3af' : '#6b7280',
+            fontSize: '12px',
+            fontWeight: 500
+          }
+        }
+      },
+      grid: {
+        show: true,
+        borderColor: isDark ? '#374151' : '#e5e7eb',
+        strokeDashArray: 0,
+        position: 'back',
+        xaxis: {
+          lines: {
+            show: false
+          }
+        },
+        yaxis: {
+          lines: {
+            show: true
+          }
+        },
+        padding: {
+          top: 0,
+          right: 10,
+          bottom: 0,
+          left: 10
+        }
+      },
+      stroke: {
+        show: true,
+        width: 0,
+        colors: ['transparent']
+      },
+      tooltip: {
+        shared: true,
+        intersect: false,
+        theme: isDark ? 'dark' : 'light',
+        style: {
+          fontSize: '12px'
+        },
+        y: {
+          formatter: (val: number) => this.formatCurrency(val)
+        },
+        custom: ({ series, seriesIndex, dataPointIndex, w }: any) => {
+          const point = data[dataPointIndex];
+          if (!point) return '';
+          
+          const bgColor = isDark ? '#1f2937' : '#ffffff';
+          const textColor = isDark ? '#f3f4f6' : '#111827';
+          const borderColor = isDark ? '#374151' : '#e5e7eb';
+          
+          return `
+            <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 8px; padding: 12px; min-width: 200px;">
+              <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: ${textColor}; border-bottom: 1px solid ${borderColor}; padding-bottom: 6px;">
+                ${this.formatMonthLabel(point.month)}
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; justify-content: space-between; gap: 16px;">
+                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Presupuestos:</span>
+                  <span style="font-weight: 600; color: ${textColor};">${point.count}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; gap: 16px;">
+                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Base:</span>
+                  <span style="font-weight: 600; color: #10b981;">${this.formatCurrency(point.subtotal)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; gap: 16px;">
+                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">IVA:</span>
+                  <span style="font-weight: 600; color: #fbbf24;">${this.formatCurrency(point.tax)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; gap: 16px; padding-top: 6px; border-top: 1px solid ${borderColor}; margin-top: 2px;">
+                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Total:</span>
+                  <span style="font-weight: bold; color: ${textColor};">${this.formatCurrency(point.total)}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      },
+      legend: {
+        position: 'bottom',
+        horizontalAlign: 'center',
+        fontSize: '12px',
+        fontWeight: 400,
+        offsetY: 10,
+        labels: {
+          colors: isDark ? '#9ca3af' : '#6b7280'
+        },
+        markers: {
+          width: 16,
+          height: 16,
+          radius: 2,
+          offsetX: -5
+        },
+        itemMargin: {
+          horizontal: 16,
+          vertical: 0
+        }
+      },
+      theme: {
+        mode: isDark ? 'dark' : 'light'
+      }
+    };
+  });
 
   ngOnInit() {
     // Subscribe to service error
@@ -236,13 +412,6 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
     this.error.set(null);
   }
 
-  getBarHeight(value: number): number {
-    const data = this.historicalData();
-    if (data.length === 0) return 0;
-    const max = Math.max(...data.map(d => d.total), 1);
-    return (value / max) * 100;
-  }
-
   formatMonthLabel(month: string): string {
     // month format: YYYY-MM
     try {
@@ -271,17 +440,5 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
     } catch {
       return `€${Math.round(value).toLocaleString('es-ES')}`;
     }
-  }
-
-  getTaxPosition(subtotal: number, tax: number): number {
-    // Calculate position of tax indicator dot relative to subtotal bar
-    // Position from top (0% = top, 100% = bottom)
-    // We want the dot where the tax "adds" to the base
-    // So if bar height represents subtotal, dot should be near top
-    if (subtotal === 0) return 0;
-    
-    // Position dot at a percentage that makes visual sense
-    // Place it 10% from the top for visibility
-    return 10;
   }
 }
