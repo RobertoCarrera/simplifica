@@ -706,7 +706,7 @@
                   <div class="category-input-container">
                     <div *ngIf="viaDropdownOpen" class="category-dropdown">
                       <div class="category-options">
-                        <div *ngFor="let via of filteredVias" class="category-option" (click)="formData.addressTipoVia = via; filteredVias = []">
+                        <div *ngFor="let via of filteredVias" class="category-option" (click)="selectVia(via)">
                           <span>{{ via }}</span>
                         </div>
                       </div>

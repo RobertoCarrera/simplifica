@@ -582,6 +582,13 @@ onMappingConfirmed(mappings: any[]): void {
     this.localityDropdownOpen = false;
   }
 
+  // Select a via (street type) from suggestions and close the dropdown
+  selectVia(via: string) {
+    this.formData.addressTipoVia = via;
+    this.filteredVias = [];
+    this.viaDropdownOpen = false;
+  }
+
   // Open the create-locality modal (can be used even when matches exist)
   openCreateLocality() {
     this.newLocalityName = this.addressLocalityName || '';
