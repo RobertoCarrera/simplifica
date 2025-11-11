@@ -1,6 +1,7 @@
 {
   "version": 2,
   "name": "simplifica",
+  "installCommand": "npm install --legacy-peer-deps",
   "builds": [
     {
       "src": "package.json",
