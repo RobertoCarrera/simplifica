@@ -10,133 +10,87 @@ import { ToastService } from '../../services/toast.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-      <div>
+    <div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
+      <div class="max-w-7xl mx-auto">
         <!-- Header -->
-        <div class="mb-8">
-          <h1 class="text-3xl font-bold text-gray-900 mb-2">📊 Panel de Análisis</h1>
-          <p class="text-gray-600">Dashboard empresarial con métricas en tiempo real</p>
+        <div class="mb-6">
+          <h1 class="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            📊 Panel de Análisis
+          </h1>
+          <p class="text-sm md:text-base text-gray-600 dark:text-gray-400">
+            Métricas de presupuestos calculadas en servidor
+          </p>
+        </div>
+
+        <!-- Loading / Error State -->
+        <div *ngIf="isLoading()" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+          <div *ngFor="let i of [1,2,3,4]" 
+               class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 animate-pulse">
+            <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
+            <div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+          </div>
+        </div>
+
+        <div *ngIf="error()" class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+          <p class="text-sm text-red-800 dark:text-red-200">⚠️ {{ error() }}</p>
         </div>
 
         <!-- Metrics Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div *ngIf="!isLoading()" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
           <div 
-            *ngFor="let metric of dashboardMetrics(); let i = index"
-            class="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+            *ngFor="let metric of dashboardMetrics()"
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 p-6 border border-gray-100 dark:border-gray-700">
             
-            <div class="flex items-center justify-between mb-4">
+            <div class="flex items-start justify-between mb-3">
               <div class="text-3xl">{{ metric.icon }}</div>
-              <div class="text-right">
-                <p class="text-sm text-gray-500">{{ metric.title }}</p>
-                <p class="text-2xl font-bold text-gray-900">{{ metric.value }}</p>
-              </div>
             </div>
             
-            <div class="flex items-center text-sm">
-              <span 
-                [class]="metric.changeType === 'increase' ? 'text-green-600' : metric.changeType === 'decrease' ? 'text-red-600' : 'text-gray-600'"
-                class="flex items-center">
-                <span class="mr-1">
-                  {{ metric.changeType === 'increase' ? '↗️' : metric.changeType === 'decrease' ? '↘️' : '➡️' }}
-                </span>
-                {{ metric.change }}%
-              </span>
-              <span class="text-gray-500 ml-2">vs mes anterior</span>
+            <div class="space-y-1">
+              <p class="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">
+                {{ metric.title }}
+              </p>
+              <p class="text-2xl font-bold text-gray-900 dark:text-white">
+                {{ metric.value }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">
+                {{ metric.description }}
+              </p>
             </div>
           </div>
         </div>
 
-        <!-- Charts Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <!-- Ticket Trends -->
-          <div class="bg-white rounded-xl shadow-lg p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">📈 Tendencia de Tickets</h3>
-            <div class="h-64 flex items-end justify-between space-x-2">
-              <div 
-                *ngFor="let point of ticketChartData(); let i = index"
-                class="bg-gradient-to-t from-blue-500 to-blue-300 rounded-t-lg flex-1 relative group cursor-pointer transition-all duration-300 hover:from-blue-600 hover:to-blue-400"
-                [style.height.%]="(point.value / getMaxValue(ticketChartData())) * 100">
-                
-                <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                  {{ point.value }}
-                </div>
-                
-                <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-600">
-                  {{ point.label.slice(0, 3) }}
-                </div>
+        <!-- Historical Trend Chart -->
+        <div *ngIf="!isLoading() && historicalData().length > 0" 
+             class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 mb-6">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            📈 Evolución Mensual (últimos 6 meses)
+          </h3>
+          <div class="h-64 flex items-end justify-between space-x-2">
+            <div 
+              *ngFor="let point of historicalData()"
+              class="bg-gradient-to-t from-blue-500 to-blue-300 dark:from-blue-600 dark:to-blue-400 rounded-t-lg flex-1 relative group cursor-pointer transition-all duration-300 hover:from-blue-600 hover:to-blue-400"
+              [style.height.%]="getBarHeight(point.total)">
+              
+              <div class="absolute -top-20 left-1/2 transform -translate-x-1/2 bg-gray-900 dark:bg-gray-700 text-white text-xs px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg">
+                <div class="font-semibold">{{ formatMonthLabel(point.month) }}</div>
+                <div class="text-gray-300">Total: {{ formatCurrency(point.total) }}</div>
+                <div class="text-gray-300">Presupuestos: {{ point.count }}</div>
               </div>
-            </div>
-          </div>
-
-          <!-- Customer Growth -->
-          <div class="bg-white rounded-xl shadow-lg p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">👥 Crecimiento de Clientes</h3>
-            <div class="h-64 flex items-end justify-between space-x-2">
-              <div 
-                *ngFor="let point of customerChartData(); let i = index"
-                class="bg-gradient-to-t from-green-500 to-green-300 rounded-t-lg flex-1 relative group cursor-pointer transition-all duration-300 hover:from-green-600 hover:to-green-400"
-                [style.height.%]="(point.value / getMaxValue(customerChartData())) * 100">
-                
-                <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                  {{ point.value }}
-                </div>
-                
-                <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-600">
-                  {{ point.label.slice(0, 3) }}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Priority Distribution -->
-          <div class="bg-white rounded-xl shadow-lg p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">⚡ Distribución por Prioridad</h3>
-            <div class="space-y-4">
-              <div *ngFor="let item of priorityData()" class="flex items-center">
-                <div class="w-4 h-4 rounded-full mr-3" [style.background-color]="item.color"></div>
-                <div class="flex-1">
-                  <div class="flex justify-between items-center mb-1">
-                    <span class="text-sm font-medium text-gray-700">{{ item.label }}</span>
-                    <span class="text-sm text-gray-600">{{ item.value }}%</span>
-                  </div>
-                  <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      class="h-2 rounded-full transition-all duration-500"
-                      [style.background-color]="item.color"
-                      [style.width.%]="item.value">
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Revenue Chart -->
-          <div class="bg-white rounded-xl shadow-lg p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">💰 Ingresos Mensuales</h3>
-            <div class="h-64 flex items-end justify-between space-x-2">
-              <div 
-                *ngFor="let point of revenueChartData(); let i = index"
-                class="bg-gradient-to-t from-purple-500 to-purple-300 rounded-t-lg flex-1 relative group cursor-pointer transition-all duration-300 hover:from-purple-600 hover:to-purple-400"
-                [style.height.%]="(point.value / getMaxValue(revenueChartData())) * 100">
-                
-                <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                  {{ '$' + point.value.toLocaleString() }}
-                </div>
-                
-                <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-gray-600">
-                  {{ point.label.slice(0, 3) }}
-                </div>
+              
+              <div class="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                {{ formatMonthLabel(point.month) }}
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Real-time Updates Indicator -->
+        <!-- Real-time Indicator -->
         <div class="flex items-center justify-center">
-          <div class="bg-white rounded-lg shadow-md px-4 py-2 flex items-center space-x-2">
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm px-4 py-2 flex items-center space-x-2 border border-gray-100 dark:border-gray-700">
             <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span class="text-sm text-gray-600">Actualizando en tiempo real</span>
+            <span class="text-xs text-gray-600 dark:text-gray-400">
+              Datos actualizados desde servidor
+            </span>
           </div>
         </div>
       </div>
@@ -152,10 +106,12 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
 
   // Computed signals from service
   dashboardMetrics = this.analyticsService.getMetrics;
+  historicalData = this.analyticsService.getHistoricalTrend;
+  isLoading = this.analyticsService.isLoading;
+  error = this.analyticsService.getError;
 
   ngOnInit() {
     this.showWelcomeMessage();
-    // this.animationService.fadeInUp('.grid > div', 150); // Commented out until AnimationService is available
   }
 
   ngOnDestroy() {
@@ -166,53 +122,33 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   private showWelcomeMessage() {
     this.toastService.success(
       'Dashboard',
-      'Panel de análisis cargado exitosamente'
+      'Panel de análisis cargado'
     );
   }
 
-  // Chart data methods
-  ticketChartData() {
-    return [
-      { label: 'Enero', value: 45 },
-      { label: 'Febrero', value: 52 },
-      { label: 'Marzo', value: 48 },
-      { label: 'Abril', value: 61 },
-      { label: 'Mayo', value: 55 },
-      { label: 'Junio', value: 67 }
-    ];
+  getBarHeight(value: number): number {
+    const data = this.historicalData();
+    if (data.length === 0) return 0;
+    const max = Math.max(...data.map(d => d.total), 1);
+    return (value / max) * 100;
   }
 
-  customerChartData() {
-    return [
-      { label: 'Enero', value: 120 },
-      { label: 'Febrero', value: 135 },
-      { label: 'Marzo', value: 148 },
-      { label: 'Abril', value: 162 },
-      { label: 'Mayo', value: 178 },
-      { label: 'Junio', value: 195 }
-    ];
+  formatMonthLabel(month: string): string {
+    // month format: YYYY-MM
+    try {
+      const [year, m] = month.split('-');
+      const date = new Date(Number(year), Number(m) - 1, 1);
+      return new Intl.DateTimeFormat('es-ES', { month: 'short', year: 'numeric' }).format(date);
+    } catch {
+      return month;
+    }
   }
 
-  priorityData() {
-    return [
-      { label: 'Alta', value: 35, color: '#ef4444' },
-      { label: 'Media', value: 45, color: '#f59e0b' },
-      { label: 'Baja', value: 20, color: '#10b981' }
-    ];
-  }
-
-  revenueChartData() {
-    return [
-      { label: 'Enero', value: 12500 },
-      { label: 'Febrero', value: 14200 },
-      { label: 'Marzo', value: 13800 },
-      { label: 'Abril', value: 16500 },
-      { label: 'Mayo', value: 15900 },
-      { label: 'Junio', value: 18200 }
-    ];
-  }
-
-  getMaxValue(data: any[]): number {
-    return Math.max(...data.map(item => item.value));
+  formatCurrency(value: number): string {
+    try {
+      return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
+    } catch {
+      return `€${Math.round(value).toLocaleString('es-ES')}`;
+    }
   }
 }

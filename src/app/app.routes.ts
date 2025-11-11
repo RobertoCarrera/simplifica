@@ -61,6 +61,7 @@ export const routes: Routes = [
     {path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'anychat/contacts', component: AnychatContactsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
+    {path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [AuthGuard]},
     {path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full'},
@@ -110,7 +111,6 @@ export const routes: Routes = [
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [DevGuard]},
-    {path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [DevGuard]},
     {path: 'advanced-features', component: AdvancedFeaturesDashboardComponent, canActivate: [DevGuard]},
     {path: 'workflows', component: WorkflowBuilderComponent, canActivate: [DevGuard]},
     {path: 'export-import', component: ExportImportManagerComponent, canActivate: [DevGuard]},

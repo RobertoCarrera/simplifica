@@ -1,233 +1,209 @@
-import { Injectable, signal, computed } from '@angular/core';
-import { 
-  DashboardMetric, 
-  TicketAnalytics, 
-  CustomerAnalytics, 
-  RevenueAnalytics,
-  AnalyticsFilter,
-  ChartData,
-  RealtimeMetric 
-} from '../models/analytics.interface';
+import { Injectable, signal, computed, inject } from '@angular/core';
+import { SupabaseClientService } from './supabase-client.service';
+import { DashboardMetric } from '../models/analytics.interface';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AnalyticsService {
-  // Analytics data signals
-  private ticketData = signal<TicketAnalytics>({
-    total: 342,
-    pending: 89,
-    inProgress: 156,
-    resolved: 97,
-    trend: [45, 52, 48, 61, 58, 71, 65],
-    priorityDistribution: {
-      high: 89,
-      medium: 156,
-      low: 97
-    }
+  private supabase = inject(SupabaseClientService);
+
+  // Server-driven analytics signals
+  private kpisMonthly = signal<{
+    period_month: string; // YYYY-MM-DD
+    quotes_count: number;
+    subtotal_sum: number;
+    tax_sum: number;
+    total_sum: number;
+    avg_days_to_accept: number | null;
+    conversion_rate: number | null;
+  } | null>(null);
+
+  private projectedDraftMonthly = signal<{ total: number; draftCount: number } | null>(null);
+
+  // Historical trend: last 6 months of quotes data (server-computed)
+  private historicalTrend = signal<Array<{ month: string; total: number; count: number }>>([]);
+  
+  // Loading state
+  private loading = signal<boolean>(true);
+  private error = signal<string | null>(null);
+
+  // Computed metrics for dashboard cards (all from backend)
+  // Public accessors
+  getMetrics = computed((): DashboardMetric[] => {
+    const kpis = this.kpisMonthly();
+    const proj = this.projectedDraftMonthly();
+    return [
+      {
+        id: 'quotes-month',
+        title: 'Presupuestos Mes',
+        value: kpis ? String(kpis.quotes_count) : '—',
+        change: 0,
+        changeType: 'neutral',
+        icon: '📄',
+        color: '#3b82f6',
+        description: 'Nº de presupuestos (mes actual)'
+      },
+      {
+        id: 'total-quoted-month',
+        title: 'Total Presupuestado',
+        value: kpis ? this.formatCurrency(kpis.total_sum) : '—',
+        change: 0,
+        changeType: 'neutral',
+        icon: '�',
+        color: '#10b981',
+        description: 'Importe total presupuestado (mes actual)'
+      },
+      {
+        id: 'conversion-rate-month',
+        title: 'Tasa de Conversión',
+        value: kpis && kpis.conversion_rate != null ? this.formatPercent(kpis.conversion_rate) : '—',
+        change: 0,
+        changeType: 'neutral',
+        icon: '✅',
+        color: '#84cc16',
+        description: 'Aceptados / Total (mes actual)'
+      },
+      {
+        id: 'projected-draft',
+        title: 'Previsto (borradores)',
+        value: proj ? this.formatCurrency(proj.total) : '—',
+        change: 0,
+        changeType: 'neutral',
+        icon: '🧮',
+        color: '#0ea5e9',
+        description: proj ? `Borradores: ${proj.draftCount}` : 'Suma de presupuestos en borrador (mes actual)'
+      }
+    ];
   });
 
-  private customerData = signal<CustomerAnalytics>({
-    total: 1847,
-    active: 1654,
-    new: 23,
-    growth: [1567, 1634, 1689, 1742, 1798, 1847],
-    topCustomers: [
-      { id: 1, name: 'TechCorp Solutions', ticketCount: 45, revenue: 28500 },
-      { id: 2, name: 'Innovatech Ltd', ticketCount: 38, revenue: 24800 },
-      { id: 3, name: 'Digital Systems', ticketCount: 32, revenue: 22100 },
-      { id: 4, name: 'Smart Business Co', ticketCount: 28, revenue: 19200 },
-      { id: 5, name: 'Future Tech Inc', ticketCount: 25, revenue: 17800 }
-    ]
-  });
-
-  private revenueData = signal<RevenueAnalytics>({
-    total: 2847000,
-    monthly: 237250,
-    quarterly: [540000, 675000, 825000, 807000],
-    growth: 12.5
-  });
-
-  private currentFilter = signal<AnalyticsFilter>({
-    dateRange: 'month',
-    groupBy: 'day'
-  });
-
-  // Computed analytics
-  getMetrics = computed((): DashboardMetric[] => [
-    {
-      id: 'total-tickets',
-      title: 'Total Tickets',
-      value: this.ticketData().total.toString(),
-      change: 12.5,
-      changeType: 'increase',
-      icon: '🎫',
-      color: '#3b82f6',
-      description: 'Tickets activos en el sistema'
-    },
-    {
-      id: 'pending-tickets',
-      title: 'Pendientes',
-      value: this.ticketData().pending.toString(),
-      change: -5.2,
-      changeType: 'decrease',
-      icon: '⏳',
-      color: '#f59e0b',
-      description: 'Tickets esperando atención'
-    },
-    {
-      id: 'in-progress',
-      title: 'En Progreso',
-      value: this.ticketData().inProgress.toString(),
-      change: 8.1,
-      changeType: 'increase',
-      icon: '🔧',
-      color: '#10b981',
-      description: 'Tickets siendo trabajados'
-    },
-    {
-      id: 'total-customers',
-      title: 'Clientes',
-      value: this.customerData().total.toString(),
-      change: 15.3,
-      changeType: 'increase',
-      icon: '👥',
-      color: '#8b5cf6',
-      description: 'Clientes registrados'
-    },
-    {
-      id: 'monthly-revenue',
-      title: 'Ingresos Mes',
-      value: `$${(this.revenueData().monthly / 1000).toFixed(0)}K`,
-      change: 18.7,
-      changeType: 'increase',
-      icon: '💰',
-      color: '#06b6d4',
-      description: 'Ingresos del mes actual'
-    },
-    {
-      id: 'resolution-rate',
-      title: 'Tasa Resolución',
-      value: '92%',
-      change: 2.1,
-      changeType: 'increase',
-      icon: '✅',
-      color: '#84cc16',
-      description: 'Tickets resueltos exitosamente'
-    }
-  ]);
-
-  ticketAnalytics = computed(() => this.ticketData());
-  customerAnalytics = computed(() => this.customerData());
-  revenueAnalytics = computed(() => this.revenueData());
-
-  // Real-time metrics
-  private realtimeMetrics = signal<RealtimeMetric[]>([
-    { timestamp: new Date(), value: 342, metric: 'tickets' },
-    { timestamp: new Date(), value: 1847, metric: 'customers' },
-    { timestamp: new Date(), value: 237250, metric: 'revenue' }
-  ]);
-
-  getRealtimeMetrics = computed(() => this.realtimeMetrics());
+  getHistoricalTrend = computed(() => this.historicalTrend());
+  isLoading = computed(() => this.loading());
+  getError = computed(() => this.error());
 
   constructor() {
-    // Start real-time updates
-    this.startRealtimeUpdates();
+    // Load server-side analytics on init
+    this.refreshAnalytics();
   }
 
-  updateFilter(filter: Partial<AnalyticsFilter>): void {
-    this.currentFilter.update(current => ({ ...current, ...filter }));
-    this.refreshData();
+  // Refresh analytics data (can be called manually or on interval)
+  async refreshAnalytics(): Promise<void> {
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      await Promise.all([
+        this.loadMonthlyAnalytics(),
+        this.loadHistoricalTrend()
+      ]);
+    } catch (err: any) {
+      console.error('[AnalyticsService] Failed to load analytics', err);
+      this.error.set(err?.message || 'Error al cargar analíticas');
+    } finally {
+      this.loading.set(false);
+    }
   }
 
-  refreshData(): void {
-    // Simulate data refresh with slight variations
-    this.ticketData.update(current => ({
-      ...current,
-      total: current.total + Math.floor(Math.random() * 10) - 5,
-      pending: Math.max(0, current.pending + Math.floor(Math.random() * 6) - 3),
-      inProgress: Math.max(0, current.inProgress + Math.floor(Math.random() * 8) - 4)
-    }));
+  // --- Server-side analytics over MVs (RPC) ---
+  private async loadMonthlyAnalytics(): Promise<void> {
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+    const p_start = start.toISOString().slice(0, 10); // YYYY-MM-DD
+    const p_end = end.toISOString().slice(0, 10);
 
-    this.customerData.update(current => ({
-      ...current,
-      total: current.total + Math.floor(Math.random() * 5),
-      new: Math.floor(Math.random() * 30) + 10
-    }));
+    // In parallel: KPIs and Projected Draft
+    const [kpisRes, projRes] = await Promise.all([
+      this.supabase.instance.rpc('f_quote_kpis_monthly', { p_start, p_end }),
+      this.supabase.instance.rpc('f_quote_projected_revenue', { p_start, p_end })
+    ]);
 
-    this.revenueData.update(current => ({
-      ...current,
-      monthly: current.monthly + Math.floor(Math.random() * 10000) - 5000
-    }));
-  }
-
-  private startRealtimeUpdates(): void {
-    // Update metrics every 5 seconds
-    setInterval(() => {
-      const newMetric: RealtimeMetric = {
-        timestamp: new Date(),
-        value: this.ticketData().total,
-        metric: 'tickets'
-      };
-
-      this.realtimeMetrics.update(current => {
-        const updated = [newMetric, ...current];
-        return updated.slice(0, 50); // Keep last 50 metrics
-      });
-
-      // Randomly update some data
-      if (Math.random() > 0.7) {
-        this.refreshData();
+    if (kpisRes.error) {
+      console.error('[AnalyticsService] f_quote_kpis_monthly RPC error:', kpisRes.error);
+    } else {
+      // Expect one row for current month
+      const monthStr = p_start.slice(0, 7);
+      const row = (kpisRes.data as any[] | null)?.find(r => String(r.period_month || '').startsWith(monthStr)) || null;
+      if (row) {
+        this.kpisMonthly.set({
+          period_month: row.period_month,
+          quotes_count: Number(row.quotes_count || 0),
+          subtotal_sum: Number(row.subtotal_sum || 0),
+          tax_sum: Number(row.tax_sum || 0),
+          total_sum: Number(row.total_sum || 0),
+          avg_days_to_accept: row.avg_days_to_accept == null ? null : Number(row.avg_days_to_accept),
+          conversion_rate: row.conversion_rate == null ? null : Number(row.conversion_rate)
+        });
+      } else {
+        this.kpisMonthly.set(null);
       }
-    }, 5000);
+    }
+
+    if (projRes.error) {
+      console.error('[AnalyticsService] f_quote_projected_revenue RPC error:', projRes.error);
+      this.projectedDraftMonthly.set(null);
+    } else {
+      // Sum grand_total if present, otherwise sum amount (should be one month)
+      const monthStr = p_start.slice(0, 7);
+      const rows = (projRes.data as any[] | null) || [];
+      const monthRows = rows.filter(r => String(r.period_month || '').startsWith(monthStr));
+      const total = monthRows.reduce((acc, r) => acc + Number(r.grand_total ?? r.amount ?? 0), 0);
+      const draftCount = monthRows.reduce((acc, r) => acc + Number(r.draft_count ?? 0), 0);
+      this.projectedDraftMonthly.set({ total, draftCount });
+    }
   }
 
-  // Chart data getters
-  getTicketTrendData(): ChartData {
-    return {
-      labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
-      datasets: [{
-        label: 'Tickets',
-        data: this.ticketData().trend,
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)'
-      }]
-    };
+  private async loadHistoricalTrend(): Promise<void> {
+    const now = new Date();
+    // Last 6 months
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+    const p_start = start.toISOString().slice(0, 10);
+    const p_end = end.toISOString().slice(0, 10);
+
+    const { data, error } = await this.supabase.instance.rpc('f_quote_kpis_monthly', { p_start, p_end });
+    if (error) {
+      console.error('[AnalyticsService] f_quote_kpis_monthly (trend) RPC error:', error);
+      this.historicalTrend.set([]);
+      return;
+    }
+
+    const rows = (data as any[] | null) || [];
+    // Map and sort by period_month
+    const trend = rows
+      .map(r => ({
+        month: String(r.period_month || '').slice(0, 7), // YYYY-MM
+        total: Number(r.total_sum || 0),
+        count: Number(r.quotes_count || 0)
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+    
+    this.historicalTrend.set(trend);
   }
 
-  getCustomerGrowthData(): ChartData {
-    return {
-      labels: ['Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
-      datasets: [{
-        label: 'Clientes',
-        data: this.customerData().growth,
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)'
-      }]
-    };
+  private formatCompact(value: number): string {
+    try {
+      // Intl compact notation (supported in modern browsers)
+      return new Intl.NumberFormat('es-ES', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+    } catch {
+      if (value >= 1_000_000) return (value / 1_000_000).toFixed(1) + 'M';
+      if (value >= 1_000) return (value / 1_000).toFixed(1) + 'K';
+      return String(Math.round(value));
+    }
   }
 
-  getRevenueData(): ChartData {
-    return {
-      labels: ['Q1', 'Q2', 'Q3', 'Q4'],
-      datasets: [{
-        label: 'Ingresos ($)',
-        data: this.revenueData().quarterly,
-        borderColor: '#8b5cf6',
-        backgroundColor: 'rgba(139, 92, 246, 0.1)'
-      }]
-    };
+  private formatCurrency(value: number): string {
+    try {
+      return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
+    } catch {
+      return `€${Math.round(value).toLocaleString('es-ES')}`;
+    }
   }
 
-  getPriorityData(): ChartData {
-    const distribution = this.ticketData().priorityDistribution;
-    return {
-      labels: ['Alta', 'Media', 'Baja'],
-      datasets: [{
-        label: 'Tickets por Prioridad',
-        data: [distribution.high, distribution.medium, distribution.low],
-        backgroundColor: ['#ef4444', '#f59e0b', '#10b981']
-      }]
-    };
+  private formatPercent(value: number): string {
+    try {
+      return new Intl.NumberFormat('es-ES', { style: 'percent', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+    } catch {
+      return `${Math.round(value * 100)}%`;
+    }
   }
 }

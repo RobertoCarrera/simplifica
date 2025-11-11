@@ -127,7 +127,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Analytics',
       icon: 'trending_up',
       route: '/analytics',
-      module: 'development'
+      module: 'production'
     },
     {
       id: 7,
