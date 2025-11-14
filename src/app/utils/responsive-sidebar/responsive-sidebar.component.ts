@@ -113,7 +113,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'description',
       route: '/facturacion',
       // Mostrar sólo en modo 'development' para evitar que aparezca en producción
-      module: 'development'
+      module: 'production'
     },
     {
       id: 41, // Nuevo ID entre servicios y productos
@@ -220,7 +220,7 @@ export class ResponsiveSidebarComponent implements OnInit {
 
       if (isDev) {
         // Añadir acceso a facturas sólo en entornos de desarrollo
-        clientMenu.splice(2, 0, { id: 2004, label: 'Facturas', icon: 'receipt_long', route: '/portal/facturas', module: 'development' });
+        clientMenu.splice(2, 0, { id: 2004, label: 'Facturas', icon: 'receipt_long', route: '/portal/facturas', module: 'production' });
       }
 
       // Si tenemos módulos efectivos, filtrar también por ellos

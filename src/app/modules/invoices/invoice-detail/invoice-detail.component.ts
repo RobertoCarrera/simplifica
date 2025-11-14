@@ -5,15 +5,20 @@ import { SupabaseInvoicesService } from '../../../services/supabase-invoices.ser
 import { ToastService } from '../../../services/toast.service';
 import { Invoice, formatInvoiceNumber } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
+import { IssueVerifactuButtonComponent } from '../issue-verifactu-button/issue-verifactu-button.component';
+import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.component';
 
 @Component({
   selector: 'app-invoice-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, IssueVerifactuButtonComponent, VerifactuBadgeComponent],
   template: `
   <div class="p-4" *ngIf="invoice() as inv">
     <div class="flex items-center justify-between mb-4">
-  <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Factura {{ formatNumber(inv) }}</h1>
+  <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-3">
+    Factura {{ formatNumber(inv) }}
+    <app-verifactu-badge *ngIf="inv" [invoice]="inv"></app-verifactu-badge>
+  </h1>
       <div class="flex items-center gap-3">
         <!-- Dispatcher health pill -->
         <span *ngIf="dispatcherHealth() as h"
@@ -27,6 +32,7 @@ import { environment } from '../../../../environments/environment';
         <button class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700" (click)="downloadPdf(inv.id)">Descargar PDF</button>
         <button class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700" (click)="cancelInvoice(inv.id)">Anular</button>
   <button class="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60" [disabled]="sendingEmail()" (click)="sendEmail(inv.id)">{{ sendingEmail() ? 'Enviando…' : 'Enviar por email' }}</button>
+        <app-issue-verifactu-button [invoiceId]="inv.id" (issued)="onIssued()"></app-issue-verifactu-button>
       </div>
     </div>
 
@@ -305,5 +311,14 @@ export class InvoiceDetailComponent implements OnInit {
   formatNumber(inv?: Invoice | null): string {
     if (!inv) return '';
     return formatInvoiceNumber(inv);
+  }
+
+  onIssued() {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      // Refresh invoice and verifactu data after successful issue
+      this.invoicesService.getInvoice(id).subscribe({ next: (inv) => this.invoice.set(inv) });
+      this.refreshVerifactu(id);
+    }
   }
 }

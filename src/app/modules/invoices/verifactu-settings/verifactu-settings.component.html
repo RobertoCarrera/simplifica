@@ -1,0 +1,242 @@
+<div class="container mx-auto p-4 max-w-4xl">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+        Configuración Verifactu
+      </h1>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        Configura los certificados y parámetros necesarios para la emisión de facturas verificadas
+      </p>
+    </div>
+    <a 
+      routerLink="/facturacion" 
+      class="px-4 py-2 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600">
+      Volver
+    </a>
+  </div>
+
+  <!-- Authorization Check -->
+  @if (!isAuthorized()) {
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+      <div class="flex items-center gap-3">
+        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <div>
+          <p class="font-medium text-red-900 dark:text-red-200">Acceso denegado</p>
+          <p class="text-sm text-red-700 dark:text-red-300">Solo administradores y propietarios pueden acceder a esta sección.</p>
+        </div>
+      </div>
+    </div>
+  } @else {
+    
+    <!-- Warning Banner -->
+    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6">
+      <div class="flex gap-3">
+        <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <div class="text-sm text-amber-900 dark:text-amber-200">
+          <p class="font-medium mb-1">⚠️ Información sensible</p>
+          <ul class="list-disc list-inside space-y-1 text-amber-800 dark:text-amber-300">
+            <li>Los certificados se encriptan antes de enviarse al servidor</li>
+            <li>Nunca se almacenan en el navegador (localStorage/cookies)</li>
+            <li>Usa certificados válidos emitidos por FNMT o autoridades reconocidas</li>
+            <li>Ambiente PRE: para pruebas. PROD: para facturación real</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <form (ngSubmit)="onSubmit()" class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+      <div class="p-6 space-y-6">
+        
+        <!-- Software Code -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Código de software *
+          </label>
+          <input 
+            type="text" 
+            [(ngModel)]="form.software_code"
+            name="software_code"
+            required
+            placeholder="ej: SIMPLIFICA2025"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Identificador único del software registrado ante AEAT
+          </p>
+        </div>
+
+        <!-- Issuer NIF -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            NIF del emisor *
+          </label>
+          <input 
+            type="text" 
+            [(ngModel)]="form.issuer_nif"
+            name="issuer_nif"
+            required
+            placeholder="ej: B12345678"
+            maxlength="20"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            NIF/CIF de la empresa emisora de facturas
+          </p>
+        </div>
+
+        <!-- Certificate File -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Certificado digital (PEM) *
+          </label>
+          <div class="flex items-center gap-3">
+            <label class="flex-1 cursor-pointer">
+              <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 hover:border-blue-500 dark:hover:border-blue-400 transition-colors">
+                <div class="flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                  <span class="text-sm">
+                    {{ form.cert_file ? form.cert_file.name : 'Seleccionar certificado.pem' }}
+                  </span>
+                </div>
+              </div>
+              <input 
+                type="file" 
+                (change)="onCertFileChange($event)"
+                accept=".pem,.crt,.cer"
+                class="hidden"
+              />
+            </label>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Archivo .pem del certificado digital (formato PEM)
+          </p>
+        </div>
+
+        <!-- Private Key File -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Clave privada (PEM) *
+          </label>
+          <div class="flex items-center gap-3">
+            <label class="flex-1 cursor-pointer">
+              <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 hover:border-blue-500 dark:hover:border-blue-400 transition-colors">
+                <div class="flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                  </svg>
+                  <span class="text-sm">
+                    {{ form.key_file ? form.key_file.name : 'Seleccionar clave.pem' }}
+                  </span>
+                </div>
+              </div>
+              <input 
+                type="file" 
+                (change)="onKeyFileChange($event)"
+                accept=".pem,.key"
+                class="hidden"
+              />
+            </label>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Archivo .pem de la clave privada del certificado
+          </p>
+        </div>
+
+        <!-- Key Passphrase -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Contraseña de la clave (opcional)
+          </label>
+          <input 
+            type="password" 
+            [(ngModel)]="form.key_passphrase"
+            name="key_passphrase"
+            placeholder="Solo si la clave privada está protegida"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Dejar vacío si la clave no tiene contraseña
+          </p>
+        </div>
+
+        <!-- Environment -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Ambiente *
+          </label>
+          <div class="flex gap-4">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="radio" 
+                [(ngModel)]="form.environment"
+                name="environment"
+                value="pre"
+                class="w-4 h-4 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm text-gray-700 dark:text-gray-300">PRE (Pruebas)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input 
+                type="radio" 
+                [(ngModel)]="form.environment"
+                name="environment"
+                value="prod"
+                class="w-4 h-4 text-blue-600 focus:ring-blue-500"
+              />
+              <span class="text-sm text-gray-700 dark:text-gray-300">PROD (Producción)</span>
+            </label>
+          </div>
+          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            PRE: para pruebas sin validez legal. PROD: facturas reales con AEAT
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Actions -->
+      <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between rounded-b-lg">
+        <div class="text-xs text-gray-500 dark:text-gray-400">
+          * Campos obligatorios
+        </div>
+        <div class="flex items-center gap-3">
+          @if (uploading()) {
+            <div class="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+              <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span class="text-sm">Guardando...</span>
+            </div>
+          }
+          <button 
+            type="submit"
+            [disabled]="uploading() || !isFormValid()"
+            class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium">
+            Guardar configuración
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <!-- Help Section -->
+    <div class="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+      <h3 class="font-medium text-blue-900 dark:text-blue-200 mb-2">
+        📚 ¿Cómo obtener un certificado digital?
+      </h3>
+      <ul class="text-sm text-blue-800 dark:text-blue-300 space-y-1 list-disc list-inside">
+        <li>FNMT: <a href="https://www.sede.fnmt.gob.es" target="_blank" class="underline hover:text-blue-600">www.sede.fnmt.gob.es</a></li>
+        <li>El certificado debe ser de "Persona Jurídica" o "Representante"</li>
+        <li>Formato requerido: PEM (si tienes .p12, conviértelo con OpenSSL)</li>
+        <li>El NIF del certificado debe coincidir con el NIF del emisor</li>
+      </ul>
+    </div>
+  }
+</div>

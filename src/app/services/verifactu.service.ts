@@ -1,20 +1,28 @@
-import { Injectable } from '@angular/core';
-import { Observable, from, map } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { Observable, from, map, catchError, of } from 'rxjs';
 import CryptoJS from 'crypto-js';
 import { Invoice } from '../models/invoice.model';
+import { SupabaseClientService } from './supabase-client.service';
+import { 
+  callEdgeFunction,
+  IssueInvoiceRequest,
+  IssueInvoiceResponse,
+  UploadVerifactuCertRequest,
+  ValidateInvoiceResponse,
+  PreflightIssueResponse,
+  VerifactuSettingsResponse,
+  mapVerifactuError
+} from '../lib/edge-functions.helper';
 
 /**
  * SERVICIO VERI*FACTU
  * 
  * Sistema de verificación de facturas según normativa AEAT
+ * Integrado con Edge Functions de Supabase para operaciones server-side
  * 
- * ESTADO: 🚧 PREPARADO PARA IMPLEMENTACIÓN FUTURA
- * 
- * REQUISITOS PENDIENTES:
- * - Certificado digital de la empresa
- * - Integración con AEAT
- * - QR Code generation
- * - XML signing
+ * ARQUITECTURA:
+ * - Frontend: Solo orquestación de llamadas y UI
+ * - Backend: Toda la lógica fiscal en Edge Functions y RPC
  */
 
 export interface VerifactuData {
@@ -33,13 +41,169 @@ export interface VerifactuChainInfo {
   is_valid: boolean;
 }
 
+export interface VerifactuSettings {
+  software_code: string;
+  issuer_nif: string;
+  environment: 'pre' | 'prod';
+  cert_pem?: string;
+  key_pem?: string;
+  key_passphrase?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class VerifactuService {
+  private sbClient = inject(SupabaseClientService);
+  private supabase = this.sbClient.instance;
 
   // =====================================================
-  // HASH GENERATION (SHA-256)
+  // EDGE FUNCTIONS - SERVER-SIDE OPERATIONS
+  // =====================================================
+
+  /**
+   * Valida una factura antes de emitirla con Verifactu
+   * Llama a RPC validate_invoice_before_issue
+   */
+  validateInvoiceBeforeIssue(invoiceId: string): Observable<ValidateInvoiceResponse> {
+    return from(
+      this.supabase.rpc('validate_invoice_before_issue', {
+        pinvoice_id: invoiceId
+      })
+    ).pipe(
+      map((response: any) => {
+        if (response.error) {
+          console.error('❌ Error validating invoice:', response.error);
+          return {
+            valid: false,
+            errors: [response.error.message || 'Error de validación']
+          };
+        }
+        return response.data as ValidateInvoiceResponse;
+      }),
+      catchError((error) => {
+        console.error('❌ RPC error:', error);
+        return of({
+          valid: false,
+          errors: [mapVerifactuError(error.code || 'UNKNOWN_ERROR')]
+        });
+      })
+    );
+  }
+
+  /**
+   * Emite una factura con Verifactu (genera hash y registra en cadena)
+   * Llama a Edge Function issue-invoice
+   */
+  issueInvoice(request: IssueInvoiceRequest): Observable<IssueInvoiceResponse | null> {
+    console.log('📤 Issuing invoice with Verifactu:', request);
+    
+    return from(
+      callEdgeFunction<IssueInvoiceRequest, IssueInvoiceResponse>(
+        this.supabase,
+        'issue-invoice',
+        request
+      )
+    ).pipe(
+      map((response) => {
+        if (!response.ok || !response.data) {
+          console.error('❌ Issue invoice failed:', response.error);
+          throw new Error(mapVerifactuError(response.error || 'UNKNOWN_ERROR'));
+        }
+        console.log('✅ Invoice issued successfully:', response.data);
+        return response.data;
+      }),
+      catchError((error) => {
+        console.error('❌ Issue invoice error:', error);
+        throw error;
+      })
+    );
+  }
+
+  /**
+   * Sube certificado y configuración de Verifactu
+   * Llama a Edge Function upload-verifactu-cert
+   */
+  uploadVerifactuCertificate(request: UploadVerifactuCertRequest): Observable<boolean> {
+    console.log('📤 Uploading Verifactu certificate...');
+    
+    return from(
+      callEdgeFunction<UploadVerifactuCertRequest, { ok: boolean }>(
+        this.supabase,
+        'upload-verifactu-cert',
+        request
+      )
+    ).pipe(
+      map((response) => {
+        if (!response.ok) {
+          console.error('❌ Upload certificate failed:', response.error);
+          throw new Error(mapVerifactuError(response.error || 'cert_upload_failed'));
+        }
+        console.log('✅ Certificate uploaded successfully');
+        return true;
+      }),
+      catchError((error) => {
+        console.error('❌ Upload certificate error:', error);
+        throw error;
+      })
+    );
+  }
+
+  /**
+   * Preflight check antes de emitir (opcional, para debugging)
+   * Llama a RPC verifactu_preflight_issue
+   */
+  preflightIssue(
+    invoiceId: string,
+    deviceId?: string,
+    softwareId?: string
+  ): Observable<PreflightIssueResponse> {
+    return from(
+      this.supabase.rpc('verifactu_preflight_issue', {
+        pinvoice_id: invoiceId,
+        pdevice_id: deviceId || null,
+        psoftware_id: softwareId || null
+      })
+    ).pipe(
+      map((response: any) => {
+        if (response.error) {
+          throw new Error(response.error.message);
+        }
+        return response.data as PreflightIssueResponse;
+      }),
+      catchError((error) => {
+        console.error('❌ Preflight error:', error);
+        throw error;
+      })
+    );
+  }
+
+  /**
+   * Obtiene configuración de Verifactu para la empresa
+   * Solo disponible para admin/owner (RPC con service_role)
+   */
+  getVerifactuSettings(companyId: string): Observable<VerifactuSettingsResponse | null> {
+    return from(
+      this.supabase.rpc('get_verifactu_settings_for_company', {
+        pcompany_id: companyId
+      })
+    ).pipe(
+      map((response: any) => {
+        if (response.error) {
+          console.warn('⚠️ No Verifactu settings found:', response.error);
+          return null;
+        }
+        return response.data as VerifactuSettingsResponse;
+      }),
+      catchError((error) => {
+        console.error('❌ Get settings error:', error);
+        return of(null);
+      })
+    );
+  }
+
+  // =====================================================
+  // HASH GENERATION (SHA-256) - CLIENT-SIDE UTILITY
   // =====================================================
 
   /**
