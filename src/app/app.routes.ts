@@ -26,6 +26,7 @@ import { DevSetupComponent } from './components/dev-setup/dev-setup.component';
 import { EmergencyLoginComponent } from './components/emergency-login/emergency-login.component';
 import { DebugDashboardComponent } from './components/debug-dashboard/debug-dashboard.component';
 import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard } from './guards/auth.guard';
+import { ModuleGuard } from './guards/module.guard';
 import { ClientRoleGuard } from './guards/client-role.guard';
 import { AuthCallbackComponent } from './components/auth-callback/auth-callback.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
@@ -53,16 +54,16 @@ export const routes: Routes = [
     // Rutas principales con guards apropiados
     {path: '', redirectTo: '/inicio', pathMatch: 'full'},
     {path: 'inicio', component: HomeComponent, canActivate: [AuthGuard]},
-    {path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    {path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloClientes' }},
     {path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
-    {path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard]},
+    {path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' }},
     {path: 'ticket/:id', component: TicketDetailComponent, canActivate: [AuthGuard]},
-    {path: 'productos', component: ProductsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
-    {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    {path: 'productos', component: ProductsComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloMaterial' }},
+    {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' }},
     {path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'anychat/contacts', component: AnychatContactsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
-    {path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [AuthGuard]},
+    {path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloAnaliticas' }},
     {path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full'},
@@ -78,13 +79,13 @@ export const routes: Routes = [
     {
         path: 'presupuestos',
         loadChildren: () => import('./modules/quotes/quotes.module').then(m => m.QuotesModule),
-        canActivate: [AuthGuard, OwnerAdminGuard]
+        canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloPresupuestos' }
     },
     // Módulo de facturación (lazy loading)
     {
         path: 'facturacion',
         loadChildren: () => import('./modules/invoices/invoices.module').then(m => m.InvoicesModule),
-        canActivate: [AuthGuard, OwnerAdminGuard]
+        canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloFacturas' }
     },
     // Compatibilidad: rutas antiguas
     { path: 'invoices', redirectTo: 'facturacion', pathMatch: 'full' },

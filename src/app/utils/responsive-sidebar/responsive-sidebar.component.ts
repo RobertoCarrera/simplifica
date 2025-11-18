@@ -69,7 +69,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Clientes',
       icon: 'people',
       route: '/clientes',
-      module: 'production'
+      module: 'production',
+      moduleKey: 'moduloClientes'
     },
     {
       id: 3,
@@ -105,7 +106,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Analíticas',
       icon: 'trending_up',
       route: '/analytics',
-      module: 'production'
+      module: 'production',
+      moduleKey: 'moduloAnaliticas'
     },
     {
       id: 44,
@@ -242,9 +244,9 @@ export class ResponsiveSidebarComponent implements OnInit {
         return true;
       }
       
-      // Production modules: requieren verificación contra módulos efectivos si hay
+      // Production modules: requieren verificación de módulos; si aún no cargaron, ocultar
       if (item.module === 'production') {
-        if (!allowed) return true; // mientras cargan, mostramos por defecto
+        if (!allowed) return false; // ocultar hasta tener decisión
         return this.isMenuItemAllowedByModules(item, allowed);
       }
       

@@ -257,7 +257,7 @@ export class MobileBottomNavComponent implements OnInit {
     base = base.filter(it => {
       if (it.module === 'core') return true;
       if (it.module === 'development') return isAdmin || isDev;
-      if (!allowed) return true; // while loading, be permissive
+      if (!allowed) return false; // while loading, hide production entries
       const key = this.routeToModuleKey(it.route || '');
       if (!key) return true;
       return allowed.has(key);
@@ -381,6 +381,8 @@ export class MobileBottomNavComponent implements OnInit {
   // Map routes to module keys (mirror of sidebar mapping)
   private routeToModuleKey(route: string): string | null {
     switch (route) {
+      case '/clientes':
+        return 'moduloClientes';
       case '/tickets':
         return 'moduloSAT';
       case '/presupuestos':
