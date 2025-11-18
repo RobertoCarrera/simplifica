@@ -19,7 +19,7 @@ import { environment } from '../../../../environments/environment';
           <span class="w-2 h-2 rounded-full mr-1.5" [ngClass]="h.pending > 0 ? 'bg-amber-500' : 'bg-emerald-500'"></span>
           {{ h.pending > 0 ? (h.pending + ' eventos pendientes') : 'Dispatcher OK' }}
         </span>
-        <button class="text-sm px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" (click)="runDispatcher()">Ejecutar</button>
+        <!-- <button class="text-sm px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" (click)="runDispatcher()">Ejecutar</button> -->
       </div>
     </div>
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
@@ -27,7 +27,7 @@ import { environment } from '../../../../environments/environment';
         <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200">Facturas</h2>
         <div class="flex items-center gap-3">
           <a class="text-sm text-blue-600 hover:underline" routerLink="/presupuestos">Ir a Presupuestos</a>
-          <a class="text-sm px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" routerLink="/facturacion/verifactu-settings">Configurar Verifactu</a>
+          <!-- Botón de configuración de Verifactu removido: ahora en /configuracion/verifactu -->
         </div>
       </div>
       <div class="overflow-x-auto">
@@ -76,10 +76,6 @@ export class InvoiceListComponent implements OnInit {
       next: (list) => this.invoices.set(list || []),
       error: (err) => console.error('Error loading invoices', err)
     });
-    this.invoicesService.getDispatcherHealth().subscribe({
-      next: (h) => this.dispatcherHealth.set(h),
-      error: () => this.dispatcherHealth.set({ pending: 0, lastEventAt: null, lastAcceptedAt: null, lastRejectedAt: null })
-    });
   }
 
   downloadPdf(invoiceId: string){
@@ -89,12 +85,12 @@ export class InvoiceListComponent implements OnInit {
     });
   }
 
-  runDispatcher(){
-    this.invoicesService.runDispatcherNow().subscribe({
-      next: () => this.invoicesService.getDispatcherHealth().subscribe(h => this.dispatcherHealth.set(h)),
-      error: (e) => console.error('Dispatcher error', e)
-    });
-  }
+  // runDispatcher(){
+  //   this.invoicesService.runDispatcherNow().subscribe({
+  //     next: () => this.invoicesService.getDispatcherHealth().subscribe(h => this.dispatcherHealth.set(h)),
+  //     error: (e) => console.error('Dispatcher error', e)
+  //   });
+  // }
 
   formatNumber(inv: Invoice): string {
     return formatInvoiceNumber(inv);

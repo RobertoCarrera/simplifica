@@ -47,6 +47,7 @@ import { PortalInvoicesComponent } from './components/portal-invoices/portal-inv
 import { PortalInvoiceDetailComponent } from './components/portal-invoice-detail/portal-invoice-detail.component';
 import { PortalQuoteDetailComponent } from './components/portal-quote-detail/portal-quote-detail.component';
 import { ModulesAdminComponent } from './components/modules-admin/modules-admin.component';
+import { VerifactuSettingsComponent } from './modules/invoices/verifactu-settings/verifactu-settings.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -65,6 +66,7 @@ export const routes: Routes = [
     {path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full'},
+    {path: 'configuracion/verifactu', component: VerifactuSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     // Admin modules management (solo admin)
     {path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard]},

@@ -45,9 +45,10 @@ export interface VerifactuSettings {
   software_code: string;
   issuer_nif: string;
   environment: 'pre' | 'prod';
-  cert_pem?: string;
-  key_pem?: string;
-  key_passphrase?: string;
+  // encrypted versions
+  cert_pem_enc?: string;
+  key_pem_enc?: string;
+  key_pass_enc?: string | null;
 }
 
 @Injectable({
@@ -197,6 +198,69 @@ export class VerifactuService {
       }),
       catchError((error) => {
         console.error('❌ Get settings error:', error);
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * Obtiene configuración directamente de la tabla verifactu_settings (sin RPC)
+   * Uso: pantalla de configuración. Respeta RLS (selecciona por company_id).
+   */
+  fetchSettingsForCompany(companyId: string): Observable<VerifactuSettings | null> {
+    return from(
+      this.supabase
+        .from('verifactu_settings')
+        .select('software_code, issuer_nif, environment, cert_pem_enc, key_pem_enc, key_pass_enc, updated_at')
+        .eq('company_id', companyId)
+        .maybeSingle()
+    ).pipe(
+      map((response: any) => {
+        if (response.error) {
+          console.warn('⚠️ Verifactu settings direct select error:', response.error.message);
+          return null;
+        }
+        if (!response.data) return null;
+        const d = response.data;
+        return {
+          software_code: d.software_code,
+          issuer_nif: d.issuer_nif,
+          environment: d.environment,
+          cert_pem_enc: d.cert_pem_enc,
+          key_pem_enc: d.key_pem_enc,
+          key_pass_enc: d.key_pass_enc
+        } as VerifactuSettings;
+      }),
+      catchError(err => {
+        console.error('❌ fetchSettingsForCompany error:', err);
+        return of(null);
+      })
+    );
+  }
+
+  /**
+   * Obtiene configuración actual y historial de rotaciones de certificados
+   */
+  fetchCertificateHistory(companyId: string): Observable<{settings: {software_code: string; issuer_nif: string; environment: 'pre' | 'prod'; configured: boolean; mode: 'encrypted' | 'none'}; history: Array<{version: number; stored_at: string; rotated_by: string | null; integrity_hash: string | null; notes: string | null; cert_len: number | null; key_len: number | null; pass_present: boolean;}>} | null> {
+    return from(
+      callEdgeFunction<any, { ok: boolean; settings: any; history: any[] }>(
+        this.supabase,
+        'verifactu-cert-history',
+        {}
+      )
+    ).pipe(
+      map(resp => {
+        if (!resp.ok || !resp.data) {
+          console.warn('⚠️ History fetch failed:', resp.error);
+          return null;
+        }
+        return {
+          settings: resp.data.settings || { software_code: '', issuer_nif: '', environment: 'pre', configured: false, mode: 'none' },
+          history: resp.data.history || []
+        };
+      }),
+      catchError(err => {
+        console.error('❌ fetchCertificateHistory error:', err);
         return of(null);
       })
     );

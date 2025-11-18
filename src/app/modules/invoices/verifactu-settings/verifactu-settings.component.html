@@ -30,6 +30,76 @@
       </div>
     </div>
   } @else {
+    <!-- Existing configuration summary -->
+    @if (existingSettings()) {
+      <div class="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+        <div class="flex items-start gap-3">
+          <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <div class="text-sm">
+            <p class="font-medium text-green-900 dark:text-green-200 mb-1">Configuración existente cargada</p>
+            <ul class="text-green-800 dark:text-green-300 space-y-1">
+              <li><strong>Software:</strong> {{ existingSettings()?.software_code }}</li>
+              <li><strong>Emisor NIF:</strong> {{ existingSettings()?.issuer_nif }}</li>
+              <li><strong>Ambiente:</strong> {{ existingSettings()?.environment === 'pre' ? 'PRE (Pruebas)' : 'PROD (Producción)' }}</li>
+              <li><strong>Certificado:</strong>
+                <span *ngIf="certificateMode() === 'encrypted'" class="text-green-700 dark:text-green-300">Cifrado ✅</span>
+                <span *ngIf="certificateMode() === 'none'" class="text-red-700 dark:text-red-300">No configurado</span>
+              </li>
+            </ul>
+            @if (certificateConfigured() && !showUploader()) {
+              <button type="button" (click)="onReplaceCertificate()" class="mt-3 px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700">Reemplazar certificado</button>
+            }
+          </div>
+        </div>
+      </div>
+    }
+    <!-- Certificate History -->
+    @if (history()) {
+      <div class="mb-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow">
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+            <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 text-xs">H</span>
+            Historial de rotaciones
+          </h3>
+          <span class="text-xs text-gray-500 dark:text-gray-400">{{ history()?.length }} versiones</span>
+        </div>
+        <div class="p-4 overflow-x-auto">
+          <table class="min-w-full text-xs">
+            <thead>
+              <tr class="text-left text-gray-600 dark:text-gray-300">
+                <th class="py-1 pr-4">Versión</th>
+                <th class="py-1 pr-4">Fecha</th>
+                <th class="py-1 pr-4">Integridad</th>
+                <th class="py-1 pr-4">Cert(len)</th>
+                <th class="py-1 pr-4">Key(len)</th>
+                <th class="py-1 pr-4">Pass</th>
+                <th class="py-1 pr-4">Notas</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              <tr *ngFor="let row of history()" class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td class="py-1 pr-4 font-medium text-gray-800 dark:text-gray-100">{{ row.version }}</td>
+                <td class="py-1 pr-4 text-gray-600 dark:text-gray-300">{{ row.stored_at | date:'yyyy-MM-dd HH:mm' }}</td>
+                <td class="py-1 pr-4">
+                  <span *ngIf="row.integrity_hash; else noHash" class="text-green-600 dark:text-green-300">OK</span>
+                  <ng-template #noHash><span class="text-gray-400">—</span></ng-template>
+                </td>
+                <td class="py-1 pr-4">{{ row.cert_len || '—' }}</td>
+                <td class="py-1 pr-4">{{ row.key_len || '—' }}</td>
+                <td class="py-1 pr-4">
+                  <span [ngClass]="row.pass_present ? 'text-blue-600 dark:text-blue-300' : 'text-gray-400'">{{ row.pass_present ? 'Sí' : 'No' }}</span>
+                </td>
+                <td class="py-1 pr-4 text-gray-600 dark:text-gray-300 max-w-[160px] truncate" title="{{ row.notes }}">{{ row.notes || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    } @else if (loadingHistory()) {
+      <div class="mb-6 text-xs text-gray-500 dark:text-gray-400">Cargando historial...</div>
+    }
     
     <!-- Warning Banner -->
     <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6">
@@ -90,82 +160,14 @@
           </p>
         </div>
 
-        <!-- Certificate File -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Certificado digital (PEM) *
-          </label>
-          <div class="flex items-center gap-3">
-            <label class="flex-1 cursor-pointer">
-              <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 hover:border-blue-500 dark:hover:border-blue-400 transition-colors">
-                <div class="flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                  </svg>
-                  <span class="text-sm">
-                    {{ form.cert_file ? form.cert_file.name : 'Seleccionar certificado.pem' }}
-                  </span>
-                </div>
-              </div>
-              <input 
-                type="file" 
-                (change)="onCertFileChange($event)"
-                accept=".pem,.crt,.cer"
-                class="hidden"
-              />
-            </label>
+        <!-- Uploader avanzado de certificados (oculto si ya configurado) -->
+        @if (showUploader()) {
+          <app-certificate-uploader (processed)="onCertificateProcessed($event)"></app-certificate-uploader>
+        } @else {
+          <div class="text-sm text-gray-600 dark:text-gray-400 border border-dashed border-gray-300 dark:border-gray-600 rounded p-4">
+            Certificado ya configurado. Pulsa "Reemplazar certificado" para subir uno nuevo.
           </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Archivo .pem del certificado digital (formato PEM)
-          </p>
-        </div>
-
-        <!-- Private Key File -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Clave privada (PEM) *
-          </label>
-          <div class="flex items-center gap-3">
-            <label class="flex-1 cursor-pointer">
-              <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 hover:border-blue-500 dark:hover:border-blue-400 transition-colors">
-                <div class="flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
-                  </svg>
-                  <span class="text-sm">
-                    {{ form.key_file ? form.key_file.name : 'Seleccionar clave.pem' }}
-                  </span>
-                </div>
-              </div>
-              <input 
-                type="file" 
-                (change)="onKeyFileChange($event)"
-                accept=".pem,.key"
-                class="hidden"
-              />
-            </label>
-          </div>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Archivo .pem de la clave privada del certificado
-          </p>
-        </div>
-
-        <!-- Key Passphrase -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Contraseña de la clave (opcional)
-          </label>
-          <input 
-            type="password" 
-            [(ngModel)]="form.key_passphrase"
-            name="key_passphrase"
-            placeholder="Solo si la clave privada está protegida"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Dejar vacío si la clave no tiene contraseña
-          </p>
-        </div>
+        }
 
         <!-- Environment -->
         <div>
@@ -220,7 +222,7 @@
             type="submit"
             [disabled]="uploading() || !isFormValid()"
             class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium">
-            Guardar configuración
+            {{ existingSettings() ? 'Actualizar configuración' : 'Guardar configuración' }}
           </button>
         </div>
       </div>

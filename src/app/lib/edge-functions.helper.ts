@@ -33,7 +33,7 @@ export interface UploadVerifactuCertRequest {
   issuer_nif: string;
   cert_pem_enc: string;
   key_pem_enc: string;
-  key_pass_enc?: string;
+  key_pass_enc?: string | null;
   environment: 'pre' | 'prod';
 }
 

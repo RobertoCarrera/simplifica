@@ -5,24 +5,19 @@ import { Router, RouterModule } from '@angular/router';
 import { VerifactuService } from '../../../services/verifactu.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
-import { 
-  encryptContent, 
-  readFileAsText
-} from '../../../lib/edge-functions.helper';
+import { ProcessedCertificatePayload } from '../../../lib/certificate-helpers';
+import { CertificateUploaderComponent } from '../certificate-uploader/certificate-uploader.component';
 
 interface VerifactuSettingsForm {
   software_code: string;
   issuer_nif: string;
-  cert_file: File | null;
-  key_file: File | null;
-  key_passphrase: string;
   environment: 'pre' | 'prod';
 }
 
 @Component({
   selector: 'app-verifactu-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, CertificateUploaderComponent],
   templateUrl: './verifactu-settings.component.html',
   styles: []
 })
@@ -34,15 +29,19 @@ export class VerifactuSettingsComponent implements OnInit {
 
   uploading = signal(false);
   isAuthorized = signal(false);
+  existingSettings = signal<VerifactuSettingsForm | null>(null);
+  certificateConfigured = signal<boolean>(false);
+  certificateMode = signal<'none' | 'encrypted'>('none');
+  history = signal<Array<{version: number; stored_at: string; rotated_by: string | null; integrity_hash: string | null; notes: string | null; cert_len: number | null; key_len: number | null; pass_present: boolean;}> | null>(null);
+  loadingHistory = signal(false);
+  showUploader = signal(true); // hide if already configured until user chooses to replace
 
   form: VerifactuSettingsForm = {
     software_code: '',
     issuer_nif: '',
-    cert_file: null,
-    key_file: null,
-    key_passphrase: '',
     environment: 'pre'
   };
+  processedCert = signal<ProcessedCertificatePayload | null>(null);
 
   ngOnInit() {
     this.authService.userProfile$.subscribe(profile => {
@@ -52,30 +51,23 @@ export class VerifactuSettingsComponent implements OnInit {
       if (!authorized) {
         this.toast.error('Acceso denegado', 'No tienes permisos para acceder a esta sección');
       }
+      // Cargar configuración existente si autorizado
+      if (authorized && profile?.company_id) {
+        this.loadSettingsAndHistory(profile.company_id);
+      }
     });
   }
 
-  onCertFileChange(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      this.form.cert_file = input.files[0];
-    }
-  }
-
-  onKeyFileChange(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      this.form.key_file = input.files[0];
-    }
+  onCertificateProcessed(payload: ProcessedCertificatePayload) {
+    this.processedCert.set(payload);
   }
 
   isFormValid(): boolean {
     return !!(
       this.form.software_code.trim() &&
       this.form.issuer_nif.trim() &&
-      this.form.cert_file &&
-      this.form.key_file &&
-      this.form.environment
+      this.form.environment &&
+      this.processedCert()
     );
   }
 
@@ -85,29 +77,15 @@ export class VerifactuSettingsComponent implements OnInit {
     this.uploading.set(true);
 
     try {
-      const certPem = await readFileAsText(this.form.cert_file!);
-      const keyPem = await readFileAsText(this.form.key_file!);
-
-      if (!certPem.includes('BEGIN CERTIFICATE')) {
-        throw new Error('El certificado no tiene formato PEM válido');
-      }
-      if (!keyPem.includes('BEGIN') || !keyPem.includes('PRIVATE KEY')) {
-        throw new Error('La clave privada no tiene formato PEM válido');
-      }
-
-      console.log('🔐 Encrypting certificate and private key...');
-      const certPemEnc = await encryptContent(certPem);
-      const keyPemEnc = await encryptContent(keyPem);
-      const keyPassEnc = this.form.key_passphrase 
-        ? await encryptContent(this.form.key_passphrase)
-        : undefined;
+      const processed = this.processedCert();
+      if (!processed) throw new Error('Certificado no procesado todavía');
 
       await this.verifactuService.uploadVerifactuCertificate({
         software_code: this.form.software_code.trim(),
         issuer_nif: this.form.issuer_nif.trim().toUpperCase(),
-        cert_pem_enc: certPemEnc,
-        key_pem_enc: keyPemEnc,
-        key_pass_enc: keyPassEnc,
+        cert_pem_enc: processed.certPemEnc,
+        key_pem_enc: processed.keyPemEnc,
+        key_pass_enc: processed.keyPassEnc ?? null,
         environment: this.form.environment
       }).toPromise();
 
@@ -130,10 +108,48 @@ export class VerifactuSettingsComponent implements OnInit {
     this.form = {
       software_code: '',
       issuer_nif: '',
-      cert_file: null,
-      key_file: null,
-      key_passphrase: '',
       environment: 'pre'
     };
+    this.processedCert.set(null);
+  }
+
+  private loadSettingsAndHistory(companyId: string) {
+    this.loadingHistory.set(true);
+    this.verifactuService.fetchCertificateHistory(companyId).subscribe({
+      next: (data) => {
+        if (data?.settings) {
+          // Prefill non-sensitive fields from Edge response
+          this.form.software_code = data.settings.software_code || '';
+          this.form.issuer_nif = data.settings.issuer_nif || '';
+          this.form.environment = data.settings.environment || 'pre';
+          this.existingSettings.set({
+            software_code: this.form.software_code,
+            issuer_nif: this.form.issuer_nif,
+            environment: this.form.environment
+          });
+          // Use mode from Edge response (no client-side detection)
+          // Safeguard: treat legacy as none since legacy columns are deleted
+          const mode = data.settings.mode === 'encrypted' ? 'encrypted' : 'none';
+          this.certificateMode.set(mode);
+          this.certificateConfigured.set(data.settings.configured);
+          if (this.certificateConfigured()) {
+            // Hide uploader by default; user can replace
+            this.showUploader.set(false);
+          }
+        }
+        if (data?.history) {
+          this.history.set(data.history);
+        }
+      },
+      error: (err) => {
+        console.warn('No se pudo cargar configuración Verifactu:', err);
+      },
+      complete: () => this.loadingHistory.set(false)
+    });
+  }
+
+  onReplaceCertificate() {
+    this.showUploader.set(true);
+    this.processedCert.set(null);
   }
 }
