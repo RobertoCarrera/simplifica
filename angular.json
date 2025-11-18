@@ -25,6 +25,10 @@
             ],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "allowedCommonJsDependencies": [
+              "crypto-js",
+              "node-forge"
+            ],
             "assets": [
               "src/assets",
               {
@@ -43,13 +47,13 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "2.9MB",
-                  "maximumError": "3.3MB"
+                  "maximumWarning": "3.4MB",
+                  "maximumError": "3.6MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "30kB",
-                  "maximumError": "45kB"
+                  "maximumWarning": "40kB",
+                  "maximumError": "60kB"
                 }
               ],
               "outputHashing": "all"

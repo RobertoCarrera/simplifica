@@ -120,7 +120,7 @@ export class CertificateUploaderComponent {
       // Try with provided passphrase (empty allowed). If empty and fails, prompt for passphrase.
       let result;
       try {
-        result = parsePkcs12(buffer, this.passphrase || '');
+        result = await parsePkcs12(buffer, this.passphrase || '');
       } catch (e) {
         if (!this.passphrase) {
           this.needsPassphrase.set(true);

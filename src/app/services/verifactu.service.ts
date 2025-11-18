@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, from, map, catchError, of } from 'rxjs';
-import CryptoJS from 'crypto-js';
 import { Invoice } from '../models/invoice.model';
 import { SupabaseClientService } from './supabase-client.service';
 import { 
@@ -57,6 +56,11 @@ export interface VerifactuSettings {
 export class VerifactuService {
   private sbClient = inject(SupabaseClientService);
   private supabase = this.sbClient.instance;
+  
+  private async sha256Hex(data: string): Promise<string> {
+    const { default: CryptoJS } = await import('crypto-js');
+    return CryptoJS.SHA256(data).toString(CryptoJS.enc.Hex);
+  }
 
   // =====================================================
   // EDGE FUNCTIONS - SERVER-SIDE OPERATIONS
@@ -281,10 +285,10 @@ export class VerifactuService {
    * - CIF emisor
    * - CIF receptor
    */
-  generateInvoiceHash(
+  async generateInvoiceHash(
     invoice: Invoice,
     previousHash: string = 'GENESIS'
-  ): string {
+  ): Promise<string> {
     // Construir string de datos para hash
     const dataString = [
       previousHash,
@@ -296,7 +300,7 @@ export class VerifactuService {
     ].join('|');
 
     // Generar hash SHA-256
-    const hash = CryptoJS.SHA256(dataString).toString(CryptoJS.enc.Hex);
+    const hash = await this.sha256Hex(dataString);
 
     console.log('🔐 Veri*Factu Hash generado:', {
       invoice_number: invoice.full_invoice_number,
@@ -311,15 +315,15 @@ export class VerifactuService {
   /**
    * Verifica la integridad de la cadena de hashes
    */
-  verifyHashChain(
+  async verifyHashChain(
     invoices: Invoice[]
-  ): VerifactuChainInfo[] {
+  ): Promise<VerifactuChainInfo[]> {
     const results: VerifactuChainInfo[] = [];
     let previousHash = 'GENESIS';
 
     for (let i = 0; i < invoices.length; i++) {
       const invoice = invoices[i];
-      const expectedHash = this.generateInvoiceHash(invoice, previousHash);
+      const expectedHash = await this.generateInvoiceHash(invoice, previousHash);
       const isValid = expectedHash === invoice.verifactu_hash;
 
       results.push({
@@ -519,14 +523,14 @@ export class VerifactuService {
   /**
    * Genera reporte de auditoría de la cadena
    */
-  generateChainAuditReport(invoices: Invoice[]): {
+  async generateChainAuditReport(invoices: Invoice[]): Promise<{
     total_invoices: number;
     valid_chain: boolean;
     broken_links: number[];
     first_hash: string;
     last_hash: string;
-  } {
-    const chainInfo = this.verifyHashChain(invoices);
+  }> {
+    const chainInfo = await this.verifyHashChain(invoices);
     const brokenLinks = chainInfo
       .map((info, idx) => info.is_valid ? -1 : idx)
       .filter(idx => idx !== -1);

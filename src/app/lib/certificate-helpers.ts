@@ -1,4 +1,4 @@
-import * as forge from 'node-forge';
+// Dynamically import node-forge to keep it out of the initial bundle
 
 export interface ParsedCertificateInfo {
   subject: string;
@@ -52,7 +52,8 @@ export async function readFileAsText(file: File): Promise<string> {
 }
 
 // Parse PKCS#12 buffer into PEM cert + key using node-forge
-export function parsePkcs12(buffer: ArrayBuffer, passphrase: string): { certPem: string; keyPem: string; info: ParsedCertificateInfo } {
+export async function parsePkcs12(buffer: ArrayBuffer, passphrase: string): Promise<{ certPem: string; keyPem: string; info: ParsedCertificateInfo }> {
+  const forge: any = await import('node-forge');
   const binary = arrayBufferToBinaryString(buffer);
   const p12Asn1 = forge.asn1.fromDer(binary);
   const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, passphrase || '');
