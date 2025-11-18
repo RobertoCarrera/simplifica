@@ -36,35 +36,53 @@ type TaxSettings = {
 
 function computeLine(item: any, settings: TaxSettings) {
   const qty = Number(item?.quantity ?? 1);
-  const baseUnit = Number(item?.unit_price ?? item?.price ?? item?.price_per_unit ?? 0);
-  const discountPct = Number(item?.discount_percent ?? 0);
-  const discounted = baseUnit * (1 - (isFinite(discountPct) ? discountPct : 0) / 100);
+  const baseUnit = Number(
+    item?.unit_price ?? item?.price ?? item?.price_per_unit ?? item?.base_price ?? item?.list_price ?? item?.unitPrice ?? 0
+  );
+  const discountRaw = item?.discount_percent ?? item?.discount_percentage ?? item?.discount ?? 0;
+  const discountPct = isFinite(Number(discountRaw)) ? Number(discountRaw) : 0;
   const taxRate = settings.iva_enabled ? Number(item?.tax_rate ?? item?.vat_rate ?? settings.iva_rate ?? 0) : 0;
 
-  let unitNet: number, unitTax: number, unitGross: number;
+  let unitBaseNet: number, unitBaseTax: number, unitBaseGross: number;
+  let unitDiscNet: number, unitDiscTax: number, unitDiscGross: number;
+
   if (settings.pricesIncludeTax) {
     const divisor = 1 + (isFinite(taxRate) ? taxRate : 0) / 100;
-    unitNet = divisor ? discounted / divisor : discounted;
-    unitGross = discounted;
-    unitTax = unitGross - unitNet;
+    unitBaseGross = baseUnit;
+    unitBaseNet = divisor ? baseUnit / divisor : baseUnit;
+    unitBaseTax = unitBaseGross - unitBaseNet;
+
+    unitDiscGross = baseUnit * (1 - discountPct / 100);
+    unitDiscNet = divisor ? unitDiscGross / divisor : unitDiscGross;
+    unitDiscTax = unitDiscGross - unitDiscNet;
   } else {
-    unitNet = discounted;
-    unitTax = unitNet * ((isFinite(taxRate) ? taxRate : 0) / 100);
-    unitGross = unitNet + unitTax;
+    unitBaseNet = baseUnit;
+    unitBaseTax = unitBaseNet * ((isFinite(taxRate) ? taxRate : 0) / 100);
+    unitBaseGross = unitBaseNet + unitBaseTax;
+
+    unitDiscNet = baseUnit * (1 - discountPct / 100);
+    unitDiscTax = unitDiscNet * ((isFinite(taxRate) ? taxRate : 0) / 100);
+    unitDiscGross = unitDiscNet + unitDiscTax;
   }
 
-  const lineNet = unitNet * qty;
-  const lineTax = unitTax * qty;
-  const lineGross = unitGross * qty;
+  const lineNet = unitDiscNet * qty;
+  const lineTax = unitDiscTax * qty;
+  const lineGross = unitDiscGross * qty;
+  const baseLineNet = unitBaseNet * qty;
+  const baseLineGross = unitBaseGross * qty;
 
   return {
     qty,
     taxRate,
-    unitDisplay: settings.pricesIncludeTax ? unitGross : unitNet,
+    // Show original unit price
+    unitDisplay: settings.pricesIncludeTax ? unitBaseGross : unitBaseNet,
+    // Show discounted line amount
     lineDisplay: settings.pricesIncludeTax ? lineGross : lineNet,
     lineNet,
     lineTax,
     lineGross,
+    baseLineNet,
+    baseLineGross,
   };
 }
 
@@ -176,11 +194,14 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
       { text: 'CANT.', style: 'tableHeader', alignment: 'center', fillColor: PRIMARY_COLOR, color: 'white' },
       { text: 'PRECIO', style: 'tableHeader', alignment: 'right', fillColor: PRIMARY_COLOR, color: 'white' },
       { text: 'IVA', style: 'tableHeader', alignment: 'center', fillColor: PRIMARY_COLOR, color: 'white' },
+      { text: 'DTO', style: 'tableHeader', alignment: 'center', fillColor: PRIMARY_COLOR, color: 'white' },
       { text: 'IMPORTE', style: 'tableHeader', alignment: 'right', fillColor: PRIMARY_COLOR, color: 'white' }
     ]
   ];
 
-  let subtotal = 0;
+  let subtotalBeforeDiscount = 0; // Suma bruta antes de descuentos
+  let discountTotalNet = 0; // Total descontado
+  let subtotal = 0; // Base imponible (neto después de descuentos)
   let taxAmount = 0;
   let grossTotal = 0;
 
@@ -188,7 +209,12 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
   (items || []).forEach((it, idx) => {
     const desc = it.description || '';
     const line = computeLine(it, settings);
+    const discountShow = isFinite(Number(it?.discount_percent ?? it?.discount_percentage ?? it?.discount))
+      ? `${Number(it?.discount_percent ?? it?.discount_percentage ?? it?.discount)}%`
+      : '-';
 
+    subtotalBeforeDiscount += (line.baseLineNet ?? line.lineNet);
+    discountTotalNet += Math.max(0, (line.baseLineNet ?? line.lineNet) - line.lineNet);
     subtotal += line.lineNet;
     taxAmount += line.lineTax;
     grossTotal += line.lineGross;
@@ -215,6 +241,13 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
         text: `${line.taxRate}%`, 
         alignment: 'center', 
         fontSize: 9,
+        fillColor: idx % 2 === 0 ? SECONDARY_COLOR : null
+      },
+      {
+        text: discountShow,
+        alignment: 'center',
+        fontSize: 9,
+        color: discountShow !== '-' ? '#2E8B57' : TEXT_LIGHT,
         fillColor: idx % 2 === 0 ? SECONDARY_COLOR : null
       },
       { 
@@ -419,7 +452,7 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
       {
         table: {
           headerRows: 1,
-          widths: ['*', 'auto', 'auto', 'auto', 'auto'],
+          widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto'],
           body: tableBody
         },
         layout: {
@@ -443,93 +476,64 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
       // Totales
       {
         columns: [
-          { width: '*', text: '' }, // Spacer
+          { width: '*', text: '' },
           {
             width: 220,
             stack: [
               {
                 canvas: [
-                  {
-                    type: 'rect',
-                    x: 0,
-                    y: 0,
-                    w: 220,
-                    h: 90,
-                    r: 4,
-                    color: SECONDARY_COLOR
-                  }
+                  { type: 'rect', x: 0, y: 0, w: 220, h: 90, r: 4, color: SECONDARY_COLOR }
                 ]
               },
               {
                 margin: [12, -85, 12, 10],
                 stack: [
-                  {
-                    text: 'RESUMEN',
-                    fontSize: 10,
-                    bold: true,
-                    color: PRIMARY_COLOR,
-                    margin: [0, 0, 0, 10]
-                  },
+                  { text: 'RESUMEN', fontSize: 10, bold: true, color: PRIMARY_COLOR, margin: [0, 0, 0, 10] },
+                  discountTotalNet > 0 ? {
+                    columns: [
+                      { text: 'Subtotal:', fontSize: 9, color: TEXT_LIGHT },
+                      { text: formatMoney(subtotalBeforeDiscount, invoice?.currency), fontSize: 9, alignment: 'right', color: TEXT_LIGHT }
+                    ],
+                    margin: [0, 0, 0, 4]
+                  } : {},
+                  discountTotalNet > 0 ? {
+                    columns: [
+                      { text: 'Descuento:', fontSize: 9, color: '#2E8B57' },
+                      { text: `- ${formatMoney(discountTotalNet, invoice?.currency)}`, fontSize: 9, alignment: 'right', color: '#2E8B57' }
+                    ],
+                    margin: [0, 0, 0, 8]
+                  } : {},
                   {
                     columns: [
-                      { text: 'Base imponible:', fontSize: 10, color: TEXT_DARK },
-                      { 
-                        text: formatMoney(subtotal, invoice?.currency), 
-                        fontSize: 10, 
-                        alignment: 'right', 
-                        color: TEXT_DARK 
-                      }
+                      { text: 'Base imponible:', fontSize: 10, color: TEXT_DARK, bold: discountTotalNet > 0 },
+                      { text: formatMoney(subtotal, invoice?.currency), fontSize: 10, alignment: 'right', color: TEXT_DARK, bold: discountTotalNet > 0 }
                     ],
                     margin: [0, 0, 0, 6]
                   },
                   {
                     columns: [
                       { text: 'Cuota de IVA:', fontSize: 10, color: TEXT_DARK },
-                      { 
-                        text: formatMoney(taxAmount, invoice?.currency), 
-                        fontSize: 10, 
-                        alignment: 'right', 
-                        color: TEXT_DARK 
-                      }
+                      { text: formatMoney(taxAmount, invoice?.currency), fontSize: 10, alignment: 'right', color: TEXT_DARK }
                     ],
                     margin: [0, 0, 0, 6]
                   },
                   irpfToShow > 0 ? {
                     columns: [
                       { text: `IRPF (${isFinite(invoice?.irpf_rate) ? invoice.irpf_rate : settings.irpf_rate}%):`, fontSize: 10, color: TEXT_DARK },
-                      { 
-                        text: `- ${formatMoney(irpfToShow, invoice?.currency)}`, 
-                        fontSize: 10, 
-                        alignment: 'right', 
-                        color: TEXT_DARK 
-                      }
+                      { text: `- ${formatMoney(irpfToShow, invoice?.currency)}`, fontSize: 10, alignment: 'right', color: TEXT_DARK }
                     ],
                     margin: [0, 0, 0, 10]
                   } : {},
                   {
                     canvas: [
-                      {
-                        type: 'line',
-                        x1: 0,
-                        y1: 0,
-                        x2: 196,
-                        y2: 0,
-                        lineWidth: 1.5,
-                        lineColor: PRIMARY_COLOR
-                      }
+                      { type: 'line', x1: 0, y1: 0, x2: 196, y2: 0, lineWidth: 1.5, lineColor: PRIMARY_COLOR }
                     ],
                     margin: [0, 0, 0, 8]
                   },
                   {
                     columns: [
                       { text: 'TOTAL:', fontSize: 13, bold: true, color: PRIMARY_COLOR },
-                      { 
-                        text: formatMoney(finalTotal, invoice?.currency), 
-                        fontSize: 15, 
-                        bold: true, 
-                        alignment: 'right', 
-                        color: PRIMARY_COLOR 
-                      }
+                      { text: formatMoney(finalTotal, invoice?.currency), fontSize: 15, bold: true, alignment: 'right', color: PRIMARY_COLOR }
                     ]
                   }
                 ]
@@ -669,12 +673,22 @@ serve(async (req) => {
       );
     }
 
-    const { data: items, error: itErr } = await user
+    let { data: items, error: itErr } = await user
       .from('invoice_items')
       .select('*')
       .eq('invoice_id', invoiceId)
       .order('line_order', { ascending: true });
     
+    // Fallback: if RLS trimmed items, fetch with service role
+    if (!itErr && items && items.length <= 1) {
+      const { data: adminItems } = await admin
+        .from('invoice_items')
+        .select('*')
+        .eq('invoice_id', invoiceId)
+        .order('line_order', { ascending: true });
+      if (adminItems && adminItems.length > items.length) items = adminItems;
+    }
+
     if (itErr) {
       return new Response(
         JSON.stringify({ error: itErr.message }),

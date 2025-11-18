@@ -27,37 +27,55 @@ type TaxSettings = {
 
 function computeLineAmounts(item: any, currency: string | undefined, settings: TaxSettings) {
   const qty = Number(item?.quantity ?? 1);
-  const baseUnit = Number(item?.unit_price ?? item?.price ?? item?.price_per_unit ?? 0);
-  const discountPct = Number(item?.discount_percent ?? 0);
-  const discounted = baseUnit * (1 - (isFinite(discountPct) ? discountPct : 0) / 100);
+  const baseUnit = Number(
+    item?.unit_price ?? item?.price ?? item?.price_per_unit ?? item?.base_price ?? item?.list_price ?? item?.unitPrice ?? 0
+  );
+  // Support multiple naming conventions for discount
+  const discountRaw = item?.discount_percent ?? item?.discount_percentage ?? item?.discount ?? 0;
+  const discountPct = isFinite(Number(discountRaw)) ? Number(discountRaw) : 0;
   const taxRate = settings.iva_enabled ? Number(item?.tax_rate ?? settings.iva_rate ?? 0) : 0;
 
-  let unitNet: number, unitTax: number, unitGross: number;
+  // Compute base (no discount) unit amounts and discounted unit amounts
+  let unitBaseNet: number, unitBaseTax: number, unitBaseGross: number;
+  let unitDiscNet: number, unitDiscTax: number, unitDiscGross: number;
+
   if (settings.pricesIncludeTax) {
-    // The stored price already includes VAT
     const divisor = 1 + (isFinite(taxRate) ? taxRate : 0) / 100;
-    unitNet = divisor ? discounted / divisor : discounted;
-    unitGross = discounted;
-    unitTax = unitGross - unitNet;
+    unitBaseGross = baseUnit;
+    unitBaseNet = divisor ? baseUnit / divisor : baseUnit;
+    unitBaseTax = unitBaseGross - unitBaseNet;
+
+    unitDiscGross = baseUnit * (1 - discountPct / 100);
+    unitDiscNet = divisor ? unitDiscGross / divisor : unitDiscGross;
+    unitDiscTax = unitDiscGross - unitDiscNet;
   } else {
-    // The stored price is without VAT
-    unitNet = discounted;
-    unitTax = unitNet * ((isFinite(taxRate) ? taxRate : 0) / 100);
-    unitGross = unitNet + unitTax;
+    unitBaseNet = baseUnit;
+    unitBaseTax = unitBaseNet * ((isFinite(taxRate) ? taxRate : 0) / 100);
+    unitBaseGross = unitBaseNet + unitBaseTax;
+
+    unitDiscNet = baseUnit * (1 - discountPct / 100);
+    unitDiscTax = unitDiscNet * ((isFinite(taxRate) ? taxRate : 0) / 100);
+    unitDiscGross = unitDiscNet + unitDiscTax;
   }
 
-  const lineNet = unitNet * qty;
-  const lineTax = unitTax * qty;
-  const lineGross = unitGross * qty;
+  const lineNet = unitDiscNet * qty;
+  const lineTax = unitDiscTax * qty;
+  const lineGross = unitDiscGross * qty;
+  const baseLineNet = unitBaseNet * qty;
+  const baseLineGross = unitBaseGross * qty;
 
   return {
     qty,
     taxRate,
-    unitDisplay: settings.pricesIncludeTax ? unitGross : unitNet,
+    // Show original unit price (never discounted) in the table
+    unitDisplay: settings.pricesIncludeTax ? unitBaseGross : unitBaseNet,
+    // Show discounted line amount in the table
     lineDisplay: settings.pricesIncludeTax ? lineGross : lineNet,
     lineNet,
     lineTax,
     lineGross,
+    baseLineNet,
+    baseLineGross,
   };
 }
 
@@ -112,18 +130,20 @@ function generateQuotePdf(ctx: { quote: any, items: any[], client: any, company:
 
   // Preparar items de la tabla
   const tableBody = [
-    // Header
     [
       { text: 'DESCRIPCIÓN', style: 'tableHeader', fillColor: PRIMARY_COLOR, color: 'white' },
       { text: 'CANT.', style: 'tableHeader', alignment: 'center', fillColor: PRIMARY_COLOR, color: 'white' },
       { text: 'PRECIO', style: 'tableHeader', alignment: 'right', fillColor: PRIMARY_COLOR, color: 'white' },
       { text: 'IVA', style: 'tableHeader', alignment: 'center', fillColor: PRIMARY_COLOR, color: 'white' },
+      { text: 'DTO', style: 'tableHeader', alignment: 'center', fillColor: PRIMARY_COLOR, color: 'white' },
       { text: 'IMPORTE', style: 'tableHeader', alignment: 'right', fillColor: PRIMARY_COLOR, color: 'white' }
     ]
   ];
 
   // Rows
-  let subtotal = 0;
+  let subtotalBeforeDiscount = 0; // Suma bruta antes de descuentos
+  let discountTotalNet = 0; // Total descontado
+  let subtotal = 0; // Base imponible (neto después de descuentos)
   let taxAmount = 0;
   let grossTotal = 0;
 
@@ -131,43 +151,23 @@ function generateQuotePdf(ctx: { quote: any, items: any[], client: any, company:
     const desc = it.description || '';
     const notes = it.notes ? `\n(${it.notes})` : '';
     const line = computeLineAmounts(it, quote?.currency, settings);
+    const discountShow = isFinite(Number(it?.discount_percent ?? it?.discount_percentage ?? it?.discount)) 
+      ? `${Number(it?.discount_percent ?? it?.discount_percentage ?? it?.discount)}%` 
+      : '-';
 
+    subtotalBeforeDiscount += (line.baseLineNet ?? line.lineNet);
+    discountTotalNet += Math.max(0, (line.baseLineNet ?? line.lineNet) - line.lineNet);
     subtotal += line.lineNet;
     taxAmount += line.lineTax;
     grossTotal += line.lineGross;
 
     tableBody.push([
-      {
-        text: `${desc}${notes}`,
-        fontSize: 9,
-        fillColor: idx % 2 === 0 ? LIGHT_GRAY : null
-      },
-      {
-        text: line.qty.toString(),
-        alignment: 'center',
-        fontSize: 9,
-        fillColor: idx % 2 === 0 ? LIGHT_GRAY : null
-      },
-      {
-        text: money(line.unitDisplay, quote?.currency),
-        alignment: 'right',
-        fontSize: 9,
-        fillColor: idx % 2 === 0 ? LIGHT_GRAY : null
-      },
-      {
-        text: `${line.taxRate}%`,
-        alignment: 'center',
-        fontSize: 9,
-        fillColor: idx % 2 === 0 ? LIGHT_GRAY : null
-      },
-      {
-        text: money(line.lineDisplay, quote?.currency),
-        alignment: 'right',
-        fontSize: 10,
-        bold: true,
-        color: PRIMARY_COLOR,
-        fillColor: idx % 2 === 0 ? LIGHT_GRAY : null
-      }
+      { text: `${desc}${notes}`, fontSize: 9, fillColor: idx % 2 === 0 ? LIGHT_GRAY : null },
+      { text: line.qty.toString(), alignment: 'center', fontSize: 9, fillColor: idx % 2 === 0 ? LIGHT_GRAY : null },
+      { text: money(line.unitDisplay, quote?.currency), alignment: 'right', fontSize: 9, fillColor: idx % 2 === 0 ? LIGHT_GRAY : null },
+      { text: `${line.taxRate}%`, alignment: 'center', fontSize: 9, fillColor: idx % 2 === 0 ? LIGHT_GRAY : null },
+      { text: discountShow, alignment: 'center', fontSize: 9, color: discountShow !== '-' ? ACCENT_COLOR : TEXT_LIGHT, fillColor: idx % 2 === 0 ? LIGHT_GRAY : null },
+      { text: money(line.lineDisplay, quote?.currency), alignment: 'right', fontSize: 10, bold: true, color: PRIMARY_COLOR, fillColor: idx % 2 === 0 ? LIGHT_GRAY : null }
     ]);
   });
 
@@ -334,7 +334,7 @@ function generateQuotePdf(ctx: { quote: any, items: any[], client: any, company:
       {
         table: {
           headerRows: 1,
-          widths: ['*', 'auto', 'auto', 'auto', 'auto'],
+          widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto'],
           body: tableBody
         },
         layout: {
@@ -385,10 +385,24 @@ function generateQuotePdf(ctx: { quote: any, items: any[], client: any, company:
                     color: PRIMARY_COLOR,
                     margin: [0, 0, 0, 10]
                   },
+                  discountTotalNet > 0 ? {
+                    columns: [
+                      { text: 'Subtotal:', fontSize: 9, color: TEXT_LIGHT },
+                      { text: money(subtotalBeforeDiscount, quote?.currency), fontSize: 9, alignment: 'right', color: TEXT_LIGHT }
+                    ],
+                    margin: [0, 0, 0, 4]
+                  } : {},
+                  discountTotalNet > 0 ? {
+                    columns: [
+                      { text: 'Descuento:', fontSize: 9, color: ACCENT_COLOR },
+                      { text: `- ${money(discountTotalNet, quote?.currency)}`, fontSize: 9, alignment: 'right', color: ACCENT_COLOR }
+                    ],
+                    margin: [0, 0, 0, 8]
+                  } : {},
                   {
                     columns: [
-                      { text: 'Base imponible:', fontSize: 10, color: TEXT_DARK },
-                      { text: money(subtotal, quote?.currency), fontSize: 10, alignment: 'right', color: TEXT_DARK }
+                      { text: 'Base imponible:', fontSize: 10, color: TEXT_DARK, bold: discountTotalNet > 0 },
+                      { text: money(subtotal, quote?.currency), fontSize: 10, alignment: 'right', color: TEXT_DARK, bold: discountTotalNet > 0 }
                     ],
                     margin: [0, 0, 0, 6]
                   },
@@ -556,11 +570,21 @@ serve(async (req) => {
       );
     }
 
-    const { data: items, error: itErr } = await user
+    let { data: items, error: itErr } = await user
       .from('quote_items')
       .select('*')
       .eq('quote_id', quoteId)
       .order('line_number', { ascending: true });
+
+    // Fallback: if RLS trimmed items (e.g., only first visible) use service role after company validation
+    if (!itErr && items && items.length <= 1) {
+      const { data: adminItems } = await admin
+        .from('quote_items')
+        .select('*')
+        .eq('quote_id', quoteId)
+        .order('line_number', { ascending: true });
+      if (adminItems && adminItems.length > items.length) items = adminItems;
+    }
     
     if (itErr) {
       return new Response(

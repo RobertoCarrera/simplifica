@@ -423,18 +423,19 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   }
 
   calculateTotals() {
-    const items = this.items.value;
     let subtotal = 0;
     let taxAmount = 0;
     let baseNetForIrpf = 0;
 
-    items.forEach((item: any) => {
-      const qty = parseFloat(item.quantity) || 0;
-      const price = parseFloat(item.unit_price) || 0;
-      const discount = parseFloat(item.discount_percent) || 0;
-      const taxRate = parseFloat(item.tax_rate) || 0;
+    this.items.controls.forEach((group) => {
+      const qty = Number(group.get('quantity')?.value ?? 0);
+      const price = Number(group.get('unit_price')?.value ?? 0);
+      // Leer descuento directamente del control para evitar desincronizaciones (especialmente en el primer ítem)
+      const discount = Number(group.get('discount_percent')?.value ?? 0);
+      const taxRate = Number(group.get('tax_rate')?.value ?? 0);
+
       if (this.pricesIncludeTax() && this.ivaEnabled() && taxRate > 0) {
-        // unit_price is GROSS (IVA incluido) -> convertir a neto para subtotal
+        // unit_price es BRUTO (IVA incluido): convertir a neto y luego aplicar descuento
         const gross = qty * price;
         const netBeforeDiscount = gross / (1 + taxRate / 100);
         const itemDiscount = netBeforeDiscount * (discount / 100);
@@ -444,7 +445,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
         taxAmount += itemTax;
         baseNetForIrpf += itemNet;
       } else {
-        // unit_price es NETO (sin IVA)
+        // unit_price es NETO
         const itemSubtotal = qty * price;
         const itemDiscount = itemSubtotal * (discount / 100);
         const itemNet = itemSubtotal - itemDiscount;
@@ -1012,7 +1013,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     } catch {}
     // Auto-fill discount from variant/pricing if item doesn't already have a discount
     try {
-      const currentDiscount = Number(item.get('discount_percent')?.value || 0);
+      const currentDiscount = Number(item.get('discount_percent')?.value ?? 0);
       // preferred was calculated above when choosing pricing; try to reuse it
       const parsedPricing = this.variantPricing(variant);
       let variantDiscount = 0;
@@ -1024,12 +1025,22 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
           || entries.find(e => e.billing_period === 'quarterly')
           || entries.find(e => e.billing_period === 'one_time')
           || entries[0];
-        variantDiscount = Number(preferred?.discount_percentage ?? 0);
+        variantDiscount = Number(
+          (preferred && (preferred.discount_percent ?? preferred.discount_percentage)) ?? 0
+        );
       }
-      // Fallback to deprecated field on variant
-      if (!variantDiscount) variantDiscount = Number((variant as any).discount_percentage ?? 0);
-      if ((currentDiscount === 0 || currentDiscount === null || currentDiscount === undefined) && variantDiscount) {
-        patchObj.discount_percent = variantDiscount;
+      // Fallbacks on variant level (support both naming styles)
+      if (!variantDiscount) variantDiscount = Number(((variant as any).discount_percent ?? (variant as any).discount_percentage) ?? 0);
+      if ((currentDiscount === 0 || currentDiscount === null || Number.isNaN(currentDiscount)) && variantDiscount > 0) {
+        // Set explicitly to avoid UI not refreshing (observed on first item)
+        const discCtrl = item.get('discount_percent');
+        if (discCtrl) {
+          discCtrl.setValue(variantDiscount, { emitEvent: true });
+          discCtrl.markAsDirty();
+          discCtrl.updateValueAndValidity({ emitEvent: false });
+        } else {
+          patchObj.discount_percent = variantDiscount;
+        }
       }
     } catch {}
     // Do NOT modify description anymore; keep it strictly as service description or user custom text.
@@ -1049,6 +1060,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     
     // Auto-set recurrence based on variant billing_period
     this.updateRecurrenceFromVariant(variant);
+    // Re-evaluate aggregate recurrence across all items (new rule: if ANY one-time/custom => none; else choose least restrictive / largest interval)
+    this.evaluateAggregateRecurrence();
     
     this.calculateTotals();
   }
@@ -1076,11 +1089,18 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     } catch {}
     // Auto-fill discount from pricing entry or variant if item doesn't already have a discount
     try {
-      const currentDiscount = Number(item.get('discount_percent')?.value || 0);
-      let pricingDiscount = Number(pricing?.discount_percentage ?? 0);
-      if (!pricingDiscount) pricingDiscount = Number((variant as any).discount_percentage ?? 0);
-      if ((currentDiscount === 0 || currentDiscount === null || currentDiscount === undefined) && pricingDiscount) {
-        toPatch.discount_percent = pricingDiscount;
+      const currentDiscount = Number(item.get('discount_percent')?.value ?? 0);
+      let pricingDiscount = Number((pricing?.discount_percent ?? pricing?.discount_percentage) ?? 0);
+      if (!pricingDiscount) pricingDiscount = Number(((variant as any).discount_percent ?? (variant as any).discount_percentage) ?? 0);
+      if ((currentDiscount === 0 || currentDiscount === null || Number.isNaN(currentDiscount)) && pricingDiscount > 0) {
+        const discCtrl = item.get('discount_percent');
+        if (discCtrl) {
+          discCtrl.setValue(pricingDiscount, { emitEvent: true });
+          discCtrl.markAsDirty();
+          discCtrl.updateValueAndValidity({ emitEvent: false });
+        } else {
+          toPatch.discount_percent = pricingDiscount;
+        }
       }
     } catch {}
     item.patchValue(toPatch);
@@ -1092,6 +1112,8 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       unitCtrl.updateValueAndValidity({ emitEvent: false });
     }
     this.updateRecurrenceFromBillingPeriod(period);
+    // Re-evaluate aggregate recurrence across all items after explicit period selection
+    this.evaluateAggregateRecurrence();
     this.variantDropdownOpen.set(false);
     this.selectedVariantIndex.set(null);
     this.calculateTotals();
@@ -1139,6 +1161,90 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
       }
     } else {
       this.unlockRecurrence();
+    }
+  }
+
+  /**
+   * Nueva lógica agregada de recurrencia:
+   * - Si hay >1 ítem y alguno es one-time/custom/undefined => la cotización NO es recurrente (recurrence_type = 'none').
+   * - Si TODOS los ítems son recurrentes, elegir la periodicidad menos restrictiva (la de mayor intervalo).
+   *   Orden de menor a mayor intervalo: weekly < monthly < quarterly < annually.
+   *   "Menos restrictiva" => mayor intervalo (annually más que monthly, etc.).
+   */
+  private evaluateAggregateRecurrence() {
+    try {
+      const periods = this.items.controls.map(ctrl => this.normalizeBillingPeriod(ctrl.get('billing_period')?.value));
+      if (periods.length === 0) return; // nothing yet
+
+      // Si cualquier periodo es one-time/custom/null => NONE
+      if (periods.some(p => !p || p === 'one-time' || p === 'custom')) {
+        // Sólo forzar none si actualmente está lockeado o distinto
+        const current = this.quoteForm.get('recurrence_type')?.value;
+        if (current !== 'none') {
+          this.quoteForm.patchValue({ recurrence_type: 'none' });
+        }
+        this.unlockRecurrence();
+        return;
+      }
+
+      // Todos son recurrentes. Elegimos el de mayor intervalo.
+      // Ranking: weekly(1), monthly(2), quarterly(3), annually(4)
+      const rank: Record<string, number> = { weekly: 1, monthly: 2, quarterly: 3, annually: 4 };
+      let chosen: string | null = null;
+      let maxRank = -1;
+      for (const p of periods) {
+        if (!p) continue;
+        const r = rank[p] ?? 0;
+        if (r > maxRank) { maxRank = r; chosen = p; }
+      }
+      if (!chosen) {
+        // fallback
+        this.quoteForm.patchValue({ recurrence_type: 'none' });
+        this.unlockRecurrence();
+        return;
+      }
+      // Map billing_period -> recurrence_type
+      const map: Record<string, string> = {
+        weekly: 'weekly',
+        monthly: 'monthly',
+        quarterly: 'monthly', // Represent quarterly as monthly is incorrect? keep none for safety.
+        annually: 'yearly'
+      };
+      const recurrenceType = map[chosen] || 'none';
+      // Ajuste especial: si chosen es quarterly podemos optar por no bloquear y dejar usuario configurar manualmente.
+      if (chosen === 'quarterly') {
+        // No bloquear; usuario decide configuración personalizada (podría mapearse a interval=3 monthly).
+        this.quoteForm.patchValue({ recurrence_type: 'monthly', recurrence_interval: 3 });
+        this.quoteForm.get('recurrence_type')?.disable();
+        this.recurrenceLocked.set(true);
+        this.recurrenceLockedReason.set('Items trimestrales: facturación cada 3 meses');
+        if (!this.quoteForm.get('recurrence_day')?.value) this.quoteForm.patchValue({ recurrence_day: 1 });
+        return;
+      }
+      if (recurrenceType === 'weekly' || recurrenceType === 'monthly' || recurrenceType === 'yearly') {
+        const current = this.quoteForm.get('recurrence_type')?.value;
+        if (current !== recurrenceType) {
+          this.quoteForm.patchValue({ recurrence_type: recurrenceType });
+        }
+        // Lock y establecer día por defecto si falta
+        this.recurrenceLocked.set(true);
+        const names: Record<string,string> = { weekly: 'Semanal', monthly: 'Mensual', yearly: 'Anual' };
+        this.recurrenceLockedReason.set(`Periodicidad agregada: ${names[recurrenceType]}`);
+        this.quoteForm.get('recurrence_type')?.disable();
+        if ((recurrenceType === 'monthly' || recurrenceType === 'yearly') && !this.quoteForm.get('recurrence_day')?.value) {
+          this.quoteForm.patchValue({ recurrence_day: 1 });
+        }
+        if (recurrenceType === 'weekly' && !this.quoteForm.get('recurrence_day')?.value) {
+          this.quoteForm.patchValue({ recurrence_day: 1 }); // lunes por defecto
+        }
+      } else {
+        // fallback none
+        this.quoteForm.patchValue({ recurrence_type: 'none' });
+        this.unlockRecurrence();
+      }
+    } catch (e) {
+      // En caso de fallo silencioso, no romper flujo
+      console.warn('evaluateAggregateRecurrence error', e);
     }
   }
 
