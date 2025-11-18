@@ -21,12 +21,19 @@ function getCorsHeaders(origin?: string) {
 serve(async (req) => {
   const origin = req.headers.get("Origin") || undefined;
   const cors = getCorsHeaders(origin);
+  // Enforce allowed origins for browser requests
+  const __allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
+  const __allowed = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map(s=>s.trim()).filter(Boolean);
+  const __originOk = __allowAll || (origin && __allowed.includes(origin));
 
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: cors });
   }
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405, headers: { ...cors, "Content-Type": "application/json" } });
+  }
+  if (origin && !__originOk) {
+    return new Response(JSON.stringify({ error: "CORS_ORIGIN_FORBIDDEN" }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
   }
 
   try {
@@ -65,7 +72,7 @@ serve(async (req) => {
     // Load invoice and ensure it belongs to user's company
     const { data: inv, error: invErr } = await admin
       .from('invoices')
-      .select('id, company_id, state, full_invoice_number, series_id')
+      .select('id, company_id, state, full_invoice_number, series_id, finalized_at')
       .eq('id', invoice_id)
       .maybeSingle();
     if (invErr || !inv) {
@@ -73,6 +80,11 @@ serve(async (req) => {
     }
     if (inv.company_id !== userCompanyId) {
       return new Response(JSON.stringify({ error: 'Forbidden: invoice belongs to another company' }), { status: 403, headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    // Idempotency: if already finalized, return ok without reprocessing
+    if ((inv.state && String(inv.state).toLowerCase() === 'finalized') || inv.full_invoice_number || inv.finalized_at) {
+      return new Response(JSON.stringify({ ok: true, idempotent: true, meta: { invoice_id: inv.id, full_invoice_number: inv.full_invoice_number } }), { status: 200, headers: { ...cors, "Content-Type": "application/json" } });
     }
 
     // Call RPC finalize_invoice (execute with service role to access verifactu schema)

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, originAllowed } from "./cors.ts";
 // Minimal AWS SigV4 signer (no external deps) for SES v2
 
 const te = new TextEncoder();
@@ -115,25 +116,14 @@ async function signAwsRequest(opts: {
   return { authorization, amzDate, payloadHash, headers: headers };
 }
 
-function cors(origin?: string){
-  const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS')||'false').toLowerCase()==='true';
-  const allowed = (Deno.env.get('ALLOWED_ORIGINS')||'').split(',').map(s=>s.trim()).filter(Boolean);
-  const isAllowed = allowAll || (origin && allowed.includes(origin));
-  const allowOrigin = isAllowed && origin ? origin : (allowAll ? '*' : '');
-  return {
-    'Access-Control-Allow-Origin': allowOrigin,
-    'Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods':'POST, OPTIONS',
-    'Access-Control-Max-Age':'86400',
-    'Vary':'Origin'
-  } as Record<string,string>;
-}
+function cors(origin?: string){ return corsHeaders(origin, 'POST, OPTIONS'); }
 
 serve(async (req) => {
   const origin = req.headers.get('Origin') || undefined;
   const headers = cors(origin);
   // Preflight
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+  if (origin && !originAllowed(origin)) return new Response(JSON.stringify({ error: 'CORS_ORIGIN_FORBIDDEN' }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
   if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status:405, headers:{...headers,'Content-Type':'application/json'}});
 
   try{

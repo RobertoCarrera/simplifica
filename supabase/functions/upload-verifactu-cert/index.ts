@@ -1,6 +1,8 @@
+// @ts-nocheck
 // Edge Function: upload-verifactu-cert
-// Purpose: Store encrypted Veri*Factu certificate and configuration per company.
-// - Accepts encrypted PEM payload from client.
+// Purpose: Store Veri*Factu certificate and configuration per company with server-side encryption.
+// - Accepts plain PEM payload (cert_pem, key_pem, key_pass optional) and encrypts server-side with AES-GCM.
+// - Backward-compat: if *_enc provided, server will ignore and re-encrypt from plain if available; if only *_enc present, rejects (to avoid client-managed crypto).
 // - Restricted to owner/admin via service role (function runs with service key) + RLS for direct reads.
 // - CORS configurable via ALLOW_ALL_ORIGINS=true or ALLOWED_ORIGINS list.
 
@@ -18,7 +20,7 @@ function corsHeaders(origin: string | null) {
     "Access-Control-Allow-Origin": allowAll ? "*" : (isAllowed ? origin ?? "" : ""),
     "Vary": "Origin",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
 }
 
@@ -26,9 +28,12 @@ interface UploadPayload {
   software_code: string;
   issuer_nif: string;
   environment: 'pre' | 'prod';
-  cert_pem_enc: string;
-  key_pem_enc: string;
-  key_pass_enc?: string | null;
+  cert_pem?: string;       // plain cert (PEM)
+  key_pem?: string;        // plain key (PEM)
+  key_pass?: string | null;// plain passphrase (optional)
+  cert_pem_enc?: string;   // deprecated: client-encrypted (ignored)
+  key_pem_enc?: string;    // deprecated: client-encrypted (ignored)
+  key_pass_enc?: string | null; // deprecated: client-encrypted (ignored)
 }
 
 Deno.serve(async (req: Request) => {
@@ -37,6 +42,11 @@ Deno.serve(async (req: Request) => {
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: cors });
+  }
+
+  // Only allow POST after CORS preflight
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'METHOD_NOT_ALLOWED' }), { status: 405, headers: { 'Content-Type': 'application/json', ...cors } });
   }
 
   const authHeader = req.headers.get('authorization') || '';
@@ -84,8 +94,35 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: 'INVALID_JSON' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
   }
 
-  if (!body.software_code || !body.issuer_nif || !body.cert_pem_enc || !body.key_pem_enc) {
+  if (!body.software_code || !body.issuer_nif) {
     return new Response(JSON.stringify({ error: 'INVALID_PAYLOAD' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
+  }
+
+  // Require plain PEM inputs; phase out client-side encryption inputs
+  if (!body.cert_pem || !body.key_pem) {
+    return new Response(JSON.stringify({ error: 'MISSING_PLAIN_CERT_OR_KEY', hint: 'Provide cert_pem and key_pem (PEM format). Encryption is handled server-side.' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
+  }
+
+  // Server-side encryption helpers (AES-256-GCM)
+  async function importAesKeyFromBase64(b64: string): Promise<CryptoKey> {
+    const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    return await crypto.subtle.importKey('raw', raw, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+  }
+  function encodeBase64(buf: ArrayBuffer): string {
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+  function toUtf8Bytes(text: string): Uint8Array {
+    return new TextEncoder().encode(text);
+  }
+  async function encryptText(plain: string, key: CryptoKey): Promise<string> {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const data = toUtf8Bytes(plain) as unknown as ArrayBuffer;
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
+    const ivB64 = btoa(String.fromCharCode(...iv));
+    return ivB64 + ':' + encodeBase64(ct);
   }
 
   // Normalized issuer
@@ -129,14 +166,30 @@ Deno.serve(async (req: Request) => {
     await serviceClient.from('verifactu_cert_history').insert(historyRow);
   }
 
+  // Encrypt incoming plain values
+  const encKeyB64 = Deno.env.get('VERIFACTU_CERT_ENC_KEY') || '';
+  if (!encKeyB64) {
+    return new Response(JSON.stringify({ error: 'MISSING_ENC_KEY', hint: 'Set VERIFACTU_CERT_ENC_KEY (base64-encoded 32-byte key) in environment.' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+  }
+  let aesKey: CryptoKey;
+  try {
+    aesKey = await importAesKeyFromBase64(encKeyB64);
+  } catch (e) {
+    return new Response(JSON.stringify({ error: 'INVALID_ENC_KEY', details: String(e) }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+  }
+
+  const cert_pem_enc = await encryptText(body.cert_pem, aesKey);
+  const key_pem_enc = await encryptText(body.key_pem, aesKey);
+  const key_pass_enc = body.key_pass ? await encryptText(body.key_pass, aesKey) : null;
+
   const upsertRow: any = {
     company_id: appUser.company_id,
     software_code: body.software_code.trim(),
     issuer_nif: issuerNif,
     environment: body.environment || 'pre',
-    cert_pem_enc: body.cert_pem_enc,
-    key_pem_enc: body.key_pem_enc,
-    key_pass_enc: body.key_pass_enc ?? null,
+    cert_pem_enc,
+    key_pem_enc,
+    key_pass_enc,
     updated_at: new Date().toISOString()
   };
 
