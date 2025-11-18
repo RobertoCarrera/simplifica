@@ -51,6 +51,17 @@ async function processEvent(admin: any, ev: any){
     const response = { status: 'REJECTED', at: new Date().toISOString(), reason: 'simulated rejection' };
     if (attempts >= MAX_ATTEMPTS){
       await admin.from('verifactu.events').update({ status:'rejected', attempts, last_error: 'max_attempts', response }).eq('id', ev.id);
+      // Park to DLQ for later replay
+      await admin.from('verifactu.events_dlq').insert({
+        original_event_id: ev.id,
+        company_id: ev.company_id,
+        invoice_id: ev.invoice_id,
+        event_type: ev.event_type,
+        payload: ev.payload,
+        attempts,
+        last_error: 'max_attempts',
+        response
+      });
       await admin.from('verifactu.invoice_meta').update({ status:'rejected' }).eq('invoice_id', ev.invoice_id);
       return { id: ev.id, status: 'rejected', attempts };
     } else {
@@ -154,6 +165,64 @@ serve( async (req)=>{
       );
     }
 
+    // DLQ listing (optionally scoped to invoice). Requires access if invoice_id provided
+    if (body && body.action === 'dlq') {
+      const limit = Number(body.limit || 20);
+      const invoice_id = body.invoice_id ? String(body.invoice_id) : null;
+      if (invoice_id) {
+        const access = await requireInvoiceAccess(invoice_id);
+        if ((access as any).error) {
+          const status = (access as any).status || 401;
+          return new Response(JSON.stringify({ ok:false, error: (access as any).error }), { status, headers:{...headers,'Content-Type':'application/json'}});
+        }
+      }
+      let query = admin.from('verifactu.events_dlq').select('*').order('failed_at', { ascending: false }).limit(limit);
+      if (invoice_id) query = query.eq('invoice_id', invoice_id);
+      const { data, error: dlqErr } = await query;
+      if (dlqErr) return new Response(JSON.stringify({ ok:false, error: dlqErr.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
+      return new Response(JSON.stringify({ ok:true, dlq: data || [] }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
+    }
+
+    // Replay a DLQ entry by id (requires RLS access to the invoice)
+    if (body && body.action === 'replay_dlq' && body.dlq_id) {
+      const dlq_id = String(body.dlq_id);
+      const { data: dlq, error: getErr } = await admin.from('verifactu.events_dlq').select('*').eq('id', dlq_id).maybeSingle();
+      if (getErr) return new Response(JSON.stringify({ ok:false, error: getErr.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
+      if (!dlq) return new Response(JSON.stringify({ ok:false, error: 'DLQ entry not found' }), { status:404, headers:{...headers,'Content-Type':'application/json'}});
+      const access = await requireInvoiceAccess(dlq.invoice_id);
+      if ((access as any).error) {
+        const status = (access as any).status || 401;
+        return new Response(JSON.stringify({ ok:false, error: (access as any).error }), { status, headers:{...headers,'Content-Type':'application/json'}});
+      }
+      // Avoid duplicate event constraints if one exists already
+      const { data: existing } = await admin
+        .from('verifactu.events')
+        .select('id,status')
+        .eq('invoice_id', dlq.invoice_id)
+        .eq('event_type', dlq.event_type)
+        .in('status', ['pending','sending','accepted'])
+        .limit(1);
+      if (existing && existing.length) {
+        return new Response(JSON.stringify({ ok:false, error: 'Event already present or processed for invoice/type' }), { status:409, headers:{...headers,'Content-Type':'application/json'}});
+      }
+      const insertRes = await admin.from('verifactu.events').insert({
+        company_id: dlq.company_id,
+        invoice_id: dlq.invoice_id,
+        event_type: dlq.event_type,
+        payload: dlq.payload,
+        status: 'pending',
+        attempts: 0,
+        last_error: null,
+        response: null
+      }).select('id').single();
+      if (insertRes.error) {
+        return new Response(JSON.stringify({ ok:false, error: insertRes.error.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
+      }
+      // Mark DLQ entry as replayed
+      await admin.from('verifactu.events_dlq').update({ status: 'replayed', replayed_at: new Date().toISOString() }).eq('id', dlq_id);
+      return new Response(JSON.stringify({ ok:true, new_event_id: insertRes.data.id }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
+    }
+
     // Secure proxy: per-invoice VeriFactu metadata (requires caller to have RLS access to the invoice)
     if (body && body.action === 'meta' && body.invoice_id) {
       const invoice_id = String(body.invoice_id);
@@ -202,7 +271,20 @@ serve( async (req)=>{
       } catch (e) {
         // hard failure: mark for retry
         const attempts = (ev.attempts ?? 0) + 1;
-        await admin.from('verifactu.events').update({ status: attempts >= MAX_ATTEMPTS ? 'rejected' : 'pending', attempts, last_error: e?.message || 'dispatch_error' }).eq('id', ev.id);
+        const hardError = e?.message || 'dispatch_error';
+        const rejected = attempts >= MAX_ATTEMPTS;
+        await admin.from('verifactu.events').update({ status: rejected ? 'rejected' : 'pending', attempts, last_error: hardError }).eq('id', ev.id);
+        if (rejected) {
+          await admin.from('verifactu.events_dlq').insert({
+            original_event_id: ev.id,
+            company_id: ev.company_id,
+            invoice_id: ev.invoice_id,
+            event_type: ev.event_type,
+            payload: ev.payload,
+            attempts,
+            last_error: hardError
+          });
+        }
       }
     }
 

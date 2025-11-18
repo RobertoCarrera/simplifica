@@ -512,7 +512,7 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
                   },
                   {
                     columns: [
-                      { text: 'Cuota de IVA:', fontSize: 10, color: TEXT_DARK },
+                      { text: `IVA (${isFinite(invoice?.iva_rate) ? invoice.iva_rate : settings.iva_rate}%):`, fontSize: 10, color: TEXT_DARK },
                       { text: formatMoney(taxAmount, invoice?.currency), fontSize: 10, alignment: 'right', color: TEXT_DARK }
                     ],
                     margin: [0, 0, 0, 6]
