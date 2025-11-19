@@ -30,6 +30,7 @@ import { ModuleGuard } from './guards/module.guard';
 import { ClientRoleGuard } from './guards/client-role.guard';
 import { AuthCallbackComponent } from './components/auth-callback/auth-callback.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
+import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
 import { AuthDebugComponent } from './components/auth-debug/auth-debug.component';
 import { EmailConfirmationComponent } from './components/email-confirmation/email-confirmation.component';
 import { CompanyAdminComponent } from './components/company-admin/company-admin.component';
@@ -96,7 +97,8 @@ export const routes: Routes = [
     {path: 'register', component: RegisterComponent, canActivate: [GuestGuard]},
     {path: 'auth/callback', component: AuthCallbackComponent}, // Callback de Supabase
     {path: 'auth/confirm', component: EmailConfirmationComponent}, // Confirmación de email
-    {path: 'reset-password', component: ResetPasswordComponent}, // Recuperación de contraseña
+        {path: 'reset-password', component: ResetPasswordComponent}, // Recuperación de contraseña
+    {path: 'recuperar-password', component: ForgotPasswordComponent, canActivate: [GuestGuard]}, // Solicitud de recuperación
     // Public GDPR consent portal (no guard)
     {path: 'consent', component: ConsentPortalComponent},
     // Client portal public/semi-public invite accept (NO AUTH REQUIRED)

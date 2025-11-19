@@ -137,8 +137,9 @@ serve(async (req) => {
 
     const result = (modulesCatalog || []).map((m: any) => {
       const raw = statusMap.get(m.key);
-      // Default to enabled (activado) if no user_modules entry exists
-      const enabled = raw ? raw === "activado" || raw === "active" || raw === "enabled" : true;
+      // Production default: DISABLED when there is no explicit assignment
+      // Only treat explicit 'activado'/'active'/'enabled' as enabled.
+      const enabled = !!raw && (raw === "activado" || raw === "active" || raw === "enabled");
       return {
         key: m.key,
         name: m.label,

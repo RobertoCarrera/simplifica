@@ -48,7 +48,7 @@ import { ToastService } from '../../services/toast.service';
             <div class="mb-2">
               <label class="form-label d-flex justify-content-between align-items-center">
                 <span>Contraseña</span>
-                <a href="#" (click)="$event.preventDefault(); showForgotPassword = true" class="link-forgot">¿Olvidaste?</a>
+                <a routerLink="/recuperar-password" class="link-forgot">¿Olvidaste?</a>
               </label>
               <div class="input-wrapper" [class.invalid]="passwordInvalid()">
                 <i class="bi bi-lock"></i>

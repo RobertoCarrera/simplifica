@@ -1,21 +1,21 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { AuthService, RegisterData } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
   template: `
     <div class="register-container">
       <div class="register-card">
         <!-- Header -->
         <div class="register-header">
           <h1>Crear Cuenta</h1>
-          <p>Únete a Simplifica y gestiona tu empresa de manera eficiente</p>
+          <p>Registra tu cuenta para comenzar a gestionar tu empresa con seguridad y eficiencia.</p>
         </div>
 
         <!-- Formulario -->
@@ -24,73 +24,88 @@ import { ToastService } from '../../services/toast.service';
           <div class="form-section">
             <h3>Datos Personales</h3>
             
-            <div class="form-group">
-              <label for="givenName">Nombre</label>
-              <input
-                type="text"
-                id="givenName"
-                formControlName="given_name"
-                placeholder="Juan"
-                [class.error]="givenNameInvalid()"
-              />
+            <div class="form-field">
+              <label for="givenName" class="field-label">Nombre</label>
+              <div class="input-wrapper" [class.invalid]="givenNameInvalid()">
+                <i class="bi bi-person"></i>
+                <input
+                  type="text"
+                  id="givenName"
+                  formControlName="given_name"
+                  placeholder="Juan"
+                  (blur)="registerForm.get('given_name')?.markAsTouched()"
+                />
+              </div>
               @if (givenNameInvalid()) {
-                <span class="error-message">Nombre requerido</span>
+                <span class="field-error">Nombre requerido</span>
               }
             </div>
 
-            <div class="form-group">
-              <label for="surname">Apellidos</label>
-              <input
-                type="text"
-                id="surname"
-                formControlName="surname"
-                placeholder="Pérez"
-                [class.error]="surnameInvalid()"
-              />
+            <div class="form-field">
+              <label for="surname" class="field-label">Apellidos</label>
+              <div class="input-wrapper" [class.invalid]="surnameInvalid()">
+                <i class="bi bi-person"></i>
+                <input
+                  type="text"
+                  id="surname"
+                  formControlName="surname"
+                  placeholder="Pérez"
+                  (blur)="registerForm.get('surname')?.markAsTouched()"
+                />
+              </div>
               @if (surnameInvalid()) {
-                <span class="error-message">Apellidos requeridos</span>
+                <span class="field-error">Apellidos requeridos</span>
               }
             </div>
 
-            <div class="form-group">
-              <label for="email">Email</label>
-              <input
-                type="email"
-                id="email"
-                formControlName="email"
-                placeholder="juan@empresa.com"
-                [class.error]="emailInvalid()"
-              />
+            <div class="form-field">
+              <label for="email" class="field-label">Email</label>
+              <div class="input-wrapper" [class.invalid]="emailInvalid()">
+                <i class="bi bi-envelope"></i>
+                <input
+                  type="email"
+                  id="email"
+                  formControlName="email"
+                  placeholder="juan@empresa.com"
+                  (blur)="registerForm.get('email')?.markAsTouched()"
+                />
+              </div>
               @if (emailInvalid()) {
-                <span class="error-message">Email válido requerido</span>
+                <span class="field-error">Email válido requerido</span>
               }
             </div>
 
-            <div class="form-group">
-              <label for="password">Contraseña</label>
-              <input
-                type="password"
-                id="password"
-                formControlName="password"
-                placeholder="Mínimo 6 caracteres"
-                [class.error]="passwordInvalid()"
-              />
+            <div class="form-field">
+              <label for="password" class="field-label">Contraseña</label>
+              <div class="input-wrapper" [class.invalid]="passwordInvalid()">
+                <i class="bi bi-lock"></i>
+                <input
+                  type="password"
+                  id="password"
+                  formControlName="password"
+                  placeholder="Mínimo 6 caracteres"
+                  (blur)="registerForm.get('password')?.markAsTouched()"
+                />
+              </div>
               @if (passwordInvalid()) {
-                <span class="error-message">Mínimo 6 caracteres</span>
+                <span class="field-error">Mínimo 6 caracteres</span>
               }
             </div>
 
-            <div class="form-group">
-              <label for="confirmPassword">Confirmar Contraseña</label>
-              <input
-                type="password"
-                id="confirmPassword"
-                formControlName="confirmPassword"
-                placeholder="Repetir contraseña"
-                [class.error]="confirmPasswordInvalid()"
-              />
+            <div class="form-field">
+              <label for="confirmPassword" class="field-label">Confirmar Contraseña</label>
+              <div class="input-wrapper" [class.invalid]="confirmPasswordInvalid()">
+                <i class="bi bi-lock-fill"></i>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  formControlName="confirmPassword"
+                  placeholder="Repetir contraseña"
+                  (blur)="registerForm.get('confirmPassword')?.markAsTouched()"
+                />
+              </div>
               @if (confirmPasswordInvalid()) {
-                <span class="error-message">Las contraseñas no coinciden</span>
+                <span class="field-error">Las contraseñas no coinciden</span>
               }
             </div>
           </div>
@@ -98,31 +113,33 @@ import { ToastService } from '../../services/toast.service';
           <!-- Datos de la empresa (siempre crear nueva) -->
           <div class="form-section">
             <h3>Empresa</h3>
-            <div class="form-group">
-              <label for="companyName">Nombre de la Empresa</label>
-              <input
-                type="text"
-                id="companyName"
-                formControlName="companyName"
-                placeholder="Mi Empresa S.L."
-                [class.error]="companyNameInvalid()"
-              />
+            <div class="form-field">
+              <label for="companyName" class="field-label">Nombre de la Empresa</label>
+              <div class="input-wrapper" [class.invalid]="companyNameInvalid()">
+                <i class="bi bi-building"></i>
+                <input
+                  type="text"
+                  id="companyName"
+                  formControlName="companyName"
+                  placeholder="Mi Empresa S.L."
+                  (blur)="registerForm.get('companyName')?.markAsTouched()"
+                />
+              </div>
               @if (companyNameInvalid()) {
-                <span class="error-message">Nombre de empresa requerido</span>
+                <span class="field-error">Nombre de empresa requerido</span>
               }
             </div>
           </div>
 
           <!-- Términos y condiciones -->
-          <div class="form-group">
+          <div class="form-field terms-field">
             <label class="checkbox-label">
-              <input type="checkbox" formControlName="acceptTerms" />
+              <input type="checkbox" formControlName="acceptTerms" (blur)="registerForm.get('acceptTerms')?.markAsTouched()" />
               <span class="checkbox-custom"></span>
-              Acepto los <a href="#" class="link">términos y condiciones</a> y la 
-              <a href="#" class="link">política de privacidad</a>
+              <span class="terms-text">Acepto los <a href="#" class="link">términos y condiciones</a> y la <a href="#" class="link">política de privacidad</a></span>
             </label>
             @if (termsInvalid()) {
-              <span class="error-message">Debes aceptar los términos y condiciones</span>
+              <span class="field-error">Debes aceptar los términos y condiciones</span>
             }
           </div>
 
@@ -160,27 +177,20 @@ import { ToastService } from '../../services/toast.service';
       <div class="info-section">
         <div class="feature-list">
           <div class="feature">
-            <div class="feature-icon">👥</div>
-            <h3>Gestión de Equipos</h3>
-            <p>Administra usuarios y permisos de manera granular</p>
+            <h3><i class="fa-solid fa-people-group"></i> Gestión de equipos</h3>
+            <p>Administra usuarios y permisos de manera granular.</p>
           </div>
-          
           <div class="feature">
-            <div class="feature-icon">🎫</div>
-            <h3>Sistema de Tickets</h3>
-            <p>Seguimiento completo de trabajos y reparaciones</p>
+            <h3><i class="fa-solid fa-ticket"></i> Sistema de tickets</h3>
+            <p>Seguimiento completo de trabajos y reparaciones.</p>
           </div>
-          
           <div class="feature">
-            <div class="feature-icon">📊</div>
-            <h3>Reportes y Analytics</h3>
-            <p>Insights detallados sobre tu negocio</p>
+            <h3><i class="fa-solid fa-chart-bar"></i> Reportes y análisis</h3>
+            <p>Información útil y tendencias de tu negocio.</p>
           </div>
-          
           <div class="feature">
-            <div class="feature-icon">🔒</div>
-            <h3>Seguridad Avanzada</h3>
-            <p>Datos protegidos con encriptación de nivel empresarial</p>
+            <h3><i class="fa-solid fa-shield"></i> Seguridad avanzada</h3>
+            <p>Protección y cumplimiento para tus datos.</p>
           </div>
         </div>
       </div>
@@ -201,36 +211,38 @@ import { ToastService } from '../../services/toast.service';
     }
     
     .register-card {
-      padding: 2rem 3rem;
+      padding: 2.5rem 3rem;
       background: white;
       overflow-y: auto;
     }
     
     .register-header {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: 2.5rem;
       
       h1 {
-        font-size: 2.5rem;
+        font-size: 2.25rem;
         font-weight: 700;
         color: #1f2937;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.75rem;
+        letter-spacing: -0.5px;
       }
       
       p {
         color: #6b7280;
-        font-size: 1.1rem;
+        font-size: 1rem;
+        line-height: 1.5;
       }
     }
     
     .register-form {
-      max-width: 500px;
+      max-width: 480px;
       margin: 0 auto;
     }
     
     .form-section {
-      margin-bottom: 2rem;
-      padding-bottom: 1.5rem;
+      margin-bottom: 2.25rem;
+      padding-bottom: 1.75rem;
       border-bottom: 1px solid #e5e7eb;
       
       &:last-child {
@@ -238,11 +250,77 @@ import { ToastService } from '../../services/toast.service';
       }
       
       h3 {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         font-weight: 600;
         color: #374151;
-        margin-bottom: 1rem;
+        margin-bottom: 1.25rem;
       }
+    }
+    
+    .form-field {
+      margin-bottom: 1.25rem;
+    }
+    
+    .field-label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+      margin-bottom: 0.5rem;
+    }
+    
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 0.875rem 1rem;
+      gap: 0.75rem;
+      transition: all 0.2s ease;
+    }
+    
+    .input-wrapper.invalid {
+      border-color: #ef4444;
+      background: #fef2f2;
+    }
+    
+    .input-wrapper:focus-within {
+      border-color: #3b82f6;
+      background: #f8fafc;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .input-wrapper i {
+      font-size: 1.1rem;
+      color: #94a3b8;
+      flex-shrink: 0;
+    }
+    
+    .input-wrapper input {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #1e293b;
+    }
+    
+    .input-wrapper input::placeholder {
+      color: #94a3b8;
+      font-weight: 400;
+    }
+    
+    .field-error {
+      display: block;
+      font-size: 0.7rem;
+      color: #ef4444;
+      margin-top: 0.35rem;
+      font-weight: 500;
     }
     
     .account-type {
@@ -322,6 +400,11 @@ import { ToastService } from '../../services/toast.service';
       }
     }
     
+    .terms-field {
+      margin-top: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
     .checkbox-label {
       display: flex;
       align-items: flex-start;
@@ -342,14 +425,15 @@ import { ToastService } from '../../services/toast.service';
     }
     
     .checkbox-custom {
-      width: 18px;
-      height: 18px;
+      width: 20px;
+      height: 20px;
       border: 2px solid #d1d5db;
-      border-radius: 4px;
+      border-radius: 6px;
       margin-right: 0.75rem;
       flex-shrink: 0;
       margin-top: 2px;
       position: relative;
+      transition: all 0.2s ease;
       
       &::after {
         content: '✓';
@@ -365,11 +449,77 @@ import { ToastService } from '../../services/toast.service';
       }
     }
     
+    .terms-text {
+      font-size: 0.875rem;
+      color: #475569;
+      line-height: 1.5;
+    }
+    
+    .form-actions {
+      margin-top: 2rem;
+    }
+    
+    .btn-primary {
+      width: 100%;
+      border: none;
+      border-radius: 12px;
+      padding: 1rem;
+      font-weight: 600;
+      font-size: 1rem;
+      background: linear-gradient(145deg, #3b82f6, #2563eb);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .btn-primary:not(:disabled):hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.4);
+    }
+    
+    .error-alert {
+      margin-top: 1rem;
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+      padding: 0.875rem 1rem;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
     .register-footer {
       text-align: center;
       margin-top: 2rem;
-      padding-top: 1.5rem;
+      padding-top: 1.75rem;
       border-top: 1px solid #e5e7eb;
+      
+      p {
+        font-size: 0.875rem;
+        color: #64748b;
+        margin: 0;
+      }
+      
+      .link {
+        color: #3b82f6;
+        text-decoration: none;
+        font-weight: 600;
+        
+        &:hover {
+          text-decoration: underline;
+        }
+      }
     }
     
     .info-section {
@@ -397,21 +547,9 @@ import { ToastService } from '../../services/toast.service';
       }
     }
     
-    .feature-icon {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-    }
-    
-    .feature h3 {
-      font-size: 1.2rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-    }
-    
-    .feature p {
-      opacity: 0.9;
-      line-height: 1.5;
-    }
+    .feature h3 { font-size:1.05rem; font-weight:600; margin-bottom:.35rem; display:flex; align-items:center; gap:.5rem; }
+    .feature h3 i { font-size:1.1rem; color:#93c5fd; }
+    .feature p { opacity:.85; line-height:1.4; }
     
     .spinner {
       display: inline-block;
@@ -540,13 +678,13 @@ export class RegisterComponent {
       if (result.success) {
         if (result.pendingConfirmation) {
           this.toastService.success(
-            '📧 Te hemos enviado un email de confirmación. Revisa tu bandeja de entrada.',
+            'Te hemos enviado un email de confirmación. Revisa tu bandeja de entrada.',
             'Confirma tu email'
           );
           // Navegar a la página de confirmación para mostrar instrucciones
           this.router.navigate(['/auth/confirm']);
         } else {
-          this.toastService.success('Bienvenido 👋 Tu cuenta ha sido creada.', 'Registro exitoso');
+          this.toastService.success('Bienvenido. Tu cuenta ha sido creada.', 'Registro exitoso');
           console.log('✅ Registration successful, redirecting');
           const returnTo = (this as any)._returnTo as string | undefined;
           if (returnTo) {
