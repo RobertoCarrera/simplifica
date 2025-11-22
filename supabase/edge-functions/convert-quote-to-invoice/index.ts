@@ -58,13 +58,17 @@ serve(async (req) => {
     // Load quote and validate state and ownership via RLS
     const { data: quote, error: qErr } = await sb
       .from('quotes')
-      .select('id, company_id, client_id, status, invoice_id, subtotal, tax_amount, total_amount, currency, full_quote_number, notes')
+      .select('id, company_id, client_id, status, invoice_id, subtotal, tax_amount, total_amount, currency, full_quote_number, notes, rectifies_invoice_id')
       .eq('id', quote_id)
       .single();
   if (qErr || !quote) return new Response(JSON.stringify({ error: 'Quote not accessible' }), { status:403, headers });
   // Explicit ownership check
   if (quote.company_id !== userCompanyId) return new Response(JSON.stringify({ error: 'Forbidden: quote belongs to another company' }), { status:403, headers });
-    if (quote.status !== 'accepted') return new Response(JSON.stringify({ error: 'Solo se pueden convertir presupuestos aceptados' }), { status:400, headers });
+    
+    // Allow conversion if accepted OR if it is a rectification quote (internal workflow)
+    if (quote.status !== 'accepted' && !quote.rectifies_invoice_id) {
+      return new Response(JSON.stringify({ error: 'Solo se pueden convertir presupuestos aceptados' }), { status:400, headers });
+    }
 
     // If already linked to an invoice, behave idempotently: return existing invoice
     if (quote.invoice_id) {
@@ -142,7 +146,8 @@ serve(async (req) => {
           series_id: seriesId,
           invoice_number: nextNumber,
           invoice_series: invoiceSeriesLabel,
-          invoice_type: 'normal',
+          invoice_type: quote.rectifies_invoice_id ? 'rectificative' : 'normal',
+          rectifies_invoice_id: quote.rectifies_invoice_id || null,
           invoice_date: new Date().toISOString().slice(0,10),
           due_date: new Date(Date.now()+30*24*3600*1000).toISOString().slice(0,10),
           subtotal: quote.subtotal,

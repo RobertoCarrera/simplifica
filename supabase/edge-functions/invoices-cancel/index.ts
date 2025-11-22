@@ -52,7 +52,7 @@ serve(async (req) => {
     // Ensure invoice exists (optional RLS-independent check)
     const { data: inv, error: invErr } = await admin
       .from('invoices')
-      .select('id, state, full_invoice_number, company_id')
+      .select('id, status, full_invoice_number, company_id')
       .eq('id', invoice_id)
       .maybeSingle();
     if (invErr || !inv) return new Response(JSON.stringify({ error:'Invoice not found' }), { status:404, headers });

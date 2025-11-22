@@ -31,10 +31,10 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
         </span>
         <a class="px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100" routerLink="/facturacion">Volver</a>
         <button class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700" (click)="downloadPdf(inv.id)">Descargar PDF</button>
-        <button class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700" *ngIf="inv.status !== 'draft' && inv.status !== 'void' && inv.status !== 'cancelled'" (click)="cancelInvoice(inv.id)">Anular</button>
-        <button class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" *ngIf="inv.status !== 'draft'" (click)="rectify(inv.id)">Rectificar</button>
+        <button class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700" *ngIf="(inv.status !== 'draft' || verifactuMeta()?.status === 'accepted') && inv.status !== 'void' && inv.status !== 'cancelled'" (click)="cancelInvoice(inv.id)">Anular</button>
+        <button class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" *ngIf="inv.status !== 'draft' || verifactuMeta()?.status === 'accepted'" (click)="rectify(inv.id)">Rectificar</button>
         <button class="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60" [disabled]="sendingEmail()" (click)="sendEmail(inv.id)">{{ sendingEmail() ? 'Enviando…' : 'Enviar por email' }}</button>
-        <app-issue-verifactu-button *ngIf="inv.status === 'draft'" [invoiceId]="inv.id" (issued)="onIssued()"></app-issue-verifactu-button>
+        <app-issue-verifactu-button *ngIf="inv.status === 'draft' && verifactuMeta()?.status !== 'accepted'" [invoiceId]="inv.id" (issued)="onIssued()"></app-issue-verifactu-button>
       </div>
     </div>
 

@@ -37,6 +37,7 @@ import { environment } from '../../../../environments/environment';
               <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300">Número</th>
               <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300">Cliente</th>
               <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300">Fecha</th>
+              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300">Estado</th>
               <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300">Total</th>
               <th class="px-4 py-2"></th>
             </tr>
@@ -47,6 +48,11 @@ import { environment } from '../../../../environments/environment';
                 <td class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">{{ formatNumber(inv) }}</td>
                 <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ inv.client?.name || inv.client_id }}</td>
                 <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ inv.invoice_date }}</td>
+                <td class="px-4 py-2 text-sm">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" [ngClass]="getStatusClass(inv.status)">
+                    {{ getStatusLabel(inv.status) }}
+                  </span>
+                </td>
                 <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100 font-medium">{{ inv.total | number:'1.2-2' }} {{ inv.currency || 'EUR' }}</td>
                 <td class="px-4 py-2 text-right">
                   <a class="text-blue-600 hover:underline mr-3" [routerLink]="['/facturacion', inv.id]">Ver</a>
@@ -94,5 +100,31 @@ export class InvoiceListComponent implements OnInit {
 
   formatNumber(inv: Invoice): string {
     return formatInvoiceNumber(inv);
+  }
+
+  getStatusLabel(status: string): string {
+    const map: Record<string, string> = {
+      'draft': 'Borrador',
+      'sent': 'Enviada',
+      'paid': 'Pagada',
+      'partial': 'Parcial',
+      'overdue': 'Vencida',
+      'cancelled': 'Cancelada',
+      'void': 'Anulada'
+    };
+    return map[status] || status;
+  }
+
+  getStatusClass(status: string): string {
+    const map: Record<string, string> = {
+      'draft': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+      'sent': 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
+      'paid': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
+      'partial': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200',
+      'overdue': 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
+      'cancelled': 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
+      'void': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 line-through'
+    };
+    return map[status] || 'bg-gray-100 text-gray-800';
   }
 }
