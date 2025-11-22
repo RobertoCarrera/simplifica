@@ -3,62 +3,18 @@
 // Purpose: Generate a professional PDF for an invoice with VeriFactu QR using pdfmake
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Buffer } from "https://deno.land/std@0.168.0/node/buffer.ts";
+import pdfMake from "https://esm.sh/pdfmake@0.2.10/build/pdfmake.js";
+import pdfFonts from "https://esm.sh/pdfmake@0.2.10/build/vfs_fonts.js";
+import qrcodeGenerator from "https://esm.sh/qrcode-generator@1.4.4";
 
-// Global variables for lazy loading
-let pdfMake: any;
-let qrcodeGenerator: any;
-let depsLoaded = false;
-let loadError: any;
-
-// Polyfills for pdfmake
-(globalThis as any).window = globalThis;
-(globalThis as any).document = {
-  createElement: () => ({}),
-  createElementNS: () => ({}),
-};
-(globalThis as any).navigator = { userAgent: 'Deno' };
-(globalThis as any).Buffer = Buffer;
-(globalThis as any).process = { env: {} };
-
-async function loadDependencies() {
-  if (depsLoaded) return;
-
-  try {
-    console.log("Loading dependencies...");
-    // Load qrcode-generator
-    const qrcodeModule = await import("https://esm.sh/qrcode-generator@1.4.4");
-    qrcodeGenerator = qrcodeModule.default || qrcodeModule;
-
-    // Load pdfmake (using 0.2.7 which is often more stable in Deno)
-    const pdfMakeModule = await import("https://esm.sh/pdfmake@0.2.7/build/pdfmake.js?target=deno");
-    const pdfFontsModule = await import("https://esm.sh/pdfmake@0.2.7/build/vfs_fonts.js?target=deno");
-    
-    pdfMake = pdfMakeModule.default || pdfMakeModule;
-    const pdfFonts = pdfFontsModule.default || pdfFontsModule;
-    
-    if (pdfFonts && pdfFonts.pdfMake && pdfFonts.pdfMake.vfs) {
-      pdfMake.vfs = pdfFonts.pdfMake.vfs;
-    } else if (pdfFonts && pdfFonts.vfs) {
-      pdfMake.vfs = pdfFonts.vfs;
-    }
-    
-    depsLoaded = true;
-    console.log("Dependencies loaded successfully");
-  } catch (e) {
-    console.error("Dependency load failed:", e);
-    loadError = e;
-    throw e;
-  }
-}
+pdfMake.vfs = pdfFonts.pdfMake.vfs;
 
 function cors(origin?: string) {
-  // Allow all origins for development/preview purposes if env var is not set
-  const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'true').toLowerCase() === 'true';
+  const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
   const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean);
   const isAllowed = allowAll || (origin && allowed.includes(origin));
   return {
-    'Access-Control-Allow-Origin': isAllowed && origin ? origin : '*',
+    'Access-Control-Allow-Origin': isAllowed && origin ? origin : allowAll ? '*' : '',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Vary': 'Origin'
@@ -125,48 +81,36 @@ function computeLine(item: any, settings: TaxSettings) {
     lineNet,
     lineTax,
     lineGross,
+    lineGross,
     baseLineNet,
     baseLineGross,
   };
 }
 
-// Genera el QR code como data URL para pdfmake
-function generateQRDataURL(text: string, size = 200): string {
-  const qr = qrcodeGenerator(0, 'M');
-  qr.addData(text || '');
-  qr.make();
-  
-  const modules = qr.getModuleCount();
-  const cellSize = Math.floor(size / modules);
-  const actualSize = cellSize * modules;
-  
-  // Crear un canvas virtual (simple array-based approach)
-  const canvas: boolean[][] = [];
-  for (let r = 0; r < modules; r++) {
-    canvas[r] = [];
-    for (let c = 0; c < modules; c++) {
-      canvas[r][c] = qr.isDark(r, c);
+// Genera el QR code como data URL para pdfmake usando servicio externo
+async function generateQRDataURL(text: string, size = 200): Promise<string> {
+  try {
+    // Usar API pública de QR Server para generar PNG
+    const encodedText = encodeURIComponent(text);
+    const url = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&format=png&data=${encodedText}`;
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`QR API failed: ${response.status}`);
     }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+
+    return `data:image/png;base64,${base64}`;
+  } catch (error) {
+    console.error('QR generation failed:', error);
+    // Fallback: return a simple placeholder
+    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
   }
-  
-  // Convertir a SVG (más limpio que bitmap)
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${actualSize}" height="${actualSize}" viewBox="0 0 ${modules} ${modules}">`;
-  svg += '<rect width="100%" height="100%" fill="white"/>';
-  
-  for (let r = 0; r < modules; r++) {
-    for (let c = 0; c < modules; c++) {
-      if (canvas[r][c]) {
-        svg += `<rect x="${c}" y="${r}" width="1" height="1" fill="black"/>`;
-      }
-    }
-  }
-  svg += '</svg>';
-  
-  // Convertir SVG a data URL
-  return 'data:image/svg+xml;base64,' + btoa(svg);
 }
 
-function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, company: any, meta: any, settings: TaxSettings }) {
+async function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, company: any, meta: any, settings: TaxSettings }) {
   const { invoice, items, client, company, meta, settings } = payload;
 
   // Colores corporativos
@@ -176,7 +120,7 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
   const TEXT_LIGHT = '#737373';
 
   // Número de factura
-  const invoiceNum = invoice?.full_invoice_number || 
+  const invoiceNum = invoice?.full_invoice_number ||
     `${invoice?.invoice_series || meta?.series}-${invoice?.invoice_number || meta?.number}`;
 
   // Información del emisor
@@ -184,24 +128,24 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
   if (company?.name) {
     emitterInfo.push({ text: company.name, bold: true, fontSize: 11, margin: [0, 0, 0, 4] });
   }
-  
+
   const companyNif = company?.nif || company?.vat_number || company?.tax_id || company?.cif || company?.vat || null;
   if (companyNif) {
     emitterInfo.push({ text: `NIF: ${companyNif}`, fontSize: 9, color: TEXT_LIGHT });
   }
-  
+
   if (company?.settings?.fiscal_address) {
-    emitterInfo.push({ 
-      text: String(company.settings.fiscal_address), 
-      fontSize: 8, 
-      color: TEXT_LIGHT 
+    emitterInfo.push({
+      text: String(company.settings.fiscal_address),
+      fontSize: 8,
+      color: TEXT_LIGHT
     });
   }
-  
+
   if (company?.settings?.phone) {
     emitterInfo.push({ text: `Tel: ${company.settings.phone}`, fontSize: 8, color: TEXT_LIGHT });
   }
-  
+
   if (company?.settings?.email) {
     emitterInfo.push({ text: company.settings.email, fontSize: 8, color: TEXT_LIGHT });
   }
@@ -211,21 +155,21 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
   if (client?.name) {
     clientInfo.push({ text: client.name, bold: true, fontSize: 11, margin: [0, 0, 0, 4] });
   }
-  
+
   const clientNif = client?.nif || client?.vat_number || client?.tax_id || client?.cif || client?.vat || null;
   if (clientNif) {
     clientInfo.push({ text: `NIF: ${clientNif}`, fontSize: 9, color: TEXT_LIGHT });
   }
-  
+
   const clientAddr = client?.address?.line1 || client?.address?.street || client?.address_text || '';
   if (clientAddr) {
     clientInfo.push({ text: String(clientAddr), fontSize: 8, color: TEXT_LIGHT });
   }
-  
+
   if (client?.phone) {
     clientInfo.push({ text: `Tel: ${client.phone}`, fontSize: 8, color: TEXT_LIGHT });
   }
-  
+
   if (client?.email) {
     clientInfo.push({ text: client.email, fontSize: 8, color: TEXT_LIGHT });
   }
@@ -264,26 +208,26 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
     grossTotal += line.lineGross;
 
     tableBody.push([
-      { 
-        text: desc, 
+      {
+        text: desc,
         fontSize: 9,
         fillColor: idx % 2 === 0 ? SECONDARY_COLOR : null
       },
-      { 
-        text: line.qty.toString(), 
-        alignment: 'center', 
+      {
+        text: line.qty.toString(),
+        alignment: 'center',
         fontSize: 9,
         fillColor: idx % 2 === 0 ? SECONDARY_COLOR : null
       },
-      { 
-        text: formatMoney(line.unitDisplay, invoice?.currency), 
-        alignment: 'right', 
+      {
+        text: formatMoney(line.unitDisplay, invoice?.currency),
+        alignment: 'right',
         fontSize: 9,
         fillColor: idx % 2 === 0 ? SECONDARY_COLOR : null
       },
-      { 
-        text: `${line.taxRate}%`, 
-        alignment: 'center', 
+      {
+        text: `${line.taxRate}%`,
+        alignment: 'center',
         fontSize: 9,
         fillColor: idx % 2 === 0 ? SECONDARY_COLOR : null
       },
@@ -294,9 +238,9 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
         color: discountShow !== '-' ? '#2E8B57' : TEXT_LIGHT,
         fillColor: idx % 2 === 0 ? SECONDARY_COLOR : null
       },
-      { 
-        text: formatMoney(line.lineDisplay, invoice?.currency), 
-        alignment: 'right', 
+      {
+        text: formatMoney(line.lineDisplay, invoice?.currency),
+        alignment: 'right',
         fontSize: 10,
         bold: true,
         color: TEXT_DARK,
@@ -306,9 +250,9 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
   });
 
   // Generar QR code
-  const qrText = meta?.qr_payload || 
+  const qrText = meta?.qr_payload ||
     `SERIE:${meta?.series}|NUM:${meta?.number}|HASH:${meta?.chained_hash}`;
-  const qrDataURL = generateQRDataURL(qrText, 200);
+  const qrDataURL = await generateQRDataURL(qrText, 200);
 
   // Prefer persisted aggregates when they are present and coherent
   const aggSubtotal = Number(invoice?.subtotal);
@@ -331,17 +275,17 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
   const docDefinition = {
     pageSize: 'A4',
     pageMargins: [30, 30, 30, 40],
-    
-    header: function(currentPage, pageCount) {
+
+    header: function (currentPage, pageCount) {
       return {
         columns: [
           {
             // Empresa
             stack: [
-              { 
-                text: company?.name || 'EMPRESA', 
-                fontSize: 18, 
-                bold: true, 
+              {
+                text: company?.name || 'EMPRESA',
+                fontSize: 18,
+                bold: true,
                 color: 'white',
                 margin: [30, 18, 0, 2]
               }
@@ -351,25 +295,25 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
           {
             // Número de factura y fechas
             stack: [
-              { 
-                text: 'FACTURA', 
-                fontSize: 10, 
-                bold: true, 
+              {
+                text: 'FACTURA',
+                fontSize: 10,
+                bold: true,
                 color: 'white',
                 alignment: 'right',
                 margin: [0, 12, 30, 2]
               },
-              { 
-                text: invoiceNum, 
-                fontSize: 16, 
-                bold: true, 
+              {
+                text: invoiceNum,
+                fontSize: 16,
+                bold: true,
                 color: 'white',
                 alignment: 'right',
                 margin: [0, 0, 30, 2]
               },
-              { 
-                text: `Fecha: ${invoice?.invoice_date ?? ''}`, 
-                fontSize: 9, 
+              {
+                text: `Fecha: ${invoice?.invoice_date ?? ''}`,
+                fontSize: 9,
                 color: '#E0E0E0',
                 alignment: 'right',
                 margin: [0, 0, 30, 0]
@@ -398,7 +342,7 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
       };
     },
 
-    footer: function(currentPage, pageCount) {
+    footer: function (currentPage, pageCount) {
       return {
         columns: [
           {
@@ -500,19 +444,19 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
           body: tableBody
         },
         layout: {
-          hLineWidth: function(i, node) {
+          hLineWidth: function (i, node) {
             return (i === 0 || i === 1 || i === node.table.body.length) ? 2 : 0.5;
           },
-          vLineWidth: function(i, node) {
+          vLineWidth: function (i, node) {
             return 0;
           },
-          hLineColor: function(i, node) {
+          hLineColor: function (i, node) {
             return (i === 0 || i === 1) ? PRIMARY_COLOR : '#E0E0E0';
           },
-          paddingLeft: function(i) { return i === 0 ? 8 : 4; },
-          paddingRight: function(i, node) { return (i === node.table.widths.length - 1) ? 8 : 4; },
-          paddingTop: function(i) { return 6; },
-          paddingBottom: function(i) { return 6; }
+          paddingLeft: function (i) { return i === 0 ? 8 : 4; },
+          paddingRight: function (i, node) { return (i === node.table.widths.length - 1) ? 8 : 4; },
+          paddingTop: function (i) { return 6; },
+          paddingBottom: function (i) { return 6; }
         },
         margin: [0, 0, 0, 20]
       },
@@ -641,19 +585,8 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
 
   return new Promise((resolve, reject) => {
     const pdfDocGenerator = pdfMake.createPdf(docDefinition);
-    // getBuffer is Node-only. Use getBase64 for Edge Runtime/Deno
-    pdfDocGenerator.getBase64((data) => {
-      try {
-        const binaryString = atob(data);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        resolve(bytes);
-      } catch (e) {
-        reject(e);
-      }
+    pdfDocGenerator.getBuffer((buffer) => {
+      resolve(new Uint8Array(buffer));
     });
   });
 }
@@ -662,25 +595,8 @@ serve(async (req) => {
   const origin = req.headers.get('Origin') || undefined;
   const headers = cors(origin);
 
-  // Handle OPTIONS first to avoid loading deps unnecessarily
   if (req.method === 'OPTIONS') return new Response('ok', { headers });
 
-  try {
-    await loadDependencies();
-  } catch (e) {
-    return new Response(
-      JSON.stringify({ error: 'Dependency load failed', details: String(e), stack: (e as any)?.stack }),
-      { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
-    );
-  }
-
-  if (loadError) {
-    return new Response(
-      JSON.stringify({ error: 'Dependency load failed (cached)', details: String(loadError) }),
-      { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
-    );
-  }
-  
   if (req.method !== 'GET') {
     return new Response(
       JSON.stringify({ error: 'Method not allowed' }),
@@ -691,7 +607,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('authorization') || '';
     const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
-    
+
     if (!token) {
       return new Response(
         JSON.stringify({ error: 'Missing Bearer token' }),
@@ -703,7 +619,7 @@ serve(async (req) => {
     const invoiceId = url.searchParams.get('invoice_id');
     const force = url.searchParams.get('force') === '1';
     const download = url.searchParams.get('download') === '1';
-    
+
     if (!invoiceId) {
       return new Response(
         JSON.stringify({ error: 'invoice_id required' }),
@@ -713,10 +629,9 @@ serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY') || '';
-    
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('Missing env vars:', { SUPABASE_URL: !!SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY: !!SUPABASE_SERVICE_ROLE_KEY });
       return new Response(
         JSON.stringify({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY envs' }),
         { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
@@ -727,7 +642,7 @@ serve(async (req) => {
       auth: { persistSession: false },
       global: { headers: { Authorization: `Bearer ${token}` } }
     });
-    
+
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: { persistSession: false }
     });
@@ -738,7 +653,7 @@ serve(async (req) => {
       .select('*')
       .eq('id', invoiceId)
       .maybeSingle();
-    
+
     if (invErr || !invoice) {
       return new Response(
         JSON.stringify({ error: invErr?.message || 'Invoice not found' }),
@@ -751,7 +666,7 @@ serve(async (req) => {
       .select('*')
       .eq('invoice_id', invoiceId)
       .order('line_order', { ascending: true });
-    
+
     // Fallback: if RLS trimmed items, fetch with service role
     if (!itErr && items && items.length <= 1) {
       const { data: adminItems } = await admin
@@ -774,7 +689,7 @@ serve(async (req) => {
       .select('*')
       .eq('id', invoice.client_id)
       .maybeSingle();
-    
+
     if (clErr) {
       return new Response(
         JSON.stringify({ error: clErr.message }),
@@ -787,7 +702,7 @@ serve(async (req) => {
       .select('*')
       .eq('id', invoice.company_id)
       .maybeSingle();
-    
+
     if (coErr) {
       return new Response(
         JSON.stringify({ error: coErr.message }),
@@ -796,24 +711,24 @@ serve(async (req) => {
     }
 
     // verifactu schema may not be exposed via PostgREST; read using service role
+    // Use .schema() to correctly target the verifactu schema
     const { data: meta, error: metaErr } = await admin
       .schema('verifactu')
       .from('invoice_meta')
       .select('*')
       .eq('invoice_id', invoiceId)
       .maybeSingle();
-    
+
     if (metaErr) {
-      return new Response(
-        JSON.stringify({ error: metaErr.message }),
-        { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
-      );
+      console.error('Error fetching verifactu metadata:', metaErr);
+      // Do not fail, just proceed without meta (will use fallbacks from invoice table)
     }
 
     // Load tax settings (service role to avoid RLS issues)
     const series = meta?.series || invoice?.invoice_series || 'SER';
     const number = meta?.number || invoice?.invoice_number || '00001';
     const companyId = invoice.company_id;
+
     const { data: appSettings } = await admin
       .from('app_settings')
       .select('*')
@@ -825,11 +740,31 @@ serve(async (req) => {
       .maybeSingle();
 
     const settings: TaxSettings = {
-      pricesIncludeTax: Boolean(companySettings?.pricesIncludeTax ?? companySettings?.prices_include_tax ?? appSettings?.pricesIncludeTax ?? appSettings?.prices_include_tax ?? false),
-      iva_enabled: Boolean(companySettings?.iva_enabled ?? appSettings?.iva_enabled ?? true),
-      iva_rate: Number(companySettings?.iva_rate ?? appSettings?.iva_rate ?? 21),
-      irpf_enabled: Boolean(companySettings?.irpf_enabled ?? appSettings?.irpf_enabled ?? false),
-      irpf_rate: Number(companySettings?.irpf_rate ?? appSettings?.irpf_rate ?? 0),
+      pricesIncludeTax: Boolean(
+        companySettings?.prices_include_tax ??
+        appSettings?.default_prices_include_tax ??
+        false
+      ),
+      iva_enabled: Boolean(
+        companySettings?.iva_enabled ??
+        appSettings?.default_iva_enabled ??
+        true
+      ),
+      iva_rate: Number(
+        companySettings?.iva_rate ??
+        appSettings?.default_iva_rate ??
+        21
+      ),
+      irpf_enabled: Boolean(
+        companySettings?.irpf_enabled ??
+        appSettings?.default_irpf_enabled ??
+        false
+      ),
+      irpf_rate: Number(
+        companySettings?.irpf_rate ??
+        appSettings?.default_irpf_rate ??
+        0
+      ),
     };
 
     // Compute storage path
@@ -841,12 +776,12 @@ serve(async (req) => {
       const { data: exists } = await admin.storage
         .from(bucket)
         .list(`${companyId}/${series}`, { search: `${series}-${number}.pdf` });
-      
+
       if ((exists || []).find(f => f.name === `${series}-${number}.pdf`)) {
         const { data: signed, error: signErr } = await admin.storage
           .from(bucket)
           .createSignedUrl(path, 60 * 60 * 24 * 30);
-        
+
         if (signErr) {
           return new Response(
             JSON.stringify({ error: signErr.message }),
@@ -858,7 +793,7 @@ serve(async (req) => {
           const { data: fileData, error: dlErr } = await admin.storage
             .from(bucket)
             .download(path);
-          
+
           if (dlErr) {
             return new Response(
               JSON.stringify({ error: dlErr.message }),
@@ -884,7 +819,7 @@ serve(async (req) => {
     }
 
     // Generate new PDF
-  const pdfBytes = await generateInvoicePdf({ invoice, items, client, company, meta, settings });
+    const pdfBytes = await generateInvoicePdf({ invoice, items, client, company, meta, settings });
 
     // Upload to storage
     const { error: upErr } = await admin.storage
@@ -893,7 +828,7 @@ serve(async (req) => {
         contentType: 'application/pdf',
         upsert: true
       });
-    
+
     if (upErr) {
       return new Response(
         JSON.stringify({ error: upErr.message }),
@@ -904,7 +839,7 @@ serve(async (req) => {
     const { data: signed, error: signErr } = await admin.storage
       .from(bucket)
       .createSignedUrl(path, 60 * 60 * 24 * 30);
-    
+
     if (signErr) {
       return new Response(
         JSON.stringify({ error: signErr.message }),
@@ -928,9 +863,8 @@ serve(async (req) => {
       { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
     );
   } catch (e) {
-    console.error('Error generating invoice PDF:', e);
     return new Response(
-      JSON.stringify({ error: e?.message || String(e), stack: e?.stack }),
+      JSON.stringify({ error: e?.message || String(e) }),
       { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
     );
   }
