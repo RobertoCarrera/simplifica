@@ -1,7 +1,7 @@
 import { Component, signal, computed, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ToastService } from '../../services/toast.service';
-import { NotificationService } from '../../services/notification.service';
+// Deprecated NotificationService removed; using native Notification API
 
 @Component({
   selector: 'app-notification-toast',
@@ -171,22 +171,22 @@ import { NotificationService } from '../../services/notification.service';
 })
 export class NotificationToastComponent implements OnInit, OnDestroy {
   private toastService = inject(ToastService);
-  private notificationService = inject(NotificationService);
-  
+  // NotificationService injection removed
+
   // Reactive state
   readonly toasts = this.toastService.toasts$;
-  
+
   // Permission banner state
   readonly showPermissionBanner = signal(false);
   private permissionDismissed = signal(false);
-  
+
   // Toast progress tracking
   private progressIntervals = new Map<string, NodeJS.Timeout>();
   private progressPercentages = signal<Record<string, number>>({});
 
   ngOnInit(): void {
     this.checkNotificationPermission();
-    
+
     // Track toast progress
     this.toasts().forEach(toast => {
       if (toast.duration > 0) {
@@ -207,14 +207,14 @@ export class NotificationToastComponent implements OnInit, OnDestroy {
       clearInterval(interval);
       this.progressIntervals.delete(id);
     }
-    
+
     // Remove from progress tracking
     this.progressPercentages.update(current => {
       const updated = { ...current };
       delete updated[id];
       return updated;
     });
-    
+
     this.toastService.removeToast(id);
   }
 
@@ -225,29 +225,29 @@ export class NotificationToastComponent implements OnInit, OnDestroy {
   private startProgressTracking(toastId: string, duration: number): void {
     const startTime = Date.now();
     const updateInterval = 50; // Update every 50ms for smooth animation
-    
+
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const percentage = Math.max(0, 100 - (elapsed / duration) * 100);
-      
+
       this.progressPercentages.update(current => ({
         ...current,
         [toastId]: percentage
       }));
-      
+
       if (percentage <= 0) {
         clearInterval(interval);
         this.progressIntervals.delete(toastId);
       }
     }, updateInterval);
-    
+
     this.progressIntervals.set(toastId, interval);
   }
 
   private checkNotificationPermission(): void {
     if ('Notification' in window) {
       const permission = Notification.permission;
-      
+
       // Show banner if permission is not granted and not dismissed
       if (permission === 'default' && !this.permissionDismissed()) {
         setTimeout(() => {
@@ -258,11 +258,11 @@ export class NotificationToastComponent implements OnInit, OnDestroy {
   }
 
   async requestPermission(): Promise<void> {
-    const granted = await this.notificationService.requestNotificationPermission();
-    
+    const granted = await Notification.requestPermission();
+
     if (granted) {
       this.showPermissionBanner.set(false);
-      
+
       // Show success toast
       this.toastService.success(
         'Notificaciones habilitadas',
@@ -280,7 +280,7 @@ export class NotificationToastComponent implements OnInit, OnDestroy {
   dismissPermissionBanner(): void {
     this.showPermissionBanner.set(false);
     this.permissionDismissed.set(true);
-    
+
     // Remember dismissal in localStorage
     try {
       localStorage.setItem('simplifica_notification_permission_dismissed', 'true');

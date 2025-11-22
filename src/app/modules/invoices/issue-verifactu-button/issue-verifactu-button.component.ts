@@ -54,19 +54,12 @@ export class IssueVerifactuButtonComponent implements OnInit, OnDestroy {
 
     try {
       this.errors.set([]);
-      this.state.set('validating');
-
-      const validation = await this.vf.validateInvoiceBeforeIssue(this.invoiceId).toPromise();
-      if (!validation?.valid) {
-        this.errors.set(validation?.errors || ['Error de validación desconocido']);
-        this.state.set('error');
-        this.toast.error('Verifactu', 'La factura no es válida para emisión Verifactu');
-        this.error.emit('validation');
-        return;
-      }
-
       this.state.set('issuing');
-      const res = await this.vf.issueInvoice({ invoice_id: this.invoiceId }).toPromise();
+
+      // Do not call RPC validate_invoice_before_issue from the frontend —
+      // the Edge Function `issue-invoice` runs `verifactu_preflight_issue` internally
+      // and returns structured validation errors when appropriate.
+      const res = await this.vf.issueInvoice({ invoiceid: this.invoiceId }).toPromise();
       if (!res) throw new Error('No se recibió respuesta del servidor');
 
       this.hash.set(res.hash);
@@ -75,9 +68,16 @@ export class IssueVerifactuButtonComponent implements OnInit, OnDestroy {
       this.issued.emit({ hash: res.hash, chain_position: res.chain_position });
     } catch (err: any) {
       this.state.set('error');
-      const msg = err?.message || 'Error emitiendo la factura';
-      this.toast.error('Verifactu', msg);
-      this.error.emit(msg);
+      // If the error was a structured validation response from the Edge Function
+      if (err && err.errors && Array.isArray(err.errors)) {
+        this.errors.set(err.errors);
+        this.toast.error('Verifactu', 'La factura no es válida para emisión Verifactu');
+        this.error.emit('validation');
+      } else {
+        const msg = err?.message || 'Error emitiendo la factura';
+        this.toast.error('Verifactu', msg);
+        this.error.emit(msg);
+      }
     }
   }
 }

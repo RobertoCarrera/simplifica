@@ -103,16 +103,27 @@ export class VerifactuService {
   issueInvoice(request: IssueInvoiceRequest): Observable<IssueInvoiceResponse | null> {
     console.log('📤 Issuing invoice with Verifactu:', request);
     
+    // Normalize payload: Edge Function expects `invoiceid` (lowercase, no underscores)
+    const payload = {
+      invoiceid: (request as any).invoiceid || (request as any).invoice_id || (request as any).invoiceId,
+      deviceid: (request as any).deviceid || (request as any).device_id || (request as any).deviceId || null,
+      softwareid: (request as any).softwareid || (request as any).software_id || (request as any).softwareId || null
+    } as any;
+
     return from(
-      callEdgeFunction<IssueInvoiceRequest, IssueInvoiceResponse>(
+      callEdgeFunction<typeof payload, IssueInvoiceResponse>(
         this.supabase,
         'issue-invoice',
-        request
+        payload
       )
     ).pipe(
       map((response) => {
         if (!response.ok || !response.data) {
-          console.error('❌ Issue invoice failed:', response.error);
+          console.error('❌ Issue invoice failed:', response.error, response.data);
+          // If the Edge Function returned structured validation errors, throw them through
+          if (response.data && (response.data as any).errors && Array.isArray((response.data as any).errors)) {
+            throw response.data;
+          }
           throw new Error(mapVerifactuError(response.error || 'UNKNOWN_ERROR'));
         }
         console.log('✅ Invoice issued successfully:', response.data);

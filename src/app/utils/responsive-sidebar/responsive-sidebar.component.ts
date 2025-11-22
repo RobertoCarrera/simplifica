@@ -39,7 +39,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   sidebarState = inject(SidebarStateService);
   private router = inject(Router);
   private devRoleService = inject(DevRoleService);
-  authService = inject(AuthService); // Hacer público para usar en template
+  authService = inject(AuthService); // público para template
   private modulesService = inject(SupabaseModulesService);
 
   // Server-side modules allowed for this user
@@ -54,8 +54,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   // Computed values from service
   readonly isOpen = this.sidebarState.isOpen;
   readonly isCollapsed = this.sidebarState.isCollapsed;
-
-  // All menu items
+  // All menu items (productivos, visibles también en desarrollo)
   private allMenuItems: MenuItem[] = [
     {
       id: 1,
@@ -69,8 +68,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Clientes',
       icon: 'people',
       route: '/clientes',
-      module: 'production',
-      moduleKey: 'moduloClientes'
+      module: 'core'
     },
     {
       id: 3,
@@ -114,65 +112,14 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Facturación',
       icon: 'description',
       route: '/facturacion',
-      // Mostrar sólo en modo 'development' para evitar que aparezca en producción
       module: 'production'
     },
     {
-      id: 41, // Nuevo ID entre servicios y productos
+      id: 41,
       label: 'Chat',
       icon: 'chat',
       route: '/chat',
-      module: 'development'
-    },
-    {
-      id: 42,
-      label: 'Contactos',
-      icon: 'people',
-      route: '/contactos',
-      module: 'development'
-    },
-    {
-      id: 7,
-      label: 'Búsqueda',
-      icon: 'search',
-      route: '/search',
-      module: 'development'
-    },
-    {
-      id: 8,
-      label: 'Notificaciones',
-      icon: 'notifications',
-      route: '/notifications',
-      badge: 3,
-      module: 'development'
-    },
-    {
-      id: 9,
-      label: 'Workflows',
-      icon: 'account_tree',
-      route: '/workflows',
-      module: 'development'
-    },
-    {
-      id: 10,
-      label: 'Export/Import',
-      icon: 'sync_alt',
-      route: '/export-import',
-      module: 'development'
-    },
-    {
-      id: 11,
-      label: 'Dashboard Móvil',
-      icon: 'phone_android',
-      route: '/mobile',
-      module: 'development'
-    },
-    {
-      id: 12,
-      label: 'Funciones Avanzadas',
-      icon: 'auto_awesome',
-      route: '/advanced-features',
-      module: 'development'
+      module: 'production'
     },
     {
       id: 13,

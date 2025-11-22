@@ -15,9 +15,10 @@ export interface EdgeFunctionResponse<T = any> {
 }
 
 export interface IssueInvoiceRequest {
-  invoice_id: string;
-  device_id?: string;
-  software_id?: string;
+  // Edge Function expects lowercase, underscore-less keys: `invoiceid`, `deviceid`, `softwareid`
+  invoiceid: string;
+  deviceid?: string;
+  softwareid?: string;
 }
 
 export interface IssueInvoiceResponse {
@@ -87,6 +88,7 @@ export async function callEdgeFunction<TRequest = any, TResponse = any>(
     const url = `${supabaseUrl}/functions/v1/${functionName}`;
 
     console.log(`🚀 Calling Edge Function: ${functionName}`);
+    console.log('📤 Edge Function request:', url, body);
 
     // Hacer petición HTTP con Bearer token
     const response = await fetch(url, {
@@ -105,12 +107,13 @@ export async function callEdgeFunction<TRequest = any, TResponse = any>(
       console.error(`❌ Edge Function error (${response.status}):`, data);
       return {
         ok: false,
-        error: data.error || 'EDGE_FUNCTION_ERROR',
-        message: data.message || `Error ${response.status}: ${response.statusText}`
+        error: data?.error || 'EDGE_FUNCTION_ERROR',
+        message: data?.message || `Error ${response.status}: ${response.statusText}`,
+        data: data as any
       };
     }
 
-    console.log(`✅ Edge Function success:`, data);
+    console.log(`✅ Edge Function success (${response.status}):`, data);
     return {
       ok: true,
       data: data as TResponse

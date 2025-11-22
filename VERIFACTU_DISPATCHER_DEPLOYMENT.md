@@ -36,6 +36,8 @@ Set the following secrets for the function (Dashboard > Edge Functions > verifac
 - VERIFACTU_MAX_ATTEMPTS = 7
 - VERIFACTU_BACKOFF = 0,1,5,15,60,180,720  # minutes for attempts 0..n
 - VERIFACTU_REJECT_RATE = 0                 # set >0 only for sandbox simulations
+- VERIFACTU_MODE = mock                     # 'mock' (default) or 'live'
+- VERIFACTU_ENABLE_FALLBACK = false         # set 'true' to use mock if live fails
 
 Alternatively via CLI:
 
@@ -46,6 +48,8 @@ supabase functions secrets set SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
   VERIFACTU_MAX_ATTEMPTS=7 \
   VERIFACTU_BACKOFF="0,1,5,15,60,180,720" \
   VERIFACTU_REJECT_RATE=0 \
+  VERIFACTU_MODE=mock \
+  VERIFACTU_ENABLE_FALLBACK=false \
   --project-ref YOUR_PROJECT_REF --confirm
 ```
 

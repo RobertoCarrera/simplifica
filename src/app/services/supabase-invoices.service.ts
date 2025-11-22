@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Observable, from, map, catchError, throwError, firstValueFrom } from 'rxjs';
-import { 
-  Invoice, 
-  InvoiceItem, 
-  InvoicePayment, 
+import {
+  Invoice,
+  InvoiceItem,
+  InvoicePayment,
   InvoiceSeries,
   InvoiceTemplate,
   CreateInvoiceDTO,
@@ -100,25 +100,57 @@ export class SupabaseInvoicesService {
    * Ejecuta el dispatcher inmediatamente (procesa eventos pendientes)
    */
   runDispatcherNow(): Observable<any> {
-    return from(
-      fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      }).then(r => r.json())
-    );
+    return new Observable(observer => {
+      (async () => {
+        try {
+          const { data: { session } } = await this.supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) throw new Error('Sesión no válida');
+
+          const res = await fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          const json = await res.json();
+          observer.next(json);
+          observer.complete();
+        } catch (e) {
+          observer.error(e);
+        }
+      })();
+    });
   }
 
   /**
    * Reintento manual seguro: resetear el último evento rechazado a 'pending'
    */
   retryVerifactu(invoiceId: string): Observable<any> {
-    return from(
-      fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'retry', invoice_id: invoiceId })
-      }).then(r => r.json())
-    );
+    return new Observable(observer => {
+      (async () => {
+        try {
+          const { data: { session } } = await this.supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) throw new Error('Sesión no válida');
+
+          const res = await fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ action: 'retry', invoice_id: invoiceId })
+          });
+          const json = await res.json();
+          observer.next(json);
+          observer.complete();
+        } catch (e) {
+          observer.error(e);
+        }
+      })();
+    });
   }
 
   /**
@@ -128,41 +160,82 @@ export class SupabaseInvoicesService {
     if (this.verifactuConfig) {
       return from([this.verifactuConfig]);
     }
-    return from(
-      fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'config' })
-      }).then(async r => {
-        const json = await r.json();
-        if (!r.ok) throw new Error(json?.error || 'VF config error');
-        const cfg = { maxAttempts: Number(json.maxAttempts) || 7, backoffMinutes: (json.backoffMinutes as number[]) || [0,1,5,15,60,180,720] };
-        this.verifactuConfig = cfg;
-        return cfg;
-      })
-    );
+    return new Observable(observer => {
+      (async () => {
+        try {
+          const { data: { session } } = await this.supabase.auth.getSession();
+          const token = session?.access_token;
+          // Config might be public, but Gateway requires token usually. If public, we might need anon key.
+          // Assuming authenticated user for now as this is an admin feature.
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          } else {
+            // Fallback to anon key if no session (though likely logged in)
+            headers['Authorization'] = `Bearer ${environment.supabase.anonKey}`;
+          }
+
+          const res = await fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ action: 'config' })
+          });
+
+          const json = await res.json();
+          if (!res.ok) throw new Error(json?.error || 'VF config error');
+
+          const cfg = { maxAttempts: Number(json.maxAttempts) || 7, backoffMinutes: (json.backoffMinutes as number[]) || [0, 1, 5, 15, 60, 180, 720] };
+          this.verifactuConfig = cfg;
+          observer.next(cfg);
+          observer.complete();
+        } catch (e) {
+          // Fallback defaults if fails
+          const defaults = { maxAttempts: 7, backoffMinutes: [0, 1, 5, 15, 60, 180, 720] };
+          this.verifactuConfig = defaults;
+          observer.next(defaults);
+          observer.complete();
+        }
+      })();
+    });
   }
 
   /**
    * Estado de salud del dispatcher (conteos y última actividad)
    */
   getDispatcherHealth(): Observable<{ pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; }> {
-    return from(
-      fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'health' })
-      }).then(async r => {
-        const json = await r.json();
-        if (!r.ok) throw new Error(json?.error || 'VF health error');
-        return {
-          pending: Number(json.pending || 0),
-          lastEventAt: json.lastEventAt || null,
-          lastAcceptedAt: json.lastAcceptedAt || null,
-          lastRejectedAt: json.lastRejectedAt || null
-        } as { pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; };
-      })
-    );
+    return new Observable(observer => {
+      (async () => {
+        try {
+          const { data: { session } } = await this.supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) throw new Error('Sesión no válida');
+
+          const res = await fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ action: 'health' })
+          });
+
+          const json = await res.json();
+          if (!res.ok) throw new Error(json?.error || 'VF health error');
+
+          observer.next({
+            pending: Number(json.pending || 0),
+            lastEventAt: json.lastEventAt || null,
+            lastAcceptedAt: json.lastAcceptedAt || null,
+            lastRejectedAt: json.lastRejectedAt || null
+          });
+          observer.complete();
+        } catch (e) {
+          // Return zeros/nulls on error to avoid breaking UI
+          observer.next({ pending: 0, lastEventAt: null, lastAcceptedAt: null, lastRejectedAt: null });
+          observer.complete();
+        }
+      })();
+    });
   }
 
   /**
@@ -272,6 +345,28 @@ export class SupabaseInvoicesService {
   }
 
   /**
+   * Obtener todas las series (activas e inactivas) para administración
+   */
+  getAllInvoiceSeries(): Observable<InvoiceSeries[]> {
+    return from(
+      this.supabase
+        .from('invoice_series')
+        .select('*')
+        .order('year', { ascending: false })
+        .order('series_code', { ascending: true })
+    ).pipe(
+      map(response => {
+        if (response.error) throw response.error;
+        return response.data as InvoiceSeries[];
+      }),
+      catchError(error => {
+        console.error('Error al obtener todas las series de facturación:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
    * Obtener serie por defecto
    */
   getDefaultSeries(): Observable<InvoiceSeries | null> {
@@ -319,6 +414,62 @@ export class SupabaseInvoicesService {
       }),
       catchError(error => {
         console.error('Error al crear serie:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Actualizar serie existente (por id)
+   */
+  updateInvoiceSeries(id: string, changes: Partial<InvoiceSeries>): Observable<InvoiceSeries> {
+    return from(
+      this.supabase
+        .from('invoice_series')
+        .update(changes)
+        .eq('id', id)
+        .select()
+        .single()
+    ).pipe(
+      map(response => {
+        if (response.error) throw response.error;
+        return response.data as InvoiceSeries;
+      }),
+      catchError(error => {
+        console.error('Error al actualizar serie:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Marcar una serie como predeterminada (desmarcando las demás de la empresa)
+   */
+  setDefaultInvoiceSeries(id: string): Observable<void> {
+    const companyId = this.authService.companyId();
+    if (!companyId) {
+      return throwError(() => new Error('Usuario sin empresa asignada'));
+    }
+
+    return from((async () => {
+      const client = this.supabase;
+      // Desmarcar todas las series de la empresa
+      const clear = await client
+        .from('invoice_series')
+        .update({ is_default: false })
+        .eq('company_id', companyId);
+      if (clear.error) throw clear.error;
+
+      // Marcar la seleccionada
+      const set = await client
+        .from('invoice_series')
+        .update({ is_default: true, is_active: true })
+        .eq('id', id);
+      if (set.error) throw set.error;
+    })()).pipe(
+      map(() => void 0),
+      catchError(error => {
+        console.error('Error al marcar serie por defecto:', error);
         return throwError(() => error);
       })
     );
@@ -420,7 +571,7 @@ export class SupabaseInvoicesService {
           const userProfile = await firstValueFrom(this.authService.userProfile$);
           const companyId = this.authService.companyId();
           const userId = userProfile?.id;
-          
+
           if (!companyId || !userId) {
             throw new Error('Usuario sin empresa o ID');
           }

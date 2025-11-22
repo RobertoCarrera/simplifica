@@ -2,11 +2,10 @@ import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { NotificationService } from '../../services/notification.service';
-import { 
-  type Notification as AppNotification, 
-  NotificationFilter, 
-  NotificationStats 
+import { NotificationStore } from '../../stores/notification.store';
+import {
+  type Notification as AppNotification,
+  NotificationFilter
 } from '../../models/notification.interface';
 
 @Component({
@@ -343,13 +342,12 @@ import {
   `]
 })
 export class NotificationCenterComponent implements OnInit {
-  private notificationService = inject(NotificationService);
+  private notificationStore = inject(NotificationStore);
   private router = inject(Router);
 
   // Reactive state
-  readonly notifications = this.notificationService.notifications$;
-  readonly stats = this.notificationService.stats;
-  readonly filteredNotifications = this.notificationService.filteredNotifications;
+  readonly stats = this.notificationStore.stats;
+  readonly filteredNotifications = this.notificationStore.filteredNotifications;
 
   // Filter state
   selectedCategory = signal('');
@@ -360,7 +358,9 @@ export class NotificationCenterComponent implements OnInit {
 
   ngOnInit(): void {
     // Request notification permission if not already granted
-    this.notificationService.requestNotificationPermission();
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
   }
 
   updateFilters(): void {
@@ -386,7 +386,7 @@ export class NotificationCenterComponent implements OnInit {
       filter.search = this.searchTerm();
     }
 
-    this.notificationService.applyFilter(filter);
+    this.notificationStore.setFilter(filter);
   }
 
   clearFilters(): void {
@@ -395,23 +395,23 @@ export class NotificationCenterComponent implements OnInit {
     this.selectedPriority.set('');
     this.selectedReadStatus.set('');
     this.searchTerm.set('');
-    this.notificationService.clearFilter();
+    this.notificationStore.clearFilter();
   }
 
   markAsRead(id: string): void {
-    this.notificationService.markAsRead(id);
+    this.notificationStore.markAsRead(id);
   }
 
   markAllAsRead(): void {
-    this.notificationService.markAllAsRead();
+    this.notificationStore.markAllAsRead();
   }
 
   deleteNotification(id: string): void {
-    this.notificationService.deleteNotification(id);
+    this.notificationStore.delete(id);
   }
 
   clearReadNotifications(): void {
-    this.notificationService.clearRead();
+    this.notificationStore.clearRead();
   }
 
   handleNotificationClick(notification: AppNotification): void {
@@ -448,7 +448,7 @@ export class NotificationCenterComponent implements OnInit {
     if (minutes < 60) return `Hace ${minutes}m`;
     if (hours < 24) return `Hace ${hours}h`;
     if (days < 7) return `Hace ${days}d`;
-    
+
     return timestamp.toLocaleDateString('es-ES', {
       day: '2-digit',
       month: '2-digit',

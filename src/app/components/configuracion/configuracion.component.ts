@@ -15,6 +15,8 @@ import { ToastService } from '../../services/toast.service';
 import { UserModulesService, UserModule, ModuleStatus } from '../../services/user-modules.service';
 import { SupabaseSettingsService, type AppSettings, type CompanySettings } from '../../services/supabase-settings.service';
 import { SupabaseModulesService, type EffectiveModule } from '../../services/supabase-modules.service';
+import { SupabaseInvoicesService } from '../../services/supabase-invoices.service';
+import { InvoiceSeries } from '../../models/invoice.model';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -63,6 +65,13 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
   appSettingsForm: FormGroup;
   companySettingsForm: FormGroup;
   settingsLoading = false;
+  
+  // Invoice series management
+  invoiceSeries: InvoiceSeries[] = [];
+  seriesLoading = false;
+  seriesError: string | null = null;
+  creatingInvoiceSeries = false;
+  newInvoiceSeries: Partial<InvoiceSeries> = {} as any;
 
   constructor(
     private fb: FormBuilder,
@@ -74,7 +83,8 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     private toast: ToastService,
     @Inject(UserModulesService) private userModulesService: UserModulesService,
     @Inject(SupabaseSettingsService) private settingsService: SupabaseSettingsService,
-    @Inject(SupabaseModulesService) private modulesService: SupabaseModulesService
+    @Inject(SupabaseModulesService) private modulesService: SupabaseModulesService,
+    private invoicesService: SupabaseInvoicesService
   ) {
     this.supabase = this.sbClient.instance;
     this.profileForm = this.fb.group({
@@ -132,6 +142,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     this.loadModulesCatalog();
     this.loadModulesDiagnostics();
     this.loadSettings();
+    this.loadInvoiceSeries();
   }
 
   ngOnDestroy() {
@@ -711,5 +722,105 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     if (this.devMessages.length > 10) {
       this.devMessages = this.devMessages.slice(0, 10);
     }
+  }
+
+  // ===============================
+  // INVOICE SERIES MANAGEMENT
+  // ===============================
+  loadInvoiceSeries() {
+    this.seriesLoading = true;
+    this.seriesError = null;
+    this.invoicesService.getAllInvoiceSeries().subscribe({
+      next: (rows) => {
+        this.invoiceSeries = rows || [];
+        this.seriesLoading = false;
+      },
+      error: (e: any) => {
+        this.seriesError = e?.message || 'No se pudieron cargar las series';
+        this.seriesLoading = false;
+      }
+    });
+  }
+
+  startCreateSeries() {
+    this.creatingInvoiceSeries = true;
+    this.newInvoiceSeries = {
+      series_code: '',
+      series_name: '',
+      year: new Date().getFullYear(),
+      prefix: '',
+      next_number: 1,
+      is_active: true,
+      is_default: false,
+      verifactu_enabled: false
+    } as any;
+  }
+
+  cancelCreateSeries() {
+    this.creatingInvoiceSeries = false;
+    this.newInvoiceSeries = {} as any;
+  }
+
+  createInvoiceSeries() {
+    if (!this.newInvoiceSeries.series_code || !this.newInvoiceSeries.series_name) {
+      this.seriesError = 'Código y nombre son obligatorios';
+      return;
+    }
+    this.seriesLoading = true;
+    this.invoicesService.createInvoiceSeries(this.newInvoiceSeries).subscribe({
+      next: () => {
+        this.cancelCreateSeries();
+        this.seriesLoading = false;
+        this.loadInvoiceSeries();
+        this.showMessage('Serie creada correctamente', 'success');
+      },
+      error: (e: any) => {
+        this.seriesError = e?.message || 'Error creando serie';
+        this.seriesLoading = false;
+      }
+    });
+  }
+
+  toggleSeriesActive(s: InvoiceSeries) {
+    this.seriesLoading = true;
+    this.invoicesService.updateInvoiceSeries(s.id, { is_active: !s.is_active }).subscribe({
+      next: () => {
+        this.seriesLoading = false;
+        this.loadInvoiceSeries();
+      },
+      error: (e: any) => {
+        this.seriesError = e?.message || 'Error actualizando serie';
+        this.seriesLoading = false;
+      }
+    });
+  }
+
+  toggleSeriesDefault(s: InvoiceSeries) {
+    this.seriesLoading = true;
+    this.invoicesService.setDefaultInvoiceSeries(s.id).subscribe({
+      next: () => {
+        this.seriesLoading = false;
+        this.loadInvoiceSeries();
+        this.showMessage('Serie por defecto actualizada', 'success');
+      },
+      error: (e: any) => {
+        this.seriesError = e?.message || 'Error marcando serie por defecto';
+        this.seriesLoading = false;
+      }
+    });
+  }
+
+  toggleSeriesVerifactu(s: InvoiceSeries) {
+    this.seriesLoading = true;
+    this.invoicesService.updateInvoiceSeries(s.id, { verifactu_enabled: !s.verifactu_enabled }).subscribe({
+      next: () => {
+        this.seriesLoading = false;
+        this.loadInvoiceSeries();
+      },
+      error: (e: any) => {
+        this.seriesError = e?.message || 'Error actualizando VeriFactu';
+        this.seriesLoading = false;
+      }
+    });
   }
 }

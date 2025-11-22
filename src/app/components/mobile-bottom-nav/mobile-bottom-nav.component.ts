@@ -5,7 +5,7 @@ import { PWAService } from '../../services/pwa.service';
 import { AuthService } from '../../services/auth.service';
 import { DevRoleService } from '../../services/dev-role.service';
 import { SupabaseModulesService, EffectiveModule } from '../../services/supabase-modules.service';
-import { NotificationService } from '../../services/notification.service';
+import { NotificationStore } from '../../stores/notification.store';
 
 export interface MoreMenuItem {
   id: string;
@@ -122,7 +122,7 @@ export class MobileBottomNavComponent implements OnInit {
   private devRoleService = inject(DevRoleService);
   private modulesService = inject(SupabaseModulesService);
   private router = inject(Router);
-  private notificationService = inject(NotificationService);
+  private notificationStore = inject(NotificationStore);
 
   // Server-side allowed modules set
   private _allowedModuleKeys = signal<Set<string> | null>(null);
@@ -130,7 +130,7 @@ export class MobileBottomNavComponent implements OnInit {
   // Staff primary nav: restrict to 5 slots: Inicio | Clientes | Facturación | Notificaciones | Configuración/Más
   private baseItems: NavItem[] = [
     { id: 'inicio', label: 'Inicio', icon: 'home', route: '/inicio', module: 'core' },
-    { id: 'clientes', label: 'Clientes', icon: 'users', route: '/clientes', module: 'production' },
+    { id: 'clientes', label: 'Clientes', icon: 'users', route: '/clientes', module: 'core' },
     { id: 'facturacion', label: 'Facturación', icon: 'file-invoice-dollar', route: '/facturacion', module: 'development' },
     // Notificaciones should be always available in the primary bar
     { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', action: 'notifications', module: 'development' },
@@ -149,7 +149,7 @@ export class MobileBottomNavComponent implements OnInit {
 
   // Sheet state
   readonly showMoreSheet = signal(false);
-  readonly unreadCount = this.notificationService.unreadCount; // currently deprecated service returns 0
+  readonly unreadCount = this.notificationStore.unreadCount;
   // Public debug accessors for template (so bindings don't reference private fields)
   readonly debugRole = computed(() => this.authService.userRole());
   readonly debugModules = computed(() => {
@@ -164,18 +164,11 @@ export class MobileBottomNavComponent implements OnInit {
     if (!isClient) {
       items.push(
         { id: 'chat', label: 'Chat', icon: 'comments', route: '/chat', devOnly: true },
-        { id: 'contacts', label: 'Contactos', icon: 'address-book', route: '/anychat/contacts', devOnly: true },
-        // Analytics is still in development; hide for non-devs/admins
+        // Dev-only shortcuts eliminados: contactos, export/import, dashboard móvil, funciones avanzadas, workflows, búsqueda específica
+        // Analytics sigue siendo devOnly
         { id: 'analytics', label: 'Analíticas', icon: 'chart-line', route: '/analytics', devOnly: true },
-        { id: 'search', label: 'Búsqueda', icon: 'search', route: '/search', devOnly: true },
         { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() },
-        // Workflows & Export/Import are development features for now
-        { id: 'workflows', label: 'Workflows', icon: 'project-diagram', route: '/workflows', devOnly: true },
-        { id: 'export-import', label: 'Export/Import', icon: 'exchange-alt', route: '/export-import', devOnly: true },
-        { id: 'mobile-dashboard', label: 'Dashboard Móvil', icon: 'mobile-alt', route: '/portal', devOnly: true },
-        // Advanced features are dev-only
-        { id: 'advanced', label: 'Funciones Avanzadas', icon: 'rocket', route: '/advanced-features', devOnly: true },
-        // Gestión Módulos should be admin-only
+        // Gestión Módulos debería ser sólo admin
         { id: 'modules', label: 'Gestión Módulos', icon: 'sliders-h', route: '/admin/modulos', roleOnly: 'adminOnly' },
       );
       // If the server enabled client-specific modules for this company, show quick links for them
@@ -196,7 +189,6 @@ export class MobileBottomNavComponent implements OnInit {
     } else {
       // Client specific extra items (placeholder for future)
       items.push(
-        { id: 'search', label: 'Búsqueda', icon: 'search', route: '/search' },
         { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() },
         { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' },
       );
@@ -236,12 +228,12 @@ export class MobileBottomNavComponent implements OnInit {
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const allowed = this._allowedModuleKeys();
-    
+
     // Start from filtered base items. We treat 'more' and 'settings' as special controls
     let base = isClient ? [...this.clientItemsBase] : [...this.baseItems];
     const morePrototype: NavItem | undefined = base.find(b => b.id === 'more');
     const settingsPrototype: NavItem | undefined = base.find(b => b.id === 'settings');
-    
+
     // Remove both 'more' and 'settings' from base - we'll decide which one to show
     base = base.filter(b => b.id !== 'more' && b.id !== 'settings');
 
@@ -273,7 +265,7 @@ export class MobileBottomNavComponent implements OnInit {
       if (allowed.has('moduloServicios')) promoted.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios' });
     }
 
-  // Build extra pool (candidates for More menu, in preferred order)
+    // Build extra pool (candidates for More menu, in preferred order)
     const extras: MoreMenuItem[] = [];
     if (!isClient) {
       extras.push(
@@ -370,7 +362,7 @@ export class MobileBottomNavComponent implements OnInit {
   closeMoreSheet(): void { this.showMoreSheet.set(false); }
   openNotifications(): void {
     // Strategy: navigate to home with query param triggering notification center; adapt as needed
-    this.router.navigate(['/inicio'], { queryParams: { openNotifications: 'true' }});
+    this.router.navigate(['/inicio'], { queryParams: { openNotifications: 'true' } });
   }
 
   navigateAndClose(route: string): void {

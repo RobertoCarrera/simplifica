@@ -1,18 +1,11 @@
 import { Routes } from '@angular/router';
-import { UltraSimpleComponent } from './components/ultra-simple/ultra-simple.component';
 import { SetupDbComponent } from './components/setup-db/setup-db.component';
 import { TicketDetailComponent } from './components/ticket-detail/ticket-detail.component';
 import { ProductsComponent } from './components/products/products.component';
 import { WorksComponent } from './components/works/works.component';
-import { DemoComponentsComponent } from './components/demo-components/demo-components.component';
 import { DashboardAnalyticsComponent } from './components/dashboard-analytics/dashboard-analytics.component';
 import { AdvancedSearchComponent } from './components/advanced-search/advanced-search.component';
-import { WorkflowBuilderComponent } from './components/workflow-builder/workflow-builder.component';
-import { ExportImportManagerComponent } from './components/export-import-manager/export-import-manager.component';
-import { AdvancedFeaturesDashboardComponent } from './components/advanced-features-dashboard/advanced-features-dashboard.component';
 import { OnboardingCenterComponent } from './components/onboarding-center/onboarding-center.component';
-import { MobileDashboardComponent } from './components/mobile-dashboard/mobile-dashboard.component';
-import { AnimationShowcaseComponent } from './components/animation-showcase/animation-showcase.component';
 import { SupabaseCustomersComponent } from './components/supabase-customers/supabase-customers.component';
 import { HomeComponent } from './components/home/home.component';
 import { HelpComponent } from './components/help/help.component';
@@ -21,23 +14,18 @@ import { SupabaseTicketsComponent } from './components/supabase-tickets/supabase
 import { LoginComponent } from './components/login/login.component';
 import { RegisterComponent } from './components/register/register.component';
 import { ConfiguracionComponent } from './components/configuracion/configuracion.component';
-import { SidebarTestComponent } from './components/sidebar-test/sidebar-test.component';
-import { DevSetupComponent } from './components/dev-setup/dev-setup.component';
 import { EmergencyLoginComponent } from './components/emergency-login/emergency-login.component';
-import { DebugDashboardComponent } from './components/debug-dashboard/debug-dashboard.component';
 import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard } from './guards/auth.guard';
 import { ModuleGuard } from './guards/module.guard';
 import { ClientRoleGuard } from './guards/client-role.guard';
 import { AuthCallbackComponent } from './components/auth-callback/auth-callback.component';
 import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
-import { AuthDebugComponent } from './components/auth-debug/auth-debug.component';
 import { EmailConfirmationComponent } from './components/email-confirmation/email-confirmation.component';
 import { CompanyAdminComponent } from './components/company-admin/company-admin.component';
 import { ConsentPortalComponent } from './components/consent-portal/consent-portal.component';
 import { GdprCustomerManagerComponent } from './components/gdpr-customer-manager/gdpr-customer-manager.component';
 import { AnychatComponent } from './components/anychat/anychat.component';
-import { AnychatContactsComponent } from './components/anychat-contacts/anychat-contacts.component';
 import { StagesManagementComponent } from './components/stages-management/stages-management.component';
 import { UnitsManagementComponent } from './components/units-management/units-management.component';
 import { PortalInviteComponent } from './components/portal-invite/portal-invite.component';
@@ -49,25 +37,31 @@ import { PortalInvoicesComponent } from './components/portal-invoices/portal-inv
 import { PortalInvoiceDetailComponent } from './components/portal-invoice-detail/portal-invoice-detail.component';
 import { PortalQuoteDetailComponent } from './components/portal-quote-detail/portal-quote-detail.component';
 import { ModulesAdminComponent } from './components/modules-admin/modules-admin.component';
+import { TestSimpleComponent } from './components/test-simple/test-simple.component';
+import { TestMultitenantComponent } from './components/test-multitenant/test-multitenant.component';
+import { NotificationDemoComponent } from './components/notification-demo/notification-demo.component';
+import { CustomerFormComponent } from './components/customer-form_old/customer-form.component';
+import { MigrateClientsComponent } from './components/migrate-clients/migrate-clients.component';
 import { VerifactuSettingsComponent } from './modules/invoices/verifactu-settings/verifactu-settings.component';
+import { InvoiceSeriesSettingsComponent } from './modules/invoices/invoice-series-settings/invoice-series-settings.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
     {path: '', redirectTo: '/inicio', pathMatch: 'full'},
     {path: 'inicio', component: HomeComponent, canActivate: [AuthGuard]},
-    {path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloClientes' }},
+    {path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard]},
     {path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' }},
     {path: 'ticket/:id', component: TicketDetailComponent, canActivate: [AuthGuard]},
     {path: 'productos', component: ProductsComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloMaterial' }},
     {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' }},
     {path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
-    {path: 'anychat/contacts', component: AnychatContactsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
     {path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloAnaliticas' }},
     {path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full'},
+    {path: 'configuracion/series-facturas', component: InvoiceSeriesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion/verifactu', component: VerifactuSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     // Admin modules management (solo admin)
@@ -115,12 +109,7 @@ export const routes: Routes = [
     {path: 'portal/facturas/:id', component: PortalInvoiceDetailComponent, canActivate: [AuthGuard, ClientRoleGuard]},
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
-    {path: 'sidebar-test', component: SidebarTestComponent, canActivate: [DevGuard]},
-    {path: 'advanced-features', component: AdvancedFeaturesDashboardComponent, canActivate: [DevGuard]},
-    {path: 'workflows', component: WorkflowBuilderComponent, canActivate: [DevGuard]},
-    {path: 'export-import', component: ExportImportManagerComponent, canActivate: [DevGuard]},
-    {path: 'demo', component: DemoComponentsComponent, canActivate: [DevGuard]},
+    // Eliminado: advanced-features, workflows, export-import (consolidados en módulos/producto)
     // Eliminado: notification-demo (usamos solo sistema de toasts)
-    {path: 'search', component: AdvancedSearchComponent, canActivate: [DevGuard]},
-    // Eliminado: notifications (centro de notificaciones personalizado)
+    // Eliminado: search y centro de notificaciones personalizados
 ];

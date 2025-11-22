@@ -1,7 +1,7 @@
 import { Component, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { NotificationService } from '../../services/notification.service';
+import { NotificationStore } from '../../stores/notification.store';
 import { type Notification as AppNotification } from '../../models/notification.interface';
 
 @Component({
@@ -217,17 +217,17 @@ import { type Notification as AppNotification } from '../../models/notification.
   `]
 })
 export class NotificationBellComponent {
-  private notificationService = inject(NotificationService);
+  private notificationStore = inject(NotificationStore);
   private router = inject(Router);
 
   // State
   readonly isOpen = signal(false);
 
   // Computed properties
-  readonly unreadCount = this.notificationService.unreadCount;
-  readonly notifications = this.notificationService.notifications$;
-  
-  readonly recentNotifications = computed(() => 
+  readonly unreadCount = this.notificationStore.unreadCount;
+  readonly notifications = this.notificationStore.allNotifications;
+
+  readonly recentNotifications = computed(() =>
     this.notifications()
       .slice(0, 10) // Show only last 10 notifications
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
@@ -246,13 +246,13 @@ export class NotificationBellComponent {
   }
 
   markAllAsRead(): void {
-    this.notificationService.markAllAsRead();
+    this.notificationStore.markAllAsRead();
   }
 
   handleNotificationClick(notification: AppNotification): void {
     // Mark as read
     if (!notification.read) {
-      this.notificationService.markAsRead(notification.id);
+      this.notificationStore.markAsRead(notification.id);
     }
 
     // Navigate if has action URL
@@ -281,10 +281,10 @@ export class NotificationBellComponent {
     if (minutes < 60) return `${minutes}m`;
     if (hours < 24) return `${hours}h`;
     if (days < 7) return `${days}d`;
-    
-    return timestamp.toLocaleDateString('es-ES', { 
-      day: '2-digit', 
-      month: '2-digit' 
+
+    return timestamp.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit'
     });
   }
 }

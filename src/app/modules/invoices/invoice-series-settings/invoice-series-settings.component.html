@@ -1,0 +1,123 @@
+<div class="container mx-auto py-6 px-4">
+  <h1 class="text-2xl font-semibold mb-4 flex items-center gap-2">
+    <i class="fas fa-layer-group text-blue-600"></i>
+    Series de facturación
+  </h1>
+
+  <p class="text-sm text-gray-600 mb-4">
+    Configura las series de facturas de tu empresa. Debe haber como mínimo una serie activa y una marcada como predeterminada.
+  </p>
+
+  <div *ngIf="error" class="mb-4 p-3 rounded bg-red-50 text-red-700 text-sm">
+    {{ error }}
+  </div>
+
+  <div class="mb-4 flex justify-between items-center">
+    <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm" (click)="startCreate()" *ngIf="!creating">
+      <i class="fas fa-plus mr-1"></i>
+      Nueva serie
+    </button>
+    <div *ngIf="loading" class="text-sm text-gray-500">Cargando...</div>
+  </div>
+
+  <div *ngIf="creating" class="mb-6 border rounded-lg p-4 bg-gray-50">
+    <h2 class="font-semibold mb-3 text-sm">Crear nueva serie</h2>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
+      <div>
+        <label class="block text-xs font-medium mb-1">Código</label>
+        <input class="w-full border rounded px-2 py-1" [(ngModel)]="newSeries.series_code" name="series_code">
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-xs font-medium mb-1">Nombre</label>
+        <input class="w-full border rounded px-2 py-1" [(ngModel)]="newSeries.series_name" name="series_name">
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1">Año</label>
+        <input type="number" class="w-full border rounded px-2 py-1" [(ngModel)]="newSeries.year" name="year">
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1">Prefijo</label>
+        <input class="w-full border rounded px-2 py-1" [(ngModel)]="newSeries.prefix" name="prefix">
+      </div>
+      <div>
+        <label class="block text-xs font-medium mb-1">Siguiente número</label>
+        <input type="number" min="1" class="w-full border rounded px-2 py-1" [(ngModel)]="newSeries.next_number" name="next_number">
+      </div>
+      <div class="flex items-center gap-2 mt-5">
+        <input type="checkbox" [(ngModel)]="newSeries.is_active" name="is_active" class="h-4 w-4">
+        <span class="text-xs">Activa</span>
+      </div>
+      <div class="flex items-center gap-2 mt-5">
+        <input type="checkbox" [(ngModel)]="newSeries.is_default" name="is_default" class="h-4 w-4">
+        <span class="text-xs">Predeterminada</span>
+      </div>
+      <div class="flex items-center gap-2 mt-5">
+        <input type="checkbox" [(ngModel)]="newSeries.verifactu_enabled" name="verifactu_enabled" class="h-4 w-4">
+        <span class="text-xs">VeriFactu</span>
+      </div>
+    </div>
+    <div class="mt-4 flex gap-2 justify-end text-sm">
+      <button type="button" class="px-3 py-1 rounded border" (click)="cancelCreate()">Cancelar</button>
+      <button type="button" class="px-4 py-1 rounded bg-blue-600 text-white" (click)="createSeries()">Guardar</button>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto border rounded-lg">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-3 py-2 text-left">Código</th>
+          <th class="px-3 py-2 text-left">Nombre</th>
+          <th class="px-3 py-2 text-left">Año</th>
+          <th class="px-3 py-2 text-left">Prefijo</th>
+          <th class="px-3 py-2 text-left">Siguiente Nº</th>
+          <th class="px-3 py-2 text-left">Activa</th>
+          <th class="px-3 py-2 text-left">Predeterminada</th>
+          <th class="px-3 py-2 text-left">VeriFactu</th>
+          <th class="px-3 py-2"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let s of series" class="border-t">
+          <td class="px-3 py-2">{{ s.series_code }}</td>
+          <td class="px-3 py-2">{{ s.series_name }}</td>
+          <td class="px-3 py-2">{{ s.year }}</td>
+          <td class="px-3 py-2">{{ s.prefix }}</td>
+          <td class="px-3 py-2">{{ s.next_number }}</td>
+          <td class="px-3 py-2">
+            <button type="button"
+                    class="px-2 py-1 rounded text-xs"
+                    [ngClass]="s.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                    (click)="toggleActive(s)">
+              {{ s.is_active ? 'Activa' : 'Inactiva' }}
+            </button>
+          </td>
+          <td class="px-3 py-2">
+            <button type="button"
+                    class="px-2 py-1 rounded text-xs"
+                    [ngClass]="s.is_default ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'"
+                    (click)="toggleDefault(s)">
+              {{ s.is_default ? 'Por defecto' : '—' }}
+            </button>
+          </td>
+          <td class="px-3 py-2">
+            <button type="button"
+                    class="px-2 py-1 rounded text-xs"
+                    [ngClass]="s.verifactu_enabled ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'"
+                    (click)="toggleVerifactu(s)">
+              {{ s.verifactu_enabled ? 'Sí' : 'No' }}
+            </button>
+          </td>
+          <td class="px-3 py-2 text-right text-xs text-gray-400">
+            {{ s.updated_at | date:'short' }}
+          </td>
+        </tr>
+        <tr *ngIf="!loading && series.length === 0">
+          <td class="px-3 py-4 text-center text-gray-500" colspan="9">
+            No hay series configuradas todavía.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
