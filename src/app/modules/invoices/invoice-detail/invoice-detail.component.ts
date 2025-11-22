@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
@@ -15,10 +15,10 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
   template: `
   <div class="p-4" *ngIf="invoice() as inv">
     <div class="flex items-center justify-between mb-4">
-  <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-3">
-    Factura {{ formatNumber(inv) }}
-    <app-verifactu-badge *ngIf="inv" [invoice]="inv"></app-verifactu-badge>
-  </h1>
+      <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-3">
+        Factura {{ formatNumber(inv) }}
+        <app-verifactu-badge *ngIf="inv" [invoice]="inv"></app-verifactu-badge>
+      </h1>
       <div class="flex items-center gap-3">
         <!-- Dispatcher health pill -->
         <span *ngIf="dispatcherHealth() as h"
@@ -31,8 +31,8 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
         <a class="px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100" routerLink="/facturacion">Volver</a>
         <button class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700" (click)="downloadPdf(inv.id)">Descargar PDF</button>
         <button class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700" (click)="cancelInvoice(inv.id)">Anular</button>
-  <button class="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60" [disabled]="sendingEmail()" (click)="sendEmail(inv.id)">{{ sendingEmail() ? 'Enviando…' : 'Enviar por email' }}</button>
-        <app-issue-verifactu-button [invoiceId]="inv.id" (issued)="onIssued()"></app-issue-verifactu-button>
+        <button class="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60" [disabled]="sendingEmail()" (click)="sendEmail(inv.id)">{{ sendingEmail() ? 'Enviando…' : 'Enviar por email' }}</button>
+        <app-issue-verifactu-button *ngIf="inv.status === 'draft'" [invoiceId]="inv.id" (issued)="onIssued()"></app-issue-verifactu-button>
       </div>
     </div>
 
@@ -53,15 +53,21 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 md:col-span-2">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200">Estado VeriFactu</h2>
-          <div class="flex gap-2">
+          <div class="flex gap-2 items-center">
             <button class="px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600"
                     (click)="refreshVerifactu(inv.id)">
               Actualizar
             </button>
-            <button class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                    (click)="runDispatcher()">
-              Ejecutar dispatcher
-            </button>
+            
+            <!-- Info badge for auto-dispatch -->
+            <div *ngIf="verifactuMeta()?.status === 'pending' || verifactuMeta()?.status === 'sending'" 
+                 class="flex items-center text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded border border-amber-200 dark:border-amber-800">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>Envío automático en curso</span>
+            </div>
+
             <button class="px-3 py-1.5 rounded bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     [disabled]="!canRetry()"
                     (click)="retry(inv.id)">
@@ -139,7 +145,7 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
   </div>
   `
 })
-export class InvoiceDetailComponent implements OnInit {
+export class InvoiceDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private invoicesService = inject(SupabaseInvoicesService);
   private toast = inject(ToastService);
@@ -149,6 +155,7 @@ export class InvoiceDetailComponent implements OnInit {
   vfConfig = signal<{ maxAttempts: number; backoffMinutes: number[] } | null>(null);
   sendingEmail = signal(false);
   dispatcherHealth = signal<{ pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; } | null>(null);
+  private refreshInterval: any;
 
   attemptsDisplay = computed(() => {
     const last = this.latestRelevantEvent();
@@ -201,6 +208,19 @@ export class InvoiceDetailComponent implements OnInit {
       next: (h) => this.dispatcherHealth.set(h),
       error: () => this.dispatcherHealth.set({ pending: 0, lastEventAt: null, lastAcceptedAt: null, lastRejectedAt: null })
     });
+
+    // Auto-refresh polling
+    this.refreshInterval = setInterval(() => {
+      const meta = this.verifactuMeta();
+      if (meta && (meta.status === 'pending' || meta.status === 'sending')) {
+        const id = this.route.snapshot.paramMap.get('id');
+        if (id) this.refreshVerifactu(id);
+      }
+    }, 5000);
+  }
+
+  ngOnDestroy() {
+    if (this.refreshInterval) clearInterval(this.refreshInterval);
   }
 
   downloadPdf(invoiceId: string) {
@@ -220,16 +240,6 @@ export class InvoiceDetailComponent implements OnInit {
     this.invoicesService.getVerifactuEvents(invoiceId).subscribe({
       next: (list) => this.verifactuEvents.set(list || []),
       error: (e) => console.warn('VF events err', e)
-    });
-  }
-
-  runDispatcher() {
-    this.invoicesService.runDispatcherNow().subscribe({
-      next: () => {
-        const id = this.route.snapshot.paramMap.get('id');
-        if (id) this.refreshVerifactu(id);
-      },
-      error: (e) => console.error('Dispatcher error', e)
     });
   }
 
