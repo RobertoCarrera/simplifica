@@ -40,10 +40,10 @@ serve(async (req) => {
     const { data: profile } = await supabaseClient
       .from('profiles')
       .select('last_session_at')
-      .eq('id', user.id)
+      .eq('user_id', user.id)
       .single();
 
-    const lastSessionAt = profile?.last_session_at 
+    const lastSessionAt = profile?.last_session_at
       ? new Date(profile.last_session_at)
       : new Date(Date.now() - 24 * 60 * 60 * 1000); // Default: last 24h
 
@@ -83,7 +83,7 @@ serve(async (req) => {
     await supabaseClient
       .from('profiles')
       .update({ last_session_at: new Date().toISOString() })
-      .eq('id', user.id);
+      .eq('user_id', user.id);
 
     const stats: QuoteStats = {
       pendingTotal: pendingTotal || 0,

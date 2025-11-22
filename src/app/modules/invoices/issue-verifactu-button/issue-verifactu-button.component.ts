@@ -46,8 +46,8 @@ export class IssueVerifactuButtonComponent implements OnInit, OnDestroy {
   errors = signal<string[]>([]);
   hash = signal<string | null>(null);
 
-  ngOnInit() {}
-  ngOnDestroy() {}
+  ngOnInit() { }
+  ngOnDestroy() { }
 
   async onClick() {
     if (!this.invoiceId) return;
@@ -59,8 +59,19 @@ export class IssueVerifactuButtonComponent implements OnInit, OnDestroy {
       // Do not call RPC validate_invoice_before_issue from the frontend —
       // the Edge Function `issue-invoice` runs `verifactu_preflight_issue` internally
       // and returns structured validation errors when appropriate.
-      const res = await this.vf.issueInvoice({ invoiceid: this.invoiceId }).toPromise();
+      const res: any = await this.vf.issueInvoice({ invoiceid: this.invoiceId }).toPromise();
       if (!res) throw new Error('No se recibió respuesta del servidor');
+
+      if (res.ok === false) {
+        if (res.errors && Array.isArray(res.errors)) {
+          this.errors.set(res.errors);
+          this.toast.error('Verifactu', 'La factura no es válida para emisión Verifactu');
+          this.error.emit('validation');
+          this.state.set('idle');
+          return;
+        }
+        throw new Error(res.error || 'Error desconocido al emitir');
+      }
 
       this.hash.set(res.hash);
       this.state.set('done');

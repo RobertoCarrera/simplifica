@@ -155,15 +155,17 @@ export class InvoiceDetailComponent implements OnInit {
     const cfg = this.vfConfig();
     const max = cfg?.maxAttempts ?? 7;
     const used = last ? (last.attempts ?? 0) : 0;
+    if (last?.status === 'accepted' || last?.status === 'sent') return '-';
     return `${Math.min(used, max)}/${max}`;
   });
 
   nextRetryDisplay = computed(() => {
     const last = this.latestRelevantEvent();
     if (!last) return '-';
+    if (last.status === 'accepted' || last.status === 'sent') return '-';
     const cfg = this.vfConfig();
     const max = cfg?.maxAttempts ?? 7;
-    const backoff = cfg?.backoffMinutes ?? [0,1,5,15,60,180,720];
+    const backoff = cfg?.backoffMinutes ?? [0, 1, 5, 15, 60, 180, 720];
     const attempts = last.attempts ?? 0;
     if (attempts >= max) return '—';
     const idx = Math.min(attempts, backoff.length - 1);
@@ -201,11 +203,11 @@ export class InvoiceDetailComponent implements OnInit {
     });
   }
 
-  downloadPdf(invoiceId: string){
+  downloadPdf(invoiceId: string) {
     this.invoicesService.getInvoicePdfUrl(invoiceId).subscribe({
       next: (signed) => window.open(signed, '_blank'),
       error: (e) => {
-        try { this.toast.error('No se pudo generar el PDF', e?.message || String(e)); } catch {}
+        try { this.toast.error('No se pudo generar el PDF', e?.message || String(e)); } catch { }
       }
     });
   }
@@ -221,7 +223,7 @@ export class InvoiceDetailComponent implements OnInit {
     });
   }
 
-  runDispatcher(){
+  runDispatcher() {
     this.invoicesService.runDispatcherNow().subscribe({
       next: () => {
         const id = this.route.snapshot.paramMap.get('id');
@@ -231,7 +233,7 @@ export class InvoiceDetailComponent implements OnInit {
     });
   }
 
-  retry(invoiceId: string){
+  retry(invoiceId: string) {
     this.invoicesService.retryVerifactu(invoiceId).subscribe({
       next: () => this.refreshVerifactu(invoiceId),
       error: (e) => console.error('Retry error', e)
@@ -263,11 +265,11 @@ export class InvoiceDetailComponent implements OnInit {
     return pending || list[0];
   }
 
-  cancelInvoice(invoiceId: string){
+  cancelInvoice(invoiceId: string) {
     if (!confirm('¿Anular esta factura? Se enviará anulación a AEAT.')) return;
     this.invoicesService.cancelInvoiceWithAEAT(invoiceId).subscribe({
       next: () => {
-        try { this.toast.success('Anulación enviada', 'Se ha solicitado la anulación a AEAT'); } catch {}
+        try { this.toast.success('Anulación enviada', 'Se ha solicitado la anulación a AEAT'); } catch { }
         // Reload invoice and verifactu state
         this.invoicesService.getInvoice(invoiceId).subscribe({
           next: (inv) => this.invoice.set(inv),
@@ -277,32 +279,32 @@ export class InvoiceDetailComponent implements OnInit {
       },
       error: (e) => {
         const msg = 'Error al anular: ' + (e?.message || e);
-        try { this.toast.error('Error', msg); } catch {}
+        try { this.toast.error('Error', msg); } catch { }
         console.error(msg);
       }
     });
   }
 
-  sendEmail(invoiceId: string){
+  sendEmail(invoiceId: string) {
     const inv = this.invoice();
     const to = inv?.client?.email?.trim();
     if (!to) {
-      try { this.toast.error('No se puede enviar', 'El cliente no tiene email configurado'); } catch {}
+      try { this.toast.error('No se puede enviar', 'El cliente no tiene email configurado'); } catch { }
       return;
     }
-  const num = this.formatNumber(inv || undefined) || undefined;
+    const num = this.formatNumber(inv || undefined) || undefined;
     const subject = num ? `Tu factura ${num}` : 'Tu factura';
     const message = 'Te enviamos tu factura. Puedes descargar el PDF desde el enlace seguro proporcionado.';
     this.sendingEmail.set(true);
     this.invoicesService.sendInvoiceEmail(invoiceId, to, subject, message).subscribe({
       next: () => {
         this.sendingEmail.set(false);
-        try { this.toast.success('Email enviado', 'La factura ha sido enviada'); } catch {}
+        try { this.toast.success('Email enviado', 'La factura ha sido enviada'); } catch { }
       },
       error: (e) => {
         this.sendingEmail.set(false);
         const msg = 'Error al enviar email: ' + (e?.message || e);
-        try { this.toast.error('Error al enviar', msg); } catch {}
+        try { this.toast.error('Error al enviar', msg); } catch { }
       }
     });
   }
