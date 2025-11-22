@@ -97,6 +97,31 @@ export class SupabaseInvoicesService {
   }
 
   /**
+   * Suscribirse a cambios en tiempo real de VeriFactu para una factura
+   */
+  subscribeToVerifactuChanges(invoiceId: string, callback: () => void): { unsubscribe: () => void } {
+    const channel = this.supabase
+      .channel(`verifactu-${invoiceId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'verifactu', table: 'invoice_meta', filter: `invoice_id=eq.${invoiceId}` },
+        () => callback()
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'verifactu', table: 'events', filter: `invoice_id=eq.${invoiceId}` },
+        () => callback()
+      )
+      .subscribe();
+
+    return {
+      unsubscribe: () => {
+        this.supabase.removeChannel(channel);
+      }
+    };
+  }
+
+  /**
    * Ejecuta el dispatcher inmediatamente (procesa eventos pendientes)
    */
   runDispatcherNow(): Observable<any> {
@@ -900,7 +925,8 @@ export class SupabaseInvoicesService {
               paid: 0,
               partial: 0,
               overdue: 0,
-              cancelled: 0
+              cancelled: 0,
+              void: 0
             },
             monthly_revenue: []
           };

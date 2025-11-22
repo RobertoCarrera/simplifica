@@ -9,7 +9,8 @@ export enum InvoiceStatus {
   PAID = 'paid',
   PARTIAL = 'partial',
   OVERDUE = 'overdue',
-  CANCELLED = 'cancelled'
+  CANCELLED = 'cancelled',
+  VOID = 'void'
 }
 
 export enum PaymentMethod {
@@ -51,36 +52,36 @@ export interface Invoice {
   company_id: string;
   client_id: string;
   series_id: string;
-  
+
   // Numeración
   invoice_number: string;
   invoice_series: string;
   full_invoice_number?: string; // Generated
-  
+
   // Tipo y fechas
   invoice_type: InvoiceType;
   invoice_date: string;
   due_date: string;
-  
+
   // Importes
   subtotal: number;
   tax_amount: number;
   total: number;
   paid_amount: number;
   currency: string;
-  
+
   // Estado
   status: InvoiceStatus;
   payment_method?: PaymentMethod;
-  
+
   // Notas
   notes?: string;
   internal_notes?: string;
-  
+
   // Rectificativa
   rectifies_invoice_id?: string;
   rectification_reason?: string;
-  
+
   // Veri*Factu
   verifactu_hash?: string;
   verifactu_signature?: string;
@@ -88,18 +89,18 @@ export interface Invoice {
   verifactu_qr_code?: string;
   verifactu_xml?: string;
   verifactu_chain_position?: number;
-  
+
   // GDPR
   anonymized_at?: string;
   retention_until?: string; // Generated
   gdpr_legal_basis: string;
-  
+
   // Auditoría
   created_at: string;
   updated_at: string;
   created_by?: string;
   deleted_at?: string;
-  
+
   // Relaciones (para populate)
   client?: any;
   series?: InvoiceSeries;
@@ -230,7 +231,8 @@ export const InvoiceStatusLabels: Record<InvoiceStatus, string> = {
   [InvoiceStatus.PAID]: 'Pagada',
   [InvoiceStatus.PARTIAL]: 'Pago parcial',
   [InvoiceStatus.OVERDUE]: 'Vencida',
-  [InvoiceStatus.CANCELLED]: 'Cancelada'
+  [InvoiceStatus.CANCELLED]: 'Cancelada',
+  [InvoiceStatus.VOID]: 'Anulada'
 };
 
 export const PaymentMethodLabels: Record<PaymentMethod, string> = {
@@ -276,7 +278,7 @@ export function calculateItemTotal(
   const subtotal = calculateItemSubtotal(quantity, unit_price, discount_percent);
   const tax_amount = calculateItemTax(subtotal, tax_rate);
   const total = subtotal + tax_amount;
-  
+
   return {
     subtotal: parseFloat(subtotal.toFixed(2)),
     tax_amount: parseFloat(tax_amount.toFixed(2)),
@@ -291,7 +293,8 @@ export function getInvoiceStatusColor(status: InvoiceStatus): string {
     [InvoiceStatus.PAID]: 'green',
     [InvoiceStatus.PARTIAL]: 'yellow',
     [InvoiceStatus.OVERDUE]: 'red',
-    [InvoiceStatus.CANCELLED]: 'dark'
+    [InvoiceStatus.CANCELLED]: 'dark',
+    [InvoiceStatus.VOID]: 'gray'
   };
   return colors[status];
 }
@@ -301,16 +304,16 @@ export function isInvoiceEditable(invoice: Invoice): boolean {
 }
 
 export function isInvoiceCancellable(invoice: Invoice): boolean {
-  return invoice.status !== InvoiceStatus.CANCELLED && 
-         invoice.status !== InvoiceStatus.PAID &&
-         !invoice.deleted_at;
+  return invoice.status !== InvoiceStatus.CANCELLED &&
+    invoice.status !== InvoiceStatus.PAID &&
+    !invoice.deleted_at;
 }
 
 export function canAddPayment(invoice: Invoice): boolean {
   return invoice.status !== InvoiceStatus.CANCELLED &&
-         invoice.status !== InvoiceStatus.PAID &&
-         invoice.paid_amount < invoice.total &&
-         !invoice.deleted_at;
+    invoice.status !== InvoiceStatus.PAID &&
+    invoice.paid_amount < invoice.total &&
+    !invoice.deleted_at;
 }
 
 export function getRemainingAmount(invoice: Invoice): number {
@@ -335,7 +338,7 @@ export function formatInvoiceNumber(invoice: Invoice | string): string {
     raw = invoice;
   } else if (invoice) {
     raw = invoice.full_invoice_number ||
-          (invoice.invoice_series && invoice.invoice_number ? `${invoice.invoice_series}-${invoice.invoice_number}` : undefined);
+      (invoice.invoice_series && invoice.invoice_number ? `${invoice.invoice_series}-${invoice.invoice_number}` : undefined);
   }
   if (!raw) return '';
   // Reemplazar el segmento central de serie por F: YYYY-X-##### -> YYYY-F-#####

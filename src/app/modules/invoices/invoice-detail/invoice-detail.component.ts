@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal, computed, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
 import { ToastService } from '../../../services/toast.service';
 import { Invoice, formatInvoiceNumber } from '../../../models/invoice.model';
@@ -30,7 +31,8 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
         </span>
         <a class="px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100" routerLink="/facturacion">Volver</a>
         <button class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700" (click)="downloadPdf(inv.id)">Descargar PDF</button>
-        <button class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700" (click)="cancelInvoice(inv.id)">Anular</button>
+        <button class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700" *ngIf="inv.status !== 'draft' && inv.status !== 'void' && inv.status !== 'cancelled'" (click)="cancelInvoice(inv.id)">Anular</button>
+        <button class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" *ngIf="inv.status !== 'draft'" (click)="rectify(inv.id)">Rectificar</button>
         <button class="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60" [disabled]="sendingEmail()" (click)="sendEmail(inv.id)">{{ sendingEmail() ? 'Enviando…' : 'Enviar por email' }}</button>
         <app-issue-verifactu-button *ngIf="inv.status === 'draft'" [invoiceId]="inv.id" (issued)="onIssued()"></app-issue-verifactu-button>
       </div>
@@ -54,10 +56,7 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200">Estado VeriFactu</h2>
           <div class="flex gap-2 items-center">
-            <button class="px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600"
-                    (click)="refreshVerifactu(inv.id)">
-              Actualizar
-            </button>
+
             
             <!-- Info badge for auto-dispatch -->
             <div *ngIf="verifactuMeta()?.status === 'pending' || verifactuMeta()?.status === 'sending'" 
@@ -68,11 +67,7 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
               <span>Envío automático en curso</span>
             </div>
 
-            <button class="px-3 py-1.5 rounded bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    [disabled]="!canRetry()"
-                    (click)="retry(inv.id)">
-              Reintentar envío
-            </button>
+
           </div>
         </div>
 
@@ -81,7 +76,7 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
             <span class="text-sm text-gray-600 dark:text-gray-300">Serie/Número:</span>
             <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ meta.series }}-{{ meta.number }}</span>
             <span class="ml-auto inline-flex items-center px-2 py-1 rounded text-xs font-medium"
-                  [ngClass]="statusChipClass(meta.status)">{{ meta.status }}</span>
+                  [ngClass]="statusChipClass(meta.status)">{{ getStatusLabel(meta.status) }}</span>
           </div>
           <div class="flex flex-wrap items-center gap-4 mb-3">
             <div class="text-sm text-gray-700 dark:text-gray-300">Intentos: <span class="font-medium text-gray-900 dark:text-gray-100">{{ attemptsDisplay() }}</span></div>
@@ -121,9 +116,9 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
                       <td class="px-3 py-2 text-gray-800 dark:text-gray-200">{{ ev.created_at | date:'short' }}</td>
                       <td class="px-3 py-2 text-gray-800 dark:text-gray-200">{{ ev.event_type }}</td>
                       <td class="px-3 py-2">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" [ngClass]="statusChipClass(ev.status)">{{ ev.status }}</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" [ngClass]="statusChipClass(ev.status)">{{ getStatusLabel(ev.status) }}</span>
                       </td>
-                      <td class="px-3 py-2 text-gray-800 dark:text-gray-200">{{ ev.attempts || 0 }}</td>
+                      <td class="px-3 py-2 text-gray-800 dark:text-gray-200">{{ (ev.attempts || 0) + 1 }}</td>
                       <td class="px-3 py-2 text-gray-600 dark:text-gray-300 truncate max-w-[24ch]">{{ ev.last_error || '-' }}</td>
                     </tr>
                   }
@@ -147,7 +142,9 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
 })
 export class InvoiceDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private invoicesService = inject(SupabaseInvoicesService);
+  private quotesService = inject(SupabaseQuotesService);
   private toast = inject(ToastService);
   invoice = signal<Invoice | null>(null);
   verifactuMeta = signal<any | null>(null);
@@ -156,17 +153,26 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   sendingEmail = signal(false);
   dispatcherHealth = signal<{ pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; } | null>(null);
   private refreshInterval: any;
+  private realtimeSub: { unsubscribe: () => void } | null = null;
+
+  now = signal(Date.now());
 
   attemptsDisplay = computed(() => {
     const last = this.latestRelevantEvent();
     const cfg = this.vfConfig();
     const max = cfg?.maxAttempts ?? 7;
-    const used = last ? (last.attempts ?? 0) : 0;
+    // If we have an event, at least 1 attempt has been made.
+    // attempts in DB usually means "retries" (0 = 1st attempt).
+    // So we show attempts + 1.
+    const used = last ? ((last.attempts ?? 0) + 1) : 0;
+
     if (last?.status === 'accepted' || last?.status === 'sent') return '-';
     return `${Math.min(used, max)}/${max}`;
   });
 
   nextRetryDisplay = computed(() => {
+    // Depend on this.now() to trigger updates
+    const _now = this.now();
     const last = this.latestRelevantEvent();
     if (!last) return '-';
     if (last.status === 'accepted' || last.status === 'sent') return '-';
@@ -179,7 +185,7 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     const waitMin = backoff[idx] ?? 0;
     const lastTs = last.sent_at ? new Date(last.sent_at).getTime() : new Date(last.created_at).getTime();
     const eta = lastTs + waitMin * 60_000;
-    const diff = eta - Date.now();
+    const diff = eta - _now;
     if (diff <= 0) return 'inminente';
     const mins = Math.ceil(diff / 60_000);
     if (mins < 60) return `~${mins} min`;
@@ -197,6 +203,11 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
       });
       // Load VeriFactu info
       this.refreshVerifactu(id);
+
+      // Subscribe to Realtime
+      this.realtimeSub = this.invoicesService.subscribeToVerifactuChanges(id, () => {
+        this.refreshVerifactu(id);
+      });
     }
     // Load VF config from server
     this.invoicesService.getVerifactuConfig().subscribe({
@@ -209,18 +220,22 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
       error: () => this.dispatcherHealth.set({ pending: 0, lastEventAt: null, lastAcceptedAt: null, lastRejectedAt: null })
     });
 
-    // Auto-refresh polling
+    // Auto-refresh polling & Clock tick
     this.refreshInterval = setInterval(() => {
+      this.now.set(Date.now()); // Update clock
+
       const meta = this.verifactuMeta();
-      if (meta && (meta.status === 'pending' || meta.status === 'sending')) {
-        const id = this.route.snapshot.paramMap.get('id');
-        if (id) this.refreshVerifactu(id);
-      }
+      // Poll if pending/sending OR if we are waiting for a retry (to catch the transition)
+      // Actually, just poll every 5s if there is any active VeriFactu process or just always?
+      // User requested "constant update". 5s is reasonable.
+      const id = this.route.snapshot.paramMap.get('id');
+      if (id) this.refreshVerifactu(id);
     }, 5000);
   }
 
   ngOnDestroy() {
     if (this.refreshInterval) clearInterval(this.refreshInterval);
+    if (this.realtimeSub) this.realtimeSub.unsubscribe();
   }
 
   downloadPdf(invoiceId: string) {
@@ -243,19 +258,15 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  retry(invoiceId: string) {
-    this.invoicesService.retryVerifactu(invoiceId).subscribe({
-      next: () => this.refreshVerifactu(invoiceId),
-      error: (e) => console.error('Retry error', e)
-    });
-  }
-
-  canRetry(): boolean {
-    const events = this.verifactuEvents();
-    if (!events || events.length === 0) return false;
-    const last = events[0];
-    // Retry allowed if last known event is rejected and attempts < MAX_ATTEMPTS (UI doesn't know exact limit; rely on server to enforce)
-    return last.status === 'rejected';
+  getStatusLabel(status: string): string {
+    const s = (status || '').toLowerCase();
+    if (s === 'void') return 'Anulada';
+    if (s === 'pending') return 'Pendiente';
+    if (s === 'sending') return 'Enviando';
+    if (s === 'sent') return 'Enviada';
+    if (s === 'accepted') return 'Aceptada';
+    if (s === 'rejected') return 'Rechazada';
+    return status;
   }
 
   statusChipClass(status: string): string {
@@ -291,6 +302,20 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
         const msg = 'Error al anular: ' + (e?.message || e);
         try { this.toast.error('Error', msg); } catch { }
         console.error(msg);
+      }
+    });
+  }
+
+  rectify(invoiceId: string) {
+    if (!confirm('¿Crear una rectificación para esta factura? Se generará un nuevo presupuesto borrador copia de esta factura.')) return;
+    this.quotesService.createRectificationQuote(invoiceId).subscribe({
+      next: (quoteId) => {
+        try { this.toast.success('Rectificación creada', 'Se ha generado el presupuesto de rectificación'); } catch { }
+        this.router.navigate(['/presupuestos', quoteId]);
+      },
+      error: (e) => {
+        const msg = 'No se pudo crear la rectificación: ' + (e?.message || e);
+        try { this.toast.error('Error', msg); } catch { }
       }
     });
   }

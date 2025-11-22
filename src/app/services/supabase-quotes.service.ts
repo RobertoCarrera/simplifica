@@ -73,7 +73,7 @@ export class SupabaseQuotesService {
       if (filters.client_id) {
         query = query.eq('client_id', filters.client_id);
       }
-      
+
       if (filters.status) {
         if (Array.isArray(filters.status)) {
           query = query.in('status', filters.status);
@@ -81,19 +81,19 @@ export class SupabaseQuotesService {
           query = query.eq('status', filters.status);
         }
       }
-      
+
       if (filters.from_date) {
         query = query.gte('quote_date', filters.from_date);
       }
-      
+
       if (filters.to_date) {
         query = query.lte('quote_date', filters.to_date);
       }
-      
+
       if (filters.search) {
         query = query.or(`title.ilike.%${filters.search}%,full_quote_number.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
       }
-      
+
       if (filters.is_expired !== undefined) {
         if (filters.is_expired) {
           query = query.lt('valid_until', new Date().toISOString().split('T')[0]);
@@ -101,7 +101,7 @@ export class SupabaseQuotesService {
           query = query.gte('valid_until', new Date().toISOString().split('T')[0]);
         }
       }
-      
+
       if (filters.has_invoice !== undefined) {
         if (filters.has_invoice) {
           query = query.not('invoice_id', 'is', null);
@@ -153,7 +153,7 @@ export class SupabaseQuotesService {
     return data as Quote;
   }
 
-  
+
 
   /**
    * Crear un nuevo presupuesto
@@ -166,9 +166,9 @@ export class SupabaseQuotesService {
     const companyId = this.authService.companyId();
     if (!companyId) throw new Error('No company ID available');
 
-  const userProfile = await firstValueFrom(this.authService.userProfile$);
-  // created_by must reference auth.users(id), not public.users(id)
-  const createdBy = this.authService.currentUser?.id || userProfile?.auth_user_id || null;
+    const userProfile = await firstValueFrom(this.authService.userProfile$);
+    // created_by must reference auth.users(id), not public.users(id)
+    const createdBy = this.authService.currentUser?.id || userProfile?.auth_user_id || null;
 
     const client = this.supabaseClient.instance;
 
@@ -276,6 +276,20 @@ export class SupabaseQuotesService {
 
     // Obtener presupuesto completo con items
     return this.executeGetQuote(quote.id);
+  }
+
+  /**
+   * Crear un presupuesto de rectificación desde una factura
+   */
+  createRectificationQuote(invoiceId: string): Observable<string> {
+    return from(this.executeCreateRectificationQuote(invoiceId));
+  }
+
+  private async executeCreateRectificationQuote(invoiceId: string): Promise<string> {
+    const client = this.supabaseClient.instance;
+    const { data, error } = await client.rpc('create_rectification_quote', { p_invoice_id: invoiceId });
+    if (error) throw error;
+    return data as string;
   }
 
   /**
@@ -527,7 +541,7 @@ export class SupabaseQuotesService {
     return this.executeGetQuote(id);
   }
 
-  
+
 
   /**
    * Rechazar presupuesto
