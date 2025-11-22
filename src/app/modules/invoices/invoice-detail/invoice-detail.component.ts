@@ -34,7 +34,13 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
         <button class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700" *ngIf="(inv.status !== 'draft' || verifactuMeta()?.status === 'accepted') && inv.status !== 'void' && inv.status !== 'cancelled'" (click)="cancelInvoice(inv.id)">Anular</button>
         <button class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" *ngIf="inv.status !== 'draft' || verifactuMeta()?.status === 'accepted'" (click)="rectify(inv.id)">Rectificar</button>
         <button class="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60" [disabled]="sendingEmail()" (click)="sendEmail(inv.id)">{{ sendingEmail() ? 'Enviando…' : 'Enviar por email' }}</button>
-        <app-issue-verifactu-button *ngIf="inv.status === 'draft' && verifactuMeta()?.status !== 'accepted'" [invoiceId]="inv.id" (issued)="onIssued()"></app-issue-verifactu-button>
+        
+        <!-- Hide button if sending/pending or accepted -->
+        <app-issue-verifactu-button 
+          *ngIf="inv.status === 'draft' && verifactuMeta()?.status !== 'accepted' && verifactuMeta()?.status !== 'sending' && verifactuMeta()?.status !== 'pending'" 
+          [invoiceId]="inv.id" 
+          (issued)="onIssued()">
+        </app-issue-verifactu-button>
       </div>
     </div>
 
@@ -47,8 +53,8 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
       </div>
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
         <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Importes</h2>
-        <p class="text-sm text-gray-600 dark:text-gray-300">Subtotal: {{ inv.subtotal | number:'1.2-2' }} {{ inv.currency }}</p>
-        <p class="text-sm text-gray-600 dark:text-gray-300">Impuestos: {{ inv.tax_amount | number:'1.2-2' }} {{ inv.currency }}</p>
+        <p class="text-sm text-gray-600 dark:text-gray-300">Base Imponible: {{ inv.subtotal | number:'1.2-2' }} {{ inv.currency }}</p>
+        <p class="text-sm text-gray-600 dark:text-gray-300">IVA: {{ inv.tax_amount | number:'1.2-2' }} {{ inv.currency }}</p>
         <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Total: {{ inv.total | number:'1.2-2' }} {{ inv.currency }}</p>
       </div>
       <!-- VeriFactu Status -->
@@ -83,10 +89,11 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
             <div class="text-sm text-gray-700 dark:text-gray-300">Próximo intento: <span class="font-medium text-gray-900 dark:text-gray-100">{{ nextRetryDisplay() }}</span></div>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
+            <!-- Hidden Hash ID as requested -->
+            <!-- <div>
               <div class="text-xs text-gray-500 dark:text-gray-400">Hash</div>
               <div class="text-sm text-gray-800 dark:text-gray-200 truncate">{{ meta.chained_hash }}</div>
-            </div>
+            </div> -->
             <div>
               <div class="text-xs text-gray-500 dark:text-gray-400">Emitida</div>
               <div class="text-sm text-gray-800 dark:text-gray-200">{{ meta.issue_time | date:'short' }}</div>

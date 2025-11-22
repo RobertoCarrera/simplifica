@@ -2,18 +2,24 @@
 
   <!-- Tabs: Perfil | Empresa | Ayuda | Ajustes -->
   <div class="flex flex-wrap justify-center gap-2 mb-2">
-    <button (click)="activeTab='perfil'" [class]="activeTab==='perfil' ? 'px-3 py-2 rounded-lg bg-blue-600 text-white' : 'px-3 py-2 rounded-lg bg-gray-100 text-gray-700'">Mi Perfil</button>
-    <button (click)="activeTab='empresa'" [class]="activeTab==='empresa' ? 'px-3 py-2 rounded-lg bg-blue-600 text-white' : 'px-3 py-2 rounded-lg bg-gray-100 text-gray-700'">Empresa</button>
-    <button (click)="activeTab='ayuda'" [class]="activeTab==='ayuda' ? 'px-3 py-2 rounded-lg bg-blue-600 text-white' : 'px-3 py-2 rounded-lg bg-gray-100 text-gray-700'">Ayuda</button>
-    <button (click)="activeTab='ajustes'" [class]="activeTab==='ajustes' ? 'px-3 py-2 rounded-lg bg-blue-600 text-white' : 'px-3 py-2 rounded-lg bg-gray-100 text-gray-700'">Ajustes</button>
+    <button (click)="activeTab='perfil'"
+      [class]="activeTab==='perfil' ? 'px-3 py-2 rounded-lg bg-blue-600 text-white' : 'px-3 py-2 rounded-lg bg-gray-100 text-gray-700'">Mi
+      Perfil</button>
+    <button (click)="activeTab='empresa'"
+      [class]="activeTab==='empresa' ? 'px-3 py-2 rounded-lg bg-blue-600 text-white' : 'px-3 py-2 rounded-lg bg-gray-100 text-gray-700'">Empresa</button>
+    <button (click)="activeTab='ayuda'"
+      [class]="activeTab==='ayuda' ? 'px-3 py-2 rounded-lg bg-blue-600 text-white' : 'px-3 py-2 rounded-lg bg-gray-100 text-gray-700'">Ayuda</button>
+    <button (click)="activeTab='ajustes'"
+      [class]="activeTab==='ajustes' ? 'px-3 py-2 rounded-lg bg-blue-600 text-white' : 'px-3 py-2 rounded-lg bg-gray-100 text-gray-700'">Ajustes</button>
   </div>
 
-  
+
 
   <!-- Grid Mi Perfil (2 columnas) -->
   <div *ngIf="activeTab==='perfil'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <!-- Card: Información de la Empresa -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700" *ngIf="userProfile">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+      *ngIf="userProfile">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
           <i class="fas fa-building mr-3 text-blue-600"></i>
@@ -32,7 +38,8 @@
             <div>
               <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Tu rol</label>
               <div class="mt-1">
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                <span
+                  class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                   {{ getRoleDisplayName(userProfile.role) }}
                 </span>
               </div>
@@ -42,7 +49,8 @@
             <div>
               <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Plan</label>
               <div class="mt-1">
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                <span
+                  class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
                   {{ getCompanyInfo()?.subscription_tier || 'Básico' }}
                 </span>
               </div>
@@ -50,10 +58,10 @@
             <div>
               <label class="text-sm font-medium text-gray-500 dark:text-gray-400">Estado</label>
               <div class="mt-1">
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium" 
-                      [class]="userProfile.active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'">
-                  <i class="fas fa-circle mr-2 text-xs" 
-                     [class]="userProfile.active ? 'text-green-500' : 'text-red-500'"></i>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+                  [class]="userProfile.active ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'">
+                  <i class="fas fa-circle mr-2 text-xs"
+                    [class]="userProfile.active ? 'text-green-500' : 'text-red-500'"></i>
                   {{ userProfile.active ? 'Activo' : 'Inactivo' }}
                 </span>
               </div>
@@ -78,14 +86,12 @@
               <label for="full_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Nombre completo *
               </label>
-              <input 
-                type="text" 
-                id="full_name"
-                formControlName="full_name"
+              <input type="text" id="full_name" formControlName="full_name"
                 class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
                 [class.border-red-500]="profileForm.get('full_name')?.invalid && profileForm.get('full_name')?.touched"
                 placeholder="Ingresa tu nombre completo">
-              <div class="mt-1 text-sm text-red-600 dark:text-red-400" *ngIf="profileForm.get('full_name')?.invalid && profileForm.get('full_name')?.touched">
+              <div class="mt-1 text-sm text-red-600 dark:text-red-400"
+                *ngIf="profileForm.get('full_name')?.invalid && profileForm.get('full_name')?.touched">
                 El nombre es requerido (mínimo 2 caracteres)
               </div>
             </div>
@@ -93,19 +99,14 @@
               <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email *
               </label>
-              <input 
-                type="email" 
-                id="email"
-                formControlName="email"
-                readonly
+              <input type="email" id="email" formControlName="email" readonly
                 class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400"
                 placeholder="tu@email.com">
               <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">El email no se puede modificar</p>
             </div>
           </div>
           <div class="flex justify-end">
-            <button 
-              type="submit" 
+            <button type="submit"
               class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               [disabled]="loading || profileForm.invalid">
               <span *ngIf="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
@@ -117,8 +118,9 @@
       </div>
     </div>
 
-  <!-- Card: Módulos (con estado desde backend) -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 lg:col-span-2">
+    <!-- Card: Módulos (con estado desde backend) -->
+    <div
+      class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 lg:col-span-2">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
           <i class="fas fa-th-large mr-3 text-teal-600"></i>
@@ -126,7 +128,8 @@
         </h2>
       </div>
       <div class="p-6">
-        <p class="text-gray-600 dark:text-gray-400 mb-4">Estados de tus módulos: Activado, Desactivado o En desarrollo.</p>
+        <p class="text-gray-600 dark:text-gray-400 mb-4">Estados de tus módulos: Activado, Desactivado o En desarrollo.
+        </p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <ng-container *ngFor="let mod of modulesList">
             <div class="flex items-center justify-between p-3 rounded-lg border border-gray-100 dark:border-gray-700">
@@ -136,25 +139,26 @@
                 </span>
                 <div>
                   <div class="text-sm font-medium text-gray-900 dark:text-white">{{ mod.label }}</div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400">Estado: 
-                    {{ mod.status === 'activado' ? 'Activado' : (mod.status === 'desactivado' ? 'Desactivado' : 'En desarrollo') }}
+                  <div class="text-xs text-gray-500 dark:text-gray-400">Estado:
+                    {{ mod.status === 'activado' ? 'Activado' : (mod.status === 'desactivado' ? 'Desactivado' : 'En
+                    desarrollo') }}
                   </div>
                 </div>
               </div>
               <div>
-                <span class="px-3 py-1 rounded-full text-sm font-medium"
-                      [ngClass]="{
+                <span class="px-3 py-1 rounded-full text-sm font-medium" [ngClass]="{
                         'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': mod.status === 'activado',
                         'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200': mod.status === 'en_desarrollo',
                         'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300': mod.status === 'desactivado'
                       }">
-                  {{ mod.status === 'activado' ? 'Activado' : (mod.status === 'desactivado' ? 'Desactivado' : 'En desarrollo') }}
+                  {{ mod.status === 'activado' ? 'Activado' : (mod.status === 'desactivado' ? 'Desactivado' : 'En
+                  desarrollo') }}
                 </span>
               </div>
             </div>
           </ng-container>
         </div>
-        
+
       </div>
     </div>
 
@@ -173,10 +177,7 @@
               <label for="currentPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Contraseña actual *
               </label>
-              <input 
-                type="password" 
-                id="currentPassword"
-                formControlName="currentPassword"
+              <input type="password" id="currentPassword" formControlName="currentPassword"
                 class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
                 [class.border-red-500]="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched"
                 placeholder="••••••••">
@@ -185,10 +186,7 @@
               <label for="newPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Nueva contraseña *
               </label>
-              <input 
-                type="password" 
-                id="newPassword"
-                formControlName="newPassword"
+              <input type="password" id="newPassword" formControlName="newPassword"
                 class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
                 [class.border-red-500]="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched"
                 placeholder="••••••••">
@@ -198,21 +196,18 @@
               <label for="confirmPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Confirmar contraseña *
               </label>
-              <input 
-                type="password" 
-                id="confirmPassword"
-                formControlName="confirmPassword"
+              <input type="password" id="confirmPassword" formControlName="confirmPassword"
                 class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
                 [class.border-red-500]="passwordForm.get('confirmPassword')?.invalid && passwordForm.get('confirmPassword')?.touched"
                 placeholder="••••••••">
-              <div class="mt-1 text-sm text-red-600 dark:text-red-400" *ngIf="passwordForm.hasError('passwordMismatch') && passwordForm.get('confirmPassword')?.touched">
+              <div class="mt-1 text-sm text-red-600 dark:text-red-400"
+                *ngIf="passwordForm.hasError('passwordMismatch') && passwordForm.get('confirmPassword')?.touched">
                 Las contraseñas no coinciden
               </div>
             </div>
           </div>
           <div class="flex justify-end">
-            <button 
-              type="submit" 
+            <button type="submit"
               class="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
               [disabled]="loading || passwordForm.invalid">
               <span *ngIf="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
@@ -236,8 +231,7 @@
         <p class="text-gray-600 dark:text-gray-400 mb-4">
           Cerrar sesión te desconectará de la aplicación. Tendrás que volver a iniciar sesión.
         </p>
-        <button 
-          type="button" 
+        <button type="button"
           class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center"
           (click)="logout()">
           <i class="fas fa-sign-out-alt mr-2"></i>
@@ -248,7 +242,8 @@
   </div>
 
   <!-- Perfil de usuario (desactivado: contenido movido al grid) -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700" *ngIf="false && activeTab==='perfil'">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+    *ngIf="false && activeTab==='perfil'">
     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
       <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
         <i class="fas fa-user mr-3 text-green-600"></i>
@@ -262,14 +257,12 @@
             <label for="full_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Nombre completo *
             </label>
-            <input 
-              type="text" 
-              id="full_name"
-              formControlName="full_name"
+            <input type="text" id="full_name" formControlName="full_name"
               class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
               [class.border-red-500]="profileForm.get('full_name')?.invalid && profileForm.get('full_name')?.touched"
               placeholder="Ingresa tu nombre completo">
-            <div class="mt-1 text-sm text-red-600 dark:text-red-400" *ngIf="profileForm.get('full_name')?.invalid && profileForm.get('full_name')?.touched">
+            <div class="mt-1 text-sm text-red-600 dark:text-red-400"
+              *ngIf="profileForm.get('full_name')?.invalid && profileForm.get('full_name')?.touched">
               El nombre es requerido (mínimo 2 caracteres)
             </div>
           </div>
@@ -277,19 +270,14 @@
             <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Email *
             </label>
-            <input 
-              type="email" 
-              id="email"
-              formControlName="email"
-              readonly
+            <input type="email" id="email" formControlName="email" readonly
               class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400"
               placeholder="tu@email.com">
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">El email no se puede modificar</p>
           </div>
         </div>
         <div class="flex justify-end">
-          <button 
-            type="submit" 
+          <button type="submit"
             class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             [disabled]="loading || profileForm.invalid">
             <span *ngIf="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
@@ -303,8 +291,9 @@
 
   <!-- Gestión de Estados y Unidades: dos columnas (pestaña Ajustes) -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6" *ngIf="activeTab==='ajustes'">
-    <!-- Presupuestos: Reglas de Conversión (Global) -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <!-- Presupuestos: Reglas de Conversión (Global) - Solo para desarrolladores -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+      *ngIf="devRoleService.canSeeDevTools()">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
           <i class="fas fa-random mr-3 text-blue-600"></i>
@@ -315,7 +304,8 @@
         <form [formGroup]="appSettingsForm" (ngSubmit)="saveAppSettings()" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Política por defecto</label>
-            <select formControlName="default_convert_policy" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
+            <select formControlName="default_convert_policy"
+              class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
               <option value="manual">Manual (solo bajo demanda)</option>
               <option value="automatic">Automática al aceptar</option>
               <option value="scheduled">Programada (en fecha/plazo)</option>
@@ -323,15 +313,19 @@
           </div>
           <div class="flex items-center gap-2">
             <input id="ask_before_convert" type="checkbox" formControlName="ask_before_convert" class="h-4 w-4">
-            <label for="ask_before_convert" class="text-sm text-gray-700 dark:text-gray-300">Pedir confirmación antes de convertir</label>
+            <label for="ask_before_convert" class="text-sm text-gray-700 dark:text-gray-300">Pedir confirmación antes de
+              convertir</label>
           </div>
           <div class="flex items-center gap-2">
             <input id="enforce_globally" type="checkbox" formControlName="enforce_globally" class="h-4 w-4">
-            <label for="enforce_globally" class="text-sm text-gray-700 dark:text-gray-300">Forzar en todas las empresas</label>
+            <label for="enforce_globally" class="text-sm text-gray-700 dark:text-gray-300">Forzar en todas las
+              empresas</label>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Días por defecto para programar</label>
-            <input type="number" formControlName="default_invoice_delay_days" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white" placeholder="p.ej. 3">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Días por defecto para
+              programar</label>
+            <input type="number" formControlName="default_invoice_delay_days"
+              class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white" placeholder="p.ej. 3">
           </div>
 
           <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
@@ -341,16 +335,20 @@
             </h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="flex items-center gap-2">
-                <input id="default_prices_include_tax" type="checkbox" formControlName="default_prices_include_tax" class="h-4 w-4">
-                <label for="default_prices_include_tax" class="text-sm text-gray-700 dark:text-gray-300">Precios con IVA incluido</label>
+                <input id="default_prices_include_tax" type="checkbox" formControlName="default_prices_include_tax"
+                  class="h-4 w-4">
+                <label for="default_prices_include_tax" class="text-sm text-gray-700 dark:text-gray-300">Precios con IVA
+                  incluido</label>
               </div>
               <div class="flex items-center gap-2">
                 <input id="default_iva_enabled" type="checkbox" formControlName="default_iva_enabled" class="h-4 w-4">
                 <label for="default_iva_enabled" class="text-sm text-gray-700 dark:text-gray-300">Aplicar IVA</label>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IVA por defecto (%)</label>
-                <select formControlName="default_iva_rate" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IVA por defecto
+                  (%)</label>
+                <select formControlName="default_iva_rate"
+                  class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
                   <option [ngValue]="0">0%</option>
                   <option [ngValue]="4">4%</option>
                   <option [ngValue]="10">10%</option>
@@ -359,11 +357,14 @@
               </div>
               <div class="flex items-center gap-2">
                 <input id="default_irpf_enabled" type="checkbox" formControlName="default_irpf_enabled" class="h-4 w-4">
-                <label for="default_irpf_enabled" class="text-sm text-gray-700 dark:text-gray-300">Aplicar IRPF (retención)</label>
+                <label for="default_irpf_enabled" class="text-sm text-gray-700 dark:text-gray-300">Aplicar IRPF
+                  (retención)</label>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IRPF por defecto (%)</label>
-                <select formControlName="default_irpf_rate" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IRPF por defecto
+                  (%)</label>
+                <select formControlName="default_irpf_rate"
+                  class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
                   <option [ngValue]="0">0%</option>
                   <option [ngValue]="7">7%</option>
                   <option [ngValue]="15">15%</option>
@@ -389,8 +390,10 @@
       <div class="p-6">
         <form [formGroup]="companySettingsForm" (ngSubmit)="saveCompanySettings()" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Política de conversión</label>
-            <select formControlName="convert_policy" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Política de
+              conversión</label>
+            <select formControlName="convert_policy"
+              class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
               <option [ngValue]="null">Usar la global</option>
               <option value="manual">Manual</option>
               <option value="automatic">Automática</option>
@@ -399,25 +402,32 @@
           </div>
           <div class="flex items-center gap-2">
             <input id="ask_before_convert_company" type="checkbox" formControlName="ask_before_convert" class="h-4 w-4">
-            <label for="ask_before_convert_company" class="text-sm text-gray-700 dark:text-gray-300">Pedir confirmación (prioriza empresa)</label>
+            <label for="ask_before_convert_company" class="text-sm text-gray-700 dark:text-gray-300">Pedir confirmación
+              (prioriza empresa)</label>
           </div>
           <div class="flex items-center gap-2">
-            <input id="enforce_company_defaults" type="checkbox" formControlName="enforce_company_defaults" class="h-4 w-4">
-            <label for="enforce_company_defaults" class="text-sm text-gray-700 dark:text-gray-300">Forzar ajustes de empresa sobre globales</label>
+            <input id="enforce_company_defaults" type="checkbox" formControlName="enforce_company_defaults"
+              class="h-4 w-4">
+            <label for="enforce_company_defaults" class="text-sm text-gray-700 dark:text-gray-300">Forzar ajustes de
+              empresa sobre globales</label>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Días por defecto</label>
-              <input type="number" formControlName="default_invoice_delay_days" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white" placeholder="p.ej. 3">
+              <input type="number" formControlName="default_invoice_delay_days"
+                class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white" placeholder="p.ej. 3">
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha específica de facturación</label>
-              <input type="date" formControlName="invoice_on_date" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha específica de
+                facturación</label>
+              <input type="date" formControlName="invoice_on_date"
+                class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
             </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Anticipo (%)</label>
-            <input type="number" min="0" max="100" step="1" formControlName="deposit_percentage" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white" placeholder="p.ej. 30">
+            <input type="number" min="0" max="100" step="1" formControlName="deposit_percentage"
+              class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white" placeholder="p.ej. 30">
           </div>
 
           <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
@@ -428,7 +438,8 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="flex items-center gap-2">
                 <input id="prices_include_tax" type="checkbox" formControlName="prices_include_tax" class="h-4 w-4">
-                <label for="prices_include_tax" class="text-sm text-gray-700 dark:text-gray-300">Precios con IVA incluido</label>
+                <label for="prices_include_tax" class="text-sm text-gray-700 dark:text-gray-300">Precios con IVA
+                  incluido</label>
               </div>
               <div class="flex items-center gap-2">
                 <input id="iva_enabled" type="checkbox" formControlName="iva_enabled" class="h-4 w-4">
@@ -436,7 +447,8 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IVA (%)</label>
-                <select formControlName="iva_rate" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
+                <select formControlName="iva_rate"
+                  class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
                   <option [ngValue]="null">Usar global</option>
                   <option [ngValue]="0">0%</option>
                   <option [ngValue]="4">4%</option>
@@ -446,11 +458,13 @@
               </div>
               <div class="flex items-center gap-2">
                 <input id="irpf_enabled" type="checkbox" formControlName="irpf_enabled" class="h-4 w-4">
-                <label for="irpf_enabled" class="text-sm text-gray-700 dark:text-gray-300">Aplicar IRPF (retención)</label>
+                <label for="irpf_enabled" class="text-sm text-gray-700 dark:text-gray-300">Aplicar IRPF
+                  (retención)</label>
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IRPF (%)</label>
-                <select formControlName="irpf_rate" class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
+                <select formControlName="irpf_rate"
+                  class="w-full px-3 py-2 rounded border dark:bg-gray-700 dark:text-white">
                   <option [ngValue]="null">Usar global</option>
                   <option [ngValue]="0">0%</option>
                   <option [ngValue]="7">7%</option>
@@ -458,10 +472,12 @@
                 </select>
               </div>
             </div>
-            <p class="text-xs text-gray-500 mt-2">La empresa puede definir impuestos específicos. Si se activa "Forzar ajustes de empresa", estos valores prevalecen sobre los globales.</p>
+            <p class="text-xs text-gray-500 mt-2">La empresa puede definir impuestos específicos. Si se activa "Forzar
+              ajustes de empresa", estos valores prevalecen sobre los globales.</p>
           </div>
           <div class="flex justify-end">
-            <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">Guardar</button>
+            <button type="submit"
+              class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">Guardar</button>
           </div>
         </form>
       </div>
@@ -476,10 +492,10 @@
       </div>
       <div class="p-6">
         <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Gestiona los estados de tickets de tu empresa. Puedes usar los estados genéricos del sistema o crear estados personalizados.
+          Gestiona los estados de tickets de tu empresa. Puedes usar los estados genéricos del sistema o crear estados
+          personalizados.
         </p>
-        <a 
-          routerLink="/configuracion/estados"
+        <a routerLink="/configuracion/estados"
           class="inline-flex items-center px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
           <i class="fas fa-cog mr-2"></i>
           Gestionar Estados
@@ -497,10 +513,10 @@
       </div>
       <div class="p-6">
         <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Gestiona las unidades de medida que se usarán en tus servicios. Puedes ocultar unidades genéricas o crear las propias de tu empresa.
+          Gestiona las unidades de medida que se usarán en tus servicios. Puedes ocultar unidades genéricas o crear las
+          propias de tu empresa.
         </p>
-        <a 
-          routerLink="/configuracion/unidades"
+        <a routerLink="/configuracion/unidades"
           class="inline-flex items-center px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
           <i class="fas fa-cog mr-2"></i>
           Gestionar Unidades
@@ -518,10 +534,10 @@
       </div>
       <div class="p-6">
         <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Configura certificados y parámetros para emisión verificada de facturas (AEAT). Solo propietarios y administradores.
+          Configura certificados y parámetros para emisión verificada de facturas (AEAT). Solo propietarios y
+          administradores.
         </p>
-        <a 
-          routerLink="/configuracion/verifactu"
+        <a routerLink="/configuracion/verifactu"
           class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
           <i class="fas fa-cog mr-2"></i>
           Gestionar Verifactu
@@ -539,7 +555,8 @@
       </div>
       <div class="p-6">
         <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
-          Configura las series de facturas de tu empresa. Debe haber al menos una serie activa y una marcada como predeterminada.
+          Configura las series de facturas de tu empresa. Debe haber al menos una serie activa y una marcada como
+          predeterminada.
         </p>
 
         <div *ngIf="seriesError" class="mb-3 p-2 rounded bg-red-50 text-red-700 text-xs">
@@ -547,7 +564,8 @@
         </div>
 
         <div class="mb-3 flex justify-between items-center">
-          <button type="button" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm" (click)="startCreateSeries()" *ngIf="!creatingInvoiceSeries">
+          <button type="button" class="px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm"
+            (click)="startCreateSeries()" *ngIf="!creatingInvoiceSeries">
             <i class="fas fa-plus mr-1"></i>
             Nueva serie
           </button>
@@ -559,15 +577,18 @@
           <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
             <div>
               <label class="block font-medium mb-1">Código</label>
-              <input class="w-full border rounded px-2 py-1" [(ngModel)]="newInvoiceSeries.series_code" name="series_code">
+              <input class="w-full border rounded px-2 py-1" [(ngModel)]="newInvoiceSeries.series_code"
+                name="series_code">
             </div>
             <div class="md:col-span-2">
               <label class="block font-medium mb-1">Nombre</label>
-              <input class="w-full border rounded px-2 py-1" [(ngModel)]="newInvoiceSeries.series_name" name="series_name">
+              <input class="w-full border rounded px-2 py-1" [(ngModel)]="newInvoiceSeries.series_name"
+                name="series_name">
             </div>
             <div>
               <label class="block font-medium mb-1">Año</label>
-              <input type="number" class="w-full border rounded px-2 py-1" [(ngModel)]="newInvoiceSeries.year" name="year">
+              <input type="number" class="w-full border rounded px-2 py-1" [(ngModel)]="newInvoiceSeries.year"
+                name="year">
             </div>
             <div>
               <label class="block font-medium mb-1">Prefijo</label>
@@ -575,7 +596,8 @@
             </div>
             <div>
               <label class="block font-medium mb-1">Siguiente Nº</label>
-              <input type="number" min="1" class="w-full border rounded px-2 py-1" [(ngModel)]="newInvoiceSeries.next_number" name="next_number">
+              <input type="number" min="1" class="w-full border rounded px-2 py-1"
+                [(ngModel)]="newInvoiceSeries.next_number" name="next_number">
             </div>
             <div class="flex items-center gap-1 mt-4">
               <input type="checkbox" [(ngModel)]="newInvoiceSeries.is_active" name="is_active" class="h-3 w-3">
@@ -586,13 +608,15 @@
               <span class="text-xs">Por defecto</span>
             </div>
             <div class="flex items-center gap-1 mt-4">
-              <input type="checkbox" [(ngModel)]="newInvoiceSeries.verifactu_enabled" name="verifactu_enabled" class="h-3 w-3">
+              <input type="checkbox" [(ngModel)]="newInvoiceSeries.verifactu_enabled" name="verifactu_enabled"
+                class="h-3 w-3">
               <span class="text-xs">VeriFactu</span>
             </div>
           </div>
           <div class="mt-3 flex gap-2 justify-end text-xs">
             <button type="button" class="px-2 py-1 rounded border" (click)="cancelCreateSeries()">Cancelar</button>
-            <button type="button" class="px-3 py-1 rounded bg-orange-600 text-white" (click)="createInvoiceSeries()">Guardar</button>
+            <button type="button" class="px-3 py-1 rounded bg-orange-600 text-white"
+              (click)="createInvoiceSeries()">Guardar</button>
           </div>
         </div>
 
@@ -618,17 +642,23 @@
                 <td class="px-2 py-1">{{ s.prefix }}</td>
                 <td class="px-2 py-1">{{ s.next_number }}</td>
                 <td class="px-2 py-1">
-                  <button type="button" class="px-1 py-0.5 rounded text-xs" [ngClass]="s.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'" (click)="toggleSeriesActive(s)">
+                  <button type="button" class="px-1 py-0.5 rounded text-xs"
+                    [ngClass]="s.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+                    (click)="toggleSeriesActive(s)">
                     {{ s.is_active ? 'Sí' : 'No' }}
                   </button>
                 </td>
                 <td class="px-2 py-1">
-                  <button type="button" class="px-1 py-0.5 rounded text-xs" [ngClass]="s.is_default ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'" (click)="toggleSeriesDefault(s)">
+                  <button type="button" class="px-1 py-0.5 rounded text-xs"
+                    [ngClass]="s.is_default ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'"
+                    (click)="toggleSeriesDefault(s)">
                     {{ s.is_default ? 'Sí' : '—' }}
                   </button>
                 </td>
                 <td class="px-2 py-1">
-                  <button type="button" class="px-1 py-0.5 rounded text-xs" [ngClass]="s.verifactu_enabled ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'" (click)="toggleSeriesVerifactu(s)">
+                  <button type="button" class="px-1 py-0.5 rounded text-xs"
+                    [ngClass]="s.verifactu_enabled ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'"
+                    (click)="toggleSeriesVerifactu(s)">
                     {{ s.verifactu_enabled ? 'Sí' : 'No' }}
                   </button>
                 </td>
@@ -646,7 +676,8 @@
   </div>
 
   <!-- Cambiar contraseña (desactivado: contenido movido al grid) -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700" *ngIf="false && activeTab==='perfil'">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+    *ngIf="false && activeTab==='perfil'">
     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
       <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
         <i class="fas fa-shield-alt mr-3 text-yellow-600"></i>
@@ -660,10 +691,7 @@
             <label for="currentPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Contraseña actual *
             </label>
-            <input 
-              type="password" 
-              id="currentPassword"
-              formControlName="currentPassword"
+            <input type="password" id="currentPassword" formControlName="currentPassword"
               class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
               [class.border-red-500]="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched"
               placeholder="••••••••">
@@ -672,10 +700,7 @@
             <label for="newPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Nueva contraseña *
             </label>
-            <input 
-              type="password" 
-              id="newPassword"
-              formControlName="newPassword"
+            <input type="password" id="newPassword" formControlName="newPassword"
               class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
               [class.border-red-500]="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched"
               placeholder="••••••••">
@@ -685,21 +710,18 @@
             <label for="confirmPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Confirmar contraseña *
             </label>
-            <input 
-              type="password" 
-              id="confirmPassword"
-              formControlName="confirmPassword"
+            <input type="password" id="confirmPassword" formControlName="confirmPassword"
               class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors"
               [class.border-red-500]="passwordForm.get('confirmPassword')?.invalid && passwordForm.get('confirmPassword')?.touched"
               placeholder="••••••••">
-            <div class="mt-1 text-sm text-red-600 dark:text-red-400" *ngIf="passwordForm.hasError('passwordMismatch') && passwordForm.get('confirmPassword')?.touched">
+            <div class="mt-1 text-sm text-red-600 dark:text-red-400"
+              *ngIf="passwordForm.hasError('passwordMismatch') && passwordForm.get('confirmPassword')?.touched">
               Las contraseñas no coinciden
             </div>
           </div>
         </div>
         <div class="flex justify-end">
-          <button 
-            type="submit" 
+          <button type="submit"
             class="px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             [disabled]="loading || passwordForm.invalid">
             <span *ngIf="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
@@ -712,7 +734,8 @@
   </div>
 
   <!-- Zona de peligro (desactivado: contenido movido al grid) -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-red-200 dark:border-red-700" *ngIf="false && activeTab==='perfil'">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-red-200 dark:border-red-700"
+    *ngIf="false && activeTab==='perfil'">
     <div class="px-6 py-4 border-b border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20">
       <h2 class="text-xl font-semibold text-red-800 dark:text-red-300 flex items-center">
         <i class="fas fa-exclamation-triangle mr-3 text-red-600"></i>
@@ -723,8 +746,7 @@
       <p class="text-gray-600 dark:text-gray-400 mb-4">
         Cerrar sesión te desconectará de la aplicación. Tendrás que volver a iniciar sesión.
       </p>
-      <button 
-        type="button" 
+      <button type="button"
         class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-red-500 focus:ring-offset-2 flex items-center"
         (click)="logout()">
         <i class="fas fa-sign-out-alt mr-2"></i>
@@ -734,7 +756,8 @@
   </div>
 
   <!-- Configuración de Desarrollo (Solo para devs, en Ajustes) -->
-  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-orange-200 dark:border-orange-700" *ngIf="devRoleService.canSeeDevTools() && activeTab==='ajustes'">
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-orange-200 dark:border-orange-700"
+    *ngIf="devRoleService.canSeeDevTools() && activeTab==='ajustes'">
     <div class="px-6 py-4 border-b border-orange-200 dark:border-orange-700 bg-orange-50 dark:bg-orange-900/20">
       <h2 class="text-xl font-semibold text-orange-800 dark:text-orange-300 flex items-center">
         <i class="fas fa-code mr-3 text-orange-600"></i>
@@ -746,8 +769,10 @@
         <div class="flex items-start">
           <i class="fas fa-info-circle text-blue-600 mr-3 mt-1"></i>
           <div>
-            <p class="font-medium text-blue-800 dark:text-blue-300">Esta sección solo es visible para usuarios de desarrollo.</p>
-            <p class="text-blue-700 dark:text-blue-400 text-sm mt-1">Aquí puedes configurar el sistema para desarrollo local y testing.</p>
+            <p class="font-medium text-blue-800 dark:text-blue-300">Esta sección solo es visible para usuarios de
+              desarrollo.</p>
+            <p class="text-blue-700 dark:text-blue-400 text-sm mt-1">Aquí puedes configurar el sistema para desarrollo
+              local y testing.</p>
           </div>
         </div>
       </div>
@@ -756,14 +781,15 @@
         <div class="space-y-3">
           <div class="flex justify-between items-center">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Modo:</span>
-            <span class="px-3 py-1 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 rounded-full text-sm font-medium">
+            <span
+              class="px-3 py-1 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 rounded-full text-sm font-medium">
               Desarrollo
             </span>
           </div>
           <div class="flex justify-between items-center">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Usuario Dev:</span>
             <span class="px-3 py-1 rounded-full text-sm font-medium"
-                  [class]="devRoleService.isDev() ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'">
+              [class]="devRoleService.isDev() ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'">
               {{ devRoleService.isDev() ? 'Activo' : 'No activo' }}
             </span>
           </div>
@@ -776,7 +802,7 @@
           <div class="flex justify-between items-center">
             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Herramientas dev:</span>
             <span class="px-3 py-1 rounded-full text-sm font-medium"
-                  [class]="devRoleService.canSeeDevTools() ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'">
+              [class]="devRoleService.canSeeDevTools() ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'">
               {{ devRoleService.canSeeDevTools() ? 'Disponibles' : 'No disponibles' }}
             </span>
           </div>
@@ -784,15 +810,14 @@
       </div>
 
       <div class="flex flex-wrap gap-3">
-        <button 
+        <button
           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-          (click)="setupDevSystem()"
-          [disabled]="isSettingUpDev">
+          (click)="setupDevSystem()" [disabled]="isSettingUpDev">
           <i class="fas fa-cog mr-2"></i>
           {{ isSettingUpDev ? 'Configurando...' : 'Configurar Sistema Dev' }}
         </button>
-        
-        <button 
+
+        <button
           class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center"
           (click)="testDevUser()">
           <i class="fas fa-user-check mr-2"></i>
@@ -804,9 +829,8 @@
       <div *ngIf="devMessages.length > 0" class="space-y-2">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white">Log de Desarrollo:</h3>
         <div class="max-h-64 overflow-y-auto space-y-2">
-          <div *ngFor="let msg of devMessages" 
-               class="p-3 rounded-lg text-sm border-l-4"
-               [class]="msg.type === 'success' ? 'bg-green-50 border-green-400 text-green-700 dark:bg-green-900/20 dark:border-green-500 dark:text-green-300' : 
+          <div *ngFor="let msg of devMessages" class="p-3 rounded-lg text-sm border-l-4"
+            [class]="msg.type === 'success' ? 'bg-green-50 border-green-400 text-green-700 dark:bg-green-900/20 dark:border-green-500 dark:text-green-300' : 
                         msg.type === 'error' ? 'bg-red-50 border-red-400 text-red-700 dark:bg-red-900/20 dark:border-red-500 dark:text-red-300' : 
                         'bg-blue-50 border-blue-400 text-blue-700 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'">
             <div class="flex justify-between items-start">
@@ -827,7 +851,7 @@
   <!-- Reutilizamos los estilos existentes -->
   <div class="mt-6"></div>
   <!-- Sección de Unidades permanece en Ajustes -->
-  
+
   <!-- Modal unidades sigue manejado por esta página -->
 </div>
 
