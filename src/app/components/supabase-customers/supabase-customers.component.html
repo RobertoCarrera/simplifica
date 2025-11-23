@@ -1,915 +1,800 @@
-<div class="customers-container container-fluid h-full flex flex-col overflow-hidden pb-20 md:pb-8 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+<div
+  class="customers-container container-fluid h-full flex flex-col overflow-hidden pb-20 md:pb-8 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
   [attr.data-sidebar-collapsed]="sidebarService.isCollapsed() ? '1' : '0'">
 
   <!-- Inner wrapper: contains header and content; keeps scroll confined to content area like Servicios -->
-  <div class="flex-1 flex flex-col p-2 overflow-hidden">      
-      <!-- Header -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 mb-4 md:mb-6 border border-gray-200 dark:border-gray-700 flex-shrink-0">
-        <!-- Mobile: Compact Header -->
-        <div class="md:hidden mb-4">
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 leading-none mb-3">
-            <i class="fas fa-users text-[24px]"></i>
-            Clientes
-          </h1>
-          <div class="relative w-full">
-            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-            <input
-              type="text"
-              [(ngModel)]="searchTerm"
-              (ngModelChange)="onSearchChange($event)"
-              placeholder="Buscar clientes..."
-              class="w-full px-3 py-2 pl-9 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 text-sm"
-            >
-          </div>
-        </div>
-
-        @if (!isLoading() || customers().length) {
-        <!-- Desktop: Full Header (title left, search+actions right on same row) -->
-        <div class="hidden md:block">
-          <div class="flex items-center justify-between mb-4">
-            <!-- Title + subtitle (left) -->
-            <div>
-              <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 leading-none mb-1">
-                <i class="fas fa-users text-[24px]"></i>
-                Gestión de Clientes
-              </h1>
-              <p class="text-gray-600 dark:text-gray-300 text-sm mt-1 hidden md:block">Administra toda la información de tus clientes</p>
-            </div>
-
-            <!-- Search + Actions (right) -->
-            <div class="flex items-center gap-3 flex-shrink-0">
-              <div class="relative">
-                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                <input
-                  type="text"
-                  [(ngModel)]="searchTerm"
-                  (ngModelChange)="onSearchChange($event)"
-                  placeholder="Buscar clientes por nombre, email o DNI..."
-                  class="w-80 px-3 md:px-4 py-2 pl-9 md:pl-10 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 text-sm"
-                />
-              </div>
-
-              <button
-                (click)="exportCustomers()"
-                class="btn btn-secondary btn-header text-sm font-medium"
-                [disabled]="isLoading()"
-                title="Exportar clientes"
-              >
-                <i class="fas fa-download text-sm"></i>
-                <span class="ml-1">Exportar</span>
-              </button>
-
-              <input
-                #fileInput
-                type="file"
-                accept=".csv"
-                (change)="onCsvFileSelected($event)"
-                class="hidden"
-              />
-
-              <button
-                (click)="fileInput.click()"
-                class="btn btn-secondary btn-header text-sm font-medium"
-                [disabled]="isLoading()"
-                title="Importar clientes desde CSV"
-              >
-                <i class="fas fa-upload text-sm"></i>
-                <span class="ml-1">Importar CSV</span>
-              </button>
-            </div>
-          </div>
-        </div>
-        } 
-
-        <!-- Mobile: Action Buttons Row -->
-        <div class="md:hidden flex gap-2 mt-3">
-          @if (devRoleService.canSeeDevTools()) {
-            <button
-              (click)="goToGdpr()"
-              class="btn btn-secondary flex-1 text-xs"
-              title="Panel GDPR"
-            >
-              <i class="fas fa-shield-alt"></i>
-              GDPR
-            </button>
-          }
-          <button
-            (click)="exportCustomers()"
-            class="btn btn-secondary flex-1 text-xs"
-            [disabled]="isLoading()"
-          >
-            <i class="fas fa-download"></i>
-            <span class="ml-2">Exportar</span>
-          </button>
-          <input
-            #fileInputMobile
-            type="file"
-            accept=".csv"
-            (change)="onCsvFileSelected($event)"
-            class="hidden"
-          >
-          <button
-            (click)="fileInputMobile.click()"
-            class="btn btn-secondary flex-1 text-xs"
-            [disabled]="isLoading()"
-          >
-            <i class="fas fa-upload"></i>
-            <span class="ml-2">Importar</span>
-          </button>
+  <div class="flex-1 flex flex-col p-2 overflow-hidden">
+    <!-- Header -->
+    <div
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 mb-4 md:mb-6 border border-gray-200 dark:border-gray-700 flex-shrink-0">
+      <!-- Mobile: Compact Header -->
+      <div class="md:hidden mb-4">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 leading-none mb-3">
+          <i class="fas fa-users text-[24px]"></i>
+          Clientes
+        </h1>
+        <div class="relative w-full">
+          <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+          <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange($event)"
+            placeholder="Buscar clientes..."
+            class="w-full px-3 py-2 pl-9 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 text-sm">
         </div>
       </div>
 
-  <div class="flex-1 overflow-auto">
+      @if (!isLoading() || customers().length) {
+      <!-- Desktop: Full Header (title left, search+actions right on same row) -->
+      <div class="hidden md:block">
+        <div class="flex items-center justify-between mb-4">
+          <!-- Title + subtitle (left) -->
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2 leading-none mb-1">
+              <i class="fas fa-users text-[24px]"></i>
+              Gestión de Clientes
+            </h1>
+            <p class="text-gray-600 dark:text-gray-300 text-sm mt-1 hidden md:block">Administra toda la información de
+              tus clientes</p>
+          </div>
 
-  <!-- GDPR Panel (Collapsible) -->
-      @if (devRoleService.canSeeDevTools() && gdprPanelVisible()) {
-        <div class="gdpr-panel mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center">
-              <i class="fas fa-shield-alt text-blue-600 text-xl mr-2"></i>
-              <h3 class="text-lg font-semibold text-blue-900">Panel de Cumplimiento RGPD</h3>
+          <!-- Search + Actions (right) -->
+          <div class="flex items-center gap-3 flex-shrink-0">
+            <div class="relative">
+              <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+              <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchChange($event)"
+                placeholder="Buscar clientes por nombre, email o DNI..."
+                class="w-80 px-3 md:px-4 py-2 pl-9 md:pl-10 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-gray-100 text-sm" />
             </div>
-            <button
-              (click)="toggleGdprPanel()"
-              class="btn btn-sm btn-outline"
-            >
-              <i class="fas fa-times"></i>
-              Cerrar
+
+            <button (click)="exportCustomers()" class="btn btn-secondary btn-header text-sm font-medium"
+              [disabled]="isLoading()" title="Exportar clientes">
+              <i class="fas fa-download text-sm"></i>
+              <span class="ml-1">Exportar</span>
+            </button>
+
+            <input #fileInput type="file" accept=".csv" (change)="onCsvFileSelected($event)" class="hidden" />
+
+            <button (click)="fileInput.click()" class="btn btn-secondary btn-header text-sm font-medium"
+              [disabled]="isLoading()" title="Importar clientes desde CSV">
+              <i class="fas fa-upload text-sm"></i>
+              <span class="ml-1">Importar CSV</span>
             </button>
           </div>
-          
-          @if (complianceStats()) {
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-              <div class="bg-white rounded-lg p-3 border border-blue-200">
-                <div class="flex items-center">
-                  <i class="fas fa-file-alt text-blue-600 text-lg mr-2"></i>
-                  <div>
-                    <div class="text-lg font-bold text-blue-900">{{ complianceStats()?.accessRequestsCount || 0 }}</div>
-                    <div class="text-xs text-blue-600">Solicitudes RGPD</div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="bg-white rounded-lg p-3 border border-green-200">
-                <div class="flex items-center">
-                  <i class="fas fa-check-circle text-green-600 text-lg mr-2"></i>
-                  <div>
-                    <div class="text-lg font-bold text-green-900">{{ complianceStats()?.activeConsentsCount || 0 }}</div>
-                    <div class="text-xs text-green-600">Consentimientos Activos</div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="bg-white rounded-lg p-3 border border-yellow-200">
-                <div class="flex items-center">
-                  <i class="fas fa-clock text-yellow-600 text-lg mr-2"></i>
-                  <div>
-                    <div class="text-lg font-bold text-yellow-900">{{ complianceStats()?.pendingRequestsCount || 0 }}</div>
-                    <div class="text-xs text-yellow-600">Solicitudes Pendientes</div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="bg-white rounded-lg p-3 border border-red-200">
-                <div class="flex items-center">
-                  <i class="fas fa-exclamation-triangle text-red-600 text-lg mr-2"></i>
-                  <div>
-                    <div class="text-lg font-bold text-red-900">{{ complianceStats()?.overdueRequestsCount || 0 }}</div>
-                    <div class="text-xs text-red-600">Solicitudes Vencidas</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- GDPR Quick Actions -->
-            <div class="flex flex-wrap gap-2">
-              <button
-                (click)="exportComplianceReport()"
-                class="btn btn-sm btn-outline"
-              >
-                <i class="fas fa-file-export mr-1"></i>
-                Exportar Informe RGPD
-              </button>
-            </div>
-          }
         </div>
+      </div>
+      }
+
+      <!-- Mobile: Action Buttons Row -->
+      <div class="md:hidden flex gap-2 mt-3">
+        @if (devRoleService.canSeeDevTools()) {
+        <button (click)="goToGdpr()" class="btn btn-secondary flex-1 text-xs" title="Panel GDPR">
+          <i class="fas fa-shield-alt"></i>
+          GDPR
+        </button>
+        }
+        <button (click)="exportCustomers()" class="btn btn-secondary flex-1 text-xs" [disabled]="isLoading()">
+          <i class="fas fa-download"></i>
+          <span class="ml-2">Exportar</span>
+        </button>
+        <input #fileInputMobile type="file" accept=".csv" (change)="onCsvFileSelected($event)" class="hidden">
+        <button (click)="fileInputMobile.click()" class="btn btn-secondary flex-1 text-xs" [disabled]="isLoading()">
+          <i class="fas fa-upload"></i>
+          <span class="ml-2">Importar</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-auto">
+
+      <!-- GDPR Panel (Collapsible) -->
+      @if (devRoleService.canSeeDevTools() && gdprPanelVisible()) {
+      <div class="gdpr-panel mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center">
+            <i class="fas fa-shield-alt text-blue-600 text-xl mr-2"></i>
+            <h3 class="text-lg font-semibold text-blue-900">Panel de Cumplimiento RGPD</h3>
+          </div>
+          <button (click)="toggleGdprPanel()" class="btn btn-sm btn-outline">
+            <i class="fas fa-times"></i>
+            Cerrar
+          </button>
+        </div>
+
+        @if (complianceStats()) {
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div class="bg-white rounded-lg p-3 border border-blue-200">
+            <div class="flex items-center">
+              <i class="fas fa-file-alt text-blue-600 text-lg mr-2"></i>
+              <div>
+                <div class="text-lg font-bold text-blue-900">{{ complianceStats()?.accessRequestsCount || 0 }}</div>
+                <div class="text-xs text-blue-600">Solicitudes RGPD</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-lg p-3 border border-green-200">
+            <div class="flex items-center">
+              <i class="fas fa-check-circle text-green-600 text-lg mr-2"></i>
+              <div>
+                <div class="text-lg font-bold text-green-900">{{ complianceStats()?.activeConsentsCount || 0 }}</div>
+                <div class="text-xs text-green-600">Consentimientos Activos</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-lg p-3 border border-yellow-200">
+            <div class="flex items-center">
+              <i class="fas fa-clock text-yellow-600 text-lg mr-2"></i>
+              <div>
+                <div class="text-lg font-bold text-yellow-900">{{ complianceStats()?.pendingRequestsCount || 0 }}</div>
+                <div class="text-xs text-yellow-600">Solicitudes Pendientes</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-lg p-3 border border-red-200">
+            <div class="flex items-center">
+              <i class="fas fa-exclamation-triangle text-red-600 text-lg mr-2"></i>
+              <div>
+                <div class="text-lg font-bold text-red-900">{{ complianceStats()?.overdueRequestsCount || 0 }}</div>
+                <div class="text-xs text-red-600">Solicitudes Vencidas</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GDPR Quick Actions -->
+        <div class="flex flex-wrap gap-2">
+          <button (click)="exportComplianceReport()" class="btn btn-sm btn-outline">
+            <i class="fas fa-file-export mr-1"></i>
+            Exportar Informe RGPD
+          </button>
+        </div>
+        }
+      </div>
       }
       <!-- Loading State (Skeletons for header + list) -->
       @if (isLoading() && !customers().length) {
-        <div class="space-y-4">
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
-            <!-- Header skeleton: icon + two lines + actions -->
-            <div class="flex items-center justify-between mb-4">
-              <div class="flex items-center gap-3">
-                <app-skeleton type="avatar"></app-skeleton>
-                <div class="space-y-2">
-                  <app-skeleton type="text" width="160px"></app-skeleton>
-                  <app-skeleton type="text" width="220px"></app-skeleton>
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <app-skeleton type="button" width="80px"></app-skeleton>
-                <app-skeleton type="button" width="100px"></app-skeleton>
-                <app-skeleton type="button" width="90px"></app-skeleton>
+      <div class="space-y-4">
+        <div
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
+          <!-- Header skeleton: icon + two lines + actions -->
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <app-skeleton type="avatar"></app-skeleton>
+              <div class="space-y-2">
+                <app-skeleton type="text" width="160px"></app-skeleton>
+                <app-skeleton type="text" width="220px"></app-skeleton>
               </div>
             </div>
-            <app-skeleton type="rect" height="40px" width="100%"></app-skeleton>
+            <div class="flex items-center gap-2">
+              <app-skeleton type="button" width="80px"></app-skeleton>
+              <app-skeleton type="button" width="100px"></app-skeleton>
+              <app-skeleton type="button" width="90px"></app-skeleton>
+            </div>
           </div>
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
-            <app-skeleton type="list" [count]="6"></app-skeleton>
-          </div>
+          <app-skeleton type="rect" height="40px" width="100%"></app-skeleton>
         </div>
+        <div
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
+          <app-skeleton type="list" [count]="6"></app-skeleton>
+        </div>
+      </div>
       }
 
       <!-- Customers Grid -->
       @if (!isLoading() || customers().length) {
-        <div class="customers-grid">
-          @for (customer of filteredCustomers(); track customer.id; let i = $index) {
-            <!-- Customer Card - Optimized Density -->
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-5 hover:shadow-md transition-shadow">
-              
-              <!-- Mobile Layout: 2-column (info left, actions right vertical) -->
-              <div class="md:hidden flex gap-3 items-center justify-center">
-                <!-- Left column: Avatar + Info -->
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-3 mb-3">
-                    <!-- Avatar -->
-                    <div class="relative flex-shrink-0">
-                      @if (customer.avatar_url) {
-                        <img 
-                          [src]="customer.avatar_url"
-                          [alt]="customer.name + ' ' + customer.apellidos"
-                          class="w-10 h-10 rounded-full object-cover"
-                        >
-                      } @else {
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br {{ getAvatarGradient(customer) }} text-white font-bold text-sm flex items-center justify-center">
-                          {{ getCustomerInitials(customer) }}
-                        </div>
-                      }
-                      @if (customer.activo) {
-                        <div class="w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full absolute bottom-0 right-0"></div>
-                      }
-                    </div>
-                    
-                    <!-- Name + Badge -->
-                    <div class="flex-1 min-w-0">
-                      <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">
-                        {{ getDisplayName(customer) }}
-                      </h3>
-                      <div class="flex flex-wrap gap-1.5 mt-1">
-                        @if (getGdprBadgeConfig(customer); as badge) {
-                          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
-                            <i class="fas {{ badge.icon }} text-[10px]"></i>
-                            {{ badge.label }}
-                          </span>
-                        }
-                        @if (!isCustomerComplete(customer)) {
-                          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200" [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">Incompleto</span>
-                        }
-                      </div>
-                    </div>
+      <div class="customers-grid">
+        @for (customer of filteredCustomers(); track customer.id; let i = $index) {
+        <!-- Customer Card - Optimized Density -->
+        <div
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-5 hover:shadow-md transition-shadow">
+
+          <!-- Mobile Layout: 2-column (info left, actions right vertical) -->
+          <div class="md:hidden flex gap-3 items-center justify-center">
+            <!-- Left column: Avatar + Info -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-3 mb-3">
+                <!-- Avatar -->
+                <div class="relative flex-shrink-0">
+                  @if (customer.avatar_url) {
+                  <img [src]="customer.avatar_url" [alt]="customer.name + ' ' + customer.apellidos"
+                    class="w-10 h-10 rounded-full object-cover">
+                  } @else {
+                  <div
+                    class="w-10 h-10 rounded-full bg-gradient-to-br {{ getAvatarGradient(customer) }} text-white font-bold text-sm flex items-center justify-center">
+                    {{ getCustomerInitials(customer) }}
                   </div>
-                  
-                  <!-- Contact Info (Max 2 fields) -->
-                  <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                    <div class="flex items-center gap-1.5 truncate">
-                      <i class="fas fa-envelope text-gray-400 text-xs flex-shrink-0 w-4 text-center"></i>
-                      <span class="truncate">{{ customer.email }}</span>
-                    </div>
-                    @if (customer.phone) {
-                      <div class="flex items-center gap-1.5">
-                        <i class="fas fa-phone text-gray-400 text-xs flex-shrink-0 w-4 text-center"></i>
-                        <span>{{ customer.phone }}</span>
-                      </div>
-                    }
-                  </div>
-                </div>
-                
-                <!-- Right column: Action Buttons Flex (auto-wrap, right-aligned) -->
-                <div class="flex flex-col gap-1 flex-shrink-0 ml-auto justify-end">
-                  <button
-                    (click)="editCustomer(customer)"
-                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-                    title="Editar cliente"
-                  >
-                    <i class="fas fa-edit text-sm"></i>
-                  </button>
-                  @if (customer.email; as cEmail) {
-                    @if (!hasPortalAccess(customer, cEmail)) {
-                      <button
-                        (click)="openInviteModal(customer)"
-                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
-                        [class.opacity-0]="customer?.metadata?.inactive_on_import"
-                        [disabled]="customer?.metadata?.inactive_on_import"
-                        title="Invitar al portal"
-                      >
-                        <i class="fas fa-user-plus text-sm"></i>
-                      </button>
-                    } @else {
-                      <button
-                        (click)="togglePortalAccess(customer, false, $event)"
-                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
-                        [class.opacity-0]="customer?.metadata?.inactive_on_import"
-                        [disabled]="customer?.metadata?.inactive_on_import"
-                        title="Quitar acceso al portal"
-                      >
-                        <i class="fas fa-user-times text-sm"></i>
-                      </button>
-                    }
                   }
-                  <button
-                    (click)="openGdprModal(customer)"
-                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
-                    [class.opacity-0]="customer?.metadata?.inactive_on_import"
-                    [disabled]="customer?.metadata?.inactive_on_import"
-                    title="Acciones RGPD"
-                  >
-                    <i class="fas fa-shield-alt text-sm"></i>
-                  </button>
-                  <button
-                    (click)="deleteCustomer(customer)"
-                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                    
-                    title="Eliminar cliente"
-                  >
-                    <i class="fas fa-trash text-sm"></i>
-                  </button>
+                  @if (customer.activo) {
+                  <div
+                    class="w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full absolute bottom-0 right-0">
+                  </div>
+                  }
+                </div>
+
+                <!-- Name + Badge -->
+                <div class="flex-1 min-w-0">
+                  <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate">
+                    {{ getDisplayName(customer) }}
+                  </h3>
+                  <div class="flex flex-wrap gap-1.5 mt-1">
+                    @if (getGdprBadgeConfig(customer); as badge) {
+                    <span
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
+                      <i class="fas {{ badge.icon }} text-[10px]"></i>
+                      {{ badge.label }}
+                    </span>
+                    }
+                    @if (!isCustomerComplete(customer)) {
+                    <span
+                      class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-200"
+                      [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">Incompleto</span>
+                    }
+                  </div>
                 </div>
               </div>
 
-              <!-- Desktop Layout: 2-column (info left, actions right vertical) -->
-              <div class="hidden md:flex gap-3">
-                <!-- Left column: Avatar + Info (flex-1 takes most space) -->
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-3 mb-3">
-                    <!-- Avatar -->
-                    <div class="relative flex-shrink-0">
-                      @if (customer.avatar_url) {
-                        <img 
-                          [src]="customer.avatar_url"
-                          [alt]="customer.name + ' ' + customer.apellidos"
-                          class="w-10 h-10 rounded-full object-cover"
-                        >
-                      } @else {
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br {{ getAvatarGradient(customer) }} text-white font-bold text-sm flex items-center justify-center">
-                          {{ getCustomerInitials(customer) }}
-                        </div>
-                      }
-                      @if (customer.activo) {
-                        <div class="w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full absolute bottom-0 right-0"></div>
-                      }
-                    </div>
-                    
-                    <!-- Name + Badge -->
-                    <div class="flex-1 min-w-0">
-                      <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate flex items-center gap-2">
-                        <span>
-                          {{ getDisplayName(customer) }}
-                        </span>
-                      </h3>
-                      @if (getGdprBadgeConfig(customer); as badge) {
-                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
-                          <i class="fas {{ badge.icon }} text-[10px]"></i>
-                          {{ badge.label }}
-                        </span>
-                      }
-                      @if (!isCustomerComplete(customer)) {
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-200 text-red-800 border border-red-500" [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">Incompleto</span>
-                      }
-                    </div>
-                  </div>
-                  
-                  <!-- Contact Info Vertical (Max 3 fields) -->
-                  <div class="space-y-1.5 text-sm text-gray-600 dark:text-gray-400">
-                    <div class="flex items-center gap-1.5">
-                      <i class="fas fa-envelope text-gray-400 w-4 flex-shrink-0"></i>
-                      <span class="truncate">{{ customer.email }}</span>
-                    </div>
-                    @if (customer.phone) {
-                      <div class="flex items-center gap-1.5">
-                        <i class="fas fa-phone text-gray-400 w-4 flex-shrink-0"></i>
-                        <span>{{ customer.phone }}</span>
-                      </div>
-                    }
-                    @if (customer.client_type === 'business' ? customer.cif_nif : customer.dni) {
-                      <div class="flex items-center gap-1.5">
-                        <!-- Inline SVG icon to avoid missing FontAwesome glyphs -->
-                        <span class="text-gray-400 w-4 flex-shrink-0 inline-flex items-center justify-center">
-                          @if (customer.client_type === 'business') {
-                            <!-- Building / company icon -->
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor" aria-hidden="true"><path d="M3 22h18v-2H3v2zM7 10h2v2H7v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2zM5 20V6h14v14H5zm2-12h10V8H7v0z"/></svg>
-                          } @else {
-                            <!-- ID card / personal icon -->
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor" aria-hidden="true"><path d="M21 4H3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM7 8c1.66 0 3 1.34 3 3s-1.34 3-3 3S4 12.66 4 11s1.34-3 3-3zm10 8H7c0-2.67 5-4 10-4v4z"/></svg>
-                          }
-                        </span>
-                        <span>{{ customer.client_type === 'business' ? customer.cif_nif : customer.dni }}</span>
-                      </div>
-                    }
-                  </div>
+              <!-- Contact Info (Max 2 fields) -->
+              <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                <div class="flex items-center gap-1.5 truncate">
+                  <i class="fas fa-envelope text-gray-400 text-xs flex-shrink-0 w-4 text-center"></i>
+                  <span class="truncate">{{ customer.email }}</span>
                 </div>
-                
-                <!-- Right column: Action Buttons Vertical (Hierarchy: important top, dangerous bottom) -->
-                <div class="flex flex-col gap-1 flex-shrink-0">
-                  <button
-                    (click)="editCustomer(customer)"
-                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-                    title="Editar cliente"
-                  >
-                    <i class="fas fa-edit text-sm"></i>
-                  </button>
-                  @if (customer.email; as cEmail) {
-                    @if (!hasPortalAccess(customer, cEmail)) {
-                      <button
-                        (click)="openInviteModal(customer)"
-                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
-                        [class.opacity-0]="customer?.metadata?.inactive_on_import"
-                        [disabled]="customer?.metadata?.inactive_on_import"
-                        title="Invitar al portal"
-                      >
-                        <i class="fas fa-user-plus text-sm"></i>
-                      </button>
-                    } @else {
-                      <button
-                        (click)="togglePortalAccess(customer, false, $event)"
-                        class="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
-                        [class.opacity-0]="customer?.metadata?.inactive_on_import"
-                        [disabled]="customer?.metadata?.inactive_on_import"
-                        title="Quitar acceso al portal"
-                      >
-                        <i class="fas fa-user-times text-sm"></i>
-                      </button>
-                    }
-                  }
-                  <button
-                    (click)="openGdprModal(customer)"
-                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
-                    [class.opacity-0]="customer?.metadata?.inactive_on_import"
-                    [disabled]="customer?.metadata?.inactive_on_import"
-                    title="Acciones RGPD"
-                  >
-                    <i class="fas fa-shield-alt text-sm"></i>
-                  </button>
-                  <button
-                    (click)="deleteCustomer(customer)"
-                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                    
-                    title="Eliminar cliente"
-                  >
-                    <i class="fas fa-trash text-sm"></i>
-                  </button>
+                @if (customer.phone) {
+                <div class="flex items-center gap-1.5">
+                  <i class="fas fa-phone text-gray-400 text-xs flex-shrink-0 w-4 text-center"></i>
+                  <span>{{ customer.phone }}</span>
                 </div>
+                }
               </div>
-
             </div>
-          }
+
+            <!-- Right column: Action Buttons Flex (auto-wrap, right-aligned) -->
+            <div class="flex flex-col gap-1 flex-shrink-0 ml-auto justify-end">
+              <button (click)="editCustomer(customer)"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                title="Editar cliente">
+                <i class="fas fa-edit text-sm"></i>
+              </button>
+              @if (customer.email; as cEmail) {
+              @if (!hasPortalAccess(customer, cEmail)) {
+              <button (click)="openInviteModal(customer)"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                [class.opacity-0]="customer?.metadata?.inactive_on_import"
+                [disabled]="customer?.metadata?.inactive_on_import" title="Invitar al portal">
+                <i class="fas fa-user-plus text-sm"></i>
+              </button>
+              } @else {
+              <button (click)="togglePortalAccess(customer, false, $event)"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+                [class.opacity-0]="customer?.metadata?.inactive_on_import"
+                [disabled]="customer?.metadata?.inactive_on_import" title="Quitar acceso al portal">
+                <i class="fas fa-user-times text-sm"></i>
+              </button>
+              }
+              }
+              <button (click)="openGdprModal(customer)"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                [class.opacity-0]="customer?.metadata?.inactive_on_import"
+                [disabled]="customer?.metadata?.inactive_on_import" title="Acciones RGPD">
+                <i class="fas fa-shield-alt text-sm"></i>
+              </button>
+              <button (click)="deleteCustomer(customer)"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                title="Eliminar cliente">
+                <i class="fas fa-trash text-sm"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Desktop Layout: 2-column (info left, actions right vertical) -->
+          <div class="hidden md:flex gap-3">
+            <!-- Left column: Avatar + Info (flex-1 takes most space) -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-3 mb-3">
+                <!-- Avatar -->
+                <div class="relative flex-shrink-0">
+                  @if (customer.avatar_url) {
+                  <img [src]="customer.avatar_url" [alt]="customer.name + ' ' + customer.apellidos"
+                    class="w-10 h-10 rounded-full object-cover">
+                  } @else {
+                  <div
+                    class="w-10 h-10 rounded-full bg-gradient-to-br {{ getAvatarGradient(customer) }} text-white font-bold text-sm flex items-center justify-center">
+                    {{ getCustomerInitials(customer) }}
+                  </div>
+                  }
+                  @if (customer.activo) {
+                  <div
+                    class="w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full absolute bottom-0 right-0">
+                  </div>
+                  }
+                </div>
+
+                <!-- Name + Badge -->
+                <div class="flex-1 min-w-0">
+                  <h3 class="font-semibold text-gray-900 dark:text-gray-100 truncate flex items-center gap-2">
+                    <span>
+                      {{ getDisplayName(customer) }}
+                    </span>
+                  </h3>
+                  @if (getGdprBadgeConfig(customer); as badge) {
+                  <span
+                    class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium {{ badge.classes }}">
+                    <i class="fas {{ badge.icon }} text-[10px]"></i>
+                    {{ badge.label }}
+                  </span>
+                  }
+                  @if (!isCustomerComplete(customer)) {
+                  <span
+                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-200 text-red-800 border border-red-500"
+                    [title]="'Faltan: ' + getCustomerMissingFields(customer).join(', ')">Incompleto</span>
+                  }
+                </div>
+              </div>
+
+              <!-- Contact Info Vertical (Max 3 fields) -->
+              <div class="space-y-1.5 text-sm text-gray-600 dark:text-gray-400">
+                <div class="flex items-center gap-1.5">
+                  <i class="fas fa-envelope text-gray-400 w-4 flex-shrink-0"></i>
+                  <span class="truncate">{{ customer.email }}</span>
+                </div>
+                @if (customer.phone) {
+                <div class="flex items-center gap-1.5">
+                  <i class="fas fa-phone text-gray-400 w-4 flex-shrink-0"></i>
+                  <span>{{ customer.phone }}</span>
+                </div>
+                }
+                @if (customer.client_type === 'business' ? customer.cif_nif : customer.dni) {
+                <div class="flex items-center gap-1.5">
+                  <!-- Inline SVG icon to avoid missing FontAwesome glyphs -->
+                  <span class="text-gray-400 w-4 flex-shrink-0 inline-flex items-center justify-center">
+                    @if (customer.client_type === 'business') {
+                    <!-- Building / company icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor"
+                      aria-hidden="true">
+                      <path
+                        d="M3 22h18v-2H3v2zM7 10h2v2H7v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2zM5 20V6h14v14H5zm2-12h10V8H7v0z" />
+                    </svg>
+                    } @else {
+                    <!-- ID card / personal icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-4 h-4" fill="currentColor"
+                      aria-hidden="true">
+                      <path
+                        d="M21 4H3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM7 8c1.66 0 3 1.34 3 3s-1.34 3-3 3S4 12.66 4 11s1.34-3 3-3zm10 8H7c0-2.67 5-4 10-4v4z" />
+                    </svg>
+                    }
+                  </span>
+                  <span>{{ customer.client_type === 'business' ? customer.cif_nif : customer.dni }}</span>
+                </div>
+                }
+              </div>
+            </div>
+
+            <!-- Right column: Action Buttons Vertical (Hierarchy: important top, dangerous bottom) -->
+            <div class="flex flex-col gap-1 flex-shrink-0">
+              <button (click)="editCustomer(customer)"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                title="Editar cliente">
+                <i class="fas fa-edit text-sm"></i>
+              </button>
+              @if (customer.email; as cEmail) {
+              @if (!hasPortalAccess(customer, cEmail)) {
+              <button (click)="openInviteModal(customer)"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                [class.opacity-0]="customer?.metadata?.inactive_on_import"
+                [disabled]="customer?.metadata?.inactive_on_import" title="Invitar al portal">
+                <i class="fas fa-user-plus text-sm"></i>
+              </button>
+              } @else {
+              <button (click)="togglePortalAccess(customer, false, $event)"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+                [class.opacity-0]="customer?.metadata?.inactive_on_import"
+                [disabled]="customer?.metadata?.inactive_on_import" title="Quitar acceso al portal">
+                <i class="fas fa-user-times text-sm"></i>
+              </button>
+              }
+              }
+              <button (click)="openGdprModal(customer)"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                [class.opacity-0]="customer?.metadata?.inactive_on_import"
+                [disabled]="customer?.metadata?.inactive_on_import" title="Acciones RGPD">
+                <i class="fas fa-shield-alt text-sm"></i>
+              </button>
+              <button (click)="deleteCustomer(customer)"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                title="Eliminar cliente">
+                <i class="fas fa-trash text-sm"></i>
+              </button>
+            </div>
+          </div>
+
         </div>
+        }
+      </div>
       }
 
       <!-- Empty State -->
       @if (!isLoading() && !customers().length) {
-        <div class="empty-state">
-          <div class="empty-icon">
-            <i class="fas fa-users"></i>
-          </div>
-          <h3 class="empty-title">No hay clientes todavía</h3>
-          <p class="empty-message">Comienza creando tu primer cliente</p>
-          <button
-            (click)="openForm()"
-            class="btn btn-primary"
-          >
-            <i class="fas fa-plus"></i>
-            Crear Primer Cliente
-          </button>
+      <div class="empty-state">
+        <div class="empty-icon">
+          <i class="fas fa-users"></i>
         </div>
+        <h3 class="empty-title">No hay clientes todavía</h3>
+        <p class="empty-message">Comienza creando tu primer cliente</p>
+        <button (click)="openForm()" class="btn btn-primary">
+          <i class="fas fa-plus"></i>
+          Crear Primer Cliente
+        </button>
+      </div>
       }
 
       <!-- No Results -->
       @if (!isLoading() && customers().length && !filteredCustomers().length) {
-        <div class="no-results">
-          <div class="no-results-icon">
-            <i class="fas fa-search"></i>
-          </div>
-          <h3 class="no-results-title">No se encontraron clientes</h3>
-          <p class="no-results-message">Intenta con otros términos de búsqueda</p>
-          <button
-            (click)="clearFilters()"
-            class="btn btn-secondary"
-          >
-            <i class="fas fa-times"></i>
-            Limpiar Filtros
-          </button>
+      <div class="no-results">
+        <div class="no-results-icon">
+          <i class="fas fa-search"></i>
         </div>
+        <h3 class="no-results-title">No se encontraron clientes</h3>
+        <p class="no-results-message">Intenta con otros términos de búsqueda</p>
+        <button (click)="clearFilters()" class="btn btn-secondary">
+          <i class="fas fa-times"></i>
+          Limpiar Filtros
+        </button>
+      </div>
       }
 
       <!-- Loading Overlay -->
       @if (isLoading() && customers().length) {
-        <div class="loading-overlay">
-          <app-loading
-            type="spinner"
-            size="lg"
-            text="Actualizando clientes..."
-            [overlay]="true"
-          ></app-loading>
-        </div>
+      <div class="loading-overlay">
+        <app-loading type="spinner" size="lg" text="Actualizando clientes..." [overlay]="true"></app-loading>
+      </div>
       }
     </div>
 
-        </div>
-      </div>
+  </div>
+</div>
 
-      <!-- Customer Form Modal -->
-    @if (showForm()) {
-      <div class="modal-overlay">
-        <div class="modal-content" (click)="$event.stopPropagation()">
-          <div class="modal-header">
-            <h2 class="modal-title">
-              <i class="fas" [class.fa-plus]="!selectedCustomer()" [class.fa-edit]="selectedCustomer()"></i>
-              {{ selectedCustomer() ? 'Editar Cliente' : 'Nuevo Cliente' }}
-            </h2>
-            <button (click)="closeForm()" class="modal-close">
-              <i class="fas fa-times"></i>
-            </button>
-          </div>
-          
-          <!-- Customer Form -->
-          <div class="modal-body">
-            <form (ngSubmit)="saveCustomer()" #customerForm="ngForm" class="customer-form">
-              
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="clientType" class="form-label">
-                    <i class="fas fa-user-tag"></i>
-                    Tipo de cliente
-                  </label>
-                  <select id="clientType" name="clientType" [(ngModel)]="formData.client_type" class="form-input">
-                    <option value="individual">Persona física</option>
-                    <option value="business">Empresa</option>
-                  </select>
-                </div>
-              </div>
+<!-- Customer Form Modal -->
+@if (showForm()) {
+<div class="modal-overlay">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">
+        <i class="fas" [class.fa-plus]="!selectedCustomer()" [class.fa-edit]="selectedCustomer()"></i>
+        {{ selectedCustomer() ? 'Editar Cliente' : 'Nuevo Cliente' }}
+      </h2>
+      <button (click)="closeForm()" class="modal-close">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
 
-              <!-- Campos para EMPRESA -->
-              @if (formData.client_type === 'business') {
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="business_name" class="form-label">
-                      <i class="fas fa-building"></i>
-                      Razón social *
-                    </label>
-                    <input type="text" id="business_name" name="business_name" [(ngModel)]="formData.business_name" required class="form-input" placeholder="Mi Empresa S.L.">
-                  </div>
-                  <div class="form-group">
-                    <label for="cif_nif" class="form-label">
-                      <i class="fas fa-id-card"></i>
-                      CIF/NIF *
-                    </label>
-                    <input type="text" id="cif_nif" name="cif_nif" [(ngModel)]="formData.cif_nif" required class="form-input" placeholder="B12345678">
-                  </div>
-                </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="trade_name" class="form-label">
-                      <i class="fas fa-store"></i>
-                      Nombre comercial
-                    </label>
-                    <input type="text" id="trade_name" name="trade_name" [(ngModel)]="formData.trade_name" class="form-input" placeholder="Comercial">
-                  </div>
-                  <div class="form-group">
-                    <label for="legal_representative_name" class="form-label">
-                      <i class="fas fa-user-tie"></i>
-                      Representante legal
-                    </label>
-                    <input type="text" id="legal_representative_name" name="legal_representative_name" [(ngModel)]="formData.legal_representative_name" class="form-input" placeholder="Nombre del representante">
-                  </div>
-                </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="legal_representative_dni" class="form-label">
-                      <i class="fas fa-id-badge"></i>
-                      DNI representante
-                    </label>
-                    <input type="text" id="legal_representative_dni" name="legal_representative_dni" [(ngModel)]="formData.legal_representative_dni" class="form-input" placeholder="12345678Z">
-                  </div>
-                  <div class="form-group">
-                    <label for="mercantile_registry_data" class="form-label">
-                      <i class="fas fa-file-alt"></i>
-                      Registro mercantil (JSON)
-                    </label>
-                    <textarea id="mercantile_registry_data" name="mercantile_registry_data" [(ngModel)]="formData.mercantile_registry_data" class="form-textarea" rows="3" placeholder='{"tomo": "...", "folio": "..."}'></textarea>
-                  </div>
-                </div>
-              }
+    <!-- Customer Form -->
+    <div class="modal-body">
+      <form (ngSubmit)="saveCustomer()" #customerForm="ngForm" class="customer-form">
 
-              <!-- Campos para PERSONA FÍSICA -->
-              @if (formData.client_type === 'individual') {
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="nombre" class="form-label">
-                    <i class="fas fa-user"></i>
-                    Nombre *
-                  </label>
-                  <input
-                    type="text"
-                    id="nombre"
-                    name="nombre"
-                    [(ngModel)]="formData.name"
-                    required
-                    class="form-input"
-                    placeholder="Introduce el nombre"
-                  >
-                </div>
-                
-                <div class="form-group">
-                  <label for="apellidos" class="form-label">
-                    <i class="fas fa-user"></i>
-                    Apellidos *
-                  </label>
-                  <input
-                    type="text"
-                    id="apellidos"
-                    name="apellidos"
-                    [(ngModel)]="formData.apellidos"
-                    required
-                    class="form-input"
-                    placeholder="Introduce los apellidos"
-                  >
-                </div>
-              </div>
-              }
-
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="email" class="form-label">
-                    <i class="fas fa-envelope"></i>
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    [(ngModel)]="formData.email"
-                    required
-                    class="form-input"
-                    placeholder="correo@ejemplo.com"
-                  >
-                </div>
-                
-                <div class="form-group">
-                  <label for="telefono" class="form-label">
-                    <i class="fas fa-phone"></i>
-                    Teléfono
-                  </label>
-                  <input
-                    type="tel"
-                    id="telefono"
-                    name="telefono"
-                    [(ngModel)]="formData.phone"
-                    class="form-input"
-                    placeholder="666 123 456"
-                  >
-                </div>
-              </div>
-
-              <div class="form-group" *ngIf="formData.client_type === 'individual'">
-                <label for="dni" class="form-label">
-                  <i class="fas fa-id-card"></i>
-                  DNI/NIF
-                </label>
-                <input
-                  type="text"
-                  id="dni"
-                  name="dni"
-                  [(ngModel)]="formData.dni"
-                  class="form-input"
-                  placeholder="12345678Z"
-                >
-
-                <!-- Honeypot field - hidden from users, detects bots -->
-                <input
-                  type="text"
-                  [(ngModel)]="formData.honeypot"
-                  [name]="honeypotFieldName"
-                  style="position:absolute;left:-9999px;width:0;height:0;opacity:0;pointer-events:none;"
-                  tabindex="-1"
-                  autocomplete="off"
-                  aria-hidden="true"
-                  [attr.data-honeypot]="true"
-                >
-              </div>
-
-              <!-- Responsive address row: desktop -> four columns; mobile -> stacked -->
-              <div class="form-row grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="form-group relative">
-                  <label for="addressTipoVia" class="form-label">Tipo Vía</label>
-                  <input id="addressTipoVia" name="addressTipoVia" [(ngModel)]="formData.addressTipoVia" (input)="onAddressViaInput($event)" class="form-input" placeholder="Escribe para buscar tipo vía">
-                  <div class="category-input-container">
-                    <div *ngIf="viaDropdownOpen" class="category-dropdown">
-                      <div class="category-options">
-                        <div *ngFor="let via of filteredVias" class="category-option" (click)="selectVia(via)">
-                          <span>{{ via }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label for="addressNombre" class="form-label">Nombre Calle</label>
-                  <input type="text" id="addressNombre" name="addressNombre" [(ngModel)]="formData.addressNombre" class="form-input" placeholder="Calle, Avenida...">
-                </div>
-
-                <div class="form-group">
-                  <label for="addressNumero" class="form-label">Número</label>
-                  <input type="text" id="addressNumero" name="addressNumero" [(ngModel)]="formData.addressNumero" class="form-input" placeholder="Número">
-                </div>
-
-                <div class="form-group relative">
-                  <label for="addressLocalidadId" class="form-label">Localidad</label>
-                  <input id="addressLocalidadId" name="addressLocalidadId" [(ngModel)]="addressLocalityName" (input)="onLocalityInput($event)" class="form-input" placeholder="Buscar por nombre o código postal">
-                  <div class="category-input-container">
-                    <div *ngIf="localityDropdownOpen" class="category-dropdown">
-                      <div class="category-options">
-                        <div *ngFor="let loc of filteredLocalities" class="category-option" (click)="selectLocality(loc)">
-                          <span>{{ loc.nombre }} - {{ loc.provincia }} (CP: {{ loc.CP }})</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div *ngIf="addressLocalityName" class="mt-2">
-                    <button type="button" class="btn btn-sm btn-outline" (click)="openCreateLocality()">
-                      <i class="fas fa-plus mr-1"></i> Crear nueva localidad
-                    </button>
-                  </div>
-                </div>
-
-                <!-- create-locality modal moved below the form to avoid nested form/ngModel issues -->
-              </div>
-              
-            </form>
-
-            <!-- create-locality modal (moved out of the parent <form> to avoid ngModel inside a form) -->
-            <app-modal [visible]="showCreateLocalityModal" (close)="closeCreateLocality()">
-              <h3 class="text-lg font-semibold mb-2">Crear nueva localidad</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="form-group">
-                  <label class="form-label">Nombre</label>
-                  <input #newLocalityNameInput name="newLocalityName" type="text" class="form-input" [(ngModel)]="newLocalityName" (input)="onNewLocalityNameInput($event)" placeholder="Nombre de la localidad">
-                  <ul *ngIf="filteredNameSuggestions.length" class="absolute bg-white border rounded mt-1 w-full max-h-40 overflow-auto">
-                    <li *ngFor="let s of filteredNameSuggestions" (click)="selectNameSuggestion(s)" class="px-2 py-1 hover:bg-gray-100 cursor-pointer">{{ s }}</li>
-                  </ul>
-                  <div *ngIf="nameMatchesList.length" class="mt-2 border rounded p-2 bg-gray-50">
-                    <div class="text-sm text-gray-600 mb-1">Localidades existentes con ese nombre (elige por CP si corresponde):</div>
-                    <ul class="max-h-32 overflow-auto">
-                      <li *ngFor="let m of nameMatchesList" (click)="selectExistingFromName(m)" class="px-2 py-1 hover:bg-gray-100 cursor-pointer">{{ m.nombre }} (CP: {{ m.CP }})</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label">Provincia</label>
-                  <input name="newLocalityProvince" type="text" class="form-input" [(ngModel)]="newLocalityProvince" placeholder="Provincia">
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label">Código Postal</label>
-                  <input #newLocalityCPInput name="newLocalityCP" type="text" class="form-input" [(ngModel)]="newLocalityCP" (input)="onNewLocalityCPInput($event)" placeholder="Código Postal">
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label">País</label>
-                  <input name="newLocalityCountry" type="text" class="form-input" [value]="newLocalityCountry || 'España'" placeholder="España" readonly tabindex="-1" aria-readonly="true">
-                </div>
-              </div>
-              <div style="height:12px"></div>
-              <div class="modal-actions mt-3 flex justify-end gap-2">
-                <button class="btn btn-secondary" type="button" (click)="closeCreateLocality()">Cancelar</button>
-                <button class="btn btn-primary" type="button" (click)="createLocalityFromInput()" [disabled]="cpExists">Crear localidad</button>
-              </div>
-              <div *ngIf="cpExists" class="mt-3 p-3 border-l-4 border-yellow-300 bg-yellow-50 rounded">
-                <div class="text-sm">Ya existe una localidad con ese <strong>Código Postal</strong>:</div>
-                <div class="mt-1 font-medium">{{ existingLocalityByCP?.nombre }} (CP: {{ existingLocalityByCP?.CP }})</div>
-                <div class="mt-2">
-                  <button class="btn btn-outline btn-sm mr-2" (click)="selectExistingFromName(existingLocalityByCP!)">Seleccionar esta localidad</button>
-                  <button class="btn btn-ghost btn-sm" (click)="closeCreateLocality()">Cancelar</button>
-                </div>
-              </div>
-            </app-modal>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" (click)="closeForm()" class="btn btn-secondary">
-              <i class="fas fa-times"></i>
-              Cancelar
-            </button>
-            <button 
-              type="button" 
-              (click)="saveCustomer()"
-              class="btn btn-primary"
-              [disabled]="isLoading() || (formData.client_type === 'business' ? !(formData.business_name && formData.cif_nif && formData.email) : !(formData.name && formData.email))"
-            >
-              <i class="fas fa-save"></i>
-              {{ selectedCustomer() ? 'Actualizar' : 'Crear' }}
-            </button>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="clientType" class="form-label">
+              <i class="fas fa-user-tag"></i>
+              Tipo de cliente
+            </label>
+            <select id="clientType" name="clientType" [(ngModel)]="formData.client_type" class="form-input">
+              <option value="individual">Persona física</option>
+              <option value="business">Empresa</option>
+            </select>
           </div>
         </div>
-      </div>
-    }
 
-      <!-- Invite Modal -->
-      @if (showInviteModal()) {
-        <div class="modal-overlay">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2 class="modal-title">
-                <i class="fas fa-user-plus"></i>
-                Invitar al Portal de Clientes
-              </h2>
-              <button (click)="closeInviteModal()" class="modal-close">
-                <i class="fas fa-times"></i>
+        <!-- Campos para EMPRESA -->
+        @if (formData.client_type === 'business') {
+        <div class="form-row">
+          <div class="form-group">
+            <label for="business_name" class="form-label">
+              <i class="fas fa-building"></i>
+              Razón social *
+            </label>
+            <input type="text" id="business_name" name="business_name" [(ngModel)]="formData.business_name" required
+              class="form-input" placeholder="Mi Empresa S.L.">
+          </div>
+          <div class="form-group">
+            <label for="cif_nif" class="form-label">
+              <i class="fas fa-id-card"></i>
+              CIF/NIF *
+            </label>
+            <input type="text" id="cif_nif" name="cif_nif" [(ngModel)]="formData.cif_nif" required class="form-input"
+              placeholder="B12345678">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="trade_name" class="form-label">
+              <i class="fas fa-store"></i>
+              Nombre comercial
+            </label>
+            <input type="text" id="trade_name" name="trade_name" [(ngModel)]="formData.trade_name" class="form-input"
+              placeholder="Comercial">
+          </div>
+          <div class="form-group">
+            <label for="legal_representative_name" class="form-label">
+              <i class="fas fa-user-tie"></i>
+              Representante legal
+            </label>
+            <input type="text" id="legal_representative_name" name="legal_representative_name"
+              [(ngModel)]="formData.legal_representative_name" class="form-input"
+              placeholder="Nombre del representante">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="legal_representative_dni" class="form-label">
+              <i class="fas fa-id-badge"></i>
+              DNI representante
+            </label>
+            <input type="text" id="legal_representative_dni" name="legal_representative_dni"
+              [(ngModel)]="formData.legal_representative_dni" class="form-input" placeholder="12345678Z">
+          </div>
+          <div class="form-group">
+            <label for="mercantile_registry_data" class="form-label">
+              <i class="fas fa-file-alt"></i>
+              Registro mercantil (JSON)
+            </label>
+            <textarea id="mercantile_registry_data" name="mercantile_registry_data"
+              [(ngModel)]="formData.mercantile_registry_data" class="form-textarea" rows="3"
+              placeholder='{"tomo": "...", "folio": "..."}'></textarea>
+          </div>
+        </div>
+        }
+
+        <!-- Campos para PERSONA FÍSICA -->
+        @if (formData.client_type === 'individual') {
+        <div class="form-row">
+          <div class="form-group">
+            <label for="nombre" class="form-label">
+              <i class="fas fa-user"></i>
+              Nombre *
+            </label>
+            <input type="text" id="nombre" name="nombre" [(ngModel)]="formData.name" required class="form-input"
+              placeholder="Introduce el nombre">
+          </div>
+
+          <div class="form-group">
+            <label for="apellidos" class="form-label">
+              <i class="fas fa-user"></i>
+              Apellidos *
+            </label>
+            <input type="text" id="apellidos" name="apellidos" [(ngModel)]="formData.apellidos" required
+              class="form-input" placeholder="Introduce los apellidos">
+          </div>
+        </div>
+        }
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="email" class="form-label">
+              <i class="fas fa-envelope"></i>
+              Email *
+            </label>
+            <input type="email" id="email" name="email" [(ngModel)]="formData.email" required class="form-input"
+              placeholder="correo@ejemplo.com">
+          </div>
+
+          <div class="form-group">
+            <label for="telefono" class="form-label">
+              <i class="fas fa-phone"></i>
+              Teléfono
+            </label>
+            <input type="tel" id="telefono" name="telefono" [(ngModel)]="formData.phone" class="form-input"
+              placeholder="666 123 456">
+          </div>
+        </div>
+
+        <div class="form-group" *ngIf="formData.client_type === 'individual'">
+          <label for="dni" class="form-label">
+            <i class="fas fa-id-card"></i>
+            DNI/NIF
+          </label>
+          <input type="text" id="dni" name="dni" [(ngModel)]="formData.dni" class="form-input" placeholder="12345678Z">
+
+          <!-- Honeypot field - hidden from users, detects bots -->
+          <input type="text" [(ngModel)]="formData.honeypot" [name]="honeypotFieldName"
+            style="position:absolute;left:-9999px;width:0;height:0;opacity:0;pointer-events:none;" tabindex="-1"
+            autocomplete="off" aria-hidden="true" [attr.data-honeypot]="true">
+        </div>
+
+        <!-- Responsive address row: desktop -> four columns; mobile -> stacked -->
+        <div class="form-row grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div class="form-group relative">
+            <label for="addressTipoVia" class="form-label">Tipo Vía</label>
+            <input id="addressTipoVia" name="addressTipoVia" [(ngModel)]="formData.addressTipoVia"
+              (input)="onAddressViaInput($event)" class="form-input" placeholder="Escribe para buscar tipo vía">
+            <div class="category-input-container">
+              <div *ngIf="viaDropdownOpen" class="category-dropdown">
+                <div class="category-options">
+                  <div *ngFor="let via of filteredVias" class="category-option" (click)="selectVia(via)">
+                    <span>{{ via }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="addressNombre" class="form-label">Nombre Calle</label>
+            <input type="text" id="addressNombre" name="addressNombre" [(ngModel)]="formData.addressNombre"
+              class="form-input" placeholder="Calle, Avenida...">
+          </div>
+
+          <div class="form-group">
+            <label for="addressNumero" class="form-label">Número</label>
+            <input type="text" id="addressNumero" name="addressNumero" [(ngModel)]="formData.addressNumero"
+              class="form-input" placeholder="Número">
+          </div>
+
+          <div class="form-group relative">
+            <label for="addressLocalidadId" class="form-label">Localidad</label>
+            <input id="addressLocalidadId" name="addressLocalidadId" [(ngModel)]="addressLocalityName"
+              (input)="onLocalityInput($event)" class="form-input" placeholder="Buscar por nombre o código postal">
+            <div class="category-input-container">
+              <div *ngIf="localityDropdownOpen" class="category-dropdown">
+                <div class="category-options">
+                  <div *ngFor="let loc of filteredLocalities" class="category-option" (click)="selectLocality(loc)">
+                    <span>{{ loc.nombre }} - {{ loc.provincia }} (CP: {{ loc.CP }})</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div *ngIf="addressLocalityName" class="mt-2">
+              <button type="button" class="btn btn-sm btn-outline" (click)="openCreateLocality()">
+                <i class="fas fa-plus mr-1"></i> Crear nueva localidad
               </button>
             </div>
-            <div class="modal-body">
-              <form (ngSubmit)="sendInvite()" #inviteForm="ngForm" class="customer-form">
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="inviteEmail" class="form-label">
-                      <i class="fas fa-envelope"></i>
-                      Email del cliente
-                    </label>
-                    <input
-                      type="email"
-                      id="inviteEmail"
-                      name="inviteEmail"
-                      [(ngModel)]="inviteEmail"
-                      required
-                      class="form-input"
-                      placeholder="cliente@ejemplo.com"
-                    >
-                  </div>
-                </div>
+          </div>
 
-                <div class="form-row">
-                  <div class="form-group full-width">
-                    <label for="inviteMessage" class="form-label">
-                      <i class="fas fa-comment-dots"></i>
-                      Mensaje (opcional)
-                    </label>
-                    <textarea
-                      id="inviteMessage"
-                      name="inviteMessage"
-                      [(ngModel)]="inviteMessage"
-                      class="form-textarea"
-                      rows="3"
-                      placeholder="Hola, te invito a acceder a tu portal de cliente para ver tus tickets y presupuestos."
-                    ></textarea>
-                  </div>
-                </div>
+          <!-- create-locality modal moved below the form to avoid nested form/ngModel issues -->
+        </div>
 
-                <div class="modal-actions">
-                  <button type="button" class="btn btn-secondary" (click)="closeInviteModal()" [disabled]="inviting()">
-                    Cancelar
-                  </button>
-                  <button type="submit" class="btn btn-primary" [disabled]="inviting() || !inviteEmail">
-                    <i class="fas" [class.fa-paper-plane]="!inviting()" [class.fa-spinner]="inviting()" [class.fa-pulse]="inviting()"></i>
-                    {{ inviting() ? 'Enviando...' : 'Enviar invitación' }}
-                  </button>
-                </div>
-              </form>
+      </form>
+
+      <!-- create-locality modal (moved out of the parent <form> to avoid ngModel inside a form) -->
+      <app-modal [visible]="showCreateLocalityModal" (close)="closeCreateLocality()">
+        <h3 class="text-lg font-semibold mb-2">Crear nueva localidad</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="form-group">
+            <label class="form-label">Nombre</label>
+            <input #newLocalityNameInput name="newLocalityName" type="text" class="form-input"
+              [(ngModel)]="newLocalityName" (input)="onNewLocalityNameInput($event)"
+              placeholder="Nombre de la localidad">
+            <ul *ngIf="filteredNameSuggestions.length"
+              class="absolute bg-white border rounded mt-1 w-full max-h-40 overflow-auto">
+              <li *ngFor="let s of filteredNameSuggestions" (click)="selectNameSuggestion(s)"
+                class="px-2 py-1 hover:bg-gray-100 cursor-pointer">{{ s }}</li>
+            </ul>
+            <div *ngIf="nameMatchesList.length" class="mt-2 border rounded p-2 bg-gray-50">
+              <div class="text-sm text-gray-600 mb-1">Localidades existentes con ese nombre (elige por CP si
+                corresponde):</div>
+              <ul class="max-h-32 overflow-auto">
+                <li *ngFor="let m of nameMatchesList" (click)="selectExistingFromName(m)"
+                  class="px-2 py-1 hover:bg-gray-100 cursor-pointer">{{ m.nombre }} (CP: {{ m.CP }})</li>
+              </ul>
             </div>
           </div>
+
+          <div class="form-group">
+            <label class="form-label">Provincia</label>
+            <input name="newLocalityProvince" type="text" class="form-input" [(ngModel)]="newLocalityProvince"
+              placeholder="Provincia">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Código Postal</label>
+            <input #newLocalityCPInput name="newLocalityCP" type="text" class="form-input" [(ngModel)]="newLocalityCP"
+              (input)="onNewLocalityCPInput($event)" placeholder="Código Postal">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">País</label>
+            <input name="newLocalityCountry" type="text" class="form-input" [value]="newLocalityCountry || 'España'"
+              placeholder="España" readonly tabindex="-1" aria-readonly="true">
+          </div>
         </div>
-      }
+        <div style="height:12px"></div>
+        <div class="modal-actions mt-3 flex justify-end gap-2">
+          <button class="btn btn-secondary" type="button" (click)="closeCreateLocality()">Cancelar</button>
+          <button class="btn btn-primary" type="button" (click)="createLocalityFromInput()" [disabled]="cpExists">Crear
+            localidad</button>
+        </div>
+        <div *ngIf="cpExists" class="mt-3 p-3 border-l-4 border-yellow-300 bg-yellow-50 rounded">
+          <div class="text-sm">Ya existe una localidad con ese <strong>Código Postal</strong>:</div>
+          <div class="mt-1 font-medium">{{ existingLocalityByCP?.nombre }} (CP: {{ existingLocalityByCP?.CP }})</div>
+          <div class="mt-2">
+            <button class="btn btn-outline btn-sm mr-2"
+              (click)="selectExistingFromName(existingLocalityByCP!)">Seleccionar esta localidad</button>
+            <button class="btn btn-ghost btn-sm" (click)="closeCreateLocality()">Cancelar</button>
+          </div>
+        </div>
+      </app-modal>
+    </div>
 
-    <!-- CSV Header Mapper Modal -->
-    <app-csv-header-mapper
-      [visible]="showCsvMapper()"
-      [csvHeaders]="csvHeaders()"
-      [csvData]="csvData()"
-      [fieldOptions]="customerFieldOptions"
-      [requiredFields]="customerRequiredFields"
-      [aliasMap]="customerAliasMap"
-      (mappingConfirmed)="onCsvMappingConfirmed($event)"
-      (cancelled)="onCsvMappingCancelled()"
-    ></app-csv-header-mapper>
+    <div class="modal-actions">
+      <button type="button" (click)="closeForm()" class="btn-icon btn-cancel" title="Cancelar">
+        <i class="fas fa-times"></i>
+      </button>
+      <button type="button" (click)="saveCustomer()" class="btn-icon btn-save"
+        [disabled]="isLoading() || (formData.client_type === 'business' ? !(formData.business_name && formData.cif_nif && formData.email) : !(formData.name && formData.email))"
+        [title]="selectedCustomer() ? 'Actualizar' : 'Crear'">
+        <i class="fas fa-check"></i>
+      </button>
+    </div>
+  </div>
+</div>
+}
 
-    <!-- GDPR Management Modal -->
-    @if (gdprModalClient()) {
-      <app-client-gdpr-modal
-        [isOpen]="showGdprModal()"
-        [clientId]="gdprModalClient()!.id"
-        [clientEmail]="gdprModalClient()!.email"
-        [clientName]="gdprModalClient()!.name + ' ' + (gdprModalClient()!.apellidos || '')"
-        (closeModal)="closeGdprModal()">
-      </app-client-gdpr-modal>
-    }
+<!-- Invite Modal -->
+@if (showInviteModal()) {
+<div class="modal-overlay">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">
+        <i class="fas fa-user-plus"></i>
+        Invitar al Portal de Clientes
+      </h2>
+      <button (click)="closeInviteModal()" class="modal-close">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form (ngSubmit)="sendInvite()" #inviteForm="ngForm" class="customer-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="inviteEmail" class="form-label">
+              <i class="fas fa-envelope"></i>
+              Email del cliente
+            </label>
+            <input type="email" id="inviteEmail" name="inviteEmail" [(ngModel)]="inviteEmail" required
+              class="form-input" placeholder="cliente@ejemplo.com">
+          </div>
+        </div>
 
-    <!-- Floating Action Button (FAB) -->
-    <button
-      (click)="openForm()"
-      class="fab-button"
-      title="Nuevo Cliente"
-      [disabled]="isLoading()"
-    >
-      <i class="fas fa-plus"></i>
-    </button>
+        <div class="form-row">
+          <div class="form-group full-width">
+            <label for="inviteMessage" class="form-label">
+              <i class="fas fa-comment-dots"></i>
+              Mensaje (opcional)
+            </label>
+            <textarea id="inviteMessage" name="inviteMessage" [(ngModel)]="inviteMessage" class="form-textarea" rows="3"
+              placeholder="Hola, te invito a acceder a tu portal de cliente para ver tus tickets y presupuestos."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeInviteModal()" [disabled]="inviting()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="inviting() || !inviteEmail">
+            <i class="fas" [class.fa-paper-plane]="!inviting()" [class.fa-spinner]="inviting()"
+              [class.fa-pulse]="inviting()"></i>
+            {{ inviting() ? 'Enviando...' : 'Enviar invitación' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+}
+
+<!-- CSV Header Mapper Modal -->
+<app-csv-header-mapper [visible]="showCsvMapper()" [csvHeaders]="csvHeaders()" [csvData]="csvData()"
+  [fieldOptions]="customerFieldOptions" [requiredFields]="customerRequiredFields" [aliasMap]="customerAliasMap"
+  (mappingConfirmed)="onCsvMappingConfirmed($event)" (cancelled)="onCsvMappingCancelled()"></app-csv-header-mapper>
+
+<!-- GDPR Management Modal -->
+@if (gdprModalClient()) {
+<app-client-gdpr-modal [isOpen]="showGdprModal()" [clientId]="gdprModalClient()!.id"
+  [clientEmail]="gdprModalClient()!.email"
+  [clientName]="gdprModalClient()!.name + ' ' + (gdprModalClient()!.apellidos || '')" (closeModal)="closeGdprModal()">
+</app-client-gdpr-modal>
+}
+
+<!-- Floating Action Button (FAB) -->
+<button (click)="openForm()" class="fab-button" title="Nuevo Cliente" [disabled]="isLoading()">
+  <i class="fas fa-plus"></i>
+</button>
