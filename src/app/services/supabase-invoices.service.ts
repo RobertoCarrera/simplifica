@@ -512,6 +512,7 @@ export class SupabaseInvoicesService {
       .from('invoices')
       .select(`
         *,
+        verifactu_status,
         client:clients(*),
         series:invoice_series(*),
         items:invoice_items(*),
@@ -566,6 +567,7 @@ export class SupabaseInvoicesService {
         .from('invoices')
         .select(`
           *,
+          verifactu_status,
           client:clients(*),
           series:invoice_series(*),
           items:invoice_items(*),
@@ -649,7 +651,7 @@ export class SupabaseInvoicesService {
               payment_method: dto.payment_method,
               notes: dto.notes,
               internal_notes: dto.internal_notes,
-              status: 'draft',
+              status: InvoiceStatus.APPROVED,
               currency: 'EUR',
               created_by: userId
             })
@@ -921,11 +923,14 @@ export class SupabaseInvoicesService {
             overdue_amount: 0,
             count_by_status: {
               draft: 0,
+              approved: 0,
+              issued: 0,
               sent: 0,
               paid: 0,
               partial: 0,
               overdue: 0,
               cancelled: 0,
+              rectified: 0,
               void: 0
             },
             monthly_revenue: []

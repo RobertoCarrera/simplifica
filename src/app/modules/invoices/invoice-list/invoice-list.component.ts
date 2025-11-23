@@ -49,8 +49,8 @@ import { environment } from '../../../../environments/environment';
                 <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ inv.client?.name || inv.client_id }}</td>
                 <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ inv.invoice_date }}</td>
                 <td class="px-4 py-2 text-sm">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" [ngClass]="getStatusClass(inv.status)">
-                    {{ getStatusLabel(inv.status) }}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" [ngClass]="getStatusClass(inv)">
+                    {{ getStatusLabel(inv) }}
                   </span>
                 </td>
                 <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100 font-medium">{{ inv.total | number:'1.2-2' }} {{ inv.currency || 'EUR' }}</td>
@@ -102,28 +102,45 @@ export class InvoiceListComponent implements OnInit {
     return formatInvoiceNumber(inv);
   }
 
-  getStatusLabel(status: string): string {
+  getStatusLabel(inv: Invoice): string {
+    // Si está aceptada por VeriFactu y el estado es borrador o aprobada, mostrar como Emitida
+    if (inv.verifactu_status === 'accepted' && ['draft', 'approved'].includes(inv.status)) {
+      return 'Emitida';
+    }
+    const status = inv.status;
     const map: Record<string, string> = {
       'draft': 'Borrador',
+      'approved': 'Aprobada',
+      'issued': 'Emitida',
+      'final': 'Emitida',
       'sent': 'Enviada',
       'paid': 'Pagada',
       'partial': 'Parcial',
       'overdue': 'Vencida',
       'cancelled': 'Cancelada',
-      'void': 'Anulada'
+      'void': 'Anulada',
+      'rectified': 'Rectificada'
     };
     return map[status] || status;
   }
 
-  getStatusClass(status: string): string {
+  getStatusClass(inv: Invoice): string {
+    if (inv.verifactu_status === 'accepted' && ['draft', 'approved'].includes(inv.status)) {
+      return 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200';
+    }
+    const status = inv.status;
     const map: Record<string, string> = {
       'draft': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+      'approved': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200',
+      'issued': 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200',
+      'final': 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200',
       'sent': 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
       'paid': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200',
       'partial': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200',
       'overdue': 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
       'cancelled': 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
-      'void': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 line-through'
+      'void': 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 line-through',
+      'rectified': 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200'
     };
     return map[status] || 'bg-gray-100 text-gray-800';
   }

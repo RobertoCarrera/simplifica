@@ -31,13 +31,13 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
         </span>
         <a class="px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100" routerLink="/facturacion">Volver</a>
         <button class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700" (click)="downloadPdf(inv.id)">Descargar PDF</button>
-        <button class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700" *ngIf="(inv.status !== 'draft' || verifactuMeta()?.status === 'accepted') && inv.status !== 'void' && inv.status !== 'cancelled'" (click)="cancelInvoice(inv.id)">Anular</button>
-        <button class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" *ngIf="inv.status !== 'draft' || verifactuMeta()?.status === 'accepted'" (click)="rectify(inv.id)">Rectificar</button>
-        <button class="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60" [disabled]="sendingEmail()" (click)="sendEmail(inv.id)">{{ sendingEmail() ? 'Enviando…' : 'Enviar por email' }}</button>
+        <button class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700" *ngIf="canCancel(inv)" (click)="cancelInvoice(inv.id)">Anular</button>
+        <button class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" *ngIf="canRectify(inv)" (click)="rectify(inv.id)">Rectificar</button>
+        <button *ngIf="canSendEmail()" class="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60" [disabled]="sendingEmail()" (click)="sendEmail(inv.id)">{{ sendingEmail() ? 'Enviando…' : 'Enviar por email' }}</button>
         
         <!-- Hide button if sending/pending or accepted -->
         <app-issue-verifactu-button 
-          *ngIf="inv.status === 'draft' && verifactuMeta()?.status !== 'accepted' && verifactuMeta()?.status !== 'sending' && verifactuMeta()?.status !== 'pending'" 
+          *ngIf="(inv.status === 'draft' || inv.status === 'approved') && verifactuMeta()?.status !== 'accepted' && verifactuMeta()?.status !== 'sending' && verifactuMeta()?.status !== 'pending'" 
           [invoiceId]="inv.id" 
           (issued)="onIssued()">
         </app-issue-verifactu-button>
@@ -49,7 +49,7 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
         <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Datos</h2>
         <p class="text-sm text-gray-600 dark:text-gray-300">Fecha: {{ inv.invoice_date }}</p>
         <p class="text-sm text-gray-600 dark:text-gray-300">Vencimiento: {{ inv.due_date }}</p>
-        <p class="text-sm text-gray-600 dark:text-gray-300">Estado: {{ inv.status }}</p>
+        <p class="text-sm text-gray-600 dark:text-gray-300">Estado: {{ getStatusLabel(inv.status) }}</p>
       </div>
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
         <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Importes</h2>
@@ -273,12 +273,14 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     if (s === 'sent') return 'Enviada';
     if (s === 'accepted') return 'Aceptada';
     if (s === 'rejected') return 'Rechazada';
+    if (s === 'approved') return 'Aprobada';
+    if (s === 'final') return 'Emitida';
     return status;
   }
 
   statusChipClass(status: string): string {
     const s = (status || '').toLowerCase();
-    if (s === 'accepted' || s === 'sent') return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200';
+    if (s === 'accepted' || s === 'sent' || s === 'final') return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200';
     if (s === 'rejected') return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200';
     if (s === 'sending' || s === 'pending') return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200';
     if (s === 'void') return 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
@@ -351,6 +353,18 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Only allow showing the "Enviar por email" button when VeriFactu process is completed
+  canSendEmail(): boolean {
+    const inv = this.invoice();
+    const meta = this.verifactuMeta();
+    if (!inv) return false;
+    // Don't show for drafts, voided or cancelled invoices
+    if (inv.status === 'draft' || inv.status === 'void' || inv.status === 'cancelled') return false;
+    // Require a completed VeriFactu status: 'accepted' or 'sent'
+    const s = (meta?.status || '').toLowerCase();
+    return s === 'accepted' || s === 'sent';
+  }
+
   // Normaliza el número mostrado de la factura a prefijo F
   formatNumber(inv?: Invoice | null): string {
     if (!inv) return '';
@@ -364,5 +378,27 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
       this.invoicesService.getInvoice(id).subscribe({ next: (inv) => this.invoice.set(inv) });
       this.refreshVerifactu(id);
     }
+  }
+
+  isSentOrLater(status: string): boolean {
+    return ['sent', 'paid', 'partial', 'overdue', 'final'].includes(status);
+  }
+
+  canCancel(inv: Invoice): boolean {
+    if (inv.status === 'cancelled' || inv.status === 'void') return false;
+    return this.isSentOrLater(inv.status) || this.isVerifactuAccepted();
+  }
+
+  canRectify(inv: Invoice): boolean {
+    if (inv.status === 'cancelled' || inv.status === 'rectified') return false;
+    // Permitir rectificar si está anulada y la anulación fue aceptada por VeriFactu
+    if (inv.status === 'void') {
+      return this.verifactuMeta()?.status === 'void';
+    }
+    return this.isSentOrLater(inv.status) || this.isVerifactuAccepted();
+  }
+
+  isVerifactuAccepted(): boolean {
+    return this.verifactuMeta()?.status === 'accepted';
   }
 }

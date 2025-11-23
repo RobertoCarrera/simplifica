@@ -36,7 +36,7 @@ import { SupabaseInvoicesService } from '../../services/supabase-invoices.servic
         </div>
         <div class="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 p-5">
           <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Estado</div>
-          <div class="text-base font-semibold text-gray-900 dark:text-gray-100 capitalize">{{ inv.status }}</div>
+          <div class="text-base font-semibold text-gray-900 dark:text-gray-100 capitalize">{{ getStatusLabel(inv.status) }}</div>
         </div>
       </div>
 
@@ -111,5 +111,20 @@ export class PortalInvoiceDetailComponent implements OnInit {
   displayInvoiceNumber(inv: any): string {
     const raw = inv?.full_invoice_number || (inv?.invoice_series && inv?.invoice_number ? `${inv.invoice_series}-${inv.invoice_number}` : '');
     return formatInvoiceNumber(raw);
+  }
+
+  getStatusLabel(status: string): string {
+    const map: Record<string, string> = {
+      'draft': 'Borrador',
+      'approved': 'Aprobada',
+      'issued': 'Emitida',
+      'sent': 'Enviada',
+      'paid': 'Pagada',
+      'partial': 'Parcial',
+      'overdue': 'Vencida',
+      'cancelled': 'Cancelada',
+      'void': 'Anulada'
+    };
+    return map[status] || status;
   }
 }

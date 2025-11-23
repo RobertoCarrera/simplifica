@@ -5,11 +5,14 @@
 // Enums
 export enum InvoiceStatus {
   DRAFT = 'draft',
-  SENT = 'sent',
+  APPROVED = 'approved', // Aprobada (recién creada desde presupuesto)
+  ISSUED = 'issued',     // Emitida a Veri*Factu
+  SENT = 'sent',         // Enviada al cliente
   PAID = 'paid',
   PARTIAL = 'partial',
   OVERDUE = 'overdue',
   CANCELLED = 'cancelled',
+  RECTIFIED = 'rectified', // Rectificada por otra factura
   VOID = 'void'
 }
 
@@ -83,6 +86,7 @@ export interface Invoice {
   rectification_reason?: string;
 
   // Veri*Factu
+  verifactu_status?: string; // Computed column
   verifactu_hash?: string;
   verifactu_signature?: string;
   verifactu_timestamp?: string;
@@ -227,11 +231,14 @@ export interface InvoiceFilters {
 // Helpers
 export const InvoiceStatusLabels: Record<InvoiceStatus, string> = {
   [InvoiceStatus.DRAFT]: 'Borrador',
+  [InvoiceStatus.APPROVED]: 'Aprobada',
+  [InvoiceStatus.ISSUED]: 'Emitida',
   [InvoiceStatus.SENT]: 'Enviada',
-  [InvoiceStatus.PAID]: 'Pagada',
+  [InvoiceStatus.PAID]: 'Cobrada',
   [InvoiceStatus.PARTIAL]: 'Pago parcial',
   [InvoiceStatus.OVERDUE]: 'Vencida',
   [InvoiceStatus.CANCELLED]: 'Cancelada',
+  [InvoiceStatus.RECTIFIED]: 'Rectificada',
   [InvoiceStatus.VOID]: 'Anulada'
 };
 
@@ -289,11 +296,14 @@ export function calculateItemTotal(
 export function getInvoiceStatusColor(status: InvoiceStatus): string {
   const colors: Record<InvoiceStatus, string> = {
     [InvoiceStatus.DRAFT]: 'gray',
-    [InvoiceStatus.SENT]: 'blue',
+    [InvoiceStatus.APPROVED]: 'blue',
+    [InvoiceStatus.ISSUED]: 'indigo',
+    [InvoiceStatus.SENT]: 'cyan',
     [InvoiceStatus.PAID]: 'green',
     [InvoiceStatus.PARTIAL]: 'yellow',
     [InvoiceStatus.OVERDUE]: 'red',
     [InvoiceStatus.CANCELLED]: 'dark',
+    [InvoiceStatus.RECTIFIED]: 'orange',
     [InvoiceStatus.VOID]: 'gray'
   };
   return colors[status];

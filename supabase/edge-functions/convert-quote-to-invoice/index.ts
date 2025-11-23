@@ -154,7 +154,7 @@ serve(async (req) => {
           tax_amount: quote.tax_amount,
           total: quote.total_amount,
           currency: quote.currency,
-          status: 'draft',
+          status: 'approved', // Default status as per business rule
           notes: `Generada desde presupuesto: ${quote.full_quote_number || ''}` + (quote.notes ? `\n\n${quote.notes}` : ''),
           created_by: appUserId,
           source_quote_id: quote_id
