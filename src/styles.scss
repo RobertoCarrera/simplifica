@@ -478,3 +478,105 @@ body.ios-pwa {
     display: none;
   }
 }
+
+/* ============================================
+   ESTILOS GLOBALES DE DARK MODE
+   ============================================ */
+
+/* Asegurar que dark mode funcione en todos los componentes */
+@media (prefers-color-scheme: dark) {
+  
+  /* Labels de formularios */
+  label,
+  .form-label {
+    color: #f8fafc !important;
+  }
+  
+  /* Inputs, textareas y selects */
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    background-color: #1e293b !important;
+    color: #f1f5f9 !important;
+    border-color: #475569 !important;
+    
+    &::placeholder {
+      color: #64748b !important;
+    }
+    
+    &:focus {
+      border-color: #3b82f6 !important;
+      background-color: #1e293b !important;
+    }
+  }
+  
+  /* Checkboxes y radios */
+  input[type="checkbox"],
+  input[type="radio"] {
+    border-color: #475569 !important;
+    background-color: #1e293b !important;
+    
+    &:checked {
+      background-color: #3b82f6 !important;
+      border-color: #3b82f6 !important;
+    }
+  }
+  
+  /* Opciones de select */
+  option {
+    background-color: #1e293b !important;
+    color: #f1f5f9 !important;
+  }
+  
+  /* Mensajes de error */
+  .error-message {
+    color: #fca5a5 !important;
+  }
+  
+  /* Texto general */
+  small,
+  .text-xs,
+  .text-sm {
+    &:not(.text-blue-500):not(.text-red-500):not(.text-green-500):not(.text-yellow-500):not(.text-purple-500) {
+      color: #cbd5e1 !important;
+    }
+  }
+  
+  /* Modal y acordeones */
+  .modal-content {
+    background-color: #0f172a !important;
+  }
+  
+  .modal-header {
+    background-color: #0f172a !important;
+    border-bottom-color: #334155 !important;
+  }
+  
+  .modal-actions {
+    background-color: #0f172a !important;
+    border-top-color: #334155 !important;
+  }
+  
+  .accordion-header {
+    background-color: #1e293b !important;
+    
+    &:hover {
+      background-color: rgba(51, 65, 85, 0.5) !important;
+    }
+  }
+  
+  .accordion-title {
+    color: #f1f5f9 !important;
+  }
+  
+  /* Botones secundarios */
+  button:not(.btn-primary):not(.bg-blue-600):not(.bg-green-600):not(.bg-red-600) {
+    &:not(.fab-button) {
+      color: #cbd5e1;
+      
+      &:hover {
+        background-color: #334155 !important;
+      }
+    }
+  }
+}

@@ -623,7 +623,7 @@
 }
 
 .modal-content {
-  background: #0f172a; /* slate-900 */
+  background: white;
   border-radius: 12px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
   width: 100%;
@@ -661,14 +661,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid #334155; /* slate-700 */
-  background: #0f172a; /* slate-900 */
+  border-bottom: 1px solid #e5e7eb;
+  background: white;
 
   h2 {
     margin: 0;
     font-size: 1.25rem;
     font-weight: 600;
-    color: #f1f5f9; /* slate-100 */
+    color: #1f2937;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -696,12 +696,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #cbd5e1; /* slate-300 */
+  color: #6b7280;
   transition: all 0.2s ease;
 
   &:hover {
-    background: #334155; /* slate-700 */
-    color: #f1f5f9; /* slate-100 */
+    background: #f3f4f6;
+    color: #374151;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -760,8 +760,8 @@
   padding: 1rem 1.5rem;
   padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   margin: 0;
-  border-top: 1px solid #334155; /* slate-700 */
-  background: #0f172a; /* slate-900 */
+  border-top: 1px solid #e5e7eb;
+  background: white;
   position: sticky;
   bottom: 0;
   z-index: 20;
@@ -772,7 +772,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: #0f172a;
+    background: white;
     box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
     z-index: 50;
   }
@@ -846,18 +846,32 @@
 
 /* Form elements specific styles */
 .form-group label {
-  color: #cbd5e1; /* slate-300 */
+  color: #374151;
+
+  @media (prefers-color-scheme: dark) {
+    color: #cbd5e1;
+  }
 }
 
 .form-group input,
 .form-group textarea,
 .form-group select {
-  background: #1e293b; /* slate-800 */
-  color: #f1f5f9; /* slate-100 */
-  border-color: #475569; /* slate-600 */
+  background: white;
+  color: #1f2937;
+  border-color: #d1d5db;
 
   &::placeholder {
-    color: #64748b; /* slate-500 */
+    color: #9ca3af;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    background: #1e293b;
+    color: #f1f5f9;
+    border-color: #475569;
+
+    &::placeholder {
+      color: #64748b;
+    }
   }
 }
 
@@ -1231,7 +1245,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 14px 16px; /* px-4 py-3.5 */
-  background: #1e293b; /* slate-800 */
+  background: #f9fafb; /* gray-50 */
   cursor: pointer;
   user-select: none;
   transition: background-color 0.2s ease, transform 0.2s ease;
@@ -1239,17 +1253,17 @@
   margin-bottom: 2px;
 
   &:hover {
-    background: rgba(51, 65, 85, 0.5); /* slate-700/50 */
+    background: #f3f4f6; /* gray-100 */
   }
 
   &.active {
-    background: #1e293b; /* slate-800 */
-    border-bottom: 1px solid #334155; /* slate-700 */
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
   }
 
   i.fa-chevron-down,
   i.fa-chevron-up {
-    color: #94a3b8; /* slate-400 */
+    color: #6b7280;
     font-size: 0.875rem;
     transition: transform 0.2s ease;
   }
@@ -1264,6 +1278,11 @@
     &.active {
       background: #1e293b;
       border-bottom-color: #334155;
+    }
+
+    i.fa-chevron-down,
+    i.fa-chevron-up {
+      color: #94a3b8;
     }
   }
 }
@@ -1280,11 +1299,11 @@
   gap: 10px;
   font-size: 1.05rem;
   font-weight: 600;
-  color: #f1f5f9; /* slate-100 */
+  color: #1f2937;
 
   i {
     font-size: 1.1rem;
-    /* Los colores específicos (blue-400, green-400, etc.) se definen en el HTML */
+    /* Los colores específicos (blue-500, green-600, etc.) se definen en el HTML */
   }
 
   @media (prefers-color-scheme: dark) {
