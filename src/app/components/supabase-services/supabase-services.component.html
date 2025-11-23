@@ -224,10 +224,10 @@
   <!-- Service Form Modal -->
   <div *ngIf="showForm" class="modal-overlay">
     <div class="modal-content" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h2>{{ editingService ? 'Editar' : 'Crear' }}</h2>
-        <button class="close-btn" (click)="closeForm()">
-          <i class="fas fa-times"></i>
+      <div class="hidden modal-header bg-slate-900 border-b border-slate-700">
+        <h2 class="text-xl font-semibold text-slate-100">{{ editingService ? 'Editar Servicio' : 'Crear Nuevo Servicio' }}</h2>
+        <button class="close-btn hover:bg-slate-700 transition-colors duration-200 rounded-lg p-2" (click)="closeForm()" aria-label="Cerrar modal">
+          <i class="fas fa-times text-slate-300"></i>
         </button>
       </div>
 
@@ -236,27 +236,27 @@
 
           <!-- Información Básica -->
           <div class="form-section accordion-section" id="variants-section">
-            <div class="accordion-header" (click)="toggleAccordion('basicInfo')"
+            <div class="accordion-header hover:bg-slate-700/50 transition-colors duration-200 px-4 py-3.5" (click)="toggleAccordion('basicInfo')"
               [class.active]="accordionState.basicInfo">
               <div class="accordion-title">
-                <i class="fas fa-info-circle"></i>
-                <span>Información Básica</span>
+                <i class="fas fa-info-circle text-blue-400"></i>
+                <span class="text-slate-100">Información Básica</span>
               </div>
-              <i class="fas" [class.fa-chevron-down]="!accordionState.basicInfo"
+              <i class="fas text-slate-400" [class.fa-chevron-down]="!accordionState.basicInfo"
                 [class.fa-chevron-up]="accordionState.basicInfo"></i>
             </div>
 
             <div class="accordion-content" [class.expanded]="accordionState.basicInfo">
               <div class="form-grid">
                 <div class="form-group">
-                  <label for="name">Nombre *</label>
-                  <input type="text" id="name" class="form-control" [(ngModel)]="formData.name" name="name"
-                    [class.error]="formErrors['name']" placeholder="Ej: Diagnóstico de Hardware">
-                  <div *ngIf="formErrors['name']" class="error-message">{{ formErrors['name'] }}</div>
+                  <label for="name" class="text-slate-300 dark:text-white">Nombre <span class="text-red-500">*</span></label>
+                  <input type="text" id="name" class="form-control bg-slate-800 border border-slate-600 rounded-lg px-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none" [(ngModel)]="formData.name" name="name"
+                    [class.error]="formErrors['name']" placeholder="Diagnóstico de Hardware" aria-required="true">
+                  <div *ngIf="formErrors['name']" class="error-message text-red-400 text-sm mt-1">{{ formErrors['name'] }}</div>
                 </div>
 
                 <div class="form-group">
-                  <label for="category">Categoría *</label>
+                  <label for="category" class="text-slate-300">Categoría <span class="text-red-500">*</span></label>
                   <div class="category-input-container">
                     <!-- Mostrar valor seleccionado o botón para abrir -->
                     <div class="form-control category-display" [class.error]="formErrors['category']"
@@ -306,7 +306,7 @@
 
                 <!-- Tags Section -->
                 <div class="form-group">
-                  <label for="tags">Tags</label>
+                  <label for="tags" class="text-slate-300">Tags</label>
                   <div class="tags-container">
                     <!-- Selected Tags Display -->
                     <div class="selected-tags" *ngIf="selectedTags.length > 0">
@@ -366,36 +366,42 @@
               </div><!-- Close form-grid -->
 
               <div class="form-group full-width">
-                <label for="description">Descripción</label>
-                <textarea id="description" class="form-control" [(ngModel)]="formData.description" name="description"
+                <label for="description" class="text-slate-300">Descripción</label>
+                <textarea id="description" class="form-control bg-slate-800 border border-slate-600 rounded-lg px-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none max-h-32 overflow-y-auto" [(ngModel)]="formData.description" name="description"
                   rows="3"
-                  placeholder="Descripción detallada del servicio que se mostrará en presupuestos y facturas..."></textarea>
+                  placeholder="Descripción detallada del servicio que se mostrará en presupuestos y facturas..." aria-label="Descripción del servicio"></textarea>
               </div>
             </div><!-- Close accordion-content -->
           </div><!-- Close Información Básica section -->
 
           <!-- Service Variants Section -->
           <div class="form-section accordion-section">
-            <div class="accordion-header" (click)="toggleAccordion('variants')"
+            <div class="accordion-header hover:bg-slate-700/50 transition-colors duration-200 px-4 py-3.5" (click)="toggleAccordion('variants')"
               [class.active]="accordionState.variants">
               <div class="accordion-title">
-                <i class="fas fa-layer-group"></i>
-                <span>Variantes del Servicio</span>
-                <span *ngIf="!editingService" class="badge-new">Guarda primero</span>
+                <i class="fas fa-layer-group text-blue-400"></i>
+                <span class="text-slate-100">Variantes del Servicio</span>
               </div>
               <div class="accordion-controls">
                 <!-- Toggle Switch -->
                 <label class="toggle-switch" (click)="$event.stopPropagation()">
                   <input type="checkbox" [(ngModel)]="formData.has_variants" name="has_variants"
-                    (change)="toggleHasVariants()">
+                    (change)="toggleHasVariants()" aria-label="Habilitar variantes">
                   <span class="toggle-slider"></span>
                 </label>
-                <i class="fas" [class.fa-chevron-down]="!accordionState.variants"
+                <i class="fas text-slate-400" [class.fa-chevron-down]="!accordionState.variants"
                   [class.fa-chevron-up]="accordionState.variants"></i>
               </div>
             </div>
 
             <div class="accordion-content" [class.expanded]="accordionState.variants">
+              <!-- Banner informativo para servicios nuevos -->
+              <div *ngIf="!editingService" class="bg-blue-500/10 border border-blue-500/20 text-blue-200 p-3 rounded-lg mb-4">
+                <div class="flex items-start gap-2">
+                  <span class="text-lg">💡</span>
+                  <span class="text-sm">Activa las variantes después de guardar el servicio principal</span>
+                </div>
+              </div>
               <div *ngIf="!formData.has_variants" class="empty-variants-message">
                 <i class="fas fa-info-circle"></i>
                 <p>Activa el switch para habilitar variantes en este servicio.</p>
@@ -438,45 +444,52 @@
 
           <!-- Precios y Facturación (solo si NO hay variantes) -->
           <div class="form-section accordion-section" *ngIf="!formData.has_variants">
-            <div class="accordion-header" (click)="toggleAccordion('pricing')" [class.active]="accordionState.pricing">
+            <div class="accordion-header hover:bg-slate-700/50 transition-colors duration-200 px-4 py-3.5" (click)="toggleAccordion('pricing')" [class.active]="accordionState.pricing">
               <div class="accordion-title">
-                <i class="fas fa-euro-sign"></i>
-                <span>Precios y Facturación</span>
+                <i class="fas fa-euro-sign text-green-400"></i>
+                <span class="text-slate-100">Precios y Facturación</span>
               </div>
-              <i class="fas" [class.fa-chevron-down]="!accordionState.pricing"
+              <i class="fas text-slate-400" [class.fa-chevron-down]="!accordionState.pricing"
                 [class.fa-chevron-up]="accordionState.pricing"></i>
             </div>
 
             <div class="accordion-content" [class.expanded]="accordionState.pricing">
               <div class="form-grid">
                 <div class="form-group">
-                  <label for="base_price">Precio Base (€) *</label>
-                  <input type="number" id="base_price" class="form-control" [(ngModel)]="formData.base_price"
-                    name="base_price" step="0.01" min="0" [class.error]="formErrors['base_price']" placeholder="25.00">
-                  <div *ngIf="formErrors['base_price']" class="error-message">{{ formErrors['base_price'] }}</div>
+                  <label for="base_price" class="text-slate-300">Precio Base <span class="text-red-500">*</span></label>
+                  <div class="relative">
+                    <input type="number" id="base_price" class="form-control bg-slate-800 border border-slate-600 rounded-lg pl-8 pr-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none" [(ngModel)]="formData.base_price"
+                      name="base_price" step="0.01" min="0" [class.error]="formErrors['base_price']" placeholder="25.00" aria-required="true">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">€</span>
+                  </div>
+                  <div *ngIf="formErrors['base_price']" class="error-message text-red-400 text-sm mt-1">{{ formErrors['base_price'] }}</div>
                 </div>
 
                 <div class="form-group">
-                  <label for="cost_price">Costo (€)</label>
-                  <input type="number" id="cost_price" class="form-control" [(ngModel)]="formData.cost_price"
-                    name="cost_price" step="0.01" min="0" [class.error]="formErrors['cost_price']" placeholder="15.00">
-                  <div *ngIf="formErrors['cost_price']" class="error-message">{{ formErrors['cost_price'] }}</div>
+                  <label for="cost_price" class="text-slate-300">Costo</label>
+                  <div class="relative">
+                    <input type="number" id="cost_price" class="form-control bg-slate-800 border border-slate-600 rounded-lg pl-8 pr-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none" [(ngModel)]="formData.cost_price"
+                      name="cost_price" step="0.01" min="0" [class.error]="formErrors['cost_price']" placeholder="15.00" aria-label="Costo del servicio">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">€</span>
+                  </div>
+                  <div *ngIf="formErrors['cost_price']" class="error-message text-red-400 text-sm mt-1">{{ formErrors['cost_price'] }}</div>
                 </div>
 
                 <div class="form-group">
-                  <label for="tax_rate">IVA (%)</label>
-                  <input type="number" id="tax_rate" class="form-control" [(ngModel)]="formData.tax_rate"
+                  <label for="tax_rate" class="text-slate-300">IVA (%)</label>
+                  <input type="number" id="tax_rate" class="form-control bg-slate-800 border border-slate-600 rounded-lg px-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none" [(ngModel)]="formData.tax_rate"
                     name="tax_rate" step="0.01" min="0" max="100" [class.error]="formErrors['tax_rate']"
-                    placeholder="21.00">
-                  <div *ngIf="formErrors['tax_rate']" class="error-message">{{ formErrors['tax_rate'] }}</div>
+                    placeholder="21.00" aria-label="Tasa de IVA">
+                  <small class="text-slate-400 text-xs mt-1">IVA aplicable: 21%</small>
+                  <div *ngIf="formErrors['tax_rate']" class="error-message text-red-400 text-sm mt-1">{{ formErrors['tax_rate'] }}</div>
                 </div>
 
                 <div class="form-group">
-                  <label for="profit_margin">Margen (%)</label>
-                  <input type="number" id="profit_margin" class="form-control" [(ngModel)]="formData.profit_margin"
+                  <label for="profit_margin" class="text-slate-300">Margen (%)</label>
+                  <input type="number" id="profit_margin" class="form-control bg-slate-800 border border-slate-600 rounded-lg px-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none" [(ngModel)]="formData.profit_margin"
                     name="profit_margin" step="0.01" min="0" [class.error]="formErrors['profit_margin']"
-                    placeholder="30.00">
-                  <div *ngIf="formErrors['profit_margin']" class="error-message">{{ formErrors['profit_margin'] }}</div>
+                    placeholder="30.00" aria-label="Margen de ganancia">
+                  <div *ngIf="formErrors['profit_margin']" class="error-message text-red-400 text-sm mt-1">{{ formErrors['profit_margin'] }}</div>
                 </div>
               </div><!-- Close form-grid -->
             </div><!-- Close accordion-content -->
@@ -484,31 +497,31 @@
 
           <!-- Tiempo y Cantidades -->
           <div class="form-section accordion-section">
-            <div class="accordion-header" (click)="toggleAccordion('timeQuantity')"
+            <div class="accordion-header hover:bg-slate-700/50 transition-colors duration-200 px-4 py-3.5" (click)="toggleAccordion('timeQuantity')"
               [class.active]="accordionState.timeQuantity">
               <div class="accordion-title">
-                <i class="fas fa-clock"></i>
-                <span>Tiempo y Cantidades</span>
+                <i class="fas fa-clock text-yellow-400"></i>
+                <span class="text-slate-100">Tiempo y Cantidades</span>
               </div>
-              <i class="fas" [class.fa-chevron-down]="!accordionState.timeQuantity"
+              <i class="fas text-slate-400" [class.fa-chevron-down]="!accordionState.timeQuantity"
                 [class.fa-chevron-up]="accordionState.timeQuantity"></i>
             </div>
 
             <div class="accordion-content" [class.expanded]="accordionState.timeQuantity">
               <div class="form-group">
-                <label for="estimated_hours">
-                  {{ getSelectedUnitLabel() }} Estimadas *
+                <label for="estimated_hours" class="text-slate-300">
+                  {{ getSelectedUnitLabel() }} Estimadas <span class="text-red-500">*</span>
                 </label>
-                <input type="number" id="estimated_hours" class="form-control" [(ngModel)]="formData.estimated_hours"
+                <input type="number" id="estimated_hours" class="form-control bg-slate-800 border border-slate-600 rounded-lg px-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none" [(ngModel)]="formData.estimated_hours"
                   name="estimated_hours" step="0.25" min="0.25" [class.error]="formErrors['estimated_hours']"
-                  placeholder="1.5">
-                <div *ngIf="formErrors['estimated_hours']" class="error-message">{{ formErrors['estimated_hours'] }}
+                  placeholder="1.5" aria-required="true">
+                <div *ngIf="formErrors['estimated_hours']" class="error-message text-red-400 text-sm mt-1">{{ formErrors['estimated_hours'] }}
                 </div>
               </div>
 
               <div class="form-group">
-                <label for="unit_type">Unidad de Medida</label>
-                <select id="unit_type" class="form-control" [(ngModel)]="formData.unit_type" name="unit_type">
+                <label for="unit_type" class="text-slate-300">Unidad de Medida</label>
+                <select id="unit_type" class="form-control bg-slate-800 border border-slate-600 rounded-lg px-3.5 py-2.5 text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none" [(ngModel)]="formData.unit_type" name="unit_type" aria-label="Unidad de medida">
                   <option *ngIf="unitsLoaded && (!units || !units.length)" value="" disabled>
                     Configura unidades en Configuración
                   </option>
@@ -517,41 +530,41 @@
               </div>
 
               <div class="form-group">
-                <label for="min_quantity">Cantidad Mínima</label>
-                <input type="number" id="min_quantity" class="form-control" [(ngModel)]="formData.min_quantity"
+                <label for="min_quantity" class="text-slate-300">Cantidad Mínima</label>
+                <input type="number" id="min_quantity" class="form-control bg-slate-800 border border-slate-600 rounded-lg px-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none" [(ngModel)]="formData.min_quantity"
                   name="min_quantity" step="0.25" min="0.25" [class.error]="formErrors['min_quantity']"
-                  placeholder="1.00">
-                <div *ngIf="formErrors['min_quantity']" class="error-message">{{ formErrors['min_quantity'] }}</div>
+                  placeholder="1.00" aria-label="Cantidad mínima">
+                <div *ngIf="formErrors['min_quantity']" class="error-message text-red-400 text-sm mt-1">{{ formErrors['min_quantity'] }}</div>
               </div>
 
               <div class="form-group">
-                <label for="max_quantity">Cantidad Máxima</label>
-                <input type="number" id="max_quantity" class="form-control" [(ngModel)]="formData.max_quantity"
+                <label for="max_quantity" class="text-slate-300">Cantidad Máxima</label>
+                <input type="number" id="max_quantity" class="form-control bg-slate-800 border border-slate-600 rounded-lg px-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none" [(ngModel)]="formData.max_quantity"
                   name="max_quantity" step="0.25" min="0.25" [class.error]="formErrors['max_quantity']"
-                  placeholder="10.00">
-                <div *ngIf="formErrors['max_quantity']" class="error-message">{{ formErrors['max_quantity'] }}</div>
+                  placeholder="10.00" aria-label="Cantidad máxima">
+                <div *ngIf="formErrors['max_quantity']" class="error-message text-red-400 text-sm mt-1">{{ formErrors['max_quantity'] }}</div>
               </div>
             </div><!-- Close accordion-content -->
           </div><!-- Close Tiempo section -->
 
           <!-- Dificultad y Gestión -->
           <div class="form-section accordion-section">
-            <div class="accordion-header" (click)="toggleAccordion('difficulty')"
+            <div class="accordion-header hover:bg-slate-700/50 transition-colors duration-200 px-4 py-3.5" (click)="toggleAccordion('difficulty')"
               [class.active]="accordionState.difficulty">
               <div class="accordion-title">
-                <i class="fas fa-cogs"></i>
-                <span>Dificultad y Gestión</span>
+                <i class="fas fa-cogs text-purple-400"></i>
+                <span class="text-slate-100">Dificultad y Gestión</span>
               </div>
-              <i class="fas" [class.fa-chevron-down]="!accordionState.difficulty"
+              <i class="fas text-slate-400" [class.fa-chevron-down]="!accordionState.difficulty"
                 [class.fa-chevron-up]="accordionState.difficulty"></i>
             </div>
 
             <div class="accordion-content" [class.expanded]="accordionState.difficulty">
               <div class="form-grid">
                 <div class="form-group">
-                  <label for="difficulty_level">Nivel de Dificultad</label>
-                  <select id="difficulty_level" class="form-control" [(ngModel)]="formData.difficulty_level"
-                    name="difficulty_level">
+                  <label for="difficulty_level" class="text-slate-300">Nivel de Dificultad</label>
+                  <select id="difficulty_level" class="form-control bg-slate-800 border border-slate-600 rounded-lg px-3.5 py-2.5 text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none" [(ngModel)]="formData.difficulty_level"
+                    name="difficulty_level" aria-label="Nivel de dificultad">
                     <option value="1">1 - Muy Fácil</option>
                     <option value="2">2 - Fácil</option>
                     <option value="3">3 - Medio</option>
@@ -561,9 +574,9 @@
                 </div>
 
                 <div class="form-group">
-                  <label for="priority_level">Nivel de Prioridad</label>
-                  <select id="priority_level" class="form-control" [(ngModel)]="formData.priority_level"
-                    name="priority_level">
+                  <label for="priority_level" class="text-slate-300">Nivel de Prioridad</label>
+                  <select id="priority_level" class="form-control bg-slate-800 border border-slate-600 rounded-lg px-3.5 py-2.5 text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none" [(ngModel)]="formData.priority_level"
+                    name="priority_level" aria-label="Nivel de prioridad">
                     <option value="1">1 - Muy Baja</option>
                     <option value="2">2 - Baja</option>
                     <option value="3">3 - Media</option>
@@ -573,30 +586,27 @@
                 </div>
 
                 <div class="form-group">
-                  <label for="warranty_days">Días de Garantía</label>
-                  <input type="number" id="warranty_days" class="form-control" [(ngModel)]="formData.warranty_days"
-                    name="warranty_days" min="0" [class.error]="formErrors['warranty_days']" placeholder="30">
-                  <div *ngIf="formErrors['warranty_days']" class="error-message">{{ formErrors['warranty_days'] }}</div>
+                  <label for="warranty_days" class="text-slate-300">Días de Garantía</label>
+                  <input type="number" id="warranty_days" class="form-control bg-slate-800 border border-slate-600 rounded-lg px-3.5 py-2.5 text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none" [(ngModel)]="formData.warranty_days"
+                    name="warranty_days" min="0" [class.error]="formErrors['warranty_days']" placeholder="30" aria-label="Días de garantía">
+                  <div *ngIf="formErrors['warranty_days']" class="error-message text-red-400 text-sm mt-1">{{ formErrors['warranty_days'] }}</div>
                 </div>
 
                 <div class="form-group">
-                  <div class="checkbox-group">
-                    <label class="checkbox-label">
-                      <input type="checkbox" [(ngModel)]="formData.can_be_remote" name="can_be_remote">
-                      <span class="checkmark"></span>
-                      Se puede realizar en remoto
+                  <div class="checkbox-group space-y-3">
+                    <label class="checkbox-label flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-2 focus:ring-blue-500/20" [(ngModel)]="formData.can_be_remote" name="can_be_remote" aria-label="Se puede realizar en remoto">
+                      <span class="text-slate-300 text-sm">Se puede realizar en remoto</span>
                     </label>
 
-                    <label class="checkbox-label">
-                      <input type="checkbox" [(ngModel)]="formData.requires_parts" name="requires_parts">
-                      <span class="checkmark"></span>
-                      Requiere piezas/componentes
+                    <label class="checkbox-label flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-2 focus:ring-blue-500/20" [(ngModel)]="formData.requires_parts" name="requires_parts" aria-label="Requiere piezas/componentes">
+                      <span class="text-slate-300 text-sm">Requiere piezas/componentes</span>
                     </label>
 
-                    <label class="checkbox-label">
-                      <input type="checkbox" [(ngModel)]="formData.requires_diagnosis" name="requires_diagnosis">
-                      <span class="checkmark"></span>
-                      Requiere diagnóstico previo
+                    <label class="checkbox-label flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-2 focus:ring-blue-500/20" [(ngModel)]="formData.requires_diagnosis" name="requires_diagnosis" aria-label="Requiere diagnóstico previo">
+                      <span class="text-slate-300 text-sm">Requiere diagnóstico previo</span>
                     </label>
                   </div>
                 </div>
@@ -607,13 +617,19 @@
         </form>
       </div>
 
-      <div class="modal-actions">
-        <button type="button" class="btn-icon btn-cancel" (click)="closeForm()" title="Cancelar">
-          <i class="fas fa-times"></i>
+      <div class="modal-actions flex items-center justify-end gap-3 pt-6 border-t border-slate-700 bg-slate-900 px-6 pb-6">
+        <button type="button" class="px-5 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 transition-colors font-medium" (click)="closeForm()" aria-label="Cancelar">
+          Cancelar
         </button>
-        <button type="submit" class="btn-icon btn-save" (click)="saveService()" [disabled]="loading"
-          [title]="editingService ? 'Actualizar' : 'Crear'">
-          <i class="fas fa-check"></i>
+        <button type="submit" class="hidden md:block px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors font-medium shadow-lg shadow-blue-600/20" (click)="saveService()" [disabled]="loading"
+          [attr.aria-label]="editingService ? 'Actualizar servicio' : 'Crear servicio'">
+          <i class="fas" [class.fa-spinner]="loading" [class.fa-spin]="loading" [class.fa-check]="!loading"></i>
+          {{ editingService ? 'Actualizar' : 'Crear Servicio' }}
+        </button>
+        <button type="submit" class="md:hidden px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors font-medium shadow-lg shadow-blue-600/20" (click)="saveService()" [disabled]="loading"
+          [attr.aria-label]="editingService ? 'Actualizar servicio' : 'Crear servicio'">
+          <i class="fas" [class.fa-spinner]="loading" [class.fa-spin]="loading" [class.fa-check]="!loading"></i>
+          {{ editingService ? 'Actualizar' : 'Crear' }}
         </button>
       </div>
     </div>
