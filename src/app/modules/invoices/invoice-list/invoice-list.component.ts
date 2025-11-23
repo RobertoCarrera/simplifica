@@ -84,7 +84,7 @@ export class InvoiceListComponent implements OnInit {
     });
   }
 
-  downloadPdf(invoiceId: string){
+  downloadPdf(invoiceId: string) {
     this.invoicesService.getInvoicePdfUrl(invoiceId).subscribe({
       next: (signed) => window.open(signed, '_blank'),
       error: (e) => console.error('PDF error', e)
@@ -103,6 +103,10 @@ export class InvoiceListComponent implements OnInit {
   }
 
   getStatusLabel(inv: Invoice): string {
+    // Si es una factura rectificativa (importe negativo o tipo rectificative)
+    if (inv.invoice_type === 'rectificative' || (inv.total || 0) < 0) {
+      return 'Rectificativa';
+    }
     // Si está aceptada por VeriFactu y el estado es borrador o aprobada, mostrar como Emitida
     if (inv.verifactu_status === 'accepted' && ['draft', 'approved'].includes(inv.status)) {
       return 'Emitida';

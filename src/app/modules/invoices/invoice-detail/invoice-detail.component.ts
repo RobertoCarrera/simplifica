@@ -22,13 +22,13 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
       </h1>
       <div class="flex items-center gap-3">
         <!-- Dispatcher health pill -->
-        <span *ngIf="dispatcherHealth() as h"
+        <!-- <span *ngIf="dispatcherHealth() as h"
               class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
               [ngClass]="h.pending > 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'">
           <span class="w-2 h-2 rounded-full mr-1.5"
                 [ngClass]="h.pending > 0 ? 'bg-amber-500' : 'bg-emerald-500'"></span>
           {{ h.pending > 0 ? (h.pending + ' pendientes') : 'Dispatcher OK' }}
-        </span>
+        </span> -->
         <a class="px-3 py-1.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100" routerLink="/facturacion">Volver</a>
         <button class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700" (click)="downloadPdf(inv.id)">Descargar PDF</button>
         <button class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700" *ngIf="canCancel(inv)" (click)="cancelInvoice(inv.id)">Anular</button>
@@ -385,14 +385,23 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   }
 
   canCancel(inv: Invoice): boolean {
-    if (inv.status === 'cancelled' || inv.status === 'void') return false;
+    // No permitir anular si ya está cancelada, anulada o rectificada
+    if (inv.status === 'cancelled' || inv.status === 'void' || inv.status === 'rectified') return false;
+    // Permitir anular facturas rectificativas (negativas)
+    if (inv.invoice_type === 'rectificative' || (inv.total || 0) < 0) return true;
+
     return this.isSentOrLater(inv.status) || this.isVerifactuAccepted();
   }
 
   canRectify(inv: Invoice): boolean {
-    if (inv.status === 'cancelled' || inv.status === 'rectified') return false;
-    // Permitir rectificar si está anulada y la anulación fue aceptada por VeriFactu
-    if (inv.status === 'void') {
+    // No permitir rectificar si ya está cancelada, anulada o rectificada
+    if (inv.status === 'cancelled' || inv.status === 'void' || inv.status === 'rectified') return false;
+
+    // No permitir rectificar una factura rectificativa (sería un bucle extraño, mejor anularla y hacer una nueva)
+    if (inv.invoice_type === 'rectificative' || (inv.total || 0) < 0) return false;
+
+    // Permitir rectificar si está anulada y la anulación fue aceptada por VeriFactu (caso raro, pero posible)
+    if ((inv.status as string) === 'void') {
       return this.verifactuMeta()?.status === 'void';
     }
     return this.isSentOrLater(inv.status) || this.isVerifactuAccepted();

@@ -446,14 +446,15 @@ export function canEditQuote(quote: Quote): boolean {
 export function canConvertToInvoice(quote: Quote): boolean {
   // Permitimos convertir manualmente si está aceptado, no tiene factura
   // y no hay una conversión ya programada/en proceso.
-  // EXCEPCIÓN: Si es un presupuesto rectificativo (rectifies_invoice_id),
+  // EXCEPCIÓN: Si es un presupuesto rectificativo (rectifies_invoice_id) O tiene importe negativo,
   // permitimos convertir aunque no esté aceptado (para agilizar flujo).
   const isAccepted = quote.status === QuoteStatus.ACCEPTED;
   const isRectificative = !!quote.rectifies_invoice_id;
+  const isNegative = (quote.total_amount || 0) < 0;
   const hasNoInvoice = !quote.invoice_id;
   const notScheduled = !quote.conversion_status || (quote.conversion_status !== 'scheduled' && quote.conversion_status !== 'processing');
   
-  return (isAccepted || isRectificative) && hasNoInvoice && notScheduled;
+  return (isAccepted || isRectificative || isNegative) && hasNoInvoice && notScheduled;
 }
 
 /**
