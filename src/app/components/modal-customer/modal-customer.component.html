@@ -1,51 +1,52 @@
 <div *ngIf="customer" class="modal fade" [class.show]="true" [style.display]="'block'" tabindex="-1" role="dialog" aria-labelledby="modalCustomer" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
       <div class="modal-content">
-        <div class="modal-header">
+        <div class="modal-header dark:bg-slate-800 dark:border-slate-600">
             <div class="row w-100 d-flex align-items-center justify-content-between">
                 <div class="col-8">
-                    <h2>{{customer.nombre}} {{customer.apellidos}}</h2>
+                    <h2 class="dark:text-white">{{customer.nombre}} {{customer.apellidos}}</h2>
                 </div>
                 <div class="col-4">
-                    <h2>
-                        <a href="tel:{{customer.telefono}}">{{customer.telefono}}</a>
+                    <h2 class="dark:text-white">
+                        <a href="tel:{{customer.telefono}}" class="dark:text-blue-400">{{customer.telefono}}</a>
                     </h2>
                 </div>
             </div>
-            <button type="button" class="btn-close" aria-label="Close" (click)="closeCustomer()"></button>
+            <button type="button" class="btn-close dark:invert" aria-label="Close" (click)="closeCustomer()"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body dark:bg-slate-800">
             <div class="row">
                 <div class="col-4">
-                    <h3>DNI:</h3>
+                    <h3 class="dark:text-slate-300 font-medium">DNI:</h3>
                 </div>
                 <div class="col-8">
-                    <h3>{{customer.dni}}</h3>
+                    <h3 class="dark:text-white">{{customer.dni}}</h3>
                 </div>
                 <div class="col-4">
-                    <h3>Dirección: </h3>
+                    <h3 class="dark:text-slate-300 font-medium">Dirección: </h3>
                 </div>
                 <div class="col-8">
-                    <h3>
+                    <h3 class="dark:text-white">
                         <a 
                           href="https://www.google.com/maps/search/?api=1&query={{customer.direccion?.tipo_via}}+{{customer.direccion?.nombre}}+{{customer.direccion?.numero}},+{{customer.direccion?.localidad?.nombre}},+{{customer.direccion?.localidad?.provincia}}" 
                           target="_blank" 
+                          class="dark:text-blue-400"
                           rel="noopener noreferrer">
                           {{customer.direccion?.tipo_via}} {{customer.direccion?.nombre}}, {{customer.direccion?.numero}} ({{customer.direccion?.localidad?.nombre}}, {{customer.direccion?.localidad?.provincia}})
                         </a>
                       </h3>                
                     </div>
                 <div class="col-4">
-                    <h3>Email: </h3>
+                    <h3 class="dark:text-slate-300 font-medium">Email: </h3>
                 </div>
                 <div class="col-8">
-                    <h3>
-                        <a href="mailto:{{customer.email}}">{{customer.email}}</a>
+                    <h3 class="dark:text-white">
+                        <a href="mailto:{{customer.email}}" class="dark:text-blue-400">{{customer.email}}</a>
                     </h3>
                 </div>
             </div>
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer dark:bg-slate-800 dark:border-slate-600">
           <button type="button" class="btn btn-danger" (click)="closeCustomer()">Cerrar</button>
         </div>
       </div>

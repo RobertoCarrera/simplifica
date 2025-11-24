@@ -142,7 +142,7 @@
   width: 100vw;
   height: var(--dvh, 100vh);
   padding: clamp(12px, 4vw, 24px);
-  overflow-y: auto;
+  overflow-y: hidden;
 
   @media (max-width: 767px) {
     padding: 0;
@@ -195,6 +195,9 @@
 
   @media (prefers-color-scheme: dark) {
     border-bottom-color: #374151;
+  }
+  @media (max-width: 767px) {
+    display: none;
   }
 }
 
