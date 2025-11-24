@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, from, map, catchError, of } from 'rxjs';
 import { Invoice } from '../models/invoice.model';
 import { SupabaseClientService } from './supabase-client.service';
-import { 
+import {
   callEdgeFunction,
   IssueInvoiceRequest,
   IssueInvoiceResponse,
@@ -56,7 +56,7 @@ export interface VerifactuSettings {
 export class VerifactuService {
   private sbClient = inject(SupabaseClientService);
   private supabase = this.sbClient.instance;
-  
+
   private async sha256Hex(data: string): Promise<string> {
     const { default: CryptoJS } = await import('crypto-js');
     return CryptoJS.SHA256(data).toString(CryptoJS.enc.Hex);
@@ -102,7 +102,7 @@ export class VerifactuService {
    */
   issueInvoice(request: IssueInvoiceRequest): Observable<IssueInvoiceResponse | null> {
     console.log('📤 Issuing invoice with Verifactu:', request);
-    
+
     // Normalize payload: Edge Function expects `invoiceid` (lowercase, no underscores)
     const payload = {
       invoiceid: (request as any).invoiceid || (request as any).invoice_id || (request as any).invoiceId,
@@ -142,7 +142,7 @@ export class VerifactuService {
    */
   uploadVerifactuCertificate(request: UploadVerifactuCertRequest): Observable<boolean> {
     console.log('📤 Uploading Verifactu certificate...');
-    
+
     return from(
       callEdgeFunction<UploadVerifactuCertRequest, { ok: boolean }>(
         this.supabase,
@@ -256,7 +256,7 @@ export class VerifactuService {
   /**
    * Obtiene configuración actual y historial de rotaciones de certificados
    */
-  fetchCertificateHistory(companyId: string): Observable<{settings: {software_code: string; issuer_nif: string; environment: 'pre' | 'prod'; configured: boolean; mode: 'encrypted' | 'none'}; history: Array<{version: number; stored_at: string; rotated_by: string | null; integrity_hash: string | null; notes: string | null; cert_len: number | null; key_len: number | null; pass_present: boolean;}>} | null> {
+  fetchCertificateHistory(companyId: string): Observable<{ settings: { software_code: string; issuer_nif: string; environment: 'pre' | 'prod'; configured: boolean; mode: 'encrypted' | 'none' }; history: Array<{ version: number; stored_at: string; rotated_by: string | null; integrity_hash: string | null; notes: string | null; cert_len: number | null; key_len: number | null; pass_present: boolean; }> } | null> {
     return from(
       callEdgeFunction<any, { ok: boolean; settings: any; history: any[] }>(
         this.supabase,
@@ -371,7 +371,7 @@ export class VerifactuService {
       try {
         // URL base de verificación AEAT (ejemplo, no oficial)
         const baseUrl = 'https://www.agenciatributaria.es/verifactu';
-        
+
         // Parámetros de verificación
         const params = new URLSearchParams({
           nif: invoice.company_id, // En producción: CIF real
@@ -438,6 +438,12 @@ export class VerifactuService {
     <Huella>${this.escapeXML(invoice.verifactu_hash || '')}</Huella>
     <PosicionCadena>${invoice.verifactu_chain_position || 0}</PosicionCadena>
   </Huella>
+
+  ${invoice.invoice_type === 'rectificative' ? `
+  <DatosRectificacion>
+    <NumFacturaRectificada>${this.escapeXML(invoice.rectifies_invoice_id ? 'TODO: GET_NUMBER_' + invoice.rectifies_invoice_id : '')}</NumFacturaRectificada>
+    <MotivoRectificacion>${this.escapeXML(invoice.rectification_reason || '01')}</MotivoRectificacion>
+  </DatosRectificacion>` : ''}
   
   <FechaHora>${invoice.verifactu_timestamp || new Date().toISOString()}</FechaHora>
   
@@ -483,10 +489,10 @@ export class VerifactuService {
       console.log('1. Certificado digital de la empresa');
       console.log('2. Librería de firma PKCS#7');
       console.log('3. Validación de certificado');
-      
+
       // TODO: Implementar firma real
       // const signature = signWithCertificate(invoice, certificate);
-      
+
       observer.next('FIRMA_PENDIENTE');
       observer.complete();
     });
@@ -503,7 +509,7 @@ export class VerifactuService {
     return new Observable(observer => {
       console.warn('⚠️ Validación con AEAT no disponible aún');
       console.log('Esperando API oficial de la AEAT');
-      
+
       // TODO: Cuando AEAT lance API oficial
       // const response = await fetch('https://www.agenciatributaria.es/api/verifactu/validate', {
       //   method: 'POST',
@@ -513,7 +519,7 @@ export class VerifactuService {
       //     hash: invoice.verifactu_hash
       //   })
       // });
-      
+
       observer.next(true);
       observer.complete();
     });
