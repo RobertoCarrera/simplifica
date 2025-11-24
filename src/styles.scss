@@ -534,13 +534,13 @@ body.ios-pwa {
   }
   
   /* Texto general */
-  small,
-  .text-xs,
-  .text-sm {
-    &:not(.text-blue-500):not(.text-red-500):not(.text-green-500):not(.text-yellow-500):not(.text-purple-500) {
-      color: #cbd5e1 !important;
-    }
-  }
+  // small,
+  // .text-xs,
+  // .text-sm {
+  //   &:not(.text-blue-500):not(.text-red-500):not(.text-green-500):not(.text-yellow-500):not(.text-purple-500) {
+  //     color: #cbd5e1 !important;
+  //   }
+  // }
   
   /* Modal y acordeones */
   .modal-content {
@@ -570,13 +570,13 @@ body.ios-pwa {
   }
   
   /* Botones secundarios */
-  button:not(.btn-primary):not(.bg-blue-600):not(.bg-green-600):not(.bg-red-600) {
-    &:not(.fab-button) {
-      color: #cbd5e1;
+  // button:not(.btn-primary):not(.bg-blue-600):not(.bg-green-600):not(.bg-red-600) {
+  //   &:not(.fab-button) {
+  //     color: #cbd5e12f;
       
-      &:hover {
-        background-color: #334155 !important;
-      }
-    }
-  }
+  //     &:hover {
+  //       background-color: #334155 !important;
+  //     }
+  //   }
+  // }
 }
