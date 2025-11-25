@@ -73,6 +73,10 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
   creatingInvoiceSeries = false;
   newInvoiceSeries: Partial<InvoiceSeries> = {} as any;
 
+  // Company NIF edit
+  companyNifEdit = '';
+  savingNif = false;
+
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
@@ -170,6 +174,8 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
             full_name: profile.full_name || '',
             email: profile.email
           });
+          // Cargar NIF de la empresa si existe
+          this.companyNifEdit = (profile.company as any)?.nif || '';
           // After user profile is available, ensure modules are loaded (in case of timing)
           this.loadUserModules();
         }
@@ -434,6 +440,42 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
   getCompanyInfo() {
     return this.userProfile?.company;
+  }
+
+  async saveCompanyNif() {
+    const companyId = this.userProfile?.company_id;
+    if (!companyId) {
+      this.showMessage('No se encontró la empresa', 'error');
+      return;
+    }
+
+    const nif = this.companyNifEdit?.trim().toUpperCase();
+    if (!nif || !/^[A-Z0-9]{8,9}$/.test(nif)) {
+      this.showMessage('El NIF/CIF debe tener 8-9 caracteres alfanuméricos', 'error');
+      return;
+    }
+
+    this.savingNif = true;
+    try {
+      const { error } = await this.supabase
+        .from('companies')
+        .update({ nif })
+        .eq('id', companyId);
+
+      if (error) throw error;
+
+      // Actualizar el objeto local
+      if (this.userProfile?.company) {
+        (this.userProfile.company as any).nif = nif;
+      }
+
+      this.showMessage('NIF guardado correctamente', 'success');
+    } catch (err: any) {
+      console.error('Error saving NIF:', err);
+      this.showMessage('Error al guardar el NIF: ' + (err.message || 'Error desconocido'), 'error');
+    } finally {
+      this.savingNif = false;
+    }
   }
 
   getRoleDisplayName(role: string): string {

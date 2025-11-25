@@ -25,6 +25,7 @@ export interface Company {
   id: string;
   name: string;
   slug: string | null;
+  nif?: string | null; // NIF/CIF de la empresa (obligatorio para facturación)
   is_active: boolean;
   settings?: any;
   subscription_tier?: string | null;
@@ -44,6 +45,7 @@ export interface RegisterData {
   surname?: string;
   full_name?: string; // backward compatibility
   company_name?: string;
+  company_nif?: string; // NIF/CIF de la empresa (obligatorio para facturación)
   autoLogin?: boolean; // por si se quiere desactivar en algún flujo futuro
 }
 
@@ -276,7 +278,7 @@ export class AuthService {
       console.log('🔍 Fetching app user for auth ID:', authId);
       const { data, error } = await this.supabase
         .from('users')
-        .select(`id, auth_user_id, email, name, role, active, company_id, permissions, company:companies(id, name, slug, is_active, settings)`) // company join via foreign key name assumption
+        .select(`id, auth_user_id, email, name, role, active, company_id, permissions, company:companies(id, name, slug, nif, is_active, settings)`) // company join via foreign key name assumption
         .eq('auth_user_id', authId)
         .maybeSingle();
       
@@ -310,7 +312,7 @@ export class AuthService {
   }
 
   // Asegura que existe fila en public.users y enlaza auth_user_id
-  private async ensureAppUser(authUser: User, companyName?: string): Promise<void> {
+  private async ensureAppUser(authUser: User, companyName?: string, companyNif?: string): Promise<void> {
     try {
       console.log('🔄 Ensuring app user exists for:', authUser.email);
       
@@ -424,7 +426,11 @@ export class AuthService {
         const company = await this.retryWithSession(async () => {
           const { data, error } = await this.supabase
             .from('companies')
-            .insert({ name: desiredCompanyName, slug: this.generateSlug(desiredCompanyName) })
+            .insert({ 
+              name: desiredCompanyName, 
+              slug: this.generateSlug(desiredCompanyName),
+              nif: companyNif || null
+            })
             .select()
             .single();
           if (error) throw error;
@@ -564,7 +570,7 @@ export class AuthService {
         }
         
         // Crear fila app con empresa (si se proporciona nombre)
-        await this.ensureAppUser(data.user, registerData.company_name);
+        await this.ensureAppUser(data.user, registerData.company_name, registerData.company_nif);
         console.log('✅ App user created successfully');
       }
 
@@ -845,6 +851,7 @@ export class AuthService {
           given_name: registerData.given_name,
           surname: registerData.surname || null,
           company_name: registerData.company_name,
+          company_nif: registerData.company_nif || null,
           auth_user_id: authUser.id,
           confirmation_token: crypto.randomUUID()
         });

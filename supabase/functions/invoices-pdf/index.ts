@@ -270,8 +270,18 @@ async function generateInvoicePdf(payload: { invoice: any, items: any[], client:
         }
     }
 
-    // Si no se ha podido construir la URL AEAT, usamos payload ya calculado o fallback legible
-    qrText = qrText || meta?.qr_payload || `SERIE:${meta?.series || invoice?.invoice_series}|NUM:${meta?.number || invoice?.invoice_number}|HASH:${hashForQr || 'N/A'}`;
+    // Si no se ha podido construir la URL AEAT, intentamos construir URL alternativa con los datos disponibles
+    if (!qrText) {
+        const seriesForQr = meta?.series || invoice?.invoice_series;
+        const numberForQr = meta?.number || invoice?.invoice_number;
+        // Fallback: URL de consulta propia si tenemos serie, número y hash
+        if (seriesForQr && numberForQr && hashForQr) {
+            qrText = `https://app.sincronia.es/verifactu?serie=${encodeURIComponent(seriesForQr)}&num=${encodeURIComponent(numberForQr)}&hash=${encodeURIComponent(hashForQr)}`;
+        } else {
+            // Último recurso: texto plano legible
+            qrText = meta?.qr_payload || `SERIE:${seriesForQr}|NUM:${numberForQr}|HASH:${hashForQr || 'N/A'}`;
+        }
+    }
 
     const qrDataURL = await generateQRDataURL(qrText, 200);
 

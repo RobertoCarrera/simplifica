@@ -261,9 +261,39 @@ function generateInvoicePdf(payload: { invoice: any, items: any[], client: any, 
     ]);
   });
 
-  // Generar QR code
-  const qrText = meta?.qr_payload || 
-    `SERIE:${meta?.series}|NUM:${meta?.number}|HASH:${meta?.chained_hash}`;
+  // Generar QR code - SIEMPRE priorizamos URL AEAT oficial para que el lector muestre enlace
+  let qrText: string | undefined;
+  const nifForQr = company?.nif || company?.vat_number || company?.tax_id || company?.cif || null;
+  const hashForQr = meta?.chained_hash || invoice?.verifactu_hash || null;
+  const rawDate = invoice?.invoice_date as string | undefined;
+  const totalCandidate = invoice?.total ?? invoice?.total_amount;
+
+  if (nifForQr && rawDate && isFinite(Number(totalCandidate)) && hashForQr) {
+    try {
+      const dateParts = rawDate.split('-'); // YYYY-MM-DD
+      if (dateParts.length === 3) {
+        const dateStr = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`; // DD-MM-YYYY
+        const total = Number(totalCandidate).toFixed(2);
+        qrText = `https://www2.agenciatributaria.gob.es/wlpl/TOCP-MANT/vn?TIP_DOC=F&ID_EMISOR_NUM=${encodeURIComponent(nifForQr)}&FECHA=${encodeURIComponent(dateStr)}&TOTAL=${encodeURIComponent(total)}&HUELLA=${encodeURIComponent(hashForQr)}`;
+      }
+    } catch (e) {
+      console.error('Error constructing AEAT URL:', e);
+    }
+  }
+
+  // Fallback: si no pudimos construir URL AEAT, intentamos URL alternativa con serie/número/hash
+  if (!qrText) {
+    const seriesForQr = meta?.series || invoice?.invoice_series;
+    const numberForQr = meta?.number || invoice?.invoice_number;
+    // URL de consulta propia si tenemos serie, número y hash
+    if (seriesForQr && numberForQr && hashForQr) {
+      qrText = `https://app.sincronia.es/verifactu?serie=${encodeURIComponent(seriesForQr)}&num=${encodeURIComponent(numberForQr)}&hash=${encodeURIComponent(hashForQr)}`;
+    } else {
+      // Último recurso: texto plano legible
+      qrText = meta?.qr_payload || `SERIE:${seriesForQr}|NUM:${numberForQr}|HASH:${hashForQr || 'N/A'}`;
+    }
+  }
+
   const qrDataURL = generateQRDataURL(qrText, 200);
 
   // Prefer persisted aggregates when they are present and coherent

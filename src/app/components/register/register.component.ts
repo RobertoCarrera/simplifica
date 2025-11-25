@@ -129,6 +129,25 @@ import { ToastService } from '../../services/toast.service';
                 <span class="field-error">Nombre de empresa requerido</span>
               }
             </div>
+
+            <div class="form-field">
+              <label for="companyNif" class="field-label">NIF / CIF de la Empresa</label>
+              <div class="input-wrapper" [class.invalid]="companyNifInvalid()">
+                <i class="bi bi-card-text"></i>
+                <input
+                  type="text"
+                  id="companyNif"
+                  formControlName="companyNif"
+                  placeholder="B12345678"
+                  (blur)="registerForm.get('companyNif')?.markAsTouched()"
+                  style="text-transform: uppercase;"
+                />
+              </div>
+              @if (companyNifInvalid()) {
+                <span class="field-error">NIF/CIF requerido para facturación</span>
+              }
+              <span class="field-hint">Obligatorio para emitir facturas</span>
+            </div>
           </div>
 
           <!-- Términos y condiciones -->
@@ -321,6 +340,14 @@ import { ToastService } from '../../services/toast.service';
       color: #ef4444;
       margin-top: 0.35rem;
       font-weight: 500;
+    }
+
+    .field-hint {
+      display: block;
+      font-size: 0.7rem;
+      color: #6b7280;
+      margin-top: 0.25rem;
+      font-style: italic;
     }
     
     .account-type {
@@ -586,6 +613,7 @@ export class RegisterComponent {
     password: ['', [Validators.required, Validators.minLength(6)]],
     confirmPassword: ['', [Validators.required]],
     companyName: ['', [Validators.required]],
+    companyNif: ['', [Validators.required, Validators.pattern(/^[A-Za-z0-9]{8,9}$/)]],
     acceptTerms: [false, [Validators.requiredTrue]]
   });
 
@@ -643,6 +671,11 @@ export class RegisterComponent {
     return control?.invalid && control?.touched;
   };
 
+  companyNifInvalid = () => {
+    const control = this.registerForm.get('companyNif');
+    return control?.invalid && control?.touched;
+  };
+
   termsInvalid = () => {
     const control = this.registerForm.get('acceptTerms');
     return control?.invalid && control?.touched;
@@ -667,7 +700,8 @@ export class RegisterComponent {
       given_name: formValue.given_name!,
       surname: formValue.surname!,
       full_name: `${formValue.given_name} ${formValue.surname}`,
-      company_name: formValue.companyName || undefined
+      company_name: formValue.companyName || undefined,
+      company_nif: formValue.companyNif?.toUpperCase() || undefined
     };
 
     console.log('🚀 Starting registration process...', registerData);
