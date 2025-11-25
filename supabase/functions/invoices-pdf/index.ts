@@ -792,15 +792,24 @@ serve(async (req) => {
         const bucket = Deno.env.get('INVOICE_PDF_BUCKET') || 'invoices';
         const year = (invoice?.invoice_date || new Date().toISOString()).substring(0, 4);
 
-        // Guardamos directamente en la raíz del bucket siguiendo el patrón
-        // invoices/<companyId>/<year>/<series>-<number>.pdf
-        const path = `${companyId}/${year}/${series}-${number}.pdf`;
+        // Usar el nombre de la compañía "normalizado" en vez del ID
+        const rawCompanyName = company?.name || String(companyId || 'company');
+        const safeCompanyName = rawCompanyName
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // quitar acentos
+            .replace(/[^a-zA-Z0-9-_]+/g, '-')  // dejar solo caracteres seguros
+            .replace(/-+/g, '-')               // colapsar guiones
+            .replace(/^-|-$/g, '')             // quitar guiones extremos
+            .toLowerCase();
+
+        // invoices/<companyName>/<year>/<series>-<number>.pdf
+        const path = `${safeCompanyName}/${year}/${series}-${number}.pdf`;
 
         // Check if already exists (unless force=1)
         if (!force) {
             const { data: exists } = await admin.storage
                 .from(bucket)
-                .list(`${companyId}/${year}`, { search: `${series}-${number}.pdf` });
+                .list(`${safeCompanyName}/${year}`, { search: `${series}-${number}.pdf` });
 
             if ((exists || []).find(f => f.name === `${series}-${number}.pdf` || f.name === `${series}/${series}-${number}.pdf`)) {
                 const { data: signed, error: signErr } = await admin.storage
