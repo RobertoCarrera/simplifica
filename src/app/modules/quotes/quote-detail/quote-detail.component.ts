@@ -33,6 +33,7 @@ export class QuoteDetailComponent implements OnInit {
   loading = signal(true);
   error = signal<string | null>(null);
   sendingEmail = signal(false);
+  converting = signal(false);
   mobileMenuOpen = signal(false);
   historyExpanded = signal(false);
   
@@ -183,14 +184,22 @@ export class QuoteDetailComponent implements OnInit {
 
   convertToInvoice() {
     const q = this.quote();
+    // Prevent double-click
+    if (this.converting()) return;
+    
     if (q && canConvertToInvoice(q)) {
       if (confirm('¿Convertir este presupuesto en factura?')) {
+        this.converting.set(true);
         this.quotesService.convertToInvoice(q.id).subscribe({
           next: (result) => {
             try { this.toastService.success('Conversión completada', 'Presupuesto convertido a factura'); } catch {}
             this.router.navigate(['/invoices', result.invoice_id]);
+            // No reset converting - we're navigating away
           },
-          error: (err) => this.error.set('Error: ' + err.message)
+          error: (err) => {
+            this.converting.set(false);
+            this.error.set('Error: ' + err.message);
+          }
         });
       }
     }
