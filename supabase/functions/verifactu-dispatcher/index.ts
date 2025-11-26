@@ -3,6 +3,10 @@
 // Processes verifactu.events with backoff and transitions: pending -> sending -> accepted/rejected
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateSuministroLRXml, type SistemaInformatico } from "./xml-generator.ts";
+import { signXml } from "./xades-signer.ts";
+import { createAEATClient } from "./aeat-client.ts";
+import { transformToRegistroAlta, transformToRegistroAnulacion, buildCabecera as buildCabeceraFromSettings } from "./invoice-transformer.ts";
 function cors(origin) {
   const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
   const allowed = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s)=>s.trim()).filter(Boolean);
@@ -20,6 +24,213 @@ const BACKOFF_MIN = (Deno.env.get('VERIFACTU_BACKOFF') || '0,1,5,15,60,180,720')
 const REJECT_RATE = Number(Deno.env.get('VERIFACTU_REJECT_RATE') || 0); // 0..1 for simulation
 const VERIFACTU_MODE = Deno.env.get('VERIFACTU_MODE') || 'mock'; // 'mock' | 'live'
 const ENABLE_FALLBACK = (Deno.env.get('VERIFACTU_ENABLE_FALLBACK') || 'false').toLowerCase() === 'true';
+const VERIFACTU_CERT_ENC_KEY = Deno.env.get('VERIFACTU_CERT_ENC_KEY') || '';
+
+// Sistema informático (software) registrado según Art. 16
+const SISTEMA_INFORMATICO: SistemaInformatico = {
+  nifProducer: 'B12345678', // NIF de la empresa desarrolladora
+  nombreRazon: 'Simplifica Software SL',
+  idSistema: 'SIMPLIFICA-VF-001',
+  nombreSistema: 'Simplifica',
+  version: '1.0.0',
+  numInstalacion: '001',
+  tipoUsoPosible: 'S',
+  tipoUsoMultiOT: 'N'
+};
+
+// Decrypt AES-GCM encrypted data from verifactu_settings
+async function decryptAesGcm(encryptedBase64: string, keyHex: string): Promise<string> {
+  const encrypted = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+  // First 12 bytes are IV, rest is ciphertext+tag
+  const iv = encrypted.slice(0, 12);
+  const ciphertext = encrypted.slice(12);
+  
+  const keyBytes = new Uint8Array(keyHex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)));
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyBytes,
+    { name: 'AES-GCM' },
+    false,
+    ['decrypt']
+  );
+  
+  const decrypted = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv },
+    cryptoKey,
+    ciphertext
+  );
+  
+  return new TextDecoder().decode(decrypted);
+}
+
+// Fetch and decrypt certificate from verifactu_settings
+async function getCertificateForCompany(admin: any, companyId: string): Promise<{
+  certPem: string;
+  keyPem: string;
+  keyPass: string;
+  nifEmisor: string;
+  environment: 'pre' | 'prod';
+} | null> {
+  const { data: settings, error } = await admin
+    .from('verifactu_settings')
+    .select('cert_pem_enc, key_pem_enc, key_pass_enc, nif, environment')
+    .eq('company_id', companyId)
+    .maybeSingle();
+  
+  if (error || !settings) {
+    console.error('[getCertificateForCompany] Error:', error?.message || 'No settings found');
+    return null;
+  }
+  
+  if (!settings.cert_pem_enc || !settings.key_pem_enc || !VERIFACTU_CERT_ENC_KEY) {
+    console.error('[getCertificateForCompany] Missing certificate data or encryption key');
+    return null;
+  }
+  
+  try {
+    const certPem = await decryptAesGcm(settings.cert_pem_enc, VERIFACTU_CERT_ENC_KEY);
+    const keyPem = await decryptAesGcm(settings.key_pem_enc, VERIFACTU_CERT_ENC_KEY);
+    const keyPass = settings.key_pass_enc 
+      ? await decryptAesGcm(settings.key_pass_enc, VERIFACTU_CERT_ENC_KEY) 
+      : '';
+    
+    return {
+      certPem,
+      keyPem,
+      keyPass,
+      nifEmisor: settings.nif || '',
+      environment: settings.environment === 'prod' ? 'prod' : 'pre'
+    };
+  } catch (e) {
+    console.error('[getCertificateForCompany] Decryption error:', e.message);
+    return null;
+  }
+}
+
+// Send invoice to AEAT (real implementation)
+async function sendToAeat(admin: any, ev: any): Promise<{ success: boolean; response: any }> {
+  // Get invoice data with all related info
+  const { data: invoice, error: invErr } = await admin
+    .from('invoices')
+    .select(`
+      *,
+      company:companies(*),
+      client:clients(*),
+      invoice_lines(*)
+    `)
+    .eq('id', ev.invoice_id)
+    .single();
+  
+  if (invErr || !invoice) {
+    throw new Error(`Invoice not found: ${invErr?.message || 'no data'}`);
+  }
+  
+  // Get verifactu_settings for company
+  const { data: vfSettings, error: settingsErr } = await admin
+    .from('verifactu_settings')
+    .select('*')
+    .eq('company_id', invoice.company_id)
+    .single();
+  
+  if (settingsErr || !vfSettings) {
+    throw new Error('VeriFactu settings not configured for company');
+  }
+  
+  // Get certificate
+  const cert = await getCertificateForCompany(admin, invoice.company_id);
+  if (!cert) {
+    throw new Error('Certificate not configured for company');
+  }
+  
+  // Get previous record for chain
+  const { data: prevMeta } = await admin
+    .schema('verifactu')
+    .from('invoice_meta')
+    .select('huella, invoice_id')
+    .eq('company_id', invoice.company_id)
+    .neq('invoice_id', ev.invoice_id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  
+  const previousRecord = prevMeta ? {
+    nif_emisor: cert.nifEmisor,
+    numero_serie: '', // Would need to get from previous invoice
+    fecha_expedicion: '',
+    huella: prevMeta.huella
+  } : undefined;
+  
+  // Build settings object for transformer (matching VerifactuSettings interface)
+  const settings = {
+    issuer_nif: cert.nifEmisor,
+    issuer_name: invoice.company?.legal_name || invoice.company?.name || '',
+    environment: cert.environment,
+    software_code: SISTEMA_INFORMATICO.idSistema,
+    software_name: SISTEMA_INFORMATICO.nombreSistema,
+    software_version: SISTEMA_INFORMATICO.version,
+    producer_nif: SISTEMA_INFORMATICO.nifProducer,
+    producer_name: SISTEMA_INFORMATICO.nombreRazon,
+    installation_number: SISTEMA_INFORMATICO.numInstalacion
+  };
+  
+  // Build cabecera
+  const cabecera = buildCabeceraFromSettings(settings);
+  
+  let xmlBody: string;
+  
+  if (ev.event_type === 'anulacion') {
+    const anulacion = await transformToRegistroAnulacion(invoice, settings, previousRecord);
+    xmlBody = generateSuministroLRXml(cabecera, [anulacion], true);
+  } else {
+    const alta = await transformToRegistroAlta(invoice, settings, previousRecord);
+    xmlBody = generateSuministroLRXml(cabecera, [alta], false);
+  }
+  
+  // Sign XML with XAdES
+  const signedXml = await signXml(xmlBody, {
+    pem: cert.certPem,
+    privateKey: cert.keyPem,
+    keyPassword: cert.keyPass
+  });
+  
+  // Create AEAT client and send
+  const aeatClient = await createAEATClient({
+    environment: cert.environment,
+    certificate: {
+      pem: cert.certPem,
+      privateKey: cert.keyPem,
+      keyPassword: cert.keyPass
+    },
+    retryOnError: true,
+    maxRetries: 2
+  });
+  
+  // Send to AEAT - use suministroLR for invoice registration
+  const result = await aeatClient.suministroLR(signedXml);
+  
+  if (result.success) {
+    return {
+      success: true,
+      response: {
+        status: 'ACCEPTED',
+        at: new Date().toISOString(),
+        aeatResponse: result,
+        csv: result.csv
+      }
+    };
+  } else {
+    return {
+      success: false,
+      response: {
+        status: 'REJECTED',
+        at: new Date().toISOString(),
+        reason: result.errores?.[0]?.descripcion || 'Error AEAT',
+        aeatResponse: result,
+        errorCode: result.errores?.[0]?.codigo
+      }
+    };
+  }
+}
 function isDue(ev) {
   const attempts = ev.attempts ?? 0;
   const last = ev.sent_at ? new Date(ev.sent_at).getTime() : new Date(ev.created_at).getTime();
@@ -65,8 +276,7 @@ async function processEvent(admin, ev) {
   };
   try {
     if (VERIFACTU_MODE === 'live') {
-      // TODO: Implement real AEAT call here
-      throw new Error("AEAT Live connection not implemented");
+      result = await sendToAeat(admin, ev);
     } else {
       result = await simulateResponse(ev);
     }
