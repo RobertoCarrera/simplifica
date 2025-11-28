@@ -43,9 +43,10 @@
 
       <form [formGroup]="quoteForm" (ngSubmit)="save()">
 
-        <!-- Mobile Summary Bar - Fixed at bottom on mobile -->
+        <!-- Mobile Summary Bar - Fixed at bottom on mobile, above the bottom nav -->
         <div
-          class="lg:hidden fixed bottom-0 left-0 right-0 z-[5510] bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-700 shadow-lg">
+          class="lg:hidden fixed left-0 right-0 z-[5510] bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-700 shadow-lg"
+          style="bottom: calc(64px + env(safe-area-inset-bottom));">
           <div class="p-4">
             <div class="flex items-center gap-3 mb-3">
               <div class="flex-1">
@@ -105,7 +106,7 @@
           </div>
         </div>
 
-        <div class="flex flex-col lg:flex-row gap-6 pb-32 lg:pb-0">
+        <div class="flex flex-col lg:flex-row gap-6 pb-48 lg:pb-0">
           <!-- Left Column - Form (2/3) -->
           <div class="flex-1 lg:flex-[2]">
 
