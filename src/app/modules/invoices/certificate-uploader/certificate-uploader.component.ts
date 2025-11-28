@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Output, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { encryptPem, detectFileType, readFileAsArrayBuffer, readFileAsText, parsePkcs12, ProcessedCertificatePayload } from '../../../lib/certificate-helpers';
+import { detectFileType, readFileAsArrayBuffer, readFileAsText, parsePkcs12, ProcessedCertificatePayload } from '../../../lib/certificate-helpers';
 import { ToastService } from '../../../services/toast.service';
 
 @Component({
@@ -35,8 +35,6 @@ import { ToastService } from '../../../services/toast.service';
         <li><span class="text-gray-500">Algoritmo:</span> {{ summary()!.rawCertInfo.publicKeyAlgorithm }}</li>
         <li><span class="text-gray-500">Tamaño PEM cert:</span> {{ summary()!.sizes.certPemLength }} chars</li>
         <li><span class="text-gray-500">Tamaño PEM clave:</span> {{ summary()!.sizes.keyPemLength }} chars</li>
-        <li><span class="text-gray-500">Tamaño cifrado cert:</span> {{ summary()!.sizes.certEncLength }} bytes b64</li>
-        <li><span class="text-gray-500">Tamaño cifrado clave:</span> {{ summary()!.sizes.keyEncLength }} bytes b64</li>
       </ul>
     </div>
   </div>
@@ -130,21 +128,16 @@ export class CertificateUploaderComponent {
         throw e;
       }
       const { certPem, keyPem, info } = result;
-      const certPemEnc = await encryptPem(certPem);
-      const keyPemEnc = await encryptPem(keyPem);
-      const keyPassEnc = this.passphrase ? await encryptPem(this.passphrase) : null;
-
+      // Send plain PEM - encryption happens server-side
       const payload: ProcessedCertificatePayload = {
-        certPemEnc,
-        keyPemEnc,
-        keyPassEnc,
+        certPem,
+        keyPem,
+        keyPass: this.passphrase || null,
         rawCertInfo: info,
         originalFileTypes: ['pkcs12'],
         sizes: {
           certPemLength: certPem.length,
-          keyPemLength: keyPem.length,
-          certEncLength: certPemEnc.length,
-          keyEncLength: keyPemEnc.length
+          keyPemLength: keyPem.length
         },
         needsPassphrase: !!this.passphrase
       };
@@ -176,20 +169,16 @@ export class CertificateUploaderComponent {
         publicKeyAlgorithm: undefined
       };
 
-      const certPemEnc = await encryptPem(certPem);
-      const keyPemEnc = await encryptPem(keyPem);
-
+      // Send plain PEM - encryption happens server-side
       const payload: ProcessedCertificatePayload = {
-        certPemEnc,
-        keyPemEnc,
-        keyPassEnc: null,
+        certPem,
+        keyPem,
+        keyPass: null,
         rawCertInfo: info,
         originalFileTypes: ['pem'],
         sizes: {
           certPemLength: certPem.length,
-          keyPemLength: keyPem.length,
-          certEncLength: certPemEnc.length,
-          keyEncLength: keyPemEnc.length
+          keyPemLength: keyPem.length
         },
         needsPassphrase: false
       };

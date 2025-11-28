@@ -32,9 +32,10 @@ export interface IssueInvoiceResponse {
 export interface UploadVerifactuCertRequest {
   software_code: string;
   issuer_nif: string;
-  cert_pem_enc: string;
-  key_pem_enc: string;
-  key_pass_enc?: string | null;
+  // Plain PEM values - encryption happens server-side
+  cert_pem: string;
+  key_pem: string;
+  key_pass?: string | null;
   environment: 'pre' | 'prod';
 }
 

@@ -138,29 +138,123 @@ function canonicalize(xml: string): string {
 
 /**
  * Importa clave privada RSA para firma
+ * Soporta tanto PKCS#8 como PKCS#1 (RSA tradicional)
  */
 async function importPrivateKey(keyPem: string, _password?: string): Promise<CryptoKey> {
   const keyBody = extractKeyBody(keyPem);
   const keyBytes = base64Decode(keyBody);
   
-  // Si la clave está cifrada, se necesita descifrar primero
-  // Esta es una implementación simplificada
+  // Detectar formato por el header PEM
+  const isPkcs1 = keyPem.includes('-----BEGIN RSA PRIVATE KEY-----');
   
   try {
-    return await crypto.subtle.importKey(
-      'pkcs8',
-      keyBytes.buffer as ArrayBuffer,
-      {
-        name: 'RSASSA-PKCS1-v1_5',
-        hash: 'SHA-256',
-      },
-      false,
-      ['sign']
-    );
+    if (isPkcs1) {
+      // PKCS#1 format - necesita conversión a PKCS#8
+      // Wrapping PKCS#1 en estructura PKCS#8
+      const pkcs8Bytes = wrapPkcs1ToPkcs8(keyBytes);
+      return await crypto.subtle.importKey(
+        'pkcs8',
+        pkcs8Bytes.buffer as ArrayBuffer,
+        {
+          name: 'RSASSA-PKCS1-v1_5',
+          hash: 'SHA-256',
+        },
+        false,
+        ['sign']
+      );
+    } else {
+      // PKCS#8 format - importar directamente
+      return await crypto.subtle.importKey(
+        'pkcs8',
+        keyBytes.buffer as ArrayBuffer,
+        {
+          name: 'RSASSA-PKCS1-v1_5',
+          hash: 'SHA-256',
+        },
+        false,
+        ['sign']
+      );
+    }
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
     throw new Error(`Failed to import private key: ${message}`);
   }
+}
+
+/**
+ * Convierte PKCS#1 RSA private key a PKCS#8 format
+ * PKCS#8 wrapper: SEQUENCE { version, algorithm, privateKey }
+ */
+function wrapPkcs1ToPkcs8(pkcs1Bytes: Uint8Array): Uint8Array {
+  // OID for rsaEncryption: 1.2.840.113549.1.1.1
+  const rsaOid = new Uint8Array([0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01]);
+  // NULL parameters
+  const nullParams = new Uint8Array([0x05, 0x00]);
+  
+  // Build AlgorithmIdentifier SEQUENCE
+  const algorithmSeq = buildSequence([rsaOid, nullParams]);
+  
+  // Version INTEGER 0
+  const version = new Uint8Array([0x02, 0x01, 0x00]);
+  
+  // Wrap PKCS#1 key in OCTET STRING
+  const privateKeyOctet = buildOctetString(pkcs1Bytes);
+  
+  // Build final PKCS#8 SEQUENCE
+  return buildSequence([version, algorithmSeq, privateKeyOctet]);
+}
+
+/**
+ * Build ASN.1 SEQUENCE
+ */
+function buildSequence(elements: Uint8Array[]): Uint8Array {
+  const content = concatenateArrays(elements);
+  return buildTlv(0x30, content);
+}
+
+/**
+ * Build ASN.1 OCTET STRING
+ */
+function buildOctetString(data: Uint8Array): Uint8Array {
+  return buildTlv(0x04, data);
+}
+
+/**
+ * Build ASN.1 TLV (Tag-Length-Value)
+ */
+function buildTlv(tag: number, value: Uint8Array): Uint8Array {
+  const length = value.length;
+  let lengthBytes: Uint8Array;
+  
+  if (length < 128) {
+    lengthBytes = new Uint8Array([length]);
+  } else if (length < 256) {
+    lengthBytes = new Uint8Array([0x81, length]);
+  } else if (length < 65536) {
+    lengthBytes = new Uint8Array([0x82, (length >> 8) & 0xff, length & 0xff]);
+  } else {
+    lengthBytes = new Uint8Array([0x83, (length >> 16) & 0xff, (length >> 8) & 0xff, length & 0xff]);
+  }
+  
+  const result = new Uint8Array(1 + lengthBytes.length + value.length);
+  result[0] = tag;
+  result.set(lengthBytes, 1);
+  result.set(value, 1 + lengthBytes.length);
+  return result;
+}
+
+/**
+ * Concatenate multiple Uint8Arrays
+ */
+function concatenateArrays(arrays: Uint8Array[]): Uint8Array {
+  const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const arr of arrays) {
+    result.set(arr, offset);
+    offset += arr.length;
+  }
+  return result;
 }
 
 /**

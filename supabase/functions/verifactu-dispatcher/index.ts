@@ -21,8 +21,11 @@ function cors(origin) {
 const MAX_ATTEMPTS = Number(Deno.env.get('VERIFACTU_MAX_ATTEMPTS') || 7);
 // minutes: 0, 1, 5, 15, 60, 180, 720
 const BACKOFF_MIN = (Deno.env.get('VERIFACTU_BACKOFF') || '0,1,5,15,60,180,720').split(',').map((n)=>Number(n.trim())).filter((n)=>!isNaN(n));
-const REJECT_RATE = Number(Deno.env.get('VERIFACTU_REJECT_RATE') || 0); // 0..1 for simulation
-const VERIFACTU_MODE = Deno.env.get('VERIFACTU_MODE') || 'mock'; // 'mock' | 'live'
+
+// VERIFACTU_MODE: Controla si se envía realmente a AEAT o se simula
+// - 'live' (default): Envía realmente a AEAT (usa environment de verifactu_settings: pre/prod)
+// - 'mock': Simula respuestas sin enviar a AEAT (para desarrollo/testing)
+const VERIFACTU_MODE = Deno.env.get('VERIFACTU_MODE') || 'live';
 const ENABLE_FALLBACK = (Deno.env.get('VERIFACTU_ENABLE_FALLBACK') || 'false').toLowerCase() === 'true';
 const VERIFACTU_CERT_ENC_KEY = Deno.env.get('VERIFACTU_CERT_ENC_KEY') || '';
 
@@ -39,17 +42,40 @@ const SISTEMA_INFORMATICO: SistemaInformatico = {
 };
 
 // Decrypt AES-GCM encrypted data from verifactu_settings
-async function decryptAesGcm(encryptedBase64: string, keyHex: string): Promise<string> {
-  const encrypted = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
-  // First 12 bytes are IV, rest is ciphertext+tag
-  const iv = encrypted.slice(0, 12);
-  const ciphertext = encrypted.slice(12);
+// Supports two formats:
+// 1. "ivBase64:ciphertextBase64" (new format from upload-verifactu-cert)
+// 2. Single base64 blob with IV (12 bytes) prepended to ciphertext (legacy format)
+// Key: base64-encoded 32-byte key
+async function decryptAesGcm(encryptedData: string, keyBase64: string): Promise<string> {
+  let iv: Uint8Array;
+  let ciphertext: Uint8Array;
   
-  const keyBytes = new Uint8Array(keyHex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)));
+  // Detect format
+  if (encryptedData.includes(':')) {
+    // New format: "ivBase64:ciphertextBase64"
+    const parts = encryptedData.split(':');
+    if (parts.length !== 2) {
+      throw new Error('Invalid encrypted data format');
+    }
+    iv = Uint8Array.from(atob(parts[0]), c => c.charCodeAt(0));
+    ciphertext = Uint8Array.from(atob(parts[1]), c => c.charCodeAt(0));
+  } else {
+    // Legacy format: IV (12 bytes) + ciphertext concatenated in single base64
+    const encrypted = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+    iv = encrypted.slice(0, 12);
+    ciphertext = encrypted.slice(12);
+  }
+  
+  // Import the key from base64
+  const keyBytes = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
+  if (keyBytes.length !== 32) {
+    throw new Error(`Invalid key length: ${keyBytes.length} bytes. Expected 32 bytes.`);
+  }
+  
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
     keyBytes,
-    { name: 'AES-GCM' },
+    { name: 'AES-GCM', length: 256 },
     false,
     ['decrypt']
   );
@@ -73,7 +99,7 @@ async function getCertificateForCompany(admin: any, companyId: string): Promise<
 } | null> {
   const { data: settings, error } = await admin
     .from('verifactu_settings')
-    .select('cert_pem_enc, key_pem_enc, key_pass_enc, nif, environment')
+    .select('cert_pem_enc, key_pem_enc, key_pass_enc, issuer_nif, environment')
     .eq('company_id', companyId)
     .maybeSingle();
   
@@ -94,12 +120,20 @@ async function getCertificateForCompany(admin: any, companyId: string): Promise<
       ? await decryptAesGcm(settings.key_pass_enc, VERIFACTU_CERT_ENC_KEY) 
       : '';
     
+    // Map 'test'/'production' to 'pre'/'prod'
+    const envMap: Record<string, 'pre' | 'prod'> = {
+      'test': 'pre',
+      'production': 'prod',
+      'pre': 'pre',
+      'prod': 'prod'
+    };
+    
     return {
       certPem,
       keyPem,
       keyPass,
-      nifEmisor: settings.nif || '',
-      environment: settings.environment === 'prod' ? 'prod' : 'pre'
+      nifEmisor: settings.issuer_nif || '',
+      environment: envMap[settings.environment] || 'pre'
     };
   } catch (e) {
     console.error('[getCertificateForCompany] Decryption error:', e.message);
@@ -109,20 +143,36 @@ async function getCertificateForCompany(admin: any, companyId: string): Promise<
 
 // Send invoice to AEAT (real implementation)
 async function sendToAeat(admin: any, ev: any): Promise<{ success: boolean; response: any }> {
-  // Get invoice data with all related info
+  // Get invoice data with all related info (separate queries to avoid join issues)
   const { data: invoice, error: invErr } = await admin
     .from('invoices')
     .select(`
       *,
       company:companies(*),
-      client:clients(*),
-      invoice_lines(*)
+      client:clients(*)
     `)
     .eq('id', ev.invoice_id)
     .single();
   
   if (invErr || !invoice) {
     throw new Error(`Invoice not found: ${invErr?.message || 'no data'}`);
+  }
+  
+  // Get invoice lines separately (table might be named differently)
+  const { data: lines, error: linesErr } = await admin
+    .from('invoice_items')
+    .select('*')
+    .eq('invoice_id', ev.invoice_id);
+  
+  if (!linesErr && lines) {
+    invoice.invoice_lines = lines;
+  } else {
+    // Try alternative table name
+    const { data: lines2 } = await admin
+      .from('invoice_lines')
+      .select('*')
+      .eq('invoice_id', ev.invoice_id);
+    invoice.invoice_lines = lines2 || [];
   }
   
   // Get verifactu_settings for company
@@ -239,60 +289,74 @@ function isDue(ev) {
   return now - last >= waitMin * 60_000;
 }
 async function simulateResponse(ev) {
-  const accept = Math.random() >= REJECT_RATE;
-  if (accept) {
-    return {
-      success: true,
-      response: {
-        status: 'ACCEPTED',
-        at: new Date().toISOString(),
-        echo: {
-          id: ev.id
-        },
-        simulation: true
-      }
-    };
-  } else {
-    return {
-      success: false,
-      response: {
-        status: 'REJECTED',
-        at: new Date().toISOString(),
-        reason: 'simulated rejection',
-        simulation: true
-      }
-    };
-  }
+  // En modo mock, siempre simular aceptación para testing predecible
+  return {
+    success: true,
+    response: {
+      status: 'ACCEPTED',
+      at: new Date().toISOString(),
+      echo: {
+        id: ev.id
+      },
+      simulation: true,
+      message: 'Respuesta simulada - VERIFACTU_MODE=mock'
+    }
+  };
 }
 async function processEvent(admin, ev) {
+  // DEBUG: Log current mode at process time
+  const modeAtProcessTime = VERIFACTU_MODE;
+  const fallbackAtProcessTime = ENABLE_FALLBACK;
+  console.log(`[VeriFactu] Processing event ${ev.id}, VERIFACTU_MODE=${modeAtProcessTime}, ENABLE_FALLBACK=${fallbackAtProcessTime}`);
+  
   // mark sending + sent_at
-  await admin.schema('verifactu').from('events').update({
+  const { error: sendingErr } = await admin.schema('verifactu').from('events').update({
     status: 'sending',
     sent_at: new Date().toISOString()
   }).eq('id', ev.id);
+  if (sendingErr) {
+    console.error(`[VeriFactu] ERROR marking event ${ev.id} as sending: ${sendingErr.message}`);
+  }
   let result = {
     success: false,
-    response: {}
+    response: {},
+    _debug: { mode: modeAtProcessTime, fallback: fallbackAtProcessTime, path: 'init' }
   };
   try {
-    if (VERIFACTU_MODE === 'live') {
+    if (modeAtProcessTime === 'live') {
+      console.log(`[VeriFactu] Sending to AEAT in LIVE mode for event ${ev.id}`);
       result = await sendToAeat(admin, ev);
+      result._debug = { mode: modeAtProcessTime, fallback: fallbackAtProcessTime, path: 'live-success' };
+      console.log(`[VeriFactu] AEAT response for ${ev.id}:`, JSON.stringify(result).substring(0, 500));
     } else {
+      console.log(`[VeriFactu] Using MOCK mode for event ${ev.id}`);
       result = await simulateResponse(ev);
+      result._debug = { mode: modeAtProcessTime, fallback: fallbackAtProcessTime, path: 'mock' };
     }
   } catch (err) {
-    if (ENABLE_FALLBACK) {
-      console.log(`[Fallback] Error in ${VERIFACTU_MODE} mode for event ${ev.id}: ${err.message}. Using simulation.`);
+    console.error(`[VeriFactu] Error processing event ${ev.id}:`, err.message);
+    if (fallbackAtProcessTime) {
+      console.log(`[Fallback] Error in ${modeAtProcessTime} mode for event ${ev.id}: ${err.message}. Using simulation.`);
       result = await simulateResponse(ev);
+      result._debug = { mode: modeAtProcessTime, fallback: fallbackAtProcessTime, path: 'fallback', error: err.message };
     } else {
       throw err;
     }
   }
   if (result.success) {
-    await admin.schema('verifactu').from('events').update({
+    console.log(`[VeriFactu] Event ${ev.id} ACCEPTED, saving response`);
+    // Include debug info in the stored response
+    const responseWithDebug = {
+      ...result.response,
+      _debug: result._debug
+    };
+    const { error: updateErr } = await admin.schema('verifactu').from('events').update({
       status: 'accepted',
-      response: result.response
+      response: responseWithDebug
     }).eq('id', ev.id);
+    if (updateErr) {
+      console.error(`[VeriFactu] Error updating event to accepted: ${updateErr.message}`);
+    }
     // reflect on invoice_meta
     if (ev.event_type === 'anulacion') {
       await admin.schema('verifactu').from('invoice_meta').update({
@@ -310,11 +374,35 @@ async function processEvent(admin, ev) {
     };
   } else {
     const attempts = (ev.attempts ?? 0) + 1;
-    const response = result.response || {
+    const rawResponse = result.response || {
       status: 'REJECTED',
       at: new Date().toISOString(),
       reason: 'unknown error'
     };
+    
+    // Truncate response to avoid "payload string too long" error
+    // Keep only essential fields, stringify aeatResponse if needed
+    let aeatSummary = null;
+    if (rawResponse.aeatResponse) {
+      const aeat = rawResponse.aeatResponse;
+      aeatSummary = {
+        success: aeat.success,
+        estado: aeat.estado,
+        csv: aeat.csv,
+        errores: aeat.errores?.slice?.(0, 5) || aeat.errores,
+        // Include first 500 chars of raw response for debugging
+        _raw: typeof aeat === 'object' ? JSON.stringify(aeat).substring(0, 500) : String(aeat).substring(0, 500)
+      };
+    }
+    
+    const response = {
+      status: rawResponse.status,
+      at: rawResponse.at,
+      reason: typeof rawResponse.reason === 'string' ? rawResponse.reason.substring(0, 500) : rawResponse.reason,
+      errorCode: rawResponse.errorCode,
+      aeatResponse: aeatSummary
+    };
+    
     if (attempts >= MAX_ATTEMPTS) {
       await admin.schema('verifactu').from('events').update({
         status: 'rejected',
@@ -331,15 +419,23 @@ async function processEvent(admin, ev) {
         attempts
       };
     } else {
-      await admin.schema('verifactu').from('events').update({
+      console.log(`[VeriFactu] Event ${ev.id} needs RETRY (attempt ${attempts})`);
+      
+      const { error: retryErr } = await admin.schema('verifactu').from('events').update({
         status: 'pending',
         attempts,
         last_error: 'retry',
         response
       }).eq('id', ev.id);
+      
+      if (retryErr) {
+        console.error(`[VeriFactu] Error updating event to pending: ${retryErr.message}`);
+      }
+      
       await admin.schema('verifactu').from('invoice_meta').update({
         status: 'rejected'
       }).eq('invoice_id', ev.invoice_id);
+      
       return {
         id: ev.id,
         status: 'retry',
@@ -411,6 +507,241 @@ serve(async (req)=>{
         ok: true
       };
     }
+    
+    // DEBUG: Test update operation on events
+    if (body && body.action === 'debug-test-update' && body.company_id) {
+      const { data: lastEvent, error: getErr } = await admin
+        .schema('verifactu')
+        .from('events')
+        .select('*')
+        .eq('company_id', body.company_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (getErr || !lastEvent) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: getErr?.message || 'No event found'
+        }), { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+      
+      const testAttempts = (lastEvent.attempts ?? 0) + 99;
+      const testError = 'debug-test-' + Date.now();
+      
+      const { data: updateData, error: updateErr } = await admin
+        .schema('verifactu')
+        .from('events')
+        .update({
+          attempts: testAttempts,
+          last_error: testError
+        })
+        .eq('id', lastEvent.id)
+        .select()
+        .single();
+      
+      // Now read it back
+      const { data: readBack, error: readErr } = await admin
+        .schema('verifactu')
+        .from('events')
+        .select('*')
+        .eq('id', lastEvent.id)
+        .single();
+      
+      return new Response(JSON.stringify({
+        ok: !updateErr,
+        before: { attempts: lastEvent.attempts, last_error: lastEvent.last_error },
+        tried: { attempts: testAttempts, last_error: testError },
+        updateResult: updateData,
+        updateError: updateErr?.message,
+        after: readBack ? { attempts: readBack.attempts, last_error: readBack.last_error } : null,
+        readError: readErr?.message
+      }), { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } });
+    }
+    
+    // DEBUG: Show current environment configuration
+    if (body && body.action === 'debug-env') {
+      return new Response(JSON.stringify({
+        ok: true,
+        env: {
+          VERIFACTU_MODE,
+          ENABLE_FALLBACK,
+          MAX_ATTEMPTS,
+          BACKOFF_MIN,
+          HAS_CERT_KEY: !!VERIFACTU_CERT_ENC_KEY,
+          CERT_KEY_LENGTH: VERIFACTU_CERT_ENC_KEY?.length || 0
+        },
+        timestamp: new Date().toISOString()
+      }), {
+        status: 200,
+        headers: { ...headers, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // DEBUG: Get last event for a company
+    if (body && body.action === 'debug-last-event' && body.company_id) {
+      const { data: lastEvent, error: evErr } = await admin
+        .schema('verifactu')
+        .from('events')
+        .select('*')
+        .eq('company_id', body.company_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      return new Response(JSON.stringify({
+        ok: true,
+        event: lastEvent,
+        error: evErr?.message
+      }), { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } });
+    }
+    
+    // DEBUG: Test AEAT process steps for a specific company
+    if (body && body.action === 'debug-aeat-process' && body.company_id) {
+      const steps: any = { step: 'init' };
+      try {
+        // Step 0: Check verifactu_settings directly
+        steps.step = 'check_settings';
+        const { data: rawSettings, error: rawErr } = await admin
+          .from('verifactu_settings')
+          .select('company_id, issuer_nif, environment, cert_pem_enc, key_pem_enc')
+          .eq('company_id', body.company_id)
+          .maybeSingle();
+        
+        steps.settingsFound = !!rawSettings;
+        steps.settingsError = rawErr?.message || null;
+        steps.hasCertEnc = rawSettings?.cert_pem_enc ? 'yes' : 'no';
+        steps.hasKeyEnc = rawSettings?.key_pem_enc ? 'yes' : 'no';
+        steps.settingsNif = rawSettings?.issuer_nif || null;
+        steps.settingsEnv = rawSettings?.environment || null;
+        
+        // Step 1: Get certificate
+        steps.step = 'get_certificate';
+        const cert = await getCertificateForCompany(admin, body.company_id);
+        if (!cert) {
+          return new Response(JSON.stringify({
+            ok: false,
+            error: 'Certificate not found for company',
+            steps
+          }), { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } });
+        }
+        steps.certOk = true;
+        steps.certEnv = cert.environment;
+        steps.certNif = cert.nifEmisor;
+        
+        // Step 2: Find a pending event for this company (or reset last one if requested)
+        steps.step = 'find_event';
+        
+        let events: any[] = [];
+        let evErr: any = null;
+        
+        if (body.reset) {
+          // Find last event regardless of status and reset it
+          const { data: lastEvents, error: lastErr } = await admin
+            .schema('verifactu')
+            .from('events')
+            .select('*')
+            .eq('company_id', body.company_id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          
+          if (lastErr) {
+            evErr = lastErr;
+          } else if (lastEvents && lastEvents.length > 0) {
+            // Reset to pending - with confirmation
+            const resetResult = await admin
+              .schema('verifactu')
+              .from('events')
+              .update({ status: 'pending', attempts: 0, response: null, sent_at: null, last_error: null })
+              .eq('id', lastEvents[0].id)
+              .select()
+              .single();
+            
+            if (resetResult.error) {
+              console.error(`[VeriFactu] Reset failed: ${resetResult.error.message}`);
+              steps.resetError = resetResult.error.message;
+            } else {
+              console.log(`[VeriFactu] Reset successful, event now: ${JSON.stringify(resetResult.data).substring(0, 200)}`);
+              steps.resetSuccess = true;
+            }
+            
+            // Use reset data if available, otherwise use manual override
+            events = [resetResult.data || { ...lastEvents[0], status: 'pending', attempts: 0, last_error: null }];
+            steps.wasReset = true;
+            steps.previousStatus = lastEvents[0].status;
+          }
+        } else {
+          const { data: pendingEvents, error: pendErr } = await admin
+            .schema('verifactu')
+            .from('events')
+            .select('*')
+            .eq('company_id', body.company_id)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: true })
+            .limit(1);
+          
+          events = pendingEvents || [];
+          evErr = pendErr;
+        }
+        
+        if (evErr) {
+          return new Response(JSON.stringify({
+            ok: false,
+            error: `Event query error: ${evErr.message}`,
+            steps
+          }), { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } });
+        }
+        
+        if (!events || events.length === 0) {
+          return new Response(JSON.stringify({
+            ok: false,
+            error: 'No pending events for this company',
+            steps
+          }), { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } });
+        }
+        
+        const ev = events[0];
+        steps.eventId = ev.id;
+        steps.eventType = ev.event_type;
+        steps.invoiceId = ev.invoice_id;
+        
+        // Step 3: Process the event using processEvent
+        steps.step = 'process_event';
+        steps.mode = VERIFACTU_MODE;
+        steps.fallback = ENABLE_FALLBACK;
+        
+        const result = await processEvent(admin, ev);
+        
+        // Step 4: Get updated event
+        steps.step = 'get_result';
+        const { data: updatedEv } = await admin
+          .schema('verifactu')
+          .from('events')
+          .select('*')
+          .eq('id', ev.id)
+          .single();
+        
+        return new Response(JSON.stringify({
+          ok: true,
+          result,
+          updatedEvent: updatedEv,
+          steps,
+          config: {
+            VERIFACTU_MODE,
+            ENABLE_FALLBACK
+          }
+        }), { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } });
+        
+      } catch (err) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: err.message,
+          stack: err.stack,
+          steps
+        }), { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+    }
+    
     // Safe manual retry: reset last rejected event to pending for an invoice
     if (body && body.action === 'retry' && body.invoice_id) {
       const invoice_id = String(body.invoice_id);
@@ -478,7 +809,8 @@ serve(async (req)=>{
         maxAttempts: MAX_ATTEMPTS,
         backoffMinutes: BACKOFF_MIN,
         mode: VERIFACTU_MODE,
-        fallbackEnabled: ENABLE_FALLBACK
+        fallbackEnabled: ENABLE_FALLBACK,
+        certEncKeyConfigured: !!VERIFACTU_CERT_ENC_KEY
       }), {
         status: 200,
         headers: {
@@ -487,6 +819,207 @@ serve(async (req)=>{
         }
       });
     }
+
+    // Test certificate: validates that the certificate can be decrypted and used
+    // Requires company_id in body. Returns certificate status without exposing sensitive data.
+    if (body && body.action === 'test-cert' && body.company_id) {
+      const company_id = String(body.company_id);
+      
+      // Helper to return error response in consistent format
+      const errorResponse = (decryptionError?: string, certError?: string, aeatError?: string) => {
+        return new Response(JSON.stringify({
+          ok: false,
+          decryption: {
+            success: !decryptionError,
+            error: decryptionError
+          },
+          certificate: {
+            valid: false,
+            error: certError
+          },
+          aeatConnection: {
+            success: false,
+            error: aeatError || 'No se pudo probar la conexión'
+          },
+          config: {
+            environment: 'unknown',
+            issuerNif: '',
+            softwareCode: ''
+          }
+        }), {
+          status: 200,
+          headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      };
+      
+      // Step 1: Check if encryption key is configured
+      if (!VERIFACTU_CERT_ENC_KEY) {
+        return errorResponse('VERIFACTU_CERT_ENC_KEY no está configurada en las variables de entorno de la Edge Function');
+      }
+      
+      // Validate key format (should be base64-encoded 32 bytes)
+      let keyLength = 0;
+      try {
+        const keyBytes = Uint8Array.from(atob(VERIFACTU_CERT_ENC_KEY), c => c.charCodeAt(0));
+        keyLength = keyBytes.length;
+        if (keyLength !== 32) {
+          return errorResponse(`La clave de encriptación tiene ${keyLength} bytes, pero debe tener 32 bytes (256 bits)`);
+        }
+      } catch (keyParseErr: any) {
+        return errorResponse(`La clave de encriptación no es base64 válido: ${keyParseErr.message}`);
+      }
+
+      // Step 2: Load settings from database
+      const { data: settings, error: settingsErr } = await admin
+        .from('verifactu_settings')
+        .select('cert_pem_enc, key_pem_enc, key_pass_enc, issuer_nif, environment, software_code')
+        .eq('company_id', company_id)
+        .maybeSingle();
+      
+      if (settingsErr || !settings) {
+        return errorResponse('No se encontró configuración VeriFactu para la empresa');
+      }
+
+      // Step 3: Check if certificate data exists
+      if (!settings.cert_pem_enc || !settings.key_pem_enc) {
+        return errorResponse('Certificado o clave privada no cargados en la base de datos');
+      }
+
+      // Step 4: Try to decrypt certificate
+      let certPem: string, keyPem: string, keyPass: string;
+      try {
+        certPem = await decryptAesGcm(settings.cert_pem_enc, VERIFACTU_CERT_ENC_KEY);
+        keyPem = await decryptAesGcm(settings.key_pem_enc, VERIFACTU_CERT_ENC_KEY);
+        keyPass = settings.key_pass_enc 
+          ? await decryptAesGcm(settings.key_pass_enc, VERIFACTU_CERT_ENC_KEY) 
+          : '';
+      } catch (decryptErr: any) {
+        // Provide more diagnostic info
+        const certFormat = settings.cert_pem_enc.includes(':') ? 'iv:ct' : 'legacy';
+        const certLen = settings.cert_pem_enc.length;
+        return errorResponse(
+          `Error al desencriptar (formato: ${certFormat}, len: ${certLen}): ${decryptErr.message}. ` +
+          `Posible causa: la clave VERIFACTU_CERT_ENC_KEY no coincide con la usada al subir el certificado.`
+        );
+      }
+
+      // Step 5: Validate certificate format
+      const certValid = certPem.includes('-----BEGIN CERTIFICATE-----');
+      const keyValid = keyPem.includes('-----BEGIN') && keyPem.includes('PRIVATE KEY');
+      
+      if (!certValid || !keyValid) {
+        return new Response(JSON.stringify({
+          ok: false,
+          decryption: {
+            success: true,
+            certLength: certPem.length,
+            keyLength: keyPem.length,
+            hasPassphrase: !!keyPass
+          },
+          certificate: {
+            valid: false,
+            error: 'El certificado o la clave privada no tienen formato PEM válido'
+          },
+          aeatConnection: {
+            success: false,
+            error: 'No se probó la conexión'
+          },
+          config: {
+            environment: settings.environment,
+            issuerNif: settings.issuer_nif,
+            softwareCode: settings.software_code || ''
+          }
+        }), {
+          status: 200,
+          headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Step 6: Test signing capability
+      let signTest = { attempted: false, success: false, error: null as string | null };
+      try {
+        const testXml = '<test>VeriFactu Certificate Test</test>';
+        const signed = await signXml(testXml, {
+          pem: certPem,
+          privateKey: keyPem,
+          keyPassword: keyPass
+        });
+        signTest = {
+          attempted: true,
+          success: signed.includes('<ds:Signature') || signed.includes('<Signature'),
+          error: null
+        };
+      } catch (signErr: any) {
+        signTest = {
+          attempted: true,
+          success: false,
+          error: signErr.message
+        };
+      }
+
+      // Step 7: Test AEAT connection
+      let aeatConnection = { success: false, endpoint: '', httpStatus: 0, responseTime: 0, error: null as string | null };
+      try {
+        const env = settings.environment || 'pre';
+        const aeatEndpoint = env === 'prod' 
+          ? 'https://www1.agenciatributaria.gob.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/RegistroFacturacion'
+          : 'https://prewww1.aeat.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/RegistroFacturacion';
+        
+        const startTime = Date.now();
+        const aeatResp = await fetch(aeatEndpoint, {
+          method: 'GET',
+          headers: { 'Accept': 'text/html' }
+        });
+        const responseTime = Date.now() - startTime;
+        
+        aeatConnection = {
+          success: aeatResp.status > 0,
+          endpoint: aeatEndpoint,
+          httpStatus: aeatResp.status,
+          responseTime,
+          error: null
+        };
+      } catch (aeatErr: any) {
+        aeatConnection.error = aeatErr.message;
+      }
+
+      // Return response in format expected by frontend TestCertificateResponse
+      return new Response(JSON.stringify({
+        ok: signTest.success && aeatConnection.success,
+        decryption: {
+          success: true,
+          certLength: certPem.length,
+          keyLength: keyPem.length,
+          hasPassphrase: !!keyPass
+        },
+        certificate: {
+          valid: certValid && keyValid && signTest.success,
+          subject: 'Ver detalles en el certificado original',
+          error: signTest.success ? undefined : signTest.error || 'No se pudo firmar con el certificado'
+        },
+        aeatConnection: {
+          success: aeatConnection.success,
+          endpoint: aeatConnection.endpoint,
+          httpStatus: aeatConnection.httpStatus,
+          responseTime: aeatConnection.responseTime,
+          error: aeatConnection.error || undefined
+        },
+        config: {
+          environment: settings.environment,
+          issuerNif: settings.issuer_nif,
+          softwareCode: settings.software_code || ''
+        },
+        message: signTest.success && aeatConnection.success
+          ? '🎉 El certificado está correctamente configurado y puede conectar con AEAT'
+          : signTest.success 
+            ? '⚠️ Certificado OK pero no se pudo conectar con AEAT'
+            : '⚠️ El certificado no pudo firmar. Revisa la contraseña o el formato.'
+      }), {
+        status: 200,
+        headers: { ...headers, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Health summary for UI without exposing verifactu schema over PostgREST
     if (body && body.action === 'health') {
       const evTable = admin.schema('verifactu').from('events');

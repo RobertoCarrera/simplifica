@@ -66,8 +66,19 @@ export interface AEATClientConfig {
 
 /**
  * Parsea respuesta SOAP de AEAT
+ * @throws Error si la respuesta es HTML indicando endpoint no disponible
  */
 function parseAEATResponse(soapResponse: string): AEATResponse {
+  // Check if response is HTML instead of SOAP (indicates endpoint not available)
+  if (soapResponse.includes('<!DOCTYPE') || soapResponse.includes('<html')) {
+    console.error('[AEAT] Received HTML instead of SOAP - endpoint may not be available');
+    // Check if it's a 403 page
+    if (soapResponse.includes('403') || soapResponse.includes('Forbidden')) {
+      throw new Error('AEAT endpoint not available (HTTP 403). The VeriFactu service may not be deployed yet.');
+    }
+    throw new Error('AEAT endpoint returned HTML instead of SOAP. Service may be unavailable.');
+  }
+  
   // Extraer contenido del Body
   const bodyMatch = soapResponse.match(/<(?:soap(?:env)?:)?Body[^>]*>([\s\S]*?)<\/(?:soap(?:env)?:)?Body>/i);
   if (!bodyMatch) {
@@ -185,7 +196,7 @@ export class AEATClient {
   }
   
   /**
-   * Envía request SOAP a AEAT con mTLS
+   * Envía request SOAP a AEAT con mTLS (certificado cliente)
    */
   private async sendRequest(
     endpoint: string,
@@ -204,27 +215,57 @@ export class AEATClient {
     console.log(`[AEAT] Sending request to ${endpoint} (attempt ${attempt})`);
     
     try {
-      // En Deno, para mTLS necesitamos usar Deno.connectTls con certificados
-      // Sin embargo, en Edge Functions de Supabase esto puede tener limitaciones
-      // Por ahora usamos fetch estándar con el cuerpo firmado
+      // Check if Deno.createHttpClient is available (might not be in Edge Functions)
+      let response: Response;
       
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/xml; charset=UTF-8',
-          'SOAPAction': soapAction,
-        },
-        body: signedBody,
-      });
+      if (typeof Deno !== 'undefined' && typeof Deno.createHttpClient === 'function') {
+        console.log('[AEAT] Using mTLS with Deno.createHttpClient');
+        // Create HTTP client with mTLS (client certificate)
+        const httpClient = Deno.createHttpClient({
+          certChain: this.config.certificate.pem,
+          privateKey: this.config.certificate.privateKey,
+        });
+        
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/xml; charset=UTF-8',
+            'SOAPAction': soapAction,
+          },
+          body: signedBody,
+          // @ts-ignore - Deno specific option
+          client: httpClient,
+        });
+        
+        // Close the HTTP client after use
+        httpClient.close();
+      } else {
+        console.log('[AEAT] Deno.createHttpClient not available, using standard fetch (mTLS may not work)');
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/xml; charset=UTF-8',
+            'SOAPAction': soapAction,
+          },
+          body: signedBody,
+        });
+      }
       
       this.lastRequestTime = Date.now();
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[AEAT] HTTP Error ${response.status}: ${errorText}`);
+        console.error(`[AEAT] HTTP Error ${response.status}: ${errorText.substring(0, 500)}`);
+        
+        // Check if this is a 403 with HTML response (endpoint doesn't exist)
+        const isHtmlResponse = errorText.includes('<!DOCTYPE') || errorText.includes('<html');
+        
+        if (response.status === 403 && isHtmlResponse) {
+          console.error('[AEAT] Received 403 with HTML - endpoint not available. Using fallback.');
+          throw new Error(`AEAT endpoint not available (HTTP 403). The VeriFactu service may not be deployed yet.`);
+        }
         
         if (this.config.retryOnError && attempt < (this.config.maxRetries || 3)) {
-          console.log(`[AEAT] Retrying in 5 seconds...`);
           await new Promise(resolve => setTimeout(resolve, 5000));
           return this.sendRequest(endpoint, soapAction, body, attempt + 1);
         }
@@ -235,6 +276,7 @@ export class AEATClient {
             codigo: `HTTP_${response.status}`,
             descripcion: `Error HTTP: ${response.statusText}. ${errorText.substring(0, 200)}`,
           }],
+          rawResponse: errorText,
         };
       }
       
@@ -250,15 +292,19 @@ export class AEATClient {
       return parsed;
       
     } catch (error) {
-      console.error(`[AEAT] Request error:`, error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[AEAT] Request error:`, errorMessage);
+      
+      // If this is an endpoint not available error, propagate it for fallback handling
+      if (errorMessage.includes('AEAT endpoint not available')) {
+        throw error;
+      }
       
       if (this.config.retryOnError && attempt < (this.config.maxRetries || 3)) {
-        console.log(`[AEAT] Retrying in 5 seconds...`);
         await new Promise(resolve => setTimeout(resolve, 5000));
         return this.sendRequest(endpoint, soapAction, body, attempt + 1);
       }
       
-      const errorMessage = error instanceof Error ? error.message : String(error);
       return {
         success: false,
         errores: [{
@@ -321,22 +367,11 @@ export class AEATClient {
 }
 
 /**
- * Crea cliente AEAT con configuración de Supabase secrets
+ * Crea cliente AEAT con configuración
  */
-export async function createAEATClient(
-  environment: 'pre' | 'prod',
-  certPem: string,
-  keyPem: string,
-  keyPassword?: string
-): Promise<AEATClient> {
-  return new AEATClient({
-    environment,
-    certificate: {
-      pem: certPem,
-      privateKey: keyPem,
-      keyPassword,
-    },
-  });
+export async function createAEATClient(config: AEATClientConfig): Promise<AEATClient> {
+  console.log('[createAEATClient] Creating client with environment:', config.environment);
+  return new AEATClient(config);
 }
 
 /**

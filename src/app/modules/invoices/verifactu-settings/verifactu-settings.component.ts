@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { VerifactuService } from '../../../services/verifactu.service';
+import { VerifactuService, TestCertificateResponse } from '../../../services/verifactu.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { ProcessedCertificatePayload } from '../../../lib/certificate-helpers';
@@ -35,6 +35,12 @@ export class VerifactuSettingsComponent implements OnInit {
   history = signal<Array<{version: number; stored_at: string; rotated_by: string | null; integrity_hash: string | null; notes: string | null; cert_len: number | null; key_len: number | null; pass_present: boolean;}> | null>(null);
   loadingHistory = signal(false);
   showUploader = signal(true); // hide if already configured until user chooses to replace
+  
+  // Certificate test state
+  testingCertificate = signal(false);
+  testResult = signal<TestCertificateResponse | null>(null);
+  testError = signal<string | null>(null);
+  private companyId = signal<string | null>(null);
 
   form: VerifactuSettingsForm = {
     software_code: '',
@@ -53,6 +59,7 @@ export class VerifactuSettingsComponent implements OnInit {
       }
       // Cargar configuración existente si autorizado
       if (authorized && profile?.company_id) {
+        this.companyId.set(profile.company_id);
         this.loadSettingsAndHistory(profile.company_id);
       }
     });
@@ -83,9 +90,9 @@ export class VerifactuSettingsComponent implements OnInit {
       await this.verifactuService.uploadVerifactuCertificate({
         software_code: this.form.software_code.trim(),
         issuer_nif: this.form.issuer_nif.trim().toUpperCase(),
-        cert_pem_enc: processed.certPemEnc,
-        key_pem_enc: processed.keyPemEnc,
-        key_pass_enc: processed.keyPassEnc ?? null,
+        cert_pem: processed.certPem,
+        key_pem: processed.keyPem,
+        key_pass: processed.keyPass ?? null,
         environment: this.form.environment
       }).toPromise();
 
@@ -151,5 +158,34 @@ export class VerifactuSettingsComponent implements OnInit {
   onReplaceCertificate() {
     this.showUploader.set(true);
     this.processedCert.set(null);
+  }
+
+  /**
+   * Test certificate decryption and AEAT connection
+   */
+  async onTestCertificate() {
+    const company = this.companyId();
+    if (!company || this.testingCertificate()) return;
+
+    this.testingCertificate.set(true);
+    this.testResult.set(null);
+    this.testError.set(null);
+
+    try {
+      const result = await this.verifactuService.testCertificate(company).toPromise();
+      this.testResult.set(result ?? null);
+      
+      if (result?.ok) {
+        this.toast.success('Test completado', 'Certificado y conexión verificados');
+      } else {
+        this.toast.warning('Test con errores', 'Revisa los detalles del resultado');
+      }
+    } catch (error: any) {
+      console.error('❌ Test certificate error:', error);
+      this.testError.set(error?.message || 'Error al probar el certificado');
+      this.toast.error('Error', error?.message || 'Error al probar el certificado');
+    } finally {
+      this.testingCertificate.set(false);
+    }
   }
 }

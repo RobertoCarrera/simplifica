@@ -208,14 +208,30 @@ export async function transformToRegistroAlta(
   const tipoFactura = determineInvoiceType(invoice);
   const timestamp = generateTimestamp();
   
+  // Ensure numeric values have defaults (invoice table may use different column names)
+  const totalTax = invoice.total_tax ?? invoice.tax_amount ?? invoice.vat_amount ?? 0;
+  const totalAmount = invoice.total_amount ?? invoice.total ?? invoice.total_with_tax ?? invoice.grand_total ?? 0;
+  
+  console.log('[transformToRegistroAlta] Invoice values:', JSON.stringify({
+    id: invoice.id,
+    total_tax: invoice.total_tax,
+    tax_amount: invoice.tax_amount,
+    vat_amount: invoice.vat_amount,
+    total_amount: invoice.total_amount,
+    total: invoice.total,
+    total_with_tax: invoice.total_with_tax,
+    grand_total: invoice.grand_total,
+    computed: { totalTax, totalAmount }
+  }));
+  
   // Calcular huella
   const huella = await generateCanonicalHash(
     settings.issuer_nif,
     invoiceNumber,
     fechaExpedicion,
     tipoFactura,
-    invoice.total_tax,
-    invoice.total_amount,
+    totalTax,
+    totalAmount,
     previousRecord?.huella || null,
     timestamp
   );
@@ -247,8 +263,8 @@ export async function transformToRegistroAlta(
     tipoFactura: tipoFactura,
     descripcionOperacion: descripcion.substring(0, 500), // Máximo 500 chars
     desglose: desglose,
-    cuotaTotal: invoice.total_tax,
-    importeTotal: invoice.total_amount,
+    cuotaTotal: totalTax,
+    importeTotal: totalAmount,
     sistemaInformatico: buildSistemaInformatico(settings),
     fechaHoraHusoGenRegistro: timestamp,
     huella: huella,

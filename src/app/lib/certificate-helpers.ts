@@ -10,16 +10,15 @@ export interface ParsedCertificateInfo {
 }
 
 export interface ProcessedCertificatePayload {
-  certPemEnc: string;
-  keyPemEnc: string;
-  keyPassEnc?: string | null;
+  // Plain PEM values - encryption happens server-side
+  certPem: string;
+  keyPem: string;
+  keyPass?: string | null;
   rawCertInfo: ParsedCertificateInfo;
   originalFileTypes: string[];
   sizes: {
     certPemLength: number;
     keyPemLength: number;
-    certEncLength: number;
-    keyEncLength: number;
   };
   needsPassphrase: boolean;
 }
@@ -103,24 +102,4 @@ function arrayBufferToBinaryString(buffer: ArrayBuffer): string {
   let binary = '';
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
   return binary;
-}
-
-// AES-GCM encryption producing base64(key||iv||cipher)
-export async function encryptPem(pem: string): Promise<string> {
-  const enc = new TextEncoder();
-  const data = enc.encode(pem);
-  const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
-  const rawKey = await crypto.subtle.exportKey('raw', key);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const cipherBuffer = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
-
-  const combined = new Uint8Array(rawKey.byteLength + iv.byteLength + cipherBuffer.byteLength);
-  combined.set(new Uint8Array(rawKey), 0);
-  combined.set(iv, rawKey.byteLength);
-  combined.set(new Uint8Array(cipherBuffer), rawKey.byteLength + iv.byteLength);
-
-  // Base64 encode
-  let binary = '';
-  for (let i = 0; i < combined.length; i++) binary += String.fromCharCode(combined[i]);
-  return btoa(binary);
 }

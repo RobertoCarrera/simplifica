@@ -50,6 +50,41 @@ export interface VerifactuSettings {
   key_pass_enc?: string | null;
 }
 
+/**
+ * Respuesta del test de certificado VeriFactu
+ */
+export interface TestCertificateResponse {
+  ok: boolean;
+  decryption: {
+    success: boolean;
+    error?: string;
+    certLength?: number;
+    keyLength?: number;
+    hasPassphrase?: boolean;
+  };
+  certificate: {
+    valid: boolean;
+    subject?: string;
+    issuer?: string;
+    validFrom?: string;
+    validTo?: string;
+    serialNumber?: string;
+    error?: string;
+  };
+  aeatConnection: {
+    success: boolean;
+    endpoint?: string;
+    httpStatus?: number;
+    responseTime?: number;
+    error?: string;
+  };
+  config: {
+    environment: string;
+    issuerNif: string;
+    softwareCode: string;
+  };
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -160,6 +195,35 @@ export class VerifactuService {
       }),
       catchError((error) => {
         console.error('❌ Upload certificate error:', error);
+        throw error;
+      })
+    );
+  }
+
+  /**
+   * Prueba el certificado y la conexión con AEAT
+   * Llama a Edge Function verifactu-dispatcher con action: 'test-cert'
+   */
+  testCertificate(companyId: string): Observable<TestCertificateResponse> {
+    console.log('🔐 Testing certificate for company:', companyId);
+
+    return from(
+      callEdgeFunction<{ action: string; company_id: string }, TestCertificateResponse>(
+        this.supabase,
+        'verifactu-dispatcher',
+        { action: 'test-cert', company_id: companyId }
+      )
+    ).pipe(
+      map((response) => {
+        if (!response.ok || !response.data) {
+          console.error('❌ Test certificate failed:', response.error);
+          throw new Error(response.error || 'Error al probar el certificado');
+        }
+        console.log('✅ Certificate test result:', response.data);
+        return response.data;
+      }),
+      catchError((error) => {
+        console.error('❌ Test certificate error:', error);
         throw error;
       })
     );
