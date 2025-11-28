@@ -164,13 +164,72 @@
   padding: clamp(12px, 4vw, 24px);
   overflow-y: hidden;
 
-  @media (max-width: 767px) {
-    padding: 0;
-    align-items: flex-end;
-  }
-
   @media (prefers-color-scheme: dark) {
     background-color: rgba(0, 0, 0, 0.7);
+  }
+}
+
+/* Mobile: fullscreen page-like view (no modal box) */
+@media (max-width: 767px) {
+  .modal-overlay {
+    padding: 0 !important;
+    align-items: stretch !important;
+    background: #f9fafb !important;
+    backdrop-filter: none !important;
+  }
+  
+  .modal-content {
+    border-radius: 0 !important;
+    max-height: 100dvh !important;
+    height: 100dvh !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    background: #f9fafb !important;
+    border: none !important;
+    margin: 0 !important;
+  }
+  
+  .modal-header {
+    display: flex !important;
+    border-bottom: none !important;
+    background: #f9fafb !important;
+    padding: 16px 16px 8px !important;
+  }
+  
+  .modal-body {
+    background: #f9fafb !important;
+    padding: 0 16px 16px !important;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important;
+  }
+  
+  .modal-actions {
+    background: #ffffff !important;
+    border-top: 1px solid #e5e7eb !important;
+  }
+}
+
+/* Mobile dark mode */
+@media (max-width: 767px) and (prefers-color-scheme: dark) {
+  .modal-overlay {
+    background: #0f172a !important;
+  }
+  
+  .modal-content {
+    background: #0f172a !important;
+  }
+  
+  .modal-header {
+    background: #0f172a !important;
+  }
+  
+  .modal-body {
+    background: #0f172a !important;
+  }
+  
+  .modal-actions {
+    background: #1e293b !important;
+    border-top-color: #334155 !important;
   }
 }
 
@@ -186,23 +245,9 @@
   overflow: hidden;
   position: relative;
 
-  @media (max-width: 767px) {
-    width: 100%;
-    height: 100dvh;
-    max-height: none;
-    border-radius: 0;
-    max-width: none;
-    box-shadow: none;
-    border: none;
-  }
-
   @media (prefers-color-scheme: dark) {
     background: #1e293b;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-
-    @media (max-width: 767px) {
-      box-shadow: none;
-    }
   }
 }
 
@@ -216,18 +261,39 @@
   @media (prefers-color-scheme: dark) {
     border-bottom-color: #374151;
   }
-  @media (max-width: 767px) {
-    display: none;
+}
+
+.modal-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modal-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.modal-subtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+  font-weight: 400;
+  
+  @media (prefers-color-scheme: dark) {
+    color: #9ca3af;
   }
 }
 
 .modal-title {
   font-size: 1.5rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #1f2937;
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  margin: 0;
 
   @media (prefers-color-scheme: dark) {
     color: #f9fafb;
@@ -356,6 +422,75 @@
       &:hover:not(:disabled) {
         background: #2563eb;
       }
+    }
+  }
+}
+
+/* Text button styles for modal actions */
+.btn-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: #6b7280;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+
+  &:hover:not(:disabled) {
+    background: #4b5563;
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    background: #4b5563;
+
+    &:hover:not(:disabled) {
+      background: #374151;
+    }
+  }
+}
+
+.btn-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 44px;
+
+  &:hover:not(:disabled) {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    background: #3b82f6;
+
+    &:hover:not(:disabled) {
+      background: #2563eb;
     }
   }
 }

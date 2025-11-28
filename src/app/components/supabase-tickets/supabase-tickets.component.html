@@ -269,14 +269,17 @@
   </div>
 
   <!-- Form Modal -->
-  <div *ngIf="showForm" class="modal-overlay">
+  <div *ngIf="showForm" class="modal-overlay" (click)="closeForm()">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2 class="modal-title">
-          <i class="fas fa-ticket-alt"></i>
-          {{ editingTicket ? 'Editar Ticket' : 'Nuevo Ticket' }}
-        </h2>
-        <button class="modal-close" (click)="closeForm()">
+        <div class="modal-header-text">
+          <h2 class="modal-title">
+            <i class="fas fa-ticket-alt"></i>
+            {{ editingTicket ? 'Editar Ticket' : 'Nuevo Ticket' }}
+          </h2>
+          <p class="modal-subtitle">Complete la información del ticket</p>
+        </div>
+        <button class="modal-close" (click)="closeForm()" aria-label="Cerrar">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -317,19 +320,24 @@
             <div class="form-group">
               <label for="client_id">Cliente *</label>
               <div class="customer-search-container">
-                <input 
-                  type="text" 
-                  id="client_id"
-                  [(ngModel)]="customerSearchText" 
-                  (input)="filterCustomers()"
-                  (focus)="onCustomerSearchFocus()"
-                  (blur)="onCustomerSearchBlur()"
-                  name="client_search"
-                  class="form-control customer-search-input"
-                  [class.error]="formErrors['client_id']"
-                  [placeholder]="selectedCustomer ? selectedCustomer.name : 'Buscar cliente por nombre, email o teléfono...'"
-                  [value]="selectedCustomer ? selectedCustomer.name : customerSearchText"
-                  autocomplete="off">
+                <div class="customer-input-wrapper">
+                  <input 
+                    type="text" 
+                    id="client_id"
+                    [(ngModel)]="customerSearchText" 
+                    (input)="filterCustomers()"
+                    (focus)="onCustomerSearchFocus()"
+                    (blur)="onCustomerSearchBlur()"
+                    name="client_search"
+                    class="form-control customer-search-input"
+                    [class.error]="formErrors['client_id']"
+                    [placeholder]="selectedCustomer ? selectedCustomer.name : 'Buscar cliente por nombre, email o teléfono...'"
+                    [value]="selectedCustomer ? selectedCustomer.name : customerSearchText"
+                    autocomplete="off">
+                  <button type="button" class="btn-add-customer" (click)="openCustomerForm()" title="Crear nuevo cliente">
+                    <i class="fas fa-user-plus"></i>
+                  </button>
+                </div>
                 
                 <!-- Dropdown de clientes -->
                 <div 
@@ -753,24 +761,30 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="closeForm()">Cancelar</button>
+        <button class="btn btn-secondary" (click)="closeForm()">
+          <i class="fas fa-times"></i>
+          <span>Cancelar</span>
+        </button>
         <button class="btn btn-primary" (click)="saveTicket()" [disabled]="loading">
-          <i class="fas fa-save"></i>
-          {{ editingTicket ? 'Actualizar' : 'Crear' }}
+          <i class="fas fa-check"></i>
+          <span>{{ editingTicket ? 'Actualizar' : 'Crear' }}</span>
         </button>
       </div>
     </div>
   </div>
 
   <!-- Modal para crear dispositivo -->
-  <div *ngIf="showCreateDeviceForm" class="modal-overlay">
+  <div *ngIf="showCreateDeviceForm" class="modal-overlay" (click)="$event.stopPropagation(); cancelCreateDevice()">
     <div class="modal-content modal-medium" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2 class="modal-title">
-          <i class="fas fa-mobile-alt"></i>
-          Nuevo Dispositivo
-        </h2>
-        <button class="modal-close" (click)="cancelCreateDevice()">
+        <div class="modal-header-text">
+          <h2 class="modal-title">
+            <i class="fas fa-mobile-alt"></i>
+            Nuevo Dispositivo
+          </h2>
+          <p class="modal-subtitle">Registre el dispositivo del cliente</p>
+        </div>
+        <button class="modal-close" (click)="cancelCreateDevice()" aria-label="Cerrar">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -909,25 +923,30 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="cancelCreateDevice()">Cancelar</button>
+        <button class="btn btn-secondary" (click)="cancelCreateDevice()">
+          <i class="fas fa-times"></i>
+          <span>Cancelar</span>
+        </button>
         <button class="btn btn-primary" (click)="createAndSelectDevice()" [disabled]="!deviceFormData.brand || !deviceFormData.model || !deviceFormData.device_type || !deviceFormData.reported_issue">
-          <i class="fas fa-save"></i>
-          Crear
+          <i class="fas fa-check"></i>
+          <span>Crear Dispositivo</span>
         </button>
       </div>
     </div>
   </div>
 
   <!-- Modal para crear servicio rápido -->
-  <!-- No cerrar al hacer click fuera: eliminar el handler del overlay para evitar cierres accidentales -->
-  <div *ngIf="showServiceForm" class="modal-overlay">
+  <div *ngIf="showServiceForm" class="modal-overlay" (click)="$event.stopPropagation(); closeServiceForm()">
     <div class="modal-content modal-medium" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2 class="modal-title">
-          <i class="fas fa-plus"></i>
-          Nuevo Servicio
-        </h2>
-        <button class="modal-close" (click)="closeServiceForm()">
+        <div class="modal-header-text">
+          <h2 class="modal-title">
+            <i class="fas fa-tools"></i>
+            Nuevo Servicio
+          </h2>
+          <p class="modal-subtitle">Cree un nuevo servicio rápido</p>
+        </div>
+        <button class="modal-close" (click)="closeServiceForm()" aria-label="Cerrar">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -988,23 +1007,29 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="closeServiceForm()">Cancelar</button>
+        <button class="btn btn-secondary" (click)="closeServiceForm()">
+          <i class="fas fa-times"></i>
+          <span>Cancelar</span>
+        </button>
         <button class="btn btn-primary" (click)="createServiceFromTicket()">
-          <i class="fas fa-save"></i>
-          Agregar
+          <i class="fas fa-check"></i>
+          <span>Crear Servicio</span>
         </button>
       </div>
     </div>
   </div>
 
   <!-- Modal para crear cliente completo -->
-  <div *ngIf="showCustomerForm" class="modal-overlay">
+  <div *ngIf="showCustomerForm" class="modal-overlay" (click)="$event.stopPropagation(); closeCustomerForm()">
     <div class="modal-content modal-medium" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2 class="modal-title">
-          <i class="fas fa-user-plus"></i>
-          Crear Nuevo Cliente
-        </h2>
+        <div class="modal-header-text">
+          <h2 class="modal-title">
+            <i class="fas fa-user-plus"></i>
+            Nuevo Cliente
+          </h2>
+          <p class="modal-subtitle">Complete la información del cliente</p>
+        </div>
         <button class="modal-close" (click)="closeCustomerForm()">
           <i class="fas fa-times"></i>
         </button>
@@ -1102,26 +1127,32 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="closeCustomerForm()">Cancelar</button>
+        <button class="btn btn-secondary" (click)="closeCustomerForm()">
+          <i class="fas fa-times"></i>
+          <span>Cancelar</span>
+        </button>
         <button 
           class="btn btn-primary" 
           (click)="saveCustomer()" 
           [disabled]="!customerFormData.name.trim()">
-          <i class="fas fa-save"></i>
-          Crear Cliente
+          <i class="fas fa-check"></i>
+          <span>Crear Cliente</span>
         </button>
       </div>
     </div>
   </div>
 
   <!-- Modal para crear producto -->
-  <div *ngIf="showProductForm" class="modal-overlay">
+  <div *ngIf="showProductForm" class="modal-overlay" (click)="$event.stopPropagation(); closeProductForm()">
     <div class="modal-content modal-medium" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2 class="modal-title">
-          <i class="fas fa-box"></i>
-          Nuevo Producto
-        </h2>
+        <div class="modal-header-text">
+          <h2 class="modal-title">
+            <i class="fas fa-box"></i>
+            Nuevo Producto
+          </h2>
+          <p class="modal-subtitle">Añada un producto al inventario</p>
+        </div>
         <button class="modal-close" (click)="closeProductForm()">
           <i class="fas fa-times"></i>
         </button>
@@ -1313,10 +1344,13 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="closeProductForm()">Cancelar</button>
+        <button class="btn btn-secondary" (click)="closeProductForm()">
+          <i class="fas fa-times"></i>
+          <span>Cancelar</span>
+        </button>
         <button class="btn btn-primary" (click)="createProductFromTicket()" [disabled]="!productFormData.name?.trim()">
-          <i class="fas fa-save"></i>
-          Crear y Agregar
+          <i class="fas fa-check"></i>
+          <span>Crear Producto</span>
         </button>
       </div>
     </div>

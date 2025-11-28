@@ -1131,19 +1131,11 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     this.loadCategories();
     
     this.showProductForm = true;
-    
-    // Añadir entrada al historial para modales anidados
-    history.pushState({ modal: 'product-form' }, '');
   }
 
   closeProductForm() {
     this.showProductForm = false;
     this.productFormData = {};
-    
-    // Retroceder en el historial solo si hay entrada de modal
-    if (window.history.state && window.history.state.modal) {
-      window.history.back();
-    }
   }
 
   async createProductFromTicket() {
@@ -1477,19 +1469,11 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       company_id: this.selectedCompanyId
     };
     this.showServiceForm = true;
-    
-    // Añadir entrada al historial para modales anidados
-    history.pushState({ modal: 'service-form' }, '');
   }
 
   closeServiceForm() {
     this.showServiceForm = false;
     this.serviceFormData = {};
-    
-    // Retroceder en el historial solo si hay entrada de modal
-    if (window.history.state && window.history.state.modal) {
-      window.history.back();
-    }
   }
 
   async createServiceFromTicket() {
@@ -1966,6 +1950,21 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
 
     // Pre-fill the form with the searched text
     this.customerFormData.name = this.customerSearchText.trim();
+    this.showCustomerForm = true;
+    this.showCustomerDropdown = false;
+  }
+
+  openCustomerForm() {
+    // Reset form data
+    this.customerFormData = {
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      postal_code: '',
+      notes: ''
+    };
     this.showCustomerForm = true;
     this.showCustomerDropdown = false;
   }
