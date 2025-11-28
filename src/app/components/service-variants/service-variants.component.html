@@ -67,10 +67,13 @@
   </div>
 
   <!-- Variant Form Modal -->
-  <div class="modal" *ngIf="showForm">
+  <div class="modal" *ngIf="showForm" (click)="$event.stopPropagation(); closeForm()">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>{{ editingVariant ? 'Editar Variante' : 'Nueva Variante' }}</h3>
+        <div class="modal-title-group">
+          <h3>{{ editingVariant ? 'Editar Variante' : 'Nueva Variante' }}</h3>
+          <p class="modal-subtitle">{{ editingVariant ? 'Modifica los datos de la variante' : 'Crea una nueva variante del servicio' }}</p>
+        </div>
         <button class="btn-close" type="button" (click)="closeForm()">
           <i class="fas fa-times"></i>
         </button>

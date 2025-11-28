@@ -264,7 +264,7 @@
     padding-bottom: calc(12px + env(safe-area-inset-bottom));
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
     border-top: 1px solid #e5e7eb;
-    z-index: 60;
+    z-index: 5510;
     background: white;
     
     @media (prefers-color-scheme: dark) {
@@ -2193,22 +2193,39 @@ textarea.form-control {
 .customer-search-container {
   position: relative;
 
+  .customer-input-wrapper {
+    position: relative;
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+
   .btn-clear-customer {
     position: absolute;
-    right: 8px;
+    right: 64px; /* Dentro del input, antes del botón de añadir */
     top: 50%;
     transform: translateY(-50%);
     background: transparent;
     border: none;
     color: #6b7280;
-    padding: 4px;
+    padding: 4px 8px;
     cursor: pointer;
     border-radius: 4px;
     transition: all 0.2s ease;
+    z-index: 5;
 
     &:hover {
       background: #f3f4f6;
       color: #374151;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      color: #9ca3af;
+      
+      &:hover {
+        background: #374151;
+        color: #f3f4f6;
+      }
     }
 
     i {

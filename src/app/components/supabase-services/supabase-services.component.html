@@ -252,7 +252,10 @@
   <div *ngIf="showForm" class="modal-overlay" (click)="closeForm()">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2>{{ editingService ? 'Editar Servicio' : 'Nuevo Servicio' }}</h2>
+        <div class="modal-title-group">
+          <h2>{{ editingService ? 'Editar Servicio' : 'Nuevo Servicio' }}</h2>
+          <p class="modal-subtitle">{{ editingService ? 'Modifica los datos del servicio' : 'Crea un nuevo servicio para tu catálogo' }}</p>
+        </div>
         <button class="close-btn" (click)="closeForm()" aria-label="Cerrar modal">
           <i class="fas fa-times"></i>
         </button>

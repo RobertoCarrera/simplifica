@@ -10,6 +10,69 @@
   }
 }
 
+/* ========================================
+   MOBILE FULLSCREEN MODAL STYLES
+   ======================================== */
+@media (max-width: 767px) {
+  .modal {
+    padding: 0 !important;
+    background: #f9fafb !important;
+    backdrop-filter: none !important;
+    align-items: stretch !important;
+  }
+
+  .modal-content {
+    border-radius: 0 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    box-shadow: none !important;
+    background: #f9fafb !important;
+    border: none !important;
+  }
+
+  .modal-header {
+    display: flex !important;
+    border-bottom: none !important;
+    background: #f9fafb !important;
+    padding: 16px 20px !important;
+  }
+
+  .modal-body {
+    background: #f9fafb !important;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .modal-footer {
+    background: white !important;
+    border-top: 1px solid #e5e7eb !important;
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 5510 !important; /* Above modal content (z-5501) */
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+    padding: 16px 20px !important;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* Mobile dark mode */
+@media (max-width: 767px) and (prefers-color-scheme: dark) {
+  .modal,
+  .modal-content,
+  .modal-header,
+  .modal-body {
+    background: #0f172a !important;
+  }
+
+  .modal-footer {
+    background: #1e293b !important;
+    border-top-color: #334155 !important;
+  }
+}
+
 .variants-header {
   display: flex;
   justify-content: space-between;
@@ -283,7 +346,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 40; /* Lower than toast (z-50) */
+  z-index: 5500; /* Above FAB (z-index: 5000) */
   width: 100vw;
   height: var(--dvh, 100vh);
   padding: clamp(12px,4vw,24px) clamp(12px,4vw,24px) max(env(safe-area-inset-bottom), clamp(12px,4vw,24px)) clamp(12px,4vw,24px);
@@ -300,7 +363,7 @@
   max-height: calc(var(--dvh, 100vh) - max(env(safe-area-inset-bottom),20px) - 48px);
   overflow: hidden;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  z-index: 41; /* Still lower than toast */
+  z-index: 5501; /* Above modal backdrop */
 
   @media (prefers-color-scheme: dark) {
     background: #1e293b;
@@ -315,6 +378,12 @@
   padding: 1.5rem;
   border-bottom: 1px solid var(--border-color, #e5e7eb);
 
+  .modal-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
   h3 {
     margin: 0;
     font-size: 1.5rem;
@@ -323,6 +392,17 @@
 
     @media (prefers-color-scheme: dark) {
       color: #f9fafb;
+    }
+  }
+
+  .modal-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 400;
+
+    @media (prefers-color-scheme: dark) {
+      color: #9ca3af;
     }
   }
 

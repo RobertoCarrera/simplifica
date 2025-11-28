@@ -334,6 +334,14 @@
                     [placeholder]="selectedCustomer ? selectedCustomer.name : 'Buscar cliente por nombre, email o teléfono...'"
                     [value]="selectedCustomer ? selectedCustomer.name : customerSearchText"
                     autocomplete="off">
+                  <!-- Botón para limpiar selección -->
+                  <button 
+                    *ngIf="selectedCustomer" 
+                    type="button" 
+                    class="btn-clear-customer" 
+                    (click)="clearCustomerSelection()">
+                    <i class="fas fa-times"></i>
+                  </button>
                   <button type="button" class="btn-add-customer" (click)="openCustomerForm()" title="Crear nuevo cliente">
                     <i class="fas fa-user-plus"></i>
                   </button>
@@ -367,15 +375,6 @@
                     </div>
                   </div>
                 </div>
-
-                <!-- Botón para limpiar selección -->
-                <button 
-                  *ngIf="selectedCustomer" 
-                  type="button" 
-                  class="btn-clear-customer" 
-                  (click)="clearCustomerSelection()">
-                  <i class="fas fa-times"></i>
-                </button>
               </div>
               <div *ngIf="formErrors['client_id']" class="error-message">{{ formErrors['client_id'] }}</div>
             </div>

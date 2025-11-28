@@ -62,9 +62,9 @@ interface NavItem {
       </nav>
 
       <!-- Bottom Sheet Más (inline) -->
-      <div *ngIf="showMoreSheet()" class="fixed inset-0 z-50" aria-modal="true" role="dialog" aria-label="Menú adicional">
+      <div *ngIf="showMoreSheet()" class="fixed inset-0" style="z-index: 6000" aria-modal="true" role="dialog" aria-label="Menú adicional">
         <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" (click)="closeMoreSheet()" aria-hidden="true"></div>
-        <div class="absolute left-0 right-0 bottom-0 bg-white dark:bg-[#1e293b] rounded-t-2xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[70vh] flex flex-col animate-slideUp">
+        <div class="absolute left-0 right-0 bottom-0 bg-white dark:bg-[#1e293b] rounded-t-2xl shadow-xl border border-gray-200 dark:border-gray-700 max-h-[70vh] flex flex-col animate-slideUp" style="z-index: 6001">
           <div class="flex items-center justify-between px-5 pt-4 pb-2">
             <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Más opciones</h2>
             <button (click)="closeMoreSheet()" aria-label="Cerrar" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
