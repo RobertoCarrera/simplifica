@@ -249,15 +249,12 @@
   </div>
 
   <!-- Service Form Modal -->
-  <div *ngIf="showForm" class="modal-overlay">
+  <div *ngIf="showForm" class="modal-overlay" (click)="closeForm()">
     <div class="modal-content" (click)="$event.stopPropagation()">
-      <div class="hidden modal-header bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-slate-100">{{ editingService ? 'Editar Servicio' :
-          'Crear Nuevo Servicio' }}</h2>
-        <button
-          class="close-btn hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors duration-200 rounded-lg p-2"
-          (click)="closeForm()" aria-label="Cerrar modal">
-          <i class="fas fa-times text-gray-600 dark:text-slate-300"></i>
+      <div class="modal-header">
+        <h2>{{ editingService ? 'Editar Servicio' : 'Nuevo Servicio' }}</h2>
+        <button class="close-btn" (click)="closeForm()" aria-label="Cerrar modal">
+          <i class="fas fa-times"></i>
         </button>
       </div>
 
@@ -266,14 +263,12 @@
 
           <!-- Información Básica -->
           <div class="form-section accordion-section" id="variants-section">
-            <div
-              class="accordion-header hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors duration-200 px-4 py-3.5"
-              (click)="toggleAccordion('basicInfo')" [class.active]="accordionState.basicInfo">
+            <div class="accordion-header" (click)="toggleAccordion('basicInfo')" [class.active]="accordionState.basicInfo">
               <div class="accordion-title">
-                <i class="fas fa-info-circle text-blue-500 dark:text-blue-400"></i>
-                <span class="text-gray-900 dark:text-slate-100">Información Básica</span>
+                <i class="fas fa-info-circle"></i>
+                <span>Información Básica</span>
               </div>
-              <i class="fas text-gray-500 dark:text-slate-400" [class.fa-chevron-down]="!accordionState.basicInfo"
+              <i class="fas" [class.fa-chevron-down]="!accordionState.basicInfo"
                 [class.fa-chevron-up]="accordionState.basicInfo"></i>
             </div>
 
@@ -414,12 +409,10 @@
 
           <!-- Service Variants Section -->
           <div class="form-section accordion-section">
-            <div
-              class="accordion-header hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors duration-200 px-4 py-3.5"
-              (click)="toggleAccordion('variants')" [class.active]="accordionState.variants">
+            <div class="accordion-header" (click)="toggleAccordion('variants')" [class.active]="accordionState.variants">
               <div class="accordion-title">
-                <i class="fas fa-layer-group text-blue-500 dark:text-blue-400"></i>
-                <span class="text-gray-900 dark:text-slate-100">Variantes del Servicio</span>
+                <i class="fas fa-layer-group"></i>
+                <span>Variantes del Servicio</span>
               </div>
               <div class="accordion-controls">
                 <!-- Toggle Switch -->
@@ -428,7 +421,7 @@
                     (change)="toggleHasVariants()" aria-label="Habilitar variantes">
                   <span class="toggle-slider"></span>
                 </label>
-                <i class="fas text-gray-500 dark:text-slate-400" [class.fa-chevron-down]="!accordionState.variants"
+                <i class="fas" [class.fa-chevron-down]="!accordionState.variants"
                   [class.fa-chevron-up]="accordionState.variants"></i>
               </div>
             </div>
@@ -484,14 +477,12 @@
 
           <!-- Precios y Facturación (solo si NO hay variantes) -->
           <div class="form-section accordion-section" *ngIf="!formData.has_variants">
-            <div
-              class="accordion-header hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors duration-200 px-4 py-3.5"
-              (click)="toggleAccordion('pricing')" [class.active]="accordionState.pricing">
+            <div class="accordion-header" (click)="toggleAccordion('pricing')" [class.active]="accordionState.pricing">
               <div class="accordion-title">
-                <i class="fas fa-euro-sign text-green-600 dark:text-green-400"></i>
-                <span class="text-gray-900 dark:text-slate-100">Precios y Facturación</span>
+                <i class="fas fa-euro-sign"></i>
+                <span>Precios y Facturación</span>
               </div>
-              <i class="fas text-gray-500 dark:text-slate-400" [class.fa-chevron-down]="!accordionState.pricing"
+              <i class="fas" [class.fa-chevron-down]="!accordionState.pricing"
                 [class.fa-chevron-up]="accordionState.pricing"></i>
             </div>
 
@@ -553,14 +544,12 @@
 
           <!-- Tiempo y Cantidades -->
           <div class="form-section accordion-section">
-            <div
-              class="accordion-header hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors duration-200 px-4 py-3.5"
-              (click)="toggleAccordion('timeQuantity')" [class.active]="accordionState.timeQuantity">
+            <div class="accordion-header" (click)="toggleAccordion('timeQuantity')" [class.active]="accordionState.timeQuantity">
               <div class="accordion-title">
-                <i class="fas fa-clock text-yellow-600 dark:text-yellow-400"></i>
-                <span class="text-gray-900 dark:text-slate-100">Tiempo y Cantidades</span>
+                <i class="fas fa-clock"></i>
+                <span>Tiempo y Cantidades</span>
               </div>
-              <i class="fas text-gray-500 dark:text-slate-400" [class.fa-chevron-down]="!accordionState.timeQuantity"
+              <i class="fas" [class.fa-chevron-down]="!accordionState.timeQuantity"
                 [class.fa-chevron-up]="accordionState.timeQuantity"></i>
             </div>
 
@@ -616,14 +605,12 @@
 
           <!-- Dificultad y Gestión -->
           <div class="form-section accordion-section">
-            <div
-              class="accordion-header hover:bg-gray-100 dark:hover:bg-slate-700/50 transition-colors duration-200 px-4 py-3.5"
-              (click)="toggleAccordion('difficulty')" [class.active]="accordionState.difficulty">
+            <div class="accordion-header" (click)="toggleAccordion('difficulty')" [class.active]="accordionState.difficulty">
               <div class="accordion-title">
-                <i class="fas fa-cogs text-purple-600 dark:text-purple-400"></i>
-                <span class="text-gray-900 dark:text-slate-100">Dificultad y Gestión</span>
+                <i class="fas fa-cogs"></i>
+                <span>Dificultad y Gestión</span>
               </div>
-              <i class="fas text-gray-500 dark:text-slate-400" [class.fa-chevron-down]="!accordionState.difficulty"
+              <i class="fas" [class.fa-chevron-down]="!accordionState.difficulty"
                 [class.fa-chevron-up]="accordionState.difficulty"></i>
             </div>
 
@@ -702,23 +689,11 @@
         </form>
       </div>
 
-      <div
-        class="modal-actions flex items-center justify-end gap-3 pt-6 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-6 pb-6">
-        <button type="button"
-          class="px-5 py-2.5 rounded-lg text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors font-medium"
-          (click)="closeForm()" aria-label="Cancelar">
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" (click)="closeForm()" aria-label="Cancelar">
           Cancelar
         </button>
-        <button type="submit"
-          class="hidden md:block px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors font-medium shadow-lg shadow-blue-600/20"
-          (click)="saveService()" [disabled]="loading"
-          [attr.aria-label]="editingService ? 'Actualizar servicio' : 'Crear servicio'">
-          <i class="fas" [class.fa-spinner]="loading" [class.fa-spin]="loading" [class.fa-check]="!loading"></i>
-          {{ editingService ? 'Actualizar' : 'Crear Servicio' }}
-        </button>
-        <button type="submit"
-          class="md:hidden px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors font-medium shadow-lg shadow-blue-600/20"
-          (click)="saveService()" [disabled]="loading"
+        <button type="submit" class="btn btn-primary" (click)="saveService()" [disabled]="loading"
           [attr.aria-label]="editingService ? 'Actualizar servicio' : 'Crear servicio'">
           <i class="fas" [class.fa-spinner]="loading" [class.fa-spin]="loading" [class.fa-check]="!loading"></i>
           {{ editingService ? 'Actualizar' : 'Crear' }}
