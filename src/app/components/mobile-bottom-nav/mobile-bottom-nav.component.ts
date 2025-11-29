@@ -132,12 +132,12 @@ export class MobileBottomNavComponent implements OnInit {
   
   // Routes where the bottom nav should be hidden (form pages that act like full-screen modals)
   private readonly hideOnRoutes = [
-    '/presupuestos/nuevo',
-    '/presupuestos/editar',
+    '/presupuestos/new',
+    '/presupuestos/edit',
     '/tickets/nuevo',
     '/tickets/editar',
-    '/facturas/nueva',
-    '/facturas/editar',
+    '/facturacion/new',
+    '/facturacion/edit',
     '/clientes/nuevo',
     '/clientes/editar',
     '/servicios/nuevo',
