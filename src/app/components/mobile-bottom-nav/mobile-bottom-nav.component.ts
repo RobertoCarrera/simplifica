@@ -1,6 +1,8 @@
-import { Component, inject, computed, OnInit, signal } from '@angular/core';
+import { Component, inject, computed, OnInit, signal, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, NavigationEnd } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs/operators';
 import { PWAService } from '../../services/pwa.service';
 import { AuthService } from '../../services/auth.service';
 import { DevRoleService } from '../../services/dev-role.service';
@@ -33,7 +35,7 @@ interface NavItem {
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <ng-container>
+    <ng-container *ngIf="!shouldHideNav()">
       <nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 safe-area-pb z-50 md:hidden" role="navigation" aria-label="Navegación principal móvil">
         <ul class="flex justify-around items-center h-16 px-4 m-0 list-none" role="menubar">
           <li *ngFor="let item of filteredNavItems(); let i = index" class="flex-1 flex justify-center" role="none">
@@ -123,6 +125,30 @@ export class MobileBottomNavComponent implements OnInit {
   private modulesService = inject(SupabaseModulesService);
   private router = inject(Router);
   private notificationStore = inject(NotificationStore);
+  private destroyRef = inject(DestroyRef);
+
+  // Signal to track current route for hiding nav on form pages
+  private currentUrl = signal(this.router.url);
+  
+  // Routes where the bottom nav should be hidden (form pages that act like full-screen modals)
+  private readonly hideOnRoutes = [
+    '/presupuestos/nuevo',
+    '/presupuestos/editar',
+    '/tickets/nuevo',
+    '/tickets/editar',
+    '/facturas/nueva',
+    '/facturas/editar',
+    '/clientes/nuevo',
+    '/clientes/editar',
+    '/servicios/nuevo',
+    '/servicios/editar',
+  ];
+
+  // Computed signal to determine if nav should be hidden
+  shouldHideNav = computed(() => {
+    const url = this.currentUrl();
+    return this.hideOnRoutes.some(route => url.includes(route));
+  });
 
   // Server-side allowed modules set
   private _allowedModuleKeys = signal<Set<string> | null>(null);
@@ -335,6 +361,14 @@ export class MobileBottomNavComponent implements OnInit {
   ngOnInit(): void {
     // Debug: print current role on init so we can verify whether clientItemsBase is used
     console.debug('[mobile-bottom-nav] init role=', this.authService.userRole());
+
+    // Subscribe to router navigation events to update currentUrl signal
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((event) => {
+      this.currentUrl.set(event.urlAfterRedirects);
+    });
 
     // Load effective modules from server
     this.modulesService.fetchEffectiveModules().subscribe({
