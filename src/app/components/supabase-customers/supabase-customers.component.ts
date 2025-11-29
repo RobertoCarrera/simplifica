@@ -63,6 +63,13 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
   showForm = signal(false);
   selectedCustomer = signal<Customer | null>(null);
   
+  // Client type dropdown
+  clientTypeDropdownOpen = signal(false);
+  clientTypeOptions = [
+    { value: 'individual', label: 'Persona física', icon: 'fas fa-user' },
+    { value: 'business', label: 'Empresa', icon: 'fas fa-building' }
+  ];
+  
   // History management for modals
   private popStateListener: any = null;
   
@@ -919,10 +926,33 @@ onMappingConfirmed(mappings: any[]): void {
     this.showForm.set(true);
   }
 
+  // Client type dropdown methods
+  toggleClientTypeDropdown() {
+    this.clientTypeDropdownOpen.set(!this.clientTypeDropdownOpen());
+  }
+
+  selectClientType(value: string) {
+    this.formData.client_type = value as 'individual' | 'business';
+    this.clientTypeDropdownOpen.set(false);
+  }
+
+  getClientTypeLabel(): string {
+    const option = this.clientTypeOptions.find(o => o.value === this.formData.client_type);
+    return option?.label || 'Seleccionar tipo';
+  }
+
+  getClientTypeIcon(): string {
+    const option = this.clientTypeOptions.find(o => o.value === this.formData.client_type);
+    return option?.icon || 'fas fa-user';
+  }
+
   closeForm() {
     this.showForm.set(false);
     this.selectedCustomer.set(null);
     this.resetForm();
+    
+    // Close client type dropdown
+    this.clientTypeDropdownOpen.set(false);
     
     // Close and clear any dropdowns and nested modal state so reopening shows a clean form
     try {
