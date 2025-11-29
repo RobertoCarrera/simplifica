@@ -64,6 +64,28 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   filteredTags: ServiceTag[] = [];
   selectedTags: string[] = [];
   
+  // Custom dropdown management for Unit, Difficulty, Priority
+  showUnitDropdown = false;
+  showDifficultyDropdown = false;
+  showPriorityDropdown = false;
+  
+  // Difficulty and Priority options
+  difficultyOptions = [
+    { value: '1', label: '1 - Muy Fácil' },
+    { value: '2', label: '2 - Fácil' },
+    { value: '3', label: '3 - Medio' },
+    { value: '4', label: '4 - Difícil' },
+    { value: '5', label: '5 - Muy Difícil' }
+  ];
+  
+  priorityOptions = [
+    { value: '1', label: '1 - Muy Baja' },
+    { value: '2', label: '2 - Baja' },
+    { value: '3', label: '3 - Media' },
+    { value: '4', label: '4 - Alta' },
+    { value: '5', label: '5 - Muy Alta' }
+  ];
+  
   // Variants management
   serviceVariants: ServiceVariant[] = [];
   pendingVariants: Partial<ServiceVariant>[] = []; // Variantes creadas antes de guardar el servicio
@@ -281,6 +303,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   openCategoryDropdown() {
     this.showCategoryInput = true;
     this.categoryFilterText = '';
+    this.updateCategoryFilter(); // Mostrar todas las categorías al abrir
     setTimeout(() => this.categorySearchInput?.nativeElement.focus(), 100);
   }
 
@@ -385,7 +408,56 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   openTagDropdown() {
     this.showTagInput = true;
     this.tagFilterText = '';
+    this.updateTagFilter(); // Mostrar todos los tags al abrir
     setTimeout(() => this.tagSearchInput?.nativeElement.focus(), 100);
+  }
+
+  // Métodos para dropdown de Unidad de Medida
+  openUnitDropdown() {
+    this.showUnitDropdown = true;
+  }
+  
+  selectUnit(unit: UnitOfMeasure) {
+    this.formData.unit_type = unit.code;
+    this.showUnitDropdown = false;
+  }
+  
+  getSelectedUnitLabel(): string {
+    if (!this.formData.unit_type) return '';
+    const unit = this.units.find(u => u.code === this.formData.unit_type);
+    return unit ? unit.name : this.formData.unit_type;
+  }
+
+  // Métodos para dropdown de Nivel de Dificultad
+  openDifficultyDropdown() {
+    this.showDifficultyDropdown = true;
+  }
+  
+  selectDifficulty(option: { value: string, label: string }) {
+    this.formData.difficulty_level = parseInt(option.value, 10);
+    this.showDifficultyDropdown = false;
+  }
+  
+  getSelectedDifficultyLabel(): string {
+    if (!this.formData.difficulty_level) return '';
+    const option = this.difficultyOptions.find(o => o.value === String(this.formData.difficulty_level));
+    return option ? option.label : '';
+  }
+
+  // Métodos para dropdown de Nivel de Prioridad
+  openPriorityDropdown() {
+    this.showPriorityDropdown = true;
+  }
+  
+  selectPriority(option: { value: string, label: string }) {
+    this.formData.priority_level = parseInt(option.value, 10);
+    this.showPriorityDropdown = false;
+  }
+  
+  getSelectedPriorityLabel(): string {
+    if (!this.formData.priority_level) return '';
+    const option = this.priorityOptions.find(o => o.value === String(this.formData.priority_level));
+    return option ? option.label : '';
   }
 
   removeTag(tag: string) {
@@ -949,13 +1021,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     
     const unit = this.units.find(u => u.code === mostCommonUnit);
     return unit ? unit.name : mostCommonUnit;
-  }
-
-  getSelectedUnitLabel(): string {
-    if (!this.formData.unit_type) return 'Unidades';
-    
-    const unit = this.units.find(u => u.code === this.formData.unit_type);
-    return unit ? unit.name : 'Unidades';
   }
 
   getServiceStatus(service: Service): string {

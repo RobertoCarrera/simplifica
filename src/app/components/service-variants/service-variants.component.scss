@@ -51,7 +51,7 @@
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
-    z-index: 5510 !important; /* Above modal content (z-5501) */
+    z-index: 6110 !important; /* Higher than variant modal content */
     box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1) !important;
     padding: 16px 20px !important;
     padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
@@ -74,9 +74,6 @@
 }
 
 .variants-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 2px solid var(--border-color, #e5e7eb);
@@ -346,7 +343,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 5500; /* Above FAB (z-index: 5000) */
+  z-index: 6100; /* Higher than parent service modal to ensure it's on top */
   width: 100vw;
   height: var(--dvh, 100vh);
   padding: clamp(12px,4vw,24px) clamp(12px,4vw,24px) max(env(safe-area-inset-bottom), clamp(12px,4vw,24px)) clamp(12px,4vw,24px);
@@ -363,7 +360,7 @@
   max-height: calc(var(--dvh, 100vh) - max(env(safe-area-inset-bottom),20px) - 48px);
   overflow: hidden;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-  z-index: 5501; /* Above modal backdrop */
+  z-index: 6101; /* Above modal backdrop */
 
   @media (prefers-color-scheme: dark) {
     background: #1e293b;

@@ -135,6 +135,83 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     const c = this.getSelectedClient();
     return c?.missingFields || [];
   }
+
+  // Dropdown de Estado personalizado
+  statusDropdownOpen = signal(false);
+  statusOptions = [
+    { value: 'draft', label: 'Borrador' },
+    { value: 'sent', label: 'Enviado' },
+    { value: 'accepted', label: 'Aceptado' },
+    { value: 'rejected', label: 'Rechazado' },
+    { value: 'expired', label: 'Expirado' }
+  ];
+
+  toggleStatusDropdown() {
+    this.statusDropdownOpen.set(!this.statusDropdownOpen());
+  }
+
+  selectStatus(value: string) {
+    this.quoteForm.get('status')?.setValue(value);
+    this.statusDropdownOpen.set(false);
+  }
+
+  getSelectedStatusLabel(): string {
+    const value = this.quoteForm.get('status')?.value;
+    const option = this.statusOptions.find(o => o.value === value);
+    return option?.label || 'Seleccionar estado';
+  }
+  
+  // Dropdown de Plantilla
+  templateDropdownOpen = signal(false);
+
+  toggleTemplateDropdown() {
+    this.templateDropdownOpen.set(!this.templateDropdownOpen());
+  }
+
+  selectTemplate(templateId: string | null) {
+    this.quoteForm.get('template_id')?.setValue(templateId);
+    this.templateDropdownOpen.set(false);
+  }
+
+  getSelectedTemplateLabel(): string {
+    const value = this.quoteForm.get('template_id')?.value;
+    if (!value) return 'Sin plantilla';
+    const template = this.templates().find(t => t.id === value);
+    return template?.name || 'Sin plantilla';
+  }
+  
+  // Dropdown de IVA (Tax Rate) - por ítem
+  taxDropdownOpenIndex = signal<number | null>(null);
+  taxOptions = [
+    { value: 0, label: '0%' },
+    { value: 4, label: '4%' },
+    { value: 10, label: '10%' },
+    { value: 21, label: '21%' }
+  ];
+
+  toggleTaxDropdown(index: number) {
+    if (this.taxDropdownOpenIndex() === index) {
+      this.taxDropdownOpenIndex.set(null);
+    } else {
+      this.taxDropdownOpenIndex.set(index);
+    }
+  }
+
+  selectTax(value: number, index: number) {
+    this.items.at(index).get('tax_rate')?.setValue(value);
+    this.taxDropdownOpenIndex.set(null);
+    this.calculateTotals();
+  }
+
+  getItemTaxRate(index: number): number {
+    return this.items.at(index).get('tax_rate')?.value ?? 21;
+  }
+
+  getItemTaxLabel(index: number): string {
+    const rate = this.getItemTaxRate(index);
+    const option = this.taxOptions.find(o => o.value === rate);
+    return option?.label || '21%';
+  }
   
   // Selector de servicios
   services = signal<ServiceOption[]>([]);
@@ -271,6 +348,21 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     // Cerrar dropdown de variantes si se hace clic fuera
     if (!target.closest('.variant-dropdown-container')) {
       this.closeVariantDropdown();
+    }
+    
+    // Cerrar dropdown de estado si se hace clic fuera
+    if (!target.closest('.status-dropdown-container')) {
+      this.statusDropdownOpen.set(false);
+    }
+    
+    // Cerrar dropdown de plantilla si se hace clic fuera
+    if (!target.closest('.template-dropdown-container')) {
+      this.templateDropdownOpen.set(false);
+    }
+    
+    // Cerrar dropdown de IVA si se hace clic fuera
+    if (!target.closest('.tax-dropdown-container')) {
+      this.taxDropdownOpenIndex.set(null);
     }
   }
 

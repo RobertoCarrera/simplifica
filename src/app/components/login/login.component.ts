@@ -394,21 +394,36 @@ import { ToastService } from '../../services/toast.service';
         box-shadow: 0 10px 40px -12px rgba(0,0,0,0.4);
       }
       .form-title, .mobile-header h2 { color: #f1f5f9; }
+      .mobile-header .subtitle { color: #94a3b8; }
       .form-label { color: #94a3b8; }
       .input-wrapper { 
-        background: #334155; 
-        border-color: #475569; 
+        background: #0f172a !important; 
+        border-color: #475569 !important; 
       }
       .input-wrapper:focus-within { 
-        background: #374151; 
-        border-color: #60a5fa; 
+        background: #1e293b !important; 
+        border-color: #60a5fa !important; 
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
       }
-      .input-wrapper input { color: #f1f5f9; }
+      .input-wrapper i { color: #64748b; }
+      .input-wrapper input { 
+        color: #f1f5f9 !important; 
+        background: transparent !important;
+        border: none !important;
+      }
+      .input-wrapper input::placeholder { color: #64748b !important; }
+      .toggle-pass { color: #64748b; }
+      .toggle-pass:hover { color: #60a5fa; }
       .small { color: #94a3b8; }
       .alert-error { 
         background: #450a0a; 
         color: #fca5a5; 
         border-color: #7f1d1d; 
+      }
+      .logo-circle { 
+        background: rgba(59, 130, 246, 0.2); 
+        border-color: rgba(59, 130, 246, 0.3);
+        color: #60a5fa;
       }
     }
     

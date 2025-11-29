@@ -501,7 +501,7 @@ body.ios-pwa {
     border-color: #475569 !important;
     
     &::placeholder {
-      color: #64748b !important;
+      color: #94a3b8 !important;
     }
     
     &:focus {
@@ -522,10 +522,16 @@ body.ios-pwa {
     }
   }
   
-  /* Opciones de select */
+  /* Opciones de select - forzar estilos en navegadores que lo soporten */
+  select option,
   option {
     background-color: #1e293b !important;
     color: #f1f5f9 !important;
+  }
+  
+  /* Select con color scheme oscuro para mejorar dropdowns nativos */
+  select {
+    color-scheme: dark;
   }
   
   /* Mensajes de error */

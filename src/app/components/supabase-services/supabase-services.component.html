@@ -300,8 +300,17 @@
                       <i class="fas fa-chevron-down dropdown-icon"></i>
                     </div>
 
+                    <!-- Category Dropdown Overlay (mobile) -->
+                    <div *ngIf="showCategoryInput" class="dropdown-overlay" (click)="showCategoryInput = false"></div>
+                    
                     <!-- Category Dropdown -->
                     <div *ngIf="showCategoryInput" class="category-dropdown">
+                      <div class="dropdown-header">
+                        <span class="dropdown-title">Seleccionar categoría</span>
+                        <button type="button" class="dropdown-close" (click)="showCategoryInput = false">
+                          <i class="fas fa-times"></i>
+                        </button>
+                      </div>
                       <div class="category-search">
                         <input #categorySearchInput type="text" class="form-control small"
                           [(ngModel)]="categoryFilterText" (ngModelChange)="onCategoryFilterChange()"
@@ -359,8 +368,17 @@
                         <i class="fas fa-chevron-down dropdown-icon"></i>
                       </div>
 
+                      <!-- Tag Dropdown Overlay (mobile) -->
+                      <div *ngIf="showTagInput" class="dropdown-overlay" (click)="showTagInput = false"></div>
+                      
                       <!-- Tag Dropdown -->
                       <div *ngIf="showTagInput" class="tag-dropdown">
+                        <div class="dropdown-header">
+                          <span class="dropdown-title">Seleccionar tags</span>
+                          <button type="button" class="dropdown-close" (click)="showTagInput = false">
+                            <i class="fas fa-times"></i>
+                          </button>
+                        </div>
                         <div class="tag-search">
                           <input #tagSearchInput type="text" class="form-control small" [(ngModel)]="tagFilterText"
                             (ngModelChange)="onTagFilterChange()" placeholder="Buscar o crear tag..." name="tagFilter"
@@ -454,7 +472,7 @@
 
               <!-- Variantes para servicios nuevos (sin ID aún) -->
               <div *ngIf="formData.has_variants && !editingService">
-                <app-service-variants [serviceId]="''" [serviceName]="formData.name || 'Nuevo servicio'"
+                <app-service-variants [serviceId]="''"
                   [variants]="serviceVariants" (variantsChange)="onVariantsChange($event)"
                   (onSave)="onVariantSave($event)" (onDelete)="onVariantDelete($event)">
                 </app-service-variants>
@@ -572,14 +590,37 @@
 
               <div class="form-group">
                 <label for="unit_type" class="text-gray-700 dark:text-white font-medium">Unidad de Medida</label>
-                <select id="unit_type"
-                  class="form-control bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                  [(ngModel)]="formData.unit_type" name="unit_type" aria-label="Unidad de medida">
-                  <option *ngIf="unitsLoaded && (!units || !units.length)" value="" disabled>
-                    Configura unidades en Configuración
-                  </option>
-                  <option *ngFor="let u of units" [value]="u.code">{{ u.name }}</option>
-                </select>
+                <div class="custom-dropdown-container">
+                  <div class="form-control custom-dropdown-display" (click)="openUnitDropdown()">
+                    <span *ngIf="getSelectedUnitLabel()" class="selected-value">{{ getSelectedUnitLabel() }}</span>
+                    <span *ngIf="!getSelectedUnitLabel()" class="placeholder-text">Seleccionar unidad...</span>
+                    <i class="fas fa-chevron-down dropdown-icon"></i>
+                  </div>
+                  
+                  <!-- Unit Dropdown Overlay -->
+                  <div *ngIf="showUnitDropdown" class="dropdown-overlay" (click)="showUnitDropdown = false"></div>
+                  
+                  <!-- Unit Dropdown -->
+                  <div *ngIf="showUnitDropdown" class="custom-dropdown">
+                    <div class="dropdown-header">
+                      <span class="dropdown-title">Seleccionar unidad</span>
+                      <button type="button" class="dropdown-close" (click)="showUnitDropdown = false">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </div>
+                    <div class="custom-dropdown-options">
+                      <div *ngIf="unitsLoaded && (!units || !units.length)" class="dropdown-empty">
+                        Configura unidades en Configuración
+                      </div>
+                      <div *ngFor="let u of units" class="custom-dropdown-option" 
+                           [class.selected]="formData.unit_type === u.code"
+                           (click)="selectUnit(u)">
+                        <span>{{ u.name }}</span>
+                        <i *ngIf="formData.unit_type === u.code" class="fas fa-check"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div class="form-group">
@@ -622,29 +663,67 @@
                 <div class="form-group">
                   <label for="difficulty_level" class="text-gray-700 dark:text-white font-medium">Nivel de
                     Dificultad</label>
-                  <select id="difficulty_level"
-                    class="form-control bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                    [(ngModel)]="formData.difficulty_level" name="difficulty_level" aria-label="Nivel de dificultad">
-                    <option value="1">1 - Muy Fácil</option>
-                    <option value="2">2 - Fácil</option>
-                    <option value="3">3 - Medio</option>
-                    <option value="4">4 - Difícil</option>
-                    <option value="5">5 - Muy Difícil</option>
-                  </select>
+                  <div class="custom-dropdown-container">
+                    <div class="form-control custom-dropdown-display" (click)="openDifficultyDropdown()">
+                      <span *ngIf="getSelectedDifficultyLabel()" class="selected-value">{{ getSelectedDifficultyLabel() }}</span>
+                      <span *ngIf="!getSelectedDifficultyLabel()" class="placeholder-text">Seleccionar nivel...</span>
+                      <i class="fas fa-chevron-down dropdown-icon"></i>
+                    </div>
+                    
+                    <!-- Difficulty Dropdown Overlay -->
+                    <div *ngIf="showDifficultyDropdown" class="dropdown-overlay" (click)="showDifficultyDropdown = false"></div>
+                    
+                    <!-- Difficulty Dropdown -->
+                    <div *ngIf="showDifficultyDropdown" class="custom-dropdown">
+                      <div class="dropdown-header">
+                        <span class="dropdown-title">Nivel de dificultad</span>
+                        <button type="button" class="dropdown-close" (click)="showDifficultyDropdown = false">
+                          <i class="fas fa-times"></i>
+                        </button>
+                      </div>
+                      <div class="custom-dropdown-options">
+                        <div *ngFor="let opt of difficultyOptions" class="custom-dropdown-option" 
+                             [class.selected]="formData.difficulty_level === +opt.value"
+                             (click)="selectDifficulty(opt)">
+                          <span>{{ opt.label }}</span>
+                          <i *ngIf="formData.difficulty_level === +opt.value" class="fas fa-check"></i>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="form-group">
                   <label for="priority_level" class="text-gray-700 dark:text-white font-medium">Nivel de
                     Prioridad</label>
-                  <select id="priority_level"
-                    class="form-control bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                    [(ngModel)]="formData.priority_level" name="priority_level" aria-label="Nivel de prioridad">
-                    <option value="1">1 - Muy Baja</option>
-                    <option value="2">2 - Baja</option>
-                    <option value="3">3 - Media</option>
-                    <option value="4">4 - Alta</option>
-                    <option value="5">5 - Muy Alta</option>
-                  </select>
+                  <div class="custom-dropdown-container">
+                    <div class="form-control custom-dropdown-display" (click)="openPriorityDropdown()">
+                      <span *ngIf="getSelectedPriorityLabel()" class="selected-value">{{ getSelectedPriorityLabel() }}</span>
+                      <span *ngIf="!getSelectedPriorityLabel()" class="placeholder-text">Seleccionar nivel...</span>
+                      <i class="fas fa-chevron-down dropdown-icon"></i>
+                    </div>
+                    
+                    <!-- Priority Dropdown Overlay -->
+                    <div *ngIf="showPriorityDropdown" class="dropdown-overlay" (click)="showPriorityDropdown = false"></div>
+                    
+                    <!-- Priority Dropdown -->
+                    <div *ngIf="showPriorityDropdown" class="custom-dropdown">
+                      <div class="dropdown-header">
+                        <span class="dropdown-title">Nivel de prioridad</span>
+                        <button type="button" class="dropdown-close" (click)="showPriorityDropdown = false">
+                          <i class="fas fa-times"></i>
+                        </button>
+                      </div>
+                      <div class="custom-dropdown-options">
+                        <div *ngFor="let opt of priorityOptions" class="custom-dropdown-option" 
+                             [class.selected]="formData.priority_level === +opt.value"
+                             (click)="selectPriority(opt)">
+                          <span>{{ opt.label }}</span>
+                          <i *ngIf="formData.priority_level === +opt.value" class="fas fa-check"></i>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="form-group">
