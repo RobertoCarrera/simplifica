@@ -7,6 +7,7 @@ import { AnalyticsService } from '../../services/analytics.service';
 import { AnimationService } from '../../services/animation.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
 import { ToastService } from '../../services/toast.service';
+import { SupabaseModulesService } from '../../services/supabase-modules.service';
 
 export type ChartOptions = {
   series: ApexAxisChartSeries;
@@ -102,6 +103,33 @@ export type ChartOptions = {
             </div>
           }
 
+          <!-- ========== GRÁFICO COMPARATIVO ========== -->
+            @if (quoteHistoricalData().length > 0 || invoiceHistoricalData().length > 0) {
+              <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 border border-gray-200 dark:border-gray-700">
+                <h3 class="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+                  </svg>
+                  Evolución Mensual (últimos 6 meses)
+                </h3>
+                
+                <apx-chart
+                  [series]="chartOptions().series"
+                  [chart]="chartOptions().chart"
+                  [xaxis]="chartOptions().xaxis"
+                  [yaxis]="chartOptions().yaxis"
+                  [dataLabels]="chartOptions().dataLabels"
+                  [tooltip]="chartOptions().tooltip"
+                  [stroke]="chartOptions().stroke"
+                  [legend]="chartOptions().legend"
+                  [grid]="chartOptions().grid"
+                  [plotOptions]="chartOptions().plotOptions"
+                  [colors]="chartOptions().colors"
+                  [theme]="chartOptions().theme"
+                ></apx-chart>
+              </div>
+            }
+
           <!-- Content -->
           @if (!isLoading()) {
             <!-- ========== SECCIÓN 1: INGRESOS REALES (Facturas) ========== -->
@@ -188,33 +216,59 @@ export type ChartOptions = {
               </div>
             </div>
 
-            <!-- ========== GRÁFICO COMPARATIVO ========== -->
-            @if (quoteHistoricalData().length > 0 || invoiceHistoricalData().length > 0) {
-              <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 border border-gray-200 dark:border-gray-700">
-                <h3 class="text-base md:text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
-                  </svg>
-                  Evolución Mensual (últimos 6 meses)
-                </h3>
+            <!-- ========== SECCIÓN 3: GESTIÓN DE TICKETS (SAT) - Solo si tiene módulo ========== -->
+            @if (hasTicketsModule()) {
+              <div class="rounded-xl border-2 border-cyan-200 dark:border-cyan-800 bg-cyan-50/50 dark:bg-cyan-950/20 p-4">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-10 h-10 rounded-full bg-cyan-100 dark:bg-cyan-900 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 class="text-lg font-bold text-cyan-800 dark:text-cyan-200">Gestión de Tickets</h2>
+                    <p class="text-xs text-cyan-600 dark:text-cyan-400">Soporte y servicios técnicos</p>
+                  </div>
+                </div>
                 
-                <apx-chart
-                  [series]="chartOptions().series"
-                  [chart]="chartOptions().chart"
-                  [xaxis]="chartOptions().xaxis"
-                  [yaxis]="chartOptions().yaxis"
-                  [dataLabels]="chartOptions().dataLabels"
-                  [tooltip]="chartOptions().tooltip"
-                  [stroke]="chartOptions().stroke"
-                  [legend]="chartOptions().legend"
-                  [grid]="chartOptions().grid"
-                  [plotOptions]="chartOptions().plotOptions"
-                  [colors]="chartOptions().colors"
-                  [theme]="chartOptions().theme"
-                ></apx-chart>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  @for (metric of ticketMetrics(); track metric.id) {
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 p-3 md:p-4 border border-cyan-100 dark:border-cyan-900/50">
+                      <div class="flex items-start justify-between mb-1">
+                        <div class="text-xl md:text-2xl">{{ metric.icon }}</div>
+                      </div>
+                      <div class="space-y-0.5">
+                        <p class="text-[10px] md:text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                          {{ metric.title }}
+                        </p>
+                        <p class="text-lg md:text-xl font-bold text-gray-900 dark:text-white break-words"
+                           [class.text-red-600]="metric.id === 'tickets-overdue' && metric.value !== '0' && metric.value !== '—'"
+                           [class.dark:text-red-400]="metric.id === 'tickets-overdue' && metric.value !== '0' && metric.value !== '—'">
+                          {{ metric.value }}
+                        </p>
+                        <p class="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {{ metric.description }}
+                        </p>
+                      </div>
+                    </div>
+                  }
+                  
+                  <!-- Empty state for tickets -->
+                  @if (ticketMetrics().length === 0 || ticketMetrics()[0].value === '—') {
+                    <div class="col-span-full bg-white/50 dark:bg-gray-800/50 rounded-lg border border-dashed border-cyan-300 dark:border-cyan-700 p-6 text-center">
+                      <p class="text-sm text-cyan-600 dark:text-cyan-400">
+                        Aún no hay tickets registrados
+                      </p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Las métricas de tickets aparecerán aquí
+                      </p>
+                    </div>
+                  }
+                </div>
               </div>
             }
 
+          
             <!-- No Data State -->
             @if (quoteHistoricalData().length === 0 && invoiceHistoricalData().length === 0) {
               <div class="bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 p-8 md:p-12 text-center">
@@ -239,15 +293,31 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   private analyticsService = inject(AnalyticsService);
   private animationService = inject(AnimationService);
   private toastService = inject(ToastService);
+  private modulesService = inject(SupabaseModulesService);
   sidebarService = inject(SidebarStateService);
 
   // Computed signals from service - Separados por tipo
   invoiceMetrics = this.analyticsService.getInvoiceMetrics;
   quoteMetrics = this.analyticsService.getQuoteMetrics;
+  ticketMetrics = this.analyticsService.getTicketMetrics;
   quoteHistoricalData = this.analyticsService.getQuoteHistoricalTrend;
   invoiceHistoricalData = this.analyticsService.getInvoiceHistoricalTrend;
+  ticketHistoricalData = this.analyticsService.getTicketHistoricalTrend;
   isLoading = this.analyticsService.isLoading;
   error = signal<string | null>(null);
+
+  // Module gating for tickets
+  private allowedModuleKeys = computed<Set<string> | null>(() => {
+    const mods = this.modulesService.modulesSignal();
+    if (!mods) return null;
+    return new Set<string>(mods.filter(m => m.enabled).map(m => m.key));
+  });
+
+  hasTicketsModule = computed(() => {
+    const set = this.allowedModuleKeys();
+    // moduloSAT or moduloSat (case-insensitive check)
+    return !!set && (set.has('moduloSAT') || set.has('moduloSat'));
+  });
 
   // ApexCharts configuration - Gráfico comparativo Facturas vs Presupuestos
   chartOptions = computed<ChartOptions>(() => {
@@ -462,6 +532,9 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit() {
+    // Load modules for conditional rendering
+    this.modulesService.fetchEffectiveModules().subscribe();
+    
     // Subscribe to service error
     const serviceError = this.analyticsService.getError();
     if (serviceError) {
