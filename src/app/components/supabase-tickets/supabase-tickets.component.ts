@@ -76,6 +76,19 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   // Visibility toggles
   showCompleted = false;
   showDeleted = false;
+
+  // Custom dropdown states
+  stageDropdownOpen = false;
+  priorityDropdownOpen = false;
+
+  // Priority options for dropdown
+  priorityOptions = [
+    { value: '', label: 'Todas las prioridades' },
+    { value: 'low', label: 'Baja' },
+    { value: 'normal', label: 'Normal' },
+    { value: 'high', label: 'Alta' },
+    { value: 'critical', label: 'Crítica' }
+  ];
   
   // Form management
   showForm = false;
@@ -864,12 +877,51 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     this.updateFilteredTickets();
   }
 
+  // Custom dropdown methods
+  toggleStageDropdown() {
+    this.stageDropdownOpen = !this.stageDropdownOpen;
+    this.priorityDropdownOpen = false;
+  }
+
+  togglePriorityDropdown() {
+    this.priorityDropdownOpen = !this.priorityDropdownOpen;
+    this.stageDropdownOpen = false;
+  }
+
+  selectStageFilter(value: string) {
+    this.filterStage = value;
+    this.stageDropdownOpen = false;
+    this.updateFilteredTickets();
+  }
+
+  selectPriorityFilter(value: string) {
+    this.filterPriority = value;
+    this.priorityDropdownOpen = false;
+    this.updateFilteredTickets();
+  }
+
+  getSelectedStageLabel(): string {
+    if (!this.filterStage) return 'Todos los estados';
+    const stage = this.stages.find(s => s.id === this.filterStage);
+    return stage?.name || 'Todos los estados';
+  }
+
+  getSelectedPriorityLabel(): string {
+    return this.priorityOptions.find(o => o.value === this.filterPriority)?.label || 'Todas las prioridades';
+  }
+
+  closeAllDropdowns() {
+    this.stageDropdownOpen = false;
+    this.priorityDropdownOpen = false;
+  }
+
   clearFilters() {
     this.searchTerm = '';
     this.filterStage = '';
     this.filterPriority = '';
     this.filterStatus = '';
     this.filterTags = [];
+    this.closeAllDropdowns();
     this.updateFilteredTickets();
   }
 

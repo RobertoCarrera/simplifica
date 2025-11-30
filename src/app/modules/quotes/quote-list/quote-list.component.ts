@@ -37,6 +37,27 @@ export class QuoteListComponent implements OnInit {
   statusFilter = '';
   dateFilter = '';
 
+  // Custom dropdown states
+  statusDropdownOpen = signal(false);
+  dateDropdownOpen = signal(false);
+
+  // Filter options
+  statusOptions = [
+    { value: '', label: 'Todos los estados' },
+    { value: 'draft', label: 'Pendiente' },
+    { value: 'sent', label: 'Enviado' },
+    { value: 'accepted', label: 'Aceptado' },
+    { value: 'rejected', label: 'Rechazado' }
+  ];
+
+  dateOptions = [
+    { value: '', label: 'Todas las fechas' },
+    { value: 'today', label: 'Hoy' },
+    { value: 'week', label: 'Esta semana' },
+    { value: 'month', label: 'Este mes' },
+    { value: 'year', label: 'Este año' }
+  ];
+
   statusLabels = QUOTE_STATUS_LABELS;
   statusColors = QUOTE_STATUS_COLORS;
 
@@ -188,6 +209,37 @@ export class QuoteListComponent implements OnInit {
 
   getStatusLabel(status: QuoteStatus): string {
     return this.statusLabels[status] || status;
+  }
+
+  // Dropdown toggles
+  toggleStatusDropdown() {
+    this.statusDropdownOpen.update(v => !v);
+    this.dateDropdownOpen.set(false);
+  }
+
+  toggleDateDropdown() {
+    this.dateDropdownOpen.update(v => !v);
+    this.statusDropdownOpen.set(false);
+  }
+
+  selectStatusFilter(value: string) {
+    this.statusFilter = value;
+    this.statusDropdownOpen.set(false);
+    this.applyFilters();
+  }
+
+  selectDateFilter(value: string) {
+    this.dateFilter = value;
+    this.dateDropdownOpen.set(false);
+    this.applyFilters();
+  }
+
+  getSelectedStatusLabel(): string {
+    return this.statusOptions.find(o => o.value === this.statusFilter)?.label || 'Todos los estados';
+  }
+
+  getSelectedDateLabel(): string {
+    return this.dateOptions.find(o => o.value === this.dateFilter)?.label || 'Todas las fechas';
   }
 
   getAcceptedCount(): number {

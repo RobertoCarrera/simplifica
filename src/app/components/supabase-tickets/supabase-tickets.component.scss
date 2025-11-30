@@ -1,6 +1,22 @@
 // Minimal SCSS for Tickets Component
 // Most styling is now done with Tailwind CSS classes directly in the HTML
 
+/* Animación slide-up para bottom sheets */
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 /* Modal overlay & content — full-screen fixed positioning with high z-index */
 .modal-overlay {
   position: fixed;

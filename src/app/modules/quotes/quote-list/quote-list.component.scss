@@ -7,6 +7,36 @@
   overflow: hidden;
 }
 
+/* Input de búsqueda touch-friendly */
+input[type="text"] {
+  min-height: 48px;
+  
+  &::placeholder {
+    font-size: 0.9375rem;
+  }
+}
+
+/* Botones de filtro dropdown */
+.flex button[type="button"] {
+  min-height: 48px;
+}
+
+/* Animación slide-up para bottom sheets */
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 // Asegurar que el contenedor principal ocupa todo el viewport disponible
 .h-full {
   height: 100%;
