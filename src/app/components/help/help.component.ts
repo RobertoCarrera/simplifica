@@ -6,257 +6,119 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="help-container">
-
-      <div class="contact-grid">
-        <div class="contact-card">
-          <div class="contact-icon email">
-            <i class="fas fa-envelope"></i>
+    <div class="space-y-6">
+      <!-- Contact Cards Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Email Card -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-md border border-gray-100 dark:border-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-4">
+            <i class="fas fa-envelope text-white text-lg"></i>
           </div>
-          <div class="contact-content">
-            <h3>Email</h3>
-            <p>Envíanos un correo y te responderemos en menos de 24 horas</p>
-            <a href="mailto:soporte@sincronia.agency.com" class="contact-btn">soporte&#64;sincronia.agency.com</a>
-          </div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Email</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Envíanos un correo y te responderemos en menos de 24 horas</p>
+          <a href="mailto:soporte@sincronia.agency.com" 
+            class="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors">
+            <i class="fas fa-paper-plane text-xs"></i>
+            Contactar
+          </a>
         </div>
 
-        <div class="contact-card">
-          <div class="contact-icon phone">
-            <i class="fas fa-phone"></i>
+        <!-- Phone Card -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-md border border-gray-100 dark:border-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center mb-4">
+            <i class="fas fa-phone text-white text-lg"></i>
           </div>
-          <div class="contact-content">
-            <h3>Teléfono</h3>
-            <p>Llámanos de lunes a viernes de 9:00 a 18:00</p>
-            <a href="tel:+34624344917" class="contact-btn">+34 624 34 49 17</a>
-          </div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Teléfono</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Llámanos de lunes a viernes de 9:00 a 18:00</p>
+          <a href="tel:+34624344917" 
+            class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium rounded-lg transition-colors">
+            <i class="fas fa-phone-alt text-xs"></i>
+            +34 624 34 49 17
+          </a>
         </div>
 
-        <div class="contact-card">
-          <div class="contact-icon chat">
-            <i class="fas fa-comments"></i>
+        <!-- Chat Card -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-md border border-gray-100 dark:border-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center mb-4">
+            <i class="fas fa-comments text-white text-lg"></i>
           </div>
-          <div class="contact-content">
-            <h3>Chat en Vivo</h3>
-            <p>Chatea con nuestro equipo en tiempo real</p>
-            <button class="contact-btn" (click)="openChat()">Iniciar Chat</button>
-          </div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Chat en Vivo</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Chatea con nuestro equipo en tiempo real</p>
+          <button (click)="openChat()" 
+            class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors">
+            <i class="fas fa-comment-dots text-xs"></i>
+            Iniciar Chat
+          </button>
         </div>
 
-        <div class="contact-card">
-          <div class="contact-icon docs">
-            <i class="fas fa-book"></i>
+        <!-- Docs Card -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-md border border-gray-100 dark:border-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all duration-200">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center mb-4">
+            <i class="fas fa-book text-white text-lg"></i>
           </div>
-          <div class="contact-content">
-            <h3>Documentación</h3>
-            <p>Guías detalladas y tutoriales paso a paso</p>
-            <a href="https://docs.simplifica.com" target="_blank" class="contact-btn">Ver Documentación</a>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Documentación</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Guías detalladas y tutoriales paso a paso</p>
+          <a href="https://docs.simplifica.com" target="_blank" 
+            class="inline-flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium rounded-lg transition-colors">
+            <i class="fas fa-external-link-alt text-xs"></i>
+            Ver Docs
+          </a>
+        </div>
+      </div>
+
+      <!-- FAQ Section -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 bg-gradient-to-r from-purple-500 to-indigo-600">
+          <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+            <i class="fas fa-question-circle"></i>
+            Preguntas Frecuentes
+          </h2>
+        </div>
+        
+        <div class="p-4 space-y-3">
+          <div *ngFor="let faq of faqs; let i = index" 
+            class="rounded-xl border border-gray-100 dark:border-slate-700 overflow-hidden transition-all duration-200"
+            [ngClass]="{'bg-gray-50 dark:bg-slate-700/50': faq.open}">
+            
+            <button 
+              (click)="toggleFaq(faq)"
+              class="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+              <span class="font-medium text-gray-900 dark:text-white pr-4">{{ faq.question }}</span>
+              <div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0 transition-transform duration-200"
+                [ngClass]="{'rotate-180': faq.open}">
+                <i class="fas fa-chevron-down text-gray-500 dark:text-gray-400 text-sm"></i>
+              </div>
+            </button>
+            
+            <div 
+              class="overflow-hidden transition-all duration-300 ease-in-out"
+              [style.max-height]="faq.open ? '200px' : '0'"
+              [style.opacity]="faq.open ? '1' : '0'">
+              <div class="px-4 pb-4 pt-0">
+                <p class="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">{{ faq.answer }}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <section class="faq-section">
-        <h2>Preguntas Frecuentes</h2>
-        <div class="faq-list">
-          <div class="faq-item" *ngFor="let faq of faqs" (click)="toggleFaq(faq)">
-            <div class="faq-question">
-              <span>{{ faq.question }}</span>
-              <i class="fas" [class.fa-chevron-down]="!faq.open" [class.fa-chevron-up]="faq.open"></i>
-            </div>
-            <div class="faq-answer" [class.open]="faq.open">
-              <p>{{ faq.answer }}</p>
-            </div>
+      <!-- Quick Tips Section -->
+      <div class="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-lightbulb text-2xl"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-semibold mb-2">¿Sabías que...?</h3>
+            <p class="text-blue-100 text-sm">
+              Puedes acceder rápidamente a cualquier sección usando el menú lateral. 
+              Además, la mayoría de las acciones tienen atajos de teclado para una navegación más rápida.
+            </p>
           </div>
         </div>
-      </section>
+      </div>
     </div>
-  `,
-  styles: [`
-    .help-container {
-      padding: 2rem;
-    }
-
-    .help-header {
-      margin-bottom: 3rem;
-      text-align: center;
-    }
-
-    .help-header h1 {
-      margin: 0;
-      font-size: 2.5rem;
-      font-weight: 600;
-      color: #1f2937;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.75rem;
-    }
-
-    .subtitle {
-      color: #6b7280;
-      margin: 1rem 0 0 0;
-      font-size: 1.125rem;
-    }
-
-    .contact-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 2rem;
-      margin-bottom: 3rem;
-    }
-
-    .contact-card {
-      background: white;
-      border-radius: 1rem;
-      padding: 2rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      transition: transform 0.2s, box-shadow 0.2s;
-      border: 1px solid #e5e7eb;
-    }
-
-    .contact-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    }
-
-    .contact-icon {
-      width: 4rem;
-      height: 4rem;
-      border-radius: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 1.5rem;
-    }
-
-    .contact-icon i {
-      font-size: 1.5rem;
-      color: white;
-    }
-
-    .contact-icon.email {
-      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-    }
-
-    .contact-icon.phone {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    }
-
-    .contact-icon.chat {
-      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    }
-
-    .contact-icon.docs {
-      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-    }
-
-    .contact-content h3 {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: #1f2937;
-    }
-
-    .contact-content p {
-      color: #6b7280;
-      margin-bottom: 1.5rem;
-    }
-
-    .contact-btn {
-      display: inline-block;
-      padding: 0.75rem 1.5rem;
-      background: #3b82f6;
-      color: white;
-      text-decoration: none;
-      border-radius: 0.5rem;
-      font-weight: 500;
-      transition: background-color 0.2s;
-      border: none;
-      cursor: pointer;
-    }
-
-    .contact-btn:hover {
-      background: #1d4ed8;
-    }
-
-    .faq-section {
-      background: #f9fafb;
-      border-radius: 1rem;
-      padding: 2rem;
-    }
-
-    .faq-section h2 {
-      margin: 0 0 2rem 0;
-      font-size: 1.875rem;
-      font-weight: 600;
-      color: #1f2937;
-      text-align: center;
-    }
-
-    .faq-list {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .faq-item {
-      background: white;
-      border-radius: 0.75rem;
-      border: 1px solid #e5e7eb;
-      overflow: hidden;
-      cursor: pointer;
-    }
-
-    .faq-question {
-      padding: 1.25rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 500;
-      color: #1f2937;
-    }
-
-    .faq-question:hover {
-      background: #f9fafb;
-    }
-
-    .faq-answer {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease;
-      border-top: 1px solid #e5e7eb;
-    }
-
-    .faq-answer.open {
-      max-height: 200px;
-    }
-
-    .faq-answer p {
-      padding: 1.25rem;
-      margin: 0;
-      color: #6b7280;
-    }
-
-    @media (max-width: 768px) {
-      .help-container {
-        padding: 1rem;
-      }
-
-      .help-header h1 {
-        font-size: 2rem;
-        flex-direction: column;
-        gap: 0.5rem;
-      }
-
-      .contact-grid {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-      }
-
-      .contact-card {
-        padding: 1.5rem;
-      }
-    }
-  `]
+  `
 })
 export class HelpComponent {
   faqs = [
