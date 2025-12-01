@@ -153,14 +153,13 @@ export class MobileBottomNavComponent implements OnInit {
   // Server-side allowed modules set
   private _allowedModuleKeys = signal<Set<string> | null>(null);
 
-  // Staff primary nav: restrict to 5 slots: Inicio | Clientes | Facturación | Notificaciones | Configuración/Más
+  // Staff primary nav: main items that appear in the bottom bar
+  // The 4 most important items + "Más" for overflow
   private baseItems: NavItem[] = [
     { id: 'inicio', label: 'Inicio', icon: 'home', route: '/inicio', module: 'core' },
     { id: 'clientes', label: 'Clientes', icon: 'users', route: '/clientes', module: 'core' },
-    { id: 'facturacion', label: 'Facturación', icon: 'file-invoice-dollar', route: '/facturacion', module: 'development' },
-    // Notificaciones should be always available in the primary bar
-    { id: 'notificaciones', label: 'Notificaciones', icon: 'bell', action: 'notifications', module: 'development' },
-    { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion', module: 'core' },
+    { id: 'tickets', label: 'Tickets', icon: 'ticket-alt', route: '/tickets', module: 'production' },
+    { id: 'presupuestos', label: 'Presupuestos', icon: 'file-alt', route: '/presupuestos', module: 'production' },
     { id: 'more', label: 'Más', icon: 'ellipsis-h', action: 'more', module: 'core' }
   ];
 
@@ -186,176 +185,89 @@ export class MobileBottomNavComponent implements OnInit {
   moreMenuItems = computed<MoreMenuItem[]>(() => {
     const role = this.authService.userRole();
     const isClient = role === 'client';
+    const isDev = this.devRoleService.isDev();
+    const isOwnerOrAdmin = role === 'owner' || role === 'admin';
+    const allowed = this._allowedModuleKeys();
     const items: MoreMenuItem[] = [];
+    
     if (!isClient) {
-      items.push(
-        { id: 'chat', label: 'Chat', icon: 'comments', route: '/chat', devOnly: true },
-        // Dev-only shortcuts eliminados: contactos, export/import, dashboard móvil, funciones avanzadas, workflows, búsqueda específica
-        // Analytics sigue siendo devOnly
-        { id: 'analytics', label: 'Analíticas', icon: 'chart-line', route: '/analytics', devOnly: true },
-        { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() },
-        // Gestión Módulos debería ser sólo admin
-        { id: 'modules', label: 'Gestión Módulos', icon: 'sliders-h', route: '/admin/modulos', roleOnly: 'adminOnly' },
-      );
-      // If the server enabled client-specific modules for this company, show quick links for them
-      const allowed = this._allowedModuleKeys();
-      if (allowed) {
-        if (allowed.has('moduloSAT')) {
-          items.push({ id: 'tickets', label: 'Tickets', icon: 'ticket-alt', route: '/tickets' });
-        }
-        if (allowed.has('moduloPresupuestos')) {
-          items.push({ id: 'presupuestos', label: 'Presupuestos', icon: 'file-alt', route: '/presupuestos' });
-        }
-        if (allowed.has('moduloServicios')) {
-          items.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios' });
-        }
+      // Módulos de producción (solo si están habilitados)
+      if (allowed?.has('moduloServicios')) {
+        items.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios' });
       }
+      
+      // Analíticas (visible para owner/admin/dev)
+      if (isOwnerOrAdmin || isDev) {
+        items.push({ id: 'analytics', label: 'Analíticas', icon: 'chart-line', route: '/analytics' });
+      }
+      
+      // Facturación (visible para owner/admin/dev)
+      if (isOwnerOrAdmin || isDev) {
+        items.push({ id: 'facturacion', label: 'Facturación', icon: 'file-invoice-dollar', route: '/facturacion' });
+      }
+      
+      // Chat (visible para owner/admin/dev)
+      if (isOwnerOrAdmin || isDev) {
+        items.push({ id: 'chat', label: 'Chat', icon: 'comments', route: '/chat' });
+      }
+      
+      // Notificaciones
+      items.push({ id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() });
+      
+      // Gestión Módulos (solo admin)
+      if (role === 'admin') {
+        items.push({ id: 'modules', label: 'Gestión Módulos', icon: 'sliders-h', route: '/admin/modulos' });
+      }
+      
       // Configuración siempre al final
       items.push({ id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' });
     } else {
-      // Client specific extra items (placeholder for future)
+      // Client specific extra items
       items.push(
         { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() },
         { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' },
       );
     }
 
-    // Filter out dev-only items unless user is a dev or an admin
-    const afterDevFilter = items.filter(it => !it.devOnly || this.devRoleService.isDev() || role === 'admin');
-
-    // Apply role-only restrictions (owner/admin or admin-only)
-    const visible = afterDevFilter.filter(it => {
-      if (!it.roleOnly) return true;
-      if (it.roleOnly === 'ownerAdmin') return role === 'owner' || role === 'admin';
-      if (it.roleOnly === 'adminOnly') return role === 'admin';
-      return true;
-    });
-
-    // Avoid showing duplicates: remove items that are present in the primary nav (including settings if it's shown)
-    // Get the actual rendered items from filteredNavItems
+    // Avoid showing duplicates: remove items that are present in the primary nav
     const renderedItems = this.filteredNavItems();
-    const renderedRoutes = renderedItems.map(i => i.route || i.id);
+    const renderedRoutes = new Set(renderedItems.map(i => i.route || i.id));
 
-    const filtered = visible.filter(it => {
+    return items.filter(it => {
       const r = it.route || it.id;
-      if (!r) return true;
-      // Don't show if already rendered in the bottom nav
-      if (renderedRoutes.includes(r)) return false;
-      return true;
+      return !r || !renderedRoutes.has(r);
     });
-
-    return filtered;
   });
 
   // Computed filtered items honoring role and server-side modules
   filteredNavItems = computed<NavItem[]>(() => {
     const role = this.authService.userRole();
-    const isAdmin = role === 'admin';
+    const isOwnerOrAdmin = role === 'owner' || role === 'admin';
     const isClient = role === 'client';
     const isDev = this.devRoleService.isDev();
     const allowed = this._allowedModuleKeys();
 
-    // Start from filtered base items. We treat 'more' and 'settings' as special controls
-    let base = isClient ? [...this.clientItemsBase] : [...this.baseItems];
-    const morePrototype: NavItem | undefined = base.find(b => b.id === 'more');
-    const settingsPrototype: NavItem | undefined = base.find(b => b.id === 'settings');
+    // Use client items for client role, staff items otherwise
+    const base = isClient ? [...this.clientItemsBase] : [...this.baseItems];
 
-    // Remove both 'more' and 'settings' from base - we'll decide which one to show
-    base = base.filter(b => b.id !== 'more' && b.id !== 'settings');
-
-    // Filter base by roleOnly
-    base = base.filter(it => {
-      if (!it.roleOnly) return true;
-      if (it.roleOnly === 'ownerAdmin') return role === 'owner' || role === 'admin';
-      if (it.roleOnly === 'adminOnly') return role === 'admin';
-      return true;
-    });
-
-    // Filter base by module availability
-    base = base.filter(it => {
+    // Filter by module availability
+    return base.filter(it => {
+      // Core items always visible
       if (it.module === 'core') return true;
-      if (it.module === 'development') return isAdmin || isDev;
-      if (!allowed) return false; // while loading, hide production entries
-      const key = this.routeToModuleKey(it.route || '');
-      if (!key) return true;
-      return allowed.has(key);
-    });
-
-    const maxSlots = 5;
-
-    // Build promoted items (preserve order) - these should appear before extras and before 'Más'
-    const promoted: NavItem[] = [];
-    if (!isClient && allowed) {
-      if (allowed.has('moduloSAT')) promoted.push({ id: 'tickets', label: 'Tickets', icon: 'ticket-alt', route: '/tickets' });
-      if (allowed.has('moduloPresupuestos')) promoted.push({ id: 'presupuestos', label: 'Presupuestos', icon: 'file-alt', route: '/presupuestos' });
-      if (allowed.has('moduloServicios')) promoted.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios' });
-    }
-
-    // Build extra pool (candidates for More menu, in preferred order)
-    const extras: MoreMenuItem[] = [];
-    if (!isClient) {
-      extras.push(
-        { id: 'chat', label: 'Chat', icon: 'comments', route: '/chat', devOnly: true },
-        { id: 'contacts', label: 'Contactos', icon: 'address-book', route: '/anychat/contacts', devOnly: true },
-        { id: 'analytics', label: 'Analíticas', icon: 'chart-line', route: '/analytics', devOnly: true },
-        { id: 'search', label: 'Búsqueda', icon: 'search', route: '/search', devOnly: true },
-        { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' } },
-        { id: 'workflows', label: 'Workflows', icon: 'project-diagram', route: '/workflows', devOnly: true },
-        { id: 'export-import', label: 'Export/Import', icon: 'exchange-alt', route: '/export-import', devOnly: true },
-        { id: 'mobile-dashboard', label: 'Dashboard Móvil', icon: 'mobile-alt', route: '/portal', devOnly: true },
-        { id: 'advanced', label: 'Funciones Avanzadas', icon: 'rocket', route: '/advanced-features', devOnly: true },
-        { id: 'modules', label: 'Gestión Módulos', icon: 'sliders-h', route: '/admin/modulos', roleOnly: 'adminOnly' },
-      );
-      // Add module-specific items to extras so they appear in More menu when not in primary bar
-      if (allowed) {
-        if (allowed.has('moduloSAT')) extras.push({ id: 'tickets', label: 'Tickets', icon: 'ticket-alt', route: '/tickets' });
-        if (allowed.has('moduloPresupuestos')) extras.push({ id: 'presupuestos', label: 'Presupuestos', icon: 'file-alt', route: '/presupuestos' });
-        if (allowed.has('moduloServicios')) extras.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios' });
+      
+      // Development items only for owner/admin/dev
+      if (it.module === 'development') return isOwnerOrAdmin || isDev;
+      
+      // Production items check against allowed modules
+      if (it.module === 'production') {
+        if (!allowed) return false; // while loading, hide production entries
+        const key = this.routeToModuleKey(it.route || '');
+        if (!key) return true;
+        return allowed.has(key);
       }
-      // Configuración siempre al final
-      extras.push({ id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' });
-    } else {
-      extras.push(
-        { id: 'search', label: 'Búsqueda', icon: 'search', route: '/search' },
-        { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' } },
-        { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' },
-      );
-    }
-
-    // Apply visibility filters to extras
-    const visibleExtras = extras.filter(it => {
-      if (it.devOnly && !(isAdmin || this.devRoleService.isDev())) return false;
-      if (it.roleOnly === 'ownerAdmin' && !(role === 'owner' || role === 'admin')) return false;
-      if (it.roleOnly === 'adminOnly' && role !== 'admin') return false;
+      
       return true;
     });
-
-    // Build ordered allCandidates (without 'Más' and 'settings'): base (filtered) first, then promoted (avoid duplicates), then visibleExtras (avoid duplicates)
-    const allCandidates: NavItem[] = [];
-    const pushIfNew = (n: NavItem) => {
-      if (!allCandidates.some(a => (a.route && n.route && a.route === n.route) || a.id === n.id)) allCandidates.push(n);
-    };
-
-    base.forEach(b => pushIfNew(b as NavItem));
-    promoted.forEach(p => pushIfNew(p));
-    visibleExtras.forEach(e => pushIfNew(e as NavItem));
-
-    // Decision logic: if all candidates + settings fit, show settings directly
-    // Otherwise, show 'Más' button for overflow
-    if (allCandidates.length < maxSlots) {
-      // We have space: add 'Configuración' directly to the bar
-      if (settingsPrototype) {
-        allCandidates.push(settingsPrototype);
-      }
-      return allCandidates;
-    }
-
-    // Overflow case: show first (maxSlots - 1) items and add 'Más' as last slot
-    const primary = allCandidates.slice(0, maxSlots - 1);
-    if (morePrototype) {
-      primary.push(morePrototype);
-    }
-    return primary;
   });
 
   ngOnInit(): void {

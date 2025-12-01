@@ -43,6 +43,39 @@
   --shadow-color: rgba(0, 0, 0, 0.3);
 }
 
+/* ============================================
+   MOBILE: Bloqueo de scroll horizontal
+   ============================================ */
+@media (max-width: 767px) {
+  html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+  
+  /* Prevenir scroll horizontal en todos los contenedores principales */
+  .modal, 
+  .dialog, 
+  .drawer,
+  .bottom-sheet,
+  [role="dialog"],
+  [role="modal"],
+  .cdk-overlay-pane,
+  .cdk-global-overlay-wrapper {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+  
+  /* Contenedores de página */
+  main,
+  .main-content,
+  .page-content,
+  .app-content,
+  router-outlet + * {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+}
+
 /* Esquemas de colores alternativos */
 .theme-blue {
   --color-primary-50: #eff6ff;
