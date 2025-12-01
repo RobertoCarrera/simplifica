@@ -50,6 +50,28 @@
       
       <!-- Filter Group -->
       <div class="w-full flex gap-3 items-center flex-wrap">
+<<<<<<< Updated upstream
+        <select 
+          name="filterStage"
+          [(ngModel)]="filterStage" 
+          (change)="onFilterChange()" 
+          class="flex-1 w-[50%] px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
+          <option value="">Estados</option>
+          <option *ngFor="let stage of stages" [value]="stage.id">{{ stage.name }}</option>
+        </select>
+        
+        <select 
+          name="filterPriority"
+          [(ngModel)]="filterPriority" 
+          (change)="onFilterChange()" 
+          class="flex-1 w-[50%] px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
+          <option value="">Prioridades</option>
+          <option value="low">Baja</option>
+          <option value="normal">Normal</option>
+          <option value="high">Alta</option>
+          <option value="critical">Crítica</option>
+        </select>
+=======
         <!-- Stage Dropdown Button -->
         <div class="relative flex-1 min-w-[140px]">
           <button type="button" (click)="toggleStageDropdown()"
@@ -108,7 +130,7 @@
         
         <!-- Click outside overlay for desktop dropdowns -->
         <div *ngIf="stageDropdownOpen || priorityDropdownOpen" class="hidden md:block fixed inset-0 z-40" (click)="closeAllDropdowns()"></div>
-      </div>
+>>>>>>> Stashed changes
 
         <!-- Toggle completed -->
         <button 
