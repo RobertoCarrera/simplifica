@@ -1108,20 +1108,28 @@ export class AuthService {
   }
 
   /**
-   * Actualizar rol o activo de un usuario de la empresa
+   * Actualizar rol o activo de un usuario de la empresa usando RPC con validaciones server-side
+   * Reglas:
+   * - Solo admin puede asignar rol admin
+   * - Owner puede asignar member u owner, pero NO admin  
+   * - Admin no puede asignar owner
+   * - Nadie puede cambiar su propio rol
+   * - Nadie puede desactivarse a sí mismo
+   * - Admin no puede modificar roles/estado de owners
    */
   async updateCompanyUser(userId: string, patch: { role?: 'owner'|'admin'|'member'; active?: boolean }): Promise<{ success: boolean; error?: string }>{
     try {
-      const updates: any = {};
-      if (typeof patch.role !== 'undefined') updates.role = patch.role;
-      if (typeof patch.active !== 'undefined') updates.active = patch.active;
-      if (Object.keys(updates).length === 0) return { success: true };
-      const { error } = await this.supabase
-        .from('users')
-        .update(updates)
-        .eq('id', userId);
+      const { data, error } = await this.supabase.rpc('update_company_user', {
+        p_user_id: userId,
+        p_role: patch.role ?? null,
+        p_active: patch.active ?? null
+      });
+      
       if (error) return { success: false, error: error.message };
-      return { success: true };
+      
+      // La función RPC devuelve JSON con success y error
+      const result = data as { success: boolean; error?: string };
+      return result;
     } catch (e: any) {
       return { success: false, error: e.message };
     }
