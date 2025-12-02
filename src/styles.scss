@@ -44,35 +44,74 @@
 }
 
 /* ============================================
-   MOBILE: Bloqueo de scroll horizontal
+   MOBILE: Bloqueo TOTAL de scroll horizontal
    ============================================ */
 @media (max-width: 767px) {
-  html, body {
-    overflow-x: hidden;
-    max-width: 100vw;
+  /* Bloqueo a nivel raíz - MUY agresivo */
+  html {
+    overflow-x: hidden !important;
+    overscroll-behavior-x: none !important;
+    -webkit-overflow-scrolling: touch;
   }
   
-  /* Prevenir scroll horizontal en todos los contenedores principales */
-  .modal, 
-  .dialog, 
+  body {
+    overflow-x: hidden !important;
+    overscroll-behavior-x: none !important;
+    max-width: 100vw !important;
+    position: relative;
+  }
+
+  /* Bloqueo en TODOS los modales y overlays de Angular CDK/Material */
+  .cdk-overlay-container,
+  .cdk-global-overlay-wrapper,
+  .cdk-overlay-pane,
+  .cdk-dialog-container,
+  mat-dialog-container,
+  .mat-mdc-dialog-container,
+  .mat-dialog-container,
+  .modal,
+  .dialog,
   .drawer,
   .bottom-sheet,
   [role="dialog"],
-  [role="modal"],
-  .cdk-overlay-pane,
-  .cdk-global-overlay-wrapper {
-    overflow-x: hidden;
-    max-width: 100vw;
+  [role="alertdialog"],
+  [aria-modal="true"] {
+    overflow-x: hidden !important;
+    overscroll-behavior-x: none !important;
+    max-width: 100vw !important;
+    touch-action: pan-y pinch-zoom !important;
+  }
+
+  /* Contenido interno de modales */
+  .cdk-overlay-pane > *,
+  mat-dialog-container > *,
+  .mat-mdc-dialog-surface,
+  .mat-mdc-dialog-content,
+  .mat-dialog-content,
+  [role="dialog"] > *,
+  [aria-modal="true"] > * {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
   }
   
-  /* Contenedores de página */
+  /* Prevenir scroll horizontal en contenedores principales */
   main,
   .main-content,
   .page-content,
   .app-content,
-  router-outlet + * {
-    overflow-x: hidden;
-    max-width: 100%;
+  router-outlet + *,
+  app-root,
+  .container,
+  .content-wrapper {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+  }
+
+  /* Bloquear gestos de swipe horizontal en modales */
+  .cdk-overlay-container *,
+  [role="dialog"] *,
+  [aria-modal="true"] * {
+    overscroll-behavior-x: none;
   }
 }
 

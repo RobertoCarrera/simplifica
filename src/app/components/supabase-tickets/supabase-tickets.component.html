@@ -60,6 +60,25 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </button>
+          <!-- Stage Dropdown Menu (Desktop) -->
+          <div *ngIf="stageDropdownOpen" class="hidden md:block absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 z-50 max-h-64 overflow-y-auto">
+            <button type="button" (click)="selectStageFilter('')"
+              class="w-full px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center justify-between transition-colors rounded-t-xl"
+              [ngClass]="filterStage === '' ? 'bg-orange-50 dark:bg-orange-900/30' : ''">
+              <span class="text-gray-900 dark:text-slate-100 text-sm">Todos los estados</span>
+              <svg *ngIf="filterStage === ''" class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+            </button>
+            <button *ngFor="let stage of stages; let last = last" type="button" (click)="selectStageFilter(stage.id)"
+              class="w-full px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center justify-between transition-colors"
+              [ngClass]="{'bg-orange-50 dark:bg-orange-900/30': filterStage === stage.id, 'rounded-b-xl': last}">
+              <span class="text-gray-900 dark:text-slate-100 text-sm">{{ stage.name }}</span>
+              <svg *ngIf="filterStage === stage.id" class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+            </button>
+          </div>
         </div>
         
         <!-- Priority Dropdown Button -->
@@ -72,7 +91,21 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </button>
+          <!-- Priority Dropdown Menu (Desktop) -->
+          <div *ngIf="priorityDropdownOpen" class="hidden md:block absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 z-50 max-h-64 overflow-y-auto">
+            <button *ngFor="let option of priorityOptions; let first = first; let last = last" type="button" (click)="selectPriorityFilter(option.value)"
+              class="w-full px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center justify-between transition-colors"
+              [ngClass]="{'bg-orange-50 dark:bg-orange-900/30': filterPriority === option.value, 'rounded-t-xl': first, 'rounded-b-xl': last}">
+              <span class="text-gray-900 dark:text-slate-100 text-sm">{{ option.label }}</span>
+              <svg *ngIf="filterPriority === option.value" class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              </svg>
+            </button>
+          </div>
         </div>
+        
+        <!-- Click outside overlay for desktop dropdowns -->
+        <div *ngIf="stageDropdownOpen || priorityDropdownOpen" class="hidden md:block fixed inset-0 z-40" (click)="closeAllDropdowns()"></div>
 
         <!-- Toggle completed -->
         <button 
@@ -105,10 +138,10 @@
     </div>
   </div>
 
-  <!-- Stage Bottom Sheet -->
+  <!-- Stage Bottom Sheet (Mobile Only) -->
   <ng-container *ngIf="stageDropdownOpen">
-    <div class="fixed inset-0 bg-black/50 z-[9998]" (click)="stageDropdownOpen = false"></div>
-    <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-2xl z-[9999] max-h-[60vh] overflow-hidden shadow-2xl animate-slide-up">
+    <div class="md:hidden fixed inset-0 bg-black/50 z-[9998]" (click)="stageDropdownOpen = false"></div>
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-2xl z-[9999] max-h-[60vh] overflow-hidden shadow-2xl animate-slide-up">
       <div class="p-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
         <span class="font-semibold text-gray-900 dark:text-slate-50 text-lg">Filtrar por estado</span>
         <button type="button" (click)="stageDropdownOpen = false" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
@@ -138,10 +171,10 @@
     </div>
   </ng-container>
 
-  <!-- Priority Bottom Sheet -->
+  <!-- Priority Bottom Sheet (Mobile Only) -->
   <ng-container *ngIf="priorityDropdownOpen">
-    <div class="fixed inset-0 bg-black/50 z-[9998]" (click)="priorityDropdownOpen = false"></div>
-    <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-2xl z-[9999] max-h-[60vh] overflow-hidden shadow-2xl animate-slide-up">
+    <div class="md:hidden fixed inset-0 bg-black/50 z-[9998]" (click)="priorityDropdownOpen = false"></div>
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-2xl z-[9999] max-h-[60vh] overflow-hidden shadow-2xl animate-slide-up">
       <div class="p-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
         <span class="font-semibold text-gray-900 dark:text-slate-50 text-lg">Filtrar por prioridad</span>
         <button type="button" (click)="priorityDropdownOpen = false" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
