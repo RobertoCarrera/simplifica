@@ -74,6 +74,7 @@ export interface Quote {
   convert_policy?: 'manual' | 'automatic' | 'scheduled' | null;
   deposit_percentage?: number | null;
   invoice_on_date?: string | null;
+  scheduled_conversion_date?: string | null; // Fecha programada para conversión automática
   conversion_status?: 'not_converted' | 'pending' | 'scheduled' | 'processing' | 'converted' | null;
 
   // Referencia a factura

@@ -44,6 +44,7 @@ import { CustomerFormComponent } from './components/customer-form_old/customer-f
 import { MigrateClientsComponent } from './components/migrate-clients/migrate-clients.component';
 import { VerifactuSettingsComponent } from './modules/invoices/verifactu-settings/verifactu-settings.component';
 import { InvoiceSeriesSettingsComponent } from './modules/invoices/invoice-series-settings/invoice-series-settings.component';
+import { QuotesSettingsComponent } from './components/quotes-settings/quotes-settings.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -63,6 +64,7 @@ export const routes: Routes = [
     {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full'},
     {path: 'configuracion/series-facturas', component: InvoiceSeriesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion/verifactu', component: VerifactuSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    {path: 'configuracion/presupuestos', component: QuotesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     // Admin modules management (solo admin)
     {path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard]},

@@ -174,4 +174,39 @@ export class SupabaseSettingsService {
       return inserted as CompanySettings;
     }
   }
+
+  /**
+   * Obtiene la política de conversión efectiva para una empresa.
+   * Prioriza company_settings sobre app_settings.
+   */
+  async getEffectiveConvertPolicy(companyId?: string): Promise<{
+    policy: ConvertPolicy;
+    askBeforeConvert: boolean;
+    delayDays: number | null;
+    invoiceOnDate: string | null;
+  }> {
+    const appSettings = await this.executeGetAppSettings();
+    const companySettings = await this.executeGetCompanySettings(companyId);
+
+    // Check if global enforcement is enabled
+    const enforceGlobally = appSettings?.enforce_globally ?? false;
+
+    // If enforcing globally, ignore company overrides
+    if (enforceGlobally) {
+      return {
+        policy: appSettings?.default_convert_policy ?? 'manual',
+        askBeforeConvert: appSettings?.ask_before_convert ?? true,
+        delayDays: appSettings?.default_invoice_delay_days ?? null,
+        invoiceOnDate: null
+      };
+    }
+
+    // Otherwise, company settings take precedence if set
+    return {
+      policy: companySettings?.convert_policy ?? appSettings?.default_convert_policy ?? 'manual',
+      askBeforeConvert: companySettings?.ask_before_convert ?? appSettings?.ask_before_convert ?? true,
+      delayDays: companySettings?.default_invoice_delay_days ?? appSettings?.default_invoice_delay_days ?? null,
+      invoiceOnDate: companySettings?.invoice_on_date ?? null
+    };
+  }
 }

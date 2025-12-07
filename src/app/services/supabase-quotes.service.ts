@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, from, map, switchMap, firstValueFrom } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
+import { SupabaseSettingsService } from './supabase-settings.service';
 import { environment } from '../../environments/environment';
 import {
   Quote,
@@ -36,6 +37,7 @@ import {
 export class SupabaseQuotesService {
   private supabaseClient = inject(SupabaseClientService);
   private authService = inject(AuthService);
+  private settingsService = inject(SupabaseSettingsService);
 
   // =====================================================
   // PRESUPUESTOS - CRUD
@@ -519,15 +521,19 @@ export class SupabaseQuotesService {
   }
 
   /**
-   * Aceptar presupuesto
+   * Aceptar presupuesto y aplicar política de conversión
+   * @param id ID del presupuesto
+   * @param options Opciones: skipAutoConversion para evitar conversión automática (usado cuando el usuario ya confirmó)
+   * @returns Observable con el resultado: quote actualizado y opcionalmente invoice_id si se convirtió
    */
-  acceptQuote(id: string): Observable<Quote> {
-    return from(this.executeAcceptQuote(id));
+  acceptQuote(id: string, options?: { skipAutoConversion?: boolean, invoiceSeriesId?: string }): Observable<{ quote: Quote; invoice_id?: string; converted?: boolean }> {
+    return from(this.executeAcceptQuote(id, options));
   }
 
-  private async executeAcceptQuote(id: string): Promise<Quote> {
+  private async executeAcceptQuote(id: string, options?: { skipAutoConversion?: boolean, invoiceSeriesId?: string }): Promise<{ quote: Quote; invoice_id?: string; converted?: boolean }> {
     const client = this.supabaseClient.instance;
 
+    // 1. Update quote status to ACCEPTED
     const { error } = await client
       .from('quotes')
       .update({
@@ -538,9 +544,76 @@ export class SupabaseQuotesService {
 
     if (error) throw error;
 
-    return this.executeGetQuote(id);
+    const quote = await this.executeGetQuote(id);
+
+    // 2. If skipAutoConversion is true, just return the quote
+    if (options?.skipAutoConversion) {
+      return { quote, converted: false };
+    }
+
+    // 3. Get effective conversion policy
+    const effectiveSettings = await this.settingsService.getEffectiveConvertPolicy(quote.company_id);
+
+    // 4. Apply policy
+    switch (effectiveSettings.policy) {
+      case 'automatic':
+        // Convert immediately
+        try {
+          const conversionResult = await this.executeConvertToInvoice(id, options?.invoiceSeriesId);
+          return { quote, invoice_id: conversionResult.invoice_id, converted: true };
+        } catch (convErr) {
+          console.error('Auto-conversion failed:', convErr);
+          // Return quote without conversion on error
+          return { quote, converted: false };
+        }
+
+      case 'scheduled':
+        // Schedule conversion for later
+        await this.scheduleConversion(id, effectiveSettings.delayDays, effectiveSettings.invoiceOnDate);
+        return { quote, converted: false };
+
+      case 'manual':
+      default:
+        // No auto-conversion
+        return { quote, converted: false };
+    }
   }
 
+  /**
+   * Programa la conversión de un presupuesto para una fecha posterior
+   */
+  private async scheduleConversion(quoteId: string, delayDays: number | null, invoiceOnDate: string | null): Promise<void> {
+    const client = this.supabaseClient.instance;
+
+    let scheduledDate: string;
+
+    if (invoiceOnDate) {
+      // Use specific date if set
+      scheduledDate = invoiceOnDate;
+    } else if (delayDays && delayDays > 0) {
+      // Calculate date based on delay days
+      const date = new Date();
+      date.setDate(date.getDate() + delayDays);
+      scheduledDate = date.toISOString().split('T')[0];
+    } else {
+      // Default: schedule for tomorrow
+      const date = new Date();
+      date.setDate(date.getDate() + 1);
+      scheduledDate = date.toISOString().split('T')[0];
+    }
+
+    // Store scheduled conversion in quote metadata
+    const { error } = await client
+      .from('quotes')
+      .update({
+        scheduled_conversion_date: scheduledDate
+      })
+      .eq('id', quoteId);
+
+    if (error) {
+      console.error('Failed to schedule conversion:', error);
+    }
+  }
 
 
   /**

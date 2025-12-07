@@ -37,6 +37,9 @@ export class QuoteDetailComponent implements OnInit {
   mobileMenuOpen = signal(false);
   historyExpanded = signal(false);
   
+  // Conversion policy from settings
+  conversionPolicy = signal<'manual' | 'automatic' | 'scheduled'>('manual');
+  askBeforeConvert = signal<boolean>(true);
 
   QuoteStatus = QuoteStatus;
   statusLabels = QUOTE_STATUS_LABELS;
@@ -62,9 +65,10 @@ export class QuoteDetailComponent implements OnInit {
 
   private async loadTaxSettings(): Promise<void> {
     try {
-      const [app, company] = await Promise.all([
+      const [app, company, effectivePolicy] = await Promise.all([
         firstValueFrom(this.settingsService.getAppSettings()),
-        firstValueFrom(this.settingsService.getCompanySettings())
+        firstValueFrom(this.settingsService.getCompanySettings()),
+        this.settingsService.getEffectiveConvertPolicy()
       ]);
       const effectivePricesIncludeTax = (company?.prices_include_tax ?? null) ?? (app?.default_prices_include_tax ?? false);
       const effectiveIvaEnabled = (company?.iva_enabled ?? null) ?? (app?.default_iva_enabled ?? true);
@@ -77,6 +81,10 @@ export class QuoteDetailComponent implements OnInit {
       this.ivaRate.set(Number(effectiveIvaRate || 0));
       this.irpfEnabled.set(!!effectiveIrpfEnabled);
       this.irpfRate.set(Number(effectiveIrpfRate || 0));
+      
+      // Set conversion policy
+      this.conversionPolicy.set(effectivePolicy.policy);
+      this.askBeforeConvert.set(effectivePolicy.askBeforeConvert);
     } catch {
       // keep defaults
     }
@@ -113,11 +121,33 @@ export class QuoteDetailComponent implements OnInit {
     }
   }
 
+  markAsSent() {
+    const q = this.quote();
+    if (q) {
+      this.quotesService.sendQuote(q.id).subscribe({
+        next: () => {
+          this.loadQuote(q.id);
+          this.toastService.success('Estado actualizado', 'El presupuesto ha sido marcado como enviado');
+        },
+        error: (err) => this.error.set('Error: ' + err.message)
+      });
+    }
+  }
+
   markAsAccepted() {
     const q = this.quote();
     if (q) {
       this.quotesService.acceptQuote(q.id).subscribe({
-        next: () => this.loadQuote(q.id),
+        next: (result) => {
+          this.loadQuote(q.id);
+          if (result.converted && result.invoice_id) {
+            this.toastService.success('Aceptado y convertido', 'El presupuesto ha sido aceptado y convertido a factura automáticamente');
+          } else if (result.quote.scheduled_conversion_date) {
+            this.toastService.info('Aceptado y programado', `El presupuesto ha sido aceptado. Se convertirá a factura el ${new Date(result.quote.scheduled_conversion_date).toLocaleDateString('es-ES')}`);
+          } else {
+            this.toastService.success('Aceptado', 'El presupuesto ha sido marcado como aceptado');
+          }
+        },
         error: (err) => this.error.set('Error: ' + err.message)
       });
     }

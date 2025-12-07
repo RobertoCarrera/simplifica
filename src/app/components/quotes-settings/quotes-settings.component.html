@@ -1,0 +1,305 @@
+<div class="p-4 md:p-6 space-y-6">
+  <!-- Header con botón Volver -->
+  <div class="flex items-center gap-4 mb-6">
+    <a routerLink="/configuracion" 
+       class="inline-flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
+      <i class="fas fa-arrow-left mr-2"></i>
+      Volver
+    </a>
+    <div class="flex-1">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+        <i class="fas fa-file-invoice mr-3 text-green-600"></i>
+        Ajustes de Presupuestos
+      </h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        Configura cómo se convierten los presupuestos en facturas
+      </p>
+    </div>
+  </div>
+
+  <!-- Loading state -->
+  <div *ngIf="loading()" class="flex justify-center items-center py-12">
+    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+    <span class="ml-3 text-gray-600 dark:text-gray-300">Cargando ajustes...</span>
+  </div>
+
+  <div *ngIf="!loading()" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    
+    <!-- Ajustes de Empresa (Prioritario) -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+          <i class="fas fa-building mr-3 text-green-600"></i>
+          Ajustes de tu Empresa
+        </h2>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Estos ajustes aplican solo a tu empresa
+        </p>
+      </div>
+      <div class="p-6">
+        <form [formGroup]="companySettingsForm" (ngSubmit)="saveCompanySettings()" class="space-y-5">
+          
+          <!-- Política de conversión -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <i class="fas fa-exchange-alt mr-1 text-green-600"></i>
+              Política de conversión
+            </label>
+            <select formControlName="convert_policy"
+              class="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all">
+              <option [ngValue]="null">Usar la global</option>
+              <option value="manual">Manual (solo bajo demanda)</option>
+              <option value="automatic">Automática al aceptar</option>
+              <option value="scheduled">Programada (en fecha/plazo)</option>
+            </select>
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {{ getPolicyDescription(companySettingsForm.get('convert_policy')?.value) }}
+            </p>
+          </div>
+
+          <!-- Opciones según política -->
+          <div class="space-y-3 pl-4 border-l-2 border-green-200 dark:border-green-800" 
+               *ngIf="companySettingsForm.get('convert_policy')?.value === 'scheduled'">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Días por defecto
+                </label>
+                <input type="number" formControlName="default_invoice_delay_days" min="0" max="365"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" 
+                  placeholder="p.ej. 3">
+                <p class="text-xs text-gray-500 mt-1">Días después de aceptar para generar factura</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Fecha específica
+                </label>
+                <input type="date" formControlName="invoice_on_date"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                <p class="text-xs text-gray-500 mt-1">Sobrescribe los días por defecto</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Anticipo -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <i class="fas fa-percentage mr-1 text-green-600"></i>
+              Anticipo por defecto (%)
+            </label>
+            <input type="number" formControlName="deposit_percentage" min="0" max="100" step="5"
+              class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" 
+              placeholder="p.ej. 30">
+            <p class="text-xs text-gray-500 mt-1">Porcentaje a solicitar como anticipo al aceptar</p>
+          </div>
+
+          <!-- Separador Impuestos -->
+          <div class="border-t border-gray-200 dark:border-gray-700 pt-5 mt-5">
+            <h3 class="text-md font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+              <i class="fas fa-file-invoice-dollar mr-2 text-green-600"></i>
+              Impuestos (IVA/IRPF)
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="flex items-center gap-3">
+                <input id="prices_include_tax" type="checkbox" formControlName="prices_include_tax" 
+                  class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
+                <label for="prices_include_tax" class="text-sm text-gray-700 dark:text-gray-300">
+                  Precios con IVA incluido
+                </label>
+              </div>
+              <div class="flex items-center gap-3">
+                <input id="iva_enabled" type="checkbox" formControlName="iva_enabled" 
+                  class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
+                <label for="iva_enabled" class="text-sm text-gray-700 dark:text-gray-300">
+                  Aplicar IVA
+                </label>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IVA (%)</label>
+                <select formControlName="iva_rate"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                  <option [ngValue]="null">Usar global</option>
+                  <option [ngValue]="0">0%</option>
+                  <option [ngValue]="4">4%</option>
+                  <option [ngValue]="10">10%</option>
+                  <option [ngValue]="21">21%</option>
+                </select>
+              </div>
+              <div class="flex items-center gap-3">
+                <input id="irpf_enabled" type="checkbox" formControlName="irpf_enabled" 
+                  class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
+                <label for="irpf_enabled" class="text-sm text-gray-700 dark:text-gray-300">
+                  Aplicar IRPF (retención)
+                </label>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IRPF (%)</label>
+                <select formControlName="irpf_rate"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                  <option [ngValue]="null">Usar global</option>
+                  <option [ngValue]="0">0%</option>
+                  <option [ngValue]="7">7%</option>
+                  <option [ngValue]="15">15%</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-4">
+            <button type="submit" [disabled]="savingCompany() || companySettingsForm.invalid"
+              class="px-6 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center">
+              <i class="fas fa-save mr-2" *ngIf="!savingCompany()"></i>
+              <i class="fas fa-spinner fa-spin mr-2" *ngIf="savingCompany()"></i>
+              {{ savingCompany() ? 'Guardando...' : 'Guardar' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Ajustes Globales (Solo para devs) -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
+         *ngIf="devRoleService.canSeeDevTools()">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+          <i class="fas fa-globe mr-3 text-blue-600"></i>
+          Ajustes Globales
+          <span class="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded-full">
+            Dev
+          </span>
+        </h2>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          Valores por defecto para todas las empresas
+        </p>
+      </div>
+      <div class="p-6">
+        <form [formGroup]="appSettingsForm" (ngSubmit)="saveAppSettings()" class="space-y-5">
+          
+          <!-- Política por defecto -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Política por defecto
+            </label>
+            <select formControlName="default_convert_policy"
+              class="w-full px-3 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+              <option value="manual">Manual (solo bajo demanda)</option>
+              <option value="automatic">Automática al aceptar</option>
+              <option value="scheduled">Programada (en fecha/plazo)</option>
+            </select>
+          </div>
+
+          <!-- Checkboxes -->
+          <div class="space-y-3">
+            <div class="flex items-center gap-3">
+              <input id="enforce_globally" type="checkbox" formControlName="enforce_globally" 
+                class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+              <label for="enforce_globally" class="text-sm text-gray-700 dark:text-gray-300">
+                Forzar en todas las empresas
+              </label>
+            </div>
+          </div>
+
+          <!-- Días por defecto -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Días por defecto para programar
+            </label>
+            <input type="number" formControlName="default_invoice_delay_days" min="0" max="365"
+              class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" 
+              placeholder="p.ej. 3">
+          </div>
+
+          <!-- Impuestos Globales -->
+          <div class="border-t border-gray-200 dark:border-gray-700 pt-5 mt-5">
+            <h3 class="text-md font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+              <i class="fas fa-receipt mr-2 text-blue-600"></i>
+              Impuestos · Global
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="flex items-center gap-3">
+                <input id="default_prices_include_tax" type="checkbox" formControlName="default_prices_include_tax" 
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <label for="default_prices_include_tax" class="text-sm text-gray-700 dark:text-gray-300">
+                  Precios con IVA incluido
+                </label>
+              </div>
+              <div class="flex items-center gap-3">
+                <input id="default_iva_enabled" type="checkbox" formControlName="default_iva_enabled" 
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <label for="default_iva_enabled" class="text-sm text-gray-700 dark:text-gray-300">
+                  Aplicar IVA
+                </label>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IVA por defecto (%)</label>
+                <select formControlName="default_iva_rate"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                  <option [ngValue]="0">0%</option>
+                  <option [ngValue]="4">4%</option>
+                  <option [ngValue]="10">10%</option>
+                  <option [ngValue]="21">21%</option>
+                </select>
+              </div>
+              <div class="flex items-center gap-3">
+                <input id="default_irpf_enabled" type="checkbox" formControlName="default_irpf_enabled" 
+                  class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                <label for="default_irpf_enabled" class="text-sm text-gray-700 dark:text-gray-300">
+                  Aplicar IRPF (retención)
+                </label>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IRPF por defecto (%)</label>
+                <select formControlName="default_irpf_rate"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                  <option [ngValue]="0">0%</option>
+                  <option [ngValue]="7">7%</option>
+                  <option [ngValue]="15">15%</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-4">
+            <button type="submit" [disabled]="savingApp() || appSettingsForm.invalid"
+              class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center">
+              <i class="fas fa-save mr-2" *ngIf="!savingApp()"></i>
+              <i class="fas fa-spinner fa-spin mr-2" *ngIf="savingApp()"></i>
+              {{ savingApp() ? 'Guardando...' : 'Guardar' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Info card si no es dev -->
+    <div class="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800 p-6"
+         *ngIf="!devRoleService.canSeeDevTools()">
+      <div class="flex items-start gap-4">
+        <div class="flex-shrink-0">
+          <i class="fas fa-info-circle text-2xl text-green-600"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-green-800 dark:text-green-200 mb-2">
+            ¿Cómo funciona la conversión?
+          </h3>
+          <ul class="text-sm text-green-700 dark:text-green-300 space-y-2">
+            <li class="flex items-start gap-2">
+              <i class="fas fa-check-circle text-green-600 mt-0.5"></i>
+              <span><strong>Manual:</strong> Tú decides cuándo convertir cada presupuesto aceptado en factura</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="fas fa-check-circle text-green-600 mt-0.5"></i>
+              <span><strong>Automática:</strong> Al aceptar un presupuesto, se crea la factura automáticamente</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i class="fas fa-check-circle text-green-600 mt-0.5"></i>
+              <span><strong>Programada:</strong> La factura se generará en la fecha o plazo que configures</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
