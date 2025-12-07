@@ -47,6 +47,10 @@ import { InvoiceSeriesSettingsComponent } from './modules/invoices/invoice-serie
 import { QuotesSettingsComponent } from './components/quotes-settings/quotes-settings.component';
 import { BillingSettingsComponent } from './components/billing-settings/billing-settings.component';
 
+import { PublicPaymentComponent } from './components/public-payment/public-payment.component';
+import { PaymentSuccessComponent } from './components/payment-success/payment-success.component';
+import { PaymentCancelledComponent } from './components/payment-cancelled/payment-cancelled.component';
+
 export const routes: Routes = [
     // Rutas principales con guards apropiados
     {path: '', redirectTo: '/inicio', pathMatch: 'full'},
@@ -111,6 +115,11 @@ export const routes: Routes = [
     // Client portal invoices list and detail
     {path: 'portal/facturas', component: PortalInvoicesComponent, canActivate: [AuthGuard, ClientRoleGuard]},
     {path: 'portal/facturas/:id', component: PortalInvoiceDetailComponent, canActivate: [AuthGuard, ClientRoleGuard]},
+    
+    // Public payment pages (NO AUTH REQUIRED)
+    {path: 'pago/:token', component: PublicPaymentComponent},
+    {path: 'pago/:token/completado', component: PaymentSuccessComponent},
+    {path: 'pago/:token/cancelado', component: PaymentCancelledComponent},
     
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     // Eliminado: advanced-features, workflows, export-import (consolidados en módulos/producto)

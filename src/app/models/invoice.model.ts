@@ -99,6 +99,12 @@ export interface Invoice {
   retention_until?: string; // Generated
   gdpr_legal_basis: string;
 
+  // Online Payment
+  payment_status?: 'pending' | 'partial' | 'paid' | 'refunded' | 'cancelled';
+  payment_link_token?: string;
+  payment_link_expires_at?: string;
+  payment_link_provider?: 'paypal' | 'stripe';
+
   // Auditoría
   created_at: string;
   updated_at: string;

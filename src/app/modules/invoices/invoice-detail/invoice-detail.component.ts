@@ -1,9 +1,11 @@
 import { Component, OnInit, inject, signal, computed, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
+import { PaymentIntegrationsService, PaymentIntegration } from '../../../services/payment-integrations.service';
 import { ToastService } from '../../../services/toast.service';
 import { Invoice, formatInvoiceNumber } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
@@ -13,7 +15,7 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
 @Component({
   selector: 'app-invoice-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, IssueVerifactuButtonComponent, VerifactuBadgeComponent],
+  imports: [CommonModule, RouterModule, FormsModule, IssueVerifactuButtonComponent, VerifactuBadgeComponent],
   template: `
   <div class="p-4" *ngIf="invoice() as inv">
     <div class="flex items-center justify-between mb-4">
@@ -35,6 +37,18 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
         <button class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700" *ngIf="canCancel(inv)" (click)="cancelInvoice(inv.id)">Anular</button>
         <button class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" *ngIf="canRectify(inv)" (click)="rectify(inv.id)">Rectificar</button>
         <button *ngIf="canSendEmail()" class="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60" [disabled]="sendingEmail()" (click)="sendEmail(inv.id)">{{ sendingEmail() ? 'Enviando…' : 'Enviar por email' }}</button>
+        
+        <!-- Send Payment Link Button -->
+        <button 
+          *ngIf="canSendPaymentLink(inv)" 
+          class="px-3 py-1.5 rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60 flex items-center gap-1.5"
+          [disabled]="generatingPaymentLink()"
+          (click)="openPaymentLinkModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+          </svg>
+          {{ generatingPaymentLink() ? 'Generando…' : 'Enlace de pago' }}
+        </button>
         
         <!-- Hide button if sending/pending or accepted - Only show if Verifactu module is enabled -->
         <app-issue-verifactu-button 
@@ -146,6 +160,108 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
       </div>
     </div>
   </div>
+
+  <!-- Payment Link Modal -->
+  <div *ngIf="showPaymentLinkModal()" class="fixed inset-0 z-50 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/50" (click)="closePaymentLinkModal()"></div>
+    <div class="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Enviar enlace de pago</h3>
+      
+      <!-- No integrations warning -->
+      <div *ngIf="availableProviders().length === 0" class="text-center py-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-amber-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <p class="text-gray-700 dark:text-gray-300 mb-2">No hay pasarelas de pago configuradas</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Configura PayPal o Stripe en Facturación → Ajustes → Pasarelas de pago</p>
+        <button class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600" (click)="closePaymentLinkModal()">Cerrar</button>
+      </div>
+
+      <!-- Provider selection -->
+      <div *ngIf="availableProviders().length > 0 && !generatedPaymentLink()">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Selecciona pasarela de pago</label>
+          <div class="grid grid-cols-2 gap-3">
+            <button 
+              *ngFor="let p of availableProviders()" 
+              (click)="selectedProvider.set(p.provider)"
+              class="p-3 rounded border-2 transition-colors flex flex-col items-center"
+              [ngClass]="selectedProvider() === p.provider 
+                ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' 
+                : 'border-gray-200 dark:border-gray-600'">
+              <span class="text-2xl mb-1">{{ p.provider === 'paypal' ? '💳' : '💵' }}</span>
+              <span class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ p.provider === 'paypal' ? 'PayPal' : 'Stripe' }}</span>
+              <span *ngIf="p.is_sandbox" class="text-xs text-amber-600 dark:text-amber-400">Sandbox</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Válido durante</label>
+          <select [(ngModel)]="expirationDays" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+            <option [value]="1">1 día</option>
+            <option [value]="3">3 días</option>
+            <option [value]="7">7 días</option>
+            <option [value]="14">14 días</option>
+            <option [value]="30">30 días</option>
+          </select>
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <button class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600" (click)="closePaymentLinkModal()">Cancelar</button>
+          <button 
+            class="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60"
+            [disabled]="!selectedProvider() || generatingPaymentLink()"
+            (click)="generatePaymentLink()">
+            {{ generatingPaymentLink() ? 'Generando…' : 'Generar enlace' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Generated link display -->
+      <div *ngIf="generatedPaymentLink()" class="text-center">
+        <div class="w-16 h-16 mx-auto rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-3">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <p class="text-gray-700 dark:text-gray-300 mb-2">¡Enlace de pago generado!</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">Válido hasta {{ generatedPaymentLink()?.expires_at | date:'short' }}</p>
+        
+        <div class="bg-gray-100 dark:bg-gray-700 rounded p-3 mb-4">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Enlace para compartir:</p>
+          <input 
+            type="text" 
+            readonly 
+            [value]="generatedPaymentLink()?.shareable_link" 
+            class="w-full text-sm bg-transparent border-0 text-gray-800 dark:text-gray-200 text-center truncate"
+            #linkInput />
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <button 
+            class="w-full px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 flex items-center justify-center gap-2"
+            (click)="copyPaymentLink()">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            {{ copiedLink() ? '¡Copiado!' : 'Copiar enlace' }}
+          </button>
+          <button 
+            *ngIf="invoice()?.client?.email"
+            class="w-full px-4 py-2 rounded bg-emerald-600 text-white hover:bg-emerald-700 flex items-center justify-center gap-2 disabled:opacity-60"
+            [disabled]="sendingPaymentEmail()"
+            (click)="sendPaymentEmail()">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            {{ sendingPaymentEmail() ? 'Enviando…' : 'Enviar por email al cliente' }}
+          </button>
+          <button class="w-full px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600" (click)="closePaymentLinkModal()">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
   `
 })
 export class InvoiceDetailComponent implements OnInit, OnDestroy {
@@ -154,6 +270,7 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   private invoicesService = inject(SupabaseInvoicesService);
   private quotesService = inject(SupabaseQuotesService);
   private modulesService = inject(SupabaseModulesService);
+  private paymentService = inject(PaymentIntegrationsService);
   private toast = inject(ToastService);
   invoice = signal<Invoice | null>(null);
   verifactuMeta = signal<any | null>(null);
@@ -163,6 +280,16 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   dispatcherHealth = signal<{ pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; } | null>(null);
   private refreshInterval: any;
   private realtimeSub: { unsubscribe: () => void } | null = null;
+
+  // Payment link modal state
+  showPaymentLinkModal = signal(false);
+  generatingPaymentLink = signal(false);
+  availableProviders = signal<PaymentIntegration[]>([]);
+  selectedProvider = signal<'paypal' | 'stripe' | null>(null);
+  expirationDays = 7;
+  generatedPaymentLink = signal<{ shareable_link: string; expires_at: string; token: string; provider: string } | null>(null);
+  copiedLink = signal(false);
+  sendingPaymentEmail = signal(false);
 
   now = signal(Date.now());
 
@@ -432,5 +559,108 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
 
   isVerifactuAccepted(): boolean {
     return this.verifactuMeta()?.status === 'accepted';
+  }
+
+  // ========================================
+  // Payment Link Methods
+  // ========================================
+
+  canSendPaymentLink(inv: Invoice): boolean {
+    if (!inv) return false;
+    // Don't show for drafts, voided, cancelled, or already paid
+    const status = inv.status as string;
+    if (['draft', 'void', 'cancelled', 'paid'].includes(status)) return false;
+    // Show for approved, issued, sent, partial, overdue invoices
+    return ['approved', 'issued', 'sent', 'partial', 'overdue'].includes(status);
+  }
+
+  async openPaymentLinkModal() {
+    const inv = this.invoice();
+    if (!inv) return;
+
+    // Reset modal state
+    this.generatedPaymentLink.set(null);
+    this.selectedProvider.set(null);
+    this.expirationDays = 7;
+    this.copiedLink.set(false);
+
+    // Load available payment integrations
+    try {
+      const integrations = await this.paymentService.getIntegrations(inv.company_id);
+      const active = integrations.filter(i => i.is_active);
+      this.availableProviders.set(active);
+      
+      // Pre-select if only one provider available
+      if (active.length === 1) {
+        this.selectedProvider.set(active[0].provider);
+      }
+    } catch (e: any) {
+      console.error('Error loading payment integrations', e);
+      this.availableProviders.set([]);
+    }
+
+    this.showPaymentLinkModal.set(true);
+  }
+
+  closePaymentLinkModal() {
+    this.showPaymentLinkModal.set(false);
+    this.generatedPaymentLink.set(null);
+  }
+
+  async generatePaymentLink() {
+    const inv = this.invoice();
+    const provider = this.selectedProvider();
+    if (!inv || !provider) return;
+
+    this.generatingPaymentLink.set(true);
+    try {
+      const result = await this.paymentService.generatePaymentLink(inv.id, provider, this.expirationDays);
+      this.generatedPaymentLink.set(result);
+      try { this.toast.success('Enlace generado', 'El enlace de pago está listo para compartir'); } catch {}
+    } catch (e: any) {
+      const msg = e?.message || 'Error al generar enlace de pago';
+      try { this.toast.error('Error', msg); } catch {}
+      console.error('Error generating payment link', e);
+    } finally {
+      this.generatingPaymentLink.set(false);
+    }
+  }
+
+  async copyPaymentLink() {
+    const link = this.generatedPaymentLink()?.shareable_link;
+    if (!link) return;
+
+    try {
+      await navigator.clipboard.writeText(link);
+      this.copiedLink.set(true);
+      setTimeout(() => this.copiedLink.set(false), 2000);
+    } catch (e) {
+      console.error('Error copying to clipboard', e);
+      try { this.toast.error('Error', 'No se pudo copiar al portapapeles'); } catch {}
+    }
+  }
+
+  async sendPaymentEmail() {
+    const inv = this.invoice();
+    const link = this.generatedPaymentLink();
+    const to = inv?.client?.email?.trim();
+    if (!inv || !link || !to) return;
+
+    const num = this.formatNumber(inv) || 'Factura';
+    const subject = `Enlace de pago - ${num}`;
+    const message = `Hola,\n\nPuedes pagar tu factura ${num} de forma segura a través del siguiente enlace:\n\n${link.shareable_link}\n\nEste enlace es válido hasta ${new Date(link.expires_at).toLocaleDateString('es-ES')}.\n\nGracias.`;
+
+    this.sendingPaymentEmail.set(true);
+    try {
+      // Use existing email service through invoices service
+      await this.invoicesService.sendInvoiceEmail(inv.id, to, subject, message).toPromise();
+      try { this.toast.success('Email enviado', 'El enlace de pago ha sido enviado al cliente'); } catch {}
+    } catch (e: any) {
+      const msg = e?.message || 'Error al enviar email';
+      try { this.toast.error('Error', msg); } catch {}
+      console.error('Error sending payment email', e);
+    } finally {
+      this.sendingPaymentEmail.set(false);
+    }
   }
 }

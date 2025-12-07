@@ -168,12 +168,12 @@ export class PaymentIntegrationsService {
     invoiceId: string, 
     provider: 'paypal' | 'stripe',
     expiresInDays: number = 7
-  ): Promise<{ url: string; token: string; expiresAt: string }> {
+  ): Promise<{ payment_url: string; shareable_link: string; token: string; expires_at: string; provider: string }> {
     const client = this.supabaseClient.instance;
     const { data: { session } } = await client.auth.getSession();
     const token = session?.access_token;
 
-    const res = await fetch(`${this.fnBase}/payment-link`, {
+    const res = await fetch(`${this.fnBase}/create-payment-link`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token ?? ''}`,
