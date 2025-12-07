@@ -84,10 +84,19 @@ async function testPayPal(credentials: { clientId: string; clientSecret: string 
 
     if (!tokenRes.ok) {
       const error = await tokenRes.json();
+      const modeText = isSandbox ? "SANDBOX" : "PRODUCCIÓN";
+      const suggestion = isSandbox 
+        ? "Verifica que usas credenciales de PayPal Developer (Sandbox)."
+        : "Verifica que usas credenciales de tu cuenta PayPal Business (Live).";
       return { 
         success: false, 
-        error: error.error_description || "Failed to authenticate with PayPal",
-        details: { status: tokenRes.status }
+        error: `${error.error_description || "Error de autenticación PayPal"} (Modo: ${modeText}). ${suggestion}`,
+        details: { 
+          status: tokenRes.status, 
+          mode: modeText,
+          endpoint: baseUrl,
+          clientIdPrefix: credentials.clientId?.slice(0, 10) + "..."
+        }
       };
     }
 
