@@ -474,11 +474,21 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   async loadServices() {
+    console.warn('🚀 loadServices() called, selectedCompanyId:', this.selectedCompanyId);
     this.loading = true;
     this.error = null;
     
     try {
-  this.services = await this.servicesService.getServices(this.selectedCompanyId || undefined);
+      console.warn('📡 Calling servicesService.getServices...');
+      this.services = await this.servicesService.getServices(this.selectedCompanyId || undefined);
+      console.warn('📥 Services received:', this.services.length, 'services');
+      console.warn('📊 First service sample:', this.services[0] ? {
+        name: this.services[0].name,
+        has_variants: this.services[0].has_variants,
+        display_price: this.services[0].display_price,
+        display_price_label: this.services[0].display_price_label,
+        variants: this.services[0].variants?.length
+      } : 'no services');
       this.updateFilteredServices();
       this.updateStats();
       this.extractCategories();
@@ -516,11 +526,12 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   updateStats() {
     this.stats.total = this.services.length;
     this.stats.active = this.services.filter(s => s.is_active).length;
+    // Use server-side calculated display_price field
     this.stats.averagePrice = this.services.length > 0 
-      ? this.services.reduce((sum, s) => sum + s.base_price, 0) / this.services.length 
+      ? this.services.reduce((sum, s) => sum + (s.display_price ?? s.base_price ?? 0), 0) / this.services.length 
       : 0;
     this.stats.averageHours = this.services.length > 0 
-      ? this.services.reduce((sum, s) => sum + s.estimated_hours, 0) / this.services.length 
+      ? this.services.reduce((sum, s) => sum + (s.display_hours ?? s.estimated_hours ?? 0), 0) / this.services.length 
       : 0;
   }
 
@@ -1166,5 +1177,30 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   @HostListener('window:resize')
   onWindowResize() {
     this.adjustRootScroll();
+  }
+
+  /**
+   * Get display price info for a service (using server-side calculated fields)
+   */
+  getDisplayPrice(service: Service): { price: number; isFromVariants: boolean; label: string } {
+    return { 
+      price: service.display_price ?? service.base_price ?? 0, 
+      isFromVariants: service.display_price_from_variants ?? false, 
+      label: service.display_price_label ?? 'Precio Base' 
+    };
+  }
+
+  /**
+   * Get hourly rate for a service (using server-side calculated field)
+   */
+  getDisplayHourlyRate(service: Service): number {
+    return service.display_hourly_rate ?? 0;
+  }
+
+  /**
+   * Get representative hours for a service (using server-side calculated field)
+   */
+  getDisplayHours(service: Service): number {
+    return service.display_hours ?? service.estimated_hours ?? 1;
   }
 }

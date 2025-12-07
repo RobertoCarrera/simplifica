@@ -211,9 +211,13 @@
             <div class="p-6 pt-4">
               <!-- Price Highlight -->
               <div class="mb-4">
-                <div class="text-sm text-gray-500 dark:text-gray-400 mb-0.5">Precio Base</div>
-                <div class="text-2xl font-bold text-gray-600 dark:text-gray-400">
-                  {{ formatCurrency(service.base_price) }}
+                <div class="text-sm text-gray-500 dark:text-gray-400 mb-0.5">{{ getDisplayPrice(service).label }}</div>
+                <div class="text-2xl font-bold" 
+                     [class.text-emerald-600]="getDisplayPrice(service).isFromVariants"
+                     [class.dark:text-emerald-400]="getDisplayPrice(service).isFromVariants"
+                     [class.text-gray-600]="!getDisplayPrice(service).isFromVariants"
+                     [class.dark:text-gray-400]="!getDisplayPrice(service).isFromVariants">
+                  {{ formatCurrency(getDisplayPrice(service).price) }}
                 </div>
               </div>
 
@@ -232,7 +236,7 @@
                     <i class="fas fa-calculator"></i> Ratio
                   </div>
                   <div class="font-semibold text-gray-700 dark:text-gray-300">
-                    {{ formatCurrency(service.base_price / service.estimated_hours) }}/h
+                    {{ formatCurrency(getDisplayHourlyRate(service)) }}/h
                   </div>
                 </div>
               </div>

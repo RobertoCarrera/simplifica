@@ -84,6 +84,13 @@ export interface Service {
   has_variants?: boolean;
   base_features?: Record<string, any>;
   variants?: ServiceVariant[];
+  
+  // Campos calculados (server-side) para display
+  display_price?: number;        // Precio representativo (desde variantes o base_price)
+  display_price_label?: string;  // "Precio Base", "Desde", "Precio"
+  display_price_from_variants?: boolean; // true si viene de variantes
+  display_hours?: number;        // Horas representativas
+  display_hourly_rate?: number;  // Ratio €/h calculado
 }
 
 export interface ServiceCategory {
@@ -341,8 +348,242 @@ export class SupabaseServicesService {
       company_id: service.company_id ? service.company_id : companyId.toString(),
       created_at: service.created_at,
       updated_at: service.updated_at || service.created_at
-    }));    // Load tags relations from service_tag_relations -> service_tags
-    return await this.loadServiceTagsForServices(mapped);
+    }));    
+    
+    // Load tags relations from service_tag_relations -> service_tags
+    const servicesWithTags = await this.loadServiceTagsForServices(mapped);
+    
+    // Load variants for services that have has_variants = true
+    return await this.loadVariantsForServices(servicesWithTags);
+  }
+
+  /**
+   * Load variants for all services that have has_variants = true
+   * and calculate display prices for ALL services
+   */
+  private async loadVariantsForServices(services: Service[]): Promise<Service[]> {
+    console.warn('🔄 loadVariantsForServices called with', services.length, 'services');
+    console.warn('🔍 ALL Services (name, has_variants, base_price):', services.map(s => ({ 
+      name: s.name, 
+      has_variants: s.has_variants, 
+      base_price: s.base_price,
+      id: s.id 
+    })));
+    
+    // Get IDs of services that have variants
+    const serviceIdsWithVariants = services
+      .filter(s => s.has_variants)
+      .map(s => s.id);
+    
+    console.warn('🎯 serviceIdsWithVariants:', serviceIdsWithVariants);
+    
+    // If no services have variants, still calculate display prices
+    if (serviceIdsWithVariants.length === 0) {
+      console.warn('⚠️ No services have has_variants=true, calculating base prices only');
+      return services.map(service => ({
+        ...service,
+        ...this.calculateDisplayPrice(service, [])
+      }));
+    }
+
+    try {
+      console.warn('📡 Querying service_variants for service_ids:', serviceIdsWithVariants);
+      const { data: variants, error } = await this.supabase.getClient()
+        .from('service_variants')
+        .select('*')
+        .in('service_id', serviceIdsWithVariants)
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      console.warn('📦 Variants query result:', { 
+        error: error ? { message: error.message, code: error.code, details: error.details } : null, 
+        variantsCount: variants?.length, 
+        variants: variants?.map(v => ({
+          id: v.id,
+          variant_name: v.variant_name,
+          service_id: v.service_id,
+          pricing: v.pricing,
+          base_price: v.base_price // campo legacy
+        }))
+      });
+
+      if (error) {
+        console.warn('⚠️ Error loading variants for services:', error);
+        // Still calculate display prices even on error
+        return services.map(service => ({
+          ...service,
+          ...this.calculateDisplayPrice(service, [])
+        }));
+      }
+
+      // Group variants by service_id and parse pricing JSON
+      const variantsByServiceId: Record<string, ServiceVariant[]> = {};
+      for (const variant of (variants || [])) {
+        // Parse pricing if it's a string (from DB jsonb)
+        let parsedPricing = variant.pricing;
+        console.warn(`🔧 Variant "${variant.variant_name}":`, {
+          raw_pricing_type: typeof variant.pricing,
+          raw_pricing: variant.pricing,
+          legacy_base_price: variant.base_price
+        });
+        
+        if (typeof variant.pricing === 'string') {
+          try {
+            parsedPricing = JSON.parse(variant.pricing);
+            console.warn(`   Parsed from string:`, parsedPricing);
+          } catch (e) {
+            console.error(`   Failed to parse:`, e);
+            parsedPricing = null;
+          }
+        }
+        
+        // Keep pricing as-is, preserving null/undefined for fallback logic
+        const parsedVariant: ServiceVariant = {
+          ...variant,
+          pricing: Array.isArray(parsedPricing) && parsedPricing.length > 0 ? parsedPricing : []
+        };
+        
+        console.warn(`   Final variant:`, {
+          pricing_length: parsedVariant.pricing?.length,
+          base_price: parsedVariant.base_price
+        });
+        
+        if (!variantsByServiceId[variant.service_id]) {
+          variantsByServiceId[variant.service_id] = [];
+        }
+        variantsByServiceId[variant.service_id].push(parsedVariant);
+      }
+
+      console.warn('🗂️ variantsByServiceId:', Object.keys(variantsByServiceId).map(k => ({
+        service_id: k,
+        variants_count: variantsByServiceId[k].length
+      })));
+
+      // Attach variants to their services and calculate display prices
+      return services.map(service => {
+        const serviceVariants = variantsByServiceId[service.id] || [];
+        const computed = this.calculateDisplayPrice(service, serviceVariants);
+        
+        console.warn(`✅ Service "${service.name}":`, {
+          has_variants: service.has_variants,
+          variants_count: serviceVariants.length,
+          computed_display_price: computed.display_price,
+          computed_label: computed.display_price_label,
+          from_variants: computed.display_price_from_variants
+        });
+        
+        return {
+          ...service,
+          variants: serviceVariants,
+          ...computed
+        };
+      });
+    } catch (error) {
+      console.warn('⚠️ Exception loading variants for services:', error);
+      // Still calculate display prices for services without variants
+      return services.map(service => ({
+        ...service,
+        ...this.calculateDisplayPrice(service, [])
+      }));
+    }
+  }
+
+  /**
+   * Calculate display price, hours and hourly rate for a service
+   * This is server-side calculation to avoid repeated calculations in the UI
+   */
+  private calculateDisplayPrice(service: Service, variants: ServiceVariant[]): {
+    display_price: number;
+    display_price_label: string;
+    display_price_from_variants: boolean;
+    display_hours: number;
+    display_hourly_rate: number;
+  } {
+    // If service doesn't have variants or no variants loaded, use base values
+    if (!service.has_variants || variants.length === 0) {
+      const hours = service.estimated_hours || 1;
+      const price = service.base_price || 0;
+      return {
+        display_price: price,
+        display_price_label: 'Precio Base',
+        display_price_from_variants: false,
+        display_hours: hours,
+        display_hourly_rate: hours > 0 ? price / hours : 0
+      };
+    }
+
+    // Collect all prices from variants
+    const allPrices: number[] = [];
+    const allHours: number[] = [];
+    
+    for (const variant of variants) {
+      console.warn(`  🔎 Processing variant "${variant.variant_name}":`, {
+        has_pricing_array: !!(variant.pricing && Array.isArray(variant.pricing)),
+        pricing_length: variant.pricing?.length,
+        legacy_base_price: variant.base_price,
+        pricing: variant.pricing
+      });
+      
+      // Try new pricing array first
+      if (variant.pricing && Array.isArray(variant.pricing) && variant.pricing.length > 0) {
+        for (const p of variant.pricing) {
+          console.warn(`    💰 Pricing entry:`, p);
+          if (p.base_price && p.base_price > 0) {
+            allPrices.push(p.base_price);
+          }
+          if (p.estimated_hours && p.estimated_hours > 0) {
+            allHours.push(p.estimated_hours);
+          }
+        }
+      } 
+      // Fallback to deprecated fields
+      else {
+        console.warn(`    ⚠️ Using legacy fields: base_price=${variant.base_price}`);
+        if (variant.base_price && variant.base_price > 0) {
+          allPrices.push(variant.base_price);
+        }
+        if (variant.estimated_hours && variant.estimated_hours > 0) {
+          allHours.push(variant.estimated_hours);
+        }
+      }
+    }
+    
+    console.warn(`  📊 Collected prices:`, allPrices, 'hours:', allHours);
+
+    // If no prices found in variants, fall back to service base_price
+    if (allPrices.length === 0) {
+      const hours = service.estimated_hours || 1;
+      const price = service.base_price || 0;
+      return {
+        display_price: price,
+        display_price_label: 'Precio Base',
+        display_price_from_variants: false,
+        display_hours: hours,
+        display_hourly_rate: hours > 0 ? price / hours : 0
+      };
+    }
+
+    const minPrice = Math.min(...allPrices);
+    const maxPrice = Math.max(...allPrices);
+    const avgHours = allHours.length > 0 
+      ? allHours.reduce((a, b) => a + b, 0) / allHours.length 
+      : (service.estimated_hours || 1);
+
+    // Determine label based on price range
+    let label: string;
+    if (minPrice === maxPrice) {
+      label = 'Precio';
+    } else {
+      label = 'Desde';
+    }
+
+    return {
+      display_price: minPrice,
+      display_price_label: label,
+      display_price_from_variants: true,
+      display_hours: avgHours,
+      display_hourly_rate: avgHours > 0 ? minPrice / avgHours : 0
+    };
   }
 
   async createService(serviceData: Partial<Service>): Promise<Service> {

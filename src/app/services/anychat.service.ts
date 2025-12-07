@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { Observable, throwError, from } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { RuntimeConfigService } from './runtime-config.service';
+import { AuthService } from './auth.service';
 
 // ===============================
 // INTERFACES DE ANYCHAT
@@ -66,6 +67,7 @@ export interface AnyChatPaginatedResponse<T> {
 export class AnyChatService {
   private http = inject(HttpClient);
   private cfg = inject(RuntimeConfigService);
+  private authService = inject(AuthService);
   
   // Route through Supabase Edge Function to avoid CORS and keep API key server-side
   private readonly API_URL = (() => {
@@ -84,7 +86,36 @@ export class AnyChatService {
   }
 
   /**
-   * Genera los headers necesarios para las peticiones a AnyChat
+   * Obtiene los headers necesarios para las peticiones a AnyChat (async para obtener JWT)
+   */
+  private async getHeadersAsync(): Promise<HttpHeaders> {
+    // Base headers
+    let headers = new HttpHeaders({ 'Content-Type': 'application/json', 'Accept': 'application/json' });
+
+    // When proxying via Supabase Edge Function, use user's JWT token for authentication
+    const rc = this.cfg.get();
+    if (this.USING_PROXY && rc.supabase?.anonKey) {
+      // Get current user's JWT token from session
+      const { data: { session } } = await this.authService.client.auth.getSession();
+      const token = session?.access_token || rc.supabase.anonKey;
+      
+      headers = headers
+        .set('Authorization', `Bearer ${token}`)
+        .set('apikey', rc.supabase.anonKey)
+        .set('x-client-info', 'simplifica-anychat');
+    }
+
+    // If NOT proxying and we have a direct AnyChat API key (not recommended for browser), include it
+    if (!this.USING_PROXY && this.API_KEY) {
+      headers = headers.set('x-api-key', this.API_KEY);
+    }
+
+    return headers;
+  }
+
+  /**
+   * Genera los headers necesarios para las peticiones a AnyChat (sync fallback)
+   * @deprecated Use getHeadersAsync() instead
    */
   private getHeaders(): HttpHeaders {
     // Base headers
@@ -115,35 +146,38 @@ export class AnyChatService {
     urls: string[],
     body?: any
   ): Observable<T> {
-    const headers = this.getHeaders();
-    const tryAt = (i: number): Observable<T> => {
-      if (i >= urls.length) {
-        return throwError(() => new Error('All AnyChat endpoint candidates failed (404/400)'));
-      }
-      const url = urls[i];
-      const req$ = method === 'GET'
-        ? this.http.get<T>(url, { headers })
-        : method === 'POST'
-          ? this.http.post<T>(url, body ?? {}, { headers })
-          : this.http.put<T>(url, body ?? {}, { headers });
-      return req$.pipe(
-        catchError((err) => {
-          if (err?.status === 404 || err?.status === 400) {
-            // Log diagnostic info and try the next candidate path
-            try {
-              console.warn('[AnyChat] Endpoint candidate failed:', {
-                url,
-                status: err?.status,
-                error: err?.error || err?.message
-              });
-            } catch {}
-            return tryAt(i + 1);
+    return from(this.getHeadersAsync()).pipe(
+      switchMap(headers => {
+        const tryAt = (i: number): Observable<T> => {
+          if (i >= urls.length) {
+            return throwError(() => new Error('All AnyChat endpoint candidates failed (404/400)'));
           }
-          return this.handleError(err);
-        })
-      );
-    };
-    return tryAt(0);
+          const url = urls[i];
+          const req$ = method === 'GET'
+            ? this.http.get<T>(url, { headers })
+            : method === 'POST'
+              ? this.http.post<T>(url, body ?? {}, { headers })
+              : this.http.put<T>(url, body ?? {}, { headers });
+          return req$.pipe(
+            catchError((err) => {
+              if (err?.status === 404 || err?.status === 400) {
+                // Log diagnostic info and try the next candidate path
+                try {
+                  console.warn('[AnyChat] Endpoint candidate failed:', {
+                    url,
+                    status: err?.status,
+                    error: err?.error || err?.message
+                  });
+                } catch {}
+                return tryAt(i + 1);
+              }
+              return this.handleError(err);
+            })
+          );
+        };
+        return tryAt(0);
+      })
+    );
   }
 
   /**
@@ -179,7 +213,8 @@ export class AnyChatService {
 
     const url = `${this.API_URL}/contact?page=${page}&limit=${limit}`;
     
-    return this.http.get<AnyChatPaginatedResponse<AnyChatContact>>(url, { headers: this.getHeaders() }).pipe(
+    return from(this.getHeadersAsync()).pipe(
+      switchMap(headers => this.http.get<AnyChatPaginatedResponse<AnyChatContact>>(url, { headers })),
       catchError((error) => {
         // Manejo específico de errores CORS/origin
         if (error.status === 0 || error.status === 403) {
@@ -201,7 +236,8 @@ export class AnyChatService {
 
     const url = `${this.API_URL}/contact/search?email=${encodeURIComponent(email)}`;
     
-    return this.http.get<AnyChatPaginatedResponse<AnyChatContact>>(url, { headers: this.getHeaders() }).pipe(
+    return from(this.getHeadersAsync()).pipe(
+      switchMap(headers => this.http.get<AnyChatPaginatedResponse<AnyChatContact>>(url, { headers })),
       catchError((error) => {
         if (error.status === 0 || error.status === 403) {
           console.error('❌ Error CORS/Origen no permitido para AnyChat');
@@ -216,11 +252,10 @@ export class AnyChatService {
    * Obtiene información de un contacto específico
    */
   getContact(contactId: string): Observable<AnyChatContact> {
-  const url = `${this.API_URL}/contact/${contactId}`;
+    const url = `${this.API_URL}/contact/${contactId}`;
     
-    return this.http.get<AnyChatContact>(url, {
-      headers: this.getHeaders()
-    }).pipe(
+    return from(this.getHeadersAsync()).pipe(
+      switchMap(headers => this.http.get<AnyChatContact>(url, { headers })),
       catchError(this.handleError)
     );
   }
@@ -229,11 +264,10 @@ export class AnyChatService {
    * Crea un nuevo contacto
    */
   createContact(contact: Partial<AnyChatContact>): Observable<AnyChatContact> {
-  const url = `${this.API_URL}/contact`;
+    const url = `${this.API_URL}/contact`;
     
-    return this.http.post<AnyChatContact>(url, contact, {
-      headers: this.getHeaders()
-    }).pipe(
+    return from(this.getHeadersAsync()).pipe(
+      switchMap(headers => this.http.post<AnyChatContact>(url, contact, { headers })),
       catchError(this.handleError)
     );
   }
@@ -242,11 +276,10 @@ export class AnyChatService {
    * Actualiza un contacto existente
    */
   updateContact(contactId: string, contact: Partial<AnyChatContact>): Observable<AnyChatContact> {
-  const url = `${this.API_URL}/contact/${contactId}`;
+    const url = `${this.API_URL}/contact/${contactId}`;
     
-    return this.http.put<AnyChatContact>(url, contact, {
-      headers: this.getHeaders()
-    }).pipe(
+    return from(this.getHeadersAsync()).pipe(
+      switchMap(headers => this.http.put<AnyChatContact>(url, contact, { headers })),
       catchError(this.handleError)
     );
   }
@@ -367,9 +400,8 @@ export class AnyChatService {
   markAsRead(messageId: string): Observable<void> {
     const url = `${this.API_URL}/message/${messageId}/read`;
     
-    return this.http.put<void>(url, {}, {
-      headers: this.getHeaders()
-    }).pipe(
+    return from(this.getHeadersAsync()).pipe(
+      switchMap(headers => this.http.put<void>(url, {}, { headers })),
       catchError(this.handleError)
     );
   }
