@@ -119,7 +119,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Chat',
       icon: 'chat',
       route: '/chat',
-      module: 'production'
+      module: 'production',
+      moduleKey: 'moduloChat'
     },
     {
       id: 13,
@@ -328,6 +329,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       case '/facturacion':
       case '/portal/facturas':
         return 'moduloFacturas';
+      case '/chat':
+        return 'moduloChat';
       default:
         return null; // elementos sin control por módulo
     }

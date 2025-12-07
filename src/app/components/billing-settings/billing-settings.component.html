@@ -1,0 +1,394 @@
+<div class="container mx-auto p-4 max-w-4xl">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+        Configuración de Facturación
+      </h1>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        Configura las integraciones de pago y opciones de facturación
+      </p>
+    </div>
+    <button 
+      (click)="goBack()"
+      class="px-4 py-2 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600">
+      Volver
+    </button>
+  </div>
+
+  <!-- Authorization Check -->
+  @if (!isAuthorized()) {
+    <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
+      <i class="fas fa-lock text-red-500 text-3xl mb-3"></i>
+      <h2 class="text-lg font-medium text-red-800 dark:text-red-200 mb-2">Acceso Restringido</h2>
+      <p class="text-red-600 dark:text-red-400">Solo el propietario o administrador puede configurar la facturación.</p>
+    </div>
+  } @else {
+    <!-- Module Status Info -->
+    <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Facturación Module -->
+      <div class="p-4 rounded-lg border" 
+           [class]="hasFacturacionModule() ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full flex items-center justify-center"
+               [class]="hasFacturacionModule() ? 'bg-green-100 dark:bg-green-900' : 'bg-gray-200 dark:bg-gray-700'">
+            <i class="fas fa-file-invoice-dollar" 
+               [class]="hasFacturacionModule() ? 'text-green-600 dark:text-green-400' : 'text-gray-500'"></i>
+          </div>
+          <div>
+            <h3 class="font-medium" [class]="hasFacturacionModule() ? 'text-green-800 dark:text-green-200' : 'text-gray-700 dark:text-gray-300'">
+              Módulo Facturación
+            </h3>
+            <p class="text-sm" [class]="hasFacturacionModule() ? 'text-green-600 dark:text-green-400' : 'text-gray-500'">
+              {{ hasFacturacionModule() ? 'Activado' : 'Desactivado' }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Verifactu Module -->
+      <div class="p-4 rounded-lg border"
+           [class]="hasVerifactuModule() ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full flex items-center justify-center"
+               [class]="hasVerifactuModule() ? 'bg-purple-100 dark:bg-purple-900' : 'bg-gray-200 dark:bg-gray-700'">
+            <i class="fas fa-stamp"
+               [class]="hasVerifactuModule() ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500'"></i>
+          </div>
+          <div>
+            <h3 class="font-medium" [class]="hasVerifactuModule() ? 'text-purple-800 dark:text-purple-200' : 'text-gray-700 dark:text-gray-300'">
+              Módulo Verifactu (AEAT)
+            </h3>
+            <p class="text-sm" [class]="hasVerifactuModule() ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500'">
+              {{ hasVerifactuModule() ? 'Activado - Las facturas se enviarán a la AEAT' : 'Desactivado - Facturación sin envío a AEAT' }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info Banner -->
+    <div class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+      <div class="flex items-start gap-3">
+        <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+        <div class="text-sm text-blue-800 dark:text-blue-200">
+          @if (hasFacturacionModule() && hasVerifactuModule()) {
+            <strong>Modo Completo:</strong> Tus facturas permitirán cobro online y se enviarán automáticamente a la AEAT vía Verifactu.
+          } @else if (hasFacturacionModule() && !hasVerifactuModule()) {
+            <strong>Facturación Simple:</strong> Genera facturas y cobra online con PayPal/Stripe. No se envían a la AEAT (ideal si usas otro programa de contabilidad).
+          } @else if (!hasFacturacionModule() && hasVerifactuModule()) {
+            <strong>Solo Verifactu:</strong> Las facturas se envían a la AEAT pero no hay integración de cobro. Útil si usas otro sistema de facturación.
+          } @else {
+            <strong>Sin módulos activos:</strong> Activa el módulo de Facturación y/o Verifactu en la gestión de módulos.
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="mb-6 border-b border-gray-200 dark:border-gray-700">
+      <nav class="flex gap-4">
+        <button 
+          (click)="setActiveTab('general')"
+          class="pb-3 px-1 text-sm font-medium border-b-2 transition-colors"
+          [class]="activeTab() === 'general' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'">
+          <i class="fas fa-cog mr-2"></i>General
+        </button>
+        <button 
+          (click)="setActiveTab('paypal')"
+          class="pb-3 px-1 text-sm font-medium border-b-2 transition-colors"
+          [class]="activeTab() === 'paypal' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'">
+          <i class="fab fa-paypal mr-2"></i>PayPal
+          @if (paypalIntegration()?.is_active) {
+            <span class="ml-2 w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+          }
+        </button>
+        <button 
+          (click)="setActiveTab('stripe')"
+          class="pb-3 px-1 text-sm font-medium border-b-2 transition-colors"
+          [class]="activeTab() === 'stripe' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'">
+          <i class="fab fa-stripe mr-2"></i>Stripe
+          @if (stripeIntegration()?.is_active) {
+            <span class="ml-2 w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+          }
+        </button>
+      </nav>
+    </div>
+
+    <!-- Loading -->
+    @if (loading()) {
+      <div class="flex items-center justify-center py-12">
+        <div class="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+      </div>
+    } @else {
+      <!-- General Tab -->
+      @if (activeTab() === 'general') {
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <div class="p-6">
+            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Información General</h2>
+            
+            <div class="space-y-4">
+              <!-- Series Link -->
+              <a routerLink="/configuracion/series-facturas" 
+                 class="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                    <i class="fas fa-list-ol text-blue-600 dark:text-blue-400"></i>
+                  </div>
+                  <div>
+                    <h3 class="font-medium text-gray-900 dark:text-gray-100">Series de Facturación</h3>
+                    <p class="text-sm text-gray-500">Gestiona las series numéricas de tus facturas</p>
+                  </div>
+                </div>
+                <i class="fas fa-chevron-right text-gray-400"></i>
+              </a>
+
+              <!-- Verifactu Settings Link (only if module active) -->
+              @if (hasVerifactuModule()) {
+                <a routerLink="/configuracion/verifactu" 
+                   class="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                      <i class="fas fa-stamp text-purple-600 dark:text-purple-400"></i>
+                    </div>
+                    <div>
+                      <h3 class="font-medium text-gray-900 dark:text-gray-100">Configuración Verifactu</h3>
+                      <p class="text-sm text-gray-500">Certificados y envío a la AEAT</p>
+                    </div>
+                  </div>
+                  <i class="fas fa-chevron-right text-gray-400"></i>
+                </a>
+              }
+
+              <!-- Payment Status Info -->
+              <div class="mt-6 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                <h4 class="font-medium text-gray-900 dark:text-gray-100 mb-3">Estado de Integraciones</h4>
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full" 
+                          [class]="paypalIntegration()?.is_active ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'"></span>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">
+                      PayPal: {{ paypalIntegration()?.is_active ? 'Activo' : 'No configurado' }}
+                      @if (paypalIntegration()?.is_sandbox) {
+                        <span class="text-amber-600 dark:text-amber-400">(Sandbox)</span>
+                      }
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full" 
+                          [class]="stripeIntegration()?.is_active ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'"></span>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">
+                      Stripe: {{ stripeIntegration()?.is_active ? 'Activo' : 'No configurado' }}
+                      @if (stripeIntegration()?.is_sandbox) {
+                        <span class="text-amber-600 dark:text-amber-400">(Test)</span>
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- PayPal Tab -->
+      @if (activeTab() === 'paypal') {
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <i class="fab fa-paypal text-2xl text-[#003087]"></i>
+              <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">Integración PayPal</h2>
+            </div>
+            @if (paypalIntegration()?.verification_status === 'verified') {
+              <span class="px-2 py-1 text-xs rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                Verificado
+              </span>
+            }
+          </div>
+          
+          <form [formGroup]="paypalForm" (ngSubmit)="savePaypal()" class="p-6 space-y-4">
+            <!-- Sandbox Toggle -->
+            <div class="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+              <div>
+                <span class="font-medium text-amber-800 dark:text-amber-200">Modo Sandbox</span>
+                <p class="text-xs text-amber-600 dark:text-amber-400">Usa credenciales de prueba de PayPal Developer</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" formControlName="isSandbox" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
+              </label>
+            </div>
+
+            <!-- Client ID -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Client ID *
+              </label>
+              <input type="text" formControlName="clientId"
+                     class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                     placeholder="AXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+            </div>
+
+            <!-- Client Secret -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Client Secret *
+              </label>
+              <div class="relative">
+                <input [type]="showPaypalSecret() ? 'text' : 'password'" formControlName="clientSecret"
+                       class="w-full px-3 py-2 pr-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       placeholder="ELxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                <button type="button" (click)="showPaypalSecret.set(!showPaypalSecret())"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <i class="fas" [class]="showPaypalSecret() ? 'fa-eye-slash' : 'fa-eye'"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Active Toggle -->
+            <div class="flex items-center gap-3 pt-2">
+              <input type="checkbox" formControlName="isActive" id="paypalActive"
+                     class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+              <label for="paypalActive" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Activar integración PayPal
+              </label>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button type="button" (click)="testPaypal()" [disabled]="testingPaypal() || !paypalIntegration()"
+                      class="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                @if (testingPaypal()) {
+                  <i class="fas fa-spinner fa-spin mr-2"></i>
+                } @else {
+                  <i class="fas fa-plug mr-2"></i>
+                }
+                Probar Conexión
+              </button>
+              <button type="submit" [disabled]="savingPaypal() || !paypalForm.valid"
+                      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                @if (savingPaypal()) {
+                  <i class="fas fa-spinner fa-spin mr-2"></i>
+                }
+                Guardar
+              </button>
+            </div>
+          </form>
+
+          <!-- Help -->
+          <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">
+            <p class="text-xs text-gray-500">
+              <i class="fas fa-question-circle mr-1"></i>
+              Obtén tus credenciales en <a href="https://developer.paypal.com/dashboard/applications/sandbox" target="_blank" class="text-blue-500 hover:underline">PayPal Developer Dashboard</a>
+            </p>
+          </div>
+        </div>
+      }
+
+      <!-- Stripe Tab -->
+      @if (activeTab() === 'stripe') {
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+          <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <i class="fab fa-stripe text-2xl text-[#635BFF]"></i>
+              <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">Integración Stripe</h2>
+            </div>
+            @if (stripeIntegration()?.verification_status === 'verified') {
+              <span class="px-2 py-1 text-xs rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">
+                Verificado
+              </span>
+            }
+          </div>
+          
+          <form [formGroup]="stripeForm" (ngSubmit)="saveStripe()" class="p-6 space-y-4">
+            <!-- Sandbox Toggle -->
+            <div class="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+              <div>
+                <span class="font-medium text-amber-800 dark:text-amber-200">Modo Test</span>
+                <p class="text-xs text-amber-600 dark:text-amber-400">Usa las claves de prueba de Stripe (pk_test_ / sk_test_)</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" formControlName="isSandbox" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
+              </label>
+            </div>
+
+            <!-- Publishable Key -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Publishable Key *
+              </label>
+              <input type="text" formControlName="publishableKey"
+                     class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                     placeholder="pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+            </div>
+
+            <!-- Secret Key -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Secret Key *
+              </label>
+              <div class="relative">
+                <input [type]="showStripeSecret() ? 'text' : 'password'" formControlName="secretKey"
+                       class="w-full px-3 py-2 pr-10 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       placeholder="sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                <button type="button" (click)="showStripeSecret.set(!showStripeSecret())"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <i class="fas" [class]="showStripeSecret() ? 'fa-eye-slash' : 'fa-eye'"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Webhook Secret (optional) -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Webhook Secret <span class="text-gray-400">(opcional)</span>
+              </label>
+              <input type="text" formControlName="webhookSecret"
+                     class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                     placeholder="whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+              <p class="mt-1 text-xs text-gray-500">Necesario para recibir notificaciones de pago automáticas</p>
+            </div>
+
+            <!-- Active Toggle -->
+            <div class="flex items-center gap-3 pt-2">
+              <input type="checkbox" formControlName="isActive" id="stripeActive"
+                     class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600">
+              <label for="stripeActive" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Activar integración Stripe
+              </label>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button type="button" (click)="testStripe()" [disabled]="testingStripe() || !stripeIntegration()"
+                      class="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                @if (testingStripe()) {
+                  <i class="fas fa-spinner fa-spin mr-2"></i>
+                } @else {
+                  <i class="fas fa-plug mr-2"></i>
+                }
+                Probar Conexión
+              </button>
+              <button type="submit" [disabled]="savingStripe() || !stripeForm.valid"
+                      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                @if (savingStripe()) {
+                  <i class="fas fa-spinner fa-spin mr-2"></i>
+                }
+                Guardar
+              </button>
+            </div>
+          </form>
+
+          <!-- Help -->
+          <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">
+            <p class="text-xs text-gray-500">
+              <i class="fas fa-question-circle mr-1"></i>
+              Obtén tus claves en <a href="https://dashboard.stripe.com/apikeys" target="_blank" class="text-blue-500 hover:underline">Stripe Dashboard</a>
+            </p>
+          </div>
+        </div>
+      }
+    }
+  }
+</div>

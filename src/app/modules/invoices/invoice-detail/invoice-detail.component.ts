@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { ToastService } from '../../../services/toast.service';
 import { Invoice, formatInvoiceNumber } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
@@ -18,7 +19,7 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-3">
         Factura {{ formatNumber(inv) }}
-        <app-verifactu-badge *ngIf="inv" [invoice]="inv"></app-verifactu-badge>
+        <app-verifactu-badge *ngIf="inv && isVerifactuEnabled()" [invoice]="inv"></app-verifactu-badge>
       </h1>
       <div class="flex items-center gap-3">
         <!-- Dispatcher health pill -->
@@ -35,9 +36,9 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
         <button class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" *ngIf="canRectify(inv)" (click)="rectify(inv.id)">Rectificar</button>
         <button *ngIf="canSendEmail()" class="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60" [disabled]="sendingEmail()" (click)="sendEmail(inv.id)">{{ sendingEmail() ? 'Enviando…' : 'Enviar por email' }}</button>
         
-        <!-- Hide button if sending/pending or accepted -->
+        <!-- Hide button if sending/pending or accepted - Only show if Verifactu module is enabled -->
         <app-issue-verifactu-button 
-          *ngIf="(inv.status === 'draft' || inv.status === 'approved') && verifactuMeta()?.status !== 'accepted' && verifactuMeta()?.status !== 'sending' && verifactuMeta()?.status !== 'pending'" 
+          *ngIf="isVerifactuEnabled() && (inv.status === 'draft' || inv.status === 'approved') && verifactuMeta()?.status !== 'accepted' && verifactuMeta()?.status !== 'sending' && verifactuMeta()?.status !== 'pending'" 
           [invoiceId]="inv.id" 
           (issued)="onIssued()">
         </app-issue-verifactu-button>
@@ -57,8 +58,8 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
         <p class="text-sm text-gray-600 dark:text-gray-300">IVA: {{ inv.tax_amount | number:'1.2-2' }} {{ inv.currency }}</p>
         <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Total: {{ inv.total | number:'1.2-2' }} {{ inv.currency }}</p>
       </div>
-      <!-- VeriFactu Status -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 md:col-span-2">
+      <!-- VeriFactu Status - Only visible if Verifactu module is enabled -->
+      <div *ngIf="isVerifactuEnabled()" class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 md:col-span-2">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200">Estado VeriFactu</h2>
           <div class="flex gap-2 items-center">
@@ -152,6 +153,7 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private invoicesService = inject(SupabaseInvoicesService);
   private quotesService = inject(SupabaseQuotesService);
+  private modulesService = inject(SupabaseModulesService);
   private toast = inject(ToastService);
   invoice = signal<Invoice | null>(null);
   verifactuMeta = signal<any | null>(null);
@@ -163,6 +165,14 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   private realtimeSub: { unsubscribe: () => void } | null = null;
 
   now = signal(Date.now());
+
+  // Module-based visibility
+  isVerifactuEnabled = computed(() => {
+    const modules = this.modulesService.modulesSignal();
+    if (!modules) return false;
+    const mod = modules.find(m => m.key === 'moduloVerifactu');
+    return mod?.enabled ?? false;
+  });
 
   attemptsDisplay = computed(() => {
     const last = this.latestRelevantEvent();
@@ -208,13 +218,17 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
         next: (inv) => this.invoice.set(inv),
         error: (err) => console.error('Error loading invoice', err)
       });
-      // Load VeriFactu info
+      // Load VeriFactu info (only if module enabled - but we load anyway for backwards compatibility)
       this.refreshVerifactu(id);
 
       // Subscribe to Realtime
       this.realtimeSub = this.invoicesService.subscribeToVerifactuChanges(id, () => {
         this.refreshVerifactu(id);
       });
+    }
+    // Load modules if not cached
+    if (!this.modulesService.modulesSignal()) {
+      this.modulesService.fetchEffectiveModules().subscribe();
     }
     // Load VF config from server
     this.invoicesService.getVerifactuConfig().subscribe({
@@ -353,14 +367,23 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Only allow showing the "Enviar por email" button when VeriFactu process is completed
+  // Only allow showing the "Enviar por email" button when appropriate
+  // - If Verifactu module is enabled: require VeriFactu status 'accepted' or 'sent'
+  // - If Verifactu module is disabled: allow for any approved/issued/sent/paid invoice
   canSendEmail(): boolean {
     const inv = this.invoice();
-    const meta = this.verifactuMeta();
     if (!inv) return false;
+    const status = inv.status as string;
     // Don't show for drafts, voided or cancelled invoices
-    if (inv.status === 'draft' || inv.status === 'void' || inv.status === 'cancelled') return false;
-    // Require a completed VeriFactu status: 'accepted' or 'sent'
+    if (status === 'draft' || status === 'void' || status === 'cancelled') return false;
+    
+    // If Verifactu module is disabled, allow email for approved/issued/sent/paid invoices
+    if (!this.isVerifactuEnabled()) {
+      return ['approved', 'issued', 'sent', 'paid'].includes(status);
+    }
+    
+    // If Verifactu is enabled, require a completed VeriFactu status: 'accepted' or 'sent'
+    const meta = this.verifactuMeta();
     const s = (meta?.status || '').toLowerCase();
     return s === 'accepted' || s === 'sent';
   }
@@ -381,7 +404,7 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   }
 
   isSentOrLater(status: string): boolean {
-    return ['sent', 'paid', 'partial', 'overdue', 'final'].includes(status);
+    return ['sent', 'paid', 'partial', 'overdue', 'issued'].includes(status);
   }
 
   canCancel(inv: Invoice): boolean {

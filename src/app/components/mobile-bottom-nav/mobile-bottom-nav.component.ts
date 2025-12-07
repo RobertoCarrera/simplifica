@@ -206,8 +206,8 @@ export class MobileBottomNavComponent implements OnInit {
         items.push({ id: 'facturacion', label: 'Facturación', icon: 'file-invoice-dollar', route: '/facturacion' });
       }
       
-      // Chat (visible para owner/admin/dev)
-      if (isOwnerOrAdmin || isDev) {
+      // Chat (visible para owner/admin/dev Y si moduloChat está habilitado)
+      if ((isOwnerOrAdmin || isDev) && allowed?.has('moduloChat')) {
         items.push({ id: 'chat', label: 'Chat', icon: 'comments', route: '/chat' });
       }
       
@@ -333,6 +333,8 @@ export class MobileBottomNavComponent implements OnInit {
       case '/facturacion':
       case '/portal/facturas':
         return 'moduloFacturas';
+      case '/chat':
+        return 'moduloChat';
       default:
         return null;
     }

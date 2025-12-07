@@ -45,6 +45,7 @@ import { MigrateClientsComponent } from './components/migrate-clients/migrate-cl
 import { VerifactuSettingsComponent } from './modules/invoices/verifactu-settings/verifactu-settings.component';
 import { InvoiceSeriesSettingsComponent } from './modules/invoices/invoice-series-settings/invoice-series-settings.component';
 import { QuotesSettingsComponent } from './components/quotes-settings/quotes-settings.component';
+import { BillingSettingsComponent } from './components/billing-settings/billing-settings.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
@@ -56,7 +57,7 @@ export const routes: Routes = [
     {path: 'ticket/:id', component: TicketDetailComponent, canActivate: [AuthGuard]},
     {path: 'productos', component: ProductsComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloMaterial' }},
     {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' }},
-    {path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    {path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloChat' }},
     {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
     {path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloAnaliticas' }},
     {path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
@@ -65,6 +66,7 @@ export const routes: Routes = [
     {path: 'configuracion/series-facturas', component: InvoiceSeriesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion/verifactu', component: VerifactuSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'configuracion/presupuestos', component: QuotesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    {path: 'configuracion/facturacion', component: BillingSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
     // Admin modules management (solo admin)
     {path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard]},

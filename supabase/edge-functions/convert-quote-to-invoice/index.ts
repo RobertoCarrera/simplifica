@@ -217,10 +217,23 @@ serve(async (req) => {
       .eq('id', quote_id);
     if (uqErr) return new Response(JSON.stringify({ error: 'Factura creada pero no se pudo actualizar el presupuesto', invoice_id: invoiceId, details: uqErr.message }), { status: 207, headers });
 
-    // Optional: auto-finalize with VeriFactu
+    // Optional: auto-finalize with VeriFactu (only if module is enabled for this user)
     let finalizeOk = false; let finalizeError: string | null = null;
     const autoFinalize = (Deno.env.get('VERIFACTU_AUTO_FINALIZE') || 'false').toLowerCase() === 'true';
-    if (autoFinalize && (seriesRow as any)?.verifactu_enabled) {
+    
+    // Check if moduloVerifactu is enabled for the user
+    let verifactuModuleEnabled = false;
+    {
+      const { data: userModule } = await admin
+        .from('user_modules')
+        .select('status')
+        .eq('user_id', profile.id)
+        .eq('module_key', 'moduloVerifactu')
+        .maybeSingle();
+      verifactuModuleEnabled = userModule?.status === 'activado';
+    }
+    
+    if (autoFinalize && verifactuModuleEnabled && (seriesRow as any)?.verifactu_enabled) {
       try {
         const serviceRole = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
         if (serviceRole) {

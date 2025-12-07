@@ -1,7 +1,8 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { Invoice, formatInvoiceNumber } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
 
@@ -13,7 +14,8 @@ import { environment } from '../../../../environments/environment';
   <div class="p-4">
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Facturación</h1>
-      <div *ngIf="dispatcherHealth() as h" class="flex items-center gap-2">
+      <!-- Dispatcher health - only show if Verifactu module is enabled -->
+      <div *ngIf="isVerifactuEnabled() && dispatcherHealth() as h" class="flex items-center gap-2">
         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
               [ngClass]="h.pending > 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'">
           <span class="w-2 h-2 rounded-full mr-1.5" [ngClass]="h.pending > 0 ? 'bg-amber-500' : 'bg-emerald-500'"></span>
@@ -74,10 +76,23 @@ import { environment } from '../../../../environments/environment';
 })
 export class InvoiceListComponent implements OnInit {
   private invoicesService = inject(SupabaseInvoicesService);
+  private modulesService = inject(SupabaseModulesService);
   invoices = signal<Invoice[]>([]);
   dispatcherHealth = signal<{ pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; } | null>(null);
 
+  // Module-based visibility
+  isVerifactuEnabled = computed(() => {
+    const modules = this.modulesService.modulesSignal();
+    if (!modules) return false;
+    const mod = modules.find(m => m.key === 'moduloVerifactu');
+    return mod?.enabled ?? false;
+  });
+
   ngOnInit(): void {
+    // Load modules if not cached
+    if (!this.modulesService.modulesSignal()) {
+      this.modulesService.fetchEffectiveModules().subscribe();
+    }
     this.invoicesService.getInvoices().subscribe({
       next: (list) => this.invoices.set(list || []),
       error: (err) => console.error('Error loading invoices', err)
