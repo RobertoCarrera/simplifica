@@ -78,6 +78,7 @@ export class AnalyticsService {
   private projectedDraftMonthly = signal<{ total: number; draftCount: number } | null>(null);
   private allDraftQuotes = signal<{ total: number; count: number } | null>(null);
   private recurringMonthly = signal<{ total: number; count: number } | null>(null);
+  private currentPipeline = signal<{ total: number; count: number } | null>(null);
   
   // Historical trend: last 6 months of quotes data (server-computed)
   private quoteHistoricalTrend = signal<Array<{ 
@@ -188,12 +189,19 @@ export class AnalyticsService {
     const proj = this.projectedDraftMonthly();
     const allDrafts = this.allDraftQuotes();
     const recurring = this.recurringMonthly();
+    const pipeline = this.currentPipeline();
     const includeTax = this.pricesIncludeTax();
     
-    // Sumar recurrentes a las métricas del mes
-    const totalQuotesCount = (kpis?.quotes_count || 0) + (recurring?.count || 0);
-    const totalPipelineValue = (kpis?.subtotal_sum || 0) + (recurring?.total || 0);
-    const hasRecurring = recurring && recurring.count > 0;
+    // Usar el pipeline actual (incluye TODOS los presupuestos pendientes, sin importar cuándo se crearon)
+    // y sumarle los recurrentes programados
+    const pipelineCount = pipeline?.count || 0;
+    const pipelineValue = pipeline?.total || 0;
+    const recurringCount = recurring?.count || 0;
+    const recurringValue = recurring?.total || 0;
+    
+    const totalQuotesCount = pipelineCount + recurringCount;
+    const totalPipelineValue = pipelineValue + recurringValue;
+    const hasRecurring = recurringCount > 0;
     
     const metrics: DashboardMetric[] = [
       {
@@ -205,8 +213,8 @@ export class AnalyticsService {
         icon: '📄',
         color: '#3b82f6',
         description: hasRecurring 
-          ? `${kpis?.quotes_count || 0} creados + ${recurring?.count || 0} recurrentes`
-          : 'Nº de presupuestos (mes actual)'
+          ? `${pipelineCount} pendientes + ${recurringCount} recurrentes`
+          : `${pipelineCount} presupuestos pendientes`
       },
       {
         id: 'total-quoted-month',
@@ -217,7 +225,7 @@ export class AnalyticsService {
         icon: '📊',
         color: '#8b5cf6',
         description: hasRecurring
-          ? `Incluye ${this.formatCurrency(recurring?.total || 0)} de recurrentes`
+          ? `${this.formatCurrency(pipelineValue)} pendientes + ${this.formatCurrency(recurringValue)} recurrentes`
           : 'Valor potencial de presupuestos (sin IVA)'
       },
       {
@@ -349,6 +357,9 @@ export class AnalyticsService {
   // Recurrentes mensuales
   getRecurringMonthly = computed(() => this.recurringMonthly());
   
+  // Pipeline actual (todos los presupuestos pendientes)
+  getCurrentPipeline = computed(() => this.currentPipeline());
+  
   // Legacy (deprecated)
   getHistoricalTrend = computed(() => this.quoteHistoricalTrend());
   
@@ -377,6 +388,7 @@ export class AnalyticsService {
         this.loadQuoteHistoricalTrend(),
         this.loadAllDraftQuotes(),
         this.loadRecurringMonthly(),
+        this.loadCurrentPipeline(),
         this.loadInvoiceMonthlyAnalytics(),
         this.loadInvoiceHistoricalTrend(),
         this.loadTicketMonthlyAnalytics(),
@@ -526,6 +538,33 @@ export class AnalyticsService {
     } catch (e) {
       console.warn('[AnalyticsService] Error loading recurring monthly:', e);
       this.recurringMonthly.set(null);
+    }
+  }
+
+  // --- PIPELINE ACTUAL: Cargar TODOS los presupuestos pendientes actuales ---
+  private async loadCurrentPipeline(): Promise<void> {
+    try {
+      const { data, error } = await this.supabase.instance.rpc('f_quote_pipeline_current', {});
+      
+      if (error) {
+        console.warn('[AnalyticsService] f_quote_pipeline_current error:', error.message);
+        this.currentPipeline.set(null);
+        return;
+      }
+
+      const row = (data as any[] | null)?.[0] || null;
+      if (row) {
+        const includeTax = this.pricesIncludeTax();
+        const total = Number((includeTax ? row.subtotal_sum : row.total_sum) ?? 0);
+        const count = Number(row.quotes_count ?? 0);
+        
+        this.currentPipeline.set({ total, count });
+      } else {
+        this.currentPipeline.set({ total: 0, count: 0 });
+      }
+    } catch (e) {
+      console.warn('[AnalyticsService] Error loading current pipeline:', e);
+      this.currentPipeline.set(null);
     }
   }
 

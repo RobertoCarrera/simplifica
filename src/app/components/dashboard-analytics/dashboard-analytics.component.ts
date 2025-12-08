@@ -311,6 +311,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   invoiceHistoricalData = this.analyticsService.getInvoiceHistoricalTrend;
   ticketHistoricalData = this.analyticsService.getTicketHistoricalTrend;
   recurringMonthly = this.analyticsService.getRecurringMonthly;
+  currentPipeline = this.analyticsService.getCurrentPipeline;
   isLoading = this.analyticsService.isLoading;
   error = signal<string | null>(null);
 
@@ -332,13 +333,14 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
     const quoteData = this.quoteHistoricalData();
     const invoiceData = this.invoiceHistoricalData();
     const recurring = this.recurringMonthly();
+    const pipeline = this.currentPipeline();
     const isDark = document.documentElement.classList.contains('dark');
     
     // Responsive: limit months based on screen size
     const isMobile = window.innerWidth < 768;
     const maxMonths = isMobile ? 4 : 6;
     
-    // Mes actual para agregar recurrentes
+    // Mes actual para usar pipeline actual + recurrentes
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     
@@ -351,13 +353,15 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
     
     // Crear series para el gráfico - Presupuestos (potencial) vs Facturas (confirmado)
     const quoteSeries = sortedMonths.map(month => {
-      const data = quoteData.find(d => d.month === month);
-      const baseValue = data?.subtotal || 0;
-      // Si es el mes actual, sumar los recurrentes
-      if (month === currentMonth && recurring) {
-        return baseValue + recurring.total;
+      // Si es el mes actual, usar pipeline actual + recurrentes (incluye presupuestos de meses anteriores que siguen pendientes)
+      if (month === currentMonth) {
+        const pipelineValue = pipeline?.total || 0;
+        const recurringValue = recurring?.total || 0;
+        return pipelineValue + recurringValue;
       }
-      return baseValue;
+      // Para meses pasados, usar los datos históricos
+      const data = quoteData.find(d => d.month === month);
+      return data?.subtotal || 0;
     });
     
     const invoiceTotalSeries = sortedMonths.map(month => {
@@ -471,17 +475,53 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
         style: {
           fontSize: '12px'
         },
+        fixed: {
+          enabled: true,
+          position: 'topRight',
+          offsetX: -10,
+          offsetY: 0
+        },
         custom: ({ series, seriesIndex, dataPointIndex, w }: any) => {
           const month = sortedMonths[dataPointIndex];
           const quotePoint = quoteData.find(d => d.month === month);
           const invoicePoint = invoiceData.find(d => d.month === month);
           
+          // Si es el mes actual, usar pipeline actual + recurrentes
+          const now = new Date();
+          const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+          const isCurrentMonth = month === currentMonth;
+          
           const bgColor = isDark ? '#1f2937' : '#ffffff';
           const textColor = isDark ? '#f3f4f6' : '#111827';
           const borderColor = isDark ? '#374151' : '#e5e7eb';
           
+          // Calcular totales de presupuestos
+          let quoteBaseCount = 0;
+          let quoteBaseValue = 0;
+          let recurringCount = 0;
+          let recurringValue = 0;
+          let totalQuoteCount = 0;
+          let totalQuoteValue = 0;
+          
+          if (isCurrentMonth) {
+            // Mes actual: usar pipeline actual + recurrentes
+            quoteBaseCount = pipeline?.count || 0;
+            quoteBaseValue = pipeline?.total || 0;
+            recurringCount = recurring?.count || 0;
+            recurringValue = recurring?.total || 0;
+          } else {
+            // Mes pasado: usar datos históricos
+            quoteBaseCount = quotePoint?.count || 0;
+            quoteBaseValue = quotePoint?.subtotal || 0;
+            recurringCount = 0;
+            recurringValue = 0;
+          }
+          
+          totalQuoteCount = quoteBaseCount + recurringCount;
+          totalQuoteValue = quoteBaseValue + recurringValue;
+          
           return `
-            <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 8px; padding: 12px; min-width: 220px;">
+            <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 8px; padding: 12px; min-width: 240px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
               <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; color: ${textColor}; border-bottom: 1px solid ${borderColor}; padding-bottom: 6px;">
                 ${this.formatMonthLabel(month)}
               </div>
@@ -512,12 +552,32 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 12px;">
                   <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Cantidad:</span>
-                  <span style="font-weight: 600; color: ${textColor};">${quotePoint?.count || 0}</span>
+                  <span style="font-weight: 600; color: ${textColor};">${totalQuoteCount}</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 12px;">
+                ${isCurrentMonth && recurringCount > 0 ? `
+                <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin-left: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'};">
+                  <span>└─ Creados:</span>
+                  <span>${quoteBaseCount}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin-left: 12px; color: #f59e0b;">
+                  <span>└─ 🔄 Recurrentes:</span>
+                  <span style="font-weight: 600;">${recurringCount}</span>
+                </div>
+                ` : ''}
+                <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 12px; margin-top: 4px;">
                   <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Valor:</span>
-                  <span style="font-weight: 600; color: #8b5cf6;">${this.formatCurrency(quotePoint?.subtotal || 0)}</span>
+                  <span style="font-weight: 600; color: #8b5cf6;">${this.formatCurrency(totalQuoteValue)}</span>
                 </div>
+                ${isCurrentMonth && recurringValue > 0 ? `
+                <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin-left: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'};">
+                  <span>└─ Creados:</span>
+                  <span>${this.formatCurrency(quoteBaseValue)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin-left: 12px; color: #f59e0b;">
+                  <span>└─ 🔄 Recurrentes:</span>
+                  <span style="font-weight: 600;">${this.formatCurrency(recurringValue)}</span>
+                </div>
+                ` : ''}
               </div>
             </div>
           `;
