@@ -257,7 +257,14 @@ export class QuoteListComponent implements OnInit {
   // Compute display total with VAT according to settings for consistency with form/detail
   displayTotal(quote: Quote): number {
     const items = (quote.items || []) as any[];
-    if (!items.length) return Number(quote.total_amount || 0);
+    if (!items.length) {
+      // If no items, use stored values
+      if (this.pricesIncludeTax()) {
+        return Number(quote.subtotal || 0);
+      } else {
+        return Number(quote.total_amount || 0);
+      }
+    }
 
     let subtotal = 0;
     let taxAmount = 0;
@@ -290,8 +297,14 @@ export class QuoteListComponent implements OnInit {
     }
 
     const irpf = this.irpfEnabled() ? baseNetForIrpf * (this.irpfRate() / 100) : 0;
-    const total = subtotal + taxAmount - irpf;
-    return Math.round(total * 100) / 100;
+    
+    // Return subtotal if prices include tax, otherwise return total
+    if (this.pricesIncludeTax()) {
+      return Math.round(subtotal * 100) / 100;
+    } else {
+      const total = subtotal + taxAmount - irpf;
+      return Math.round(total * 100) / 100;
+    }
   }
 
   deleteQuote(id: string) {

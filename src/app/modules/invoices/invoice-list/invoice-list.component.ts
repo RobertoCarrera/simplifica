@@ -3,8 +3,10 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
+import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { Invoice, formatInvoiceNumber } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-invoice-list',
@@ -61,7 +63,7 @@ import { environment } from '../../../../environments/environment';
                     {{ getStatusLabel(inv) }}
                   </span>
                 </td>
-                <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100 font-medium">{{ inv.total | number:'1.2-2' }} {{ inv.currency || 'EUR' }}</td>
+                <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100 font-medium">{{ getDisplayAmount(inv) | number:'1.2-2' }} {{ inv.currency || 'EUR' }}</td>
                 <td class="px-4 py-2 text-right">
                   <a class="text-blue-600 hover:underline mr-3" [routerLink]="['/facturacion', inv.id]">Ver</a>
                   <button class="text-sm px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700" (click)="downloadPdf(inv.id)">PDF</button>
@@ -83,8 +85,11 @@ import { environment } from '../../../../environments/environment';
 export class InvoiceListComponent implements OnInit {
   private invoicesService = inject(SupabaseInvoicesService);
   private modulesService = inject(SupabaseModulesService);
+  private settingsService = inject(SupabaseSettingsService);
+  
   invoices = signal<Invoice[]>([]);
   dispatcherHealth = signal<{ pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; } | null>(null);
+  pricesIncludeTax = signal<boolean>(false);
 
   // Module-based visibility
   isVerifactuEnabled = computed(() => {
@@ -95,6 +100,9 @@ export class InvoiceListComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    // Load tax configuration
+    this.loadTaxSettings();
+
     // Load modules if not cached
     if (!this.modulesService.modulesSignal()) {
       this.modulesService.fetchEffectiveModules().subscribe();
@@ -105,11 +113,35 @@ export class InvoiceListComponent implements OnInit {
     });
   }
 
+  private async loadTaxSettings(): Promise<void> {
+    try {
+      const [app, company] = await Promise.all([
+        firstValueFrom(this.settingsService.getAppSettings()),
+        firstValueFrom(this.settingsService.getCompanySettings())
+      ]);
+      const effectivePricesIncludeTax = (company?.prices_include_tax ?? null) ?? (app?.default_prices_include_tax ?? false);
+      this.pricesIncludeTax.set(effectivePricesIncludeTax);
+    } catch (err) {
+      console.error('Error loading tax settings:', err);
+      this.pricesIncludeTax.set(false);
+    }
+  }
+
   downloadPdf(invoiceId: string) {
     this.invoicesService.getInvoicePdfUrl(invoiceId).subscribe({
       next: (signed) => window.open(signed, '_blank'),
       error: (e) => console.error('PDF error', e)
     });
+  }
+
+  getDisplayAmount(invoice: Invoice): number {
+    // If prices include tax, show subtotal (net amount)
+    // Otherwise, show total (with tax)
+    if (this.pricesIncludeTax()) {
+      return invoice.subtotal || 0;
+    } else {
+      return invoice.total || 0;
+    }
   }
 
   // runDispatcher(){
