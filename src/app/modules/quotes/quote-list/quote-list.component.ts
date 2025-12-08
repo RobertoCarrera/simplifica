@@ -316,5 +316,61 @@ export class QuoteListComponent implements OnInit {
       }
     });
   }
+
+  // Format recurrence for display
+  formatRecurrence(quote: Quote): string {
+    if (!quote.recurrence_type || quote.recurrence_type === 'none') return '';
+    
+    const interval = quote.recurrence_interval || 1;
+    const type = quote.recurrence_type;
+    
+    const typeLabels: { [key: string]: string } = {
+      'daily': 'día(s)',
+      'weekly': 'semana(s)',
+      'monthly': 'mes(es)',
+      'yearly': 'año(s)'
+    };
+    
+    const label = typeLabels[type] || type;
+    const text = interval === 1 ? `Cada ${label.replace('(s)', '').replace('es', '')}` : `Cada ${interval} ${label}`;
+    
+    if (quote.next_run_at) {
+      const nextDate = new Date(quote.next_run_at);
+      return `${text} (próximo: ${nextDate.toLocaleDateString('es-ES')})`;
+    }
+    
+    return text;
+  }
+
+  formatRecurrenceShort(quote: Quote): string {
+    if (!quote.recurrence_type || quote.recurrence_type === 'none') return '';
+    
+    const interval = quote.recurrence_interval || 1;
+    const type = quote.recurrence_type;
+    
+    const typeShort: { [key: string]: string } = {
+      'daily': 'D',
+      'weekly': 'S',
+      'monthly': 'M',
+      'yearly': 'A'
+    };
+    
+    const short = typeShort[type] || type[0].toUpperCase();
+    return interval === 1 ? short : `${interval}${short}`;
+  }
+
+  getRecurrenceLetter(recurrenceType: string | null | undefined): string {
+    if (!recurrenceType || recurrenceType === 'none') return 'P';
+    
+    const typeMap: { [key: string]: string } = {
+      'daily': 'D',
+      'weekly': 'S',
+      'monthly': 'M',
+      'quarterly': 'T',
+      'yearly': 'A'
+    };
+    
+    return typeMap[recurrenceType] || 'P';
+  }
 }
 

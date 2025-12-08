@@ -194,11 +194,18 @@ export type ChartOptions = {
                 </div>
               </div>
               
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                 @for (metric of quoteMetrics(); track metric.id) {
-                  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 p-3 md:p-4 border border-violet-100 dark:border-violet-900/50">
+                  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 p-3 md:p-4 border border-violet-100 dark:border-violet-900/50"
+                       [class.ring-2]="metric.id === 'recurring-this-month' && metric.changeType === 'increase'"
+                       [class.ring-amber-400]="metric.id === 'recurring-this-month' && metric.changeType === 'increase'">
                     <div class="flex items-start justify-between mb-1">
                       <div class="text-xl md:text-2xl">{{ metric.icon }}</div>
+                      @if (metric.id === 'recurring-this-month' && metric.changeType === 'increase') {
+                        <span class="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 text-[9px] font-semibold rounded">
+                          ¡PROGRAMADO!
+                        </span>
+                      }
                     </div>
                     <div class="space-y-0.5">
                       <p class="text-[10px] md:text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
@@ -303,6 +310,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   quoteHistoricalData = this.analyticsService.getQuoteHistoricalTrend;
   invoiceHistoricalData = this.analyticsService.getInvoiceHistoricalTrend;
   ticketHistoricalData = this.analyticsService.getTicketHistoricalTrend;
+  recurringMonthly = this.analyticsService.getRecurringMonthly;
   isLoading = this.analyticsService.isLoading;
   error = signal<string | null>(null);
 
@@ -323,11 +331,16 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   chartOptions = computed<ChartOptions>(() => {
     const quoteData = this.quoteHistoricalData();
     const invoiceData = this.invoiceHistoricalData();
+    const recurring = this.recurringMonthly();
     const isDark = document.documentElement.classList.contains('dark');
     
     // Responsive: limit months based on screen size
     const isMobile = window.innerWidth < 768;
     const maxMonths = isMobile ? 4 : 6;
+    
+    // Mes actual para agregar recurrentes
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     
     // Combinar datos por mes
     const allMonths = new Set([
@@ -339,7 +352,12 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
     // Crear series para el gráfico - Presupuestos (potencial) vs Facturas (confirmado)
     const quoteSeries = sortedMonths.map(month => {
       const data = quoteData.find(d => d.month === month);
-      return data?.subtotal || 0;
+      const baseValue = data?.subtotal || 0;
+      // Si es el mes actual, sumar los recurrentes
+      if (month === currentMonth && recurring) {
+        return baseValue + recurring.total;
+      }
+      return baseValue;
     });
     
     const invoiceTotalSeries = sortedMonths.map(month => {
@@ -581,6 +599,14 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
     try {
       const [year, m] = month.split('-');
       const date = new Date(Number(year), Number(m) - 1, 1);
+      
+      // Si es el mes actual, mostrar "actual"
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      if (month === currentMonth) {
+        return 'actual';
+      }
+      
       return new Intl.DateTimeFormat('es-ES', { month: 'short' }).format(date);
     } catch {
       return month;

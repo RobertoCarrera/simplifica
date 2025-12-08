@@ -77,6 +77,7 @@ export class AnalyticsService {
   private quoteKpisMonthly = signal<QuoteKpis | null>(null);
   private projectedDraftMonthly = signal<{ total: number; draftCount: number } | null>(null);
   private allDraftQuotes = signal<{ total: number; count: number } | null>(null);
+  private recurringMonthly = signal<{ total: number; count: number } | null>(null);
   
   // Historical trend: last 6 months of quotes data (server-computed)
   private quoteHistoricalTrend = signal<Array<{ 
@@ -186,28 +187,50 @@ export class AnalyticsService {
     const kpis = this.quoteKpisMonthly();
     const proj = this.projectedDraftMonthly();
     const allDrafts = this.allDraftQuotes();
+    const recurring = this.recurringMonthly();
     const includeTax = this.pricesIncludeTax();
+    
+    // Sumar recurrentes a las métricas del mes
+    const totalQuotesCount = (kpis?.quotes_count || 0) + (recurring?.count || 0);
+    const totalPipelineValue = (kpis?.subtotal_sum || 0) + (recurring?.total || 0);
+    const hasRecurring = recurring && recurring.count > 0;
     
     const metrics: DashboardMetric[] = [
       {
         id: 'quotes-month',
         title: 'Presupuestos Mes',
-        value: kpis ? String(kpis.quotes_count) : '0',
+        value: String(totalQuotesCount),
         change: 0,
         changeType: 'neutral',
         icon: '📄',
         color: '#3b82f6',
-        description: 'Nº de presupuestos (mes actual)'
+        description: hasRecurring 
+          ? `${kpis?.quotes_count || 0} creados + ${recurring?.count || 0} recurrentes`
+          : 'Nº de presupuestos (mes actual)'
       },
       {
         id: 'total-quoted-month',
         title: 'Valor Pipeline',
-        value: kpis ? this.formatCurrency(kpis.subtotal_sum) : '0 €',
+        value: this.formatCurrency(totalPipelineValue),
         change: 0,
         changeType: 'neutral',
         icon: '📊',
         color: '#8b5cf6',
-        description: 'Valor potencial de presupuestos (sin IVA)'
+        description: hasRecurring
+          ? `Incluye ${this.formatCurrency(recurring?.total || 0)} de recurrentes`
+          : 'Valor potencial de presupuestos (sin IVA)'
+      },
+      {
+        id: 'recurring-this-month',
+        title: 'Recurrentes Este Mes',
+        value: recurring ? this.formatCurrency(recurring.total) : '0 €',
+        change: 0,
+        changeType: recurring && recurring.count > 0 ? 'increase' : 'neutral',
+        icon: '🔄',
+        color: '#f59e0b',
+        description: recurring && recurring.count > 0 
+          ? `${recurring.count} recurrentes a facturar este mes` 
+          : 'Sin recurrentes programados'
       },
       {
         id: 'conversion-rate',
@@ -323,6 +346,9 @@ export class AnalyticsService {
   getTicketHistoricalTrend = computed(() => this.ticketHistoricalTrend());
   getTicketCurrentStatus = computed(() => this.ticketCurrentStatus());
   
+  // Recurrentes mensuales
+  getRecurringMonthly = computed(() => this.recurringMonthly());
+  
   // Legacy (deprecated)
   getHistoricalTrend = computed(() => this.quoteHistoricalTrend());
   
@@ -350,6 +376,7 @@ export class AnalyticsService {
         this.loadQuoteMonthlyAnalytics(),
         this.loadQuoteHistoricalTrend(),
         this.loadAllDraftQuotes(),
+        this.loadRecurringMonthly(),
         this.loadInvoiceMonthlyAnalytics(),
         this.loadInvoiceHistoricalTrend(),
         this.loadTicketMonthlyAnalytics(),
@@ -467,6 +494,38 @@ export class AnalyticsService {
     } catch (e) {
       console.warn('[AnalyticsService] Error loading all draft quotes:', e);
       this.allDraftQuotes.set(null);
+    }
+  }
+
+  // --- RECURRENTES: Cargar presupuestos recurrentes del mes actual ---
+  private async loadRecurringMonthly(): Promise<void> {
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+    const p_start = start.toISOString().slice(0, 10);
+    const p_end = end.toISOString().slice(0, 10);
+
+    try {
+      const { data, error } = await this.supabase.instance.rpc('f_quote_recurring_monthly', { p_start, p_end });
+      
+      if (error) {
+        console.warn('[AnalyticsService] f_quote_recurring_monthly error:', error.message);
+        this.recurringMonthly.set(null);
+        return;
+      }
+
+      const rows = (data as any[] | null) || [];
+      const includeTax = this.pricesIncludeTax();
+      const monthStr = p_start.slice(0, 7);
+      const monthRows = rows.filter(r => String(r.period_month || '').startsWith(monthStr));
+      
+      const total = monthRows.reduce((acc, r) => acc + Number((includeTax ? r.subtotal : r.grand_total) ?? 0), 0);
+      const count = monthRows.reduce((acc, r) => acc + Number(r.recurring_count ?? 0), 0);
+      
+      this.recurringMonthly.set({ total, count });
+    } catch (e) {
+      console.warn('[AnalyticsService] Error loading recurring monthly:', e);
+      this.recurringMonthly.set(null);
     }
   }
 
