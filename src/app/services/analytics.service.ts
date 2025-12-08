@@ -76,6 +76,7 @@ export class AnalyticsService {
   // ========== PRESUPUESTOS ==========
   private quoteKpisMonthly = signal<QuoteKpis | null>(null);
   private projectedDraftMonthly = signal<{ total: number; draftCount: number } | null>(null);
+  private allDraftQuotes = signal<{ total: number; count: number } | null>(null);
   
   // Historical trend: last 6 months of quotes data (server-computed)
   private quoteHistoricalTrend = signal<Array<{ 
@@ -184,13 +185,14 @@ export class AnalyticsService {
   getQuoteMetrics = computed((): DashboardMetric[] => {
     const kpis = this.quoteKpisMonthly();
     const proj = this.projectedDraftMonthly();
+    const allDrafts = this.allDraftQuotes();
     const includeTax = this.pricesIncludeTax();
     
     const metrics: DashboardMetric[] = [
       {
         id: 'quotes-month',
         title: 'Presupuestos Mes',
-        value: kpis ? String(kpis.quotes_count) : '—',
+        value: kpis ? String(kpis.quotes_count) : '0',
         change: 0,
         changeType: 'neutral',
         icon: '📄',
@@ -200,7 +202,7 @@ export class AnalyticsService {
       {
         id: 'total-quoted-month',
         title: 'Valor Pipeline',
-        value: kpis ? this.formatCurrency(kpis.subtotal_sum) : '—',
+        value: kpis ? this.formatCurrency(kpis.subtotal_sum) : '0 €',
         change: 0,
         changeType: 'neutral',
         icon: '📊',
@@ -212,7 +214,7 @@ export class AnalyticsService {
         title: 'Tasa Conversión',
         value: kpis && kpis.conversion_rate != null 
           ? this.formatPercent(kpis.conversion_rate) 
-          : '—',
+          : '0%',
         change: 0,
         changeType: 'neutral',
         icon: '🎯',
@@ -222,12 +224,12 @@ export class AnalyticsService {
       {
         id: 'projected-draft',
         title: 'En Borrador',
-        value: proj ? this.formatCurrency(proj.total) : '—',
+        value: allDrafts ? this.formatCurrency(allDrafts.total) : '0 €',
         change: 0,
         changeType: 'neutral',
         icon: '📝',
         color: '#64748b',
-        description: proj ? `${proj.draftCount} borradores pendientes` : 'Borradores por enviar'
+        description: allDrafts && allDrafts.count > 0 ? `${allDrafts.count} borradores pendientes` : '0 borradores pendientes'
       }
     ];
 
@@ -253,7 +255,7 @@ export class AnalyticsService {
       {
         id: 'tickets-open',
         title: 'Tickets Abiertos',
-        value: status ? String(openNow) : '—',
+        value: String(openNow),
         change: 0,
         changeType: status && status.critical_open > 0 ? 'decrease' : 'neutral',
         icon: '🎫',
@@ -265,7 +267,7 @@ export class AnalyticsService {
       {
         id: 'tickets-resolved-month',
         title: 'Resueltos Mes',
-        value: kpis ? String(kpis.completed_this_month || 0) : '—',
+        value: String(kpis?.completed_this_month || 0),
         change: 0,
         changeType: 'neutral',
         icon: '✅',
@@ -287,7 +289,7 @@ export class AnalyticsService {
       {
         id: 'tickets-overdue',
         title: 'Vencidos',
-        value: status ? String(status.total_overdue) : '—',
+        value: String(status?.total_overdue || 0),
         change: 0,
         changeType: status && status.total_overdue > 0 ? 'decrease' : 'neutral',
         icon: '⚠️',
@@ -299,7 +301,7 @@ export class AnalyticsService {
       {
         id: 'tickets-invoiced',
         title: 'Facturado Tickets',
-        value: kpis ? this.formatCurrency(kpis.invoiced_amount_sum || 0) : '—',
+        value: this.formatCurrency(kpis?.invoiced_amount_sum || 0),
         change: 0,
         changeType: 'neutral',
         icon: '💵',
@@ -347,6 +349,7 @@ export class AnalyticsService {
       await Promise.all([
         this.loadQuoteMonthlyAnalytics(),
         this.loadQuoteHistoricalTrend(),
+        this.loadAllDraftQuotes(),
         this.loadInvoiceMonthlyAnalytics(),
         this.loadInvoiceHistoricalTrend(),
         this.loadTicketMonthlyAnalytics(),
@@ -440,6 +443,31 @@ export class AnalyticsService {
       .sort((a, b) => a.month.localeCompare(b.month));
     
     this.quoteHistoricalTrend.set(trend);
+  }
+
+  // --- BORRADORES: Cargar todos los presupuestos en borrador (sin filtro de mes) ---
+  private async loadAllDraftQuotes(): Promise<void> {
+    try {
+      // Llamar sin filtro de fechas para obtener TODOS los borradores pendientes
+      const { data, error } = await this.supabase.instance.rpc('f_quote_projected_revenue', {});
+      
+      if (error) {
+        console.warn('[AnalyticsService] f_quote_projected_revenue (all drafts) error:', error.message);
+        this.allDraftQuotes.set(null);
+        return;
+      }
+
+      const rows = (data as any[] | null) || [];
+      const includeTax = this.pricesIncludeTax();
+      // Sumar todos los borradores de todos los meses
+      const total = rows.reduce((acc, r) => acc + Number((includeTax ? r.subtotal : r.grand_total) ?? 0), 0);
+      const count = rows.reduce((acc, r) => acc + Number(r.draft_count ?? 0), 0);
+      
+      this.allDraftQuotes.set({ total, count });
+    } catch (e) {
+      console.warn('[AnalyticsService] Error loading all draft quotes:', e);
+      this.allDraftQuotes.set(null);
+    }
   }
 
   // --- FACTURAS: Server-side analytics over MVs (RPC) ---
