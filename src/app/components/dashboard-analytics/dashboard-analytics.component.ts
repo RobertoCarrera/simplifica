@@ -359,9 +359,8 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
         const recurringValue = recurring?.total || 0;
         return pipelineValue + recurringValue;
       }
-      // Para meses pasados, usar los datos históricos
-      const data = quoteData.find(d => d.month === month);
-      return data?.subtotal || 0;
+      // Para meses pasados: SIEMPRE 0 (los presupuestos pendientes se arrastran al mes actual)
+      return 0;
     });
     
     const invoiceTotalSeries = sortedMonths.map(month => {
@@ -510,9 +509,9 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
             recurringCount = recurring?.count || 0;
             recurringValue = recurring?.total || 0;
           } else {
-            // Mes pasado: usar datos históricos
-            quoteBaseCount = quotePoint?.count || 0;
-            quoteBaseValue = quotePoint?.subtotal || 0;
+            // Mes pasado: NO mostrar presupuestos (se arrastran al actual)
+            quoteBaseCount = 0;
+            quoteBaseValue = 0;
             recurringCount = 0;
             recurringValue = 0;
           }
@@ -545,7 +544,8 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
                 </div>
               </div>
               
-              <!-- Presupuestos -->
+              <!-- Presupuestos (solo mes actual) o Métricas (meses pasados) -->
+              ${isCurrentMonth ? `
               <div>
                 <div style="font-weight: 600; font-size: 11px; color: #8b5cf6; margin-bottom: 4px; text-transform: uppercase;">
                   📄 Presupuestos (Potencial)
@@ -554,9 +554,9 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
                   <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Cantidad:</span>
                   <span style="font-weight: 600; color: ${textColor};">${totalQuoteCount}</span>
                 </div>
-                ${isCurrentMonth && recurringCount > 0 ? `
+                ${recurringCount > 0 ? `
                 <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin-left: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'};">
-                  <span>└─ Creados:</span>
+                  <span>└─ Pendientes:</span>
                   <span>${quoteBaseCount}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin-left: 12px; color: #f59e0b;">
@@ -568,9 +568,9 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
                   <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Valor:</span>
                   <span style="font-weight: 600; color: #8b5cf6;">${this.formatCurrency(totalQuoteValue)}</span>
                 </div>
-                ${isCurrentMonth && recurringValue > 0 ? `
+                ${recurringValue > 0 ? `
                 <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin-left: 12px; color: ${isDark ? '#9ca3af' : '#6b7280'};">
-                  <span>└─ Creados:</span>
+                  <span>└─ Pendientes:</span>
                   <span>${this.formatCurrency(quoteBaseValue)}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 11px; margin-left: 12px; color: #f59e0b;">
@@ -579,6 +579,21 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
                 </div>
                 ` : ''}
               </div>
+              ` : `
+              <div>
+                <div style="font-weight: 600; font-size: 11px; color: #6b7280; margin-bottom: 4px; text-transform: uppercase;">
+                  📊 Métricas del Mes
+                </div>
+                <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 12px;">
+                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Facturas emitidas:</span>
+                  <span style="font-weight: 600; color: ${textColor};">${invoicePoint?.count || 0}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 12px;">
+                  <span style="color: ${isDark ? '#9ca3af' : '#6b7280'};">Tasa cobro:</span>
+                  <span style="font-weight: 600; color: #10b981;">${invoicePoint?.count ? '100%' : '-'}</span>
+                </div>
+              </div>
+              `}
             </div>
           `;
         }

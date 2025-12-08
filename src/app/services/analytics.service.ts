@@ -384,16 +384,15 @@ export class AnalyticsService {
     this.error.set(null);
     try {
       await Promise.all([
-        this.loadQuoteMonthlyAnalytics(),
-        this.loadQuoteHistoricalTrend(),
+        // Consolidar: quotes kpis + trend en una llamada
+        this.loadQuoteKpisAndTrend(),
         this.loadAllDraftQuotes(),
         this.loadRecurringMonthly(),
         this.loadCurrentPipeline(),
-        this.loadInvoiceMonthlyAnalytics(),
-        this.loadInvoiceHistoricalTrend(),
-        this.loadTicketMonthlyAnalytics(),
-        this.loadTicketCurrentStatus(),
-        this.loadTicketHistoricalTrend()
+        // Consolidar: invoice kpis + trend en una llamada
+        this.loadInvoiceKpisAndTrend(),
+        this.loadTicketKpisAndTrend(),
+        this.loadTicketCurrentStatus()
       ]);
     } catch (err: any) {
       console.error('[AnalyticsService] Failed to load analytics', err);
@@ -403,7 +402,64 @@ export class AnalyticsService {
     }
   }
 
-  // --- PRESUPUESTOS: Server-side analytics over MVs (RPC) ---
+  // --- PRESUPUESTOS: Consolidado KPIs + Trend en una sola llamada ---
+  private async loadQuoteKpisAndTrend(): Promise<void> {
+    const now = new Date();
+    // Rango de 6 meses para el histórico (incluye mes actual)
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+    const p_start = start.toISOString().slice(0, 10);
+    const p_end = end.toISOString().slice(0, 10);
+    const currentMonthStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+
+    try {
+      const { data, error } = await this.supabase.instance.rpc('f_quote_kpis_monthly', { p_start, p_end });
+
+      if (error) {
+        console.error('[AnalyticsService] f_quote_kpis_monthly RPC error:', error);
+        this.quoteKpisMonthly.set(null);
+        this.quoteHistoricalTrend.set([]);
+        return;
+      }
+
+      const rows = (data as any[] | null) || [];
+
+      // 1. Extraer datos del mes actual para KPIs
+      const currentRow = rows.find(r => String(r.period_month || '').startsWith(currentMonthStr)) || null;
+      if (currentRow) {
+        this.quoteKpisMonthly.set({
+          period_month: currentRow.period_month,
+          quotes_count: Number(currentRow.quotes_count || 0),
+          subtotal_sum: Number(currentRow.subtotal_sum || 0),
+          tax_sum: Number(currentRow.tax_sum || 0),
+          total_sum: Number(currentRow.total_sum || 0),
+          avg_days_to_accept: currentRow.avg_days_to_accept == null ? null : Number(currentRow.avg_days_to_accept),
+          conversion_rate: currentRow.conversion_rate == null ? null : Number(currentRow.conversion_rate)
+        });
+      } else {
+        this.quoteKpisMonthly.set(null);
+      }
+
+      // 2. Mapear todos los datos para el histórico/trend
+      const trend = rows
+        .map(r => ({
+          month: String(r.period_month || '').slice(0, 7),
+          total: Number(r.total_sum || 0),
+          subtotal: Number(r.subtotal_sum || 0),
+          tax: Number(r.tax_sum || 0),
+          count: Number(r.quotes_count || 0)
+        }))
+        .sort((a, b) => a.month.localeCompare(b.month));
+      
+      this.quoteHistoricalTrend.set(trend);
+    } catch (e) {
+      console.error('[AnalyticsService] Error loading quote KPIs and trend:', e);
+      this.quoteKpisMonthly.set(null);
+      this.quoteHistoricalTrend.set([]);
+    }
+  }
+
+  // --- PRESUPUESTOS: Cargar projected revenue (borradores del mes actual) ---
   private async loadQuoteMonthlyAnalytics(): Promise<void> {
     const now = new Date();
     const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -411,77 +467,32 @@ export class AnalyticsService {
     const p_start = start.toISOString().slice(0, 10); // YYYY-MM-DD
     const p_end = end.toISOString().slice(0, 10);
 
-    // In parallel: KPIs and Projected Draft
-    const [kpisRes, projRes] = await Promise.all([
-      this.supabase.instance.rpc('f_quote_kpis_monthly', { p_start, p_end }),
-      this.supabase.instance.rpc('f_quote_projected_revenue', { p_start, p_end })
-    ]);
+    try {
+      const { data: projRes, error } = await this.supabase.instance.rpc('f_quote_projected_revenue', { p_start, p_end });
 
-    if (kpisRes.error) {
-      console.error('[AnalyticsService] f_quote_kpis_monthly RPC error:', kpisRes.error);
-    } else {
-      // Expect one row for current month
-      const monthStr = p_start.slice(0, 7);
-      const row = (kpisRes.data as any[] | null)?.find(r => String(r.period_month || '').startsWith(monthStr)) || null;
-      if (row) {
-        this.quoteKpisMonthly.set({
-          period_month: row.period_month,
-          quotes_count: Number(row.quotes_count || 0),
-          subtotal_sum: Number(row.subtotal_sum || 0),
-          tax_sum: Number(row.tax_sum || 0),
-          total_sum: Number(row.total_sum || 0),
-          avg_days_to_accept: row.avg_days_to_accept == null ? null : Number(row.avg_days_to_accept),
-          conversion_rate: row.conversion_rate == null ? null : Number(row.conversion_rate)
-        });
-      } else {
-        this.quoteKpisMonthly.set(null);
+      if (error) {
+        console.error('[AnalyticsService] f_quote_projected_revenue RPC error:', error);
+        this.projectedDraftMonthly.set(null);
+        return;
       }
-    }
 
-    if (projRes.error) {
-      console.error('[AnalyticsService] f_quote_projected_revenue RPC error:', projRes.error);
-      this.projectedDraftMonthly.set(null);
-    } else {
       // Sum based on prices_include_tax preference
       const monthStr = p_start.slice(0, 7);
-      const rows = (projRes.data as any[] | null) || [];
+      const rows = (projRes as any[] | null) || [];
       const monthRows = rows.filter(r => String(r.period_month || '').startsWith(monthStr));
       const includeTax = this.pricesIncludeTax();
-      // Use subtotal if prices include tax (show net), otherwise use grand_total
       const total = monthRows.reduce((acc, r) => acc + Number((includeTax ? r.subtotal : r.grand_total) ?? 0), 0);
       const draftCount = monthRows.reduce((acc, r) => acc + Number(r.draft_count ?? 0), 0);
       this.projectedDraftMonthly.set({ total, draftCount });
+    } catch (e) {
+      console.error('[AnalyticsService] Error loading projected revenue:', e);
+      this.projectedDraftMonthly.set(null);
     }
   }
 
+  // Mantener para compatibilidad (ahora no se usa directamente)
   private async loadQuoteHistoricalTrend(): Promise<void> {
-    const now = new Date();
-    // Last 6 months
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
-    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
-    const p_start = start.toISOString().slice(0, 10);
-    const p_end = end.toISOString().slice(0, 10);
-
-    const { data, error } = await this.supabase.instance.rpc('f_quote_kpis_monthly', { p_start, p_end });
-    if (error) {
-      console.error('[AnalyticsService] f_quote_kpis_monthly (trend) RPC error:', error);
-      this.quoteHistoricalTrend.set([]);
-      return;
-    }
-
-    const rows = (data as any[] | null) || [];
-    // Map and sort by period_month - include all data for enhanced chart
-    const trend = rows
-      .map(r => ({
-        month: String(r.period_month || '').slice(0, 7), // YYYY-MM
-        total: Number(r.total_sum || 0),
-        subtotal: Number(r.subtotal_sum || 0),
-        tax: Number(r.tax_sum || 0),
-        count: Number(r.quotes_count || 0)
-      }))
-      .sort((a, b) => a.month.localeCompare(b.month));
-    
-    this.quoteHistoricalTrend.set(trend);
+    // Esta funcionalidad está ahora consolidada en loadQuoteKpisAndTrend
   }
 
   // --- BORRADORES: Cargar todos los presupuestos en borrador (sin filtro de mes) ---
@@ -568,73 +579,54 @@ export class AnalyticsService {
     }
   }
 
-  // --- FACTURAS: Server-side analytics over MVs (RPC) ---
-  private async loadInvoiceMonthlyAnalytics(): Promise<void> {
+  // --- FACTURAS: Consolidado KPIs + Trend en una sola llamada ---
+  private async loadInvoiceKpisAndTrend(): Promise<void> {
     const now = new Date();
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
-    const p_start = start.toISOString().slice(0, 10);
-    const p_end = end.toISOString().slice(0, 10);
-
-    try {
-      const { data, error } = await this.supabase.instance.rpc('f_invoice_kpis_monthly', { p_start, p_end });
-
-      if (error) {
-        // Si la función no existe aún, simplemente no mostramos datos de facturas
-        console.warn('[AnalyticsService] f_invoice_kpis_monthly RPC error (puede que no esté desplegada):', error.message);
-        this.invoiceKpisMonthly.set(null);
-        return;
-      }
-
-      const monthStr = p_start.slice(0, 7);
-      const row = (data as any[] | null)?.find(r => String(r.period_month || '').startsWith(monthStr)) || null;
-      
-      if (row) {
-        this.invoiceKpisMonthly.set({
-          period_month: row.period_month,
-          invoices_count: Number(row.invoices_count || 0),
-          paid_count: Number(row.paid_count || 0),
-          pending_count: Number(row.pending_count || 0),
-          overdue_count: Number(row.overdue_count || 0),
-          cancelled_count: Number(row.cancelled_count || 0),
-          draft_count: Number(row.draft_count || 0),
-          subtotal_sum: Number(row.subtotal_sum || 0),
-          tax_sum: Number(row.tax_sum || 0),
-          total_sum: Number(row.total_sum || 0),
-          collected_sum: Number(row.collected_sum || 0),
-          pending_sum: Number(row.pending_sum || 0),
-          paid_total_sum: Number(row.paid_total_sum || 0),
-          receivable_sum: Number(row.receivable_sum || 0),
-          avg_invoice_value: Number(row.avg_invoice_value || 0),
-          collection_rate: Number(row.collection_rate || 0)
-        });
-      } else {
-        this.invoiceKpisMonthly.set(null);
-      }
-    } catch (e) {
-      console.warn('[AnalyticsService] Error loading invoice analytics:', e);
-      this.invoiceKpisMonthly.set(null);
-    }
-  }
-
-  private async loadInvoiceHistoricalTrend(): Promise<void> {
-    const now = new Date();
-    // Last 6 months
+    // Rango de 6 meses para el histórico (incluye mes actual)
     const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
     const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
     const p_start = start.toISOString().slice(0, 10);
     const p_end = end.toISOString().slice(0, 10);
+    const currentMonthStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 
     try {
       const { data, error } = await this.supabase.instance.rpc('f_invoice_kpis_monthly', { p_start, p_end });
-      
+
       if (error) {
-        console.warn('[AnalyticsService] f_invoice_kpis_monthly (trend) RPC error:', error.message);
+        console.warn('[AnalyticsService] f_invoice_kpis_monthly RPC error:', error.message);
+        this.invoiceKpisMonthly.set(null);
         this.invoiceHistoricalTrend.set([]);
         return;
       }
 
       const rows = (data as any[] | null) || [];
+
+      // 1. Extraer datos del mes actual para KPIs
+      const currentRow = rows.find(r => String(r.period_month || '').startsWith(currentMonthStr)) || null;
+      if (currentRow) {
+        this.invoiceKpisMonthly.set({
+          period_month: currentRow.period_month,
+          invoices_count: Number(currentRow.invoices_count || 0),
+          paid_count: Number(currentRow.paid_count || 0),
+          pending_count: Number(currentRow.pending_count || 0),
+          overdue_count: Number(currentRow.overdue_count || 0),
+          cancelled_count: Number(currentRow.cancelled_count || 0),
+          draft_count: Number(currentRow.draft_count || 0),
+          subtotal_sum: Number(currentRow.subtotal_sum || 0),
+          tax_sum: Number(currentRow.tax_sum || 0),
+          total_sum: Number(currentRow.total_sum || 0),
+          collected_sum: Number(currentRow.collected_sum || 0),
+          pending_sum: Number(currentRow.pending_sum || 0),
+          paid_total_sum: Number(currentRow.paid_total_sum || 0),
+          receivable_sum: Number(currentRow.receivable_sum || 0),
+          avg_invoice_value: Number(currentRow.avg_invoice_value || 0),
+          collection_rate: Number(currentRow.collection_rate || 0)
+        });
+      } else {
+        this.invoiceKpisMonthly.set(null);
+      }
+
+      // 2. Mapear todos los datos para el histórico/trend
       const trend = rows
         .map(r => ({
           month: String(r.period_month || '').slice(0, 7),
@@ -648,58 +640,96 @@ export class AnalyticsService {
       
       this.invoiceHistoricalTrend.set(trend);
     } catch (e) {
-      console.warn('[AnalyticsService] Error loading invoice trend:', e);
+      console.warn('[AnalyticsService] Error loading invoice KPIs and trend:', e);
+      this.invoiceKpisMonthly.set(null);
       this.invoiceHistoricalTrend.set([]);
     }
   }
 
-  // --- TICKETS: Server-side analytics over MVs (RPC) ---
-  private async loadTicketMonthlyAnalytics(): Promise<void> {
+  // Mantener para compatibilidad (ahora no se usa directamente)
+  private async loadInvoiceMonthlyAnalytics(): Promise<void> {
+    // Esta funcionalidad está ahora consolidada en loadInvoiceKpisAndTrend
+  }
+
+  // Mantener para compatibilidad (ahora no se usa directamente)
+  private async loadInvoiceHistoricalTrend(): Promise<void> {
+    // Esta funcionalidad está ahora consolidada en loadInvoiceKpisAndTrend
+  }
+
+  // --- TICKETS: Consolidado KPIs + Trend en una sola llamada ---
+  private async loadTicketKpisAndTrend(): Promise<void> {
     const now = new Date();
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    // Rango de 6 meses para el histórico
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
     const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
     const p_start = start.toISOString().slice(0, 10);
     const p_end = end.toISOString().slice(0, 10);
+    const currentMonthStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
 
     try {
       const { data, error } = await this.supabase.instance.rpc('f_ticket_kpis_monthly', { p_start, p_end });
 
       if (error) {
-        console.warn('[AnalyticsService] f_ticket_kpis_monthly RPC error (puede que no esté desplegada):', error.message);
+        console.warn('[AnalyticsService] f_ticket_kpis_monthly RPC error:', error.message);
         this.ticketKpisMonthly.set(null);
+        this.ticketHistoricalTrend.set([]);
         return;
       }
 
-      const monthStr = p_start.slice(0, 7);
-      const row = (data as any[] | null)?.find(r => String(r.period_month || '').startsWith(monthStr)) || null;
-      
-      if (row) {
+      const rows = (data as any[] | null) || [];
+
+      // 1. Extraer datos del mes actual para KPIs
+      const currentRow = rows.find(r => String(r.period_month || '').startsWith(currentMonthStr)) || null;
+      if (currentRow) {
         this.ticketKpisMonthly.set({
-          period_month: row.period_month,
-          tickets_created: Number(row.tickets_created || 0),
-          critical_count: Number(row.critical_count || 0),
-          high_priority_count: Number(row.high_priority_count || 0),
-          normal_priority_count: Number(row.normal_priority_count || 0),
-          low_priority_count: Number(row.low_priority_count || 0),
-          open_count: Number(row.open_count || 0),
-          in_progress_count: Number(row.in_progress_count || 0),
-          completed_count: Number(row.completed_count || 0),
-          completed_this_month: Number(row.completed_this_month || 0),
-          overdue_count: Number(row.overdue_count || 0),
-          total_amount_sum: Number(row.total_amount_sum || 0),
-          invoiced_amount_sum: Number(row.invoiced_amount_sum || 0),
-          avg_resolution_days: row.avg_resolution_days == null ? null : Number(row.avg_resolution_days),
-          min_resolution_days: row.min_resolution_days == null ? null : Number(row.min_resolution_days),
-          max_resolution_days: row.max_resolution_days == null ? null : Number(row.max_resolution_days),
-          resolution_rate: row.resolution_rate == null ? null : Number(row.resolution_rate)
+          period_month: currentRow.period_month,
+          tickets_created: Number(currentRow.tickets_created || 0),
+          critical_count: Number(currentRow.critical_count || 0),
+          high_priority_count: Number(currentRow.high_priority_count || 0),
+          normal_priority_count: Number(currentRow.normal_priority_count || 0),
+          low_priority_count: Number(currentRow.low_priority_count || 0),
+          open_count: Number(currentRow.open_count || 0),
+          in_progress_count: Number(currentRow.in_progress_count || 0),
+          completed_count: Number(currentRow.completed_count || 0),
+          completed_this_month: Number(currentRow.completed_this_month || 0),
+          overdue_count: Number(currentRow.overdue_count || 0),
+          total_amount_sum: Number(currentRow.total_amount_sum || 0),
+          invoiced_amount_sum: Number(currentRow.invoiced_amount_sum || 0),
+          avg_resolution_days: currentRow.avg_resolution_days == null ? null : Number(currentRow.avg_resolution_days),
+          min_resolution_days: currentRow.min_resolution_days == null ? null : Number(currentRow.min_resolution_days),
+          max_resolution_days: currentRow.max_resolution_days == null ? null : Number(currentRow.max_resolution_days),
+          resolution_rate: currentRow.resolution_rate == null ? null : Number(currentRow.resolution_rate)
         });
       } else {
         this.ticketKpisMonthly.set(null);
       }
+
+      // 2. Mapear todos los datos para el histórico/trend
+      const trend = rows
+        .map(r => ({
+          month: String(r.period_month || '').slice(0, 7),
+          created: Number(r.tickets_created || 0),
+          resolved: Number(r.completed_this_month || 0),
+          overdue: Number(r.overdue_count || 0)
+        }))
+        .sort((a, b) => a.month.localeCompare(b.month));
+      
+      this.ticketHistoricalTrend.set(trend);
     } catch (e) {
-      console.warn('[AnalyticsService] Error loading ticket analytics:', e);
+      console.warn('[AnalyticsService] Error loading ticket KPIs and trend:', e);
       this.ticketKpisMonthly.set(null);
+      this.ticketHistoricalTrend.set([]);
     }
+  }
+
+  // Mantener para compatibilidad (ahora no se usa directamente)
+  private async loadTicketMonthlyAnalytics(): Promise<void> {
+    // Esta funcionalidad está ahora consolidada en loadTicketKpisAndTrend
+  }
+
+  // Mantener para compatibilidad (ahora no se usa directamente)
+  private async loadTicketHistoricalTrend(): Promise<void> {
+    // Esta funcionalidad está ahora consolidada en loadTicketKpisAndTrend
   }
 
   private async loadTicketCurrentStatus(): Promise<void> {
@@ -731,40 +761,6 @@ export class AnalyticsService {
     } catch (e) {
       console.warn('[AnalyticsService] Error loading ticket status:', e);
       this.ticketCurrentStatus.set(null);
-    }
-  }
-
-  private async loadTicketHistoricalTrend(): Promise<void> {
-    const now = new Date();
-    // Last 6 months
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
-    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
-    const p_start = start.toISOString().slice(0, 10);
-    const p_end = end.toISOString().slice(0, 10);
-
-    try {
-      const { data, error } = await this.supabase.instance.rpc('f_ticket_kpis_monthly', { p_start, p_end });
-      
-      if (error) {
-        console.warn('[AnalyticsService] f_ticket_kpis_monthly (trend) RPC error:', error.message);
-        this.ticketHistoricalTrend.set([]);
-        return;
-      }
-
-      const rows = (data as any[] | null) || [];
-      const trend = rows
-        .map(r => ({
-          month: String(r.period_month || '').slice(0, 7),
-          created: Number(r.tickets_created || 0),
-          resolved: Number(r.completed_this_month || 0),
-          overdue: Number(r.overdue_count || 0)
-        }))
-        .sort((a, b) => a.month.localeCompare(b.month));
-      
-      this.ticketHistoricalTrend.set(trend);
-    } catch (e) {
-      console.warn('[AnalyticsService] Error loading ticket trend:', e);
-      this.ticketHistoricalTrend.set([]);
     }
   }
 
