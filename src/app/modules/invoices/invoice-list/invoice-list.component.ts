@@ -28,6 +28,12 @@ import { environment } from '../../../../environments/environment';
       <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
         <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200">Facturas</h2>
         <div class="flex items-center gap-3">
+          <a class="text-sm px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 flex items-center gap-1.5" routerLink="/facturacion/recurrente">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Recurrentes
+          </a>
           <a class="text-sm text-blue-600 hover:underline" routerLink="/presupuestos">Ir a Presupuestos</a>
           <!-- Botón de configuración de Verifactu removido: ahora en /configuracion/verifactu -->
         </div>
