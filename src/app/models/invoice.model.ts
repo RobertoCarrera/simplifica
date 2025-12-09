@@ -105,6 +105,11 @@ export interface Invoice {
   payment_link_expires_at?: string;
   payment_link_provider?: 'paypal' | 'stripe';
 
+  // Recurring invoices (from recurring quotes)
+  is_recurring?: boolean;
+  source_quote_id?: string;
+  recurrence_period?: string; // YYYY-MM format
+
   // Auditoría
   created_at: string;
   updated_at: string;

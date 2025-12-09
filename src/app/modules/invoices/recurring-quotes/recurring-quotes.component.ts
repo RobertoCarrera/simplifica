@@ -44,20 +44,7 @@ interface GeneratedInvoice {
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule],
   template: `
-  <div class="p-4">
-    <div class="flex items-center justify-between mb-6">
-      <div>
-        <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Facturación Recurrente</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Gestiona los presupuestos que generan facturas automáticamente
-        </p>
-      </div>
-      <a routerLink="/presupuestos" 
-         class="text-sm px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors">
-        + Crear Presupuesto Recurrente
-      </a>
-    </div>
-
+  <div>
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">

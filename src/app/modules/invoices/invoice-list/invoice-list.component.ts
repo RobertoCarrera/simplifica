@@ -13,31 +13,20 @@ import { firstValueFrom } from 'rxjs';
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-  <div class="p-4">
-    <div class="flex items-center justify-between mb-4">
-      <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">Facturación</h1>
-      <!-- Dispatcher health - only show if Verifactu module is enabled -->
-      <div *ngIf="isVerifactuEnabled() && dispatcherHealth() as h" class="flex items-center gap-2">
-        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-              [ngClass]="h.pending > 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'">
-          <span class="w-2 h-2 rounded-full mr-1.5" [ngClass]="h.pending > 0 ? 'bg-amber-500' : 'bg-emerald-500'"></span>
-          {{ h.pending > 0 ? (h.pending + ' eventos pendientes') : 'Dispatcher OK' }}
-        </span>
-        <!-- <button class="text-sm px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" (click)="runDispatcher()">Ejecutar</button> -->
-      </div>
+  <div>
+    <!-- Dispatcher health - only show if Verifactu module is enabled -->
+    <div *ngIf="isVerifactuEnabled() && dispatcherHealth() as h" class="flex items-center gap-2 mb-4">
+      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+            [ngClass]="h.pending > 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'">
+        <span class="w-2 h-2 rounded-full mr-1.5" [ngClass]="h.pending > 0 ? 'bg-amber-500' : 'bg-emerald-500'"></span>
+        {{ h.pending > 0 ? (h.pending + ' eventos pendientes') : 'Dispatcher OK' }}
+      </span>
     </div>
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
       <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-        <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200">Facturas</h2>
+        <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200">Facturas Normales</h2>
         <div class="flex items-center gap-3">
-          <a class="text-sm px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 flex items-center gap-1.5" routerLink="/facturacion/recurrente">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Recurrentes
-          </a>
           <a class="text-sm text-blue-600 hover:underline" routerLink="/presupuestos">Ir a Presupuestos</a>
-          <!-- Botón de configuración de Verifactu removido: ahora en /configuracion/verifactu -->
         </div>
       </div>
       <div class="overflow-x-auto">
@@ -79,7 +68,6 @@ import { firstValueFrom } from 'rxjs';
         </table>
       </div>
     </div>
-  </div>
   `
 })
 export class InvoiceListComponent implements OnInit {
@@ -108,7 +96,11 @@ export class InvoiceListComponent implements OnInit {
       this.modulesService.fetchEffectiveModules().subscribe();
     }
     this.invoicesService.getInvoices().subscribe({
-      next: (list) => this.invoices.set(list || []),
+      next: (list) => {
+        // Filtrar facturas recurrentes (solo mostrar facturas normales)
+        const normalInvoices = (list || []).filter(inv => !inv.is_recurring);
+        this.invoices.set(normalInvoices);
+      },
       error: (err) => console.error('Error loading invoices', err)
     });
   }
