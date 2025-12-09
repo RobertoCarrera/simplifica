@@ -74,11 +74,17 @@ interface GeneratedInvoice {
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-700/50">
               <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Presupuesto</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Presupuesto
+                </th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cliente</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Frecuencia</th>
                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Próxima Factura</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  <div class="flex items-center gap-2">
+                    <span>Estado</span>
+                  </div>
+                </th>
                 <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Importe</th>
                 <th class="px-4 py-3"></th>
               </tr>
@@ -154,9 +160,8 @@ interface GeneratedInvoice {
                         <button (click)="resumeRecurrence(quote)" 
                                 class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-emerald-500"
                                 title="Reactivar recurrencia">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
                           </svg>
                         </button>
                       }
@@ -168,14 +173,14 @@ interface GeneratedInvoice {
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
-                      <!-- Edit -->
-                      <a [routerLink]="['/presupuestos', quote.id, 'editar']" 
-                         class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-blue-500"
-                         title="Editar presupuesto">
+                      <!-- Edit Recurrence Day -->
+                      <button (click)="openEditDay(quote)" 
+                              class="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-blue-500"
+                              title="Cambiar día de facturación">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                      </a>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -185,6 +190,47 @@ interface GeneratedInvoice {
         </div>
       }
     </div>
+
+    <!-- Edit Recurrence Day Modal -->
+    @if (showEditDayModal()) {
+      <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" (click)="closeEditDay()">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4"
+             (click)="$event.stopPropagation()">
+          <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+              Cambiar día de facturación
+            </h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {{ editingQuote()?.full_quote_number || editingQuote()?.quote_number }} - {{ editingQuote()?.title }}
+            </p>
+          </div>
+          <div class="p-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Día del mes para generar factura
+            </label>
+            <input type="number" 
+                   min="1" 
+                   max="31" 
+                   [value]="editRecurrenceDay()"
+                   (input)="onRecurrenceDayChange($event)"
+                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              La próxima factura se generará el día {{ editRecurrenceDay() }} del mes correspondiente.
+            </p>
+          </div>
+          <div class="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2 justify-end">
+            <button (click)="closeEditDay()" 
+                    class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+              Cancelar
+            </button>
+            <button (click)="saveRecurrenceDay()" 
+                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+              Guardar
+            </button>
+          </div>
+        </div>
+      </div>
+    }
 
     <!-- History Modal -->
     @if (showHistoryModal()) {
@@ -265,6 +311,11 @@ export class RecurringQuotesComponent implements OnInit {
   showHistoryModal = signal(false);
   selectedQuote = signal<RecurringQuote | null>(null);
   generatedInvoices = signal<GeneratedInvoice[]>([]);
+  
+  // Edit recurrence day modal
+  showEditDayModal = signal(false);
+  editingQuote = signal<RecurringQuote | null>(null);
+  editRecurrenceDay = signal<number>(1);
 
   stats = computed(() => {
     const q = this.quotes();
@@ -322,7 +373,7 @@ export class RecurringQuotesComponent implements OnInit {
     try {
       const client = this.supabase.instance;
       
-      // Load recurring quotes
+      // Load recurring quotes (incluye pausados que mantienen su recurrence_type)
       const { data: quotes, error } = await client
         .from('quotes')
         .select(`
@@ -334,8 +385,7 @@ export class RecurringQuotesComponent implements OnInit {
         `)
         .not('recurrence_type', 'is', null)
         .neq('recurrence_type', 'none')
-        .neq('recurrence_type', 'proyecto')
-        .order('next_run_at', { ascending: true });
+        .order('next_run_at', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
 
@@ -437,22 +487,151 @@ export class RecurringQuotesComponent implements OnInit {
   }
 
   async cancelRecurrence(quote: RecurringQuote): Promise<void> {
-    if (!confirm(`¿Cancelar definitivamente la facturación recurrente de "${quote.title}"?\n\nEsto no eliminará el presupuesto, solo desactivará la generación automática de facturas.`)) return;
-    
     try {
       const client = this.supabase.instance;
+      
+      // Verificar si ya generó facturas pagadas
+      const { data: paidInvoices, error: checkError } = await client
+        .from('invoices')
+        .select('id, invoice_number, status, payment_status')
+        .eq('source_quote_id', quote.id)
+        .in('payment_status', ['paid', 'partial']);
+      
+      if (checkError) throw checkError;
+      
+      if (paidInvoices && paidInvoices.length > 0) {
+        alert(
+          `❌ No se puede cancelar esta recurrencia\n\n` +
+          `Ya se han generado ${paidInvoices.length} factura(s) pagada(s).\n` +
+          `Por obligación legal y GDPR, estas facturas deben conservarse.\n\n` +
+          `💡 Opciones:\n` +
+          `• Usa "Pausar" para detener futuras facturas\n` +
+          `• O contacta con soporte si necesitas emitir una factura rectificativa`
+        );
+        return;
+      }
+      
+      // Verificar si hay facturas sin pagar (borrador, pendiente, etc.)
+      const { data: otherInvoices } = await client
+        .from('invoices')
+        .select('id')
+        .eq('source_quote_id', quote.id);
+      
+      const hasInvoices = otherInvoices && otherInvoices.length > 0;
+      
+      const confirmMessage = hasInvoices
+        ? `⚠️ ATENCIÓN: Esta recurrencia ya generó ${otherInvoices.length} factura(s) sin pagar.\n\n` +
+          `¿Cancelar definitivamente esta recurrencia?\n\n` +
+          `• El presupuesto se convertirá en puntual\n` +
+          `• Las facturas generadas se eliminarán\n` +
+          `• Esta acción NO se puede deshacer`
+        : `¿Cancelar definitivamente la facturación recurrente de "${quote.title}"?\n\n` +
+          `• El presupuesto se convertirá en puntual\n` +
+          `• No se han generado facturas aún\n` +
+          `• Esta acción NO se puede deshacer`;
+      
+      if (!confirm(confirmMessage)) return;
+      
+      // Si hay facturas sin pagar, eliminarlas primero
+      if (hasInvoices) {
+        // Eliminar items de las facturas
+        const invoiceIds = otherInvoices.map(inv => inv.id);
+        await client
+          .from('invoice_items')
+          .delete()
+          .in('invoice_id', invoiceIds);
+        
+        // Eliminar las facturas
+        await client
+          .from('invoices')
+          .delete()
+          .eq('source_quote_id', quote.id);
+      }
+      
+      // Eliminar items del presupuesto
+      await client
+        .from('quote_items')
+        .delete()
+        .eq('quote_id', quote.id);
+      
+      // Eliminar el presupuesto (hard delete)
       await client
         .from('quotes')
-        .update({ 
-          recurrence_type: 'none',
-          next_run_at: null 
-        })
+        .delete()
         .eq('id', quote.id);
       
       await this.loadRecurringQuotes();
+      alert('✓ Recurrencia cancelada y presupuesto eliminado correctamente');
     } catch (err) {
       console.error('Error canceling recurrence:', err);
       alert('Error al cancelar la recurrencia');
+    }
+  }
+
+  openEditDay(quote: RecurringQuote): void {
+    this.editingQuote.set(quote);
+    this.editRecurrenceDay.set(quote.recurrence_day || 1);
+    this.showEditDayModal.set(true);
+  }
+
+  closeEditDay(): void {
+    this.showEditDayModal.set(false);
+    this.editingQuote.set(null);
+  }
+
+  onRecurrenceDayChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    const numValue = Number(value);
+    if (!isNaN(numValue)) {
+      this.editRecurrenceDay.set(numValue);
+    }
+  }
+
+  async saveRecurrenceDay(): Promise<void> {
+    const quote = this.editingQuote();
+    if (!quote) return;
+
+    const newDay = this.editRecurrenceDay();
+    if (newDay < 1 || newDay > 31) {
+      alert('El día debe estar entre 1 y 31');
+      return;
+    }
+
+    try {
+      const client = this.supabase.instance;
+      
+      // Calcular nueva fecha de próxima ejecución
+      const now = new Date();
+      const nextRun = new Date(now.getFullYear(), now.getMonth(), newDay);
+      
+      // Si el día ya pasó este mes, programar para el próximo
+      if (nextRun < now) {
+        nextRun.setMonth(nextRun.getMonth() + 1);
+      }
+
+      const updateData = { 
+        recurrence_day: newDay,
+        next_run_at: nextRun.toISOString()
+      };
+      
+      console.log('Updating quote with:', updateData);
+
+      const { error } = await client
+        .from('quotes')
+        .update(updateData)
+        .eq('id', quote.id);
+      
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      this.closeEditDay();
+      await this.loadRecurringQuotes();
+      alert('Día de facturación actualizado correctamente');
+    } catch (err) {
+      console.error('Error updating recurrence day:', err);
+      alert('Error al actualizar el día de facturación');
     }
   }
 

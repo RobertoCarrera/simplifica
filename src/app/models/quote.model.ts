@@ -449,11 +449,16 @@ export function canConvertToInvoice(quote: Quote): boolean {
   // y no hay una conversión ya programada/en proceso.
   // EXCEPCIÓN: Si es un presupuesto rectificativo (rectifies_invoice_id) O tiene importe negativo,
   // permitimos convertir aunque no esté aceptado (para agilizar flujo).
+  // RESTRICCIÓN: No permitir convertir presupuestos recurrentes que ya han generado facturas
   const isAccepted = quote.status === QuoteStatus.ACCEPTED;
   const isRectificative = !!quote.rectifies_invoice_id;
   const isNegative = (quote.total_amount || 0) < 0;
   const hasNoInvoice = !quote.invoice_id;
   const notScheduled = !quote.conversion_status || (quote.conversion_status !== 'scheduled' && quote.conversion_status !== 'processing');
+  const isRecurring = quote.recurrence_type && quote.recurrence_type !== 'none';
+  
+  // Si es recurrente, no permitir conversión manual (ya se hace automáticamente)
+  if (isRecurring) return false;
   
   return (isAccepted || isRectificative || isNegative) && hasNoInvoice && notScheduled;
 }
