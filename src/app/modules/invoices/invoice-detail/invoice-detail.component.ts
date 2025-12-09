@@ -5,12 +5,14 @@ import { FormsModule } from '@angular/forms';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
+import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { PaymentIntegrationsService, PaymentIntegration } from '../../../services/payment-integrations.service';
 import { ToastService } from '../../../services/toast.service';
 import { Invoice, formatInvoiceNumber } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
 import { IssueVerifactuButtonComponent } from '../issue-verifactu-button/issue-verifactu-button.component';
 import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.component';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-invoice-detail',
@@ -70,7 +72,7 @@ import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.comp
         <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Importes</h2>
         <p class="text-sm text-gray-600 dark:text-gray-300">Base Imponible: {{ inv.subtotal | number:'1.2-2' }} {{ inv.currency }}</p>
         <p class="text-sm text-gray-600 dark:text-gray-300">IVA: {{ inv.tax_amount | number:'1.2-2' }} {{ inv.currency }}</p>
-        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Total: {{ inv.total | number:'1.2-2' }} {{ inv.currency }}</p>
+        <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ pricesIncludeTax() ? 'Importe' : 'Total' }}: {{ getDisplayAmount(inv) | number:'1.2-2' }} {{ inv.currency }}</p>
       </div>
       <!-- VeriFactu Status - Only visible if Verifactu module is enabled -->
       <div *ngIf="isVerifactuEnabled()" class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4 md:col-span-2">
@@ -270,6 +272,7 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   private invoicesService = inject(SupabaseInvoicesService);
   private quotesService = inject(SupabaseQuotesService);
   private modulesService = inject(SupabaseModulesService);
+  private settingsService = inject(SupabaseSettingsService);
   private paymentService = inject(PaymentIntegrationsService);
   private toast = inject(ToastService);
   invoice = signal<Invoice | null>(null);
@@ -280,6 +283,9 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   dispatcherHealth = signal<{ pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; } | null>(null);
   private refreshInterval: any;
   private realtimeSub: { unsubscribe: () => void } | null = null;
+  
+  // Tax configuration
+  pricesIncludeTax = signal<boolean>(false);
 
   // Payment link modal state
   showPaymentLinkModal = signal(false);
@@ -339,6 +345,9 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    // Load tax configuration
+    this.loadTaxSettings();
+    
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.invoicesService.getInvoice(id).subscribe({
@@ -393,6 +402,29 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
         try { this.toast.error('No se pudo generar el PDF', e?.message || String(e)); } catch { }
       }
     });
+  }
+
+  private async loadTaxSettings(): Promise<void> {
+    try {
+      const [app, company] = await Promise.all([
+        firstValueFrom(this.settingsService.getAppSettings()),
+        firstValueFrom(this.settingsService.getCompanySettings())
+      ]);
+      const effectivePricesIncludeTax = (company?.prices_include_tax ?? null) ?? (app?.default_prices_include_tax ?? false);
+      this.pricesIncludeTax.set(effectivePricesIncludeTax);
+    } catch (err) {
+      console.error('Error loading tax settings:', err);
+      this.pricesIncludeTax.set(false);
+    }
+  }
+
+  getDisplayAmount(invoice: Invoice): number {
+    // Si los precios incluyen IVA, mostramos el subtotal (neto)
+    // Si no, mostramos el total con IVA
+    if (this.pricesIncludeTax()) {
+      return invoice.subtotal || 0;
+    }
+    return invoice.total || 0;
   }
 
   refreshVerifactu(invoiceId: string) {

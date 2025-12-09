@@ -23,12 +23,6 @@ import { firstValueFrom } from 'rxjs';
       </span>
     </div>
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-      <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-        <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200">Facturas Normales</h2>
-        <div class="flex items-center gap-3">
-          <a class="text-sm text-blue-600 hover:underline" routerLink="/presupuestos">Ir a Presupuestos</a>
-        </div>
-      </div>
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-700/50">

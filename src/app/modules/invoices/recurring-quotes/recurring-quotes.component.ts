@@ -45,78 +45,8 @@ interface GeneratedInvoice {
   imports: [CommonModule, RouterModule, FormsModule],
   template: `
   <div>
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
-        <div class="flex items-center">
-          <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
-            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </div>
-          <div class="ml-4">
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Activos</p>
-            <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ stats().active }}</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
-        <div class="flex items-center">
-          <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-            <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div class="ml-4">
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Próximos 7 días</p>
-            <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ stats().upcoming }}</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
-        <div class="flex items-center">
-          <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center">
-            <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div class="ml-4">
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Facturas Generadas</p>
-            <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ stats().invoicesGenerated }}</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-4">
-        <div class="flex items-center">
-          <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
-            <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div class="ml-4">
-            <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Ingresos/Mes</p>
-            <p class="text-2xl font-semibold text-gray-900 dark:text-gray-100">{{ stats().monthlyRevenue | number:'1.2-2' }}€</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Main Content -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-      <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-        <h2 class="text-lg font-medium text-gray-800 dark:text-gray-200">Presupuestos Recurrentes</h2>
-        <div class="flex items-center gap-2">
-          <select [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()"
-                  class="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200">
-            <option value="">Todos</option>
-            <option value="active">Activos</option>
-            <option value="paused">Pausados</option>
-          </select>
-        </div>
-      </div>
 
       @if (loading()) {
         <div class="p-8 text-center">

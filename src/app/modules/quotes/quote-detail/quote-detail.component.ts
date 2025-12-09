@@ -328,7 +328,14 @@ export class QuoteDetailComponent implements OnInit {
   displaySubtotal(): number { return this.calcBreakdown().subtotal; }
   displayTaxAmount(): number { return this.calcBreakdown().taxAmount; }
   displayIrpfAmount(): number { return this.calcBreakdown().irpf; }
-  displayTotal(): number { return this.calcBreakdown().total; }
+  displayTotal(): number {
+    // Si los precios incluyen IVA, mostramos el subtotal (neto)
+    // Si no, mostramos el total con IVA
+    if (this.pricesIncludeTax()) {
+      return this.calcBreakdown().subtotal;
+    }
+    return this.calcBreakdown().total;
+  }
 
   formatQuoteNumber(quote: Quote) {
     return formatQuoteNumber(quote);
