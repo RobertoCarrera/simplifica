@@ -2,31 +2,36 @@
  * VeriFactu AEAT SOAP Client
  * Cliente para comunicación con los servicios web de AEAT
  * 
- * Endpoints según Artículo 16 de la Orden HAC/1177/2024:
- * - Preproducción: https://prewww1.aeat.es/wlpl/SSII-FACT/ws/...
- * - Producción: https://www1.agenciatributaria.gob.es/wlpl/SSII-FACT/ws/...
+ * Endpoints según WSDL oficial de AEAT (SistemaFacturacion):
+ * - Preproducción: https://prewww1.aeat.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP
+ * - Producción: https://www1.agenciatributaria.gob.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP
  * 
- * Nota: Los endpoints específicos de VeriFactu pueden variar.
- * La AEAT publicará las URLs definitivas en su sede electrónica.
+ * Para certificados de sello usar www10 en lugar de www1
  */
 
 import { signXml, CertificateInfo } from './xades-signer.ts';
 
-// Endpoints AEAT (basados en SII - VeriFactu usará estructura similar)
+// Endpoints AEAT VeriFactu (según WSDL oficial)
 const ENDPOINTS = {
   // Preproducción (pruebas)
   pre: {
+    // Endpoint principal (certificado de software)
+    verifactu: 'https://prewww1.aeat.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP',
+    // Endpoint con certificado de sello
+    verifactuSello: 'https://prewww10.aeat.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP',
+    // Legado SII (no usar para VeriFactu)
     suministroLR: 'https://prewww1.aeat.es/wlpl/SSII-FACT/ws/fe/SiiFactFEV2SOAP',
     consulta: 'https://prewww1.aeat.es/wlpl/SSII-FACT/ws/fe/SiiFactFEV2SOAP',
-    // Endpoints VeriFactu específicos (a confirmar por AEAT)
-    verifactu: 'https://prewww1.aeat.es/wlpl/VERIFACTU-FACT/ws/SuministroLR',
   },
   // Producción
   prod: {
+    // Endpoint principal (certificado de software)
+    verifactu: 'https://www1.agenciatributaria.gob.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP',
+    // Endpoint con certificado de sello
+    verifactuSello: 'https://www10.agenciatributaria.gob.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP',
+    // Legado SII (no usar para VeriFactu)
     suministroLR: 'https://www1.agenciatributaria.gob.es/wlpl/SSII-FACT/ws/fe/SiiFactFEV2SOAP',
     consulta: 'https://www1.agenciatributaria.gob.es/wlpl/SSII-FACT/ws/fe/SiiFactFEV2SOAP',
-    // Endpoints VeriFactu específicos (a confirmar por AEAT)
-    verifactu: 'https://www1.agenciatributaria.gob.es/wlpl/VERIFACTU-FACT/ws/SuministroLR',
   },
 };
 

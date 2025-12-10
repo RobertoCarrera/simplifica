@@ -962,8 +962,8 @@ serve(async (req)=>{
       try {
         const env = settings.environment || 'pre';
         const aeatEndpoint = env === 'prod' 
-          ? 'https://www1.agenciatributaria.gob.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/RegistroFacturacion'
-          : 'https://prewww1.aeat.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/RegistroFacturacion';
+          ? 'https://www1.agenciatributaria.gob.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP'
+          : 'https://prewww1.aeat.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP';
         
         const startTime = Date.now();
         const aeatResp = await fetch(aeatEndpoint, {
