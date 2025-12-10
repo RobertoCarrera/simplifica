@@ -52,6 +52,7 @@ export interface InvoiceData {
     unit_price: number;
     tax_rate: number;
     tax_amount: number;
+    subtotal: number;  // Base imponible (sin IVA)
     total: number;
   }>;
 }
@@ -150,7 +151,9 @@ function groupLinesByTax(lines: InvoiceData['invoice_lines']): Array<{
   for (const line of lines) {
     const rate = line.tax_rate || 21;
     const existing = groups.get(rate) || { base: 0, tax: 0 };
-    existing.base += line.quantity * line.unit_price;
+    // Usar subtotal (base imponible) de la línea, no recalcular desde unit_price
+    // porque unit_price puede incluir IVA según configuración prices_include_tax
+    existing.base += line.subtotal ?? (line.quantity * line.unit_price);
     existing.tax += line.tax_amount || 0;
     groups.set(rate, existing);
   }
