@@ -637,9 +637,9 @@ export class RecurringQuotesComponent implements OnInit {
 
   // Format helpers
   getDisplayAmount(quote: RecurringQuote): number {
-    // Si los precios incluyen IVA, mostrar el subtotal (sin IVA)
-    // Si no incluyen IVA, mostrar el total_amount (con IVA)
-    return this.pricesIncludeTax() ? (quote.subtotal || 0) : (quote.total_amount || 0);
+    // SIEMPRE mostrar el total_amount (lo que paga el cliente)
+    // El total_amount ya incluye IVA, independientemente de cómo se haya introducido el precio
+    return quote.total_amount || 0;
   }
 
   formatRecurrence(quote: RecurringQuote): string {

@@ -121,13 +121,8 @@ export class InvoiceListComponent implements OnInit {
   }
 
   getDisplayAmount(invoice: Invoice): number {
-    // If prices include tax, show subtotal (net amount)
-    // Otherwise, show total (with tax)
-    if (this.pricesIncludeTax()) {
-      return invoice.subtotal || 0;
-    } else {
-      return invoice.total || 0;
-    }
+    // SIEMPRE mostramos el total real (lo que paga el cliente)
+    return invoice.total || 0;
   }
 
   // runDispatcher(){

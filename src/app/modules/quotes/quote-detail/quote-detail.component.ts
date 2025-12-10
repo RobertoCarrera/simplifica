@@ -329,11 +329,8 @@ export class QuoteDetailComponent implements OnInit {
   displayTaxAmount(): number { return this.calcBreakdown().taxAmount; }
   displayIrpfAmount(): number { return this.calcBreakdown().irpf; }
   displayTotal(): number {
-    // Si los precios incluyen IVA, mostramos el subtotal (neto)
-    // Si no, mostramos el total con IVA
-    if (this.pricesIncludeTax()) {
-      return this.calcBreakdown().subtotal;
-    }
+    // SIEMPRE mostramos el total real (subtotal + IVA - IRPF)
+    // El total es lo que el cliente paga, independientemente de si los precios incluyen IVA o no
     return this.calcBreakdown().total;
   }
 

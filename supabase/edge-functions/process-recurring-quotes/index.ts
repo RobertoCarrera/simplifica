@@ -17,7 +17,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "default-dev-key-change-in-prod";
-const PUBLIC_SITE_URL = Deno.env.get("PUBLIC_SITE_URL") || "https://simplifica.app";
+const PUBLIC_SITE_URL = Deno.env.get("PUBLIC_SITE_URL") || "https://app.simplificacrm.es";
 
 function cors(origin?: string) {
   const allowAll = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLowerCase() === 'true';
@@ -392,7 +392,26 @@ serve(async (req) => {
       try {
         console.log(`[process-recurring] Processing quote ${quote.full_quote_number}`);
 
-        // 1. Get default invoice series for the company
+        // 1. Get tax settings: company_settings > app_settings > default false
+        const { data: companySettings } = await admin
+          .from('company_settings')
+          .select('prices_include_tax')
+          .eq('company_id', quote.company_id)
+          .single();
+
+        // Fallback to app_settings if company doesn't have specific setting
+        let pricesIncludeTax = companySettings?.prices_include_tax;
+        if (pricesIncludeTax === null || pricesIncludeTax === undefined) {
+          const { data: appSettings } = await admin
+            .from('app_settings')
+            .select('default_prices_include_tax')
+            .eq('company_id', quote.company_id)
+            .single();
+          pricesIncludeTax = appSettings?.default_prices_include_tax ?? false;
+        }
+        console.log(`[process-recurring] Effective prices_include_tax: ${pricesIncludeTax}`);
+
+        // 2. Get default invoice series for the company
         const { data: series, error: sErr } = await admin
           .from('invoice_series')
           .select('id, year, series_code, verifactu_enabled')
@@ -411,7 +430,7 @@ serve(async (req) => {
 
         const invoiceSeriesLabel = `${series.year}-${series.series_code}`;
 
-        // 2. Get next invoice number
+        // 3. Get next invoice number
         const { data: nextNumber, error: numErr } = await admin.rpc('get_next_invoice_number', { p_series_id: series.id });
         if (numErr || !nextNumber) {
           console.error(`[process-recurring] Could not get next invoice number:`, numErr);
@@ -426,7 +445,12 @@ serve(async (req) => {
         // Calculate recurrence period (e.g., "2025-12")
         const recurrencePeriod = invoiceDate.slice(0, 7);
 
-        // 3. Create the invoice
+        // El total de la factura SIEMPRE es total_amount (lo que paga el cliente)
+        // El total_amount ya tiene los impuestos calculados correctamente según la configuración
+        const invoiceTotal = quote.total_amount;
+        console.log(`[process-recurring] Invoice totals - subtotal: ${quote.subtotal}, tax: ${quote.tax_amount}, total: ${invoiceTotal}`);
+
+        // 4. Create the invoice
         const { data: invoiceRow, error: invErr } = await admin
           .from('invoices')
           .insert({
@@ -442,7 +466,7 @@ serve(async (req) => {
             due_date: dueDate,
             subtotal: quote.subtotal,
             tax_amount: quote.tax_amount,
-            total: quote.total_amount,
+            total: invoiceTotal,
             currency: quote.currency || 'EUR',
             status: 'approved',
             payment_status: 'pending',
@@ -462,7 +486,7 @@ serve(async (req) => {
         const invoiceId = invoiceRow.id;
         console.log(`[process-recurring] Created invoice ${fullInvoiceNumber} (${invoiceId})`);
 
-        // 4. Copy quote items to invoice items
+        // 5. Copy quote items to invoice items
         const { data: qItems } = await admin
           .from('quote_items')
           .select('line_number, description, quantity, unit_price, discount_percent, tax_rate, tax_amount, subtotal, total')
@@ -489,10 +513,10 @@ serve(async (req) => {
           }
         }
 
-        // 5. Recalculate totals (safety)
+        // 6. Recalculate totals (safety) - will respect the total we already set
         await admin.rpc('calculate_invoice_totals', { p_invoice_id: invoiceId }).catch(() => {});
 
-        // 6. Try to create payment link if integration exists
+        // 7. Try to create payment link if integration exists
         let paymentLink: string | null = null;
         const { data: integration } = await admin
           .from('payment_integrations')

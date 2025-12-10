@@ -555,13 +555,10 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     this.totalAmount.set(subtotal + taxAmount - irpf);
   }
 
-  // Método para mostrar el importe correcto según configuración
+  // Método para mostrar el importe total (lo que paga el cliente)
   displayAmount(): number {
-    // Si los precios incluyen IVA, mostramos el subtotal (neto)
-    // Si no, mostramos el total con IVA
-    if (this.pricesIncludeTax()) {
-      return this.subtotal();
-    }
+    // SIEMPRE mostramos el total real (subtotal + IVA - IRPF)
+    // El total es lo que el cliente paga
     return this.totalAmount();
   }
 

@@ -350,6 +350,31 @@ serve(async (req) => {
         // Send email
         const emailSent = await sendInvoiceEmail(admin, invoice_id);
         quoteResult.email_sent = emailSent;
+
+        // Auto-finalize for Verifactu if series has it enabled
+        // This will create verifactu.events entry automatically
+        const { data: series } = await admin
+          .from('invoice_series')
+          .select('verifactu_enabled')
+          .eq('company_id', q.company_id)
+          .eq('series_code', invoice_number.split('-')[0])
+          .single();
+
+        if (series?.verifactu_enabled) {
+          try {
+            await admin.rpc('verifactu.finalize_invoice', {
+              p_invoice_id: invoice_id,
+              p_series: invoice_number.split('-')[0],
+              p_device_id: 'RECURRING-AUTO',
+              p_software_id: 'SIMPLIFICA-VF-001'
+            });
+            quoteResult.verifactu_finalized = true;
+          } catch (vfErr: any) {
+            console.error(`Verifactu finalization error for ${invoice_id}:`, vfErr);
+            quoteResult.verifactu_finalized = false;
+            quoteResult.verifactu_error = vfErr.message;
+          }
+        }
       }
 
       // Advance next_run_at

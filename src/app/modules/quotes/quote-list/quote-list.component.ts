@@ -258,12 +258,8 @@ export class QuoteListComponent implements OnInit {
   displayTotal(quote: Quote): number {
     const items = (quote.items || []) as any[];
     if (!items.length) {
-      // If no items, use stored values
-      if (this.pricesIncludeTax()) {
-        return Number(quote.subtotal || 0);
-      } else {
-        return Number(quote.total_amount || 0);
-      }
+      // If no items, use stored total (this is the real amount to pay)
+      return Number(quote.total_amount || 0);
     }
 
     let subtotal = 0;
@@ -298,13 +294,9 @@ export class QuoteListComponent implements OnInit {
 
     const irpf = this.irpfEnabled() ? baseNetForIrpf * (this.irpfRate() / 100) : 0;
     
-    // Return subtotal if prices include tax, otherwise return total
-    if (this.pricesIncludeTax()) {
-      return Math.round(subtotal * 100) / 100;
-    } else {
-      const total = subtotal + taxAmount - irpf;
-      return Math.round(total * 100) / 100;
-    }
+    // SIEMPRE devolver el total real (lo que paga el cliente)
+    const total = subtotal + taxAmount - irpf;
+    return Math.round(total * 100) / 100;
   }
 
   deleteQuote(id: string) {

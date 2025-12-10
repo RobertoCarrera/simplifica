@@ -419,11 +419,7 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   }
 
   getDisplayAmount(invoice: Invoice): number {
-    // Si los precios incluyen IVA, mostramos el subtotal (neto)
-    // Si no, mostramos el total con IVA
-    if (this.pricesIncludeTax()) {
-      return invoice.subtotal || 0;
-    }
+    // SIEMPRE mostramos el total real (lo que paga el cliente)
     return invoice.total || 0;
   }
 

@@ -88,7 +88,7 @@ serve(async (req: Request) => {
 
     // Get client info
     const { data: client, error: clientError } = await supabase
-      .from("customers")
+      .from("clients")
       .select("id, name, email")
       .eq("id", invoice.client_id)
       .single();
