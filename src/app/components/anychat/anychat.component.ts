@@ -89,12 +89,47 @@ export class AnychatComponent implements OnInit {
            !this.messagesUnavailable();
   });
 
+  // Get contact name for a conversation
+  getContactName(conversation: AnyChatConversation): string {
+    if (!conversation.contact_guid) {
+      return 'Nuevo usuario';
+    }
+    
+    // Try to find contact in loaded contacts
+    const contact = this.contacts().find(c => c.guid === conversation.contact_guid);
+    if (contact?.name) {
+      return contact.name;
+    }
+    
+    // If selected conversation, check selectedContact
+    if (this.selectedConversation()?.guid === conversation.guid && this.selectedContact()?.name) {
+      return this.selectedContact()!.name;
+    }
+    
+    return 'Usuario';
+  }
+
+  // Get contact initials for avatar
+  getContactInitials(conversation: AnyChatConversation): string {
+    const name = this.getContactName(conversation);
+    if (name === 'Nuevo usuario' || name === 'Usuario') {
+      return '?';
+    }
+    
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  }
+
   ngOnInit(): void {
     // Verificar si AnyChat está configurado y disponible
     const isAnyChatEnabled = this.checkAnyChatAvailability();
     if (isAnyChatEnabled) {
-      // Cargar solo conversaciones en el módulo de Chat
+      // Cargar conversaciones y contactos en paralelo para tener nombres disponibles
       this.loadConversations();
+      this.loadContacts();
     } else {
       console.warn('⚠️ AnyChat no disponible - módulo en modo solo visualización');
       this.toastService.info(
@@ -408,17 +443,6 @@ export class AnychatComponent implements OnInit {
     } else {
       return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
     }
-  }
-
-  getContactInitials(contact: AnyChatContact): string {
-    if (!contact.name) return '?';
-    
-    const names = contact.name.split(' ');
-    if (names.length === 1) {
-      return names[0].substring(0, 2).toUpperCase();
-    }
-    
-    return (names[0][0] + names[names.length - 1][0]).toUpperCase();
   }
 
   nextPage(): void {

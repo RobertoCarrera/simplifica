@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
@@ -11,7 +12,7 @@ import { firstValueFrom } from 'rxjs';
 @Component({
   selector: 'app-invoice-list',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   template: `
   <div>
     <!-- Dispatcher health - only show if Verifactu module is enabled -->
@@ -29,6 +30,31 @@ import { firstValueFrom } from 'rxjs';
         Registro AEAT
       </a>
     </div>
+
+    <!-- Filters and Search -->
+    <div class="mb-4 flex flex-wrap gap-3 items-center">
+      <input type="text" placeholder="Buscar por cliente o número..." [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" 
+             class="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent" />
+      
+      <select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
+        <option value="">Todos los estados</option>
+        <option value="draft">Borrador</option>
+        <option value="issued">Emitida</option>
+        <option value="sent">Enviada</option>
+        <option value="paid">Pagada</option>
+        <option value="overdue">Vencida</option>
+        <option value="rectificative">Rectificativa</option>
+      </select>
+
+      <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
+        <option value="date-desc">Fecha (más reciente)</option>
+        <option value="date-asc">Fecha (más antigua)</option>
+        <option value="amount-desc">Importe (mayor)</option>
+        <option value="amount-asc">Importe (menor)</option>
+        <option value="client-asc">Cliente (A-Z)</option>
+      </select>
+    </div>
+
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -43,7 +69,7 @@ import { firstValueFrom } from 'rxjs';
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-            @for (inv of invoices(); track inv.id) {
+            @for (inv of filteredInvoices(); track inv.id) {
               <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <td class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">{{ formatNumber(inv) }}</td>
                 <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ inv.client?.name || inv.client_id }}</td>
@@ -77,6 +103,9 @@ export class InvoiceListComponent implements OnInit {
   private settingsService = inject(SupabaseSettingsService);
   
   invoices = signal<Invoice[]>([]);
+  searchTerm = signal<string>('');
+  statusFilter = signal<string>('');
+  sortBy = signal<string>('date-desc');
   dispatcherHealth = signal<{ pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; } | null>(null);
   pricesIncludeTax = signal<boolean>(false);
 
@@ -86,6 +115,54 @@ export class InvoiceListComponent implements OnInit {
     if (!modules) return false;
     const mod = modules.find(m => m.key === 'moduloVerifactu');
     return mod?.enabled ?? false;
+  });
+
+  // Filtered and sorted invoices
+  filteredInvoices = computed(() => {
+    let filtered = this.invoices();
+    
+    // Apply search filter
+    const search = this.searchTerm().toLowerCase();
+    if (search) {
+      filtered = filtered.filter(inv => 
+        this.formatNumber(inv).toLowerCase().includes(search) ||
+        (inv.client?.name || '').toLowerCase().includes(search) ||
+        inv.client_id?.toLowerCase().includes(search)
+      );
+    }
+    
+    // Apply status filter
+    const status = this.statusFilter();
+    if (status === 'rectificative') {
+      filtered = filtered.filter(inv => inv.invoice_type === 'rectificative' || (inv.total || 0) < 0);
+    } else if (status === 'issued') {
+      filtered = filtered.filter(inv => 
+        inv.status === 'issued' || 
+
+        (inv.verifactu_status === 'accepted' && ['draft', 'approved'].includes(inv.status))
+      );
+    } else if (status) {
+      filtered = filtered.filter(inv => inv.status === status);
+    }
+    
+    // Apply sorting
+    const sort = this.sortBy();
+    return filtered.sort((a, b) => {
+      switch (sort) {
+        case 'date-asc':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'date-desc':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'amount-asc':
+          return (a.total || 0) - (b.total || 0);
+        case 'amount-desc':
+          return (b.total || 0) - (a.total || 0);
+        case 'client-asc':
+          return (a.client?.name || '').localeCompare(b.client?.name || '');
+        default:
+          return 0;
+      }
+    });
   });
 
   ngOnInit(): void {
@@ -100,7 +177,13 @@ export class InvoiceListComponent implements OnInit {
       next: (list) => {
         // Filtrar facturas recurrentes (solo mostrar facturas normales)
         const normalInvoices = (list || []).filter(inv => !inv.is_recurring);
-        this.invoices.set(normalInvoices);
+        // Ordenar de más nueva a más antigua por fecha de factura
+        const sorted = normalInvoices.sort((a, b) => {
+          const dateA = new Date(a.invoice_date).getTime();
+          const dateB = new Date(b.invoice_date).getTime();
+          return dateB - dateA; // Más reciente primero
+        });
+        this.invoices.set(sorted);
       },
       error: (err) => console.error('Error loading invoices', err)
     });

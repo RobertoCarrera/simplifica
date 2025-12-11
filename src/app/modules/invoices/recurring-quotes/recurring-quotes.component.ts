@@ -45,6 +45,35 @@ interface GeneratedInvoice {
   imports: [CommonModule, RouterModule, FormsModule],
   template: `
   <div>
+    <!-- Filters and Search -->
+    <div class="mb-4 flex flex-wrap gap-3 items-center">
+      <input type="text" placeholder="Buscar por cliente o título..." [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" 
+             class="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent" />
+      
+      <select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
+        <option value="">Todos los estados</option>
+        <option value="active">Activo</option>
+        <option value="paused">Pausado</option>
+        <option value="completed">Completado</option>
+      </select>
+
+      <select [ngModel]="frequencyFilter()" (ngModelChange)="frequencyFilter.set($event)" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
+        <option value="">Todas las frecuencias</option>
+        <option value="monthly">Mensual</option>
+        <option value="quarterly">Trimestral</option>
+        <option value="yearly">Anual</option>
+        <option value="weekly">Semanal</option>
+      </select>
+
+      <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
+        <option value="next-date">Próxima factura</option>
+        <option value="amount-desc">Importe (mayor)</option>
+        <option value="amount-asc">Importe (menor)</option>
+        <option value="client-asc">Cliente (A-Z)</option>
+        <option value="created-desc">Más reciente</option>
+      </select>
+    </div>
+
     <!-- Main Content -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
 
@@ -53,7 +82,7 @@ interface GeneratedInvoice {
           <div class="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
           <p class="mt-2 text-gray-500 dark:text-gray-400">Cargando...</p>
         </div>
-      } @else if (filteredQuotes().length === 0) {
+      } @else if (filteredAndSortedQuotes().length === 0) {
         <div class="p-8 text-center">
           <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -90,7 +119,7 @@ interface GeneratedInvoice {
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-              @for (quote of filteredQuotes(); track quote.id) {
+              @for (quote of filteredAndSortedQuotes(); track quote.id) {
                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <td class="px-4 py-3">
                     <div class="flex items-center">
@@ -300,12 +329,65 @@ export class RecurringQuotesComponent implements OnInit {
   private settingsService = inject(SupabaseSettingsService);
 
   quotes = signal<RecurringQuote[]>([]);
-  filteredQuotes = signal<RecurringQuote[]>([]);
+  searchTerm = signal<string>('');
+  statusFilter = signal<string>('');
+  frequencyFilter = signal<string>('');
+  sortBy = signal<string>('next-date');
   loading = signal(true);
-  statusFilter = '';
 
   // Tax configuration
   pricesIncludeTax = signal<boolean>(false);
+
+  // Filtered and sorted quotes
+  filteredAndSortedQuotes = computed(() => {
+    let filtered = this.quotes();
+    
+    // Search filter
+    const search = this.searchTerm().toLowerCase();
+    if (search) {
+      filtered = filtered.filter(q => 
+        q.title?.toLowerCase().includes(search) ||
+        q.quote_number?.toLowerCase().includes(search) ||
+        (q.client?.name || '').toLowerCase().includes(search)
+      );
+    }
+    
+    // Status filter
+    const status = this.statusFilter();
+    if (status) {
+      filtered = filtered.filter(q => q.status === status);
+    }
+    
+    // Frequency filter
+    const freq = this.frequencyFilter();
+    if (freq) {
+      filtered = filtered.filter(q => q.recurrence_type === freq);
+    }
+    
+    // Sorting
+    const sort = this.sortBy();
+    return filtered.sort((a, b) => {
+      switch (sort) {
+        case 'next-date':
+          const dateA = a.next_run_at ? new Date(a.next_run_at).getTime() : Infinity;
+          const dateB = b.next_run_at ? new Date(b.next_run_at).getTime() : Infinity;
+          return dateA - dateB;
+        case 'amount-desc':
+          return (b.total_amount || 0) - (a.total_amount || 0);
+        case 'amount-asc':
+          return (a.total_amount || 0) - (b.total_amount || 0);
+        case 'client-asc':
+          return (a.client?.name || '').localeCompare(b.client?.name || '');
+        case 'created-desc':
+          return b.id.localeCompare(a.id);
+        default:
+          return 0;
+      }
+    });
+  });
+
+  // Legacy computed for backwards compatibility
+  filteredQuotes = this.filteredAndSortedQuotes;
 
   // History modal
   showHistoryModal = signal(false);
@@ -401,7 +483,6 @@ export class RecurringQuotesComponent implements OnInit {
       );
 
       this.quotes.set(quotesWithCounts);
-      this.applyFilters();
     } catch (err) {
       console.error('Error loading recurring quotes:', err);
     } finally {
@@ -409,17 +490,7 @@ export class RecurringQuotesComponent implements OnInit {
     }
   }
 
-  applyFilters(): void {
-    let filtered = this.quotes();
-    
-    if (this.statusFilter === 'active') {
-      filtered = filtered.filter(q => q.status === 'accepted' || q.status === 'active');
-    } else if (this.statusFilter === 'paused') {
-      filtered = filtered.filter(q => q.status !== 'accepted' && q.status !== 'active');
-    }
-    
-    this.filteredQuotes.set(filtered);
-  }
+
 
   async viewHistory(quote: RecurringQuote): Promise<void> {
     this.selectedQuote.set(quote);
