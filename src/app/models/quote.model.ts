@@ -80,6 +80,7 @@ export interface Quote {
   // Referencia a factura
   invoice_id?: string | null;
   rectifies_invoice_id?: string | null;
+  rectification_reason?: string | null;
 
   // Información
   title: string;

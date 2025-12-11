@@ -1,0 +1,66 @@
+### INSTRUCCIONES
+# 1. Reemplaza TU_ANON_KEY_AQUI con tu Supabase Anon Key
+# 2. Para obtenerla: https://supabase.com/dashboard/project/ufutyjbqfjrlzkprvyvs/settings/api
+# 3. Click en "Send Request" arriba de cada petición
+
+@baseUrl = https://ufutyjbqfjrlzkprvyvs.supabase.co
+@anonKey = sb_publishable_dNnMhmfC0luhkc4GazBtSw_l7gWvcqq
+@companyId = cd830f43-f6f0-4b78-a2a4-505e4e0976b5
+
+###############################################
+### 1. Health Check - Verifica que funciona
+###############################################
+POST {{baseUrl}}/functions/v1/verifactu-dispatcher
+Content-Type: application/json
+Authorization: Bearer {{anonKey}}
+
+{
+  "action": "health"
+}
+
+###############################################
+### 2. Debug Environment - Ve la configuración
+###############################################
+POST {{baseUrl}}/functions/v1/verifactu-dispatcher
+Content-Type: application/json
+Authorization: Bearer {{anonKey}}
+
+{
+  "action": "debug-env"
+}
+
+###############################################
+### 3. Diagnostic Info - Estado del sistema
+###############################################
+POST {{baseUrl}}/functions/v1/verifactu-dispatcher
+Content-Type: application/json
+Authorization: Bearer {{anonKey}}
+
+{
+  "action": "diag",
+  "company_id": "{{companyId}}"
+}
+
+###############################################
+### 4. ⭐ Test Certificate - LA MÁS IMPORTANTE
+###############################################
+POST {{baseUrl}}/functions/v1/verifactu-dispatcher
+Content-Type: application/json
+Authorization: Bearer {{anonKey}}
+
+{
+  "action": "test-cert",
+  "company_id": "{{companyId}}"
+}
+
+###############################################
+### 5. Get Config - Configuración de empresa
+###############################################
+POST {{baseUrl}}/functions/v1/verifactu-dispatcher
+Content-Type: application/json
+Authorization: Bearer {{anonKey}}
+
+{
+  "action": "config",
+  "company_id": "{{companyId}}"
+}

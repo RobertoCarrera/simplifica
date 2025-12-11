@@ -1137,6 +1137,160 @@ serve(async (req)=>{
         }
       });
     }
+    // List all invoices with VeriFactu status for user's company (Registro AEAT)
+    // Implements Art. 12 - Obligation to provide consultation of registered records
+    if (body && body.action === 'list-registry') {
+      // Get user from token to find their company
+      const authHeader = req.headers.get('authorization') || '';
+      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+      if (!token) {
+        return new Response(JSON.stringify({ ok: false, error: 'Missing Bearer token' }), {
+          status: 401, headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+      const userClient = createClient(url, anonKey, {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${token}` } }
+      });
+      
+      // Get user's company_id from their invoices
+      const { data: userInvoices, error: invErr } = await userClient
+        .from('invoices')
+        .select('company_id')
+        .limit(1)
+        .maybeSingle();
+      
+      if (invErr || !userInvoices?.company_id) {
+        return new Response(JSON.stringify({ 
+          ok: false, 
+          error: 'No se pudo determinar la empresa del usuario' 
+        }), {
+          status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      const companyId = userInvoices.company_id;
+      
+      // Pagination params
+      const page = Number(body.page || 1);
+      const pageSize = Math.min(Number(body.pageSize || 50), 100);
+      const offset = (page - 1) * pageSize;
+      
+      // Get invoices with VeriFactu meta
+      const { data: invoices, error: listErr, count } = await admin
+        .from('invoices')
+        .select(`
+          id,
+          full_invoice_number,
+          invoice_date,
+          status,
+          total,
+          currency,
+          created_at,
+          client:clients!invoices_client_id_fkey(name, apellidos, business_name)
+        `, { count: 'exact' })
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      
+      if (listErr) {
+        return new Response(JSON.stringify({ ok: false, error: listErr.message }), {
+          status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      // Get VeriFactu meta for these invoices
+      const invoiceIds = (invoices || []).map(i => i.id);
+      const { data: metaList } = await admin
+        .schema('verifactu')
+        .from('invoice_meta')
+        .select('invoice_id, status, series, number, chained_hash, issue_time, created_at, updated_at')
+        .in('invoice_id', invoiceIds);
+      
+      // Get last event for each invoice
+      const { data: eventsList } = await admin
+        .schema('verifactu')
+        .from('events')
+        .select('invoice_id, event_type, status, created_at')
+        .in('invoice_id', invoiceIds)
+        .order('created_at', { ascending: false });
+      
+      // Group events by invoice_id (take latest)
+      const eventsByInvoice = new Map();
+      for (const ev of (eventsList || [])) {
+        if (!eventsByInvoice.has(ev.invoice_id)) {
+          eventsByInvoice.set(ev.invoice_id, ev);
+        }
+      }
+      
+      // Merge data
+      const metaMap = new Map((metaList || []).map(m => [m.invoice_id, m]));
+      const registry = (invoices || []).map(inv => {
+        const meta = metaMap.get(inv.id);
+        const lastEvent = eventsByInvoice.get(inv.id);
+        const clientName = inv.client?.business_name || 
+          [inv.client?.name, inv.client?.apellidos].filter(Boolean).join(' ') || 
+          'Sin cliente';
+        
+        return {
+          id: inv.id,
+          invoice_number: inv.full_invoice_number,
+          invoice_date: inv.invoice_date,
+          app_status: inv.status,
+          total: inv.total,
+          currency: inv.currency,
+          client_name: clientName,
+          verifactu: meta ? {
+            status: meta.status,
+            series: meta.series,
+            number: meta.number,
+            huella: meta.chained_hash,  // chained_hash es el nombre real de la columna
+            issue_time: meta.issue_time,
+            registered_at: meta.created_at,
+            updated_at: meta.updated_at
+          } : null,
+          last_event: lastEvent ? {
+            type: lastEvent.event_type,
+            status: lastEvent.status,
+            date: lastEvent.created_at
+          } : null
+        };
+      });
+      
+      // Get summary stats
+      const { data: statsData } = await admin
+        .schema('verifactu')
+        .from('invoice_meta')
+        .select('status')
+        .eq('company_id', companyId);
+      
+      const stats = {
+        total: count || 0,
+        registered: (statsData || []).length,
+        accepted: (statsData || []).filter(s => s.status === 'accepted').length,
+        rejected: (statsData || []).filter(s => s.status === 'rejected').length,
+        pending: (statsData || []).filter(s => s.status === 'pending' || s.status === 'sending').length,
+        void: (statsData || []).filter(s => s.status === 'void').length
+      };
+      
+      return new Response(JSON.stringify({
+        ok: true,
+        registry,
+        stats,
+        pagination: {
+          page,
+          pageSize,
+          total: count || 0,
+          totalPages: Math.ceil((count || 0) / pageSize)
+        }
+      }), {
+        status: 200,
+        headers: { ...headers, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Diagnostic: verify access to verifactu schema objects & sample data
     if (body && body.action === 'diag') {
       const out = {

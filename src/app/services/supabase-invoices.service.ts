@@ -122,6 +122,41 @@ export class SupabaseInvoicesService {
   }
 
   /**
+   * Obtener el registro completo de facturas enviadas a VeriFactu (Art. 12)
+   */
+  getVerifactuRegistry(page: number = 1, pageSize: number = 50): Observable<{
+    registry: any[];
+    stats: { total: number; registered: number; accepted: number; rejected: number; pending: number; void: number };
+    pagination: { page: number; pageSize: number; total: number; totalPages: number };
+  }> {
+    return new Observable(observer => {
+      (async () => {
+        try {
+          const { data: { session } } = await this.supabase.auth.getSession();
+          const token = session?.access_token;
+          if (!token) throw new Error('Sesión no válida');
+
+          const res = await fetch(`${environment.edgeFunctionsBaseUrl}/verifactu-dispatcher`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'list-registry', page, pageSize })
+          });
+          const json = await res.json();
+          if (!res.ok || !json.ok) throw new Error(json?.error || 'Error obteniendo registro VeriFactu');
+          observer.next({
+            registry: json.registry || [],
+            stats: json.stats || { total: 0, registered: 0, accepted: 0, rejected: 0, pending: 0, void: 0 },
+            pagination: json.pagination || { page: 1, pageSize: 50, total: 0, totalPages: 0 }
+          });
+          observer.complete();
+        } catch (e) {
+          observer.error(e);
+        }
+      })();
+    });
+  }
+
+  /**
    * Ejecuta el dispatcher inmediatamente (procesa eventos pendientes)
    */
   runDispatcherNow(): Observable<any> {

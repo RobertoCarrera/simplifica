@@ -283,13 +283,16 @@ export class SupabaseQuotesService {
   /**
    * Crear un presupuesto de rectificación desde una factura
    */
-  createRectificationQuote(invoiceId: string): Observable<string> {
-    return from(this.executeCreateRectificationQuote(invoiceId));
+  createRectificationQuote(invoiceId: string, reason: string): Observable<string> {
+    return from(this.executeCreateRectificationQuote(invoiceId, reason));
   }
 
-  private async executeCreateRectificationQuote(invoiceId: string): Promise<string> {
+  private async executeCreateRectificationQuote(invoiceId: string, reason: string): Promise<string> {
     const client = this.supabaseClient.instance;
-    const { data, error } = await client.rpc('create_rectification_quote', { p_invoice_id: invoiceId });
+    const { data, error } = await client.rpc('create_rectification_quote', { 
+      p_invoice_id: invoiceId,
+      p_rectification_reason: reason
+    });
     if (error) throw error;
     return data as string;
   }

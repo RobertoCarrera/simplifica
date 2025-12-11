@@ -11,7 +11,6 @@ import { CertificateUploaderComponent } from '../certificate-uploader/certificat
 interface VerifactuSettingsForm {
   software_code: string;
   issuer_nif: string;
-  environment: 'pre' | 'prod';
 }
 
 @Component({
@@ -44,8 +43,7 @@ export class VerifactuSettingsComponent implements OnInit {
 
   form: VerifactuSettingsForm = {
     software_code: '',
-    issuer_nif: '',
-    environment: 'pre'
+    issuer_nif: ''
   };
   processedCert = signal<ProcessedCertificatePayload | null>(null);
 
@@ -73,7 +71,6 @@ export class VerifactuSettingsComponent implements OnInit {
     return !!(
       this.form.software_code.trim() &&
       this.form.issuer_nif.trim() &&
-      this.form.environment &&
       this.processedCert()
     );
   }
@@ -93,7 +90,7 @@ export class VerifactuSettingsComponent implements OnInit {
         cert_pem: processed.certPem,
         key_pem: processed.keyPem,
         key_pass: processed.keyPass ?? null,
-        environment: this.form.environment
+        environment: 'prod'  // Always production
       }).toPromise();
 
       this.toast.success('Verifactu', '✅ Configuración guardada correctamente');
@@ -114,8 +111,7 @@ export class VerifactuSettingsComponent implements OnInit {
   private clearForm() {
     this.form = {
       software_code: '',
-      issuer_nif: '',
-      environment: 'pre'
+      issuer_nif: ''
     };
     this.processedCert.set(null);
   }
@@ -128,11 +124,9 @@ export class VerifactuSettingsComponent implements OnInit {
           // Prefill non-sensitive fields from Edge response
           this.form.software_code = data.settings.software_code || '';
           this.form.issuer_nif = data.settings.issuer_nif || '';
-          this.form.environment = data.settings.environment || 'pre';
           this.existingSettings.set({
             software_code: this.form.software_code,
-            issuer_nif: this.form.issuer_nif,
-            environment: this.form.environment
+            issuer_nif: this.form.issuer_nif
           });
           // Use mode from Edge response (no client-side detection)
           // Safeguard: treat legacy as none since legacy columns are deleted

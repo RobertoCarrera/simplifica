@@ -1,0 +1,147 @@
+{
+  "info": {
+    "name": "Simplifica - VeriFactu Diagnostics",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Colección para probar y diagnosticar el edge function de VeriFactu"
+  },
+  "variable": [
+    {
+      "key": "SUPABASE_URL",
+      "value": "https://ufutyjbqfjrlzkprvyvs.supabase.co",
+      "type": "string"
+    },
+    {
+      "key": "SUPABASE_ANON_KEY",
+      "value": "",
+      "type": "string",
+      "description": "Tu Supabase Anon Key - configúrala aquí"
+    },
+    {
+      "key": "COMPANY_ID",
+      "value": "cd830f43-f6f0-4b78-a2a4-505e4e0976b5",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health Check",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{SUPABASE_ANON_KEY}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"action\": \"health\"\n}"
+        },
+        "url": {
+          "raw": "https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1/verifactu-dispatcher"
+        },
+        "description": "Verifica que el edge function está activo y responde"
+      }
+    },
+    {
+      "name": "2. Debug Environment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{SUPABASE_ANON_KEY}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"action\": \"debug-env\"\n}"
+        },
+        "url": {
+          "raw": "https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1/verifactu-dispatcher"
+        },
+        "description": "Muestra las variables de entorno configuradas (sin valores sensibles)"
+      }
+    },
+    {
+      "name": "3. Diagnostic Info",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{SUPABASE_ANON_KEY}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"action\": \"diag\",\n  \"company_id\": \"{{COMPANY_ID}}\"\n}"
+        },
+        "url": {
+          "raw": "https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1/verifactu-dispatcher"
+        },
+        "description": "Obtiene información de diagnóstico del estado de VeriFactu"
+      }
+    },
+    {
+      "name": "4. Test Certificate",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{SUPABASE_ANON_KEY}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"action\": \"test-cert\",\n  \"company_id\": \"{{COMPANY_ID}}\"\n}"
+        },
+        "url": {
+          "raw": "https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1/verifactu-dispatcher"
+        },
+        "description": "Prueba el certificado y la conexión con AEAT - ESTE ES EL MÁS IMPORTANTE"
+      }
+    },
+    {
+      "name": "5. Get Config",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{SUPABASE_ANON_KEY}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"action\": \"config\",\n  \"company_id\": \"{{COMPANY_ID}}\"\n}"
+        },
+        "url": {
+          "raw": "https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1/verifactu-dispatcher"
+        },
+        "description": "Obtiene la configuración de VeriFactu para la empresa"
+      }
+    }
+  ]
+}

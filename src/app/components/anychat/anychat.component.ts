@@ -235,7 +235,13 @@ export class AnychatComponent implements OnInit {
     this.isLoadingConversations.set(true);
     this.anychatService.getConversations(page, 20).subscribe({
       next: (response: AnyChatPaginatedResponse<AnyChatConversation>) => {
-        this.conversations.set(response.data);
+        // Ordenar conversaciones de más reciente a más antigua
+        const sortedConversations = [...response.data].sort((a, b) => {
+          const dateA = new Date(a.last_message_at || a.updated_at || a.created_at || 0).getTime();
+          const dateB = new Date(b.last_message_at || b.updated_at || b.created_at || 0).getTime();
+          return dateB - dateA; // Más reciente primero
+        });
+        this.conversations.set(sortedConversations);
         this.currentPage.set(response.page);
         this.totalPages.set(response.pages);
         this.totalConversations.set(response.total);
@@ -286,6 +292,7 @@ export class AnychatComponent implements OnInit {
       next: (response: AnyChatPaginatedResponse<AnyChatMessage>) => {
         // Ensure messages are oldest->newest
         const ordered = (response.data || []).slice().sort((a, b) => (a.created_at - b.created_at));
+        console.log('🔍 DEBUG MENSAJES:', ordered.map(m => ({ guid: m.guid, direction: m.direction, message: m.message?.substring(0, 30) })));
         this.messages.set(ordered);
         this.messagesPage.set(response.page || 1);
         this.messagesTotalPages.set(response.pages || 1);

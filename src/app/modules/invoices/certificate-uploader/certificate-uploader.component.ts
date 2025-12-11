@@ -13,8 +13,8 @@ import { ToastService } from '../../../services/toast.service';
     <div>
       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Certificado / Clave (.p12, .pfx, .pem, .crt, .key) *</label>
       <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center justify-center gap-2 text-center">
-        <input type="file" multiple (change)="onFiles($event)" accept=".p12,.pfx,.pem,.crt,.cer,.key" class="text-sm" />
-        <p class="text-xs text-gray-500 dark:text-gray-400">Puedes subir un archivo PKCS#12 (.p12/.pfx) o conjunto PEM (.crt/.key)</p>
+        <input type="file" multiple (change)="onFiles($event)" accept=".p12,.pfx,.pem,.crt,.cer,.key" class="text-sm text-gray-900 dark:text-gray-100" />
+        <p class="text-xs text-gray-500 dark:text-gray-400">Puedes subir PKCS#12 (.p12/.pfx) o archivos PEM (.crt, .cer, .pem, .key)</p>
       </div>
     </div>
 
@@ -24,17 +24,17 @@ import { ToastService } from '../../../services/toast.service';
       <button type="button" (click)="processPkcs12()" [disabled]="processing()" class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">Procesar PKCS#12</button>
     </div>
 
-    <div *ngIf="summary()" class="bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-sm">
-      <div class="font-medium mb-2">Resumen del Certificado</div>
-      <ul class="space-y-1">
-        <li><span class="text-gray-500">Tipo:</span> {{ summary()!.originalFileTypes.join(', ') }}</li>
-        <li><span class="text-gray-500">Sujeto:</span> {{ summary()!.rawCertInfo.subject }}</li>
-        <li><span class="text-gray-500">Emisor:</span> {{ summary()!.rawCertInfo.issuer }}</li>
-        <li><span class="text-gray-500">Validez:</span> {{ summary()!.rawCertInfo.notBefore }} → {{ summary()!.rawCertInfo.notAfter }}</li>
-        <li><span class="text-gray-500">Serial:</span> {{ summary()!.rawCertInfo.serialNumber }}</li>
-        <li><span class="text-gray-500">Algoritmo:</span> {{ summary()!.rawCertInfo.publicKeyAlgorithm }}</li>
-        <li><span class="text-gray-500">Tamaño PEM cert:</span> {{ summary()!.sizes.certPemLength }} chars</li>
-        <li><span class="text-gray-500">Tamaño PEM clave:</span> {{ summary()!.sizes.keyPemLength }} chars</li>
+    <div *ngIf="summary()" class="bg-gray-50 dark:bg-gray-900/30 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-sm text-gray-900 dark:text-gray-100">
+      <div class="font-medium mb-2 text-gray-900 dark:text-gray-100">Resumen del Certificado</div>
+      <ul class="space-y-1 text-gray-700 dark:text-gray-300">
+        <li><span class="text-gray-500 dark:text-gray-400">Tipo:</span> {{ summary()!.originalFileTypes.join(', ') }}</li>
+        <li><span class="text-gray-500 dark:text-gray-400">Sujeto:</span> {{ summary()!.rawCertInfo.subject }}</li>
+        <li><span class="text-gray-500 dark:text-gray-400">Emisor:</span> {{ summary()!.rawCertInfo.issuer }}</li>
+        <li><span class="text-gray-500 dark:text-gray-400">Validez:</span> {{ summary()!.rawCertInfo.notBefore }} → {{ summary()!.rawCertInfo.notAfter }}</li>
+        <li><span class="text-gray-500 dark:text-gray-400">Serial:</span> {{ summary()!.rawCertInfo.serialNumber }}</li>
+        <li><span class="text-gray-500 dark:text-gray-400">Algoritmo:</span> {{ summary()!.rawCertInfo.publicKeyAlgorithm }}</li>
+        <li><span class="text-gray-500 dark:text-gray-400">Tamaño PEM cert:</span> {{ summary()!.sizes.certPemLength }} chars</li>
+        <li><span class="text-gray-500 dark:text-gray-400">Tamaño PEM clave:</span> {{ summary()!.sizes.keyPemLength }} chars</li>
       </ul>
     </div>
   </div>

@@ -485,8 +485,14 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   }
 
   rectify(invoiceId: string) {
-    if (!confirm('¿Crear una rectificación para esta factura? Se generará un nuevo presupuesto borrador copia de esta factura.')) return;
-    this.quotesService.createRectificationQuote(invoiceId).subscribe({
+    const reason = prompt('Introduce el motivo de la rectificación:\n\n(Requerido por VeriFactu. Ej: "Error en cantidad", "Precio incorrecto", "Factura de prueba emitida por error")');
+    
+    if (!reason || reason.trim() === '') {
+      try { this.toast.error('Motivo requerido', 'Debes introducir un motivo para la rectificación'); } catch { }
+      return;
+    }
+
+    this.quotesService.createRectificationQuote(invoiceId, reason.trim()).subscribe({
       next: (quoteId) => {
         try { this.toast.success('Rectificación creada', 'Se ha generado el presupuesto de rectificación'); } catch { }
         this.router.navigate(['/presupuestos', quoteId]);
@@ -565,10 +571,17 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   canCancel(inv: Invoice): boolean {
     // No permitir anular si ya está cancelada, anulada o rectificada
     if (inv.status === 'cancelled' || inv.status === 'void' || inv.status === 'rectified') return false;
+    
+    // Si VeriFactu está habilitado y la factura está aceptada por AEAT, NO permitir anular
+    // (debe rectificarse formalmente en su lugar)
+    if (this.isVerifactuEnabled() && this.isVerifactuAccepted()) {
+      return false;
+    }
+    
     // Permitir anular facturas rectificativas (negativas)
     if (inv.invoice_type === 'rectificative' || (inv.total || 0) < 0) return true;
 
-    return this.isSentOrLater(inv.status) || this.isVerifactuAccepted();
+    return this.isSentOrLater(inv.status);
   }
 
   canRectify(inv: Invoice): boolean {
