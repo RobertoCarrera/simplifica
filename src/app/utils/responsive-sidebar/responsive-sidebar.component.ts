@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
+import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download } from 'lucide-angular';
 import { PWAService } from '../../services/pwa.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
 import { DevRoleService } from '../../services/dev-role.service';
@@ -30,7 +31,13 @@ interface MenuItem {
     '[class.mobile-visible]': 'isOpen() && isMobile()',
     '[class.mobile-hidden]': '!isOpen() && isMobile()'
   },
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, LucideAngularModule],
+  providers: [
+    {
+      provide: LUCIDE_ICONS,
+      useValue: new LucideIconProvider({ Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download })
+    }
+  ],
   templateUrl: './responsive-sidebar.component.html',
   styleUrls: ['./responsive-sidebar.component.scss'],
 })
@@ -55,6 +62,13 @@ export class ResponsiveSidebarComponent implements OnInit {
   readonly isOpen = this.sidebarState.isOpen;
   readonly isCollapsed = this.sidebarState.isCollapsed;
   // All menu items (productivos, visibles también en desarrollo)
+  // Lucide icons para el template
+  readonly icons = {
+    Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, 
+    Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, 
+    ChevronRight, LogOut, Smartphone, Download
+  };
+
   private allMenuItems: MenuItem[] = [
     {
       id: 1,
@@ -66,73 +80,73 @@ export class ResponsiveSidebarComponent implements OnInit {
     {
       id: 2,
       label: 'Clientes',
-      icon: 'people',
+      icon: 'users',
       route: '/clientes',
       module: 'core'
     },
     {
       id: 3,
       label: 'Tickets',
-      icon: 'confirmation_number',
+      icon: 'ticket',
       route: '/tickets',
       module: 'production',
       moduleKey: 'moduloSAT'
     },
     {
       id: 4,
-      label: 'Servicios',
-      icon: 'build',
-      route: '/servicios',
-      module: 'production'
-    },
-    {
-      id: 5,
-      label: 'Productos',
-      icon: 'inventory_2',
-      route: '/productos',
-      module: 'production'
-    },
-    {
-      id: 43,
-      label: 'Presupuestos',
-      icon: 'request_quote',
-      route: '/presupuestos',
-      module: 'production'
-    },
-    {
-      id: 6,
-      label: 'Analíticas',
-      icon: 'trending_up',
-      route: '/analytics',
-      module: 'production',
-      moduleKey: 'moduloAnaliticas'
-    },
-    {
-      id: 44,
-      label: 'Facturación',
-      icon: 'description',
-      route: '/facturacion',
-      module: 'production'
-    },
-    {
-      id: 41,
       label: 'Chat',
-      icon: 'chat',
+      icon: 'message-circle',
       route: '/chat',
       module: 'production',
       moduleKey: 'moduloChat'
     },
     {
-      id: 13,
+      id: 5,
+      label: 'Presupuestos',
+      icon: 'file-text',
+      route: '/presupuestos',
+      module: 'production'
+    },
+    {
+      id: 6,
+      label: 'Facturación',
+      icon: 'receipt',
+      route: '/facturacion',
+      module: 'production'
+    },
+    {
+      id: 7,
+      label: 'Analíticas',
+      icon: 'trending-up',
+      route: '/analytics',
+      module: 'production',
+      moduleKey: 'moduloAnaliticas'
+    },
+    {
+      id: 8,
+      label: 'Productos',
+      icon: 'package',
+      route: '/productos',
+      module: 'production'
+    },
+    {
+      id: 9,
+      label: 'Servicios',
+      icon: 'wrench',
+      route: '/servicios',
+      module: 'production'
+    },
+    {
+      id: 20,
       label: 'Configuración',
       icon: 'settings',
       route: '/configuracion',
       module: 'core'
     },
     {
-      id: 45,
+      id: 99,
       label: 'Gestión Módulos',
-      icon: 'auto_awesome',
+      icon: 'sparkles',
       route: '/admin/modulos',
       module: 'core',
       roleOnly: 'adminOnly'
