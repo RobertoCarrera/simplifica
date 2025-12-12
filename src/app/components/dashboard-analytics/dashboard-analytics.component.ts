@@ -34,31 +34,6 @@ export type ChartOptions = {
       
       <!-- Inner wrapper: contains header and content -->
       <div class="flex-1 flex flex-col p-2 overflow-hidden">
-        <!-- Header -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 md:p-6 mb-4 md:mb-6 border border-gray-200 dark:border-gray-700 flex-shrink-0">
-          <div class="flex justify-between items-center flex-wrap gap-4">
-            <div>
-              <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                </svg>
-                Analíticas
-              </h1>
-              <p class="text-gray-600 dark:text-gray-300 mt-1 hidden md:block">Métricas financieras de facturas y presupuestos</p>
-            </div>
-            
-            <button
-              (click)="refreshData()"
-              [disabled]="isLoading()"
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors duration-200 inline-flex items-center gap-2 shadow-sm text-sm"
-            >
-              <svg class="w-4 h-4" [class.animate-spin]="isLoading()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-              </svg>
-              <span class="hidden sm:inline">Actualizar</span>
-            </button>
-          </div>
-        </div>
 
         <!-- Scrollable content area -->
         <div class="flex-1 overflow-auto space-y-6">
@@ -111,6 +86,15 @@ export type ChartOptions = {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
                   </svg>
                   Evolución Mensual (últimos 6 meses)
+                  <button
+                    [disabled]="isLoading()"
+                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors duration-200 inline-flex items-center gap-2 shadow-sm text-sm"
+                  >
+                    <svg class="w-4 h-4" [class.animate-spin]="isLoading()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <span class="hidden sm:inline">Actualizar</span>
+                  </button>
                 </h3>
                 
                 <apx-chart
