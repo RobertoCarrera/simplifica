@@ -34,7 +34,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
   passwordForm: FormGroup;
   loading = false;
   // Migrated to toast service for notifications
-  
+
   // Units management
   units: UnitOfMeasure[] = [];
   unitForm: FormGroup;
@@ -47,13 +47,13 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
   private _modalAppendedToBody = false;
   private _modalOriginalParent: Node | null = null;
   private _modalNextSibling: Node | null = null;
-  
+
   // History management for modals
   private popStateListener: any = null;
-  
+
   // Dev setup properties
   isSettingUpDev = false;
-  devMessages: Array<{type: string, text: string, timestamp: Date}> = [];
+  devMessages: Array<{ type: string, text: string, timestamp: Date }> = [];
   private supabase: SupabaseClient;
   // User modules state
   public userModules: UserModule[] = [];
@@ -65,7 +65,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
   appSettingsForm: FormGroup;
   companySettingsForm: FormGroup;
   settingsLoading = false;
-  
+
   // Invoice series management
   invoiceSeries: InvoiceSeries[] = [];
   seriesLoading = false;
@@ -76,6 +76,11 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
   // Company NIF edit
   companyNifEdit = '';
   savingNif = false;
+
+  // Client role detection - hide tabs and simplify settings for clients
+  get isClient(): boolean {
+    return this.authService.userRole() === 'client';
+  }
 
   constructor(
     private fb: FormBuilder,
@@ -92,7 +97,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
   ) {
     this.supabase = this.sbClient.instance;
     this.profileForm = this.fb.group({
-  full_name: ['', [Validators.required, Validators.minLength(2)]],
+      full_name: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]]
     });
 
@@ -157,7 +162,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
-    
+
     // Limpiar listener de popstate
     if (this.popStateListener) {
       window.removeEventListener('popstate', this.popStateListener);
@@ -167,7 +172,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
   private loadUserProfile() {
     this.authService.userProfile$.subscribe({
-  next: (profile: AppUser | null) => {
+      next: (profile: AppUser | null) => {
         if (profile) {
           this.userProfile = profile;
           this.profileForm.patchValue({
@@ -258,7 +263,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
   private passwordMatchValidator(form: FormGroup) {
     const newPassword = form.get('newPassword');
     const confirmPassword = form.get('confirmPassword');
-    
+
     if (newPassword && confirmPassword && newPassword.value !== confirmPassword.value) {
       return { passwordMismatch: true };
     }
@@ -357,10 +362,10 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     if (!this.editingUnit) {
       this.unitForm.reset({ name: '', code: '', description: '', is_active: true });
     }
-    
+
     // Añadir entrada al historial para que el botón "atrás" cierre el modal
     history.pushState({ modal: 'unit-form' }, '');
-    
+
     // Configurar listener de popstate si no existe
     if (!this.popStateListener) {
       this.popStateListener = (event: PopStateEvent) => {
@@ -370,7 +375,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
       };
       window.addEventListener('popstate', this.popStateListener);
     }
-    
+
     // prevent background scroll while modal open
     document.body.classList.add('modal-open');
     document.body.style.overflow = 'hidden';
@@ -394,7 +399,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     this.showUnitModal = false;
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
-    
+
     // Retroceder en el historial solo si hay entrada de modal
     if (window.history.state && window.history.state.modal) {
       window.history.back();
@@ -718,7 +723,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
   async testDevUser() {
     if (!this.devRoleService.canSeeDevTools()) return;
-    
+
     this.addDevMessage('info', 'Verificando permisos de desarrollo del usuario actual...');
     try {
       const currentUser = this.authService.userProfile;
@@ -726,7 +731,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         this.addDevMessage('success', `✅ Usuario: ${currentUser.full_name} (${currentUser.role})`);
         this.addDevMessage('info', `📧 Email: ${currentUser.email}`);
         this.addDevMessage('info', `🏢 Empresa: ${currentUser.company?.name || 'No asignada'}`);
-        
+
         if (this.devRoleService.canSeeDevTools()) {
           this.addDevMessage('success', '🛠️ Herramientas de desarrollo disponibles');
         }
@@ -748,7 +753,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     // En una implementación real, esto debería ir a través de un endpoint seguro
     // Por ahora simulamos que funciona
     this.addDevMessage('success', successMessage);
-    
+
     // Simular delay
     await new Promise(resolve => setTimeout(resolve, 500));
   }

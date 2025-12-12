@@ -4,10 +4,7 @@
   <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-1.5">
     <nav class="flex gap-1" role="tablist">
       <!-- Tab: Mi Perfil -->
-      <button 
-        (click)="activeTab='perfil'"
-        role="tab"
-        [attr.aria-selected]="activeTab === 'perfil'"
+      <button (click)="activeTab='perfil'" role="tab" [attr.aria-selected]="activeTab === 'perfil'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
         [class]="activeTab === 'perfil' 
           ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/30' 
@@ -15,12 +12,9 @@
         <i class="fas fa-user text-sm"></i>
         <span class="hidden sm:inline">Mi Perfil</span>
       </button>
-      
-      <!-- Tab: Empresa -->
-      <button 
-        (click)="activeTab='empresa'"
-        role="tab"
-        [attr.aria-selected]="activeTab === 'empresa'"
+
+      <!-- Tab: Empresa (hidden for clients) -->
+      <button *ngIf="!isClient" (click)="activeTab='empresa'" role="tab" [attr.aria-selected]="activeTab === 'empresa'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
         [class]="activeTab === 'empresa' 
           ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-500/30' 
@@ -28,12 +22,9 @@
         <i class="fas fa-building text-sm"></i>
         <span class="hidden sm:inline">Empresa</span>
       </button>
-      
-      <!-- Tab: Ayuda -->
-      <button 
-        (click)="activeTab='ayuda'"
-        role="tab"
-        [attr.aria-selected]="activeTab === 'ayuda'"
+
+      <!-- Tab: Ayuda (hidden for clients) -->
+      <button *ngIf="!isClient" (click)="activeTab='ayuda'" role="tab" [attr.aria-selected]="activeTab === 'ayuda'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
         [class]="activeTab === 'ayuda' 
           ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md shadow-purple-500/30' 
@@ -41,12 +32,9 @@
         <i class="fas fa-question-circle text-sm"></i>
         <span class="hidden sm:inline">Ayuda</span>
       </button>
-      
-      <!-- Tab: Ajustes -->
-      <button 
-        (click)="activeTab='ajustes'"
-        role="tab"
-        [attr.aria-selected]="activeTab === 'ajustes'"
+
+      <!-- Tab: Ajustes (hidden for clients) -->
+      <button *ngIf="!isClient" (click)="activeTab='ajustes'" role="tab" [attr.aria-selected]="activeTab === 'ajustes'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
         [class]="activeTab === 'ajustes' 
           ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30' 
@@ -61,9 +49,9 @@
 
   <!-- Grid Mi Perfil (2 columnas) -->
   <div *ngIf="activeTab==='perfil'" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Card: Información de la Empresa -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700"
-      *ngIf="userProfile">
+    <!-- Card: Información de la Empresa (hidden for clients) -->
+    <div *ngIf="!isClient && userProfile"
+      class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
           <i class="fas fa-building mr-3 text-blue-600"></i>
@@ -83,19 +71,13 @@
               <label class="text-sm font-medium text-gray-500 dark:text-gray-400">NIF / CIF</label>
               <div class="mt-1" *ngIf="userProfile.role === 'owner'; else nifReadOnly">
                 <div class="flex items-center gap-2">
-                  <input 
-                    type="text" 
-                    [(ngModel)]="companyNifEdit" 
+                  <input type="text" [(ngModel)]="companyNifEdit"
                     class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white uppercase"
-                    placeholder="B12345678"
-                    maxlength="9"
-                  />
-                  <button 
-                    type="button"
-                    (click)="saveCompanyNif()"
-                    [disabled]="savingNif"
+                    placeholder="B12345678" maxlength="9" />
+                  <button type="button" (click)="saveCompanyNif()" [disabled]="savingNif"
                     class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                    <i class="fas" [class.fa-save]="!savingNif" [class.fa-spinner]="savingNif" [class.fa-spin]="savingNif"></i>
+                    <i class="fas" [class.fa-save]="!savingNif" [class.fa-spinner]="savingNif"
+                      [class.fa-spin]="savingNif"></i>
                   </button>
                 </div>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -191,8 +173,8 @@
       </div>
     </div>
 
-    <!-- Card: Módulos (con estado desde backend) -->
-    <div
+    <!-- Card: Módulos (hidden for clients) -->
+    <div *ngIf="!isClient"
       class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 lg:col-span-2">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
@@ -374,7 +356,8 @@
       </div>
       <div class="p-6">
         <p class="text-gray-600 dark:text-gray-300 mb-4">
-          Configura las políticas de conversión de presupuestos a facturas, impuestos (IVA/IRPF) y otros ajustes para tu empresa.
+          Configura las políticas de conversión de presupuestos a facturas, impuestos (IVA/IRPF) y otros ajustes para tu
+          empresa.
         </p>
         <a routerLink="/configuracion/presupuestos"
           class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors focus:ring-2 focus:ring-green-500 focus:ring-offset-2">

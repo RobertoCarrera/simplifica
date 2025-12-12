@@ -62,10 +62,11 @@ export class ClientPasswordSetupComponent {
       return;
     }
     this.success.set(true);
-    setTimeout(() => this.router.navigate(['/portal']), 900);
+    // Redirect to login so user can sign in with their new password
+    setTimeout(() => this.router.navigate(['/login']), 900);
   }
 
   skip() {
-    this.router.navigate(['/portal']);
+    this.router.navigate(['/login']);
   }
 }

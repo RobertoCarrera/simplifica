@@ -8,7 +8,7 @@ import { SupabaseClientService } from './supabase-client.service';
 
 // AppUser refleja la fila de public.users + datos de compañía
 export interface AppUser {
-  id: string;              // id interno de public.users (no auth id)
+  id: string;              // id interno de public.users (no auth id), or client id for portal users
   auth_user_id: string;    // id de auth.users
   email: string;
   name?: string | null;
@@ -19,6 +19,8 @@ export interface AppUser {
   // Campos derivados
   full_name?: string | null; // compatibilidad legacy (sidebar, etc.)
   company?: Company | null;
+  // Client portal specific
+  client_id?: string | null; // Only set for portal clients - the id from clients table
 }
 
 export interface Company {
@@ -76,8 +78,8 @@ export class AuthService {
 
   constructor(private sbClient: SupabaseClientService) {
     // Validar que las variables de entorno estén configuradas
-  const cfg = this.sbClient['cfg']?.get?.() ?? null;
-  if (!cfg?.supabase?.url || !cfg?.supabase?.anonKey) {
+    const cfg = this.sbClient['cfg']?.get?.() ?? null;
+    if (!cfg?.supabase?.url || !cfg?.supabase?.anonKey) {
       console.error('❌ SUPABASE CONFIGURATION ERROR:');
       console.error('Las variables de entorno de Supabase no están configuradas.');
       console.error('En Vercel Dashboard, configura:');
@@ -93,7 +95,7 @@ export class AuthService {
     if (!AuthService.initializationStarted) {
       AuthService.initializationStarted = true;
       console.log('🔐 AuthService: Inicializando por primera vez...');
-      
+
       // Inicializar estado de autenticación
       this.initializeAuth();
 
@@ -116,9 +118,9 @@ export class AuthService {
 
   private setupInactivityTimeout() {
     const reset = () => {
-      try { if (this.inactivityTimer) clearTimeout(this.inactivityTimer); } catch(e){}
+      try { if (this.inactivityTimer) clearTimeout(this.inactivityTimer); } catch (e) { }
       this.inactivityTimer = setTimeout(async () => {
-        try { await this.logout(); } catch(e){}
+        try { await this.logout(); } catch (e) { }
       }, this.inactivityTimeoutMs);
     };
 
@@ -136,46 +138,46 @@ export class AuthService {
 
   // Método auxiliar para operaciones que requieren sesión válida
   private async retryWithSession<T>(
-    operation: () => Promise<T>, 
+    operation: () => Promise<T>,
     maxRetries: number = 3
   ): Promise<T> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         // Verificar sesión antes de cada intento
         const { data: { session } } = await this.supabase.auth.getSession();
-        
+
         if (!session || !session.access_token) {
           console.warn(`🔄 No valid session on attempt ${attempt}, waiting...`);
           await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-          
+
           // Intentar refrescar la sesión
           await this.supabase.auth.refreshSession();
           continue;
         }
-        
+
         return await operation();
       } catch (error: any) {
-        const isAuthError = error?.message?.includes('JWT') || 
-                           error?.message?.includes('authorization') ||
-                           error?.code === '401';
-        
+        const isAuthError = error?.message?.includes('JWT') ||
+          error?.message?.includes('authorization') ||
+          error?.code === '401';
+
         if (isAuthError && attempt < maxRetries) {
           console.warn(`🔄 Auth error on attempt ${attempt}, retrying...`);
           await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
           continue;
         }
-        
+
         throw error;
       }
     }
-    
+
     throw new Error('Failed to execute operation with valid session after retries');
   }
 
   // Método auxiliar para reintentar operaciones que fallan por NavigatorLockAcquireTimeoutError
   private async retryWithBackoff<T>(
-    operation: () => Promise<T>, 
-    maxRetries: number = 3, 
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
     baseDelay: number = 1000
   ): Promise<T> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -183,19 +185,19 @@ export class AuthService {
         return await operation();
       } catch (error: any) {
         const isLockError = error?.message?.includes('NavigatorLockAcquireTimeoutError') ||
-                           error?.name?.includes('NavigatorLockAcquireTimeoutError');
-        
+          error?.name?.includes('NavigatorLockAcquireTimeoutError');
+
         if (isLockError && attempt < maxRetries) {
           console.warn(`🔄 Lock error on attempt ${attempt}, retrying in ${baseDelay * attempt}ms...`);
           await new Promise(resolve => setTimeout(resolve, baseDelay * attempt));
           continue;
         }
-        
+
         // Si no es error de lock o se agotaron los reintentos, re-lanzar el error
         throw error;
       }
     }
-    
+
     // Esto nunca debería ejecutarse, pero TypeScript lo requiere
     throw new Error('Unexpected error in retryWithBackoff');
   }
@@ -229,14 +231,14 @@ export class AuthService {
   }
 
   private async setCurrentUser(user: User) {
-  // Marcar carga mientras resolvemos el perfil de app
-  this.loadingSubject.next(true);
+    // Marcar carga mientras resolvemos el perfil de app
+    this.loadingSubject.next(true);
     this.currentUserSubject.next(user);
     this.isAuthenticated.set(true);
 
     // Verificar si ya existe el usuario antes de llamar ensureAppUser
     const existingAppUser = await this.fetchAppUserByAuthId(user.id);
-    
+
     // Evitar creación automática durante el flujo de invitación (/invite):
     // En este flujo, la creación/enlace del usuario la realiza el RPC accept_company_invitation.
     const onInviteFlow = typeof window !== 'undefined' && window.location.pathname.startsWith('/invite');
@@ -249,18 +251,18 @@ export class AuthService {
         // No propagar el error para evitar bloqueos en login
       }
     }
-    
+
     // Cargar datos finales
     const appUser = existingAppUser || await this.fetchAppUserByAuthId(user.id);
-  if (appUser) {
+    if (appUser) {
       this.userProfileSubject.next(appUser);
       this.userRole.set(appUser.role);
       if (appUser.company_id) this.companyId.set(appUser.company_id);
       // Sólo admin es considerado admin; owner es rol de negocio sin privilegios dev
       this.isAdmin.set(appUser.role === 'admin');
     }
-  // Finalizar carga
-  this.loadingSubject.next(false);
+    // Finalizar carga
+    this.loadingSubject.next(false);
   }
 
   private clearUserData() {
@@ -272,41 +274,76 @@ export class AuthService {
     this.companyId.set('');
   }
 
-  // Obtiene la fila de public.users + compañía
+  // Obtiene la fila de public.users + compañía, o de public.clients para clientes del portal
   private async fetchAppUserByAuthId(authId: string): Promise<AppUser | null> {
     try {
       console.log('🔍 Fetching app user for auth ID:', authId);
+
+      // First, try to find in users table (staff/admin)
       const { data, error } = await this.supabase
         .from('users')
-        .select(`id, auth_user_id, email, name, role, active, company_id, permissions, company:companies(id, name, slug, nif, is_active, settings)`) // company join via foreign key name assumption
+        .select(`id, auth_user_id, email, name, role, active, company_id, permissions, company:companies(id, name, slug, nif, is_active, settings)`)
         .eq('auth_user_id', authId)
         .maybeSingle();
-      
+
       if (error) {
         console.error('❌ Error fetching app user:', error);
+      }
+
+      if (data) {
+        console.log('✅ App user fetched successfully:', data);
+        const company = Array.isArray((data as any).company) ? (data as any).company[0] : (data as any).company;
+        const appUser: AppUser = {
+          id: (data as any).id,
+          auth_user_id: (data as any).auth_user_id,
+          email: (data as any).email,
+          name: (data as any).name,
+          role: (data as any).role,
+          active: (data as any).active,
+          company_id: (data as any).company_id,
+          permissions: (data as any).permissions,
+          full_name: (data as any).name || (data as any).email,
+          company: company || null
+        };
+        return appUser;
+      }
+
+      // If not found in users, check clients table (portal clients)
+      console.log('🔍 User not in users table, checking clients table...');
+      const { data: clientData, error: clientError } = await this.supabase
+        .from('clients')
+        .select(`id, auth_user_id, email, name, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
+        .eq('auth_user_id', authId)
+        .maybeSingle();
+
+      if (clientError) {
+        console.error('❌ Error fetching client:', clientError);
         return null;
       }
-      if (!data) {
-        console.warn('⚠️ No app user found for auth ID:', authId);
-        return null;
+
+      if (clientData) {
+        console.log('✅ Client fetched successfully:', clientData);
+        const company = Array.isArray((clientData as any).company) ? (clientData as any).company[0] : (clientData as any).company;
+        const appUser: AppUser = {
+          id: (clientData as any).id,
+          auth_user_id: (clientData as any).auth_user_id,
+          email: (clientData as any).email,
+          name: (clientData as any).name,
+          role: 'client', // Clients always have 'client' role
+          active: (clientData as any).is_active ?? true,
+          company_id: (clientData as any).company_id,
+          permissions: {},
+          full_name: (clientData as any).name || (clientData as any).email,
+          company: company || null,
+          client_id: (clientData as any).id // Store client_id for filtering
+        };
+        return appUser;
       }
-      
-      console.log('✅ App user fetched successfully:', data);
-      const company = Array.isArray((data as any).company) ? (data as any).company[0] : (data as any).company;
-      const appUser: AppUser = {
-        id: (data as any).id,
-        auth_user_id: (data as any).auth_user_id,
-        email: (data as any).email,
-        name: (data as any).name,
-        role: (data as any).role,
-        active: (data as any).active,
-        company_id: (data as any).company_id,
-        permissions: (data as any).permissions,
-        full_name: (data as any).name || (data as any).email,
-        company: company || null
-      };
-      return appUser;
+
+      console.warn('⚠️ No app user or client found for auth ID:', authId);
+      return null;
     } catch (e) {
+      console.error('❌ Exception in fetchAppUserByAuthId:', e);
       return null;
     }
   }
@@ -315,16 +352,16 @@ export class AuthService {
   private async ensureAppUser(authUser: User, companyName?: string, companyNif?: string): Promise<void> {
     try {
       console.log('🔄 Ensuring app user exists for:', authUser.email);
-      
+
       // PROTECCIÓN: Verificar si ya hay un registro en progreso para este usuario
       if (this.registrationInProgress.has(authUser.id)) {
         console.log('⏳ Registration already in progress for this user, skipping...');
         return;
       }
-      
+
       // Marcar como en progreso
       this.registrationInProgress.add(authUser.id);
-      
+
       try {
         // 1. Buscar por auth_user_id
         const existing = await this.supabase
@@ -332,74 +369,122 @@ export class AuthService {
           .select('id, auth_user_id, email, role, company_id')
           .eq('auth_user_id', authUser.id)
           .maybeSingle();
-      
-      if (existing.error) {
-        console.error('❌ Error checking existing user:', existing.error);
-        throw existing.error;
-      }
-      
-      if (existing.data) {
-        console.log('✅ User already exists in app database');
-        this.registrationInProgress.delete(authUser.id);
-        return; // ya está enlazado
-      }
 
-      console.log('➕ Creating new app user...');
-
-      // 2. Si existe un registro pendiente, delegar en la función de confirmación (backend decide)
-      const pendingRes = await this.supabase
-        .from('pending_users')
-        .select('company_name, confirmed_at, expires_at')
-        .eq('auth_user_id', authUser.id)
-        .order('created_at', { ascending: false })
-        .maybeSingle();
-
-      if (pendingRes.data && !pendingRes.error) {
-        console.log('📨 Pending registration found, confirming via RPC...');
-        const { data: confirmData, error: confirmErr } = await this.supabase.rpc('confirm_user_registration', {
-          p_auth_user_id: authUser.id
-        });
-
-        if (confirmErr) {
-          console.error('❌ Error in confirm_user_registration:', confirmErr);
-        } else if (confirmData?.requires_invitation_approval) {
-          console.log('� Invitation approval required. Not creating user/company client-side.');
-          return; // Esperar aprobación del owner
-        } else if (confirmData?.success) {
-          console.log('✅ Registration completed via RPC');
-          return; // El backend ya creó la empresa y el usuario
-        }
-        // Si falla, continuamos con la lógica local como fallback
-      }
-
-      // 3. Determinar el nombre de empresa deseado (respetar el del formulario si existe)
-      const desiredCompanyName = (companyName ?? pendingRes.data?.company_name ?? '').trim();
-
-      // Si tenemos nombre de empresa, comprobar si ya existe para unir como miembro
-      if (desiredCompanyName) {
-        console.log('🔎 Checking company existence for:', desiredCompanyName);
-        const { data: existsData, error: existsError } = await this.supabase.rpc('check_company_exists', {
-          p_company_name: desiredCompanyName
-        });
-
-        if (existsError) {
-          console.error('❌ Error checking company existence:', existsError);
-          throw existsError;
+        if (existing.error) {
+          console.error('❌ Error checking existing user:', existing.error);
+          throw existing.error;
         }
 
-        const existsRow = Array.isArray(existsData) ? existsData[0] : existsData;
+        if (existing.data) {
+          console.log('✅ User already exists in app database');
+          this.registrationInProgress.delete(authUser.id);
+          return; // ya está enlazado
+        }
 
-        if (existsRow?.company_exists && existsRow.company_id) {
-          // La empresa ya existe: crear usuario como member
-          const companyId = existsRow.company_id as string;
-          console.log('🤝 Company exists. Linking user as member to:', companyId);
+        console.log('➕ Creating new app user...');
+
+        // 2. Si existe un registro pendiente, delegar en la función de confirmación (backend decide)
+        const pendingRes = await this.supabase
+          .from('pending_users')
+          .select('company_name, confirmed_at, expires_at')
+          .eq('auth_user_id', authUser.id)
+          .order('created_at', { ascending: false })
+          .maybeSingle();
+
+        if (pendingRes.data && !pendingRes.error) {
+          console.log('📨 Pending registration found, confirming via RPC...');
+          const { data: confirmData, error: confirmErr } = await this.supabase.rpc('confirm_user_registration', {
+            p_auth_user_id: authUser.id
+          });
+
+          if (confirmErr) {
+            console.error('❌ Error in confirm_user_registration:', confirmErr);
+          } else if (confirmData?.requires_invitation_approval) {
+            console.log('� Invitation approval required. Not creating user/company client-side.');
+            return; // Esperar aprobación del owner
+          } else if (confirmData?.success) {
+            console.log('✅ Registration completed via RPC');
+            return; // El backend ya creó la empresa y el usuario
+          }
+          // Si falla, continuamos con la lógica local como fallback
+        }
+
+        // 3. Determinar el nombre de empresa deseado (respetar el del formulario si existe)
+        const desiredCompanyName = (companyName ?? pendingRes.data?.company_name ?? '').trim();
+
+        // Si tenemos nombre de empresa, comprobar si ya existe para unir como miembro
+        if (desiredCompanyName) {
+          console.log('🔎 Checking company existence for:', desiredCompanyName);
+          const { data: existsData, error: existsError } = await this.supabase.rpc('check_company_exists', {
+            p_company_name: desiredCompanyName
+          });
+
+          if (existsError) {
+            console.error('❌ Error checking company existence:', existsError);
+            throw existsError;
+          }
+
+          const existsRow = Array.isArray(existsData) ? existsData[0] : existsData;
+
+          if (existsRow?.company_exists && existsRow.company_id) {
+            // La empresa ya existe: crear usuario como member
+            const companyId = existsRow.company_id as string;
+            console.log('🤝 Company exists. Linking user as member to:', companyId);
+
+            await this.retryWithBackoff(async () => {
+              const insertResult = await this.supabase.from('users').insert({
+                email: authUser.email,
+                name: (authUser.user_metadata && (authUser.user_metadata as any)['given_name']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ')[0] : null) || authUser.email?.split('@')[0] || 'Usuario',
+                surname: (authUser.user_metadata && (authUser.user_metadata as any)['surname']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ').slice(1).join(' ') : null) || null,
+                role: 'member',
+                active: true,
+                company_id: companyId,
+                auth_user_id: authUser.id,
+                permissions: {}
+              });
+              if (insertResult.error) throw insertResult.error;
+              return insertResult;
+            });
+
+            console.log('✅ App user created as member');
+            return;
+          }
+
+          // La empresa no existe: crearla con el nombre indicado y asignar owner
+          console.log('🏢 Creating company (from form):', desiredCompanyName);
+
+          // Verificar sesión válida antes de inserts
+          await new Promise(resolve => setTimeout(resolve, 300));
+          const { data: { session } } = await this.supabase.auth.getSession();
+          if (!session?.access_token) {
+            await this.supabase.auth.refreshSession();
+          }
+
+          const company = await this.retryWithSession(async () => {
+            const { data, error } = await this.supabase
+              .from('companies')
+              .insert({
+                name: desiredCompanyName,
+                slug: this.generateSlug(desiredCompanyName),
+                nif: companyNif || null
+              })
+              .select()
+              .single();
+            if (error) throw error;
+            return data;
+          });
+
+          const companyId = company?.id as string;
+          if (!companyId) throw new Error('Company creation returned no id');
+
+          console.log('✅ Company created with ID:', companyId);
 
           await this.retryWithBackoff(async () => {
             const insertResult = await this.supabase.from('users').insert({
               email: authUser.email,
               name: (authUser.user_metadata && (authUser.user_metadata as any)['given_name']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ')[0] : null) || authUser.email?.split('@')[0] || 'Usuario',
               surname: (authUser.user_metadata && (authUser.user_metadata as any)['surname']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ').slice(1).join(' ') : null) || null,
-              role: 'member',
+              role: 'owner',
               active: true,
               company_id: companyId,
               auth_user_id: authUser.id,
@@ -409,67 +494,19 @@ export class AuthService {
             return insertResult;
           });
 
-          console.log('✅ App user created as member');
+          console.log('✅ App user created successfully');
           return;
         }
 
-        // La empresa no existe: crearla con el nombre indicado y asignar owner
-        console.log('🏢 Creating company (from form):', desiredCompanyName);
-
-        // Verificar sesión válida antes de inserts
-        await new Promise(resolve => setTimeout(resolve, 300));
-        const { data: { session } } = await this.supabase.auth.getSession();
-        if (!session?.access_token) {
-          await this.supabase.auth.refreshSession();
-        }
-
-        const company = await this.retryWithSession(async () => {
-          const { data, error } = await this.supabase
-            .from('companies')
-            .insert({ 
-              name: desiredCompanyName, 
-              slug: this.generateSlug(desiredCompanyName),
-              nif: companyNif || null
-            })
-            .select()
-            .single();
-          if (error) throw error;
-          return data;
-        });
-
-        const companyId = company?.id as string;
-        if (!companyId) throw new Error('Company creation returned no id');
-
-        console.log('✅ Company created with ID:', companyId);
-
-        await this.retryWithBackoff(async () => {
-          const insertResult = await this.supabase.from('users').insert({
-            email: authUser.email,
-            name: (authUser.user_metadata && (authUser.user_metadata as any)['given_name']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ')[0] : null) || authUser.email?.split('@')[0] || 'Usuario',
-            surname: (authUser.user_metadata && (authUser.user_metadata as any)['surname']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ').slice(1).join(' ') : null) || null,
-            role: 'owner',
-            active: true,
-            company_id: companyId,
-            auth_user_id: authUser.id,
-            permissions: {}
-          });
-          if (insertResult.error) throw insertResult.error;
-          return insertResult;
-        });
-
-        console.log('✅ App user created successfully');
+        // 4. Sin nombre de empresa disponible: no crear empresa por defecto para evitar duplicados erróneos
+        console.warn('⚠️ No company name provided. Skipping automatic company creation to avoid wrong data.');
         return;
-      }
 
-      // 4. Sin nombre de empresa disponible: no crear empresa por defecto para evitar duplicados erróneos
-      console.warn('⚠️ No company name provided. Skipping automatic company creation to avoid wrong data.');
-      return;
-        
       } finally {
         // Remover la marca de progreso
         this.registrationInProgress.delete(authUser.id);
       }
-      
+
     } catch (e) {
       console.error('❌ Error in ensureAppUser:', e);
       // Remover la marca de progreso también en caso de error
@@ -506,87 +543,87 @@ export class AuthService {
   async register(registerData: RegisterData): Promise<{ success: boolean; pendingConfirmation?: boolean; error?: string }> {
     try {
       console.log('🚀 Starting registration process...', { email: registerData.email, company: registerData.company_name });
-      
+
       // PROTECCIÓN: Verificar si ya hay un registro en progreso para este email
       if (this.registrationInProgress.has(registerData.email)) {
         console.log('⏳ Registration already in progress for this email, skipping...');
         return { success: false, error: 'Registration already in progress for this email' };
       }
-      
+
       // Marcar como en progreso
       this.registrationInProgress.add(registerData.email);
-      
+
       try {
         // Usar retry para el signup también
-      const { data, error } = await this.retryWithBackoff(async () => {
-        return await this.supabase.auth.signUp({
-          email: registerData.email,
-          password: registerData.password,
-          options: {
-            data: { full_name: registerData.full_name },
-            emailRedirectTo: `${window.location.origin}/auth/callback`
-          }
+        const { data, error } = await this.retryWithBackoff(async () => {
+          return await this.supabase.auth.signUp({
+            email: registerData.email,
+            password: registerData.password,
+            options: {
+              data: { full_name: registerData.full_name },
+              emailRedirectTo: `${window.location.origin}/auth/callback`
+            }
+          });
         });
-      });
-      
-      if (error) throw error;
-      const autoLogin = registerData.autoLogin !== false; // por defecto true
 
-      // Si el proyecto requiere confirmación de email, data.session será null
-      const requiresEmailConfirm = !data.session;
+        if (error) throw error;
+        const autoLogin = registerData.autoLogin !== false; // por defecto true
 
-      if (data.user) {
-        console.log('✅ Auth user created, now creating app user...');
-        
-        // Si requiere confirmación de email, crear registro pendiente
-        if (requiresEmailConfirm) {
-          console.log('📧 Email confirmation required, creating pending user record...');
-          await this.createPendingUser(data.user, registerData);
-          console.log('✅ Pending user record created, waiting for email confirmation...');
-          return { success: true, pendingConfirmation: true };
+        // Si el proyecto requiere confirmación de email, data.session será null
+        const requiresEmailConfirm = !data.session;
+
+        if (data.user) {
+          console.log('✅ Auth user created, now creating app user...');
+
+          // Si requiere confirmación de email, crear registro pendiente
+          if (requiresEmailConfirm) {
+            console.log('📧 Email confirmation required, creating pending user record...');
+            await this.createPendingUser(data.user, registerData);
+            console.log('✅ Pending user record created, waiting for email confirmation...');
+            return { success: true, pendingConfirmation: true };
+          }
+
+          // Si no requiere confirmación, proceder con el flujo normal
+          // Si no hay sesión automática, necesitamos establecer una manualmente para crear la empresa
+          if (!data.session) {
+            console.log('⚠️ No automatic session, attempting manual login...');
+
+            // Intentar hacer login automático para establecer la sesión
+            const { data: loginData, error: loginError } = await this.retryWithBackoff(async () => {
+              return await this.supabase.auth.signInWithPassword({
+                email: registerData.email,
+                password: registerData.password
+              });
+            });
+
+            if (loginError) {
+              console.error('❌ Failed to establish session after registration:', loginError);
+              throw loginError;
+            }
+
+            if (loginData.session) {
+              console.log('✅ Session established after manual login');
+            }
+          }
+
+          // Crear fila app con empresa (si se proporciona nombre)
+          await this.ensureAppUser(data.user, registerData.company_name, registerData.company_nif);
+          console.log('✅ App user created successfully');
         }
-        
-        // Si no requiere confirmación, proceder con el flujo normal
-        // Si no hay sesión automática, necesitamos establecer una manualmente para crear la empresa
-        if (!data.session) {
-          console.log('⚠️ No automatic session, attempting manual login...');
-          
-          // Intentar hacer login automático para establecer la sesión
-          const { data: loginData, error: loginError } = await this.retryWithBackoff(async () => {
-            return await this.supabase.auth.signInWithPassword({
+
+        // Si llegamos aquí, el registro se completó sin confirmación de email
+
+        if (autoLogin) {
+          // Si ya hay sesión onAuthStateChange disparará setCurrentUser
+          // En algunos casos raros: intentar login explícito si no hay session
+          if (!data.session) {
+            const { error: loginErr } = await this.supabase.auth.signInWithPassword({
               email: registerData.email,
               password: registerData.password
             });
-          });
-          
-          if (loginError) {
-            console.error('❌ Failed to establish session after registration:', loginError);
-            throw loginError;
-          }
-          
-          if (loginData.session) {
-            console.log('✅ Session established after manual login');
+            if (loginErr && loginErr.message !== 'Email not confirmed') throw loginErr;
           }
         }
-        
-        // Crear fila app con empresa (si se proporciona nombre)
-        await this.ensureAppUser(data.user, registerData.company_name, registerData.company_nif);
-        console.log('✅ App user created successfully');
-      }
-
-      // Si llegamos aquí, el registro se completó sin confirmación de email
-
-      if (autoLogin) {
-        // Si ya hay sesión onAuthStateChange disparará setCurrentUser
-        // En algunos casos raros: intentar login explícito si no hay session
-        if (!data.session) {
-          const { error: loginErr } = await this.supabase.auth.signInWithPassword({
-            email: registerData.email,
-            password: registerData.password
-          });
-          if (loginErr && loginErr.message !== 'Email not confirmed') throw loginErr;
-        }
-      }
 
         return { success: true, pendingConfirmation: false };
       } finally {
@@ -619,9 +656,9 @@ export class AuthService {
 
       return { success: true };
     } catch (error: any) {
-      return { 
-        success: false, 
-        error: this.getErrorMessage(error.message) 
+      return {
+        success: false,
+        error: this.getErrorMessage(error.message)
       };
     }
   }
@@ -636,9 +673,9 @@ export class AuthService {
 
       return { success: true };
     } catch (error: any) {
-      return { 
-        success: false, 
-        error: this.getErrorMessage(error.message) 
+      return {
+        success: false,
+        error: this.getErrorMessage(error.message)
       };
     }
   }
@@ -688,8 +725,8 @@ export class AuthService {
 
   // Método para verificar permisos
   hasPermission(requiredRole: string): boolean {
-  // Include 'none' and 'client' as lowest privilege roles
-  const roleHierarchy = ['none', 'client', 'member', 'admin', 'owner'];
+    // Include 'none' and 'client' as lowest privilege roles
+    const roleHierarchy = ['none', 'client', 'member', 'admin', 'owner'];
     const userRoleIndex = roleHierarchy.indexOf(this.userRole());
     const requiredRoleIndex = roleHierarchy.indexOf(requiredRole);
     return userRoleIndex >= requiredRoleIndex;
@@ -708,8 +745,8 @@ export class AuthService {
   /**
    * Confirma el email del usuario usando el token de confirmación
    */
-  async confirmEmail(fragmentOrParams: string): Promise<{ 
-    success: boolean; 
+  async confirmEmail(fragmentOrParams: string): Promise<{
+    success: boolean;
     error?: string;
     requiresInvitationApproval?: boolean;
     companyName?: string;
@@ -719,68 +756,68 @@ export class AuthService {
   }> {
     try {
       console.log('📧 Confirming email with params:', fragmentOrParams);
-      
+
       // Extraer parámetros del fragment o query string
       const params = new URLSearchParams(fragmentOrParams);
       const token = params.get('token');
       const type = params.get('type');
-      
+
       if (type !== 'signup' || !token) {
         return { success: false, error: 'Token de confirmación inválido o faltante' };
       }
-      
+
       // Verificar el token con Supabase Auth
       const { data, error } = await this.supabase.auth.verifyOtp({
         token_hash: token,
         type: 'signup'
       });
-      
+
       if (error) {
         console.error('❌ Email confirmation error:', error);
         return { success: false, error: this.getErrorMessage(error.message) };
       }
-      
+
       if (!data.user) {
         return { success: false, error: 'No se pudo verificar el usuario' };
       }
-      
+
       console.log('✅ Email confirmed, user:', data.user.id);
-      
+
       // Ahora confirmar la registración completa usando nuestra función de base de datos
       const { data: confirmResult, error: confirmError } = await this.supabase
         .rpc('confirm_user_registration', {
           p_auth_user_id: data.user.id
         });
-      
+
       if (confirmError) {
         console.error('❌ Error confirming registration:', confirmError);
         return { success: false, error: 'Error al completar el registro: ' + confirmError.message };
       }
-      
+
       const result = confirmResult as any;
-      
+
       if (!result.success) {
         return { success: false, error: result.error || 'Error desconocido al confirmar registro' };
       }
-      
+
       console.log('✅ Registration confirmed successfully:', result);
-      
+
       // Verificar si requiere aprobación de invitación
       if (result.requires_invitation_approval) {
-        return { 
-          success: true, 
+        return {
+          success: true,
           requiresInvitationApproval: true,
           companyName: result.company_name,
           ownerEmail: result.owner_email,
           message: result.message
         };
       }
-      
+
       // Actualizar el estado de autenticación
       await this.setCurrentUser(data.user);
-      
+
       return { success: true, isOwner: result.is_owner || false };
-      
+
     } catch (error: any) {
       console.error('❌ Unexpected error during email confirmation:', error);
       return { success: false, error: error.message || 'Error inesperado' };
@@ -794,11 +831,11 @@ export class AuthService {
     try {
       // Si no se proporciona email, intentar obtenerlo del usuario actual
       const targetEmail = email || this.currentUser?.email;
-      
+
       if (!targetEmail) {
         return { success: false, error: 'Email requerido para reenviar confirmación' };
       }
-      
+
       const { error } = await this.supabase.auth.resend({
         type: 'signup',
         email: targetEmail,
@@ -806,15 +843,15 @@ export class AuthService {
           emailRedirectTo: `${window.location.origin}/auth/confirm`
         }
       });
-      
+
       if (error) {
         console.error('❌ Error resending confirmation:', error);
         return { success: false, error: this.getErrorMessage(error.message) };
       }
-      
+
       console.log('✅ Confirmation email resent to:', targetEmail);
       return { success: true };
-      
+
     } catch (error: any) {
       console.error('❌ Unexpected error resending confirmation:', error);
       return { success: false, error: error.message || 'Error inesperado' };
@@ -855,12 +892,12 @@ export class AuthService {
           auth_user_id: authUser.id,
           confirmation_token: crypto.randomUUID()
         });
-      
+
       if (error) {
         console.error('❌ Error creating pending user:', error);
         throw error;
       }
-      
+
       console.log('✅ Pending user record created');
     } catch (error) {
       console.error('❌ Failed to create pending user:', error);
@@ -942,9 +979,9 @@ export class AuthService {
         return { success: false, error: result.error };
       }
 
-      return { 
-        success: true, 
-        invitationId: result.invitation_id 
+      return {
+        success: true,
+        invitationId: result.invitation_id
       };
     } catch (error: any) {
       console.error('❌ Error inviting user:', error);
@@ -1117,16 +1154,16 @@ export class AuthService {
    * - Nadie puede desactivarse a sí mismo
    * - Admin no puede modificar roles/estado de owners
    */
-  async updateCompanyUser(userId: string, patch: { role?: 'owner'|'admin'|'member'; active?: boolean }): Promise<{ success: boolean; error?: string }>{
+  async updateCompanyUser(userId: string, patch: { role?: 'owner' | 'admin' | 'member'; active?: boolean }): Promise<{ success: boolean; error?: string }> {
     try {
       const { data, error } = await this.supabase.rpc('update_company_user', {
         p_user_id: userId,
         p_role: patch.role ?? null,
         p_active: patch.active ?? null
       });
-      
+
       if (error) return { success: false, error: error.message };
-      
+
       // La función RPC devuelve JSON con success y error
       const result = data as { success: boolean; error?: string };
       return result;
@@ -1138,7 +1175,7 @@ export class AuthService {
   /**
    * Obtener enlace directo de invitación por ID (usa helper RPC para token y compone URL)
    */
-  async getInvitationLink(invitationId: string): Promise<{ success: boolean; url?: string; error?: string }>{
+  async getInvitationLink(invitationId: string): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
       const { data: tokenData, error } = await this.supabase
         .rpc('get_company_invitation_token', { p_invitation_id: invitationId });

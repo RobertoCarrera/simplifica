@@ -65,10 +65,18 @@ export class ResponsiveLayoutComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
 
-  // Check if current route is auth page
+  // Check if current route is auth page (no sidebar)
   isAuthPage(): boolean {
     const url = this.router.url;
-    return url.includes('/login') || url.includes('/register');
+    return url.includes('/login') ||
+      url.includes('/register') ||
+      url.includes('/client/set-password') ||
+      url.includes('/invite') ||
+      url.includes('/reset-password') ||
+      url.includes('/recuperar-password') ||
+      url.includes('/auth/callback') ||
+      url.includes('/consent') ||
+      url.includes('/pago/');
   }
 
   // Check if user is authenticated
