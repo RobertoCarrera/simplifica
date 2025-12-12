@@ -37,12 +37,12 @@ export interface TagWithCount extends TicketTag {
 export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   // Emit when the internal modal is closed so dynamic hosts can cleanup
   modalClosed: EventEmitter<void> = new EventEmitter<void>();
-  
+
   // Company selector for development
   selectedCompanyId: string = ''; // Will be set from first available company
   companies: any[] = [];
   devRoleService = inject(DevRoleService);
-  
+
   // Core data
   tickets: Ticket[] = [];
   filteredTickets: Ticket[] = [];
@@ -62,10 +62,10 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     totalEstimatedHours: 0,
     totalActualHours: 0
   };
-  
+
   loading = false;
   error: string | null = null;
-  
+
   // Filters and search
   searchTerm = '';
   filterStage = '';
@@ -89,15 +89,15 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     { value: 'high', label: 'Alta' },
     { value: 'critical', label: 'Crítica' }
   ];
-  
+
   // Form management
   showForm = false;
   editingTicket: Ticket | null = null;
   formData: Partial<Ticket> = {};
-  
+
   // History management for modals
   private popStateListener: any = null;
-  
+
   // Services management
   availableServices: Service[] = [];
   filteredServices: Service[] = [];
@@ -115,18 +115,18 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   selectedProducts: { product: any; quantity: number }[] = [];
   showProductForm = false;
   productFormData: any = {};
-  
+
   // Product autocomplete for brands and categories
   availableBrands: any[] = [];
   filteredBrands: any[] = [];
   brandSearchText: string = '';
   showBrandInput = false;
-  
+
   availableCategories: any[] = [];
   filteredCategories: any[] = [];
   categorySearchText: string = '';
   showCategoryInput = false;
-  
+
   // Customer selection
   customers: SimpleClient[] = [];
   filteredCustomers: SimpleClient[] = [];
@@ -154,10 +154,10 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   filteredCustomerDevices: Device[] = [];
   customerDevices: Device[] = [];
   selectedDeviceImages: { file: File; preview: string }[] = [];
-  
+
   // Form validation
   formErrors: Record<string, string> = {};
-  
+
   private ticketsService = inject(SupabaseTicketsService);
   private servicesService = inject(SupabaseServicesService);
   private productsService = inject(ProductsService);
@@ -167,28 +167,28 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private ticketModalService = inject(TicketModalService);
   private devicesService = inject(DevicesService);
-  
+
   // Badge configurations
   ticketPriorityConfig: { [key: string]: { label: string; classes: string; icon: string } } = {
-    low: { 
-      label: 'Baja', 
-      classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300', 
-      icon: 'fa-flag' 
+    low: {
+      label: 'Baja',
+      classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
+      icon: 'fa-flag'
     },
-    normal: { 
-      label: 'Normal', 
-      classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400', 
-      icon: 'fa-flag' 
+    normal: {
+      label: 'Normal',
+      classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400',
+      icon: 'fa-flag'
     },
-    high: { 
-      label: 'Alta', 
-      classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400', 
-      icon: 'fa-flag' 
+    high: {
+      label: 'Alta',
+      classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400',
+      icon: 'fa-flag'
     },
-    urgent: { 
-      label: 'Crítica', 
-      classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400', 
-      icon: 'fa-flag' 
+    urgent: {
+      label: 'Crítica',
+      classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400',
+      icon: 'fa-flag'
     }
   };
 
@@ -231,7 +231,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     try {
       this.loading = true;
       await this.loadCompanies();
-      
+
       if (this.companies.length === 0) {
         this.error = 'No hay compañías disponibles. Por favor, ejecute el script de configuración de la base de datos.';
         return;
@@ -285,14 +285,14 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
           console.warn('No se pudo establecer el contexto de compañía (setCurrentCompany). Continuando...', e);
         }
       }
-      
-  // Load stages first, then tickets, then attach tags and stats (which depend on tickets)
-  await this.loadStages();
-  await this.loadTickets();
-  // Attach tags from ticket_tag_relations to loaded tickets
-  await this.loadTicketTagsForTickets();
-  await this.loadStats(); // Must be after tickets+tags
-      
+
+      // Load stages first, then tickets, then attach tags and stats (which depend on tickets)
+      await this.loadStages();
+      await this.loadTickets();
+      // Attach tags from ticket_tag_relations to loaded tickets
+      await this.loadTicketTagsForTickets();
+      await this.loadStats(); // Must be after tickets+tags
+
       // Load other data in parallel
       await Promise.all([
         this.loadServices(),
@@ -300,7 +300,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
         this.loadCustomers(),
         this.loadTags()
       ]);
-      
+
     } catch (error) {
       console.error('Error initializing component:', error);
       this.error = 'Error al cargar los datos. Verifique la configuración de la base de datos.';
@@ -317,7 +317,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
-    
+
     // Limpiar listener de popstate
     if (this.popStateListener) {
       window.removeEventListener('popstate', this.popStateListener);
@@ -329,7 +329,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     try {
       // Get all available companies using simpleSupabase
       const response = await this.simpleSupabase.getCompanies();
-      
+
       if (response.success) {
         this.companies = response.data || [];
       } else {
@@ -371,14 +371,14 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   async loadTickets() {
     this.loading = true;
     this.error = null;
-    
+
     if (!this.selectedCompanyId) {
       this.loading = false;
       return;
     }
-    
+
     try {
-      
+
       // Usar UUID directamente, no convertir a número
       let query: any = this.simpleSupabase.getClient()
         .from('tickets')
@@ -402,14 +402,14 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       }
 
       const { data: tickets, error } = await query;
-      
+
       if (error) {
         throw new Error(`Error al cargar tickets: ${error.message}`);
       }
-      
+
       this.tickets = tickets || [];
       this.updateFilteredTickets();
-      
+
     } catch (error) {
       console.error('Error in loadTickets:', error);
       this.error = 'Error de conexión al cargar los tickets';
@@ -420,7 +420,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
 
   async loadStages() {
     if (!this.selectedCompanyId) return;
-    
+
     try {
       // Usar la fuente de verdad de "estados visibles" (genéricos no ocultos + específicos de empresa)
       const { data, error } = await this.stagesSvc.getVisibleStages(this.selectedCompanyId);
@@ -438,20 +438,20 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
 
   async loadStats() {
     if (!this.selectedCompanyId) return;
-    
+
     try {
-      
+
       // Usar la función del backend para calcular estadísticas
       const { data: statsResult, error } = await this.simpleSupabase.getClient()
         .rpc('get_ticket_stats', { target_company_id: this.selectedCompanyId });
-      
+
       if (error) {
         console.error('Error obteniendo estadísticas del backend:', error);
         // Fallback: calcular en frontend si la función no existe
         this.calculateStatsInFrontend();
         return;
       }
-      
+
       if (statsResult) {
         this.stats = {
           total: statsResult.total || 0,
@@ -464,24 +464,24 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
           totalEstimatedHours: statsResult.totalEstimatedHours || 0,
           totalActualHours: statsResult.totalActualHours || 0
         };
-        
+
       } else {
         // Fallback si no hay datos
         this.calculateStatsInFrontend();
       }
-      
+
     } catch (error) {
       console.error('Error en loadStats:', error);
       // Fallback: calcular en frontend
       this.calculateStatsInFrontend();
     }
   }
-  
+
   private calculateStatsInFrontend() {
-    
+
     // Calcular estadísticas desde los tickets reales usando stage_category
     const totalTickets = this.tickets.length;
-    
+
     // Usar stage_category para clasificación confiable
     const openTickets = this.tickets.filter(t => t.stage?.workflow_category === 'waiting' || t.stage?.stage_category === 'open').length;
     const inProgressTickets = this.tickets.filter(t => (
@@ -490,39 +490,39 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     const completedTickets = this.tickets.filter(t => (
       t.stage?.workflow_category === 'final' || t.stage?.workflow_category === 'cancel' || t.stage?.stage_category === 'completed'
     )).length;
-    
+
     // Fallback: si no hay stage_category, usar nombres (backward compatibility)
-    const openTicketsFallback = openTickets > 0 ? openTickets : this.tickets.filter(t => 
-      t.stage?.name?.toLowerCase().includes('abierto') || 
+    const openTicketsFallback = openTickets > 0 ? openTickets : this.tickets.filter(t =>
+      t.stage?.name?.toLowerCase().includes('abierto') ||
       t.stage?.name?.toLowerCase().includes('pendiente') ||
       t.stage?.name?.toLowerCase().includes('recibido')
     ).length;
-    
-    const inProgressTicketsFallback = inProgressTickets > 0 ? inProgressTickets : this.tickets.filter(t => 
-      t.stage?.name?.toLowerCase().includes('progreso') || 
+
+    const inProgressTicketsFallback = inProgressTickets > 0 ? inProgressTickets : this.tickets.filter(t =>
+      t.stage?.name?.toLowerCase().includes('progreso') ||
       t.stage?.name?.toLowerCase().includes('proceso')
     ).length;
-    
-    const completedTicketsFallback = completedTickets > 0 ? completedTickets : this.tickets.filter(t => 
-      t.stage?.name?.toLowerCase().includes('completado') || 
+
+    const completedTicketsFallback = completedTickets > 0 ? completedTickets : this.tickets.filter(t =>
+      t.stage?.name?.toLowerCase().includes('completado') ||
       t.stage?.name?.toLowerCase().includes('finalizado')
     ).length;
-    
+
     const overdueTickets = this.tickets.filter(t => t.due_date && new Date(t.due_date) < new Date()).length;
     const totalRevenue = this.tickets.reduce((sum, t) => sum + (t.total_amount || 0), 0);
-    
+
     // Calcular suma de horas estimadas y reales
     const totalEstimatedHours = this.tickets.reduce((sum, t) => sum + (t.estimated_hours || 0), 0);
     const totalActualHours = this.tickets.reduce((sum, t) => sum + (t.actual_hours || 0), 0);
-    
+
     // Calcular tiempo promedio de resolución para tickets completados
-    const completedTicketsWithDates = this.tickets.filter(t => 
-      (t.stage?.workflow_category === 'final' || t.stage?.workflow_category === 'cancel' || t.stage?.stage_category === 'completed' || 
-       t.stage?.name?.toLowerCase().includes('completado') || 
-       t.stage?.name?.toLowerCase().includes('finalizado')) &&
+    const completedTicketsWithDates = this.tickets.filter(t =>
+      (t.stage?.workflow_category === 'final' || t.stage?.workflow_category === 'cancel' || t.stage?.stage_category === 'completed' ||
+        t.stage?.name?.toLowerCase().includes('completado') ||
+        t.stage?.name?.toLowerCase().includes('finalizado')) &&
       t.created_at && t.updated_at
     );
-    
+
     let avgResolutionTime = 0;
     if (completedTicketsWithDates.length > 0) {
       const totalResolutionTime = completedTicketsWithDates.reduce((sum, t) => {
@@ -532,7 +532,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       }, 0);
       avgResolutionTime = Math.round(totalResolutionTime / completedTicketsWithDates.length / (1000 * 60 * 60 * 24)); // días
     }
-    
+
     this.stats = {
       total: totalTickets,
       open: openTicketsFallback,
@@ -544,7 +544,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       totalEstimatedHours: totalEstimatedHours,
       totalActualHours: totalActualHours
     };
-    
+
   }
 
   // Toggle handlers
@@ -559,22 +559,26 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     this.updateFilteredTickets();
   }
 
+  setViewMode(mode: 'list' | 'board') {
+    this.viewMode = mode;
+  }
+
   async loadServices() {
     if (!this.selectedCompanyId) return;
-    
+
     try {
-      
+
       const services = await this.servicesService.getServices(this.selectedCompanyId);
-      
+
       // Filtrar solo servicios activos
       this.availableServices = (services || []).filter((service: any) => service.is_active);
-      
+
       // Obtener los servicios más usados
       this.topUsedServices = await this.getTopUsedServices();
-      
+
       // Inicialmente mostrar SOLO los más usados
       this.filteredServices = [...this.topUsedServices];
-      
+
     } catch (error) {
       console.error('Error in loadServices:', error);
       this.availableServices = [];
@@ -606,16 +610,16 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
 
   async loadCustomers() {
     if (!this.selectedCompanyId) return;
-    
+
     try {
       // Obtener clientes filtrando explícitamente por company_id para evitar depender del estado local
       const response = await this.simpleSupabase.getClientsForCompany(this.selectedCompanyId);
-      
+
       if (response.success && response.data) {
         // Ya vienen filtrados por empresa
         this.customers = response.data;
         this.filteredCustomers = [...this.customers];
-        
+
       } else {
         console.error('Error loading customers:', response.error);
         this.customers = [];
@@ -630,11 +634,11 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
 
   async loadDevices() {
     if (!this.selectedCompanyId) return;
-    
+
     try {
-      
+
       const devices = await this.devicesService.getDevices(this.selectedCompanyId);
-      
+
       this.availableDevices = devices || [];
     } catch (error) {
       console.error('Error in loadDevices:', error);
@@ -645,9 +649,9 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   // Load ticket services when editing
   async loadTicketServicesForEdit(ticketId: string) {
     if (!ticketId) return;
-    
+
     try {
-      
+
       // Query ticket_services table to get services associated with the ticket
       const { data: ticketServices, error } = await this.simpleSupabase.getClient()
         .from('ticket_services')
@@ -678,7 +682,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
         quantity: ts.quantity || 1
       }));
 
-      
+
     } catch (error) {
       console.error('Error en loadTicketServicesForEdit:', error);
     }
@@ -720,7 +724,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
 
       let tags = (baseResponse && baseResponse.data) ? baseResponse.data : [];
 
-  // Si la tabla tiene company_id y el companyId es válido, solicitar tags filtrados por company_id
+      // Si la tabla tiene company_id y el companyId es válido, solicitar tags filtrados por company_id
       if (hasCompany && this.isValidUuid(this.selectedCompanyId)) {
         const { data: companyTags, error: companyTagsErr } = await client
           .from('ticket_tags')
@@ -733,8 +737,8 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
         }
       }
 
-  // Assign final tags to availableTags
-  this.availableTags = tags || [];
+      // Assign final tags to availableTags
+      this.availableTags = tags || [];
 
     } catch (error) {
       console.error('Error in loadTags:', error);
@@ -813,7 +817,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     // Filter by search term
     if (this.searchTerm.trim()) {
       const term = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(ticket => 
+      filtered = filtered.filter(ticket =>
         ticket.title.toLowerCase().includes(term) ||
         ticket.description.toLowerCase().includes(term) ||
         ticket.ticket_number.toLowerCase().includes(term) ||
@@ -837,36 +841,54 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     } else if (this.filterStatus === 'completed') {
       filtered = filtered.filter(t => (t.stage?.workflow_category === 'final' || t.stage?.workflow_category === 'cancel' || t.stage?.stage_category === 'completed'));
     } else if (this.filterStatus === 'overdue') {
-      filtered = filtered.filter(ticket => 
+      filtered = filtered.filter(ticket =>
         ticket.due_date && new Date(ticket.due_date) < new Date()
       );
     }
 
     // Hide completed tickets by default unless toggled on
+    // Now ONLY hides 'final' or 'completed' stage category. 'cancel' is handled by showDeleted.
     if (!this.showCompleted) {
       filtered = filtered.filter(t => (
         t.stage?.workflow_category !== 'final' &&
-        t.stage?.workflow_category !== 'cancel' &&
         t.stage?.stage_category !== 'completed'
       ));
     }
 
     // Hide deleted locally when we fetched all (showDeleted=false)
+    // Now ALSO hides 'cancel' workflow category
     if (!this.showDeleted) {
-      filtered = filtered.filter(t => !t.deleted_at);
+      filtered = filtered.filter(t =>
+        !t.deleted_at &&
+        t.stage?.workflow_category !== 'cancel'
+      );
     }
 
     // Filter by tags
     if (this.filterTags.length > 0) {
       filtered = filtered.filter(ticket => {
         if (!ticket.tags || ticket.tags.length === 0) return false;
-        return this.filterTags.some(filterTag => 
+        return this.filterTags.some(filterTag =>
           ticket.tags?.includes(filterTag)
         );
       });
     }
 
     this.filteredTickets = filtered;
+  }
+
+  getVisibleBoardStages(): ConfigStage[] {
+    return this.stages.filter(stage => {
+      // If showDeleted is false, hide stages with 'cancel' workflow category
+      if (!this.showDeleted && stage.workflow_category === 'cancel') {
+        return false;
+      }
+      // If showCompleted is false, hide stages with 'final' or 'completed' categories
+      if (!this.showCompleted && (stage.workflow_category === 'final' || stage.stage_category === 'completed')) {
+        return false;
+      }
+      return true;
+    });
   }
 
   onSearch() {
@@ -971,14 +993,14 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       company_id: this.selectedCompanyId,
       tags: []
     };
-  this.selectedTags = [];
+    this.selectedTags = [];
     this.formErrors = {};
     this.selectedServices = [];
     this.selectedProducts = [];
     this.serviceSearchText = '';
     this.productSearchText = '';
-  this.filteredServices = [...this.topUsedServices];
-  this.filteredProducts = [...this.topUsedProducts];
+    this.filteredServices = [...this.topUsedServices];
+    this.filteredProducts = [...this.topUsedProducts];
     this.customerSearchText = '';
     this.selectedCustomer = null;
     this.showCustomerDropdown = false;
@@ -1003,12 +1025,12 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
         this.formData.client_id = ticket.client.id;
       }
     }
-    
+
     this.showForm = true;
-    
+
     // Añadir entrada al historial para que el botón "atrás" cierre el modal
     history.pushState({ modal: 'ticket-form' }, '');
-    
+
     // Configurar listener de popstate si no existe
     if (!this.popStateListener) {
       this.popStateListener = (event: PopStateEvent) => {
@@ -1022,7 +1044,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       };
       window.addEventListener('popstate', this.popStateListener);
     }
-    
+
     // Bloquear scroll de la página principal de forma más agresiva
     document.body.classList.add('modal-open');
     document.body.style.overflow = 'hidden';
@@ -1040,8 +1062,8 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     this.selectedServices = [];
     this.selectedProducts = [];
     this.showServiceForm = false;
-  this.showProductForm = false;
-    
+    this.showProductForm = false;
+
     // Restaurar scroll de la página principal
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
@@ -1049,7 +1071,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
-    
+
     // Retroceder en el historial solo si hay entrada de modal
     if (window.history.state && window.history.state.modal) {
       window.history.back();
@@ -1177,11 +1199,11 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     this.categorySearchText = '';
     this.showBrandInput = false;
     this.showCategoryInput = false;
-    
+
     // Load brands and categories for autocomplete
     this.loadBrands();
     this.loadCategories();
-    
+
     this.showProductForm = true;
   }
 
@@ -1267,12 +1289,12 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   async createNewBrand() {
     try {
       if (!this.brandSearchText.trim()) return;
-      
+
       const newBrand = await this.productMetadataService.createBrand(
-        this.brandSearchText.trim(), 
+        this.brandSearchText.trim(),
         this.selectedCompanyId
       );
-      
+
       this.availableBrands.push(newBrand);
       this.selectBrand(newBrand);
     } catch (error) {
@@ -1332,12 +1354,12 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   async createNewCategory() {
     try {
       if (!this.categorySearchText.trim()) return;
-      
+
       const newCategory = await this.productMetadataService.createCategory(
-        this.categorySearchText.trim(), 
+        this.categorySearchText.trim(),
         this.selectedCompanyId
       );
-      
+
       this.availableCategories.push(newCategory);
       this.selectCategory(newCategory);
     } catch (error) {
@@ -1458,8 +1480,8 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
 
   async saveNewDevice() {
     try {
-      if (!this.deviceFormData.client_id || !this.deviceFormData.brand || 
-          !this.deviceFormData.model || !this.deviceFormData.reported_issue) {
+      if (!this.deviceFormData.client_id || !this.deviceFormData.brand ||
+        !this.deviceFormData.model || !this.deviceFormData.reported_issue) {
         alert('Por favor, completa todos los campos requeridos');
         return;
       }
@@ -1578,12 +1600,12 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
 
   async saveTicket() {
     if (!this.validateForm()) return;
-    
+
     this.loading = true;
     try {
       // Autocomputar horas estimadas basándose en los servicios seleccionados
       const totalHours = this.getTotalEstimatedHours();
-      
+
       // Add company_id to form data
       // Compute total amount from selected services and products (unit price * quantity)
       const servicesTotal = (this.selectedServices || []).reduce((sum, s) => {
@@ -1630,7 +1652,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       if (savedTicket && typeof savedTicket === 'object') {
         try {
           (savedTicket as any).total_amount = (savedTicket as any).total_amount ?? dataWithCompany.total_amount;
-        } catch {}
+        } catch { }
       }
 
       // Persist selected services and products into ticket_services/ticket_products only when updating an existing ticket
@@ -1675,10 +1697,10 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
           console.warn(`Algunos dispositivos no se pudieron vincular (${failed.length}/${results.length}). Revisa RLS y permisos.`);
         }
       }
-      
+
       this.closeForm();
       await this.loadTickets();
-      
+
     } catch (error: any) {
       this.error = error.message;
       console.error('❌ Error saving ticket:', error);
@@ -1716,7 +1738,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
         // Check if exists
         let q = client.from('ticket_tags').select('id, name');
         q = q.eq('name', name);
-  if (hasCompany && this.isValidUuid(this.selectedCompanyId)) q = q.eq('company_id', this.selectedCompanyId);
+        if (hasCompany && this.isValidUuid(this.selectedCompanyId)) q = q.eq('company_id', this.selectedCompanyId);
         const { data: exists, error: existsErr } = await q.limit(1);
         if (existsErr) continue;
         if (!exists || exists.length === 0) {
@@ -1733,7 +1755,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       // 2) Fetch tag ids for the names (scoped to company if applicable)
       let tagsQuery = client.from('ticket_tags').select('id, name');
       tagsQuery = tagsQuery.in('name', uniqueNames);
-  if (hasCompany && this.isValidUuid(this.selectedCompanyId)) tagsQuery = tagsQuery.eq('company_id', this.selectedCompanyId);
+      if (hasCompany && this.isValidUuid(this.selectedCompanyId)) tagsQuery = tagsQuery.eq('company_id', this.selectedCompanyId);
       const { data: tagsRows, error: fetchErr } = await tagsQuery;
       if (fetchErr) throw fetchErr;
 
@@ -1795,7 +1817,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     // Optimistic UI: mark as opened in local list
     (ticket as any).is_opened = true;
     // Fire-and-forget persistence; detail page will also ensure marking
-    try { this.ticketsService.markTicketOpened(ticket.id); } catch {}
+    try { this.ticketsService.markTicketOpened(ticket.id); } catch { }
     this.router.navigate(['ticket', ticket.id]);
   }
 
@@ -1808,12 +1830,12 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     const key = (priority || 'normal').toLowerCase();
     return this.ticketPriorityConfig[key]?.label || this.ticketPriorityConfig['normal'].label;
   }
-  
+
   getPriorityClasses(priority: string): string {
     const key = (priority || 'normal').toLowerCase();
     return this.ticketPriorityConfig[key]?.classes || this.ticketPriorityConfig['normal'].classes;
   }
-  
+
   getPriorityIcon(priority: string): string {
     const key = (priority || 'normal').toLowerCase();
     return this.ticketPriorityConfig[key]?.icon || this.ticketPriorityConfig['normal'].icon;
@@ -1825,7 +1847,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
 
   getStatusBadgeClass(stage: ConfigStage): string {
     const baseClasses = 'px-2 py-1 text-xs font-medium rounded-full';
-    
+
     if (stage.name === 'Completado') {
       return `${baseClasses} bg-green-100 text-green-800`;
     } else if (stage.name === 'En Progreso') {
@@ -1867,9 +1889,9 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     try {
       // Determine authoritative company id from the selected customer (fallback to selectedCompanyId)
       const companyId = this.selectedCustomer?.company_id || this.selectedCompanyId;
-  console.log('[Tickets] Loading customer devices. customer=', this.selectedCustomer?.id, 'companyId=', companyId);
+      console.log('[Tickets] Loading customer devices. customer=', this.selectedCustomer?.id, 'companyId=', companyId);
       const allDevices = await this.devicesService.getDevices(companyId);
-  console.log('[Tickets] Devices fetched for company:', companyId, 'count=', allDevices?.length || 0);
+      console.log('[Tickets] Devices fetched for company:', companyId, 'count=', allDevices?.length || 0);
 
       // Filter to show ONLY devices belonging to the selected customer (client_id match)
       const clientId = this.selectedCustomer!.id;
@@ -1926,9 +1948,9 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   }
 
   async createAndSelectDevice() {
-    if (!this.deviceFormData.brand || !this.deviceFormData.model || 
-        !this.deviceFormData.device_type || !this.deviceFormData.reported_issue || 
-        !this.selectedCustomer) {
+    if (!this.deviceFormData.brand || !this.deviceFormData.model ||
+      !this.deviceFormData.device_type || !this.deviceFormData.reported_issue ||
+      !this.selectedCustomer) {
       return;
     }
 
@@ -1944,15 +1966,15 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       };
 
       const newDevice = await this.devicesService.createDevice(deviceData as Omit<Device, 'id' | 'created_at' | 'updated_at'>);
-      
+
       // Upload images if any
       if (this.selectedDeviceImages.length > 0) {
         for (const imageData of this.selectedDeviceImages) {
           try {
             await this.devicesService.uploadDeviceImage(
-              newDevice.id, 
-              imageData.file, 
-              'arrival', 
+              newDevice.id,
+              imageData.file,
+              'arrival',
               'Estado del dispositivo al llegar'
             );
           } catch (imageError) {
@@ -1960,16 +1982,16 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
           }
         }
       }
-      
+
       // Add to selected devices
       this.selectedDevices.push(newDevice);
-      
+
       // Refresh customer devices list
       await this.loadCustomerDevices();
-      
+
       // Reset form
       this.cancelCreateDevice();
-      
+
     } catch (error) {
       console.error('Error creating device:', error);
     }
@@ -2043,11 +2065,11 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       }
 
       // Update in-memory lists and selection
-  this.customers.push(data);
+      this.customers.push(data);
       this.selectCustomer(data);
-  this.filteredCustomers = [...this.customers];
+      this.filteredCustomers = [...this.customers];
       this.closeCustomerForm();
-      
+
     } catch (error) {
       console.error('Error creating customer:', error);
       alert('Error inesperado al crear el cliente');

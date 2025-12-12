@@ -1,138 +1,167 @@
 <div class="min-h-0 bg-gray-50 dark:bg-slate-900 p-2">
-  <!-- Header Section -->
-  <div class="bg-white dark:bg-slate-800 rounded-xl p-4 mb-6 border border-gray-200 dark:border-slate-700 shadow-sm">
-    <div class="flex justify-between items-center flex-wrap gap-4">
-      <div class="flex-1">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-slate-50 flex items-center gap-3 mb-1">
-          <i class="fas fa-ticket-alt text-orange-500"></i>
-          Tickets
-        </h1>
-        <p class="text-gray-600 dark:text-slate-400 text-sm">Gestión completa de tickets y reparaciones {{ getCompanyName() }}</p>
-      </div>
-      <div class="flex items-center gap-4 flex-wrap">
-        @if(devRoleService.isDev()){
-        <div class="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-slate-900/50 rounded-lg border border-gray-200 dark:border-slate-700">
-          <label for="companySelect" class="text-sm font-medium text-gray-700 dark:text-slate-300 whitespace-nowrap">Empresa:</label>
-          <select 
-            id="companySelect" 
-            name="companySelect"
-            class="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 text-sm min-w-[180px] focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
-            [(ngModel)]="selectedCompanyId" 
-            (change)="onCompanyChange()">
-            <option value="">Seleccionar empresa...</option>
-            <option *ngFor="let company of companies" [value]="company.id">{{ company.name }}</option>
-          </select>
-        </div>
-      }
-        <!-- View Mode Toggle -->
-        <button class="btn btn-secondary" (click)="toggleViewMode()">
-          <i class="fas" [class.fa-list]="viewMode === 'board'" [class.fa-th-large]="viewMode === 'list'"></i>
-          {{ viewMode === 'list' ? 'Vista Board' : 'Vista Lista' }}
-        </button>
-      </div>
-    </div>
+  <!-- Modern Tab Navigation (Full Width) -->
+  <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-1.5 mb-6">
+    <nav class="flex gap-1" role="tablist">
+      <!-- Tab: Lista -->
+      <button (click)="setViewMode('list')" role="tab" [attr.aria-selected]="viewMode === 'list'"
+        class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+        [class]="viewMode === 'list' 
+          ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md shadow-orange-500/30' 
+          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
+        <i class="fas fa-list-ul"></i>
+        <span>Lista</span>
+      </button>
+
+      <!-- Tab: Tablero -->
+      <button (click)="setViewMode('board')" role="tab" [attr.aria-selected]="viewMode === 'board'"
+        class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+        [class]="viewMode === 'board' 
+          ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md shadow-orange-500/30' 
+          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
+        <i class="fas fa-columns"></i>
+        <span>Tablero</span>
+      </button>
+    </nav>
   </div>
 
   <!-- Filters Section -->
   <div class="bg-white dark:bg-slate-800 rounded-xl p-5 mb-6 border border-gray-200 dark:border-slate-700 shadow-sm">
-    <div class="flex gap-4 items-center flex-wrap mb-3">
-      <!-- Search Box -->
-      <div class="relative flex-1 min-w-[300px]">
-        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 text-sm"></i>
-        <input 
-          type="text" 
-          name="searchTerm"
-          placeholder="Buscar tickets..." 
-          [(ngModel)]="searchTerm"
-          (input)="onSearch()"
-          class="w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
-      </div>
-      
-      <!-- Filter Group -->
-      <div class="w-full flex gap-3 items-center flex-wrap">
+    <div class="flex flex-col gap-3 mb-3">
+      <!-- Fila 1: Filtros principales (Buscador + Dropdowns) - Siempre en 1 fila -->
+      <div class="flex flex-row gap-2 md:gap-3">
+        <!-- Search Box -->
+        <div class="relative flex-1">
+          <i
+            class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 text-sm"></i>
+          <input type="text" name="searchTerm" placeholder="Buscar..." [(ngModel)]="searchTerm" (input)="onSearch()"
+            class="w-full pl-9 pr-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
+        </div>
+
         <!-- Stage Dropdown Button -->
-        <div class="relative flex-1 min-w-[140px]">
+        <div class="relative">
           <button type="button" (click)="toggleStageDropdown()"
-            class="w-full px-4 py-3 text-left bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-xl hover:border-orange-400 dark:hover:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all flex items-center justify-between">
-            <span class="text-gray-700 dark:text-slate-200 text-sm font-medium truncate">{{ getSelectedStageLabel() }}</span>
-            <svg class="w-5 h-5 text-gray-400 transition-transform duration-200 flex-shrink-0 ml-2"
+            class="px-3 md:px-4 py-2.5 text-left bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:border-orange-400 dark:hover:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all flex items-center gap-2">
+            <!-- Icon always visible -->
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z">
+              </path>
+            </svg>
+            <span
+              class="text-gray-700 dark:text-slate-200 text-sm font-medium truncate hidden md:block max-w-[120px]">{{
+              getSelectedStageLabel() }}</span>
+            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 hidden md:block"
               [class.rotate-180]="stageDropdownOpen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </button>
           <!-- Stage Dropdown Menu (Desktop) -->
-          <div *ngIf="stageDropdownOpen" class="hidden md:block absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 z-50 max-h-64 overflow-y-auto">
+          <div *ngIf="stageDropdownOpen"
+            class="hidden md:block absolute top-full right-0 mt-1 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 z-50 max-h-64 overflow-y-auto">
             <button type="button" (click)="selectStageFilter('')"
               class="w-full px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center justify-between transition-colors rounded-t-xl"
               [ngClass]="filterStage === '' ? 'bg-orange-50 dark:bg-orange-900/30' : ''">
               <span class="text-gray-900 dark:text-slate-100 text-sm">Todos los estados</span>
-              <svg *ngIf="filterStage === ''" class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              <svg *ngIf="filterStage === ''" class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="currentColor"
+                viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clip-rule="evenodd"></path>
               </svg>
             </button>
             <button *ngFor="let stage of stages; let last = last" type="button" (click)="selectStageFilter(stage.id)"
               class="w-full px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center justify-between transition-colors"
               [ngClass]="{'bg-orange-50 dark:bg-orange-900/30': filterStage === stage.id, 'rounded-b-xl': last}">
               <span class="text-gray-900 dark:text-slate-100 text-sm">{{ stage.name }}</span>
-              <svg *ngIf="filterStage === stage.id" class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              <svg *ngIf="filterStage === stage.id" class="w-4 h-4 text-orange-600 dark:text-orange-400"
+                fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clip-rule="evenodd"></path>
               </svg>
             </button>
           </div>
         </div>
-        
+
         <!-- Priority Dropdown Button -->
-        <div class="relative flex-1 min-w-[140px]">
+        <div class="relative">
           <button type="button" (click)="togglePriorityDropdown()"
-            class="w-full px-4 py-3 text-left bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-xl hover:border-orange-400 dark:hover:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all flex items-center justify-between">
-            <span class="text-gray-700 dark:text-slate-200 text-sm font-medium truncate">{{ getSelectedPriorityLabel() }}</span>
-            <svg class="w-5 h-5 text-gray-400 transition-transform duration-200 flex-shrink-0 ml-2"
+            class="px-3 md:px-4 py-2.5 text-left bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:border-orange-400 dark:hover:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all flex items-center gap-2">
+            <!-- Icon always visible -->
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+            </svg>
+            <span
+              class="text-gray-700 dark:text-slate-200 text-sm font-medium truncate hidden md:block max-w-[120px]">{{
+              getSelectedPriorityLabel() }}</span>
+            <svg class="w-4 h-4 text-gray-400 transition-transform duration-200 flex-shrink-0 hidden md:block"
               [class.rotate-180]="priorityDropdownOpen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
           </button>
           <!-- Priority Dropdown Menu (Desktop) -->
-          <div *ngIf="priorityDropdownOpen" class="hidden md:block absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 z-50 max-h-64 overflow-y-auto">
-            <button *ngFor="let option of priorityOptions; let first = first; let last = last" type="button" (click)="selectPriorityFilter(option.value)"
+          <div *ngIf="priorityDropdownOpen"
+            class="hidden md:block absolute top-full right-0 mt-1 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 z-50 max-h-64 overflow-y-auto">
+            <button *ngFor="let option of priorityOptions; let first = first; let last = last" type="button"
+              (click)="selectPriorityFilter(option.value)"
               class="w-full px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center justify-between transition-colors"
               [ngClass]="{'bg-orange-50 dark:bg-orange-900/30': filterPriority === option.value, 'rounded-t-xl': first, 'rounded-b-xl': last}">
               <span class="text-gray-900 dark:text-slate-100 text-sm">{{ option.label }}</span>
-              <svg *ngIf="filterPriority === option.value" class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+              <svg *ngIf="filterPriority === option.value" class="w-4 h-4 text-orange-600 dark:text-orange-400"
+                fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clip-rule="evenodd"></path>
               </svg>
             </button>
           </div>
         </div>
-        
-        <!-- Click outside overlay for desktop dropdowns -->
-        <div *ngIf="stageDropdownOpen || priorityDropdownOpen" class="hidden md:block fixed inset-0 z-40" (click)="closeAllDropdowns()"></div>
+      </div>
 
+      <!-- Fila 2: Toggles (Completados/Eliminados) -->
+      <div class="flex flex-wrap gap-2">
         <!-- Toggle completed -->
-        <button 
-          type="button"
-          class="px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm whitespace-nowrap"
+        <button type="button"
+          class="flex-1 md:flex-none px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm whitespace-nowrap flex items-center justify-center gap-2"
           [class]="showCompleted ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300'"
           (click)="toggleShowCompleted()">
           <i class="fas" [class.fa-eye]="showCompleted" [class.fa-eye-slash]="!showCompleted"></i>
-          <span class="hidden lg:inline ml-2">{{ showCompleted ? 'Ocultar Completados' : 'Mostrar Completados' }}</span>
+          <span class="ml-1">{{ showCompleted ? 'Ocultar Completados' : 'Mostrar Completados' }}</span>
         </button>
 
         <!-- Toggle deleted -->
-        <button 
-          type="button"
-          class="px-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg text-sm whitespace-nowrap"
+        <button type="button"
+          class="flex-1 md:flex-none px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm whitespace-nowrap flex items-center justify-center gap-2"
           [class]="showDeleted ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300'"
           (click)="toggleShowDeleted()">
           <i class="fas" [class.fa-trash-restore]="showDeleted" [class.fa-trash]="!showDeleted"></i>
-          <span class="hidden lg:inline  ml-2">{{ showDeleted ? 'Ocultar Eliminados' : 'Mostrar Eliminados' }}</span>
+          <span class="ml-1">{{ showDeleted ? 'Ocultar Eliminados' : 'Mostrar Eliminados' }}</span>
         </button>
+
+        <!-- Dev Company Selector -->
+        @if(devRoleService.isDev()){
+        <div class="ml-auto w-full md:w-auto">
+          <select id="companySelect" name="companySelect"
+            class="w-full md:w-auto px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            [(ngModel)]="selectedCompanyId" (change)="onCompanyChange()">
+            <option value="">Seleccionar empresa...</option>
+            <option *ngFor="let company of companies" [value]="company.id">{{ company.name }}</option>
+          </select>
+        </div>
+        }
       </div>
+
+      <!-- Click outside overlay for desktop dropdowns -->
+      <div *ngIf="stageDropdownOpen || priorityDropdownOpen" class="hidden md:block fixed inset-0 z-40"
+        (click)="closeAllDropdowns()"></div>
     </div>
-    
-    <div class="flex justify-between items-center text-gray-600 dark:text-slate-400 text-sm">
+
+    <div
+      class="flex justify-between items-center text-gray-600 dark:text-slate-400 text-sm pt-2 border-t border-gray-100 dark:border-slate-700/50">
       <span class="font-medium">{{ filteredTickets.length }} ticket(s) encontrado(s)</span>
-      <button class="btn btn-secondary" (click)="clearFilters()">
-        <i class="fas fa-times"></i>
+      <button class="btn btn-secondary btn-sm" (click)="clearFilters()">
+        <i class="fas fa-times mr-1"></i>
         Limpiar
       </button>
     </div>
@@ -141,10 +170,13 @@
   <!-- Stage Bottom Sheet (Mobile Only) -->
   <ng-container *ngIf="stageDropdownOpen">
     <div class="md:hidden fixed inset-0 bg-black/50 z-[9998]" (click)="stageDropdownOpen = false"></div>
-    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-2xl z-[9999] max-h-[60vh] overflow-hidden shadow-2xl animate-slide-up">
-      <div class="p-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
+    <div
+      class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-2xl z-[9999] max-h-[60vh] overflow-hidden shadow-2xl animate-slide-up">
+      <div
+        class="p-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
         <span class="font-semibold text-gray-900 dark:text-slate-50 text-lg">Filtrar por estado</span>
-        <button type="button" (click)="stageDropdownOpen = false" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
+        <button type="button" (click)="stageDropdownOpen = false"
+          class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
           <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
@@ -155,16 +187,22 @@
           class="w-full px-5 py-4 text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center justify-between transition-colors border-b border-gray-100 dark:border-slate-700/50"
           [ngClass]="filterStage === '' ? 'bg-orange-50 dark:bg-orange-900/30' : ''">
           <span class="text-gray-900 dark:text-slate-100 text-base">Todos los estados</span>
-          <svg *ngIf="filterStage === ''" class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+          <svg *ngIf="filterStage === ''" class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="currentColor"
+            viewBox="0 0 20 20">
+            <path fill-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clip-rule="evenodd"></path>
           </svg>
         </button>
         <button *ngFor="let stage of stages" type="button" (click)="selectStageFilter(stage.id)"
           class="w-full px-5 py-4 text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center justify-between transition-colors border-b border-gray-100 dark:border-slate-700/50 last:border-b-0"
           [ngClass]="filterStage === stage.id ? 'bg-orange-50 dark:bg-orange-900/30' : ''">
           <span class="text-gray-900 dark:text-slate-100 text-base">{{ stage.name }}</span>
-          <svg *ngIf="filterStage === stage.id" class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+          <svg *ngIf="filterStage === stage.id" class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="currentColor"
+            viewBox="0 0 20 20">
+            <path fill-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clip-rule="evenodd"></path>
           </svg>
         </button>
       </div>
@@ -174,10 +212,13 @@
   <!-- Priority Bottom Sheet (Mobile Only) -->
   <ng-container *ngIf="priorityDropdownOpen">
     <div class="md:hidden fixed inset-0 bg-black/50 z-[9998]" (click)="priorityDropdownOpen = false"></div>
-    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-2xl z-[9999] max-h-[60vh] overflow-hidden shadow-2xl animate-slide-up">
-      <div class="p-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
+    <div
+      class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 rounded-t-2xl z-[9999] max-h-[60vh] overflow-hidden shadow-2xl animate-slide-up">
+      <div
+        class="p-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
         <span class="font-semibold text-gray-900 dark:text-slate-50 text-lg">Filtrar por prioridad</span>
-        <button type="button" (click)="priorityDropdownOpen = false" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
+        <button type="button" (click)="priorityDropdownOpen = false"
+          class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
           <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
@@ -188,8 +229,11 @@
           class="w-full px-5 py-4 text-left hover:bg-gray-100 dark:hover:bg-slate-700 flex items-center justify-between transition-colors border-b border-gray-100 dark:border-slate-700/50 last:border-b-0"
           [ngClass]="filterPriority === option.value ? 'bg-orange-50 dark:bg-orange-900/30' : ''">
           <span class="text-gray-900 dark:text-slate-100 text-base">{{ option.label }}</span>
-          <svg *ngIf="filterPriority === option.value" class="w-5 h-5 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+          <svg *ngIf="filterPriority === option.value" class="w-5 h-5 text-orange-600 dark:text-orange-400"
+            fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clip-rule="evenodd"></path>
           </svg>
         </button>
       </div>
@@ -197,15 +241,19 @@
   </ng-container>
 
   <!-- Loading State -->
-  <div *ngIf="loading" class="flex justify-center items-center min-h-[300px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+  <div *ngIf="loading"
+    class="flex justify-center items-center min-h-[300px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
     <div class="text-center p-8">
-      <div class="w-10 h-10 border-3 border-gray-200 dark:border-slate-700 border-t-orange-500 rounded-full animate-spin mx-auto mb-4"></div>
+      <div
+        class="w-10 h-10 border-3 border-gray-200 dark:border-slate-700 border-t-orange-500 rounded-full animate-spin mx-auto mb-4">
+      </div>
       <p class="text-gray-600 dark:text-slate-400">Cargando tickets...</p>
     </div>
   </div>
 
   <!-- Error State -->
-  <div *ngIf="error && !loading" class="flex justify-center items-center min-h-[300px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+  <div *ngIf="error && !loading"
+    class="flex justify-center items-center min-h-[300px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
     <div class="text-center p-8">
       <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
       <h3 class="text-xl text-gray-900 dark:text-slate-50 font-semibold mb-2">Error al cargar tickets</h3>
@@ -221,7 +269,8 @@
   <div *ngIf="!loading && !error">
     <!-- List View -->
     <div *ngIf="viewMode === 'list'" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div *ngFor="let ticket of filteredTickets" class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-orange-500 transition-all duration-200 flex flex-col h-full">
+      <div *ngFor="let ticket of filteredTickets"
+        class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-orange-500 transition-all duration-200 flex flex-col h-full">
         <!-- Ticket Header -->
         <div class="flex justify-between items-start mb-4 flex-wrap gap-3">
           <div class="flex-1">
@@ -229,24 +278,26 @@
               <div class="flex items-center gap-3">
                 <div class="flex items-center gap-2">
                   <h3 class="text-lg font-bold text-orange-500">#{{ ticket.ticket_number }}</h3>
-                  <span *ngIf="ticket.is_opened === false" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">Nuevo</span>
+                  <span *ngIf="ticket.is_opened === false"
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">Nuevo</span>
                 </div>
-                <h4 class="text-lg font-semibold text-gray-900 dark:text-slate-50" [class.font-extrabold]="ticket.is_opened === false">{{ ticket.title }}</h4>
+                <h4 class="text-lg font-semibold text-gray-900 dark:text-slate-50"
+                  [class.font-extrabold]="ticket.is_opened === false">{{ ticket.title }}</h4>
               </div>
               <div class="flex items-center gap-2">
                 <span [class]="getPriorityClasses(ticket.priority)">
                   <i class="fas" [class]="getPriorityIcon(ticket.priority)"></i>
                   {{ getPriorityLabel(ticket.priority) }}
                 </span>
-                <span *ngIf="isOverdue(ticket)" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400">
+                <span *ngIf="isOverdue(ticket)"
+                  class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400">
                   <i class="fas fa-clock"></i>
                   Vencido
                 </span>
               </div>
             </div>
             <div class="flex gap-2 flex-wrap">
-              <span 
-                [style.background-color]="ticket.stage?.color"
+              <span [style.background-color]="ticket.stage?.color"
                 class="px-2 py-1 rounded-full text-xs font-medium text-white">
                 {{ ticket.stage?.name }}
               </span>
@@ -257,20 +308,21 @@
         <!-- Ticket Content -->
         <div class="flex-1 mb-4">
           <p class="text-gray-600 dark:text-slate-400 leading-relaxed mb-3">{{ ticket.description }}</p>
-          
+
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div class="flex items-center gap-2 text-sm">
               <i class="fas fa-user text-gray-400 dark:text-slate-500 w-4"></i>
               <span class="text-gray-600 dark:text-slate-400 font-medium">Cliente:</span>
-              <span class="text-gray-900 dark:text-slate-200 font-medium">{{ ticket.client?.name || 'No asignado' }}</span>
+              <span class="text-gray-900 dark:text-slate-200 font-medium">{{ ticket.client?.name || 'No asignado'
+                }}</span>
             </div>
-            
+
             <div class="flex items-center gap-2 text-sm" *ngIf="ticket.due_date">
               <i class="fas fa-calendar text-gray-400 dark:text-slate-500 w-4"></i>
               <span class="text-gray-600 dark:text-slate-400 font-medium">Fecha límite:</span>
               <span class="text-gray-900 dark:text-slate-200 font-medium">{{ formatDate(ticket.due_date) }}</span>
             </div>
-            
+
             <div class="flex items-center gap-2 text-sm" *ngIf="ticket.estimated_hours">
               <i class="fas fa-clock text-gray-400 dark:text-slate-500 w-4"></i>
               <span class="text-gray-600 dark:text-slate-400 font-medium">Horas estimadas:</span>
@@ -281,7 +333,9 @@
               <i class="fas fa-tags text-gray-400 dark:text-slate-500 w-4 mt-0.5"></i>
               <span class="text-gray-600 dark:text-slate-400 font-medium">Tags:</span>
               <div class="flex gap-1.5 flex-wrap">
-                <span *ngFor="let tag of ticket.tags" class="px-2 py-0.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 rounded-full text-xs font-medium">{{ tag }}</span>
+                <span *ngFor="let tag of ticket.tags"
+                  class="px-2 py-0.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 rounded-full text-xs font-medium">{{
+                  tag }}</span>
               </div>
             </div>
           </div>
@@ -289,15 +343,21 @@
 
         <!-- Ticket Actions -->
         <div class="flex gap-2 justify-around flex-wrap pt-3 border-t border-gray-200 dark:border-slate-700">
-          <button class="px-3 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg text-sm font-medium transition-colors flex items-center gap-2" (click)="viewTicketDetail(ticket)">
+          <button
+            class="px-3 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            (click)="viewTicketDetail(ticket)">
             <i class="fas fa-eye"></i>
             Ver Detalle
           </button>
-          <button class="px-3 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2" (click)="openForm(ticket)">
+          <button
+            class="px-3 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            (click)="openForm(ticket)">
             <i class="fas fa-edit"></i>
             Editar
           </button>
-          <button class="px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2" (click)="deleteTicket(ticket)">
+          <button
+            class="px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            (click)="deleteTicket(ticket)">
             <i class="fas fa-trash"></i>
             <span class="hidden md:inline">Eliminar</span>
           </button>
@@ -305,7 +365,8 @@
       </div>
 
       <!-- Empty State (shown when no tickets match filters) -->
-      <div *ngIf="filteredTickets.length === 0" class="col-span-full text-center py-16 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+      <div *ngIf="filteredTickets.length === 0"
+        class="col-span-full text-center py-16 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
         <i class="fas fa-ticket-alt text-6xl text-gray-300 dark:text-slate-600 mb-4"></i>
         <h3 class="text-xl text-gray-900 dark:text-slate-50 font-semibold mb-2">No hay tickets</h3>
         <p class="text-gray-600 dark:text-slate-400 mb-6">No se encontraron tickets con los filtros aplicados.</p>
@@ -318,26 +379,26 @@
 
     <!-- Board View -->
     <div *ngIf="viewMode === 'board'" class="tickets-board">
-      <div *ngFor="let stage of stages" class="board-column">
+      <div *ngFor="let stage of getVisibleBoardStages()" class="board-column">
         <div class="column-header" [style.background-color]="stage.color">
           <h3 class="column-title">{{ stage.name }}</h3>
           <span class="column-count">{{ getTicketsByStage(stage.id).length }}</span>
         </div>
-        
+
         <div class="column-content">
           <div *ngFor="let ticket of getTicketsByStage(stage.id)" class="board-ticket">
             <div class="board-ticket-header">
               <span class="board-ticket-number">#{{ ticket.ticket_number }}</span>
-              <span 
-                class="board-priority"
-                [style.color]="getPriorityColor(ticket.priority)">
+              <span class="board-priority" [style.color]="getPriorityColor(ticket.priority)">
                 <i class="fas fa-flag"></i>
               </span>
             </div>
-            
+
             <h4 class="board-ticket-title">{{ ticket.title }}</h4>
-            <p class="board-ticket-description">{{ ticket.description | slice:0:100 }}{{ ticket.description.length > 100 ? '...' : '' }}</p>
-            
+            <p class="board-ticket-description">{{ ticket.description | slice:0:100 }}{{ ticket.description.length >
+              100
+              ? '...' : '' }}</p>
+
             <div class="board-ticket-meta">
               <div class="board-client">
                 <i class="fas fa-user"></i>
@@ -383,14 +444,8 @@
           <div class="form-row">
             <div class="form-group">
               <label for="title">Título *</label>
-              <input 
-                type="text" 
-                id="title"
-                [(ngModel)]="formData.title" 
-                name="title"
-                class="form-control"
-                [class.error]="formErrors['title']"
-                placeholder="Descripción breve del problema">
+              <input type="text" id="title" [(ngModel)]="formData.title" name="title" class="form-control"
+                [class.error]="formErrors['title']" placeholder="Descripción breve del problema">
               <div *ngIf="formErrors['title']" class="error-message">{{ formErrors['title'] }}</div>
             </div>
           </div>
@@ -398,13 +453,8 @@
           <div class="form-row">
             <div class="form-group">
               <label for="description">Descripción *</label>
-              <textarea 
-                id="description"
-                [(ngModel)]="formData.description" 
-                name="description"
-                class="form-control"
-                [class.error]="formErrors['description']"
-                rows="4"
+              <textarea id="description" [(ngModel)]="formData.description" name="description" class="form-control"
+                [class.error]="formErrors['description']" rows="4"
                 placeholder="Descripción detallada del problema o solicitud"></textarea>
               <div *ngIf="formErrors['description']" class="error-message">{{ formErrors['description'] }}</div>
             </div>
@@ -415,39 +465,25 @@
               <label for="client_id">Cliente *</label>
               <div class="customer-search-container">
                 <div class="customer-input-wrapper">
-                  <input 
-                    type="text" 
-                    id="client_id"
-                    [(ngModel)]="customerSearchText" 
-                    (input)="filterCustomers()"
-                    (focus)="onCustomerSearchFocus()"
-                    (blur)="onCustomerSearchBlur()"
-                    name="client_search"
-                    class="form-control customer-search-input"
-                    [class.error]="formErrors['client_id']"
+                  <input type="text" id="client_id" [(ngModel)]="customerSearchText" (input)="filterCustomers()"
+                    (focus)="onCustomerSearchFocus()" (blur)="onCustomerSearchBlur()" name="client_search"
+                    class="form-control customer-search-input" [class.error]="formErrors['client_id']"
                     [placeholder]="selectedCustomer ? selectedCustomer.name : 'Buscar cliente por nombre, email o teléfono...'"
-                    [value]="selectedCustomer ? selectedCustomer.name : customerSearchText"
-                    autocomplete="off">
+                    [value]="selectedCustomer ? selectedCustomer.name : customerSearchText" autocomplete="off">
                   <!-- Botón para limpiar selección -->
-                  <button 
-                    *ngIf="selectedCustomer" 
-                    type="button" 
-                    class="btn-clear-customer" 
+                  <button *ngIf="selectedCustomer" type="button" class="btn-clear-customer"
                     (click)="clearCustomerSelection()">
                     <i class="fas fa-times"></i>
                   </button>
-                  <button type="button" class="btn-add-customer" (click)="openCustomerForm()" title="Crear nuevo cliente">
+                  <button type="button" class="btn-add-customer" (click)="openCustomerForm()"
+                    title="Crear nuevo cliente">
                     <i class="fas fa-user-plus"></i>
                   </button>
                 </div>
-                
+
                 <!-- Dropdown de clientes -->
-                <div 
-                  *ngIf="showCustomerDropdown && filteredCustomers.length > 0" 
-                  class="customer-dropdown">
-                  <div 
-                    *ngFor="let customer of filteredCustomers" 
-                    class="customer-option"
+                <div *ngIf="showCustomerDropdown && filteredCustomers.length > 0" class="customer-dropdown">
+                  <div *ngFor="let customer of filteredCustomers" class="customer-option"
                     (click)="selectCustomer(customer)">
                     <div class="customer-info">
                       <div class="customer-name">{{ customer.name }}</div>
@@ -457,8 +493,7 @@
                 </div>
 
                 <!-- Opción para crear nuevo cliente -->
-                <div 
-                  *ngIf="showCustomerDropdown && filteredCustomers.length === 0 && customerSearchText.trim()" 
+                <div *ngIf="showCustomerDropdown && filteredCustomers.length === 0 && customerSearchText.trim()"
                   class="no-customers-found">
                   <div class="customer-option create-new-customer" (click)="createNewCustomer()">
                     <div class="customer-info">
@@ -475,11 +510,7 @@
 
             <div class="form-group">
               <label for="stage_id">Estado *</label>
-              <select 
-                id="stage_id"
-                [(ngModel)]="formData.stage_id" 
-                name="stage_id"
-                class="form-control"
+              <select id="stage_id" [(ngModel)]="formData.stage_id" name="stage_id" class="form-control"
                 [class.error]="formErrors['stage_id']">
                 <option value="">Seleccionar estado</option>
                 <option *ngFor="let stage of stages" [value]="stage.id">{{ stage.name }}</option>
@@ -491,11 +522,7 @@
           <div class="form-row">
             <div class="form-group">
               <label for="priority">Prioridad</label>
-              <select 
-                id="priority"
-                [(ngModel)]="formData.priority" 
-                name="priority"
-                class="form-control">
+              <select id="priority" [(ngModel)]="formData.priority" name="priority" class="form-control">
                 <option value="low">Baja</option>
                 <option value="normal">Normal</option>
                 <option value="high">Alta</option>
@@ -505,32 +532,19 @@
 
             <div class="form-group">
               <label for="due_date">Fecha límite</label>
-              <input 
-                type="date" 
-                id="due_date"
-                [(ngModel)]="formData.due_date" 
-                name="due_date"
-                class="form-control">
+              <input type="date" id="due_date" [(ngModel)]="formData.due_date" name="due_date" class="form-control">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="estimated_hours">Horas estimadas</label>
-              <input 
-                type="number" 
-                id="estimated_hours"
-                [(ngModel)]="formData.estimated_hours" 
-                name="estimated_hours"
-                class="form-control"
-                [class.error]="formErrors['estimated_hours']"
-                min="0"
-                step="0.5"
-                placeholder="0"
-                readonly
-                [value]="getTotalEstimatedHours() || formData.estimated_hours"
+              <input type="number" id="estimated_hours" [(ngModel)]="formData.estimated_hours" name="estimated_hours"
+                class="form-control" [class.error]="formErrors['estimated_hours']" min="0" step="0.5" placeholder="0"
+                readonly [value]="getTotalEstimatedHours() || formData.estimated_hours"
                 title="Calculado automáticamente basado en los servicios seleccionados">
-              <div *ngIf="formErrors['estimated_hours']" class="error-message">{{ formErrors['estimated_hours'] }}</div>
+              <div *ngIf="formErrors['estimated_hours']" class="error-message">{{ formErrors['estimated_hours'] }}
+              </div>
               <div class="field-help">⚡ Se calcula automáticamente según los servicios</div>
             </div>
           </div>
@@ -560,25 +574,17 @@
                 <span *ngIf="!serviceSearchText.trim()">Servicios Más Usados</span>
                 <span *ngIf="serviceSearchText.trim()">Resultados de Búsqueda</span>
               </h4>
-              
+
               <!-- Buscador de servicios -->
               <div class="search-container">
-                <input 
-                  type="text" 
-                  name="serviceSearchText"
-                  [(ngModel)]="serviceSearchText" 
-                  (input)="filterServices()"
-                  placeholder="Buscar servicios por nombre, descripción o categoría..."
-                  class="search-input">
+                <input type="text" name="serviceSearchText" [(ngModel)]="serviceSearchText" (input)="filterServices()"
+                  placeholder="Buscar servicios por nombre, descripción o categoría..." class="search-input">
                 <i class="fas fa-search search-icon"></i>
               </div>
 
               <div class="services-grid">
-                <div 
-                  *ngFor="let service of filteredServices" 
-                  class="service-item"
-                  [class.selected]="isServiceSelected(service.id)"
-                  (click)="addServiceToTicket(service)">
+                <div *ngFor="let service of filteredServices" class="service-item"
+                  [class.selected]="isServiceSelected(service.id)" (click)="addServiceToTicket(service)">
                   <div class="service-info">
                     <div class="service-name">{{ service.name }}</div>
                     <div class="service-details">
@@ -621,16 +627,10 @@
                     <div class="service-price">{{ item.service.base_price }}€ × {{ item.quantity }}</div>
                   </div>
                   <div class="service-controls">
-                    <input 
-                      type="number" 
-                      [value]="item.quantity" 
-                      (input)="updateServiceQuantity(item.service.id, +$any($event.target).value)"
-                      min="1" 
+                    <input type="number" [value]="item.quantity"
+                      (input)="updateServiceQuantity(item.service.id, +$any($event.target).value)" min="1"
                       class="quantity-input">
-                    <button 
-                      type="button" 
-                      class="btn-remove" 
-                      (click)="removeServiceFromTicket(item.service.id)">
+                    <button type="button" class="btn-remove" (click)="removeServiceFromTicket(item.service.id)">
                       <i class="fas fa-trash"></i>
                     </button>
                   </div>
@@ -669,22 +669,14 @@
 
               <!-- Buscador de productos -->
               <div class="search-container">
-                <input 
-                  type="text" 
-                  name="productSearchText"
-                  [(ngModel)]="productSearchText" 
-                  (input)="filterProducts()"
-                  placeholder="Buscar productos por nombre, descripción o categoría..."
-                  class="search-input">
+                <input type="text" name="productSearchText" [(ngModel)]="productSearchText" (input)="filterProducts()"
+                  placeholder="Buscar productos por nombre, descripción o categoría..." class="search-input">
                 <i class="fas fa-search search-icon"></i>
               </div>
 
               <div class="services-grid">
-                <div 
-                  *ngFor="let product of filteredProducts" 
-                  class="service-item"
-                  [class.selected]="isProductSelected(product.id)"
-                  (click)="addProductToTicket(product)">
+                <div *ngFor="let product of filteredProducts" class="service-item"
+                  [class.selected]="isProductSelected(product.id)" (click)="addProductToTicket(product)">
                   <div class="service-info">
                     <div class="service-name">{{ product.name }}</div>
                     <div class="service-details">
@@ -724,16 +716,10 @@
                     <div class="service-price">{{ item.product.price }}€ × {{ item.quantity }}</div>
                   </div>
                   <div class="service-controls">
-                    <input 
-                      type="number" 
-                      [value]="item.quantity" 
-                      (input)="updateProductQuantity(item.product.id, +$any($event.target).value)"
-                      min="1" 
+                    <input type="number" [value]="item.quantity"
+                      (input)="updateProductQuantity(item.product.id, +$any($event.target).value)" min="1"
                       class="quantity-input">
-                    <button 
-                      type="button" 
-                      class="btn-remove" 
-                      (click)="removeProductFromTicket(item.product.id)">
+                    <button type="button" class="btn-remove" (click)="removeProductFromTicket(item.product.id)">
                       <i class="fas fa-trash"></i>
                     </button>
                   </div>
@@ -749,10 +735,7 @@
                 <i class="fas fa-mobile-alt"></i>
                 Dispositivos
               </h3>
-              <button 
-                type="button" 
-                class="btn btn-primary btn-sm"
-                (click)="openCreateDeviceForm()">
+              <button type="button" class="btn btn-primary btn-sm" (click)="openCreateDeviceForm()">
                 <i class="fas fa-plus"></i>
                 Nuevo
               </button>
@@ -769,7 +752,7 @@
                 <i class="fas fa-search"></i>
                 <span>Dispositivos del Cliente</span>
               </h4>
-              
+
               <div *ngIf="!selectedCustomer" class="info-message">
                 <i class="fas fa-info-circle"></i>
                 <span>Selecciona un cliente para ver sus dispositivos</span>
@@ -779,25 +762,17 @@
                 <!-- Buscador de dispositivos -->
                 <div class="search-container">
                   <div class="search-input-container">
-                    <input 
-                      type="text" 
-                      class="form-control search-input"
-                      [(ngModel)]="deviceSearchText"
-                      name="device_search"
-                      (input)="filterCustomerDevices()"
-                      placeholder="Buscar dispositivos por marca, modelo, IMEI..."
-                      autocomplete="off">
+                    <input type="text" class="form-control search-input" [(ngModel)]="deviceSearchText"
+                      name="device_search" (input)="filterCustomerDevices()"
+                      placeholder="Buscar dispositivos por marca, modelo, IMEI..." autocomplete="off">
                     <i class="fas fa-search search-icon"></i>
                   </div>
                 </div>
 
                 <!-- Lista de dispositivos del cliente -->
                 <div class="devices-list" *ngIf="filteredCustomerDevices.length > 0">
-                  <div 
-                    *ngFor="let device of filteredCustomerDevices" 
-                    class="device-card"
-                    [class.selected]="isDeviceSelected(device.id)"
-                    (click)="toggleDeviceSelection(device)">
+                  <div *ngFor="let device of filteredCustomerDevices" class="device-card"
+                    [class.selected]="isDeviceSelected(device.id)" (click)="toggleDeviceSelection(device)">
                     <div class="device-info">
                       <div class="device-primary">
                         <span class="device-brand">{{ device.brand }}</span>
@@ -838,10 +813,7 @@
                       {{ getDeviceStatusLabel(device.status) }}
                     </div>
                   </div>
-                  <button 
-                    type="button" 
-                    class="btn-remove" 
-                    (click)="removeDeviceFromTicket(device.id)">
+                  <button type="button" class="btn-remove" (click)="removeDeviceFromTicket(device.id)">
                     <i class="fas fa-trash"></i>
                   </button>
                 </div>
@@ -886,54 +858,30 @@
         <div class="form-row">
           <div class="form-group">
             <label for="device_brand">Marca *</label>
-            <input 
-              type="text" 
-              id="device_brand"
-              [(ngModel)]="deviceFormData.brand"
-              name="device_brand"
-              class="form-control"
-              placeholder="Ej: Apple, Samsung, Xiaomi">
+            <input type="text" id="device_brand" [(ngModel)]="deviceFormData.brand" name="device_brand"
+              class="form-control" placeholder="Ej: Apple, Samsung, Xiaomi">
           </div>
           <div class="form-group">
             <label for="device_model">Modelo *</label>
-            <input 
-              type="text" 
-              id="device_model"
-              [(ngModel)]="deviceFormData.model"
-              name="device_model"
-              class="form-control"
-              placeholder="Ej: iPhone 14, Galaxy S23">
+            <input type="text" id="device_model" [(ngModel)]="deviceFormData.model" name="device_model"
+              class="form-control" placeholder="Ej: iPhone 14, Galaxy S23">
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
             <label for="device_imei">IMEI</label>
-            <input 
-              type="text" 
-              id="device_imei"
-              [(ngModel)]="deviceFormData.imei"
-              name="device_imei"
-              class="form-control"
-              placeholder="Número IMEI del dispositivo">
+            <input type="text" id="device_imei" [(ngModel)]="deviceFormData.imei" name="device_imei"
+              class="form-control" placeholder="Número IMEI del dispositivo">
           </div>
           <div class="form-group">
             <label for="device_color">Color</label>
-            <input 
-              type="text" 
-              id="device_color"
-              [(ngModel)]="deviceFormData.color"
-              name="device_color"
-              class="form-control"
-              placeholder="Color del dispositivo">
+            <input type="text" id="device_color" [(ngModel)]="deviceFormData.color" name="device_color"
+              class="form-control" placeholder="Color del dispositivo">
           </div>
           <div class="form-group">
             <label for="device_type">Tipo *</label>
-            <select 
-              id="device_type"
-              [(ngModel)]="deviceFormData.device_type"
-              name="device_type"
-              class="form-control">
+            <select id="device_type" [(ngModel)]="deviceFormData.device_type" name="device_type" class="form-control">
               <option value="">Seleccionar tipo</option>
               <option value="smartphone">Smartphone</option>
               <option value="tablet">Tablet</option>
@@ -948,13 +896,8 @@
         <div class="form-row">
           <div class="form-group">
             <label for="reported_issue">Problema Reportado *</label>
-            <textarea 
-              id="reported_issue"
-              [(ngModel)]="deviceFormData.reported_issue"
-              name="reported_issue"
-              class="form-control"
-              rows="2"
-              placeholder="Describe el problema reportado por el cliente">
+            <textarea id="reported_issue" [(ngModel)]="deviceFormData.reported_issue" name="reported_issue"
+              class="form-control" rows="2" placeholder="Describe el problema reportado por el cliente">
             </textarea>
           </div>
         </div>
@@ -962,13 +905,8 @@
         <div class="form-row">
           <div class="form-group">
             <label for="device_notes">Estado al llegar</label>
-            <textarea 
-              id="device_notes"
-              [(ngModel)]="deviceFormData.condition_on_arrival"
-              name="device_notes"
-              class="form-control"
-              rows="3"
-              placeholder="Estado inicial, accesorios incluidos, etc.">
+            <textarea id="device_notes" [(ngModel)]="deviceFormData.condition_on_arrival" name="device_notes"
+              class="form-control" rows="3" placeholder="Estado inicial, accesorios incluidos, etc.">
             </textarea>
           </div>
         </div>
@@ -977,15 +915,9 @@
           <div class="form-group">
             <label for="device_images">Imágenes del dispositivo</label>
             <div class="image-upload-container">
-              <input 
-                type="file" 
-                id="device_images"
-                (change)="onDeviceImagesSelected($event)"
-                name="device_images"
-                accept="image/*"
-                multiple
-                class="file-input">
-              
+              <input type="file" id="device_images" (change)="onDeviceImagesSelected($event)" name="device_images"
+                accept="image/*" multiple class="file-input">
+
               <label for="device_images" class="file-upload-label">
                 <i class="fas fa-camera"></i>
                 <span>Agregar imágenes</span>
@@ -995,15 +927,10 @@
 
             <div *ngIf="selectedDeviceImages.length > 0" class="image-preview-container">
               <div class="image-preview-grid">
-                <div 
-                  *ngFor="let image of selectedDeviceImages; let i = index" 
-                  class="image-preview-item">
+                <div *ngFor="let image of selectedDeviceImages; let i = index" class="image-preview-item">
                   <img [src]="image.preview" [alt]="image.file.name">
                   <div class="image-overlay">
-                    <button 
-                      type="button" 
-                      class="btn-remove-image"
-                      (click)="removeDeviceImage(i)">
+                    <button type="button" class="btn-remove-image" (click)="removeDeviceImage(i)">
                       <i class="fas fa-trash"></i>
                     </button>
                   </div>
@@ -1020,7 +947,8 @@
           <i class="fas fa-times"></i>
           <span>Cancelar</span>
         </button>
-        <button class="btn btn-primary" (click)="createAndSelectDevice()" [disabled]="!deviceFormData.brand || !deviceFormData.model || !deviceFormData.device_type || !deviceFormData.reported_issue">
+        <button class="btn btn-primary" (click)="createAndSelectDevice()"
+          [disabled]="!deviceFormData.brand || !deviceFormData.model || !deviceFormData.device_type || !deviceFormData.reported_issue">
           <i class="fas fa-check"></i>
           <span>Crear Dispositivo</span>
         </button>
@@ -1043,58 +971,34 @@
           <i class="fas fa-times"></i>
         </button>
       </div>
-      
+
       <div class="modal-body">
         <div class="form-row">
           <div class="form-group">
             <label for="service_name">Nombre *</label>
-            <input 
-              type="text" 
-              id="service_name"
-              [(ngModel)]="serviceFormData.name"
-              name="service_name"
-              class="form-control"
-              placeholder="Ej: Reparación de pantalla">
+            <input type="text" id="service_name" [(ngModel)]="serviceFormData.name" name="service_name"
+              class="form-control" placeholder="Ej: Reparación de pantalla">
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
             <label for="service_price">Precio Base (€)</label>
-            <input 
-              type="number" 
-              id="service_price"
-              [(ngModel)]="serviceFormData.base_price"
-              name="service_price"
-              class="form-control"
-              min="0"
-              step="0.01"
-              placeholder="0.00">
+            <input type="number" id="service_price" [(ngModel)]="serviceFormData.base_price" name="service_price"
+              class="form-control" min="0" step="0.01" placeholder="0.00">
           </div>
           <div class="form-group">
             <label for="service_hours">Horas Estimadas</label>
-            <input 
-              type="number" 
-              id="service_hours"
-              [(ngModel)]="serviceFormData.estimated_hours"
-              name="service_hours"
-              class="form-control"
-              min="0"
-              step="0.5"
-              placeholder="1">
+            <input type="number" id="service_hours" [(ngModel)]="serviceFormData.estimated_hours" name="service_hours"
+              class="form-control" min="0" step="0.5" placeholder="1">
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
             <label for="service_description">Descripción</label>
-            <textarea 
-              id="service_description"
-              [(ngModel)]="serviceFormData.description"
-              name="service_description"
-              class="form-control"
-              rows="2"
-              placeholder="Descripción del servicio..."></textarea>
+            <textarea id="service_description" [(ngModel)]="serviceFormData.description" name="service_description"
+              class="form-control" rows="2" placeholder="Descripción del servicio..."></textarea>
           </div>
         </div>
       </div>
@@ -1127,92 +1031,56 @@
           <i class="fas fa-times"></i>
         </button>
       </div>
-      
+
       <div class="modal-body">
         <form>
           <div class="form-row">
             <div class="form-group">
               <label for="customer_name">Nombre completo *</label>
-              <input 
-                type="text" 
-                id="customer_name"
-                [(ngModel)]="customerFormData.name"
-                name="customer_name"
-                class="form-control"
-                placeholder="Nombre y apellidos del cliente"
-                required>
+              <input type="text" id="customer_name" [(ngModel)]="customerFormData.name" name="customer_name"
+                class="form-control" placeholder="Nombre y apellidos del cliente" required>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="customer_email">Email</label>
-              <input 
-                type="email" 
-                id="customer_email"
-                [(ngModel)]="customerFormData.email"
-                name="customer_email"
-                class="form-control"
-                placeholder="cliente@ejemplo.com">
+              <input type="email" id="customer_email" [(ngModel)]="customerFormData.email" name="customer_email"
+                class="form-control" placeholder="cliente@ejemplo.com">
             </div>
             <div class="form-group">
               <label for="customer_phone">Teléfono</label>
-              <input 
-                type="tel" 
-                id="customer_phone"
-                [(ngModel)]="customerFormData.phone"
-                name="customer_phone"
-                class="form-control"
-                placeholder="+34 600 000 000">
+              <input type="tel" id="customer_phone" [(ngModel)]="customerFormData.phone" name="customer_phone"
+                class="form-control" placeholder="+34 600 000 000">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="customer_address">Dirección</label>
-              <input 
-                type="text" 
-                id="customer_address"
-                [(ngModel)]="customerFormData.address"
-                name="customer_address"
-                class="form-control"
-                placeholder="Calle, número, piso">
+              <input type="text" id="customer_address" [(ngModel)]="customerFormData.address" name="customer_address"
+                class="form-control" placeholder="Calle, número, piso">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="customer_city">Ciudad</label>
-              <input 
-                type="text" 
-                id="customer_city"
-                [(ngModel)]="customerFormData.city"
-                name="customer_city"
-                class="form-control"
-                placeholder="Ciudad">
+              <input type="text" id="customer_city" [(ngModel)]="customerFormData.city" name="customer_city"
+                class="form-control" placeholder="Ciudad">
             </div>
             <div class="form-group">
               <label for="customer_postal">Código Postal</label>
-              <input 
-                type="text" 
-                id="customer_postal"
-                [(ngModel)]="customerFormData.postal_code"
-                name="customer_postal"
-                class="form-control"
-                placeholder="28000">
+              <input type="text" id="customer_postal" [(ngModel)]="customerFormData.postal_code" name="customer_postal"
+                class="form-control" placeholder="28000">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="customer_notes">Notas adicionales</label>
-              <textarea 
-                id="customer_notes"
-                [(ngModel)]="customerFormData.notes"
-                name="customer_notes"
-                class="form-control"
-                rows="3"
-                placeholder="Información adicional sobre el cliente...">
+              <textarea id="customer_notes" [(ngModel)]="customerFormData.notes" name="customer_notes"
+                class="form-control" rows="3" placeholder="Información adicional sobre el cliente...">
               </textarea>
             </div>
           </div>
@@ -1224,10 +1092,7 @@
           <i class="fas fa-times"></i>
           <span>Cancelar</span>
         </button>
-        <button 
-          class="btn btn-primary" 
-          (click)="saveCustomer()" 
-          [disabled]="!customerFormData.name.trim()">
+        <button class="btn btn-primary" (click)="saveCustomer()" [disabled]="!customerFormData.name.trim()">
           <i class="fas fa-check"></i>
           <span>Crear Cliente</span>
         </button>
@@ -1255,13 +1120,8 @@
         <div class="form-row">
           <div class="form-group">
             <label for="product_name">Nombre *</label>
-            <input 
-              type="text" 
-              id="product_name"
-              [(ngModel)]="productFormData.name"
-              name="product_name"
-              class="form-control"
-              placeholder="Ej: Cable USB-C, Funda protectora">
+            <input type="text" id="product_name" [(ngModel)]="productFormData.name" name="product_name"
+              class="form-control" placeholder="Ej: Cable USB-C, Funda protectora">
           </div>
         </div>
 
@@ -1269,52 +1129,37 @@
           <div class="form-group">
             <label for="product_brand">Marca</label>
             <div class="category-input-container">
-              <input 
-                type="text" 
-                id="product_brand"
-                class="form-control"
-                [(ngModel)]="productFormData.brand"
-                name="product_brand"
-                (focus)="showBrandInput = true"
-                placeholder="Ej: Samsung, Apple, Xiaomi">
-              
+              <input type="text" id="product_brand" class="form-control" [(ngModel)]="productFormData.brand"
+                name="product_brand" (focus)="showBrandInput = true" placeholder="Ej: Samsung, Apple, Xiaomi">
+
               <!-- Brand Dropdown -->
               <div *ngIf="showBrandInput" class="category-dropdown">
                 <div class="category-search">
-                  <input 
-                    type="text"
-                    class="form-control small"
-                    [(ngModel)]="brandSearchText"
-                    (ngModelChange)="onBrandSearchChange()"
-                    placeholder="Buscar o crear marca..."
-                    name="brandFilter">
+                  <input type="text" class="form-control small" [(ngModel)]="brandSearchText"
+                    (ngModelChange)="onBrandSearchChange()" placeholder="Buscar o crear marca..." name="brandFilter">
                 </div>
-                
+
                 <div class="category-options">
-                  <div *ngFor="let brand of filteredBrands" 
-                       class="category-option"
-                       (click)="selectBrand(brand)">
+                  <div *ngFor="let brand of filteredBrands" class="category-option" (click)="selectBrand(brand)">
                     <i class="fas fa-tag"></i>
                     <span>{{ brand.name }}</span>
                     <small *ngIf="brand.company_id">Privada</small>
                     <small *ngIf="!brand.company_id" style="color: #10b981;">Global</small>
                   </div>
-                  
-                  <div *ngIf="brandSearchText && filteredBrands.length === 0 && !hasExactBrandMatch()" 
-                       class="category-option create-new"
-                       (click)="createNewBrand()">
+
+                  <div *ngIf="brandSearchText && filteredBrands.length === 0 && !hasExactBrandMatch()"
+                    class="category-option create-new" (click)="createNewBrand()">
                     <i class="fas fa-plus" style="color: #10b981;"></i>
                     <span>Crear "{{ brandSearchText }}"</span>
                   </div>
-                  
-                  <div *ngIf="brandSearchText && filteredBrands.length === 0 && hasExactBrandMatch()" 
-                       class="category-option existing-match"
-                       (click)="selectExistingBrandMatch()">
+
+                  <div *ngIf="brandSearchText && filteredBrands.length === 0 && hasExactBrandMatch()"
+                    class="category-option existing-match" (click)="selectExistingBrandMatch()">
                     <i class="fas fa-check" style="color: #3b82f6;"></i>
                     <span>Usar "{{ getExactBrandMatch()?.name }}" (existe)</span>
                   </div>
                 </div>
-                
+
                 <div class="category-actions">
                   <button type="button" class="btn btn-sm btn-secondary" (click)="showBrandInput = false">
                     Cerrar
@@ -1323,56 +1168,44 @@
               </div>
             </div>
           </div>
-          
+
           <div class="form-group">
             <label for="product_category">Categoría</label>
             <div class="category-input-container">
-              <input 
-                type="text" 
-                id="product_category"
-                class="form-control"
-                [(ngModel)]="productFormData.category"
-                name="product_category"
-                (focus)="showCategoryInput = true"
+              <input type="text" id="product_category" class="form-control" [(ngModel)]="productFormData.category"
+                name="product_category" (focus)="showCategoryInput = true"
                 placeholder="Ej: Accesorios, Repuestos, Hardware">
-              
+
               <!-- Category Dropdown -->
               <div *ngIf="showCategoryInput" class="category-dropdown">
                 <div class="category-search">
-                  <input 
-                    type="text"
-                    class="form-control small"
-                    [(ngModel)]="categorySearchText"
-                    (ngModelChange)="onCategorySearchChange()"
-                    placeholder="Buscar o crear categoría..."
+                  <input type="text" class="form-control small" [(ngModel)]="categorySearchText"
+                    (ngModelChange)="onCategorySearchChange()" placeholder="Buscar o crear categoría..."
                     name="categoryFilter">
                 </div>
-                
+
                 <div class="category-options">
-                  <div *ngFor="let category of filteredCategories" 
-                       class="category-option"
-                       (click)="selectCategory(category)">
+                  <div *ngFor="let category of filteredCategories" class="category-option"
+                    (click)="selectCategory(category)">
                     <i [class]="category.icon || 'fas fa-folder'" [style.color]="category.color"></i>
                     <span>{{ category.name }}</span>
                     <small *ngIf="category.company_id">Privada</small>
                     <small *ngIf="!category.company_id" style="color: #10b981;">Global</small>
                   </div>
-                  
-                  <div *ngIf="categorySearchText && filteredCategories.length === 0 && !hasExactCategoryMatch()" 
-                       class="category-option create-new"
-                       (click)="createNewCategory()">
+
+                  <div *ngIf="categorySearchText && filteredCategories.length === 0 && !hasExactCategoryMatch()"
+                    class="category-option create-new" (click)="createNewCategory()">
                     <i class="fas fa-plus" style="color: #10b981;"></i>
                     <span>Crear "{{ categorySearchText }}"</span>
                   </div>
-                  
-                  <div *ngIf="categorySearchText && filteredCategories.length === 0 && hasExactCategoryMatch()" 
-                       class="category-option existing-match"
-                       (click)="selectExistingCategoryMatch()">
+
+                  <div *ngIf="categorySearchText && filteredCategories.length === 0 && hasExactCategoryMatch()"
+                    class="category-option existing-match" (click)="selectExistingCategoryMatch()">
                     <i class="fas fa-check" style="color: #3b82f6;"></i>
                     <span>Usar "{{ getExactCategoryMatch()?.name }}" (existe)</span>
                   </div>
                 </div>
-                
+
                 <div class="category-actions">
                   <button type="button" class="btn btn-sm btn-secondary" (click)="showCategoryInput = false">
                     Cerrar
@@ -1386,52 +1219,29 @@
         <div class="form-row">
           <div class="form-group">
             <label for="product_model">Modelo</label>
-            <input 
-              type="text" 
-              id="product_model"
-              [(ngModel)]="productFormData.model"
-              name="product_model"
-              class="form-control"
-              placeholder="Modelo o referencia específica">
+            <input type="text" id="product_model" [(ngModel)]="productFormData.model" name="product_model"
+              class="form-control" placeholder="Modelo o referencia específica">
           </div>
           <div class="form-group">
             <label for="product_price">Precio (€)</label>
-            <input 
-              type="number" 
-              id="product_price"
-              [(ngModel)]="productFormData.price"
-              name="product_price"
-              class="form-control"
-              min="0"
-              step="0.01"
-              placeholder="0.00">
+            <input type="number" id="product_price" [(ngModel)]="productFormData.price" name="product_price"
+              class="form-control" min="0" step="0.01" placeholder="0.00">
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
             <label for="product_stock">Stock Inicial</label>
-            <input 
-              type="number" 
-              id="product_stock"
-              [(ngModel)]="productFormData.stock_quantity"
-              name="product_stock"
-              class="form-control"
-              min="0"
-              placeholder="0">
+            <input type="number" id="product_stock" [(ngModel)]="productFormData.stock_quantity" name="product_stock"
+              class="form-control" min="0" placeholder="0">
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
             <label for="product_description">Descripción</label>
-            <textarea 
-              id="product_description"
-              [(ngModel)]="productFormData.description"
-              name="product_description"
-              class="form-control"
-              rows="3"
-              placeholder="Descripción detallada del producto..."></textarea>
+            <textarea id="product_description" [(ngModel)]="productFormData.description" name="product_description"
+              class="form-control" rows="3" placeholder="Descripción detallada del producto..."></textarea>
           </div>
         </div>
       </div>
@@ -1450,12 +1260,7 @@
   </div>
 
   <!-- Floating Action Button (FAB) -->
-  <button
-    (click)="openForm()"
-    class="fab-button"
-    title="Nuevo Ticket"
-    [disabled]="loading"
-  >
+  <button (click)="openForm()" class="fab-button" title="Nuevo Ticket" [disabled]="loading">
     <i class="fas fa-plus"></i>
   </button>
 </div>
