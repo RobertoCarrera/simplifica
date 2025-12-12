@@ -8,7 +8,7 @@ import { SupabaseTicketStagesService, TicketStage as ConfigStage } from '../../s
 import { DevicesService, Device } from '../../services/devices.service';
 import { ProductsService } from '../../services/products.service';
 import { TicketModalService } from '../../services/ticket-modal.service';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+
 import { environment } from '../../../environments/environment';
 import { SupabaseQuotesService } from '../../services/supabase-quotes.service';
 import { SupabaseServicesService } from '../../services/supabase-services.service';
@@ -433,7 +433,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                           </div>
                           <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
                         </div>
-                        <div class="prose prose-sm max-w-none text-gray-800 dark:text-gray-300" [innerHTML]="renderComment(comment.comment)"></div>
+                        <div class="prose prose-sm max-w-none text-gray-800 dark:text-gray-300" [innerHTML]="comment.comment"></div>
                       </div>
                     </div>
                   </div>
@@ -895,14 +895,14 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   comments: any[] = [];
   recentActivity: any[] = [];
   ticketId: string | null = null;
-  
+
   // Comment form
   newComment: string = '';
   isInternalComment: boolean = false;
   // Rich editor state
   commentEditorHtml: string = '';
   isUploadingImage: boolean = false;
-  
+
   // Modal controls
   showChangeStageModal = false;
   showUpdateHoursModal = false;
@@ -913,7 +913,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   newHoursValue: number = 0;
   selectedFile: File | null = null;
   // Edit modal form data (handled by central modal)
-  
+
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private supabase = inject(SimpleSupabaseService);
@@ -922,11 +922,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private devicesService = inject(DevicesService);
   private productsService = inject(ProductsService);
   private ticketModalService = inject(TicketModalService);
-  private sanitizer = inject(DomSanitizer);
+
   private quotesService = inject(SupabaseQuotesService);
   private customersService = inject(SupabaseCustomersService);
   private toastService = inject(ToastService);
-  
+
   // Track if there is an existing active quote derived from this ticket
   activeQuoteId: string | null = null;
 
@@ -936,7 +936,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   filteredServices: any[] = [];
   serviceSearchText = '';
   selectedServiceIds: Set<string> = new Set();
-  
+
   // Products Selection Modal state
   showProductsModal = false;
   productsCatalog: any[] = [];
@@ -944,14 +944,14 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   productSearchText = '';
   selectedProductIds: Set<string> = new Set();
   tempProductQuantities: Map<string, number> = new Map();
-  
+
   // Devices Selection Modal state
   showDevicesModal = false;
   availableDevices: Device[] = [];
   filteredDevices: Device[] = [];
   deviceSearchText = '';
   selectedDeviceIds: Set<string> = new Set();
-  
+
   // History management for modals
   private popStateListener: any = null;
   // Keep quantities for selected services
@@ -963,7 +963,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   // Track saving state per assigned service id when persisting inline quantity edits
   savingAssignedServiceIds: Set<string> = new Set();
-  
+
   // Tab management for content organization
   activeTab: 'services' | 'products' | 'devices' | 'comments' = 'services';
 
@@ -1090,7 +1090,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // Development-only logger: will be a no-op in production
   private debugLog(...args: any[]) {
     if (!environment.production) {
-      try { console.log(...args); } catch {}
+      try { console.log(...args); } catch { }
     }
   }
 
@@ -1123,11 +1123,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   initializeEditor() {
     // Debug DOM state
-  this.debugLog('DOM debug:');
-  this.debugLog('- .tiptap-editor exists:', !!document.querySelector('.tiptap-editor'));
-  this.debugLog('- #editorElement exists:', !!document.querySelector('#editorElement'));
-  this.debugLog('- ViewChild editorElement:', this.editorElement);
-  this.debugLog('- All elements with class tiptap-editor:', document.querySelectorAll('.tiptap-editor'));
+    this.debugLog('DOM debug:');
+    this.debugLog('- .tiptap-editor exists:', !!document.querySelector('.tiptap-editor'));
+    this.debugLog('- #editorElement exists:', !!document.querySelector('#editorElement'));
+    this.debugLog('- ViewChild editorElement:', this.editorElement);
+    this.debugLog('- All elements with class tiptap-editor:', document.querySelectorAll('.tiptap-editor'));
 
     // Prefer ViewChild; fall back to query selectors
     let element = (this.editorElement && this.editorElement.nativeElement) as HTMLElement;
@@ -1148,7 +1148,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.editor.destroy();
     }
 
-  this.debugLog('Initializing TipTap editor on element:', element);
+    this.debugLog('Initializing TipTap editor on element:', element);
     this.editor = new Editor({
       element: element,
       extensions: [
@@ -1200,9 +1200,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         this.newComment = editor.getHTML();
       },
       onCreate: ({ editor }) => {
-  this.debugLog('TipTap editor created successfully');
+        this.debugLog('TipTap editor created successfully');
         // Trigger change detection to reflect buttons state bound to editor
-        try { this.cdr.detectChanges(); } catch {}
+        try { this.cdr.detectChanges(); } catch { }
       },
     });
   }
@@ -1375,10 +1375,10 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!id) return;
     if (this.selectedServiceIds.has(id)) {
       // Prevent deselecting the last remaining service
-        if (this.selectedServiceIds.size <= 1) {
-          this.showToast('Debe mantener al menos un servicio seleccionado.', 'info');
-          return;
-        }
+      if (this.selectedServiceIds.size <= 1) {
+        this.showToast('Debe mantener al menos un servicio seleccionado.', 'info');
+        return;
+      }
       this.selectedServiceIds.delete(id);
     } else {
       this.selectedServiceIds.add(id);
@@ -1386,7 +1386,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       if (!this.selectedServiceQuantities.has(id)) this.selectedServiceQuantities.set(id, 1);
     }
   }
-  
+
   async loadTicketTags() {
     try {
       const { data: tagRelations, error } = await this.supabase.getClient()
@@ -1575,7 +1575,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.showToast('Creando presupuesto...', 'info', 2500);
       const quote = await firstValueFrom(this.quotesService.createQuote(dto));
       this.activeQuoteId = quote?.id || null;
-  this.showToast(`Se ha creado el presupuesto a partir del ticket #${(this.ticket as any)?.ticket_number || ''}`,'success');
+      this.showToast(`Se ha creado el presupuesto a partir del ticket #${(this.ticket as any)?.ticket_number || ''}`, 'success');
       // Navegar al editor de presupuesto
       try {
         this.router.navigate(['/presupuestos', 'edit', quote.id]);
@@ -1671,7 +1671,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     try {
       this.loading = true;
       this.error = null;
-      
+
       // Cargar ticket con relaciones
       const { data: ticketData, error: ticketError } = await this.supabase.getClient()
         .from('tickets')
@@ -1690,7 +1690,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       // UI-level check: does a quote already exist for this ticket?
       try {
         await this.checkActiveQuoteForTicket();
-      } catch {}
+      } catch { }
 
       // Cargar servicios del ticket desde ticket_services
       // Mark as opened (non-blocking). Ignore result; UI will refresh from list next time.
@@ -1698,19 +1698,19 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         if (this.ticket?.id) {
           this.ticketsService.markTicketOpened(this.ticket.id);
         }
-      } catch {}
+      } catch { }
 
       await this.loadTicketServices();
-      
+
       // Cargar productos del ticket
       await this.loadTicketProducts();
-      
+
       // Cargar tags del ticket
       await this.loadTicketTags();
-      
+
       // Cargar dispositivos vinculados
       await this.loadTicketDevices();
-      
+
       // Cargar comentarios
       await this.loadComments();
 
@@ -1742,7 +1742,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       setTimeout(() => {
         try {
           this.initializeEditor();
-        } catch {}
+        } catch { }
       }, 0);
     }
   }
@@ -1760,7 +1760,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .from('quotes')
         .select('id, status')
         .eq('ticket_id', ticketId)
-        .in('status', ['draft','sent','viewed','accepted'])
+        .in('status', ['draft', 'sent', 'viewed', 'accepted'])
         .order('updated_at', { ascending: false })
         .limit(1);
       if (error) { this.activeQuoteId = null; return; }
@@ -1840,7 +1840,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   printTicket() {
-    try { window.print(); } catch {}
+    try { window.print(); } catch { }
   }
 
   hasEditorContent(): boolean {
@@ -1850,45 +1850,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     return !!text || /<img\b/i.test(html);
   }
 
-  private sanitizeHtml(html: string): string {
-    // Basic sanitizer: remove scripts/styles/iframes, javascript: URLs, and event handlers
-    const div = document.createElement('div');
-    div.innerHTML = html || '';
 
-    const dangerousTags = ['script', 'style', 'iframe', 'object', 'embed', 'link'];
-    dangerousTags.forEach(tag => div.querySelectorAll(tag).forEach(el => el.remove()));
-
-    // Remove event handler attributes and javascript: URLs
-    const walk = (el: Element) => {
-      for (const attr of Array.from(el.attributes)) {
-        const name = attr.name.toLowerCase();
-        const val = (attr.value || '').trim();
-        if (name.startsWith('on')) el.removeAttribute(attr.name);
-        if ((name === 'href' || name === 'src') && /^javascript:/i.test(val)) {
-          el.removeAttribute(attr.name);
-        }
-      }
-      for (const child of Array.from(el.children)) walk(child);
-    };
-    Array.from(div.children).forEach(ch => walk(ch));
-
-    return div.innerHTML;
-  }
-
-  private ensureHttpUrl(url: string): string {
-    try {
-      const u = new URL(url, window.location.origin);
-      if (!/^https?:$/i.test(u.protocol)) return 'https://' + u.href.replace(/^.*?:\/\//, '');
-      return u.href;
-    } catch {
-      return 'https://' + String(url || '').replace(/^.*?:\/\//, '');
-    }
-  }
-
-  renderComment(comment: string): SafeHtml {
-    const safe = this.sanitizeHtml(comment || '');
-    return this.sanitizer.bypassSecurityTrustHtml(safe);
-  }
 
   private async uploadCommentImage(file: File): Promise<string | null> {
     // Backward-compatible wrapper for images
@@ -1924,7 +1886,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           file_size: file.size,
           mime_type: file.type
         });
-      } catch {}
+      } catch { }
 
       return url || null;
     } catch (e: any) {
@@ -1962,7 +1924,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
             .limit(1)
             .single();
           attachmentId = existing?.id || null;
-        } catch {}
+        } catch { }
         if (!attachmentId) {
           // create minimal row
           const { data: created } = await this.supabase.getClient()
@@ -2274,18 +2236,18 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     const key = priority || 'normal';
     return this.ticketPriorityConfig[key]?.icon || this.ticketPriorityConfig['normal'].icon;
   }
-  
+
   // Status/Stage category helpers (using stage_category from ticket_stages table)
   getStatusClasses(stageCategory?: string): string {
     const key = stageCategory || 'open';
     return this.ticketStatusConfig[key]?.classes || this.ticketStatusConfig['open'].classes;
   }
-  
+
   getStatusLabel(stageCategory?: string): string {
     const key = stageCategory || 'open';
     return this.ticketStatusConfig[key]?.label || this.ticketStatusConfig['open'].label;
   }
-  
+
   getStatusIcon(stageCategory?: string): string {
     const key = stageCategory || 'open';
     return this.ticketStatusConfig[key]?.icon || this.ticketStatusConfig['open'].icon;
@@ -2388,8 +2350,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   getEstimatedHours(): number {
     // Prefer an explicit ticket-level override if present and numeric
-  const t: any = this.ticket as any;
-  const ticketEst = t && (t.estimated_hours ?? t.estimatedHours ?? t.estimatedHoursRaw);
+    const t: any = this.ticket as any;
+    const ticketEst = t && (t.estimated_hours ?? t.estimatedHours ?? t.estimatedHoursRaw);
     const tNum = Number(ticketEst);
     if (Number.isFinite(tNum) && tNum > 0) return Math.round(tNum * 100) / 100;
     return this.calculateEstimatedHours();
@@ -2398,9 +2360,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   getActualHours(): number {
     if (!this.ticket) return 0;
     // Support multiple possible column names for backward compatibility
-  const t2: any = this.ticket as any;
-  const raw = t2.actual_hours ?? t2.hours_real ?? t2.actualHours ?? t2.hoursReal ?? t2.hours_real_backup;
-  const n = Number(raw);
+    const t2: any = this.ticket as any;
+    const raw = t2.actual_hours ?? t2.hours_real ?? t2.actualHours ?? t2.hoursReal ?? t2.hours_real_backup;
+    const n = Number(raw);
     return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
   }
 
@@ -2455,12 +2417,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // ============================================
   // PRODUCTS MANAGEMENT
   // ============================================
-  
+
   async openProductsModal() {
     try {
       this.showProductsModal = true;
       document.body.classList.add('modal-open');
-      
+
       // Add to history for back button
       history.pushState({ modal: 'products-modal' }, '');
       if (!this.popStateListener) {
@@ -2471,13 +2433,13 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         };
         window.addEventListener('popstate', this.popStateListener);
       }
-      
+
       // Load products catalog
       this.productsService.getProducts().subscribe({
         next: (products) => {
           this.productsCatalog = products || [];
           this.filteredProducts = [...this.productsCatalog];
-          
+
           // Pre-select currently assigned products
           this.selectedProductIds.clear();
           this.tempProductQuantities.clear();
@@ -2556,14 +2518,14 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         product_id: productId,
         quantity: this.tempProductQuantities.get(productId) || 1
       }));
-      
+
       // Get company ID
       const companyId = String((this.ticket as any).company_id || (this.ticket as any).company?.id || '');
-      
+
       // Use tickets service to save products
       await this.ticketsService.replaceTicketProducts(this.ticket.id, companyId, items);
       await this.loadTicketProducts();
-      
+
       this.closeProductsModal();
       this.showToast('Productos actualizados correctamente', 'success');
     } catch (err: any) {
@@ -2579,7 +2541,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .from('ticket_products')
         .select('*, product:products(*)')
         .eq('ticket_id', this.ticket.id);
-      
+
       if (error) throw error;
       this.ticketProducts = data || [];
     } catch (err) {
@@ -2605,7 +2567,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .delete()
         .eq('ticket_id', this.ticket.id)
         .eq('product_id', productId);
-      
+
       if (error) throw error;
       await this.loadTicketProducts();
       this.showToast('Producto eliminado', 'success');
@@ -2618,12 +2580,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // ============================================
   // DEVICES MANAGEMENT
   // ============================================
-  
+
   async openDevicesModal() {
     try {
       this.showDevicesModal = true;
       document.body.classList.add('modal-open');
-      
+
       // Add to history
       history.pushState({ modal: 'devices-modal' }, '');
       if (!this.popStateListener) {
@@ -2634,11 +2596,11 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         };
         window.addEventListener('popstate', this.popStateListener);
       }
-      
+
       // Load available devices
       this.availableDevices = [...this.companyDevices];
       this.filteredDevices = [...this.availableDevices];
-      
+
       // Pre-select linked devices
       this.selectedDeviceIds = new Set(this.linkedDeviceIds);
     } catch (err) {
@@ -2686,21 +2648,21 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .from('ticket_devices')
         .delete()
         .eq('ticket_id', this.ticket.id);
-      
+
       // Insert new links
       if (this.selectedDeviceIds.size > 0) {
         const links = Array.from(this.selectedDeviceIds).map(deviceId => ({
           ticket_id: this.ticket!.id,
           device_id: deviceId
         }));
-        
+
         const { error } = await this.supabase.getClient()
           .from('ticket_devices')
           .insert(links);
-        
+
         if (error) throw error;
       }
-      
+
       await this.loadTicketDevices();
       this.closeDevicesModal();
       this.showToast('Dispositivos actualizados correctamente', 'success');

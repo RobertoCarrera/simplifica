@@ -24,12 +24,20 @@
     },
     {
       "src": "/api/import-services",
-      "methods": ["OPTIONS", "POST", "GET"],
+      "methods": [
+        "OPTIONS",
+        "POST",
+        "GET"
+      ],
       "dest": "/api/import-services.ts"
     },
     {
       "src": "/api/import-customers",
-      "methods": ["OPTIONS", "POST", "GET"],
+      "methods": [
+        "OPTIONS",
+        "POST",
+        "GET"
+      ],
       "dest": "/api/import-customers.ts"
     },
     {
@@ -53,7 +61,15 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/index.html",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "X-XSS-Protection": "1; mode=block",
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
+      }
     }
   ],
   "env": {

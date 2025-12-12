@@ -22,11 +22,11 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   @ViewChild('modalBody') modalBody?: ElementRef;
   @ViewChild('categorySearchInput') categorySearchInput?: ElementRef;
   @ViewChild('tagSearchInput') tagSearchInput?: ElementRef;
-  
+
   // Company selector (loaded from DB)
   selectedCompanyId: string = '';
   companies: SimpleCompany[] = [];
-  
+
   // Core data
   services: Service[] = [];
   filteredServices: Service[] = [];
@@ -35,7 +35,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   loading = false;
   error: string | null = null;
   devRoleService = inject(DevRoleService);
-  
+
   // Statistics
   stats = {
     total: 0,
@@ -43,32 +43,32 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     averagePrice: 0,
     averageHours: 0
   };
-  
+
   // Filters and search
   searchTerm = '';
   categories: string[] = [];
-  
+
   // Form management
   showForm = false;
   editingService: Service | null = null;
   formData: Partial<Service> = {};
-  
+
   // Category form management
   showCategoryInput = false;
   categoryFilterText = '';
   filteredCategories: ServiceCategory[] = [];
-  
+
   // Tag form management
   showTagInput = false;
   tagFilterText = '';
   filteredTags: ServiceTag[] = [];
   selectedTags: string[] = [];
-  
+
   // Custom dropdown management for Unit, Difficulty, Priority
   showUnitDropdown = false;
   showDifficultyDropdown = false;
   showPriorityDropdown = false;
-  
+
   // Difficulty and Priority options
   difficultyOptions = [
     { value: '1', label: '1 - Muy Fácil' },
@@ -77,7 +77,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     { value: '4', label: '4 - Difícil' },
     { value: '5', label: '5 - Muy Difícil' }
   ];
-  
+
   priorityOptions = [
     { value: '1', label: '1 - Muy Baja' },
     { value: '2', label: '2 - Baja' },
@@ -85,11 +85,11 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     { value: '4', label: '4 - Alta' },
     { value: '5', label: '5 - Muy Alta' }
   ];
-  
+
   // Variants management
   serviceVariants: ServiceVariant[] = [];
   pendingVariants: Partial<ServiceVariant>[] = []; // Variantes creadas antes de guardar el servicio
-  
+
   // Accordion management
   accordionState = {
     basicInfo: true,      // Abierta por defecto
@@ -98,10 +98,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     timeQuantity: false,
     difficulty: false
   };
-  
+
   // Form validation
   formErrors: Record<string, string> = {};
-  
+
   private servicesService = inject(SupabaseServicesService);
   private simpleSupabase = inject(SimpleSupabaseService);
   private toastService = inject(ToastService);
@@ -135,7 +135,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   // Units of measure for dynamic select
   units: UnitOfMeasure[] = [];
   unitsLoaded = false;
-  
+
   // History management for modals
   private popStateListener: any = null;
 
@@ -151,12 +151,12 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   showServicesImportInfo(event: Event) {
     event.stopPropagation();
     const infoMessage = `Formato: Nombre, Descripción, Precio base, Horas estimadas, Categoría, Tags.`;
-    try { console.log('services import info clicked'); } catch {}
+
     // Try to use a toastService if available, otherwise console
     // The component doesn't inject a toastService; fallback to console.log
     // If your app uses a global toast service available via window, you may adapt here.
     (window as any)?.toastService?.info?.('CSV requerido', infoMessage, 6000);
-    console.info('[CSV-INFO]', infoMessage);
+
   }
 
   ngOnDestroy() {
@@ -167,7 +167,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
-    
+
     // Limpiar listener de popstate
     if (this.popStateListener) {
       window.removeEventListener('popstate', this.popStateListener);
@@ -200,7 +200,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   async loadServiceCategories() {
     if (!this.selectedCompanyId) return;
-    
+
     try {
       this.serviceCategories = await this.servicesService.getServiceCategories(this.selectedCompanyId);
       this.updateCategoryFilter();
@@ -211,7 +211,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   async loadServiceTags() {
     if (!this.selectedCompanyId) return;
-    
+
     try {
       this.serviceTags = await this.servicesService.getServiceTags(this.selectedCompanyId);
       this.updateTagFilter();
@@ -265,7 +265,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   hasExactMatch(): boolean {
     if (!this.categoryFilterText) return false;
     const normalizedSearch = this.normalizeText(this.categoryFilterText);
-    return this.serviceCategories.some(cat => 
+    return this.serviceCategories.some(cat =>
       this.normalizeText(cat.name) === normalizedSearch
     );
   }
@@ -273,7 +273,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   getExactMatch(): ServiceCategory | undefined {
     if (!this.categoryFilterText) return undefined;
     const normalizedSearch = this.normalizeText(this.categoryFilterText);
-    return this.serviceCategories.find(cat => 
+    return this.serviceCategories.find(cat =>
       this.normalizeText(cat.name) === normalizedSearch
     );
   }
@@ -309,11 +309,11 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   async createNewCategory() {
     if (!this.categoryFilterText.trim()) return;
-    
+
     try {
       // Verificar si ya existe una categoría similar
       const normalizedSearch = this.normalizeText(this.categoryFilterText);
-      const existingCategory = this.serviceCategories.find(cat => 
+      const existingCategory = this.serviceCategories.find(cat =>
         this.normalizeText(cat.name) === normalizedSearch
       );
 
@@ -329,12 +329,12 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         this.categoryFilterText.trim(),
         this.selectedCompanyId
       );
-      
+
       this.serviceCategories.push(newCategory);
       this.formData.category = newCategory.name;
       this.showCategoryInput = false;
       this.categoryFilterText = '';
-      
+
     } catch (error: any) {
       console.error('Error creating category:', error);
     }
@@ -351,18 +351,18 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   hasExactTagMatch(): boolean {
     const normalizedSearch = this.normalizeText(this.tagFilterText);
-    return this.serviceTags.some(tag => 
+    return this.serviceTags.some(tag =>
       this.normalizeText(tag.name) === normalizedSearch
     );
   }
 
   async createNewTag() {
     if (!this.tagFilterText.trim()) return;
-    
+
     try {
       // Verificar si ya existe una tag similar
       const normalizedSearch = this.normalizeText(this.tagFilterText);
-      const existingTag = this.serviceTags.find(tag => 
+      const existingTag = this.serviceTags.find(tag =>
         this.normalizeText(tag.name) === normalizedSearch
       );
 
@@ -383,12 +383,12 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         description: '',
         is_active: true
       });
-      
+
       this.serviceTags.push(newTag);
       this.selectedTags.push(newTag.name);
       this.showTagInput = false;
       this.tagFilterText = '';
-      
+
     } catch (error: any) {
       console.error('Error creating tag:', error);
     }
@@ -416,12 +416,12 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   openUnitDropdown() {
     this.showUnitDropdown = true;
   }
-  
+
   selectUnit(unit: UnitOfMeasure) {
     this.formData.unit_type = unit.code;
     this.showUnitDropdown = false;
   }
-  
+
   getSelectedUnitLabel(): string {
     if (!this.formData.unit_type) return '';
     const unit = this.units.find(u => u.code === this.formData.unit_type);
@@ -432,12 +432,12 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   openDifficultyDropdown() {
     this.showDifficultyDropdown = true;
   }
-  
+
   selectDifficulty(option: { value: string, label: string }) {
     this.formData.difficulty_level = parseInt(option.value, 10);
     this.showDifficultyDropdown = false;
   }
-  
+
   getSelectedDifficultyLabel(): string {
     if (!this.formData.difficulty_level) return '';
     const option = this.difficultyOptions.find(o => o.value === String(this.formData.difficulty_level));
@@ -448,12 +448,12 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   openPriorityDropdown() {
     this.showPriorityDropdown = true;
   }
-  
+
   selectPriority(option: { value: string, label: string }) {
     this.formData.priority_level = parseInt(option.value, 10);
     this.showPriorityDropdown = false;
   }
-  
+
   getSelectedPriorityLabel(): string {
     if (!this.formData.priority_level) return '';
     const option = this.priorityOptions.find(o => o.value === String(this.formData.priority_level));
@@ -474,25 +474,15 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   async loadServices() {
-    console.warn('🚀 loadServices() called, selectedCompanyId:', this.selectedCompanyId);
     this.loading = true;
     this.error = null;
-    
+
     try {
-      console.warn('📡 Calling servicesService.getServices...');
       this.services = await this.servicesService.getServices(this.selectedCompanyId || undefined);
-      console.warn('📥 Services received:', this.services.length, 'services');
-      console.warn('📊 First service sample:', this.services[0] ? {
-        name: this.services[0].name,
-        has_variants: this.services[0].has_variants,
-        display_price: this.services[0].display_price,
-        display_price_label: this.services[0].display_price_label,
-        variants: this.services[0].variants?.length
-      } : 'no services');
       this.updateFilteredServices();
       this.updateStats();
       this.extractCategories();
-      
+
     } catch (error: any) {
       this.error = error.message;
       console.error('❌ Error loading services:', error);
@@ -506,9 +496,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   updateFilteredServices() {
     this.filteredServices = this.services.filter(service => {
       const matchesSearch = service.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-                           service.description?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-                           service.category?.toLowerCase().includes(this.searchTerm.toLowerCase());
-      
+        service.description?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        service.category?.toLowerCase().includes(this.searchTerm.toLowerCase());
+
       return matchesSearch;
     });
     // Recalcular visibilidad del scrollbar cuando cambia el filtrado
@@ -527,11 +517,11 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.stats.total = this.services.length;
     this.stats.active = this.services.filter(s => s.is_active).length;
     // Use server-side calculated display_price field
-    this.stats.averagePrice = this.services.length > 0 
-      ? this.services.reduce((sum, s) => sum + (s.display_price ?? s.base_price ?? 0), 0) / this.services.length 
+    this.stats.averagePrice = this.services.length > 0
+      ? this.services.reduce((sum, s) => sum + (s.display_price ?? s.base_price ?? 0), 0) / this.services.length
       : 0;
-    this.stats.averageHours = this.services.length > 0 
-      ? this.services.reduce((sum, s) => sum + (s.display_hours ?? s.estimated_hours ?? 0), 0) / this.services.length 
+    this.stats.averageHours = this.services.length > 0
+      ? this.services.reduce((sum, s) => sum + (s.display_hours ?? s.estimated_hours ?? 0), 0) / this.services.length
       : 0;
   }
 
@@ -547,10 +537,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   openForm(service?: Service) {
     this.showForm = true;
     this.editingService = service || null;
-    
+
     // Determine default unit_type
     const defaultUnitType = this.units.length > 0 ? this.units[0].code : 'horas';
-    
+
     this.formData = service ? { ...service } : {
       name: '',
       description: '',
@@ -573,10 +563,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       priority_level: 3,
       has_variants: false
     };
-    
+
     // Inicializar tags seleccionados
     this.selectedTags = service?.tags ? [...service.tags] : [];
-    
+
     // Load variants if service has them
     if (service?.has_variants && service.id) {
       this.loadServiceVariants(service.id);
@@ -590,15 +580,15 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         this.pendingVariants = []; // Limpiar variantes pendientes al crear nuevo
       }
     }
-    
+
     this.formErrors = {};
     this.loadServiceCategories();
     this.loadServiceTags();
     this.loadUnits();
-    
+
     // Añadir entrada al historial para que el botón "atrás" cierre el modal
     history.pushState({ modal: 'service-form' }, '');
-    
+
     // Configurar listener de popstate si no existe
     if (!this.popStateListener) {
       this.popStateListener = (event: PopStateEvent) => {
@@ -608,7 +598,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       };
       window.addEventListener('popstate', this.popStateListener);
     }
-    
+
     // Bloquear scroll de la página principal de forma más agresiva
     document.body.classList.add('modal-open');
     document.body.style.overflow = 'hidden';
@@ -617,7 +607,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     document.body.style.height = '100%';
     document.documentElement.style.overflow = 'hidden';
     // No ajustar scroll aquí porque forzamos el modo modal
-  }  closeForm() {
+  } closeForm() {
     this.showForm = false;
     this.editingService = null;
     this.formData = {};
@@ -629,7 +619,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.selectedTags = [];
     this.serviceVariants = [];
     this.pendingVariants = []; // Limpiar variantes pendientes
-    
+
     // Reset accordion state
     this.accordionState = {
       basicInfo: true,
@@ -638,7 +628,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       timeQuantity: false,
       difficulty: false
     };
-    
+
     // Restaurar scroll de la página principal
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
@@ -648,7 +638,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     document.documentElement.style.overflow = '';
     // Restaurar control dinámico del scrollbar
     this.adjustRootScroll();
-    
+
     // Retroceder en el historial solo si hay entrada de modal
     if (window.history.state && window.history.state.modal) {
       window.history.back();
@@ -657,22 +647,22 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
   validateForm(): boolean {
     this.formErrors = {};
-    
+
     if (!this.formData.name?.trim()) {
       this.formErrors['name'] = 'El nombre es obligatorio';
     }
-    
+
     // If service uses variants, base_price is managed per-variant and is not required here
     if (!this.formData.has_variants) {
       if (!this.formData.base_price || this.formData.base_price < 0) {
         this.formErrors['base_price'] = 'El precio debe ser mayor a 0';
       }
     }
-    
+
     if (!this.formData.estimated_hours || this.formData.estimated_hours <= 0) {
       this.formErrors['estimated_hours'] = 'Las horas estimadas deben ser mayor a 0';
     }
-    
+
     if (!this.formData.category?.trim()) {
       this.formErrors['category'] = 'La categoría es obligatoria';
     }
@@ -693,8 +683,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.formErrors['min_quantity'] = 'La cantidad mínima debe ser mayor a 0';
     }
 
-    if (this.formData.max_quantity && this.formData.min_quantity && 
-        this.formData.max_quantity < this.formData.min_quantity) {
+    if (this.formData.max_quantity && this.formData.min_quantity &&
+      this.formData.max_quantity < this.formData.min_quantity) {
       this.formErrors['max_quantity'] = 'La cantidad máxima debe ser mayor a la mínima';
     }
 
@@ -709,13 +699,13 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     if (this.formData.warranty_days && this.formData.warranty_days < 0) {
       this.formErrors['warranty_days'] = 'Los días de garantía no pueden ser negativos';
     }
-    
+
     return Object.keys(this.formErrors).length === 0;
   }
 
   async saveService() {
     if (!this.validateForm()) return;
-    
+
     this.loading = true;
     try {
       // Add company_id and tags to form data
@@ -739,15 +729,15 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
         // Si hay variantes pendientes, crearlas ahora que tenemos el service_id
         if (this.pendingVariants.length > 0) {
-          console.log(`🔄 Creando ${this.pendingVariants.length} variantes pendientes para el servicio ${savedServiceId}`);
-          
+
+
           for (const pendingVariant of this.pendingVariants) {
             const variantWithServiceId: ServiceVariant = {
               ...pendingVariant,
               id: '', // Será generado por la DB
               service_id: savedServiceId
             } as ServiceVariant;
-            
+
             try {
               await this.servicesService.createServiceVariant(variantWithServiceId);
             } catch (variantError) {
@@ -755,12 +745,12 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
               // Continuar con las demás variantes aunque una falle
             }
           }
-          
+
           // Limpiar variantes pendientes
           this.pendingVariants = [];
           this.toastService.success('Servicio y variantes creados', `Se creó el servicio con sus variantes`);
         }
-        
+
         if (wantsVariantsButNone) {
           // Inform the user and reopen the service edit modal so they can add variants
           this.toastService.info('Servicio creado', 'El servicio se creó — añade las variantes para completarlo');
@@ -799,10 +789,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
           }
         }
       }
-      
+
       this.closeForm();
       await this.loadServices();
-      
+
     } catch (error: any) {
       this.error = error.message;
       console.error('❌ Error saving service:', error);
@@ -816,7 +806,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     try {
       await this.servicesService.toggleServiceStatus(service.id);
       await this.loadServices();
-      
+
     } catch (error: any) {
       this.error = error.message;
       console.error('❌ Error toggling service status:', error);
@@ -844,10 +834,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       // Si el servicio aún no existe (no tiene ID), guardar como pendiente
       if (!this.editingService?.id) {
         console.log('💾 Guardando variante como pendiente (servicio no creado aún)');
-        
+
         // Buscar si ya existe una variante pendiente con el mismo nombre para actualizarla
         const existingIndex = this.pendingVariants.findIndex(v => v.variant_name === variant.variant_name);
-        
+
         if (existingIndex >= 0) {
           // Actualizar variante pendiente existente
           this.pendingVariants[existingIndex] = variant;
@@ -857,13 +847,13 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
           this.pendingVariants.push(variant);
           this.toastService.success('Variante guardada', 'La variante se guardará al crear el servicio');
         }
-        
+
         // Actualizar la lista visual de variantes
         this.serviceVariants = [...this.pendingVariants] as ServiceVariant[];
         this.loading = false;
         return;
       }
-      
+
       // Si el servicio ya existe, guardar directamente en la BD
       if (variant.id) {
         // Update existing variant
@@ -874,7 +864,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         await this.servicesService.createServiceVariant(variant);
         this.toastService.success('Variante creada', 'La variante se ha creado correctamente');
       }
-      
+
       // Reload variants
       if (this.editingService?.id) {
         await this.loadServiceVariants(this.editingService.id);
@@ -893,26 +883,26 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       // Si el servicio aún no existe, eliminar de pendientes
       if (!this.editingService?.id) {
         console.log('🗑️ Eliminando variante pendiente');
-        
+
         // Buscar por variant_name si variantId no es un UUID válido
-        const index = this.pendingVariants.findIndex(v => 
+        const index = this.pendingVariants.findIndex(v =>
           v.id === variantId || v.variant_name === variantId
         );
-        
+
         if (index >= 0) {
           this.pendingVariants.splice(index, 1);
           this.serviceVariants = [...this.pendingVariants] as ServiceVariant[];
           this.toastService.success('Variante eliminada', 'La variante pendiente ha sido eliminada');
         }
-        
+
         this.loading = false;
         return;
       }
-      
+
       // Si el servicio existe, eliminar de la BD
       await this.servicesService.deleteServiceVariant(variantId);
       this.toastService.success('Variante eliminada', 'La variante se ha eliminado correctamente');
-      
+
       // Reload variants
       if (this.editingService?.id) {
         await this.loadServiceVariants(this.editingService.id);
@@ -928,7 +918,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   async toggleHasVariants() {
     // El valor ya fue cambiado por ngModel, usar el valor actual
     const newValue = this.formData.has_variants;
-    
+
     if (!this.editingService?.id) {
       // For new services, just clear variants if disabled
       if (!newValue) {
@@ -953,7 +943,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         await this.servicesService.updateService(this.editingService.id, { has_variants: false });
         this.serviceVariants = [];
       }
-      
+
       this.toastService.success(
         newValue ? 'Variantes activadas' : 'Variantes desactivadas',
         newValue ? 'Ahora puedes crear variantes para este servicio' : 'Las variantes han sido desactivadas'
@@ -984,27 +974,27 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   // New methods for dynamic unit display
   getServiceUnitName(service: Service): string {
     if (!service.unit_type) return 'h'; // default fallback
-    
+
     const unit = this.units.find(u => u.code === service.unit_type);
     return unit ? unit.name : service.unit_type;
   }
 
   getServiceUnitShortName(service: Service): string {
     if (!service.unit_type) return 'h'; // default fallback
-    
+
     const unit = this.units.find(u => u.code === service.unit_type);
     return unit ? unit.code : service.unit_type;
   }
 
   formatServiceDuration(service: Service): string {
     if (!service.estimated_hours) return '-';
-    
+
     const unitName = this.getServiceUnitShortName(service);
     const value = service.estimated_hours;
-    
+
     // Format the number nicely
     const formatted = value % 1 === 0 ? value.toString() : value.toFixed(2).replace(/\.?0+$/, '');
-    
+
     return `${formatted} ${unitName}`;
   }
 
@@ -1012,14 +1002,14 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     // For average stats, we need to determine the most common unit type
     // or show a generic label
     if (this.services.length === 0) return 'h';
-    
+
     // Count unit types
     const unitCounts: Record<string, number> = {};
     this.services.forEach(service => {
       const unitType = service.unit_type || 'horas';
       unitCounts[unitType] = (unitCounts[unitType] || 0) + 1;
     });
-    
+
     // Find most common unit
     let mostCommonUnit = 'horas';
     let maxCount = 0;
@@ -1029,7 +1019,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         mostCommonUnit = unit;
       }
     }
-    
+
     const unit = this.units.find(u => u.code === mostCommonUnit);
     return unit ? unit.name : mostCommonUnit;
   }
@@ -1059,7 +1049,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   onDocumentClick(event: Event) {
     const target = event.target as HTMLElement;
     const categoryContainer = target.closest('.category-input-container');
-    
+
     // Cerrar dropdown si se hace clic fuera del contenedor de categorías
     if (!categoryContainer && this.showCategoryInput) {
       this.showCategoryInput = false;
@@ -1110,7 +1100,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         this.loading = false;
       }
     } finally {
-      try { (event.target as HTMLInputElement).value = ''; } catch {}
+      try { (event.target as HTMLInputElement).value = ''; } catch { }
     }
   }
 
@@ -1183,10 +1173,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
    * Get display price info for a service (using server-side calculated fields)
    */
   getDisplayPrice(service: Service): { price: number; isFromVariants: boolean; label: string } {
-    return { 
-      price: service.display_price ?? service.base_price ?? 0, 
-      isFromVariants: service.display_price_from_variants ?? false, 
-      label: service.display_price_label ?? 'Precio Base' 
+    return {
+      price: service.display_price ?? service.base_price ?? 0,
+      isFromVariants: service.display_price_from_variants ?? false,
+      label: service.display_price_label ?? 'Precio Base'
     };
   }
 

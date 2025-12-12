@@ -472,7 +472,7 @@ export class LoginComponent implements OnDestroy, OnInit {
           this.loginForm.patchValue({ email: params['email'] });
         }
       }
-      
+
       // Mensaje de éxito al crear contraseña desde invitación
       if (params['message'] && params['message'].includes('Contraseña creada')) {
         this.toastService.success(params['message'], 'Bienvenido');
@@ -535,18 +535,18 @@ export class LoginComponent implements OnDestroy, OnInit {
       password: this.loginForm.value.password!
     };
 
-    console.log('🔐 Starting login process for:', credentials.email);
+
 
     try {
       const result = await this.authService.login(credentials);
 
       if (result.success) {
-        console.log('✅ Login successful');
+
         this.toastService.success('¡Bienvenido!', 'Login exitoso');
-        
+
         // Navigate to the intended return path when present
         const returnTo = (this as any)._returnTo as string | undefined;
-        
+
         if (returnTo) {
           try {
             // Decode and normalize the path
@@ -555,7 +555,7 @@ export class LoginComponent implements OnDestroy, OnInit {
             if (!normalized.startsWith('/')) {
               normalized = `/${normalized}`;
             }
-            console.log('🔀 Navigating to returnUrl:', normalized);
+
             // Navigate directly without history manipulation
             await this.router.navigateByUrl(normalized);
           } catch (navErr) {
@@ -564,18 +564,17 @@ export class LoginComponent implements OnDestroy, OnInit {
           }
         } else {
           // Default behavior: go to Inicio
-          console.log('🔀 No returnUrl, navigating to /inicio');
           await this.router.navigate(['/inicio']);
         }
       } else {
-        console.error('❌ Login failed:', result.error);
+        console.error('Login failed:', result.error);
         let errorMsg = result.error || 'Error al iniciar sesión';
-        
+
         // Mensaje específico para problemas de RLS
         if (errorMsg.includes('infinite recursion') || errorMsg.includes('Internal Server Error')) {
           errorMsg = '🚨 Error de configuración de base de datos. Aplica la corrección desde Supabase Dashboard (ver FIX_RLS_URGENTE.md)';
         }
-        
+
         this.errorMessage.set(errorMsg);
       }
     } catch (e: any) {

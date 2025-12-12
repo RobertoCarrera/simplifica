@@ -39,11 +39,11 @@
             "styles": [
               "src/styles.scss"
             ],
-            "scripts": [
-            ]
+            "scripts": []
           },
           "configurations": {
             "production": {
+              "optimization": true,
               "budgets": [
                 {
                   "type": "initial",
@@ -73,7 +73,7 @@
             "allowedHosts": [
               "localhost",
               "crm.michinanny.local",
-              "admin.anscarr.local", 
+              "admin.anscarr.local",
               "panel.liberatuscreencias.local",
               "crm.satpcgo.local",
               "admin.tudominio.local"
