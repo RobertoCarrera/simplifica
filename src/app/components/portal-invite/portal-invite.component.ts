@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-portal-invite',
@@ -112,20 +113,20 @@ export class PortalInviteComponent {
       const rawHash = window.location.hash;
       const fragment = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
       const hashParams = new URLSearchParams(fragment);
-      
+
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
-      
+
       if (accessToken && refreshToken) {
         // Establecer sesión desde el magic link
-        await this.auth.client.auth.setSession({ 
-          access_token: accessToken, 
-          refresh_token: refreshToken 
+        await this.auth.client.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
         });
-        
+
         // Limpiar hash para evitar reprocesamiento
         history.replaceState({}, document.title, window.location.pathname + window.location.search);
-        
+
         // Esperar un momento para que la sesión se establezca
         await new Promise(r => setTimeout(r, 300));
       }
@@ -140,7 +141,7 @@ export class PortalInviteComponent {
       const hashParams = new URLSearchParams(fragment);
       token = hashParams.get('token') || token;
     }
-    
+
     if (!token) {
       // Si no hay token, intentar obtener el email de la sesión actual
       const { data: { user } } = await this.auth.client.auth.getUser();
@@ -156,7 +157,7 @@ export class PortalInviteComponent {
           return;
         }
       }
-      
+
       this.loading = false;
       this.error = 'Falta el token de invitación';
       return;
@@ -188,7 +189,7 @@ export class PortalInviteComponent {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      
+
       if (error || !data) return null;
       return data;
     } catch (e) {
@@ -204,17 +205,17 @@ export class PortalInviteComponent {
         .select('id, email, company_id, role, status')
         .eq('token', token)
         .maybeSingle();
-      
+
       if (error) {
         console.error('Error fetching invitation:', error);
         return null;
       }
-      
+
       if (!data) {
         console.warn('No invitation found for token');
         return null;
       }
-      
+
       return data;
     } catch (e) {
       console.error('Exception fetching invitation:', e);
@@ -224,12 +225,12 @@ export class PortalInviteComponent {
 
   async submitPassword() {
     this.passwordError = '';
-    
+
     if (!this.password || this.password.length < 6) {
       this.passwordError = 'La contraseña debe tener al menos 6 caracteres';
       return;
     }
-    
+
     if (this.password !== this.passwordConfirm) {
       this.passwordError = 'Las contraseñas no coinciden';
       return;
@@ -240,30 +241,38 @@ export class PortalInviteComponent {
     try {
       // Verificar si ya hay una sesión activa del magic link
       const { data: { user: existingUser } } = await this.auth.client.auth.getUser();
-      
+
       if (existingUser) {
         // Usuario ya tiene sesión del magic link, solo necesita configurar contraseña
         const { error: updateError } = await this.auth.client.auth.updateUser({
           password: this.password
         });
-        
+
         if (updateError) {
           this.passwordError = updateError.message || 'Error al configurar la contraseña';
           this.submitting = false;
           return;
         }
       } else {
-        // No hay sesión, crear cuenta nueva
-        const { data: signUpData, error: signUpError } = await this.auth.client.auth.signUp({
-          email: this.userEmail,
-          password: this.password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/login`,
-          }
+        // No hay sesión - usar Edge Function para crear usuario con email confirmado
+        const response = await fetch(`${environment.supabase.url}/functions/v1/create-invited-user`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${environment.supabase.anonKey}`,
+            'apikey': environment.supabase.anonKey
+          },
+          body: JSON.stringify({
+            email: this.userEmail,
+            password: this.password,
+            invitation_token: this.invitationToken
+          })
         });
 
-        if (signUpError) {
-          this.passwordError = signUpError.message || 'Error al crear la cuenta';
+        const result = await response.json();
+
+        if (!response.ok || result.error) {
+          this.passwordError = result.error || 'Error al crear la cuenta';
           this.submitting = false;
           return;
         }
@@ -283,10 +292,10 @@ export class PortalInviteComponent {
       await this.auth.client.auth.signOut();
       this.success = true;
       this.showPasswordForm = false;
-      
+
       setTimeout(() => {
-        this.router.navigate(['/login'], { 
-          queryParams: { 
+        this.router.navigate(['/login'], {
+          queryParams: {
             email: this.userEmail,
             message: 'Contraseña creada correctamente. Inicia sesión con tus credenciales.'
           }
