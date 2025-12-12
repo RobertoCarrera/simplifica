@@ -19,10 +19,10 @@ import { ToastService } from '../../services/toast.service';
             <p class="subtitle">Gestión moderna de clientes, tickets y servicios</p>
           </div>
           <ul class="feature-list">
-            <li><i class="bi bi-check2-circle"></i> Multi‑empresa</li>
-            <li><i class="bi bi-check2-circle"></i> Flujo de trabajo claro</li>
-            <li><i class="bi bi-check2-circle"></i> Seguridad y RLS</li>
-            <li><i class="bi bi-check2-circle"></i> Escalable desde el día 1</li>
+            <li><i class="bi bi-check2-circle"></i> Facturación VeriFactu Automática</li>
+            <li><i class="bi bi-check2-circle"></i> Gestión Integral y Automatizada</li>
+            <li><i class="bi bi-check2-circle"></i> Tu negocio en piloto automático</li>
+            <li><i class="bi bi-check2-circle"></i> Seguridad y RLS Empresarial</li>
           </ul>
           <div class="footer-note">© {{ currentYear }} Simplifica</div>
         </div>
@@ -48,7 +48,7 @@ import { ToastService } from '../../services/toast.service';
             <div class="mb-2">
               <label class="form-label d-flex justify-content-between align-items-center">
                 <span>Contraseña</span>
-                <a routerLink="/recuperar-password" class="link-forgot">¿Olvidaste?</a>
+                <a routerLink="/recuperar-password" class="link-forgot" style="text-transform: none;"> ¿Olvidaste tu contraseña?</a>
               </label>
               <div class="input-wrapper" [class.invalid]="passwordInvalid()">
                 <i class="bi bi-lock"></i>
@@ -456,7 +456,7 @@ export class LoginComponent implements OnDestroy, OnInit {
   errorMessage = signal('');
   showForgotPassword = false;
   showPassword = signal(false);
-  currentYear = new Date().getFullYear();
+  currentYear = 2026;
 
   constructor() {
     // Agregar clase al body para evitar scroll en login
