@@ -129,7 +129,7 @@ export class MobileBottomNavComponent implements OnInit {
 
   // Signal to track current route for hiding nav on form pages
   private currentUrl = signal(this.router.url);
-  
+
   // Routes where the bottom nav should be hidden (form pages that act like full-screen modals)
   private readonly hideOnRoutes = [
     '/presupuestos/new',
@@ -163,12 +163,11 @@ export class MobileBottomNavComponent implements OnInit {
     { id: 'more', label: 'Más', icon: 'ellipsis-h', action: 'more', module: 'core' }
   ];
 
-  // Client portal users bottom nav (simplified): Inicio | Tickets | Presupuestos | Configuración/Más
+  // Client portal users bottom nav (simplified): Inicio | Tickets | Chat | Más
   private clientItemsBase: NavItem[] = [
     { id: 'inicio', label: 'Inicio', icon: 'home', route: '/inicio', module: 'core' },
     { id: 'tickets', label: 'Tickets', icon: 'ticket-alt', route: '/tickets', module: 'production' },
-    { id: 'presupuestos', label: 'Presupuestos', icon: 'file-alt', route: '/portal/presupuestos', module: 'production' },
-    { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion', module: 'core' },
+    { id: 'chat', label: 'Chat', icon: 'comments', route: '/portal/chat', module: 'production' },
     { id: 'more', label: 'Más', icon: 'ellipsis-h', action: 'more', module: 'core' }
   ];
 
@@ -189,40 +188,49 @@ export class MobileBottomNavComponent implements OnInit {
     const isOwnerOrAdmin = role === 'owner' || role === 'admin';
     const allowed = this._allowedModuleKeys();
     const items: MoreMenuItem[] = [];
-    
+
     if (!isClient) {
       // Módulos de producción (solo si están habilitados)
       if (allowed?.has('moduloServicios')) {
         items.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios' });
       }
-      
+
       // Analíticas (visible para owner/admin/dev)
       if (isOwnerOrAdmin || isDev) {
         items.push({ id: 'analytics', label: 'Analíticas', icon: 'chart-line', route: '/analytics' });
       }
-      
+
       // Facturación (visible para owner/admin/dev)
       if (isOwnerOrAdmin || isDev) {
         items.push({ id: 'facturacion', label: 'Facturación', icon: 'file-invoice-dollar', route: '/facturacion' });
       }
-      
+
       // Chat (visible para owner/admin/dev Y si moduloChat está habilitado)
       if ((isOwnerOrAdmin || isDev) && allowed?.has('moduloChat')) {
         items.push({ id: 'chat', label: 'Chat', icon: 'comments', route: '/chat' });
       }
-      
+
       // Notificaciones
       items.push({ id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() });
-      
+
       // Gestión Módulos (solo admin)
       if (role === 'admin') {
         items.push({ id: 'modules', label: 'Gestión Módulos', icon: 'sliders-h', route: '/admin/modulos' });
       }
-      
+
       // Configuración siempre al final
       items.push({ id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' });
     } else {
-      // Client specific extra items
+      // Client specific extra items based on enabled modules
+      if (allowed?.has('moduloPresupuestos')) {
+        items.push({ id: 'presupuestos', label: 'Presupuestos', icon: 'file-alt', route: '/portal/presupuestos' });
+      }
+      if (allowed?.has('moduloFacturas')) {
+        items.push({ id: 'facturacion', label: 'Facturas', icon: 'file-invoice-dollar', route: '/portal/facturas' });
+      }
+      if (allowed?.has('moduloServicios')) {
+        items.push({ id: 'servicios', label: 'Mis Servicios', icon: 'tools', route: '/portal/servicios' });
+      }
       items.push(
         { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() },
         { id: 'settings', label: 'Configuración', icon: 'cog', route: '/configuracion' },
@@ -254,10 +262,10 @@ export class MobileBottomNavComponent implements OnInit {
     return base.filter(it => {
       // Core items always visible
       if (it.module === 'core') return true;
-      
+
       // Development items only for owner/admin/dev
       if (it.module === 'development') return isOwnerOrAdmin || isDev;
-      
+
       // Production items check against allowed modules
       if (it.module === 'production') {
         if (!allowed) return false; // while loading, hide production entries
@@ -265,7 +273,7 @@ export class MobileBottomNavComponent implements OnInit {
         if (!key) return true;
         return allowed.has(key);
       }
-      
+
       return true;
     });
   });
@@ -327,6 +335,7 @@ export class MobileBottomNavComponent implements OnInit {
       case '/portal/presupuestos':
         return 'moduloPresupuestos';
       case '/servicios':
+      case '/portal/servicios':
         return 'moduloServicios';
       case '/productos':
         return 'moduloMaterial';
@@ -334,6 +343,7 @@ export class MobileBottomNavComponent implements OnInit {
       case '/portal/facturas':
         return 'moduloFacturas';
       case '/chat':
+      case '/portal/chat':
         return 'moduloChat';
       default:
         return null;

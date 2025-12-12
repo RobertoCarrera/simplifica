@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, HostListener, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, HostListener, EventEmitter, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -13,6 +13,7 @@ import { firstValueFrom } from 'rxjs';
 import { SimpleSupabaseService, SimpleClient } from '../../services/simple-supabase.service';
 import { DevicesService, Device } from '../../services/devices.service';
 import { DevRoleService } from '../../services/dev-role.service';
+import { AuthService } from '../../services/auth.service';
 
 // Interfaces para tags
 export interface TicketTag {
@@ -42,6 +43,10 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   selectedCompanyId: string = ''; // Will be set from first available company
   companies: any[] = [];
   devRoleService = inject(DevRoleService);
+  private authService = inject(AuthService);
+
+  // Role detection for client portal
+  isClient = computed(() => this.authService.userRole() === 'client');
 
   // Core data
   tickets: Ticket[] = [];
@@ -399,6 +404,14 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
         query = query.eq('company_id', this.selectedCompanyId);
       } else {
         console.warn('⚠️ Skipping company_id filter for tickets because selectedCompanyId is invalid:', this.selectedCompanyId);
+      }
+
+      // Client portal: filter by client_id so clients only see their own tickets
+      if (this.isClient()) {
+        const clientId = (this.authService as any).currentProfile?.client_id;
+        if (clientId) {
+          query = query.eq('client_id', clientId);
+        }
       }
 
       const { data: tickets, error } = await query;

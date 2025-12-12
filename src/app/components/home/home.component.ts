@@ -7,6 +7,7 @@ import { CustomerStats } from '../../services/supabase-customers.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SupabaseClientService } from '../../services/supabase-client.service';
 import { SupabaseModulesService } from '../../services/supabase-modules.service';
+import { AuthService } from '../../services/auth.service';
 
 interface QuoteStats {
   pendingTotal: number;
@@ -33,6 +34,10 @@ export class HomeComponent implements OnInit {
   // Use centralized Supabase client to reuse auth session
   private supabase: SupabaseClient = inject(SupabaseClientService).instance;
   private modulesService = inject(SupabaseModulesService);
+  private authService = inject(AuthService);
+
+  // Role detection
+  isClient = computed(() => this.authService.userRole() === 'client');
 
   customersCount = 0;
   ticketsStats: TicketStats | null = null;
@@ -41,6 +46,11 @@ export class HomeComponent implements OnInit {
   quoteStats = signal<QuoteStats>({ pendingTotal: 0, acceptedSinceLastSession: 0 });
   topProducts = signal<TopProduct[]>([]);
   loadingModules = signal<boolean>(true);
+
+  // Client-specific stats
+  clientTicketStats = signal<{ pending: number; inProgress: number; resolved: number }>({ pending: 0, inProgress: 0, resolved: 0 });
+  clientQuoteStats = signal<{ pending: number; approved: number }>({ pending: 0, approved: 0 });
+  clientInvoiceStats = signal<{ pending: number; paid: number }>({ pending: 0, paid: 0 });
   // Allowed modules for gating Home cards (null while loading)
   private allowedModuleKeys = computed<Set<string> | null>(() => {
     const mods = this.modulesService.modulesSignal();
@@ -53,21 +63,28 @@ export class HomeComponent implements OnInit {
     this.modulesService.fetchEffectiveModules().subscribe({
       next: () => {
         this.loadingModules.set(false);
-        // Once modules are loaded, load data only for enabled modules
-        this.loadCounts();
-        if (this.hasModule('moduloPresupuestos')) {
-          this.loadQuoteStats();
-        }
-        if (this.hasModule('moduloMaterial')) {
-          this.loadTopProducts();
+        // Branch loading based on role
+        if (this.isClient()) {
+          this.loadClientData();
+        } else {
+          // Staff: load regular data
+          this.loadCounts();
+          if (this.hasModule('moduloPresupuestos')) {
+            this.loadQuoteStats();
+          }
+          if (this.hasModule('moduloMaterial')) {
+            this.loadTopProducts();
+          }
         }
       },
       error: () => {
         this.loadingModules.set(false);
         // Fallback: load anyway if modules fetch fails
-        this.loadCounts();
-        this.loadQuoteStats();
-        this.loadTopProducts();
+        if (!this.isClient()) {
+          this.loadCounts();
+          this.loadQuoteStats();
+          this.loadTopProducts();
+        }
       }
     });
   }
@@ -88,7 +105,7 @@ export class HomeComponent implements OnInit {
           // Verificar que no son tickets mock (tienen IDs que empiezan con 'ticket-')
           const realTickets = Array.isArray(tickets) ? tickets.filter(t => !t.id.startsWith('ticket-')) : [];
           this.recentTickets = realTickets.slice(0, 3);
-          
+
           if (realTickets.length > 0) {
             const stats = await this.ticketsService.getTicketStats(undefined as any);
             this.ticketsStats = stats;
@@ -137,16 +154,84 @@ export class HomeComponent implements OnInit {
   }
 
   navigateToQuotes(status?: string) {
+    const basePath = this.isClient() ? '/portal/presupuestos' : '/presupuestos';
     if (status) {
-      this.router.navigate(['/presupuestos'], { queryParams: { status } });
+      this.router.navigate([basePath], { queryParams: { status } });
     } else {
-      this.router.navigate(['/presupuestos']);
+      this.router.navigate([basePath]);
     }
+  }
+
+  navigateToInvoices() {
+    const path = this.isClient() ? '/portal/facturas' : '/facturacion';
+    this.router.navigate([path]);
+  }
+
+  navigateToTickets() {
+    this.router.navigate(['/tickets']);
   }
 
   // Module gating helper: returns true only if module is enabled and loaded
   hasModule(key: string): boolean {
     const set = this.allowedModuleKeys();
     return !!set && set.has(key);
+  }
+
+  // Client-specific data loading
+  private async loadClientData() {
+    try {
+      const profile = this.authService.userProfile$;
+      // Get client_id from profile
+      const clientId = (this.authService as any).currentProfile?.client_id;
+      if (!clientId) return;
+
+      // Load client ticket stats
+      if (this.hasModule('moduloSAT')) {
+        const { data: tickets } = await this.supabase
+          .from('tickets')
+          .select('id, stage:config_stages(workflow_category)')
+          .eq('client_id', clientId)
+          .is('deleted_at', null);
+
+        if (tickets) {
+          const pending = tickets.filter((t: any) => !t.stage || (t.stage as any).workflow_category === 'initial').length;
+          const inProgress = tickets.filter((t: any) => (t.stage as any)?.workflow_category === 'progress').length;
+          const resolved = tickets.filter((t: any) => (t.stage as any)?.workflow_category === 'final').length;
+          this.clientTicketStats.set({ pending, inProgress, resolved });
+        }
+      }
+
+      // Load client quote stats
+      if (this.hasModule('moduloPresupuestos')) {
+        const { data: quotes } = await this.supabase
+          .from('quotes')
+          .select('id, status')
+          .eq('client_id', clientId)
+          .is('deleted_at', null);
+
+        if (quotes) {
+          const pending = quotes.filter(q => q.status === 'pendiente').length;
+          const approved = quotes.filter(q => q.status === 'aceptado').length;
+          this.clientQuoteStats.set({ pending, approved });
+        }
+      }
+
+      // Load client invoice stats
+      if (this.hasModule('moduloFacturas')) {
+        const { data: invoices } = await this.supabase
+          .from('invoices')
+          .select('id, status')
+          .eq('client_id', clientId)
+          .is('voided', false);
+
+        if (invoices) {
+          const pending = invoices.filter(i => i.status !== 'paid').length;
+          const paid = invoices.filter(i => i.status === 'paid').length;
+          this.clientInvoiceStats.set({ pending, paid });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading client data:', error);
+    }
   }
 }

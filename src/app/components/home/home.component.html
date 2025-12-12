@@ -1,94 +1,185 @@
 <div class="home-container p-2">
+  <!-- CLIENT DASHBOARD -->
+  @if (isClient()) {
+  <div class="client-dashboard">
+    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Mi Panel</h1>
+
+    <!-- Client Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <!-- Tickets Card -->
+      @if (!loadingModules() && hasModule('moduloSat')) {
+      <a (click)="navigateToTickets()" class="module-card card-tickets cursor-pointer">
+        <div class="module-icon">
+          <i class="fas fa-ticket-alt"></i>
+        </div>
+        <div class="module-content">
+          <h3>Mis Tickets</h3>
+          <div class="stats text-sm mt-2">
+            <span class="stat-item text-yellow-600">
+              <i class="fas fa-clock"></i>
+              {{ clientTicketStats().pending }} pendientes
+            </span>
+            <span class="stat-item text-blue-600">
+              <i class="fas fa-spinner"></i>
+              {{ clientTicketStats().inProgress }} en progreso
+            </span>
+            <span class="stat-item text-green-600">
+              <i class="fas fa-check-circle"></i>
+              {{ clientTicketStats().resolved }} resueltos
+            </span>
+          </div>
+        </div>
+      </a>
+      }
+
+      <!-- Presupuestos Card -->
+      @if (!loadingModules() && hasModule('moduloPresupuestos')) {
+      <a (click)="navigateToQuotes()" class="module-card card-quotes-pending cursor-pointer">
+        <div class="module-icon">
+          <i class="fas fa-file-alt"></i>
+        </div>
+        <div class="module-content">
+          <h3>Mis Presupuestos</h3>
+          <div class="stats text-sm mt-2">
+            <span class="stat-item text-yellow-600">
+              <i class="fas fa-clock"></i>
+              {{ clientQuoteStats().pending }} pendientes
+            </span>
+            <span class="stat-item text-green-600">
+              <i class="fas fa-check-circle"></i>
+              {{ clientQuoteStats().approved }} aprobados
+            </span>
+          </div>
+        </div>
+      </a>
+      }
+
+      <!-- Facturas Card -->
+      @if (!loadingModules() && hasModule('moduloFacturas')) {
+      <a (click)="navigateToInvoices()" class="module-card card-products cursor-pointer">
+        <div class="module-icon">
+          <i class="fas fa-file-invoice-dollar"></i>
+        </div>
+        <div class="module-content">
+          <h3>Mis Facturas</h3>
+          <div class="stats text-sm mt-2">
+            <span class="stat-item text-yellow-600">
+              <i class="fas fa-clock"></i>
+              {{ clientInvoiceStats().pending }} pendientes
+            </span>
+            <span class="stat-item text-green-600">
+              <i class="fas fa-check-circle"></i>
+              {{ clientInvoiceStats().paid }} pagadas
+            </span>
+          </div>
+        </div>
+      </a>
+      }
+    </div>
+
+    <!-- Loading skeleton for clients -->
+    @if (loadingModules()) {
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="skeleton-card h-32 rounded-xl bg-gray-200 dark:bg-slate-700 animate-pulse"></div>
+      <div class="skeleton-card h-32 rounded-xl bg-gray-200 dark:bg-slate-700 animate-pulse"></div>
+      <div class="skeleton-card h-32 rounded-xl bg-gray-200 dark:bg-slate-700 animate-pulse"></div>
+    </div>
+    }
+  </div>
+  }
+
+  <!-- STAFF DASHBOARD -->
+  @if (!isClient()) {
   <div class="primary-row">
     <div class="primary-col">
       @if (stats()) {
-        <div class="clients-section">
-          <h2 class="section-title">
-            <i class="fas fa-users"></i> Clientes
-          </h2>
-          <div class="clients-grid">
-            <a routerLink="/clientes" class="client-card card-total">
-              <div class="card-icon-wrapper">
-                <div class="card-icon">
-                  <i class="fas fa-users"></i>
-                </div>
+      <div class="clients-section">
+        <h2 class="section-title">
+          <i class="fas fa-users"></i> Clientes
+        </h2>
+        <div class="clients-grid">
+          <a routerLink="/clientes" class="client-card card-total">
+            <div class="card-icon-wrapper">
+              <div class="card-icon">
+                <i class="fas fa-users"></i>
               </div>
-              <div class="card-body">
-                <div class="card-value">{{ stats()?.total || 0 }}</div>
-                <div class="card-label">Total Clientes</div>
-              </div>
-              <div class="card-accent"></div>
-            </a>
+            </div>
+            <div class="card-body">
+              <div class="card-value">{{ stats()?.total || 0 }}</div>
+              <div class="card-label">Total Clientes</div>
+            </div>
+            <div class="card-accent"></div>
+          </a>
 
-            <a routerLink="/clientes" class="client-card card-week">
-              <div class="card-icon-wrapper">
-                <div class="card-icon">
-                  <i class="fas fa-user-plus"></i>
-                </div>
+          <a routerLink="/clientes" class="client-card card-week">
+            <div class="card-icon-wrapper">
+              <div class="card-icon">
+                <i class="fas fa-user-plus"></i>
               </div>
-              <div class="card-body">
-                <div class="card-value">{{ stats()?.newThisWeek || 0 }}</div>
-                <div class="card-label">Esta Semana</div>
-              </div>
-              <div class="card-accent"></div>
-            </a>
+            </div>
+            <div class="card-body">
+              <div class="card-value">{{ stats()?.newThisWeek || 0 }}</div>
+              <div class="card-label">Esta Semana</div>
+            </div>
+            <div class="card-accent"></div>
+          </a>
 
-            <a routerLink="/clientes" class="client-card card-month">
-              <div class="card-icon-wrapper">
-                <div class="card-icon">
-                  <i class="fas fa-calendar-plus"></i>
-                </div>
+          <a routerLink="/clientes" class="client-card card-month">
+            <div class="card-icon-wrapper">
+              <div class="card-icon">
+                <i class="fas fa-calendar-plus"></i>
               </div>
-              <div class="card-body">
-                <div class="card-value">{{ stats()?.newThisMonth || 0 }}</div>
-                <div class="card-label">Este Mes</div>
-              </div>
-              <div class="card-accent"></div>
-            </a>
-          </div>
+            </div>
+            <div class="card-body">
+              <div class="card-value">{{ stats()?.newThisMonth || 0 }}</div>
+              <div class="card-label">Este Mes</div>
+            </div>
+            <div class="card-accent"></div>
+          </a>
         </div>
+      </div>
       }
     </div>
 
     @if (loadingModules() || hasModule('moduloPresupuestos')) {
     <div class="primary-col">
       @if (loadingModules()) {
-        <div class="section-title-skeleton"></div>
-        <div class="quotes-grid-skeleton">
-          <div class="skeleton-card"></div>
-          <div class="skeleton-card"></div>
-        </div>
+      <div class="section-title-skeleton"></div>
+      <div class="quotes-grid-skeleton">
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+      </div>
       } @else {
-        <h2 class="section-title">
-          <i class="fas fa-users"></i> Presupuestos
-        </h2>
-        <div class="quotes-grid">
-          <a (click)="navigateToQuotes('pendiente')" class="module-card card-quotes-pending">
-            <div class="module-icon">
-              <i class="fas fa-clock"></i>
-            </div>
-            <div class="module-content">
-              <h3>Presupuestos Pendientes</h3>
-              <span class="count">{{ quoteStats().pendingTotal }}</span>
-            </div>
-          </a>
+      <h2 class="section-title">
+        <i class="fas fa-users"></i> Presupuestos
+      </h2>
+      <div class="quotes-grid">
+        <a (click)="navigateToQuotes('pendiente')" class="module-card card-quotes-pending">
+          <div class="module-icon">
+            <i class="fas fa-clock"></i>
+          </div>
+          <div class="module-content">
+            <h3>Presupuestos Pendientes</h3>
+            <span class="count">{{ quoteStats().pendingTotal }}</span>
+          </div>
+        </a>
 
-          <a (click)="navigateToQuotes('aceptado')" class="module-card card-quotes-accepted">
-            <div class="module-icon">
-              <i class="fas fa-check-circle"></i>
+        <a (click)="navigateToQuotes('aceptado')" class="module-card card-quotes-accepted">
+          <div class="module-icon">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <div class="module-content">
+            <h3>Presupuestos Aceptados</h3>
+            <span class="count">{{ quoteStats().acceptedSinceLastSession }}</span>
+            <div class="stats">
+              <span class="stat-item">
+                <i class="fas fa-calendar-check"></i>
+                Desde última sesión
+              </span>
             </div>
-            <div class="module-content">
-              <h3>Presupuestos Aceptados</h3>
-              <span class="count">{{ quoteStats().acceptedSinceLastSession }}</span>
-              <div class="stats">
-                <span class="stat-item">
-                  <i class="fas fa-calendar-check"></i>
-                  Desde última sesión
-                </span>
-              </div>
-            </div>
-          </a>
-        </div>
+          </div>
+        </a>
+      </div>
       }
     </div>
     }
@@ -96,76 +187,77 @@
 
   <!-- Grid de Módulos restantes (Tickets, Productos) -->
   @if (!loadingModules()) {
-    <div class="modules-grid">
-      @if (hasModule('moduloSat')) {
-      <a routerLink="/tickets" class="module-card card-tickets">
-        <div class="module-icon">
-          <i class="fas fa-ticket-alt"></i>
+  <div class="modules-grid">
+    @if (hasModule('moduloSat')) {
+    <a routerLink="/tickets" class="module-card card-tickets">
+      <div class="module-icon">
+        <i class="fas fa-ticket-alt"></i>
+      </div>
+      <div class="module-content">
+        <h3>Tickets</h3>
+        <span class="count">{{ ticketsStats?.total ?? 0 }}</span>
+        @if (ticketsStats) {
+        <div class="stats">
+          <span class="stat-item">
+            <i class="fas fa-folder-open"></i>
+            {{ ticketsStats.open }} abiertos
+          </span>
+          <span class="stat-item">
+            <i class="fas fa-spinner"></i>
+            {{ ticketsStats.inProgress }} en progreso
+          </span>
         </div>
-        <div class="module-content">
-          <h3>Tickets</h3>
-          <span class="count">{{ ticketsStats?.total ?? 0 }}</span>
-          @if (ticketsStats) {
-            <div class="stats">
-              <span class="stat-item">
-                <i class="fas fa-folder-open"></i>
-                {{ ticketsStats.open }} abiertos
-              </span>
-              <span class="stat-item">
-                <i class="fas fa-spinner"></i>
-                {{ ticketsStats.inProgress }} en progreso
-              </span>
-            </div>
-          }
-        </div>
-      </a>
-      }
+        }
+      </div>
+    </a>
+    }
 
-      @if (hasModule('moduloMaterial')) {
-      <a routerLink="/productos" class="module-card card-products">
-        <div class="module-icon">
-          <i class="fas fa-star"></i>
-        </div>
-        <div class="module-content">
-          <h3>Top Productos</h3>
-          @if (topProducts().length > 0) {
-            <div class="products-ranking">
-              @for (product of topProducts(); track product.productId; let idx = $index) {
-                <div class="product-item">
-                  <span class="product-rank">{{ idx + 1 }}.</span>
-                  <span class="product-name">{{ product.productName }}</span>
-                  <span class="product-quantity">{{ product.totalQuantitySold }} uds.</span>
-                </div>
-              }
-            </div>
-          } @else {
-            <span class="count">0</span>
-            <div class="stats">
-              <span class="stat-item">
-                <i class="fas fa-info-circle"></i>
-                Sin ventas todavía
-              </span>
-            </div>
+    @if (hasModule('moduloMaterial')) {
+    <a routerLink="/productos" class="module-card card-products">
+      <div class="module-icon">
+        <i class="fas fa-star"></i>
+      </div>
+      <div class="module-content">
+        <h3>Top Productos</h3>
+        @if (topProducts().length > 0) {
+        <div class="products-ranking">
+          @for (product of topProducts(); track product.productId; let idx = $index) {
+          <div class="product-item">
+            <span class="product-rank">{{ idx + 1 }}.</span>
+            <span class="product-name">{{ product.productName }}</span>
+            <span class="product-quantity">{{ product.totalQuantitySold }} uds.</span>
+          </div>
           }
         </div>
-      </a>
-      }
-    </div>
+        } @else {
+        <span class="count">0</span>
+        <div class="stats">
+          <span class="stat-item">
+            <i class="fas fa-info-circle"></i>
+            Sin ventas todavía
+          </span>
+        </div>
+        }
+      </div>
+    </a>
+    }
+  </div>
   }
 
   <!-- Últimos Tickets -->
   @if (hasModule('moduloSat') && recentTickets.length > 0) {
-    <section class="recent-section">
-      <h4 class="recent-title">
-        <i class="fas fa-clock"></i> Últimos tickets
-      </h4>
-      <div class="tickets-list">
-        <a *ngFor="let t of recentTickets" class="ticket-item" [routerLink]="['/ticket', t.id]">
-          <span class="ticket-number">#{{ t.ticket_number }}</span>
-          <span class="ticket-title">{{ t.title }}</span>
-          <i class="fas fa-arrow-right ticket-arrow"></i>
-        </a>
-      </div>
-    </section>
+  <section class="recent-section">
+    <h4 class="recent-title">
+      <i class="fas fa-clock"></i> Últimos tickets
+    </h4>
+    <div class="tickets-list">
+      <a *ngFor="let t of recentTickets" class="ticket-item" [routerLink]="['/ticket', t.id]">
+        <span class="ticket-number">#{{ t.ticket_number }}</span>
+        <span class="ticket-title">{{ t.title }}</span>
+        <i class="fas fa-arrow-right ticket-arrow"></i>
+      </a>
+    </div>
+  </section>
+  }
   }
 </div>

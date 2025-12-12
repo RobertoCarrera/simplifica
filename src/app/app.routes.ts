@@ -53,31 +53,31 @@ import { PaymentCancelledComponent } from './components/payment-cancelled/paymen
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
-    {path: '', redirectTo: '/inicio', pathMatch: 'full'},
-    {path: 'inicio', component: HomeComponent, canActivate: [AuthGuard]},
-    {path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard]},
-    {path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
-    {path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' }},
-    {path: 'ticket/:id', component: TicketDetailComponent, canActivate: [AuthGuard]},
-    {path: 'productos', component: ProductsComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloMaterial' }},
-    {path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' }},
-    {path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloChat' }},
-    {path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard]},
-    {path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloAnaliticas' }},
-    {path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
-    {path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
-    {path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full'},
-    {path: 'configuracion/series-facturas', component: InvoiceSeriesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
-    {path: 'configuracion/verifactu', component: VerifactuSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
-    {path: 'configuracion/presupuestos', component: QuotesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
-    {path: 'configuracion/facturacion', component: BillingSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
-    {path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    { path: '', redirectTo: '/inicio', pathMatch: 'full' },
+    { path: 'inicio', component: HomeComponent, canActivate: [AuthGuard] },
+    { path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard] },
+    { path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
+    { path: 'ticket/:id', component: TicketDetailComponent, canActivate: [AuthGuard] },
+    { path: 'productos', component: ProductsComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloMaterial' } },
+    { path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
+    { path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloChat' } },
+    { path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard] },
+    { path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloAnaliticas' } },
+    { path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full' },
+    { path: 'configuracion/series-facturas', component: InvoiceSeriesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'configuracion/verifactu', component: VerifactuSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'configuracion/presupuestos', component: QuotesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'configuracion/facturacion', component: BillingSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     // Admin modules management (solo admin)
-    {path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard]},
+    { path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard] },
     // Client portal admin (owner/admin only)
-    {path: 'empresa/portal-clientes', component: ClientPortalAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard]},
+    { path: 'empresa/portal-clientes', component: ClientPortalAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     // Ruta de invitaciones eliminada (modelo de auto-registro activo)
-    
+
     // Módulo de presupuestos (lazy loading)
     {
         path: 'presupuestos',
@@ -93,34 +93,38 @@ export const routes: Routes = [
     // Compatibilidad: rutas antiguas
     { path: 'invoices', redirectTo: 'facturacion', pathMatch: 'full' },
     { path: 'invoices/:id', redirectTo: 'facturacion/:id', pathMatch: 'full' },
-    
+
     // Rutas de autenticación (sin guards)
-    {path: 'login', component: LoginComponent, canActivate: [GuestGuard]},
-    {path: 'register', component: RegisterComponent, canActivate: [GuestGuard]},
-    {path: 'auth/callback', component: AuthCallbackComponent}, // Callback de Supabase
-    {path: 'auth/confirm', component: EmailConfirmationComponent}, // Confirmación de email
-        {path: 'reset-password', component: ResetPasswordComponent}, // Recuperación de contraseña
-    {path: 'recuperar-password', component: ForgotPasswordComponent, canActivate: [GuestGuard]}, // Solicitud de recuperación
+    { path: 'login', component: LoginComponent, canActivate: [GuestGuard] },
+    { path: 'register', component: RegisterComponent, canActivate: [GuestGuard] },
+    { path: 'auth/callback', component: AuthCallbackComponent }, // Callback de Supabase
+    { path: 'auth/confirm', component: EmailConfirmationComponent }, // Confirmación de email
+    { path: 'reset-password', component: ResetPasswordComponent }, // Recuperación de contraseña
+    { path: 'recuperar-password', component: ForgotPasswordComponent, canActivate: [GuestGuard] }, // Solicitud de recuperación
     // Public GDPR consent portal (no guard)
-    {path: 'consent', component: ConsentPortalComponent},
+    { path: 'consent', component: ConsentPortalComponent },
     // Client portal public/semi-public invite accept (NO AUTH REQUIRED)
-    {path: 'invite', component: PortalInviteComponent},
-    {path: 'client/set-password', component: ClientPasswordSetupComponent},
+    { path: 'invite', component: PortalInviteComponent },
+    { path: 'client/set-password', component: ClientPasswordSetupComponent },
     // Client portal dashboard (requires login as invited user)
-    {path: 'portal', component: PortalDashboardComponent, canActivate: [AuthGuard, ClientRoleGuard]},
+    { path: 'portal', component: PortalDashboardComponent, canActivate: [AuthGuard, ClientRoleGuard] },
     // Client portal quotes list (client users only)
-    {path: 'portal/presupuestos', component: PortalQuotesComponent, canActivate: [AuthGuard, ClientRoleGuard]},
+    { path: 'portal/presupuestos', component: PortalQuotesComponent, canActivate: [AuthGuard, ClientRoleGuard] },
     // Client portal quote detail
-    {path: 'portal/presupuestos/:id', component: PortalQuoteDetailComponent, canActivate: [AuthGuard, ClientRoleGuard]},
+    { path: 'portal/presupuestos/:id', component: PortalQuoteDetailComponent, canActivate: [AuthGuard, ClientRoleGuard] },
     // Client portal invoices list and detail
-    {path: 'portal/facturas', component: PortalInvoicesComponent, canActivate: [AuthGuard, ClientRoleGuard]},
-    {path: 'portal/facturas/:id', component: PortalInvoiceDetailComponent, canActivate: [AuthGuard, ClientRoleGuard]},
-    
+    { path: 'portal/facturas', component: PortalInvoicesComponent, canActivate: [AuthGuard, ClientRoleGuard] },
+    { path: 'portal/facturas/:id', component: PortalInvoiceDetailComponent, canActivate: [AuthGuard, ClientRoleGuard] },
+    // Client portal chat (reuses AnychatComponent with client context)
+    { path: 'portal/chat', component: AnychatComponent, canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloChat' } },
+    // Client portal contracted services (placeholder - to be implemented)
+    { path: 'portal/servicios', loadComponent: () => import('./components/portal-services/portal-services.component').then(m => m.PortalServicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
+
     // Public payment pages (NO AUTH REQUIRED)
-    {path: 'pago/:token', component: PublicPaymentComponent},
-    {path: 'pago/:token/completado', component: PaymentSuccessComponent},
-    {path: 'pago/:token/cancelado', component: PaymentCancelledComponent},
-    
+    { path: 'pago/:token', component: PublicPaymentComponent },
+    { path: 'pago/:token/completado', component: PaymentSuccessComponent },
+    { path: 'pago/:token/cancelado', component: PaymentCancelledComponent },
+
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     // Eliminado: advanced-features, workflows, export-import (consolidados en módulos/producto)
     // Eliminado: notification-demo (usamos solo sistema de toasts)
