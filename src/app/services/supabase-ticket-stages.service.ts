@@ -62,7 +62,7 @@ export class SupabaseTicketStagesService {
   /**
    * Resolve the current user's company_id reliably.
    * It first tries AuthService.userProfile, and if it's not available yet,
-   * it falls back to querying the users table using the authenticated user's id.
+   * it falls back to querying the users table, then clients table.
    * The value is cached for subsequent calls during the session.
    */
   private async resolveCompanyId(): Promise<string | null> {
@@ -76,24 +76,36 @@ export class SupabaseTicketStagesService {
       return fromProfile;
     }
 
-    // Fallback: get auth user and query users table by auth_user_id
+    // Fallback: get auth user and query users/clients table by auth_user_id
     try {
       const { data: { user } } = await this.supabase.auth.getUser();
       if (!user) return null;
 
-      const { data, error } = await this.supabase
+      // Try users table first
+      const { data: userData } = await this.supabase
         .from('users')
         .select('company_id')
         .eq('auth_user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error resolving company_id from users table:', error);
-        return null;
+      if (userData?.company_id) {
+        this.cachedCompanyId = userData.company_id;
+        return this.cachedCompanyId;
       }
 
-      this.cachedCompanyId = data?.company_id ?? null;
-      return this.cachedCompanyId;
+      // Fallback to clients table
+      const { data: clientData } = await this.supabase
+        .from('clients')
+        .select('company_id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+      if (clientData?.company_id) {
+        this.cachedCompanyId = clientData.company_id;
+        return this.cachedCompanyId;
+      }
+
+      return null;
     } catch (e) {
       console.error('Exception resolving company_id:', e);
       return null;
@@ -171,7 +183,7 @@ export class SupabaseTicketStagesService {
       const { data: { session } } = await this.supabase.auth.getSession();
       if (!session?.access_token) return { error: { message: 'No active session' } };
 
-  const resp = await fetch(`${this.supabaseUrl}/functions/v1/reorder-stages`, {
+      const resp = await fetch(`${this.supabaseUrl}/functions/v1/reorder-stages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -195,7 +207,7 @@ export class SupabaseTicketStagesService {
   async getCompanyStages(): Promise<{ data: TicketStage[] | null; error: any }> {
     try {
       const companyId = await this.resolveCompanyId();
-      
+
       if (!companyId) {
         return { data: [], error: null };
       }
@@ -226,11 +238,11 @@ export class SupabaseTicketStagesService {
   async createStage(payload: CreateStagePayload): Promise<{ data: TicketStage | null; error: any }> {
     try {
       const companyId = this.authService.userProfile?.company_id;
-      
+
       if (!companyId) {
-        return { 
-          data: null, 
-          error: { message: 'No company_id found for current user' } 
+        return {
+          data: null,
+          error: { message: 'No company_id found for current user' }
         };
       }
 
@@ -289,7 +301,7 @@ export class SupabaseTicketStagesService {
       const { data: { session } } = await this.supabase.auth.getSession();
       if (!session?.access_token) return { error: { message: 'No active session' } };
 
-  const resp = await fetch(`${this.supabaseUrl}/functions/v1/delete-stage-safe`, {
+      const resp = await fetch(`${this.supabaseUrl}/functions/v1/delete-stage-safe`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -317,7 +329,7 @@ export class SupabaseTicketStagesService {
       const { data: { session } } = await this.supabase.auth.getSession();
       if (!session?.access_token) return { error: { message: 'No active session' } };
 
-  const resp = await fetch(`${this.supabaseUrl}/functions/v1/delete-stage-safe`, {
+      const resp = await fetch(`${this.supabaseUrl}/functions/v1/delete-stage-safe`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -361,7 +373,7 @@ export class SupabaseTicketStagesService {
   async hideGenericStage(stageId: string): Promise<{ error: any; data?: any }> {
     try {
       const { data: { session } } = await this.supabase.auth.getSession();
-      
+
       if (!session?.access_token) {
         return { error: { message: 'No active session' } };
       }
@@ -436,7 +448,7 @@ export class SupabaseTicketStagesService {
   async unhideGenericStage(stageId: string): Promise<{ error: any; data?: any }> {
     try {
       const { data: { session } } = await this.supabase.auth.getSession();
-      
+
       if (!session?.access_token) {
         return { error: { message: 'No active session' } };
       }
@@ -487,7 +499,7 @@ export class SupabaseTicketStagesService {
         return { data: null, error: { message: 'No active session' } };
       }
 
-  const url = `${this.supabaseUrl}/functions/v1/get-config-stages` + (companyId ? `?company_id=${encodeURIComponent(companyId)}` : '');
+      const url = `${this.supabaseUrl}/functions/v1/get-config-stages` + (companyId ? `?company_id=${encodeURIComponent(companyId)}` : '');
       const efResp = await fetch(url, {
         method: 'GET',
         headers: {
