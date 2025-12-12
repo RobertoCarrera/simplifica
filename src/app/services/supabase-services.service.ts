@@ -15,10 +15,10 @@ export interface ServiceVariant {
   id: string;
   service_id: string;
   variant_name: string;
-  
+
   // NUEVO: Array de precios por periodicidad
   pricing: VariantPricing[];
-  
+
   // DEPRECATED: Mantener para backwards compatibility
   billing_period?: 'one-time' | 'monthly' | 'annually' | 'custom';
   base_price?: number;
@@ -26,7 +26,7 @@ export interface ServiceVariant {
   cost_price?: number;
   profit_margin?: number;
   discount_percentage?: number;
-  
+
   features?: {
     included?: string[];
     excluded?: string[];
@@ -54,37 +54,37 @@ export interface Service {
   company_id: string;
   created_at: string;
   updated_at: string;
-  
+
   // Campos para presupuestos y facturación
   tax_rate?: number;
   unit_type?: string;
   min_quantity?: number;
   max_quantity?: number;
-  
+
   // Campos para analíticas y métricas
   difficulty_level?: number;
   profit_margin?: number;
   cost_price?: number;
-  
+
   // Campos adicionales para gestión
   requires_parts?: boolean;
   requires_diagnosis?: boolean;
   warranty_days?: number;
   skill_requirements?: string[];
   tools_required?: string[];
-  
+
   // Campos para ubicación y disponibilidad
   can_be_remote?: boolean;
   priority_level?: number;
-  
+
   // Campos para tags
   tags?: string[];
-  
+
   // Campos para sistema de variantes
   has_variants?: boolean;
   base_features?: Record<string, any>;
   variants?: ServiceVariant[];
-  
+
   // Campos calculados (server-side) para display
   display_price?: number;        // Precio representativo (desde variantes o base_price)
   display_price_label?: string;  // "Precio Base", "Desde", "Precio"
@@ -128,7 +128,7 @@ export interface ServiceStats {
   providedIn: 'root'
 })
 export class SupabaseServicesService {
-  
+
   private supabase = inject(SimpleSupabaseService);
   private currentCompanyId = ''; // Default vacío (usar tenant/current_company_id cuando esté disponible)
 
@@ -139,17 +139,14 @@ export class SupabaseServicesService {
   }
 
   constructor() {
-    console.log('🔧 SupabaseServicesService initialized');
+    // Service initialized
   }
 
   async getServices(companyId?: string): Promise<Service[]> {
     try {
-    const targetCompanyId = companyId || this.currentCompanyId;
-    console.log(`🔧 Getting services for company ID: ${targetCompanyId}`);
-
-    // Usar tabla services existente como fuente principal
-    console.log('🔧 Using services table as primary source...');
-    return this.getServicesFromTable(targetCompanyId);
+      const targetCompanyId = companyId || this.currentCompanyId;
+      // Usar tabla services existente como fuente principal
+      return this.getServicesFromTable(targetCompanyId);
     } catch (error) {
       console.error('❌ Error getting services:', error);
       throw error;
@@ -201,8 +198,8 @@ export class SupabaseServicesService {
       // Buscar categoría existente con comparación normalizada
       const categories = await this.getServiceCategories(companyId);
       const normalizedSearch = this.normalizeText(categoryName);
-      
-      const existing = categories.find(cat => 
+
+      const existing = categories.find(cat =>
         this.normalizeText(cat.name) === normalizedSearch
       );
 
@@ -242,7 +239,7 @@ export class SupabaseServicesService {
       '#3b82f6', '#059669', '#d97706', '#dc2626', '#7c3aed',
       '#f59e0b', '#10b981', '#8b5cf6', '#06b6d4', '#ef4444'
     ];
-    
+
     // Generar color basado en el hash del nombre
     let hash = 0;
     for (let i = 0; i < categoryName.length; i++) {
@@ -275,7 +272,7 @@ export class SupabaseServicesService {
         return icon;
       }
     }
-    
+
     return 'fas fa-cog'; // Default icon
   }
 
@@ -327,20 +324,20 @@ export class SupabaseServicesService {
       category: (typeof service.category === 'string' && this.isValidUuid(service.category) && categoriesById[service.category])
         ? categoriesById[service.category].name
         : (service.category || 'Servicio Técnico'),
-  is_active: service.is_active !== undefined ? service.is_active : true, // Usar campo is_active de la BD
-  // Additional management fields
-  tax_rate: service.tax_rate !== undefined && service.tax_rate !== null ? Number(service.tax_rate) : undefined,
-  unit_type: service.unit_type || undefined,
-  min_quantity: service.min_quantity !== undefined && service.min_quantity !== null ? Number(service.min_quantity) : undefined,
-  max_quantity: service.max_quantity !== undefined && service.max_quantity !== null ? Number(service.max_quantity) : undefined,
-  difficulty_level: service.difficulty_level !== undefined && service.difficulty_level !== null ? Number(service.difficulty_level) : undefined,
-  profit_margin: service.profit_margin !== undefined && service.profit_margin !== null ? Number(service.profit_margin) : undefined,
-  cost_price: service.cost_price !== undefined && service.cost_price !== null ? Number(service.cost_price) : undefined,
-  requires_parts: !!service.requires_parts,
-  requires_diagnosis: !!service.requires_diagnosis,
-  warranty_days: service.warranty_days !== undefined && service.warranty_days !== null ? Number(service.warranty_days) : undefined,
-  skill_requirements: service.skill_requirements || [],
-  tools_required: service.tools_required || [],
+      is_active: service.is_active !== undefined ? service.is_active : true, // Usar campo is_active de la BD
+      // Additional management fields
+      tax_rate: service.tax_rate !== undefined && service.tax_rate !== null ? Number(service.tax_rate) : undefined,
+      unit_type: service.unit_type || undefined,
+      min_quantity: service.min_quantity !== undefined && service.min_quantity !== null ? Number(service.min_quantity) : undefined,
+      max_quantity: service.max_quantity !== undefined && service.max_quantity !== null ? Number(service.max_quantity) : undefined,
+      difficulty_level: service.difficulty_level !== undefined && service.difficulty_level !== null ? Number(service.difficulty_level) : undefined,
+      profit_margin: service.profit_margin !== undefined && service.profit_margin !== null ? Number(service.profit_margin) : undefined,
+      cost_price: service.cost_price !== undefined && service.cost_price !== null ? Number(service.cost_price) : undefined,
+      requires_parts: !!service.requires_parts,
+      requires_diagnosis: !!service.requires_diagnosis,
+      warranty_days: service.warranty_days !== undefined && service.warranty_days !== null ? Number(service.warranty_days) : undefined,
+      skill_requirements: service.skill_requirements || [],
+      tools_required: service.tools_required || [],
       can_be_remote: !!service.can_be_remote,
       priority_level: service.priority_level !== undefined && service.priority_level !== null ? Number(service.priority_level) : undefined,
       has_variants: !!service.has_variants, // Campo de variantes
@@ -348,11 +345,11 @@ export class SupabaseServicesService {
       company_id: service.company_id ? service.company_id : companyId.toString(),
       created_at: service.created_at,
       updated_at: service.updated_at || service.created_at
-    }));    
-    
+    }));
+
     // Load tags relations from service_tag_relations -> service_tags
     const servicesWithTags = await this.loadServiceTagsForServices(mapped);
-    
+
     // Load variants for services that have has_variants = true
     return await this.loadVariantsForServices(servicesWithTags);
   }
@@ -362,24 +359,13 @@ export class SupabaseServicesService {
    * and calculate display prices for ALL services
    */
   private async loadVariantsForServices(services: Service[]): Promise<Service[]> {
-    console.warn('🔄 loadVariantsForServices called with', services.length, 'services');
-    console.warn('🔍 ALL Services (name, has_variants, base_price):', services.map(s => ({ 
-      name: s.name, 
-      has_variants: s.has_variants, 
-      base_price: s.base_price,
-      id: s.id 
-    })));
-    
     // Get IDs of services that have variants
     const serviceIdsWithVariants = services
       .filter(s => s.has_variants)
       .map(s => s.id);
-    
-    console.warn('🎯 serviceIdsWithVariants:', serviceIdsWithVariants);
-    
+
     // If no services have variants, still calculate display prices
     if (serviceIdsWithVariants.length === 0) {
-      console.warn('⚠️ No services have has_variants=true, calculating base prices only');
       return services.map(service => ({
         ...service,
         ...this.calculateDisplayPrice(service, [])
@@ -387,7 +373,6 @@ export class SupabaseServicesService {
     }
 
     try {
-      console.warn('📡 Querying service_variants for service_ids:', serviceIdsWithVariants);
       const { data: variants, error } = await this.supabase.getClient()
         .from('service_variants')
         .select('*')
@@ -395,17 +380,7 @@ export class SupabaseServicesService {
         .eq('is_active', true)
         .order('sort_order', { ascending: true });
 
-      console.warn('📦 Variants query result:', { 
-        error: error ? { message: error.message, code: error.code, details: error.details } : null, 
-        variantsCount: variants?.length, 
-        variants: variants?.map(v => ({
-          id: v.id,
-          variant_name: v.variant_name,
-          service_id: v.service_id,
-          pricing: v.pricing,
-          base_price: v.base_price // campo legacy
-        }))
-      });
+
 
       if (error) {
         console.warn('⚠️ Error loading variants for services:', error);
@@ -421,57 +396,36 @@ export class SupabaseServicesService {
       for (const variant of (variants || [])) {
         // Parse pricing if it's a string (from DB jsonb)
         let parsedPricing = variant.pricing;
-        console.warn(`🔧 Variant "${variant.variant_name}":`, {
-          raw_pricing_type: typeof variant.pricing,
-          raw_pricing: variant.pricing,
-          legacy_base_price: variant.base_price
-        });
-        
+
         if (typeof variant.pricing === 'string') {
           try {
             parsedPricing = JSON.parse(variant.pricing);
-            console.warn(`   Parsed from string:`, parsedPricing);
           } catch (e) {
             console.error(`   Failed to parse:`, e);
             parsedPricing = null;
           }
         }
-        
+
         // Keep pricing as-is, preserving null/undefined for fallback logic
         const parsedVariant: ServiceVariant = {
           ...variant,
           pricing: Array.isArray(parsedPricing) && parsedPricing.length > 0 ? parsedPricing : []
         };
-        
-        console.warn(`   Final variant:`, {
-          pricing_length: parsedVariant.pricing?.length,
-          base_price: parsedVariant.base_price
-        });
-        
+
+
         if (!variantsByServiceId[variant.service_id]) {
           variantsByServiceId[variant.service_id] = [];
         }
         variantsByServiceId[variant.service_id].push(parsedVariant);
       }
 
-      console.warn('🗂️ variantsByServiceId:', Object.keys(variantsByServiceId).map(k => ({
-        service_id: k,
-        variants_count: variantsByServiceId[k].length
-      })));
+
 
       // Attach variants to their services and calculate display prices
       return services.map(service => {
         const serviceVariants = variantsByServiceId[service.id] || [];
         const computed = this.calculateDisplayPrice(service, serviceVariants);
-        
-        console.warn(`✅ Service "${service.name}":`, {
-          has_variants: service.has_variants,
-          variants_count: serviceVariants.length,
-          computed_display_price: computed.display_price,
-          computed_label: computed.display_price_label,
-          from_variants: computed.display_price_from_variants
-        });
-        
+
         return {
           ...service,
           variants: serviceVariants,
@@ -515,19 +469,12 @@ export class SupabaseServicesService {
     // Collect all prices from variants
     const allPrices: number[] = [];
     const allHours: number[] = [];
-    
+
+
     for (const variant of variants) {
-      console.warn(`  🔎 Processing variant "${variant.variant_name}":`, {
-        has_pricing_array: !!(variant.pricing && Array.isArray(variant.pricing)),
-        pricing_length: variant.pricing?.length,
-        legacy_base_price: variant.base_price,
-        pricing: variant.pricing
-      });
-      
       // Try new pricing array first
       if (variant.pricing && Array.isArray(variant.pricing) && variant.pricing.length > 0) {
         for (const p of variant.pricing) {
-          console.warn(`    💰 Pricing entry:`, p);
           if (p.base_price && p.base_price > 0) {
             allPrices.push(p.base_price);
           }
@@ -535,10 +482,9 @@ export class SupabaseServicesService {
             allHours.push(p.estimated_hours);
           }
         }
-      } 
+      }
       // Fallback to deprecated fields
       else {
-        console.warn(`    ⚠️ Using legacy fields: base_price=${variant.base_price}`);
         if (variant.base_price && variant.base_price > 0) {
           allPrices.push(variant.base_price);
         }
@@ -547,8 +493,6 @@ export class SupabaseServicesService {
         }
       }
     }
-    
-    console.warn(`  📊 Collected prices:`, allPrices, 'hours:', allHours);
 
     // If no prices found in variants, fall back to service base_price
     if (allPrices.length === 0) {
@@ -565,8 +509,8 @@ export class SupabaseServicesService {
 
     const minPrice = Math.min(...allPrices);
     const maxPrice = Math.max(...allPrices);
-    const avgHours = allHours.length > 0 
-      ? allHours.reduce((a, b) => a + b, 0) / allHours.length 
+    const avgHours = allHours.length > 0
+      ? allHours.reduce((a, b) => a + b, 0) / allHours.length
       : (service.estimated_hours || 1);
 
     // Determine label based on price range
@@ -597,22 +541,22 @@ export class SupabaseServicesService {
 
     if (serviceData.company_id) serviceDataForDB.company_id = serviceData.company_id;
 
-  // Management fields
-  if (serviceData.tax_rate !== undefined) serviceDataForDB.tax_rate = serviceData.tax_rate;
-  if (serviceData.unit_type !== undefined) serviceDataForDB.unit_type = serviceData.unit_type;
-  if (serviceData.min_quantity !== undefined) serviceDataForDB.min_quantity = serviceData.min_quantity;
-  if (serviceData.max_quantity !== undefined) serviceDataForDB.max_quantity = serviceData.max_quantity;
-  if (serviceData.difficulty_level !== undefined) serviceDataForDB.difficulty_level = serviceData.difficulty_level;
-  if (serviceData.profit_margin !== undefined) serviceDataForDB.profit_margin = serviceData.profit_margin;
-  if (serviceData.cost_price !== undefined) serviceDataForDB.cost_price = serviceData.cost_price;
-  if (serviceData.requires_parts !== undefined) serviceDataForDB.requires_parts = serviceData.requires_parts;
-  if (serviceData.requires_diagnosis !== undefined) serviceDataForDB.requires_diagnosis = serviceData.requires_diagnosis;
-  if (serviceData.warranty_days !== undefined) serviceDataForDB.warranty_days = serviceData.warranty_days;
-  if (serviceData.skill_requirements !== undefined) serviceDataForDB.skill_requirements = serviceData.skill_requirements;
-  if (serviceData.tools_required !== undefined) serviceDataForDB.tools_required = serviceData.tools_required;
-  if (serviceData.can_be_remote !== undefined) serviceDataForDB.can_be_remote = serviceData.can_be_remote;
-  if (serviceData.priority_level !== undefined) serviceDataForDB.priority_level = serviceData.priority_level;
-  if (serviceData.has_variants !== undefined) serviceDataForDB.has_variants = serviceData.has_variants;
+    // Management fields
+    if (serviceData.tax_rate !== undefined) serviceDataForDB.tax_rate = serviceData.tax_rate;
+    if (serviceData.unit_type !== undefined) serviceDataForDB.unit_type = serviceData.unit_type;
+    if (serviceData.min_quantity !== undefined) serviceDataForDB.min_quantity = serviceData.min_quantity;
+    if (serviceData.max_quantity !== undefined) serviceDataForDB.max_quantity = serviceData.max_quantity;
+    if (serviceData.difficulty_level !== undefined) serviceDataForDB.difficulty_level = serviceData.difficulty_level;
+    if (serviceData.profit_margin !== undefined) serviceDataForDB.profit_margin = serviceData.profit_margin;
+    if (serviceData.cost_price !== undefined) serviceDataForDB.cost_price = serviceData.cost_price;
+    if (serviceData.requires_parts !== undefined) serviceDataForDB.requires_parts = serviceData.requires_parts;
+    if (serviceData.requires_diagnosis !== undefined) serviceDataForDB.requires_diagnosis = serviceData.requires_diagnosis;
+    if (serviceData.warranty_days !== undefined) serviceDataForDB.warranty_days = serviceData.warranty_days;
+    if (serviceData.skill_requirements !== undefined) serviceDataForDB.skill_requirements = serviceData.skill_requirements;
+    if (serviceData.tools_required !== undefined) serviceDataForDB.tools_required = serviceData.tools_required;
+    if (serviceData.can_be_remote !== undefined) serviceDataForDB.can_be_remote = serviceData.can_be_remote;
+    if (serviceData.priority_level !== undefined) serviceDataForDB.priority_level = serviceData.priority_level;
+    if (serviceData.has_variants !== undefined) serviceDataForDB.has_variants = serviceData.has_variants;
 
     // If a category is provided, try to resolve it to a category id
     if (serviceData.category) {
@@ -671,22 +615,22 @@ export class SupabaseServicesService {
       updated_at: new Date().toISOString()
     };
     if (updates.company_id) serviceData.company_id = updates.company_id;
-  // Management fields
-  if (updates.tax_rate !== undefined) serviceData.tax_rate = updates.tax_rate;
-  if (updates.unit_type !== undefined) serviceData.unit_type = updates.unit_type;
-  if (updates.min_quantity !== undefined) serviceData.min_quantity = updates.min_quantity;
-  if (updates.max_quantity !== undefined) serviceData.max_quantity = updates.max_quantity;
-  if (updates.difficulty_level !== undefined) serviceData.difficulty_level = updates.difficulty_level;
-  if (updates.profit_margin !== undefined) serviceData.profit_margin = updates.profit_margin;
-  if (updates.cost_price !== undefined) serviceData.cost_price = updates.cost_price;
-  if (updates.requires_parts !== undefined) serviceData.requires_parts = updates.requires_parts;
-  if (updates.requires_diagnosis !== undefined) serviceData.requires_diagnosis = updates.requires_diagnosis;
-  if (updates.warranty_days !== undefined) serviceData.warranty_days = updates.warranty_days;
-  if (updates.skill_requirements !== undefined) serviceData.skill_requirements = updates.skill_requirements;
-  if (updates.tools_required !== undefined) serviceData.tools_required = updates.tools_required;
-  if (updates.can_be_remote !== undefined) serviceData.can_be_remote = updates.can_be_remote;
-  if (updates.priority_level !== undefined) serviceData.priority_level = updates.priority_level;
-  if (updates.has_variants !== undefined) serviceData.has_variants = updates.has_variants;
+    // Management fields
+    if (updates.tax_rate !== undefined) serviceData.tax_rate = updates.tax_rate;
+    if (updates.unit_type !== undefined) serviceData.unit_type = updates.unit_type;
+    if (updates.min_quantity !== undefined) serviceData.min_quantity = updates.min_quantity;
+    if (updates.max_quantity !== undefined) serviceData.max_quantity = updates.max_quantity;
+    if (updates.difficulty_level !== undefined) serviceData.difficulty_level = updates.difficulty_level;
+    if (updates.profit_margin !== undefined) serviceData.profit_margin = updates.profit_margin;
+    if (updates.cost_price !== undefined) serviceData.cost_price = updates.cost_price;
+    if (updates.requires_parts !== undefined) serviceData.requires_parts = updates.requires_parts;
+    if (updates.requires_diagnosis !== undefined) serviceData.requires_diagnosis = updates.requires_diagnosis;
+    if (updates.warranty_days !== undefined) serviceData.warranty_days = updates.warranty_days;
+    if (updates.skill_requirements !== undefined) serviceData.skill_requirements = updates.skill_requirements;
+    if (updates.tools_required !== undefined) serviceData.tools_required = updates.tools_required;
+    if (updates.can_be_remote !== undefined) serviceData.can_be_remote = updates.can_be_remote;
+    if (updates.priority_level !== undefined) serviceData.priority_level = updates.priority_level;
+    if (updates.has_variants !== undefined) serviceData.has_variants = updates.has_variants;
     // Resolve category name to id if needed
     if (updates.category) {
       try {
@@ -746,8 +690,6 @@ export class SupabaseServicesService {
   }
 
   async toggleServiceStatus(id: string): Promise<Service> {
-    console.log(`🔧 Toggling service status for ID: ${id}`);
-    
     // Primero obtenemos el servicio actual
     const { data: currentService, error: fetchError } = await this.supabase.getClient()
       .from('services')
@@ -760,7 +702,7 @@ export class SupabaseServicesService {
 
     // Cambiamos el estado
     const newStatus = !currentService.is_active;
-    
+
     const { data, error } = await this.supabase.getClient()
       .from('services')
       .update({ is_active: newStatus })
@@ -829,7 +771,7 @@ export class SupabaseServicesService {
   async searchServices(searchTerm: string): Promise<Service[]> {
     const services = await this.getServices();
     const term = searchTerm.toLowerCase();
-    return services.filter(service => 
+    return services.filter(service =>
       service.name.toLowerCase().includes(term) ||
       service.description.toLowerCase().includes(term) ||
       service.category?.toLowerCase().includes(term)
@@ -838,15 +780,15 @@ export class SupabaseServicesService {
 
   async getServiceStats(): Promise<ServiceStats> {
     const services = await this.getServices();
-    
+
     return {
       total: services.length,
       active: services.filter(s => s.is_active).length,
-      averagePrice: services.length > 0 
-        ? services.reduce((sum, s) => sum + s.base_price, 0) / services.length 
+      averagePrice: services.length > 0
+        ? services.reduce((sum, s) => sum + s.base_price, 0) / services.length
         : 0,
-      averageHours: services.length > 0 
-        ? services.reduce((sum, s) => sum + s.estimated_hours, 0) / services.length 
+      averageHours: services.length > 0
+        ? services.reduce((sum, s) => sum + s.estimated_hours, 0) / services.length
         : 0
     };
   }
@@ -980,7 +922,7 @@ export class SupabaseServicesService {
       (relations || []).forEach((relation: any) => {
         const serviceId = relation.service_id;
         const tagName = relation.tag?.name;
-        
+
         if (serviceId && tagName) {
           if (!tagsByService[serviceId]) {
             tagsByService[serviceId] = [];
@@ -1003,7 +945,7 @@ export class SupabaseServicesService {
   async syncServiceTags(serviceId: string, tagNames: string[]): Promise<void> {
     try {
       const client = this.supabase.getClient();
-      
+
       // 1. Obtener company_id del servicio
       const { data: service, error: serviceError } = await client
         .from('services')
@@ -1387,10 +1329,10 @@ export class SupabaseServicesService {
     if (!accessToken) throw new Error('No hay sesión activa. Inicia sesión para importar servicios.');
 
     const proxyUrl = `/api/import-services`;
-  const { RuntimeConfigService } = await import('./runtime-config.service');
-  const cfg = new (RuntimeConfigService as any)();
-  await cfg.load?.();
-  const functionUrl = `${cfg.get().supabase.url.replace(/\/$/, '')}/functions/v1/import-services`;
+    const { RuntimeConfigService } = await import('./runtime-config.service');
+    const cfg = new (RuntimeConfigService as any)();
+    await cfg.load?.();
+    const functionUrl = `${cfg.get().supabase.url.replace(/\/$/, '')}/functions/v1/import-services`;
 
     let resp = await fetch(proxyUrl, {
       method: 'POST',
@@ -1464,7 +1406,7 @@ export class SupabaseServicesService {
   async getServiceWithVariants(serviceId: string): Promise<Service> {
     try {
       const client = this.supabase.getClient();
-      
+
       // Get service
       const { data: service, error: serviceError } = await client
         .from('services')
@@ -1476,7 +1418,7 @@ export class SupabaseServicesService {
 
       // Get variants
       const variants = await this.getServiceVariants(serviceId);
-      
+
       return {
         ...service,
         variants
@@ -1519,9 +1461,9 @@ export class SupabaseServicesService {
   async createServiceVariant(variant: Partial<ServiceVariant>): Promise<ServiceVariant> {
     try {
       const client = this.supabase.getClient();
-      
+
       console.log('📤 Sending variant to Edge Function:', JSON.stringify(variant, null, 2));
-      
+
       // Get the function URL
       const { data: functionData, error: functionError } = await client.functions.invoke(
         'create-service-variant',
@@ -1549,10 +1491,10 @@ export class SupabaseServicesService {
   async updateServiceVariant(variantId: string, updates: Partial<ServiceVariant>): Promise<ServiceVariant> {
     try {
       const client = this.supabase.getClient();
-      
+
       // Add the variant ID to the updates object
       const variantData = { ...updates, id: variantId };
-      
+
       const { data: functionData, error: functionError } = await client.functions.invoke(
         'create-service-variant',
         {
@@ -1606,7 +1548,7 @@ export class SupabaseServicesService {
       const client = this.supabase.getClient();
       const { data, error } = await client
         .from('services')
-        .update({ 
+        .update({
           has_variants: true,
           base_features: baseFeatures || {}
         })
