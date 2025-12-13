@@ -58,6 +58,11 @@ export interface Service {
   // Campos para presupuestos y facturación
   tax_rate?: number;
   unit_type?: string;
+  
+  // Campos para Portal de Cliente
+  is_public?: boolean;
+  allow_direct_contracting?: boolean;
+  features?: string; // JSON or text description of features
   min_quantity?: number;
   max_quantity?: number;
 
@@ -341,6 +346,10 @@ export class SupabaseServicesService {
       can_be_remote: !!service.can_be_remote,
       priority_level: service.priority_level !== undefined && service.priority_level !== null ? Number(service.priority_level) : undefined,
       has_variants: !!service.has_variants, // Campo de variantes
+      // Public fields
+      is_public: !!service.is_public,
+      allow_direct_contracting: !!service.allow_direct_contracting,
+      features: service.features || undefined,
       // Preferir company_id almacenado en service cuando exista
       company_id: service.company_id ? service.company_id : companyId.toString(),
       created_at: service.created_at,
@@ -557,6 +566,10 @@ export class SupabaseServicesService {
     if (serviceData.can_be_remote !== undefined) serviceDataForDB.can_be_remote = serviceData.can_be_remote;
     if (serviceData.priority_level !== undefined) serviceDataForDB.priority_level = serviceData.priority_level;
     if (serviceData.has_variants !== undefined) serviceDataForDB.has_variants = serviceData.has_variants;
+    // Public fields
+    if (serviceData.is_public !== undefined) serviceDataForDB.is_public = serviceData.is_public;
+    if (serviceData.allow_direct_contracting !== undefined) serviceDataForDB.allow_direct_contracting = serviceData.allow_direct_contracting;
+    if (serviceData.features !== undefined) serviceDataForDB.features = serviceData.features;
 
     // If a category is provided, try to resolve it to a category id
     if (serviceData.category) {
@@ -631,6 +644,10 @@ export class SupabaseServicesService {
     if (updates.can_be_remote !== undefined) serviceData.can_be_remote = updates.can_be_remote;
     if (updates.priority_level !== undefined) serviceData.priority_level = updates.priority_level;
     if (updates.has_variants !== undefined) serviceData.has_variants = updates.has_variants;
+    // Public fields
+    if (updates.is_public !== undefined) serviceData.is_public = updates.is_public;
+    if (updates.allow_direct_contracting !== undefined) serviceData.allow_direct_contracting = updates.allow_direct_contracting;
+    if (updates.features !== undefined) serviceData.features = updates.features;
     // Resolve category name to id if needed
     if (updates.category) {
       try {

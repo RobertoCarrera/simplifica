@@ -15,6 +15,7 @@
 
 export enum QuoteStatus {
   DRAFT = 'draft',           // Borrador (en edición)
+  REQUEST = 'request',       // Solicitud del cliente (nuevo)
   PENDING = 'pending',        // Generado/Pendiente (listo para cliente, no enviado)
   SENT = 'sent',              // Enviado al cliente
   VIEWED = 'viewed',          // Visto por el cliente
@@ -28,6 +29,7 @@ export enum QuoteStatus {
 
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
   [QuoteStatus.DRAFT]: 'Borrador',
+  [QuoteStatus.REQUEST]: 'Solicitud',
   [QuoteStatus.PENDING]: 'Pendiente',
   [QuoteStatus.SENT]: 'Enviado',
   [QuoteStatus.VIEWED]: 'Visto',
@@ -41,6 +43,7 @@ export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
 
 export const QUOTE_STATUS_COLORS: Record<QuoteStatus, string> = {
   [QuoteStatus.DRAFT]: 'gray',
+  [QuoteStatus.REQUEST]: 'purple',
   [QuoteStatus.PENDING]: 'indigo',
   [QuoteStatus.SENT]: 'blue',
   [QuoteStatus.VIEWED]: 'cyan',

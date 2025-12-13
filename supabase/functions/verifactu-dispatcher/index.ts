@@ -1155,14 +1155,21 @@ serve(async (req)=>{
         global: { headers: { Authorization: `Bearer ${token}` } }
       });
       
-      // Get user's company_id from their invoices
-      const { data: userInvoices, error: invErr } = await userClient
-        .from('invoices')
+      // Get user's company_id from public.users
+      const { data: { user }, error: authError } = await userClient.auth.getUser();
+      if (authError || !user) {
+        return new Response(JSON.stringify({ ok: false, error: 'Invalid token' }), {
+          status: 401, headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const { data: userProfile, error: profileError } = await userClient
+        .from('users')
         .select('company_id')
-        .limit(1)
-        .maybeSingle();
-      
-      if (invErr || !userInvoices?.company_id) {
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (profileError || !userProfile?.company_id) {
         return new Response(JSON.stringify({ 
           ok: false, 
           error: 'No se pudo determinar la empresa del usuario' 
@@ -1171,7 +1178,7 @@ serve(async (req)=>{
         });
       }
       
-      const companyId = userInvoices.company_id;
+      const companyId = userProfile.company_id;
       
       // Pagination params
       const page = Number(body.page || 1);

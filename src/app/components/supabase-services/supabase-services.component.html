@@ -772,6 +772,57 @@
             </div><!-- Close accordion-content -->
           </div><!-- Close Dificultad section -->
 
+          <!-- Visibilidad y Portal -->
+          <div class="form-section accordion-section">
+            <div class="accordion-header" (click)="toggleAccordion('visibility')" [class.active]="accordionState.visibility">
+              <div class="accordion-title">
+                <i class="fas fa-globe"></i>
+                <span>Visibilidad y Portal</span>
+              </div>
+              <i class="fas" [class.fa-chevron-down]="!accordionState.visibility"
+                [class.fa-chevron-up]="accordionState.visibility"></i>
+            </div>
+
+            <div class="accordion-content" [class.expanded]="accordionState.visibility">
+              <div class="form-grid">
+                <div class="form-group">
+                  <div class="checkbox-group space-y-3">
+                    <label class="checkbox-label flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox"
+                        class="w-4 h-4 rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-blue-500 dark:text-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                        [(ngModel)]="formData.is_public" name="is_public">
+                      <span class="text-gray-700 dark:text-white text-sm font-medium">Mostrar en Portal de Cliente</span>
+                    </label>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 ml-6">
+                      Si se activa, los clientes podrán ver este servicio en su catálogo.
+                    </p>
+
+                    <label class="checkbox-label flex items-center gap-2 cursor-pointer ml-6" *ngIf="formData.is_public">
+                      <input type="checkbox"
+                        class="w-4 h-4 rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-blue-500 dark:text-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                        [(ngModel)]="formData.allow_direct_contracting" name="allow_direct_contracting">
+                      <span class="text-gray-700 dark:text-white text-sm font-medium">Permitir Contratación Directa</span>
+                    </label>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 ml-12" *ngIf="formData.is_public">
+                      Si se activa, el cliente podrá contratar el servicio inmediatamente. Si no, solo podrá solicitar presupuesto.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="form-group col-span-2" *ngIf="formData.is_public">
+                  <label for="features" class="text-gray-700 dark:text-white font-medium">Características Destacadas</label>
+                  <textarea id="features" rows="3"
+                    class="form-control bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none w-full"
+                    [(ngModel)]="formData.features" name="features"
+                    placeholder="Ej: Soporte 24/7, Copias de seguridad diarias..."></textarea>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Texto breve que aparecerá en la tarjeta del servicio en el portal.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </form>
       </div>
 

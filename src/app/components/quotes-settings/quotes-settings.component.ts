@@ -57,6 +57,7 @@ export class QuotesSettingsComponent implements OnInit {
       enforce_company_defaults: [false],
       default_invoice_delay_days: [null],
       auto_send_quote_email: [null], // New setting
+      allow_direct_contracting: [null], // New setting
       invoice_on_date: [null],
       deposit_percentage: [null, [Validators.min(0), Validators.max(100)]],
       // Company tax overrides
@@ -98,6 +99,7 @@ export class QuotesSettingsComponent implements OnInit {
         this.companySettingsForm.patchValue({
           convert_policy: companySettings.convert_policy ?? null,
           enforce_company_defaults: companySettings.enforce_company_defaults ?? false,
+          allow_direct_contracting: companySettings.allow_direct_contracting ?? false,
           default_invoice_delay_days: companySettings.default_invoice_delay_days ?? null,
           auto_send_quote_email: companySettings.auto_send_quote_email ?? null,
           invoice_on_date: companySettings.invoice_on_date ?? null,

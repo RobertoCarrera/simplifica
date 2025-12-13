@@ -96,7 +96,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     variants: false,
     pricing: false,
     timeQuantity: false,
-    difficulty: false
+    difficulty: false,
+    visibility: false
   };
 
   // Form validation
@@ -626,7 +627,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       variants: false,
       pricing: false,
       timeQuantity: false,
-      difficulty: false
+      difficulty: false,
+      visibility: false
     };
 
     // Restaurar scroll de la página principal

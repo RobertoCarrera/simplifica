@@ -36,6 +36,7 @@ export interface CompanySettings {
   irpf_enabled?: boolean | null;
   irpf_rate?: number | null; // e.g., 7, 15
   auto_send_quote_email?: boolean | null;
+  allow_direct_contracting?: boolean | null; // New automation setting
   updated_at?: string;
 }
 

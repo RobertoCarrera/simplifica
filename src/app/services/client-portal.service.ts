@@ -98,6 +98,69 @@ export class ClientPortalService {
     return { data: (data || []) as any, error };
   }
 
+  async listPublicServices(): Promise<{ data: any[]; error?: any }> {
+    const user = await firstValueFrom(this.auth.userProfile$);
+    if (!user?.company_id) return { data: [], error: 'No company context' };
+
+    const client = this.sb.instance;
+    // Assuming RLS allows reading public services or we use a view
+    // If RLS is strict, we might need an edge function or the view created in migration
+    // Let's try direct query first, assuming RLS policy I added works (if applied)
+    // Or use the view 'client_visible_services' if I created it.
+    // I'll try direct table access with is_public=true filter.
+    const { data, error } = await client
+      .from('services')
+      .select('*, variants:service_variants(*)')
+      .eq('company_id', user.company_id)
+      .eq('is_public', true)
+      .eq('is_active', true)
+      .order('name');
+      
+    return { data: (data || []) as any, error };
+  }
+
+  async getCompanySettings(): Promise<{ data: any; error?: any }> {
+    const user = await firstValueFrom(this.auth.userProfile$);
+    if (!user?.company_id) return { data: null, error: 'No company context' };
+
+    const client = this.sb.instance;
+    const { data, error } = await client
+      .from('company_settings')
+      .select('allow_direct_contracting, auto_send_quote_email')
+      .eq('company_id', user.company_id)
+      .maybeSingle();
+      
+    return { data, error };
+  }
+
+  async requestService(serviceId: string, variantId?: string): Promise<{ data: any; error?: any }> {
+    // Call edge function to create quote in 'request' status
+    try {
+      const token = await this.requireAccessToken();
+      const { data, error } = await this.supabase.functions.invoke('client-request-service', {
+        body: { serviceId, variantId, action: 'request' },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return { data, error };
+    } catch (e: any) {
+      return { data: null, error: e };
+    }
+  }
+
+  async contractService(serviceId: string, variantId?: string, paymentMethodId?: string): Promise<{ data: any; error?: any }> {
+    // Call edge function to create quote, accept, invoice and pay
+    try {
+      const token = await this.requireAccessToken();
+      const { data, error } = await this.supabase.functions.invoke('client-request-service', {
+        body: { serviceId, variantId, action: 'contract', paymentMethodId },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return { data, error };
+    } catch (e: any) {
+      return { data: null, error: e };
+    }
+  }
+
   async listQuotes(): Promise<{ data: ClientPortalQuote[]; error?: any }> {
     try {
       // Prefer edge function (does not rely on email claim presence in JWT).

@@ -126,7 +126,8 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
       default_iva_enabled: [true],
       default_iva_rate: [21, [Validators.min(0), Validators.max(100)]],
       default_irpf_enabled: [false],
-      default_irpf_rate: [15, [Validators.min(0), Validators.max(100)]]
+      default_irpf_rate: [15, [Validators.min(0), Validators.max(100)]],
+      allow_direct_contracting: [false]
     });
     this.companySettingsForm = this.fb.group({
       convert_policy: [null],
