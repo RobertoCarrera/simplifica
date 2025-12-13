@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download } from 'lucide-angular';
+import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack } from 'lucide-angular';
 import { PWAService } from '../../services/pwa.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
 import { DevRoleService } from '../../services/dev-role.service';
@@ -35,7 +35,7 @@ interface MenuItem {
   providers: [
     {
       provide: LUCIDE_ICONS,
-      useValue: new LucideIconProvider({ Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download })
+      useValue: new LucideIconProvider({ Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack })
     }
   ],
   templateUrl: './responsive-sidebar.component.html',
@@ -66,7 +66,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   readonly icons = {
     Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, 
     Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, 
-    ChevronRight, LogOut, Smartphone, Download
+    ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack
   };
 
   private allMenuItems: MenuItem[] = [
@@ -168,24 +168,22 @@ export class ResponsiveSidebarComponent implements OnInit {
     // Si no hay perfil de app (usuario pendiente/invitado): menú mínimo
     if (!profile) {
       return [
-        { id: 1001, label: 'Confirmación', icon: 'auto_awesome', route: '/auth/confirm?pending=1', module: 'core' },
-        { id: 14, label: 'Ayuda', icon: 'help_outline', route: '/ayuda', module: 'core' }
+        { id: 1001, label: 'Confirmación', icon: 'sparkles', route: '/auth/confirm?pending=1', module: 'core' },
+        { id: 14, label: 'Ayuda', icon: 'help-circle', route: '/ayuda', module: 'core' }
       ];
     }
 
-    // Client role: show Tickets, Presupuestos (client portal), Configuración
+    // Client role: show full portal menu with conditional modules
     if (isClient) {
-      // Mostrar módulo de facturas en modo desarrollo únicamente (isDev)
       let clientMenu: MenuItem[] = [
-        { id: 2001, label: 'Tickets', icon: 'confirmation_number', route: '/tickets', module: 'production' },
-        { id: 2002, label: 'Presupuestos', icon: 'description', route: '/portal/presupuestos', module: 'production' },
-        { id: 2003, label: 'Configuración', icon: 'settings', route: '/configuracion', module: 'core' }
+        { id: 2000, label: 'Inicio', icon: 'home', route: '/inicio', module: 'core' },
+        { id: 2001, label: 'Tickets', icon: 'ticket', route: '/tickets', module: 'production', moduleKey: 'moduloSAT' },
+        { id: 2002, label: 'Presupuestos', icon: 'file-text', route: '/portal/presupuestos', module: 'production', moduleKey: 'moduloPresupuestos' },
+        { id: 2003, label: 'Facturas', icon: 'receipt', route: '/portal/facturas', module: 'production', moduleKey: 'moduloFacturas' },
+        { id: 2004, label: 'Servicios', icon: 'wrench', route: '/portal/servicios', module: 'production', moduleKey: 'moduloServicios' },
+        { id: 2005, label: 'Chat', icon: 'message-circle', route: '/portal/chat', module: 'production', moduleKey: 'moduloChat' },
+        { id: 2006, label: 'Configuración', icon: 'settings', route: '/configuracion', module: 'core' }
       ];
-
-      if (isDev) {
-        // Añadir acceso a facturas sólo en entornos de desarrollo
-        clientMenu.splice(2, 0, { id: 2004, label: 'Facturas', icon: 'receipt_long', route: '/portal/facturas', module: 'production' });
-      }
 
       // Si tenemos módulos efectivos, filtrar también por ellos
       if (allowed) {

@@ -75,14 +75,28 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: corsHeaders });
     }
 
-    // Resolve company_id and users.id (hidden_by)
+    // Resolve company_id and users.id (hidden_by) - try users first
     const { data: urow, error: uerr } = await supabaseAdmin
       .from("users")
       .select("id, company_id")
       .eq("auth_user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (uerr || !urow?.company_id) {
+    let companyId = urow?.company_id || null;
+    let userId = urow?.id || null;
+
+    // Fallback: try clients table for portal clients
+    if (!companyId) {
+      const { data: crow } = await supabaseAdmin
+        .from("clients")
+        .select("id, company_id")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+      companyId = crow?.company_id || null;
+      userId = crow?.id || null;
+    }
+
+    if (uerr || !companyId) {
       return new Response(JSON.stringify({ error: "User not associated with a company" }), { status: 400, headers: corsHeaders });
     }
     const companyId = urow.company_id;

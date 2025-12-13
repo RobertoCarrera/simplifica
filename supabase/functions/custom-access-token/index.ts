@@ -17,35 +17,37 @@ serve(async (req) => {
     // Crear cliente Supabase con service role key
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Buscar company_id del usuario en la tabla users
-    const { data: userData, error } = await supabase
+    // Buscar company_id del usuario en la tabla users primero
+    let companyId: string | null = null;
+    
+    const { data: userData, error: userError } = await supabase
       .from('users')
       .select('company_id')
       .eq('auth_user_id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (error) {
-      console.error('[custom-access-token] Error fetching user:', error)
-      // Si no encuentra el usuario, no agregar claim (permitir continuar)
-      return new Response(
-        JSON.stringify({ 
-          app_metadata: {}, 
-          user_metadata: {} 
-        }),
-        { 
-          headers: { 'Content-Type': 'application/json' },
-          status: 200 
-        }
-      )
+    if (userData?.company_id) {
+      companyId = userData.company_id;
+      console.log('[custom-access-token] Found company_id in users:', companyId)
+    } else {
+      // Si no está en users, buscar en clients (portal de clientes)
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .select('company_id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle()
+      
+      if (clientData?.company_id) {
+        companyId = clientData.company_id;
+        console.log('[custom-access-token] Found company_id in clients:', companyId)
+      }
     }
-
-    console.log('[custom-access-token] Found company_id:', userData?.company_id)
 
     // Retornar company_id como custom claim
     return new Response(
       JSON.stringify({
         app_metadata: {
-          company_id: userData?.company_id || null
+          company_id: companyId
         },
         user_metadata: {}
       }),

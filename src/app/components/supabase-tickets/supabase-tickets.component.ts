@@ -255,12 +255,29 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
               .select('company_id')
               .eq('auth_user_id', authUid)
               .limit(1)
-              .single();
+              .maybeSingle();
             if (uRow && this.isValidUuid(uRow.company_id)) {
               resolvedCompany = uRow.company_id;
             }
           } catch (e) {
             console.warn('No se pudo resolver company_id desde users:', e);
+          }
+
+          // Fallback: buscar en clients si no se encontró en users
+          if (!resolvedCompany) {
+            try {
+              const { data: cRow } = await client
+                .from('clients')
+                .select('company_id')
+                .eq('auth_user_id', authUid)
+                .limit(1)
+                .maybeSingle();
+              if (cRow && this.isValidUuid(cRow.company_id)) {
+                resolvedCompany = cRow.company_id;
+              }
+            } catch (e) {
+              console.warn('No se pudo resolver company_id desde clients:', e);
+            }
           }
 
           if (resolvedCompany && this.isValidUuid(resolvedCompany)) {

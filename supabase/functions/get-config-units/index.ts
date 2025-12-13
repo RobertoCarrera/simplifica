@@ -66,15 +66,36 @@ serve(async (req) => {
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Invalid or expired token" }), { status: 401, headers: corsHeaders });
     }
+    
+    // Try users table first
     const { data: urow, error: uerr } = await supabaseAdmin
       .from("users")
       .select("company_id")
       .eq("auth_user_id", user.id)
-      .single();
-    if (uerr || !urow?.company_id) {
-      return new Response(JSON.stringify({ error: "User not associated with a company" }), { status: 400, headers: corsHeaders });
+      .maybeSingle();
+    if (uerr) {
+      console.error('Error querying users table:', uerr);
+      return new Response(JSON.stringify({ error: "Database error: " + uerr.message }), { status: 500, headers: corsHeaders });
     }
-    const companyId = urow.company_id;
+    
+    let companyId = urow?.company_id || null;
+    
+    // Fallback: try clients table
+    if (!companyId) {
+      const { data: crow, error: cerr } = await supabaseAdmin
+        .from("clients")
+        .select("company_id")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+      if (cerr) {
+        console.error('Error querying clients table:', cerr);
+      }
+      companyId = crow?.company_id || null;
+    }
+    
+    if (!companyId) {
+      return new Response(JSON.stringify({ error: "company_id required", hint: "User not found in users or clients table" }), { status: 400, headers: corsHeaders });
+    }
 
     // Generic units
     const { data: units, error: unitsError } = await supabaseAdmin

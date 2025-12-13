@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { SupabaseClientService } from '../../services/supabase-client.service';
 
 @Component({
     selector: 'app-portal-services',
@@ -66,6 +67,7 @@ import { AuthService } from '../../services/auth.service';
 })
 export class PortalServicesComponent implements OnInit {
     private authService = inject(AuthService);
+    private supabaseClient = inject(SupabaseClientService);
 
     loading = signal(true);
     services = signal<ContractedService[]>([]);
@@ -77,19 +79,111 @@ export class PortalServicesComponent implements OnInit {
     private async loadServices(): Promise<void> {
         this.loading.set(true);
         try {
-            // TODO: Implement actual service loading from Supabase
-            // For now, show empty state
-            this.services.set([]);
+            const profile = this.authService.userProfile;
+            if (!profile?.client_id) {
+                console.warn('No client_id found in user profile');
+                this.services.set([]);
+                return;
+            }
+
+            // Use authenticated Supabase client
+            const supabase = this.supabaseClient.instance;
+
+            // Load recurring quotes for this client
+            const { data, error } = await supabase
+                .from('quotes')
+                .select(`
+                    id, title, recurrence_type, recurrence_interval,
+                    total_amount, currency, status,
+                    next_run_at, recurrence_end_date,
+                    created_at
+                `)
+                .eq('client_id', profile.client_id)
+                .not('recurrence_type', 'is', null)
+                .neq('recurrence_type', 'none')
+                .in('status', ['accepted', 'active', 'paused'])
+                .is('deleted_at', null)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            // Transform to ContractedService format
+            const contractedServices: ContractedService[] = (data || []).map((quote: any) => ({
+                id: quote.id,
+                name: quote.title || 'Servicio sin título',
+                description: this.getRecurrenceDescription(quote.recurrence_type, quote.recurrence_interval),
+                price: quote.total_amount || 0,
+                isRecurring: true,
+                billingPeriod: this.getBillingPeriodLabel(quote.recurrence_type, quote.recurrence_interval),
+                canCancel: quote.status === 'accepted' || quote.status === 'active',
+                startDate: quote.created_at,
+                endDate: quote.recurrence_end_date || undefined
+            }));
+
+            this.services.set(contractedServices);
         } catch (error) {
             console.error('Error loading services:', error);
+            this.services.set([]);
         } finally {
             this.loading.set(false);
         }
     }
 
-    cancelSubscription(service: ContractedService): void {
-        // TODO: Implement subscription cancellation
-        console.log('Cancel subscription:', service);
+    private getRecurrenceDescription(type: string, interval: number): string {
+        const intervalText = interval > 1 ? ` cada ${interval}` : '';
+        switch (type) {
+            case 'weekly': return `Facturación semanal${intervalText}`;
+            case 'monthly': return `Facturación mensual${intervalText}`;
+            case 'quarterly': return `Facturación trimestral${intervalText}`;
+            case 'yearly': return `Facturación anual${intervalText}`;
+            default: return 'Servicio recurrente';
+        }
+    }
+
+    private getBillingPeriodLabel(type: string, interval: number): string {
+        if (interval > 1) {
+            switch (type) {
+                case 'weekly': return `${interval} semanas`;
+                case 'monthly': return `${interval} meses`;
+                case 'quarterly': return `${interval} trimestres`;
+                case 'yearly': return `${interval} años`;
+                default: return 'periodo';
+            }
+        }
+        switch (type) {
+            case 'weekly': return 'semana';
+            case 'monthly': return 'mes';
+            case 'quarterly': return 'trimestre';
+            case 'yearly': return 'año';
+            default: return 'periodo';
+        }
+    }
+
+    async cancelSubscription(service: ContractedService): Promise<void> {
+        if (!confirm(`¿Estás seguro de que deseas cancelar el servicio "${service.name}"?`)) {
+            return;
+        }
+
+        try {
+            const { createClient } = await import('@supabase/supabase-js');
+            const supabaseUrl = 'https://ufutyjbqfjrlzkprvyvs.supabase.co';
+            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmdXR5amJxZmpybHprcHJ2eXZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjU4NzM2ODIsImV4cCI6MjA0MTQ0OTY4Mn0.o8Pm2wCgSiRlstXP82tjBrIHQOCvQZYtKs6qd6yZb-o';
+            const supabase = createClient(supabaseUrl, supabaseKey);
+
+            // Pause the recurrence by updating status
+            const { error } = await supabase
+                .from('quotes')
+                .update({ status: 'paused' })
+                .eq('id', service.id);
+
+            if (error) throw error;
+
+            alert('Servicio cancelado correctamente. No se generarán más facturas.');
+            await this.loadServices(); // Reload list
+        } catch (error) {
+            console.error('Error canceling subscription:', error);
+            alert('Error al cancelar el servicio. Por favor, contacta con soporte.');
+        }
     }
 }
 

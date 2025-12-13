@@ -136,13 +136,30 @@ serve(async (req) => {
     console.log(`✅ Authenticated user: ${user.id}`);
 
     // Obtener id y company_id del usuario
-    // Nota: La tabla 'users' usa 'auth_user_id' para relacionarse con auth.users
-    // Necesitamos el 'id' de users (no auth_user_id) para hidden_by FK
-    const { data: userData, error: companyError } = await supabaseAdmin
+    // Nota: Las tablas 'users' y 'clients' usan 'auth_user_id' para relacionarse con auth.users
+    // Necesitamos el 'id' de users/clients (no auth_user_id) para hidden_by FK
+    let userData = null;
+    let companyError = null;
+    
+    // Try users table first
+    const { data: udata, error: uerr } = await supabaseAdmin
       .from("users")
       .select("id, company_id")
       .eq("auth_user_id", user.id)
-      .single();
+      .maybeSingle();
+    
+    if (udata?.company_id) {
+      userData = udata;
+    } else {
+      // Fallback: try clients table for portal clients
+      const { data: cdata, error: cerr } = await supabaseAdmin
+        .from("clients")
+        .select("id, company_id")
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+      userData = cdata;
+      companyError = cerr;
+    }
 
     if (companyError || !userData?.company_id) {
       console.error("❌ User has no company:", companyError?.message);
