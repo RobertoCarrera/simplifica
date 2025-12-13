@@ -48,7 +48,7 @@ serve(async (req) => {
     const email = (user.email || '').trim();
 
     // Parse request body
-    const { id: quoteId, action } = await req.json();
+    const { id: quoteId, action, rejection_reason } = await req.json();
     
     if (!quoteId || !action || !['accept', 'reject'].includes(action)) {
       return new Response(JSON.stringify({ error: 'Invalid parameters. Provide id and action (accept/reject)' }), {
@@ -57,14 +57,46 @@ serve(async (req) => {
       });
     }
 
+    if (action === 'reject' && !rejection_reason) {
+      return new Response(JSON.stringify({ error: 'Rejection reason is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+      });
+    }
+
     console.log(`📝 User ${user.email} attempting to ${action} quote ${quoteId}`);
 
     // Align with client-quotes: resolve app user and client mapping
-    const { data: appUser, error: uErr } = await supabaseUser
+    // Use admin client to bypass RLS and ensure we find the user by auth_user_id
+    let appUser: any = null;
+    
+    const { data: userData } = await supabaseAdmin
       .from('users')
       .select('id, email, role, company_id')
-      .single();
-    if (uErr || !appUser) {
+      .eq('auth_user_id', user.id)
+      .maybeSingle();
+
+    if (userData && userData.role === 'client') {
+      appUser = userData;
+    } else {
+       // Fallback to clients table
+       const { data: clientData } = await supabaseAdmin
+        .from('clients')
+        .select('id, email, company_id, is_active')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+        
+       if (clientData && clientData.is_active) {
+         appUser = {
+           id: clientData.id,
+           email: clientData.email,
+           role: 'client',
+           company_id: clientData.company_id
+         };
+       }
+    }
+
+    if (!appUser) {
       return new Response(JSON.stringify({ error: 'User profile not found' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
@@ -77,31 +109,43 @@ serve(async (req) => {
       });
     }
 
-    const company_id = (appUser as any).company_id as string;
     const userEmailLower = ((appUser as any).email || '').toLowerCase();
 
-    // Resolve client_id via mapping first (company + email), then fallback to clients.email
+    // IMPORTANT: Match the SQL portal functions.
+    // Derive company_id + client_id primarily from client_portal_users by JWT email,
+    // not from users.company_id (which may be unset/mismatched for client accounts).
+    let company_id: string | null = null;
     let client_id: string | null = null;
     {
       const { data: mapRow } = await supabaseAdmin
         .from('client_portal_users')
-        .select('client_id')
-        .eq('company_id', company_id)
-        .eq('email', userEmailLower)
+        .select('company_id, client_id')
+        .ilike('email', userEmailLower)
         .eq('is_active', true)
         .maybeSingle();
-      if (mapRow && (mapRow as any).client_id) client_id = (mapRow as any).client_id as string;
+      if (mapRow) {
+        company_id = (mapRow as any).company_id ?? null;
+        client_id = (mapRow as any).client_id ?? null;
+      }
     }
-    if (!client_id) {
+
+    // Optional fallback for legacy setups: if there's no mapping row but user has company_id set,
+    // try resolving client by email within that company.
+    if ((!company_id || !client_id) && (appUser as any).company_id) {
+      const fallbackCompanyId = String((appUser as any).company_id);
       const { data: c } = await supabaseAdmin
         .from('clients')
         .select('id')
-        .eq('company_id', company_id)
-        .eq('email', userEmailLower)
+        .eq('company_id', fallbackCompanyId)
+        .ilike('email', userEmailLower)
         .maybeSingle();
-      if (c?.id) client_id = c.id as string;
+      if (c?.id) {
+        company_id = fallbackCompanyId;
+        client_id = c.id as string;
+      }
     }
-    if (!client_id) {
+
+    if (!company_id || !client_id) {
       return new Response(JSON.stringify({ error: 'No client mapping found for user' }), {
         status: 403,
         headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
@@ -125,8 +169,8 @@ serve(async (req) => {
     }
     const currentStatus: string | null = (quote as any).status ?? null;
 
-    // Check if quote can be responded to (must be in 'sent' or 'viewed' status)
-    if (!['sent', 'viewed'].includes(currentStatus || '')) {
+    // Check if quote can be responded to (must be in 'sent', 'viewed' or 'pending' status)
+    if (!['sent', 'viewed', 'pending'].includes(currentStatus || '')) {
       return new Response(JSON.stringify({ 
         error: `Quote cannot be ${action}ed in current status: ${currentStatus}` 
       }), {
@@ -139,6 +183,8 @@ serve(async (req) => {
     const newStatus = action === 'accept' ? 'accepted' : 'rejected';
     const updatePayload: any = { status: newStatus };
     if (action === 'accept') updatePayload.accepted_at = new Date().toISOString();
+    if (action === 'reject') updatePayload.rejection_reason = rejection_reason;
+    
     const { data: updatedQuote, error: updateError } = await supabaseAdmin
       .from('quotes')
       .update(updatePayload)

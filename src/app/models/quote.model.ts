@@ -14,10 +14,12 @@
 // =====================================================
 
 export enum QuoteStatus {
-  DRAFT = 'draft',           // Borrador
+  DRAFT = 'draft',           // Borrador (en edición)
+  PENDING = 'pending',        // Generado/Pendiente (listo para cliente, no enviado)
   SENT = 'sent',              // Enviado al cliente
   VIEWED = 'viewed',          // Visto por el cliente
   ACCEPTED = 'accepted',      // Aceptado
+  PAUSED = 'paused',          // Pausado (recurrencia pausada)
   REJECTED = 'rejected',      // Rechazado
   EXPIRED = 'expired',        // Expirado
   INVOICED = 'invoiced',      // Convertido a factura
@@ -26,9 +28,11 @@ export enum QuoteStatus {
 
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
   [QuoteStatus.DRAFT]: 'Borrador',
+  [QuoteStatus.PENDING]: 'Pendiente',
   [QuoteStatus.SENT]: 'Enviado',
   [QuoteStatus.VIEWED]: 'Visto',
   [QuoteStatus.ACCEPTED]: 'Aceptado',
+  [QuoteStatus.PAUSED]: 'Pausado',
   [QuoteStatus.REJECTED]: 'Rechazado',
   [QuoteStatus.EXPIRED]: 'Expirado',
   [QuoteStatus.INVOICED]: 'Facturado',
@@ -37,9 +41,11 @@ export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
 
 export const QUOTE_STATUS_COLORS: Record<QuoteStatus, string> = {
   [QuoteStatus.DRAFT]: 'gray',
+  [QuoteStatus.PENDING]: 'indigo',
   [QuoteStatus.SENT]: 'blue',
   [QuoteStatus.VIEWED]: 'cyan',
   [QuoteStatus.ACCEPTED]: 'green',
+  [QuoteStatus.PAUSED]: 'orange',
   [QuoteStatus.REJECTED]: 'red',
   [QuoteStatus.EXPIRED]: 'orange',
   [QuoteStatus.INVOICED]: 'purple',
@@ -68,6 +74,7 @@ export interface Quote {
   valid_until: string; // ISO date
   accepted_at?: string | null;
   rejected_at?: string | null;
+  rejection_reason?: string | null;
   invoiced_at?: string | null;
 
   // Conversión a factura (reglas y estado)
@@ -459,7 +466,8 @@ export function canConvertToInvoice(quote: Quote): boolean {
   const isRecurring = quote.recurrence_type && quote.recurrence_type !== 'none';
   
   // Si es recurrente, no permitir conversión manual (ya se hace automáticamente)
-  if (isRecurring) return false;
+  // EXCEPCIÓN: Si la política es 'manual' (o no está programada), permitimos forzar la conversión.
+  // if (isRecurring) return false;
   
   return (isAccepted || isRectificative || isNegative) && hasNoInvoice && notScheduled;
 }

@@ -10,46 +10,72 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
 serve(async (req) => {
   try {
-    const { user } = await req.json()
+    const payload = await req.json()
+    const user = payload?.user
+    const incomingClaims = payload?.claims
+
+    // If this hook is mis-invoked or payload is malformed, fail closed but keep 200.
+    // Returning invalid claims will fail auth anyway, but this avoids throwing here.
+    if (!user || !user.id || !incomingClaims) {
+      console.error('[custom-access-token] Missing user/claims in hook payload')
+      return new Response(
+        JSON.stringify({ claims: incomingClaims ?? {} }),
+        { headers: { 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
     
     console.log('[custom-access-token] Processing for user:', user.id)
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('[custom-access-token] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+      return new Response(
+        JSON.stringify({ claims: incomingClaims }),
+        { headers: { 'Content-Type': 'application/json' }, status: 200 }
+      )
+    }
 
     // Crear cliente Supabase con service role key
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Buscar company_id del usuario en la tabla users primero
     let companyId: string | null = null;
-    
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('company_id')
-      .eq('auth_user_id', user.id)
-      .maybeSingle()
 
-    if (userData?.company_id) {
-      companyId = userData.company_id;
-      console.log('[custom-access-token] Found company_id in users:', companyId)
-    } else {
-      // Si no está en users, buscar en clients (portal de clientes)
-      const { data: clientData, error: clientError } = await supabase
-        .from('clients')
+    try {
+      const { data: userData } = await supabase
+        .from('users')
         .select('company_id')
         .eq('auth_user_id', user.id)
         .maybeSingle()
-      
-      if (clientData?.company_id) {
-        companyId = clientData.company_id;
-        console.log('[custom-access-token] Found company_id in clients:', companyId)
+
+      if (userData?.company_id) {
+        companyId = userData.company_id;
+        console.log('[custom-access-token] Found company_id in users:', companyId)
+      } else {
+        // Si no está en users, buscar en clients (portal de clientes)
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('company_id')
+          .eq('auth_user_id', user.id)
+          .maybeSingle()
+
+        if (clientData?.company_id) {
+          companyId = clientData.company_id;
+          console.log('[custom-access-token] Found company_id in clients:', companyId)
+        }
       }
+    } catch (lookupError) {
+      console.error('[custom-access-token] Company lookup failed:', lookupError)
+      // Never break auth if lookup fails; just omit company_id.
+      companyId = null
     }
 
-    // Retornar company_id como custom claim
+    // Retornar claims originales + company_id
     return new Response(
       JSON.stringify({
-        app_metadata: {
+        claims: {
+          ...incomingClaims,
           company_id: companyId
-        },
-        user_metadata: {}
+        }
       }),
       {
         headers: { 'Content-Type': 'application/json' },
@@ -58,11 +84,14 @@ serve(async (req) => {
     )
   } catch (error) {
     console.error('[custom-access-token] Unexpected error:', error)
+    // Auth hooks must always return 200, even on error
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        claims: {} 
+      }),
       {
         headers: { 'Content-Type': 'application/json' },
-        status: 500
+        status: 200
       }
     )
   }

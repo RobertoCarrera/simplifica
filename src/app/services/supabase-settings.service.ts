@@ -17,6 +17,7 @@ export interface AppSettings {
   default_iva_rate?: number | null; // 0, 4, 10, 21
   default_irpf_enabled?: boolean | null;
   default_irpf_rate?: number | null; // e.g., 7, 15
+  default_auto_send_quote_email?: boolean | null;
   updated_at?: string;
 }
 
@@ -34,6 +35,7 @@ export interface CompanySettings {
   iva_rate?: number | null; // 0, 4, 10, 21
   irpf_enabled?: boolean | null;
   irpf_rate?: number | null; // e.g., 7, 15
+  auto_send_quote_email?: boolean | null;
   updated_at?: string;
 }
 
@@ -207,6 +209,28 @@ export class SupabaseSettingsService {
       askBeforeConvert: companySettings?.ask_before_convert ?? appSettings?.ask_before_convert ?? true,
       delayDays: companySettings?.default_invoice_delay_days ?? appSettings?.default_invoice_delay_days ?? null,
       invoiceOnDate: companySettings?.invoice_on_date ?? null
+    };
+  }
+
+  /**
+   * Obtiene la configuración efectiva de presupuestos
+   */
+  async getEffectiveQuoteSettings(companyId?: string): Promise<{
+    autoSendEmail: boolean;
+  }> {
+    const appSettings = await this.executeGetAppSettings();
+    const companySettings = await this.executeGetCompanySettings(companyId);
+
+    const enforceGlobally = appSettings?.enforce_globally ?? false;
+
+    if (enforceGlobally) {
+      return {
+        autoSendEmail: appSettings?.default_auto_send_quote_email ?? false
+      };
+    }
+
+    return {
+      autoSendEmail: companySettings?.auto_send_quote_email ?? appSettings?.default_auto_send_quote_email ?? false
     };
   }
 }

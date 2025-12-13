@@ -115,8 +115,6 @@ export const routes: Routes = [
     // Client portal invoices list and detail
     { path: 'portal/facturas', component: PortalInvoicesComponent, canActivate: [AuthGuard, ClientRoleGuard] },
     { path: 'portal/facturas/:id', component: PortalInvoiceDetailComponent, canActivate: [AuthGuard, ClientRoleGuard] },
-    // Client portal chat (reuses AnychatComponent with client context)
-    { path: 'portal/chat', component: AnychatComponent, canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloChat' } },
     // Client portal contracted services (placeholder - to be implemented)
     { path: 'portal/servicios', loadComponent: () => import('./components/portal-services/portal-services.component').then(m => m.PortalServicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
 

@@ -22,18 +22,36 @@ export class SupabaseModulesService {
 
   get modulesSignal() { return this._modules.asReadonly(); }
 
+  private async requireAccessToken(): Promise<string> {
+    const client = this.supabaseClient.instance;
+
+    // Session restoration can be async on app startup; retry briefly to avoid spurious 401s.
+    let token: string | undefined;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { data: { session } } = await client.auth.getSession();
+      token = session?.access_token;
+      if (token) return token;
+
+      // Try refresh once, then small backoff
+      if (attempt === 0) {
+        try { await client.auth.refreshSession(); } catch { /* ignore */ }
+      }
+      await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+    }
+
+    throw new Error('No hay sesión activa. Vuelve a iniciar sesión.');
+  }
+
   fetchEffectiveModules(): Observable<EffectiveModule[]> {
     return from(this.executeFetchEffectiveModules());
   }
 
   private async executeFetchEffectiveModules(): Promise<EffectiveModule[]> {
-    const client = this.supabaseClient.instance;
-    const { data: { session } } = await client.auth.getSession();
-    const token = session?.access_token;
+    const token = await this.requireAccessToken();
     const res = await fetch(`${this.fnBase}/get-effective-modules`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token ?? ''}`,
+        'Authorization': `Bearer ${token}`,
         'apikey': environment.supabase.anonKey,
       }
     });
@@ -49,13 +67,11 @@ export class SupabaseModulesService {
   }
 
   private async executeAdminSetUserModule(targetUserId: string, moduleKey: string, status: 'activado' | 'desactivado'): Promise<{ success: boolean }>{
-    const client = this.supabaseClient.instance;
-    const { data: { session } } = await client.auth.getSession();
-    const token = session?.access_token;
+    const token = await this.requireAccessToken();
     const res = await fetch(`${this.fnBase}/admin-set-user-module`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token ?? ''}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'apikey': environment.supabase.anonKey,
       },
@@ -72,15 +88,13 @@ export class SupabaseModulesService {
   }
 
   private async executeAdminListUserModules(ownerId?: string): Promise<{ users: any[]; modules: any[]; assignments: any[] }> {
-    const client = this.supabaseClient.instance;
-    const { data: { session } } = await client.auth.getSession();
-    const token = session?.access_token;
+    const token = await this.requireAccessToken();
     const url = new URL(`${this.fnBase}/admin-list-user-modules`);
     if (ownerId) url.searchParams.set('owner_id', ownerId);
     const res = await fetch(url.toString(), {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token ?? ''}`,
+        'Authorization': `Bearer ${token}`,
         'apikey': environment.supabase.anonKey,
       }
     });
@@ -95,15 +109,13 @@ export class SupabaseModulesService {
   }
 
   private async executeAdminListOwners(): Promise<{ owners: any[] }> {
-    const client = this.supabaseClient.instance;
-    const { data: { session } } = await client.auth.getSession();
-    const token = session?.access_token;
+    const token = await this.requireAccessToken();
     const url = new URL(`${this.fnBase}/admin-list-user-modules`);
     url.searchParams.set('owners', '1');
     const res = await fetch(url.toString(), {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token ?? ''}`,
+        'Authorization': `Bearer ${token}`,
         'apikey': environment.supabase.anonKey,
       }
     });

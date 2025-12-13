@@ -1,10 +1,12 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
+import { AuthService } from '../../../services/auth.service';
 import { firstValueFrom } from 'rxjs';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { 
   Quote, 
   QuoteStatus, 
@@ -21,9 +23,10 @@ import { SkeletonComponent } from '../../../components/skeleton/skeleton.compone
   templateUrl: './quote-list.component.html',
   styleUrl: './quote-list.component.scss'
 })
-export class QuoteListComponent implements OnInit {
+export class QuoteListComponent implements OnInit, OnDestroy {
   private quotesService = inject(SupabaseQuotesService);
   private settingsService = inject(SupabaseSettingsService);
+  private authService = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
@@ -44,7 +47,8 @@ export class QuoteListComponent implements OnInit {
   // Filter options
   statusOptions = [
     { value: '', label: 'Todos los estados' },
-    { value: 'draft', label: 'Pendiente' },
+    { value: 'draft', label: 'Borrador' },
+    { value: 'pending', label: 'Pendiente' },
     { value: 'sent', label: 'Enviado' },
     { value: 'accepted', label: 'Aceptado' },
     { value: 'rejected', label: 'Rechazado' }
@@ -68,13 +72,16 @@ export class QuoteListComponent implements OnInit {
   irpfEnabled = signal<boolean>(false);
   irpfRate = signal<number>(15);
 
+  subscription: RealtimeChannel | null = null;
+
   ngOnInit() {
     // Check for query params (status filter from home)
     this.route.queryParams.subscribe(params => {
       if (params['status']) {
         // Map Spanish status names to internal status values
         const statusMap: { [key: string]: string } = {
-          'pendiente': 'draft',
+          'borrador': 'draft',
+          'pendiente': 'pending',
           'enviado': 'sent',
           'aceptado': 'accepted',
           'rechazado': 'rejected'
@@ -83,7 +90,18 @@ export class QuoteListComponent implements OnInit {
       }
     });
 
-    this.loadTaxSettings().finally(() => this.loadQuotes());
+    this.loadTaxSettings().finally(() => {
+      this.loadQuotes();
+      // Setup realtime after quotes are loaded
+      this.setupRealtimeSubscription();
+    });
+  }
+
+  ngOnDestroy() {
+    // Subscription cleanup is handled by effect, but good practice to ensure
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+    }
   }
 
   private async loadTaxSettings(): Promise<void> {
@@ -376,6 +394,45 @@ export class QuoteListComponent implements OnInit {
     };
     
     return typeMap[recurrenceType] || 'P';
+  }
+
+  setupRealtimeSubscription() {
+    if (this.subscription) return;
+
+    this.subscription = this.quotesService.subscribeToQuoteChanges((payload) => {
+      if (payload.eventType === 'UPDATE') {
+        this.handleQuoteUpdate(payload.new);
+      } else if (payload.eventType === 'INSERT') {
+        this.handleQuoteInsert(payload.new);
+      } else if (payload.eventType === 'DELETE') {
+        this.handleQuoteDelete(payload.old.id);
+      }
+    });
+  }
+
+  handleQuoteUpdate(updatedQuote: any) {
+    this.quotes.update(quotes => 
+      quotes.map(q => {
+        if (q.id === updatedQuote.id) {
+          // Preserve joined fields (like client) that are not in the payload
+          return { ...q, ...updatedQuote };
+        }
+        return q;
+      })
+    );
+    this.applyFilters();
+  }
+
+  handleQuoteInsert(newQuote: any) {
+    // For inserts, we might miss joined data (client name), so we could fetch it
+    // But for now, we just add it to the list
+    this.quotes.update(quotes => [newQuote, ...quotes]);
+    this.applyFilters();
+  }
+
+  handleQuoteDelete(quoteId: string) {
+    this.quotes.update(quotes => quotes.filter(q => q.id !== quoteId));
+    this.applyFilters();
   }
 }
 

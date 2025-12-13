@@ -101,8 +101,8 @@ export class PortalServicesComponent implements OnInit {
                 .eq('client_id', profile.client_id)
                 .not('recurrence_type', 'is', null)
                 .neq('recurrence_type', 'none')
-                .in('status', ['accepted', 'active', 'paused'])
-                .is('deleted_at', null)
+              // quote_status enum does not include 'active' (it uses 'accepted' + 'paused' for recurring lifecycle)
+              .in('status', ['accepted', 'paused'])
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -115,7 +115,7 @@ export class PortalServicesComponent implements OnInit {
                 price: quote.total_amount || 0,
                 isRecurring: true,
                 billingPeriod: this.getBillingPeriodLabel(quote.recurrence_type, quote.recurrence_interval),
-                canCancel: quote.status === 'accepted' || quote.status === 'active',
+              canCancel: quote.status === 'accepted',
                 startDate: quote.created_at,
                 endDate: quote.recurrence_end_date || undefined
             }));
@@ -165,10 +165,8 @@ export class PortalServicesComponent implements OnInit {
         }
 
         try {
-            const { createClient } = await import('@supabase/supabase-js');
-            const supabaseUrl = 'https://ufutyjbqfjrlzkprvyvs.supabase.co';
-            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmdXR5amJxZmpybHprcHJ2eXZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjU4NzM2ODIsImV4cCI6MjA0MTQ0OTY4Mn0.o8Pm2wCgSiRlstXP82tjBrIHQOCvQZYtKs6qd6yZb-o';
-            const supabase = createClient(supabaseUrl, supabaseKey);
+          // Use the authenticated singleton client so RLS + user context apply
+          const supabase = this.supabaseClient.instance;
 
             // Pause the recurrence by updating status
             const { error } = await supabase

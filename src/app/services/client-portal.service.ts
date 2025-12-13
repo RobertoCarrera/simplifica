@@ -1,6 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
+import { RealtimeChannel } from '@supabase/supabase-js';
+import { firstValueFrom } from 'rxjs';
 
 export interface ClientPortalTicket {
   id: string;
@@ -48,6 +50,45 @@ export class ClientPortalService {
   // Computed properties for service
   private get supabase() { return this.sb.instance; }
 
+  private async requireAccessToken(): Promise<string> {
+    // Mirror the robustness in SupabaseModulesService: sessions can take a moment to hydrate.
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (session?.access_token) return session.access_token;
+      try { await this.supabase.auth.refreshSession(); } catch { /* ignore */ }
+      await new Promise(r => setTimeout(r, 150 * attempt));
+    }
+    throw new Error('No hay una sesión válida. Inicia sesión de nuevo.');
+  }
+
+  async subscribeToClientQuotes(callback: (payload: any) => void): Promise<RealtimeChannel | null> {
+    const user = await firstValueFrom(this.auth.userProfile$);
+    if (!user?.client_id) return null;
+
+    const channelName = `client-quotes-${user.client_id}-${Date.now()}`;
+    
+    const channel = this.supabase.channel(channelName, {
+      config: {
+        broadcast: { self: true },
+        presence: { key: '' }
+      }
+    });
+
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*', // Listen to INSERT and UPDATE
+        schema: 'public',
+        table: 'quotes',
+        filter: `client_id=eq.${user.client_id}`
+      },
+      (payload) => callback(payload)
+    );
+
+    channel.subscribe();
+    return channel;
+  }
+
   async listTickets(): Promise<{ data: ClientPortalTicket[]; error?: any }> {
     const client = this.sb.instance;
     const { data, error } = await client
@@ -59,17 +100,21 @@ export class ClientPortalService {
 
   async listQuotes(): Promise<{ data: ClientPortalQuote[]; error?: any }> {
     try {
-      // Prefer secure edge function to enforce mapping and privacy
-      const { data, error } = await this.supabase.functions.invoke('client-quotes', { body: undefined });
-      if (error) {
-        // Fallback to view if available
-        const { data: viewData, error: viewErr } = await this.supabase
-          .from('client_visible_quotes')
-          .select('*')
-          .order('quote_date', { ascending: false });
-        return { data: (viewData || []) as any, error: viewErr };
-      }
-      return { data: (data?.data || []) as any, error: null };
+      // Prefer edge function (does not rely on email claim presence in JWT).
+      const token = await this.requireAccessToken();
+      const { data, error } = await this.supabase.functions.invoke('client-quotes', {
+        body: undefined,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!error) return { data: (data?.data || []) as any, error: null };
+
+      // Fallback to view if available
+      const { data: viewData, error: viewErr } = await this.supabase
+        .from('client_visible_quotes')
+        .select('*')
+        .order('quote_date', { ascending: false });
+
+      return { data: (viewData || []) as any, error: viewErr || error };
     } catch (e: any) {
       // Final fallback: empty list with error message
       return { data: [], error: { message: e?.message || 'listQuotes failed' } };
@@ -78,7 +123,11 @@ export class ClientPortalService {
 
   async listInvoices(): Promise<{ data: ClientPortalInvoice[]; error?: any }> {
     try {
-      const { data, error } = await this.supabase.functions.invoke('client-invoices', { body: undefined });
+      const token = await this.requireAccessToken();
+      const { data, error } = await this.supabase.functions.invoke('client-invoices', {
+        body: undefined,
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (error) return { data: [], error };
       return { data: (data?.data || []) as any, error: null };
     } catch (e: any) {
@@ -88,7 +137,11 @@ export class ClientPortalService {
 
   async getInvoice(id: string): Promise<{ data: any | null; error?: any }> {
     try {
-      const { data, error } = await this.supabase.functions.invoke('client-invoices', { body: { id } });
+      const token = await this.requireAccessToken();
+      const { data, error } = await this.supabase.functions.invoke('client-invoices', {
+        body: { id },
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (error) return { data: null, error };
       return { data: data?.data || null };
     } catch (e: any) {
@@ -98,7 +151,11 @@ export class ClientPortalService {
 
   async getQuote(id: string): Promise<{ data: any | null; error?: any }> {
     try {
-      const { data, error } = await this.supabase.functions.invoke('client-quotes', { body: { id } });
+      const token = await this.requireAccessToken();
+      const { data, error } = await this.supabase.functions.invoke('client-quotes', {
+        body: { id },
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (error) return { data: null, error };
       return { data: data?.data || null };
     } catch (e: any) {
@@ -112,12 +169,15 @@ export class ClientPortalService {
     }
   }
 
-  async respondToQuote(id: string, action: 'accept' | 'reject'): Promise<{ data: any | null; error?: any }> {
+  async respondToQuote(id: string, action: 'accept' | 'reject', rejectionReason?: string): Promise<{ data: any | null; error?: any }> {
     try {
       console.log(`📝 Calling client-quote-respond Edge Function for quote ${id} with action ${action}...`);
+
+      const token = await this.requireAccessToken();
       
       const { data, error } = await this.supabase.functions.invoke('client-quote-respond', {
-        body: { id, action }
+        body: { id, action, rejection_reason: rejectionReason },
+        headers: { Authorization: `Bearer ${token}` }
       });
       
       if (error) {

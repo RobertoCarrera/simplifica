@@ -181,7 +181,6 @@ export class ResponsiveSidebarComponent implements OnInit {
         { id: 2002, label: 'Presupuestos', icon: 'file-text', route: '/portal/presupuestos', module: 'production', moduleKey: 'moduloPresupuestos' },
         { id: 2003, label: 'Facturas', icon: 'receipt', route: '/portal/facturas', module: 'production', moduleKey: 'moduloFacturas' },
         { id: 2004, label: 'Servicios', icon: 'wrench', route: '/portal/servicios', module: 'production', moduleKey: 'moduloServicios' },
-        { id: 2005, label: 'Chat', icon: 'message-circle', route: '/portal/chat', module: 'production', moduleKey: 'moduloChat' },
         { id: 2006, label: 'Configuración', icon: 'settings', route: '/configuracion', module: 'core' }
       ];
 

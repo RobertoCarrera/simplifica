@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, from, map, switchMap, firstValueFrom } from 'rxjs';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
 import { SupabaseSettingsService } from './supabase-settings.service';
@@ -158,6 +159,39 @@ export class SupabaseQuotesService {
 
 
   /**
+   * Suscribirse a cambios en tiempo real para un presupuesto específico
+   */
+  subscribeToQuoteDetailChanges(quoteId: string, callback: (payload: any) => void): RealtimeChannel | null {
+    const companyId = this.authService.companyId();
+    if (!companyId) return null;
+
+    const channelName = `quote-detail-${quoteId}-${Date.now()}`;
+    const client = this.supabaseClient.instance;
+
+    const channel = client.channel(channelName, {
+      config: {
+        broadcast: { self: true },
+        presence: { key: '' }
+      }
+    });
+
+    channel.on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'quotes',
+        filter: `id=eq.${quoteId}`
+      },
+      (payload) => callback(payload)
+    );
+
+    channel.subscribe();
+
+    return channel;
+  }
+
+  /**
    * Crear un nuevo presupuesto
    */
   createQuote(dto: CreateQuoteDTO): Observable<Quote> {
@@ -274,6 +308,21 @@ export class SupabaseQuotesService {
         .insert(itemsToInsert);
 
       if (itemsError) throw itemsError;
+    }
+
+    // Check for auto-send setting
+    try {
+      const settings = await this.settingsService.getEffectiveQuoteSettings(companyId);
+      if (settings.autoSendEmail) {
+        console.log('📧 Auto-sending quote email...');
+        // Finalize quote (sends email and updates status)
+        // We don't await the email sending to avoid blocking the UI too long, 
+        // or we DO await it to ensure the user sees the correct status?
+        // Let's await it to be safe and return the updated quote.
+        return this.executeFinalizeQuote(quote.id);
+      }
+    } catch (err) {
+      console.error('❌ Error checking auto-send settings:', err);
     }
 
     // Obtener presupuesto completo con items
@@ -447,6 +496,42 @@ export class SupabaseQuotesService {
    */
   sendQuote(id: string): Observable<Quote> {
     return this.updateQuote(id, { status: QuoteStatus.SENT });
+  }
+
+  /**
+   * Finalizar presupuesto (Generar)
+   * Aplica la configuración de auto-envío:
+   * - Si auto-envío ON: Envía email y marca como SENT
+   * - Si auto-envío OFF: Marca como PENDING (listo para cliente)
+   */
+  finalizeQuote(id: string, emailTo?: string): Observable<Quote> {
+    return from(this.executeFinalizeQuote(id, emailTo));
+  }
+
+  private async executeFinalizeQuote(id: string, emailTo?: string): Promise<Quote> {
+    const companyId = this.authService.companyId();
+    const settings = await this.settingsService.getEffectiveQuoteSettings(companyId);
+
+    if (settings.autoSendEmail) {
+      // Si no hay email destinatario, intentar obtenerlo del cliente
+      let to = emailTo;
+      if (!to) {
+        const quote = await this.executeGetQuote(id);
+        to = quote.client?.email;
+      }
+      
+      if (to) {
+        await firstValueFrom(this.sendQuoteEmail(id, to));
+        return this.executeUpdateQuote(id, { status: QuoteStatus.SENT });
+      } else {
+        // Si no hay email, no se puede enviar, dejar en PENDING o lanzar error?
+        // Mejor dejar en PENDING y avisar
+        console.warn('No se pudo enviar email automático: falta destinatario');
+        return this.executeUpdateQuote(id, { status: QuoteStatus.PENDING });
+      }
+    } else {
+      return this.executeUpdateQuote(id, { status: QuoteStatus.PENDING });
+    }
   }
 
   /**
@@ -846,5 +931,39 @@ export class SupabaseQuotesService {
       average_amount: Math.round(averageAmount * 100) / 100,
       conversion_rate: Math.round(conversionRate * 100) / 100
     };
+  }
+
+  /**
+   * Suscribirse a cambios en tiempo real de la tabla quotes.
+   * Ver SUPABASE_REALTIME_GUIDE.md para documentación completa.
+   */
+  subscribeToQuoteChanges(callback: (payload: any) => void): RealtimeChannel | null {
+    const companyId = this.authService.companyId();
+    if (!companyId) return null;
+
+    const channelName = `quotes-realtime-${companyId}-${Date.now()}`;
+    const client = this.supabaseClient.instance;
+    
+    const channel = client.channel(channelName, {
+      config: {
+        broadcast: { self: true },
+        presence: { key: '' }
+      }
+    });
+
+    channel.on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'quotes',
+        filter: `company_id=eq.${companyId}`
+      },
+      (payload) => callback(payload)
+    );
+    
+    channel.subscribe();
+      
+    return channel;
   }
 }

@@ -1,10 +1,11 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { ToastService } from '../../../services/toast.service';
 import { firstValueFrom } from 'rxjs';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { 
   Quote, 
   QuoteItem,
@@ -22,7 +23,7 @@ import {
   templateUrl: './quote-detail.component.html',
   styleUrl: './quote-detail.component.scss'
 })
-export class QuoteDetailComponent implements OnInit {
+export class QuoteDetailComponent implements OnInit, OnDestroy {
   private quotesService = inject(SupabaseQuotesService);
   private settingsService = inject(SupabaseSettingsService);
   private router = inject(Router);
@@ -37,6 +38,8 @@ export class QuoteDetailComponent implements OnInit {
   mobileMenuOpen = signal(false);
   historyExpanded = signal(false);
   
+  subscription: RealtimeChannel | null = null;
+
   // Conversion policy from settings
   conversionPolicy = signal<'manual' | 'automatic' | 'scheduled'>('manual');
   askBeforeConvert = signal<boolean>(true);
@@ -61,6 +64,12 @@ export class QuoteDetailComponent implements OnInit {
         }
       });
     });
+  }
+
+  ngOnDestroy() {
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+    }
   }
 
   private async loadTaxSettings(): Promise<void> {
@@ -92,10 +101,28 @@ export class QuoteDetailComponent implements OnInit {
 
   loadQuote(id: string) {
     this.loading.set(true);
+    
+    // Clean up previous subscription if exists
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+      this.subscription = null;
+    }
+
     this.quotesService.getQuote(id).subscribe({
       next: (quote) => {
         this.quote.set(quote);
         this.loading.set(false);
+
+        // Setup Realtime subscription
+        this.subscription = this.quotesService.subscribeToQuoteDetailChanges(id, (payload) => {
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            // Update local state preserving joined data
+            this.quote.update(current => {
+              if (!current) return null;
+              return { ...current, ...payload.new };
+            });
+          }
+        });
       },
       error: (err) => {
         this.error.set('Error al cargar presupuesto: ' + err.message);
@@ -111,11 +138,18 @@ export class QuoteDetailComponent implements OnInit {
     }
   }
 
-  sendQuote() {
+  finalizeQuote() {
     const q = this.quote();
     if (q && q.status === QuoteStatus.DRAFT) {
-      this.quotesService.sendQuote(q.id).subscribe({
-        next: () => this.loadQuote(q.id),
+      this.quotesService.finalizeQuote(q.id).subscribe({
+        next: (updated) => {
+          this.loadQuote(q.id);
+          if (updated.status === QuoteStatus.SENT) {
+            this.toastService.success('Enviado', 'Presupuesto finalizado y enviado por email');
+          } else {
+            this.toastService.success('Finalizado', 'Presupuesto listo para el cliente (Pendiente)');
+          }
+        },
         error: (err) => this.error.set('Error: ' + err.message)
       });
     }

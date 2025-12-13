@@ -1,7 +1,8 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { ClientPortalService, ClientPortalQuote } from '../../services/client-portal.service';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 @Component({
   selector: 'app-portal-quotes',
@@ -57,7 +58,7 @@ import { ClientPortalService, ClientPortalQuote } from '../../services/client-po
     </div>
   `,
 })
-export class PortalQuotesComponent implements OnInit {
+export class PortalQuotesComponent implements OnInit, OnDestroy {
   private svc = inject(ClientPortalService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -65,6 +66,7 @@ export class PortalQuotesComponent implements OnInit {
   quotes = signal<ClientPortalQuote[]>([]);
   loading = signal<boolean>(true);
   error = signal<string | null>(null);
+  subscription: RealtimeChannel | null = null;
 
   async ngOnInit() {
     this.loading.set(true);
@@ -75,21 +77,42 @@ export class PortalQuotesComponent implements OnInit {
       this.quotes.set(data);
     }
     this.loading.set(false);
+    
     // Handle optional ?open=<id> to navigate directly
     const openId = this.route.snapshot.queryParamMap.get('open');
     if (openId && (this.quotes() || []).some(q => q.id === openId)) {
       // Navigate to detail route without reloading
       this.router.navigate(['/portal/presupuestos', openId]);
     }
+
+    // Setup Realtime
+    this.subscription = await this.svc.subscribeToClientQuotes((payload) => {
+      if (payload.eventType === 'INSERT') {
+        // Add new quote to the list
+        // Ensure it matches ClientPortalQuote interface
+        const newQuote = payload.new as ClientPortalQuote;
+        this.quotes.update(list => [newQuote, ...list]);
+      } else if (payload.eventType === 'UPDATE') {
+        // Update existing quote
+        this.quotes.update(list => list.map(q => q.id === payload.new.id ? { ...q, ...payload.new } : q));
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+    }
   }
 
   displayQuoteNumber(q: ClientPortalQuote): string {
-    return (q.full_quote_number || '').replace('-Q-', '-P-');
+    return q.full_quote_number || '';
   }
 
   statusLabel(status: string): string {
     const labels: Record<string, string> = {
       draft: 'Borrador',
+      pending: 'Pendiente',
       sent: 'Enviado',
       viewed: 'Visto',
       accepted: 'Aceptado',
@@ -105,6 +128,7 @@ export class PortalQuotesComponent implements OnInit {
     const base = 'text-xs';
     const map: Record<string, string> = {
       draft: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
       sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
       viewed: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
       accepted: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',

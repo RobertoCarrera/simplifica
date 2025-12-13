@@ -98,6 +98,11 @@ export class SupabaseClientService {
           persistSession: true,
           autoRefreshToken: true
         },
+        realtime: {
+          params: {
+            eventsPerSecond: 10
+          }
+        },
         // Lightweight fetch wrapper to verify auth headers are attached (no secrets logged)
         global: {
           fetch: (input: RequestInfo | URL, init?: RequestInit) => {

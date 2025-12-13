@@ -42,6 +42,7 @@ export class QuotesSettingsComponent implements OnInit {
       default_convert_policy: ['manual', [Validators.required]],
       enforce_globally: [false],
       default_invoice_delay_days: [null],
+      default_auto_send_quote_email: [false], // New setting
       // Global tax defaults
       default_prices_include_tax: [false],
       default_iva_enabled: [true],
@@ -55,6 +56,7 @@ export class QuotesSettingsComponent implements OnInit {
       convert_policy: [null],
       enforce_company_defaults: [false],
       default_invoice_delay_days: [null],
+      auto_send_quote_email: [null], // New setting
       invoice_on_date: [null],
       deposit_percentage: [null, [Validators.min(0), Validators.max(100)]],
       // Company tax overrides
@@ -83,6 +85,7 @@ export class QuotesSettingsComponent implements OnInit {
           default_convert_policy: appSettings.default_convert_policy || 'manual',
           enforce_globally: appSettings.enforce_globally ?? false,
           default_invoice_delay_days: appSettings.default_invoice_delay_days ?? null,
+          default_auto_send_quote_email: appSettings.default_auto_send_quote_email ?? false,
           default_prices_include_tax: appSettings.default_prices_include_tax ?? false,
           default_iva_enabled: appSettings.default_iva_enabled ?? true,
           default_iva_rate: appSettings.default_iva_rate ?? 21,
@@ -96,6 +99,7 @@ export class QuotesSettingsComponent implements OnInit {
           convert_policy: companySettings.convert_policy ?? null,
           enforce_company_defaults: companySettings.enforce_company_defaults ?? false,
           default_invoice_delay_days: companySettings.default_invoice_delay_days ?? null,
+          auto_send_quote_email: companySettings.auto_send_quote_email ?? null,
           invoice_on_date: companySettings.invoice_on_date ?? null,
           deposit_percentage: companySettings.deposit_percentage ?? null,
           prices_include_tax: companySettings.prices_include_tax ?? null,

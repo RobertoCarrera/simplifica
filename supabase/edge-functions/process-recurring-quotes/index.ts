@@ -372,8 +372,7 @@ serve(async (req) => {
       .not('recurrence_type', 'is', null)
       .neq('recurrence_type', 'none')
       .not('next_run_at', 'is', null)
-      .lte('next_run_at', now)
-      .is('deleted_at', null);
+      .lte('next_run_at', now);
 
     if (qErr) {
       console.error("[process-recurring] Error fetching quotes:", qErr);

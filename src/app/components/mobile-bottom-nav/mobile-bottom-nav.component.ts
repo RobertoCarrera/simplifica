@@ -163,11 +163,10 @@ export class MobileBottomNavComponent implements OnInit {
     { id: 'more', label: 'Más', icon: 'ellipsis-h', action: 'more', module: 'core' }
   ];
 
-  // Client portal users bottom nav (simplified): Inicio | Tickets | Chat | Más
+  // Client portal users bottom nav (simplified): Inicio | Tickets | Más
   private clientItemsBase: NavItem[] = [
     { id: 'inicio', label: 'Inicio', icon: 'home', route: '/inicio', module: 'core' },
     { id: 'tickets', label: 'Tickets', icon: 'ticket-alt', route: '/tickets', module: 'production' },
-    { id: 'chat', label: 'Chat', icon: 'comments', route: '/portal/chat', module: 'production' },
     { id: 'more', label: 'Más', icon: 'ellipsis-h', action: 'more', module: 'core' }
   ];
 
@@ -343,7 +342,6 @@ export class MobileBottomNavComponent implements OnInit {
       case '/portal/facturas':
         return 'moduloFacturas';
       case '/chat':
-      case '/portal/chat':
         return 'moduloChat';
       default:
         return null;

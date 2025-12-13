@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ClientPortalService } from '../../services/client-portal.service';
 import { SupabaseQuotesService } from '../../services/supabase-quotes.service';
@@ -8,7 +9,7 @@ import { ToastService } from '../../services/toast.service';
 @Component({
   selector: 'app-portal-quote-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   template: `
     <div class="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 sm:p-6 lg:p-8">
       <div class="max-w-5xl mx-auto">
@@ -60,6 +61,9 @@ import { ToastService } from '../../services/toast.service';
                       [ngClass]="statusClass(quote()?.status)">
                   {{ statusLabel(quote()?.status) }}
                 </span>
+              </div>
+              <div *ngIf="quote()?.status === 'rejected' && quote()?.rejection_reason" class="mt-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-100 dark:border-red-800/30">
+                <strong>Motivo:</strong> {{ quote()?.rejection_reason }}
               </div>
             </div>
             
@@ -158,7 +162,7 @@ import { ToastService } from '../../services/toast.service';
               </div>
 
               <!-- Already responded message -->
-              <div *ngIf="!canRespond() && quote()?.status !== 'draft'" 
+              <div *ngIf="!canRespond() && quote()?.status !== 'draft' && quote()?.effective_convert_policy !== 'manual'" 
                    class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                 <span class="text-sm text-gray-600 dark:text-gray-400">
                   Ya has respondido a este presupuesto
@@ -172,21 +176,30 @@ import { ToastService } from '../../services/toast.service';
 
     <!-- Confirmation Modal -->
     <div *ngIf="showConfirmModal()" 
-         class="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center p-4 z-50 animate-fadeIn"
-         (click)="cancelConfirm()">
+         class="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center p-4 z-[9999] animate-fadeIn">
       <div class="bg-white dark:bg-gray-900 rounded-lg shadow-2xl max-w-md w-full p-6 animate-scaleIn"
            (click)="$event.stopPropagation()">
         <h3 class="text-xl font-bold text-gray-900 dark:text-gray-100 mb-3">
           {{ confirmAction() === 'accept' ? '¿Aceptar presupuesto?' : '¿Rechazar presupuesto?' }}
         </h3>
         <p class="text-gray-600 dark:text-gray-400 mb-6">
-          <span *ngIf="confirmAction() === 'accept'">
+          <ng-container *ngIf="confirmAction() === 'accept'">
             Al aceptar este presupuesto, confirmas que estás de acuerdo con los términos y el importe total de 
             <strong class="text-gray-900 dark:text-gray-100">{{ quote()?.total_amount | number:'1.2-2' }} €</strong>.
-          </span>
-          <span *ngIf="confirmAction() === 'reject'">
-            ¿Estás seguro de que deseas rechazar este presupuesto? Esta acción notificará a la empresa.
-          </span>
+          </ng-container>
+          
+          <ng-container *ngIf="confirmAction() === 'reject'">
+            <div class="mt-2">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Motivo del rechazo <span class="text-red-500">*</span>
+              </label>
+              <textarea 
+                [(ngModel)]="rejectionReason" 
+                rows="3"
+                class="w-full rounded-md border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 border"
+                placeholder="Por favor, indícanos el motivo..."></textarea>
+            </div>
+          </ng-container>
         </p>
         <div class="flex gap-3 justify-end">
           <button 
@@ -198,11 +211,11 @@ import { ToastService } from '../../services/toast.service';
           </button>
           <button 
             (click)="confirmResponse()"
-            [disabled]="processing()"
-            class="px-4 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-50"
+            [disabled]="processing() || (confirmAction() === 'reject' && !rejectionReason.trim())"
+            class="px-4 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed text-white"
             [ngClass]="confirmAction() === 'accept' 
-              ? 'bg-blue-600 dark:bg-blue-500 text-white hover:bg-blue-700 dark:hover:bg-blue-600' 
-              : 'bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600'">
+              ? 'bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600' 
+              : 'bg-red-600 dark:bg-red-500 hover:bg-red-700 dark:hover:bg-red-600'">
             {{ confirmAction() === 'accept' ? 'Sí, aceptar' : 'Sí, rechazar' }}
           </button>
         </div>
@@ -224,6 +237,7 @@ import { ToastService } from '../../services/toast.service';
 })
 export class PortalQuoteDetailComponent implements OnInit {
   private svc = inject(ClientPortalService);
+  rejectionReason: string = '';
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private toast = inject(ToastService);
@@ -249,8 +263,7 @@ export class PortalQuoteDetailComponent implements OnInit {
   }
 
   displayQuoteNumber(): string {
-    const num = this.quote()?.full_quote_number || '';
-    return num.replace('-Q-', '-P-');
+    return this.quote()?.full_quote_number || '';
   }
 
   downloadPdf() {
@@ -265,16 +278,18 @@ export class PortalQuoteDetailComponent implements OnInit {
   }
 
   canRespond(): boolean {
-    const status = this.quote()?.status;
-    return status === 'sent' || status === 'viewed';
+    const s = this.quote()?.status;
+    return ['sent', 'viewed', 'pending'].includes(s || '');
   }
 
   onAccept() {
+    this.rejectionReason = '';
     this.confirmAction.set('accept');
     this.showConfirmModal.set(true);
   }
 
   onReject() {
+    this.rejectionReason = '';
     this.confirmAction.set('reject');
     this.showConfirmModal.set(true);
   }
@@ -282,11 +297,17 @@ export class PortalQuoteDetailComponent implements OnInit {
   cancelConfirm() {
     this.showConfirmModal.set(false);
     this.confirmAction.set(null);
+    this.rejectionReason = '';
   }
 
   async confirmResponse() {
     const action = this.confirmAction();
     if (!action) return;
+
+    if (action === 'reject' && !this.rejectionReason.trim()) {
+      this.toast.error('Error', 'Debes indicar un motivo para rechazar el presupuesto');
+      return;
+    }
 
     this.processing.set(true);
     const id = this.quote()?.id;
@@ -294,7 +315,7 @@ export class PortalQuoteDetailComponent implements OnInit {
     try {
       console.log(`🔄 ${action === 'accept' ? 'Accepting' : 'Rejecting'} quote ${id}...`);
       
-      const { data, error } = await this.svc.respondToQuote(id, action);
+      const { data, error } = await this.svc.respondToQuote(id, action, action === 'reject' ? this.rejectionReason : undefined);
       
       if (error) {
         console.error(`❌ Error ${action}ing quote:`, error);
@@ -319,6 +340,7 @@ export class PortalQuoteDetailComponent implements OnInit {
   statusLabel(status?: string | null): string {
     const labels: Record<string, string> = {
       draft: 'Borrador',
+      pending: 'Pendiente',
       sent: 'Enviado',
       viewed: 'Visto',
       accepted: 'Aceptado',
@@ -334,6 +356,7 @@ export class PortalQuoteDetailComponent implements OnInit {
     const base = 'text-xs';
     const map: Record<string, string> = {
       draft: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
       sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
       viewed: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
       accepted: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',

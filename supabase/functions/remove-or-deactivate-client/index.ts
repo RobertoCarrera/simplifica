@@ -147,7 +147,7 @@ serve(async (req) => {
 
     // Optional counts (informational only)
     const [{ count: quoteCount }, { count: ticketCount }] = await Promise.all([
-      supabaseUser.from('quotes').select('id', { count:'exact', head:true }).eq('client_id', clientId).eq('company_id', companyId).is('deleted_at', null),
+      supabaseUser.from('quotes').select('id', { count:'exact', head:true }).eq('client_id', clientId).eq('company_id', companyId),
       supabaseUser.from('tickets').select('id', { count:'exact', head:true }).eq('client_id', clientId).eq('company_id', companyId).is('deleted_at', null)
     ]).catch(()=>[{count:0},{count:0}]);
 

@@ -385,6 +385,15 @@ import { ToastService } from '../../services/toast.service';
       }
     }
     
+    /* Autofill fix */
+    input:-webkit-autofill,
+    input:-webkit-autofill:hover, 
+    input:-webkit-autofill:focus, 
+    input:-webkit-autofill:active {
+      transition: background-color 5000s ease-in-out 0s;
+      -webkit-text-fill-color: #1e293b !important;
+    }
+
     /* Dark mode support */
     @media (prefers-color-scheme: dark) {
       .form-side { background: #0f172a; }
@@ -412,6 +421,16 @@ import { ToastService } from '../../services/toast.service';
         border: none !important;
       }
       .input-wrapper input::placeholder { color: #64748b !important; }
+      
+      /* Dark mode autofill fix */
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover, 
+      input:-webkit-autofill:focus, 
+      input:-webkit-autofill:active {
+        transition: background-color 5000s ease-in-out 0s;
+        -webkit-text-fill-color: #f1f5f9 !important;
+      }
+
       .toggle-pass { color: #64748b; }
       .toggle-pass:hover { color: #60a5fa; }
       .small { color: #94a3b8; }
