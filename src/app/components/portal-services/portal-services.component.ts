@@ -102,13 +102,23 @@ import { ClientPortalService } from '../../services/client-portal.service';
                         </div>
                       </div>
                       
-                      <ul class="space-y-1 mt-2" *ngIf="variant.features?.included?.length > 0">
-                        <li *ngFor="let feature of getOrderedFeatures(variant.features).slice(0, 3)" class="text-xs text-gray-600 dark:text-gray-400 flex items-start">
-                          <i class="fas fa-check text-green-500 mr-1.5 mt-0.5 text-[10px]"></i>
-                          <span>{{ feature }}</span>
+                      <ul class="space-y-1 mt-2">
+                        <li *ngFor="let feat of getAllOrderedFeaturesWithState(variant.features).slice(0, 4)" 
+                            class="text-xs flex items-start"
+                            [ngClass]="{
+                              'text-gray-600 dark:text-gray-400': feat.state === 'included',
+                              'text-gray-400 dark:text-gray-500 line-through': feat.state === 'excluded'
+                            }">
+                          <i class="fas mr-1.5 mt-0.5 text-[10px]"
+                             [ngClass]="{
+                               'fa-check text-green-500': feat.state === 'included',
+                               'fa-times text-red-500': feat.state === 'excluded'
+                             }"></i>
+                          <span>{{ feat.name }}</span>
                         </li>
-                        <li *ngIf="variant.features.included.length > 3" class="text-xs text-gray-500 dark:text-gray-500 italic">
-                          +{{ variant.features.included.length - 3 }} más
+                        <li *ngIf="(variant.features?.included?.length || 0) + (variant.features?.excluded?.length || 0) > 4" 
+                            class="text-xs text-gray-500 dark:text-gray-500 italic">
+                          +{{ (variant.features?.included?.length || 0) + (variant.features?.excluded?.length || 0) - 4 }} más
                         </li>
                       </ul>
                       
@@ -202,8 +212,8 @@ import { ClientPortalService } from '../../services/client-portal.service';
                 <div class="mb-6 bg-gray-50 dark:bg-gray-700/30 p-5 rounded-xl border border-gray-100 dark:border-gray-700 mt-auto">
                   <!-- Title changes based on context -->
                   <p class="font-semibold mb-3 text-sm text-gray-900 dark:text-white flex items-center">
-                    <ng-container *ngIf="service.variants?.length > 1; else defaultTitle">
-                      <i class="fas fa-check-circle text-blue-500 mr-2"></i> Incluye en {{ service.selectedVariant?.name }}:
+                    <ng-container *ngIf="service.selectedVariant; else defaultTitle">
+                      <i class="fas fa-check-circle text-blue-500 mr-2"></i> Incluye en {{ service.selectedVariant.name }}:
                     </ng-container>
                     <ng-template #defaultTitle>
                       <i class="fas fa-star text-yellow-500 mr-2"></i> Características Destacadas
@@ -212,25 +222,38 @@ import { ClientPortalService } from '../../services/client-portal.service';
 
                   <!-- Features List -->
                   <ul class="space-y-2.5">
-                    <!-- If variant selected, show variant features -->
-                    <ng-container *ngIf="service.selectedVariant?.features?.included?.length > 0; else serviceFeatures">
-                      <li *ngFor="let feature of getOrderedFeatures(service.selectedVariant.features)" class="flex items-start text-sm group">
-                        <div class="mt-1 mr-3 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
-                          <i class="fas fa-check text-blue-600 dark:text-blue-400 text-[10px]"></i>
+                    <!-- Show variant features if available -->
+                    <ng-container *ngIf="service.selectedVariant?.features && ((service.selectedVariant.features.included?.length ?? 0) > 0 || (service.selectedVariant.features.excluded?.length ?? 0) > 0)">
+                      <li *ngFor="let feat of getAllOrderedFeaturesWithState(service.selectedVariant.features)" 
+                          class="flex items-start text-sm group"
+                          [ngClass]="{ 'opacity-60': feat.state === 'excluded' }">
+                        <div class="mt-1 mr-3 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-colors"
+                             [ngClass]="{
+                               'bg-green-100 dark:bg-green-900/30 group-hover:bg-green-200 dark:group-hover:bg-green-900/50': feat.state === 'included',
+                               'bg-red-100 dark:bg-red-900/30': feat.state === 'excluded'
+                             }">
+                          <i class="fas text-[10px]"
+                             [ngClass]="{
+                               'fa-check text-green-600 dark:text-green-400': feat.state === 'included',
+                               'fa-times text-red-500 dark:text-red-400': feat.state === 'excluded'
+                             }"></i>
                         </div>
-                        <span class="text-gray-700 dark:text-gray-300 leading-relaxed">{{ feature }}</span>
+                        <span [ngClass]="{
+                          'text-gray-700 dark:text-gray-300 leading-relaxed': feat.state === 'included',
+                          'text-gray-500 dark:text-gray-500 line-through leading-relaxed': feat.state === 'excluded'
+                        }">{{ feat.name }}</span>
                       </li>
                     </ng-container>
                     
-                    <!-- Fallback to service features if no variant features or no variants -->
-                    <ng-template #serviceFeatures>
+                    <!-- Fallback to service features if variant has no features -->
+                    <ng-container *ngIf="!service.selectedVariant?.features || ((service.selectedVariant.features.included?.length ?? 0) === 0 && (service.selectedVariant.features.excluded?.length ?? 0) === 0)">
                       <li *ngFor="let feature of parseFeatures(service.features)" class="flex items-start text-sm group">
                         <div class="mt-1 mr-3 w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 group-hover:bg-green-200 dark:group-hover:bg-green-900/50 transition-colors">
                           <i class="fas fa-check text-green-600 dark:text-green-400 text-[10px]"></i>
                         </div>
                         <span class="text-gray-700 dark:text-gray-300 leading-relaxed">{{ feature }}</span>
                       </li>
-                    </ng-template>
+                    </ng-container>
                   </ul>
                 </div>
 
@@ -426,6 +449,47 @@ export class PortalServicesComponent implements OnInit {
         }
         
         return orderedFeatures;
+    }
+
+    /**
+     * Obtiene todas las características ordenadas con su estado (incluida/excluida)
+     */
+    getAllOrderedFeaturesWithState(features: any): Array<{ name: string; state: 'included' | 'excluded' }> {
+        const result: Array<{ name: string; state: 'included' | 'excluded' }> = [];
+        const included = features?.included || [];
+        const excluded = features?.excluded || [];
+        const featureOrder = features?.feature_order as string[] | undefined;
+        const seen = new Set<string>();
+
+        // Si hay orden definido, usarlo
+        if (featureOrder && featureOrder.length > 0) {
+            for (const feature of featureOrder) {
+                if (!seen.has(feature)) {
+                    seen.add(feature);
+                    if (included.includes(feature)) {
+                        result.push({ name: feature, state: 'included' });
+                    } else if (excluded.includes(feature)) {
+                        result.push({ name: feature, state: 'excluded' });
+                    }
+                }
+            }
+        }
+        
+        // Añadir características que no están en el orden
+        for (const feature of included) {
+            if (!seen.has(feature)) {
+                seen.add(feature);
+                result.push({ name: feature, state: 'included' });
+            }
+        }
+        for (const feature of excluded) {
+            if (!seen.has(feature)) {
+                seen.add(feature);
+                result.push({ name: feature, state: 'excluded' });
+            }
+        }
+
+        return result;
     }
 
     private async loadContractedServices(): Promise<void> {

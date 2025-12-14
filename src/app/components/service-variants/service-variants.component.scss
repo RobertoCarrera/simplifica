@@ -1094,9 +1094,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  
   @media (prefers-color-scheme: dark) {
     background: #334155 !important;
     border-color: #475569 !important;
+    color: #e2e8f0;
   }
 }
 
@@ -1127,17 +1129,90 @@
 }
 
 .drag-handle {
+  display: flex;
+  align-items: center;
   cursor: grab;
-  padding: 0.25rem;
-  opacity: 0.5;
-  transition: opacity 0.2s ease;
+  padding: 0.5rem;
+  transition: all 0.2s ease;
+  
+  i.fa-grip-vertical {
+    color: #94a3b8;
+    font-size: 1rem;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #64748b;
+    }
+  }
   
   &:hover {
-    opacity: 1;
+    i.fa-grip-vertical {
+      color: #3b82f6;
+      
+      @media (prefers-color-scheme: dark) {
+        color: #60a5fa;
+      }
+    }
   }
   
   &:active {
     cursor: grabbing;
+  }
+  
+  span {
+    color: #374151;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #e2e8f0;
+    }
+  }
+}
+
+// Feature action buttons
+.btn-group {
+  .btn-success {
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+    color: white !important;
+    
+    &:hover {
+      background-color: #059669 !important;
+    }
+  }
+  
+  .btn-danger {
+    background-color: #ef4444 !important;
+    border-color: #ef4444 !important;
+    color: white !important;
+    
+    &:hover {
+      background-color: #dc2626 !important;
+    }
+  }
+  
+  .btn-secondary {
+    background-color: #f59e0b !important;
+    border-color: #f59e0b !important;
+    color: white !important;
+    
+    &:hover {
+      background-color: #d97706 !important;
+    }
+  }
+  
+  .btn-outline-secondary {
+    background-color: transparent;
+    border-color: #cbd5e1;
+    color: #64748b;
+    
+    @media (prefers-color-scheme: dark) {
+      border-color: #475569;
+      color: #94a3b8;
+      
+      &:hover {
+        background-color: #334155;
+        border-color: #64748b;
+      }
+    }
   }
 }
 
@@ -1180,4 +1255,82 @@
 
 .global-features-list.cdk-drop-list-dragging .feature-row:not(.cdk-drag-placeholder) {
   transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* ========================================
+   FEATURES LIST IN VARIANT SUMMARY
+   ======================================== */
+.variant-features {
+  h5 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+    margin-bottom: 0.75rem;
+    
+    @media (prefers-color-scheme: dark) {
+      color: #9ca3af;
+    }
+  }
+  
+  .features-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    
+    li {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0;
+      font-size: 0.9rem;
+      
+      i {
+        width: 16px;
+        text-align: center;
+        
+        &.text-success {
+          color: #10b981 !important;
+        }
+        
+        &.text-danger {
+          color: #ef4444 !important;
+        }
+      }
+      
+      span {
+        color: #374151;
+        
+        @media (prefers-color-scheme: dark) {
+          color: #e2e8f0;
+        }
+        
+        &.text-line-through {
+          text-decoration: line-through;
+          opacity: 0.6;
+        }
+      }
+      
+      &.feature-included {
+        span {
+          color: #374151;
+          
+          @media (prefers-color-scheme: dark) {
+            color: #e2e8f0;
+          }
+        }
+      }
+      
+      &.feature-excluded {
+        span {
+          color: #9ca3af;
+          
+          @media (prefers-color-scheme: dark) {
+            color: #6b7280;
+          }
+        }
+      }
+    }
+  }
 }

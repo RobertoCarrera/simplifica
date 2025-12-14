@@ -503,6 +503,78 @@ export class ServiceVariantsComponent implements OnInit {
     return orderedFeatures;
   }
 
+  /**
+   * Obtiene las características excluidas de una variante ordenadas según feature_order
+   */
+  getOrderedExcludedFeatures(variant: ServiceVariant): string[] {
+    if (!variant.features?.excluded?.length) return [];
+    
+    const featureOrder = (variant.features as any)?.feature_order as string[] | undefined;
+    if (!featureOrder || featureOrder.length === 0) {
+      return variant.features.excluded;
+    }
+    
+    // Ordenar según feature_order
+    const orderedFeatures: string[] = [];
+    for (const feature of featureOrder) {
+      if (variant.features.excluded.includes(feature)) {
+        orderedFeatures.push(feature);
+      }
+    }
+    
+    // Añadir cualquier característica que no esté en el orden
+    for (const feature of variant.features.excluded) {
+      if (!orderedFeatures.includes(feature)) {
+        orderedFeatures.push(feature);
+      }
+    }
+    
+    return orderedFeatures;
+  }
+
+  /**
+   * Obtiene TODAS las características ordenadas con su estado (included, excluded, hidden)
+   */
+  getAllOrderedFeaturesWithState(variant: ServiceVariant): { name: string; state: 'included' | 'excluded' | 'hidden' }[] {
+    const featureOrder = (variant.features as any)?.feature_order as string[] | undefined;
+    const included = variant.features?.included || [];
+    const excluded = variant.features?.excluded || [];
+    
+    const result: { name: string; state: 'included' | 'excluded' | 'hidden' }[] = [];
+    const seen = new Set<string>();
+    
+    // Si hay orden guardado, usarlo
+    if (featureOrder && featureOrder.length > 0) {
+      for (const feature of featureOrder) {
+        if (!seen.has(feature)) {
+          seen.add(feature);
+          if (included.includes(feature)) {
+            result.push({ name: feature, state: 'included' });
+          } else if (excluded.includes(feature)) {
+            result.push({ name: feature, state: 'excluded' });
+          }
+          // Las 'hidden' no las mostramos en el resumen
+        }
+      }
+    }
+    
+    // Añadir las que no estén en el orden
+    for (const feature of included) {
+      if (!seen.has(feature)) {
+        seen.add(feature);
+        result.push({ name: feature, state: 'included' });
+      }
+    }
+    for (const feature of excluded) {
+      if (!seen.has(feature)) {
+        seen.add(feature);
+        result.push({ name: feature, state: 'excluded' });
+      }
+    }
+    
+    return result;
+  }
+
   // ============= VISIBILITY & CLIENT ASSIGNMENT MANAGEMENT =============
 
   async loadClients() {
