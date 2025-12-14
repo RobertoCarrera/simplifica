@@ -116,9 +116,11 @@
             <div class="p-6 pt-4">
               <!-- Price Highlight -->
               <div class="mb-4">
-                <div class="text-sm text-gray-500 dark:text-gray-400 mb-0.5">Precio Base</div>
+                <div class="text-sm text-gray-500 dark:text-gray-400 mb-0.5">
+                  {{ service.display_price_label || 'Precio Base' }}
+                </div>
                 <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {{ formatCurrency(service.base_price) }}
+                  {{ formatCurrency(service.display_price || service.base_price) }}
                 </div>
               </div>
 
@@ -137,7 +139,7 @@
                     <i class="fas fa-calculator"></i> Ratio
                   </div>
                   <div class="font-semibold text-gray-900 dark:text-gray-100">
-                    {{ formatCurrency(service.base_price / service.estimated_hours) }}/h
+                    {{ formatCurrency(service.display_hourly_rate || 0) }}/h
                   </div>
                 </div>
               </div>

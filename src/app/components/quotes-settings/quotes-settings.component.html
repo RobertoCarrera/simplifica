@@ -57,40 +57,8 @@
             </p>
           </div>
 
-          <!-- Automatizaciones -->
-          <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
-            <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3 flex items-center">
-              <i class="fas fa-robot mr-2 text-green-600"></i>
-              Automatizaciones
-            </h3>
-            <div class="space-y-3">
-              <div class="flex items-start">
-                <div class="flex items-center h-5">
-                  <input id="auto_send_quote_email" formControlName="auto_send_quote_email" type="checkbox"
-                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 dark:bg-gray-700">
-                </div>
-                <div class="ml-3 text-sm">
-                  <label for="auto_send_quote_email" class="font-medium text-gray-700 dark:text-gray-300">Enviar email
-                    automáticamente</label>
-                  <p class="text-gray-500 dark:text-gray-400">Si se marca, el presupuesto se enviará por email al
-                    cliente inmediatamente al generarlo.</p>
-                </div>
-              </div>
-
-              <div class="flex items-start">
-                <div class="flex items-center h-5">
-                  <input id="allow_direct_contracting" formControlName="allow_direct_contracting" type="checkbox"
-                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 dark:bg-gray-700">
-                </div>
-                <div class="ml-3 text-sm">
-                  <label for="allow_direct_contracting" class="font-medium text-gray-700 dark:text-gray-300">Permitir
-                    contratación directa</label>
-                  <p class="text-gray-500 dark:text-gray-400">Permite a los clientes contratar servicios públicos
-                    directamente desde el portal.</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- Automatizaciones (MOVIDO A SECCIÓN PROPIA) -->
+          <!-- <div class="pt-4 border-t border-gray-200 dark:border-gray-700">...</div> -->
 
           <!-- Opciones según política -->
           <div class="space-y-3 pl-4 border-l-2 border-green-200 dark:border-green-800" 
@@ -112,35 +80,6 @@
                 <input type="date" formControlName="invoice_on_date"
                   class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
                 <p class="text-xs text-gray-500 mt-1">Sobrescribe los días por defecto</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Automatizaciones -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              <i class="fas fa-robot mr-1 text-green-600"></i>
-              Automatizaciones
-            </label>
-            <div class="flex items-start">
-              <div class="flex items-center h-5">
-                <input id="auto_send_quote_email" type="checkbox" formControlName="auto_send_quote_email"
-                  class="focus:ring-green-500 h-4 w-4 text-green-600 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600">
-              </div>
-              <div class="ml-3 text-sm">
-                <label for="auto_send_quote_email" class="font-medium text-gray-700 dark:text-gray-300">Enviar email automáticamente</label>
-                <p class="text-gray-500 dark:text-gray-400">Si se marca, el presupuesto se enviará por email al cliente inmediatamente al generarlo.</p>
-              </div>
-            </div>
-
-            <div class="flex items-start mt-3">
-              <div class="flex items-center h-5">
-                <input id="allow_direct_contracting" type="checkbox" formControlName="allow_direct_contracting"
-                  class="focus:ring-green-500 h-4 w-4 text-green-600 border-gray-300 rounded dark:bg-gray-700 dark:border-gray-600">
-              </div>
-              <div class="ml-3 text-sm">
-                <label for="allow_direct_contracting" class="font-medium text-gray-700 dark:text-gray-300">Permitir contratación directa</label>
-                <p class="text-gray-500 dark:text-gray-400">Permite a los clientes contratar servicios públicos directamente desde el portal.</p>
               </div>
             </div>
           </div>

@@ -989,10 +989,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   }
 
   formatServiceDuration(service: Service): string {
-    if (!service.estimated_hours) return '-';
+    const value = service.display_hours ?? service.estimated_hours;
+    if (!value) return '-';
 
     const unitName = this.getServiceUnitShortName(service);
-    const value = service.estimated_hours;
 
     // Format the number nicely
     const formatted = value % 1 === 0 ? value.toString() : value.toFixed(2).replace(/\.?0+$/, '');

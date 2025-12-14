@@ -103,20 +103,41 @@ export class ClientPortalService {
     if (!user?.company_id) return { data: [], error: 'No company context' };
 
     const client = this.sb.instance;
-    // Assuming RLS allows reading public services or we use a view
-    // If RLS is strict, we might need an edge function or the view created in migration
-    // Let's try direct query first, assuming RLS policy I added works (if applied)
-    // Or use the view 'client_visible_services' if I created it.
-    // I'll try direct table access with is_public=true filter.
-    const { data, error } = await client
+    
+    // 1. Fetch Services
+    const { data: services, error: servicesError } = await client
       .from('services')
-      .select('*, variants:service_variants(*)')
+      .select('*')
       .eq('company_id', user.company_id)
       .eq('is_public', true)
       .eq('is_active', true)
       .order('name');
+
+    if (servicesError) return { data: [], error: servicesError };
+    if (!services || services.length === 0) return { data: [], error: null };
+
+    // 2. Fetch Variants manually to avoid join issues
+    const serviceIds = services.map(s => s.id);
+    const { data: variants, error: variantsError } = await client
+      .from('service_variants')
+      .select('*')
+      .in('service_id', serviceIds)
+      .eq('is_active', true)
+      .order('sort_order');
+
+    if (variantsError) {
+        console.error('Error fetching variants:', variantsError);
+        // Return services without variants if variants fail
+        return { data: services, error: null };
+    }
+
+    // 3. Attach variants to services
+    const servicesWithVariants = services.map(service => {
+        const serviceVariants = (variants || []).filter(v => v.service_id === service.id);
+        return { ...service, variants: serviceVariants };
+    });
       
-    return { data: (data || []) as any, error };
+    return { data: servicesWithVariants, error: null };
   }
 
   async getCompanySettings(): Promise<{ data: any; error?: any }> {

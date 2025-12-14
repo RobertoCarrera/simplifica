@@ -1,0 +1,106 @@
+<div class="p-4 md:p-6 space-y-6">
+  <!-- Header -->
+  <div class="flex items-center gap-4 mb-6">
+    <a routerLink="/configuracion" 
+       class="inline-flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
+      <i class="fas fa-arrow-left mr-2"></i>
+      Volver
+    </a>
+    <div class="flex-1">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+        <i class="fas fa-robot mr-3 text-blue-600"></i>
+        Automatizaciones
+      </h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        Configura las automatizaciones de tu empresa
+      </p>
+    </div>
+  </div>
+
+  <!-- Loading state -->
+  <div *ngIf="loading()" class="flex justify-center items-center py-12">
+    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    <span class="ml-3 text-gray-600 dark:text-gray-300">Cargando ajustes...</span>
+  </div>
+
+  <div *ngIf="!loading()" class="max-w-3xl">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+      <div class="p-6">
+        <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()" class="space-y-6">
+          
+          <!-- Presupuestos -->
+          <div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 border-b pb-2 dark:border-gray-700">
+              Presupuestos y Contratación
+            </h3>
+            <div class="space-y-4">
+              <div class="flex items-start">
+                <div class="flex items-center h-5">
+                  <input id="auto_send_quote_email" formControlName="auto_send_quote_email" type="checkbox"
+                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
+                </div>
+                <div class="ml-3 text-sm">
+                  <label for="auto_send_quote_email" class="font-medium text-gray-700 dark:text-gray-300">
+                    Enviar email automáticamente
+                  </label>
+                  <p class="text-gray-500 dark:text-gray-400">
+                    Si se marca, el presupuesto se enviará por email al cliente inmediatamente al generarlo.
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex items-start">
+                <div class="flex items-center h-5">
+                  <input id="allow_direct_contracting" formControlName="allow_direct_contracting" type="checkbox"
+                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
+                </div>
+                <div class="ml-3 text-sm">
+                  <label for="allow_direct_contracting" class="font-medium text-gray-700 dark:text-gray-300">
+                    Permitir contratación directa
+                  </label>
+                  <p class="text-gray-500 dark:text-gray-400">
+                    Permite a los clientes contratar servicios públicos directamente desde el portal.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Servicios -->
+          <div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 border-b pb-2 dark:border-gray-700">
+              Servicios y Variantes
+            </h3>
+            <div class="space-y-4">
+              <div class="flex items-start">
+                <div class="flex items-center h-5">
+                  <input id="copy_features_between_variants" formControlName="copy_features_between_variants" type="checkbox"
+                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
+                </div>
+                <div class="ml-3 text-sm">
+                  <label for="copy_features_between_variants" class="font-medium text-gray-700 dark:text-gray-300">
+                    Copiar características entre variantes
+                  </label>
+                  <p class="text-gray-500 dark:text-gray-400">
+                    Si se marca, las características serán las mismas en todas las variantes. Solo tendrás que decidir si se incluyen o excluyen.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="pt-4 flex justify-end">
+            <button type="submit" [disabled]="saving()"
+              class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+              <i class="fas fa-save mr-2" *ngIf="!saving()"></i>
+              <i class="fas fa-spinner fa-spin mr-2" *ngIf="saving()"></i>
+              {{ saving() ? 'Guardando...' : 'Guardar Ajustes' }}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

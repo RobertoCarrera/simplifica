@@ -46,6 +46,7 @@ import { VerifactuSettingsComponent } from './modules/invoices/verifactu-setting
 import { InvoiceSeriesSettingsComponent } from './modules/invoices/invoice-series-settings/invoice-series-settings.component';
 import { QuotesSettingsComponent } from './components/quotes-settings/quotes-settings.component';
 import { BillingSettingsComponent } from './components/billing-settings/billing-settings.component';
+import { AutomationSettingsComponent } from './components/automation-settings/automation-settings.component';
 
 import { PublicPaymentComponent } from './components/public-payment/public-payment.component';
 import { PaymentSuccessComponent } from './components/payment-success/payment-success.component';
@@ -71,6 +72,7 @@ export const routes: Routes = [
     { path: 'configuracion/verifactu', component: VerifactuSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/presupuestos', component: QuotesSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/facturacion', component: BillingSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'configuracion/automatizaciones', component: AutomationSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     // Admin modules management (solo admin)
     { path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard] },

@@ -37,6 +37,7 @@ export interface CompanySettings {
   irpf_rate?: number | null; // e.g., 7, 15
   auto_send_quote_email?: boolean | null;
   allow_direct_contracting?: boolean | null; // New automation setting
+  copy_features_between_variants?: boolean | null; // New automation setting
   updated_at?: string;
 }
 
@@ -121,6 +122,10 @@ export class SupabaseSettingsService {
       return null;
     }
     return data as CompanySettings | null;
+  }
+
+  updateCompanySettings(values: Partial<CompanySettings>, companyId?: string): Observable<CompanySettings> {
+    return this.upsertCompanySettings(values, companyId);
   }
 
   upsertCompanySettings(values: Partial<CompanySettings>, companyId?: string): Observable<CompanySettings> {

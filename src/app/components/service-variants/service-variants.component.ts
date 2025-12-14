@@ -1,7 +1,9 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ServiceVariant, VariantPricing } from '../../services/supabase-services.service';
+import { SupabaseSettingsService } from '../../services/supabase-settings.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-service-variants',
@@ -11,6 +13,8 @@ import { ServiceVariant, VariantPricing } from '../../services/supabase-services
   styleUrl: './service-variants.component.scss'
 })
 export class ServiceVariantsComponent implements OnInit {
+  private settingsService = inject(SupabaseSettingsService);
+
   @Input() serviceId: string = '';
   @Input() serviceName: string = '';
   @Input() variants: ServiceVariant[] = [];
@@ -22,6 +26,15 @@ export class ServiceVariantsComponent implements OnInit {
   editingVariant: ServiceVariant | null = null;
   formData: Partial<ServiceVariant> = {}; // Inicializar vacío, se llena en openForm
 
+  // Temporary fields for feature inputs
+  newIncludedFeature: string = '';
+  newExcludedFeature: string = '';
+  
+  // Automation settings
+  copyFeaturesMode = false;
+  allFeatures: string[] = [];
+  newGlobalFeature: string = '';
+
   billingPeriods = [
     { value: 'one_time', label: 'Pago único' },
     { value: 'monthly', label: 'Mensual' },
@@ -30,13 +43,20 @@ export class ServiceVariantsComponent implements OnInit {
     { value: 'annual', label: 'Anual' }
   ];
 
-  ngOnInit() {
+  async ngOnInit() {
     this.sortVariants();
     console.log('🔧 ServiceVariants ngOnInit:', {
       serviceId: this.serviceId,
       serviceName: this.serviceName,
       variantsCount: this.variants?.length || 0
     });
+
+    try {
+      const settings = await firstValueFrom(this.settingsService.getCompanySettings());
+      this.copyFeaturesMode = settings?.copy_features_between_variants ?? false;
+    } catch (error) {
+      console.error('Error loading settings in ServiceVariants:', error);
+    }
   }
 
   sortVariants() {
@@ -75,6 +95,9 @@ export class ServiceVariantsComponent implements OnInit {
   openForm(variant?: ServiceVariant) {
     console.log('🔧 Opening variant form. serviceId:', this.serviceId, 'variant:', variant);
     
+    this.newIncludedFeature = '';
+    this.newExcludedFeature = '';
+
     if (variant) {
       this.editingVariant = variant;
       // Asegurar que pricing existe y es array
@@ -94,6 +117,10 @@ export class ServiceVariantsComponent implements OnInit {
     });
     
     this.showForm = true;
+    
+    if (this.copyFeaturesMode) {
+      this.computeAllFeatures();
+    }
   }
 
   closeForm() {
@@ -274,8 +301,61 @@ export class ServiceVariantsComponent implements OnInit {
   }
 
   // Feature management
+  computeAllFeatures() {
+    const features = new Set<string>();
+    this.variants.forEach(v => {
+      v.features?.included?.forEach(f => features.add(f));
+      v.features?.excluded?.forEach(f => features.add(f));
+    });
+    // Also add features from current formData
+    this.formData.features?.included?.forEach(f => features.add(f));
+    this.formData.features?.excluded?.forEach(f => features.add(f));
+    
+    this.allFeatures = Array.from(features).sort();
+  }
+
+  isFeatureIncluded(feature: string): boolean {
+    return this.formData.features?.included?.includes(feature) ?? false;
+  }
+
+  isFeatureExcluded(feature: string): boolean {
+    return this.formData.features?.excluded?.includes(feature) ?? false;
+  }
+
+  toggleFeature(feature: string, state: 'included' | 'excluded' | 'none') {
+    if (!this.formData.features) {
+      this.formData.features = { included: [], excluded: [], limits: {} };
+    }
+    
+    // Ensure arrays exist
+    if (!this.formData.features.included) this.formData.features.included = [];
+    if (!this.formData.features.excluded) this.formData.features.excluded = [];
+
+    // Remove from both lists first
+    this.formData.features.included = this.formData.features.included.filter(f => f !== feature);
+    this.formData.features.excluded = this.formData.features.excluded.filter(f => f !== feature);
+
+    if (state === 'included') {
+      this.formData.features.included.push(feature);
+    } else if (state === 'excluded') {
+      this.formData.features.excluded.push(feature);
+    }
+  }
+
+  addGlobalFeature() {
+    if (this.newGlobalFeature && this.newGlobalFeature.trim()) {
+      const feature = this.newGlobalFeature.trim();
+      if (!this.allFeatures.includes(feature)) {
+        this.allFeatures.push(feature);
+        this.allFeatures.sort();
+      }
+      this.newGlobalFeature = '';
+    }
+  }
+
   addFeature(type: 'included' | 'excluded') {
-    const feature = prompt(`Añadir característica ${type === 'included' ? 'incluida' : 'excluida'}:`);
+    const feature = type === 'included' ? this.newIncludedFeature : this.newExcludedFeature;
+    
     if (feature && feature.trim()) {
       if (!this.formData.features) {
         this.formData.features = { included: [], excluded: [], limits: {} };
@@ -284,6 +364,13 @@ export class ServiceVariantsComponent implements OnInit {
         this.formData.features[type] = [];
       }
       this.formData.features[type]!.push(feature.trim());
+      
+      // Clear the input
+      if (type === 'included') {
+        this.newIncludedFeature = '';
+      } else {
+        this.newExcludedFeature = '';
+      }
     }
   }
 
