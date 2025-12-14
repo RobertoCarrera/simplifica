@@ -74,6 +74,30 @@ import { ClientPortalService } from '../../services/client-portal.service';
                   </div>
                 </div>
 
+                <!-- Contracted Service Features -->
+                <div *ngIf="service.selectedVariant?.features && ((service.selectedVariant.features.included?.length ?? 0) > 0 || (service.selectedVariant.features.excluded?.length ?? 0) > 0)" 
+                     class="bg-gray-50 dark:bg-slate-700/30 rounded-lg p-4 border border-gray-100 dark:border-slate-600">
+                  <p class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+                    <i class="fas fa-list-check text-green-500 mr-2"></i>
+                    Tu plan incluye:
+                  </p>
+                  <ul class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <li *ngFor="let feat of getAllOrderedFeaturesWithState(service.selectedVariant.features)" 
+                        class="flex items-center text-sm"
+                        [ngClass]="{ 'opacity-60': feat.state === 'excluded' }">
+                      <i class="fas mr-2 text-xs"
+                         [ngClass]="{
+                           'fa-check text-green-500': feat.state === 'included',
+                           'fa-times text-red-400': feat.state === 'excluded'
+                         }"></i>
+                      <span [ngClass]="{
+                        'text-gray-700 dark:text-gray-300': feat.state === 'included',
+                        'text-gray-400 dark:text-gray-500 line-through': feat.state === 'excluded'
+                      }">{{ feat.name }}</span>
+                    </li>
+                  </ul>
+                </div>
+
                 <!-- Variants Comparison -->
                 <div *ngIf="service.variants && service.variants.length > 1" class="border-t border-gray-200 dark:border-slate-700 pt-4">
                   <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center">
@@ -665,11 +689,13 @@ export class PortalServicesComponent implements OnInit {
         const variantName = service.selectedVariant ? ` (${service.selectedVariant.name})` : '';
         if (!confirm(`¿Solicitar información sobre "${service.name}${variantName}"? Se generará una solicitud de presupuesto.`)) return;
         
-        const { error } = await this.portalService.requestService(service.id, service.selectedVariant?.id);
+        const { data, error } = await this.portalService.requestService(service.id, service.selectedVariant?.id);
         if (error) {
             alert('Error al solicitar el servicio: ' + error.message);
         } else {
-            alert('Solicitud enviada correctamente. Te contactaremos pronto.');
+            // Show custom message from backend if available
+            const message = data?.data?.message || 'Solicitud enviada correctamente. Te contactaremos pronto.';
+            alert(message);
         }
     }
 
@@ -683,9 +709,18 @@ export class PortalServicesComponent implements OnInit {
         if (error) {
             alert('Error al iniciar contratación: ' + error.message);
         } else {
-            // If data contains a payment URL, redirect.
-            if (data?.paymentUrl) {
-                window.location.href = data.paymentUrl;
+            const responseData = data?.data || data;
+            
+            // If data contains a payment URL, redirect
+            if (responseData?.payment_url) {
+                // Small delay to show message
+                alert('Redirigiendo al sistema de pago...');
+                window.location.href = responseData.payment_url;
+            } else if (data?.fallback) {
+                // Fallback case - no payment integration or error
+                const message = responseData?.message || 'Factura generada correctamente. Te contactaremos para el pago.';
+                alert(message);
+                await this.loadContractedServices();
             } else {
                 alert('Servicio contratado correctamente.');
                 await this.loadContractedServices();
