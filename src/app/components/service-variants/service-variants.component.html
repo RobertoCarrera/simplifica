@@ -85,7 +85,7 @@
       <div class="variant-features" *ngIf="variant.features && variant.features.included && variant.features.included.length > 0">
         <h5>Características incluidas:</h5>
         <ul>
-          <li *ngFor="let feature of variant.features.included">
+          <li *ngFor="let feature of getOrderedIncludedFeatures(variant)">
             <i class="fas fa-check"></i> {{ feature }}
           </li>
         </ul>
@@ -258,7 +258,7 @@
           <div class="features-section" *ngIf="copyFeaturesMode">
             <h4>Características (Modo Global)</h4>
             <p class="text-muted mb-3 small">
-              Define qué características incluye esta variante seleccionando de la lista global.
+              Define qué características incluye esta variante. Arrastra para reordenar.
             </p>
 
             <!-- Add new global feature -->
@@ -266,7 +266,7 @@
               <input type="text" class="form-control" 
                      [(ngModel)]="newGlobalFeature" 
                      name="newGlobalFeature" 
-                     placeholder="Añadir nueva característica a la lista global..."
+                     placeholder="Añadir nueva característica..."
                      (keyup.enter)="addGlobalFeature()">
               <div class="input-group-append">
                 <button class="btn btn-primary" type="button" (click)="addGlobalFeature()">
@@ -277,39 +277,66 @@
 
             <!-- List of all features with toggles -->
             <div class="global-features-container border rounded shadow-sm">
-              <div class="d-flex align-items-center justify-content-between p-3 border-bottom feature-list-header">
-                <div class="font-weight-bold small text-uppercase pl-1">Característica</div>
-                <div class="text-center font-weight-bold small text-uppercase" style="min-width: 140px;">Estado</div>
+              <div class="p-3 border-bottom feature-list-header bg-light">
+                <div class="font-weight-bold small text-uppercase pl-4">Característica</div>
+                <div class="d-flex">
+                  <div class="text-center font-weight-bold small text-uppercase" style="min-width: 140px;">Estado</div>
+                  <div class="text-center font-weight-bold small text-uppercase" style="width: 40px;"></div>
+                </div>
               </div>
-              <div class="global-features-list" style="max-height: 400px; overflow-y: auto;">
-                <div *ngFor="let feature of allFeatures" class="d-flex align-items-center justify-content-between p-3 border-bottom feature-row transition-all">
-                  <span class="flex-grow-1 mr-3 font-weight-medium" style="font-size: 0.95rem;">{{ feature }}</span>
-                  <div class="btn-group btn-group-sm shadow-sm">
-                    <button type="button" 
-                            class="btn px-3" 
-                            [class.btn-success]="isFeatureIncluded(feature)"
-                            [class.btn-outline-secondary]="!isFeatureIncluded(feature)"
-                            (click)="toggleFeature(feature, 'included')"
-                            title="Incluir">
-                      <i class="fas fa-check"></i>
-                    </button>
-                    <button type="button" 
-                            class="btn px-3" 
-                            [class.btn-danger]="isFeatureExcluded(feature)"
-                            [class.btn-outline-secondary]="!isFeatureExcluded(feature)"
-                            (click)="toggleFeature(feature, 'excluded')"
-                            title="Excluir">
-                      <i class="fas fa-times"></i>
-                    </button>
-                    <button type="button" 
-                            class="btn px-3" 
-                            [class.btn-secondary]="!isFeatureIncluded(feature) && !isFeatureExcluded(feature)"
-                            [class.btn-outline-secondary]="isFeatureIncluded(feature) || isFeatureExcluded(feature)"
-                            (click)="toggleFeature(feature, 'none')"
-                            title="No mostrar">
-                      <i class="fas fa-minus"></i>
-                    </button>
+              <div class="global-features-list" 
+                   cdkDropList 
+                   (cdkDropListDropped)="dropFeature($event)"
+                   style="max-height: 400px; overflow-y: auto;">
+                <div *ngFor="let feature of allFeatures; let i = index" 
+                     cdkDrag
+                     class="feature-row d-flex align-items-center justify-content-between p-3 border-bottom">
+                  <!-- Drag handle + Feature name -->
+                  <div class="d-flex align-items-center flex-grow-1">
+                    <div class="drag-handle" cdkDragHandle>
+                      <i class="fas fa-grip-vertical text-muted"></i>
+                      <span class="font-weight-medium ml-3" style="font-size: 0.95rem;">{{ feature }}</span>
+                    </div>
                   </div>
+                  
+                  <!-- Action buttons -->
+                  <div class="d-flex align-items-center">
+                    <div class="btn-group btn-group-sm shadow-sm mr-2">
+                      <button type="button" 
+                              class="btn px-3" 
+                              [class.btn-success]="isFeatureIncluded(feature)"
+                              [class.btn-outline-secondary]="!isFeatureIncluded(feature)"
+                              (click)="toggleFeature(feature, 'included')"
+                              title="Incluir">
+                        <i class="fas fa-check"></i>
+                      </button>
+                      <button type="button" 
+                              class="btn px-3" 
+                              [class.btn-danger]="isFeatureExcluded(feature)"
+                              [class.btn-outline-secondary]="!isFeatureExcluded(feature)"
+                              (click)="toggleFeature(feature, 'excluded')"
+                              title="Excluir">
+                        <i class="fas fa-times"></i>
+                      </button>
+                      <button type="button" 
+                              class="btn px-3" 
+                              [class.btn-secondary]="!isFeatureIncluded(feature) && !isFeatureExcluded(feature)"
+                              [class.btn-outline-secondary]="isFeatureIncluded(feature) || isFeatureExcluded(feature)"
+                              (click)="toggleFeature(feature, 'none')"
+                              title="No mostrar">
+                        <i class="fas fa-minus"></i>
+                      </button>
+                    <button type="button" 
+                            class="btn btn-sm btn-outline-danger"
+                            (click)="removeGlobalFeature(feature)"
+                            title="Eliminar característica">
+                      <i class="fas fa-trash-alt"></i>
+                    </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Drag placeholder -->
+                  <div class="feature-drag-placeholder" *cdkDragPlaceholder></div>
                 </div>
                 <div *ngIf="allFeatures.length === 0" class="text-center text-muted py-4">
                   <i class="fas fa-list-ul fa-2x mb-2 opacity-50"></i>

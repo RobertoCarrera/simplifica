@@ -103,7 +103,7 @@ import { ClientPortalService } from '../../services/client-portal.service';
                       </div>
                       
                       <ul class="space-y-1 mt-2" *ngIf="variant.features?.included?.length > 0">
-                        <li *ngFor="let feature of variant.features.included.slice(0, 3)" class="text-xs text-gray-600 dark:text-gray-400 flex items-start">
+                        <li *ngFor="let feature of getOrderedFeatures(variant.features).slice(0, 3)" class="text-xs text-gray-600 dark:text-gray-400 flex items-start">
                           <i class="fas fa-check text-green-500 mr-1.5 mt-0.5 text-[10px]"></i>
                           <span>{{ feature }}</span>
                         </li>
@@ -214,7 +214,7 @@ import { ClientPortalService } from '../../services/client-portal.service';
                   <ul class="space-y-2.5">
                     <!-- If variant selected, show variant features -->
                     <ng-container *ngIf="service.selectedVariant?.features?.included?.length > 0; else serviceFeatures">
-                      <li *ngFor="let feature of service.selectedVariant.features.included" class="flex items-start text-sm group">
+                      <li *ngFor="let feature of getOrderedFeatures(service.selectedVariant.features)" class="flex items-start text-sm group">
                         <div class="mt-1 mr-3 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50 transition-colors">
                           <i class="fas fa-check text-blue-600 dark:text-blue-400 text-[10px]"></i>
                         </div>
@@ -394,9 +394,38 @@ export class PortalServicesComponent implements OnInit {
             return features.split(/[,;\n]+/).map(f => f.trim()).filter(f => f.length > 0);
         }
         if (typeof features === 'object' && features.included) {
-            return features.included;
+            return this.getOrderedFeatures(features);
         }
         return [];
+    }
+
+    /**
+     * Obtiene las características incluidas ordenadas según feature_order
+     */
+    getOrderedFeatures(features: any): string[] {
+        if (!features?.included?.length) return [];
+        
+        const featureOrder = features?.feature_order as string[] | undefined;
+        if (!featureOrder || featureOrder.length === 0) {
+            return features.included;
+        }
+        
+        // Ordenar según feature_order
+        const orderedFeatures: string[] = [];
+        for (const feature of featureOrder) {
+            if (features.included.includes(feature)) {
+                orderedFeatures.push(feature);
+            }
+        }
+        
+        // Añadir cualquier característica que no esté en el orden
+        for (const feature of features.included) {
+            if (!orderedFeatures.includes(feature)) {
+                orderedFeatures.push(feature);
+            }
+        }
+        
+        return orderedFeatures;
     }
 
     private async loadContractedServices(): Promise<void> {

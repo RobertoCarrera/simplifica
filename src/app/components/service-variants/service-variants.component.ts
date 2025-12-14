@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { ServiceVariant, VariantPricing, ClientVariantAssignment } from '../../services/supabase-services.service';
 import { SupabaseSettingsService } from '../../services/supabase-settings.service';
 import { SimpleSupabaseService } from '../../services/simple-supabase.service';
@@ -17,7 +18,7 @@ interface SimpleClient {
 @Component({
   selector: 'app-service-variants',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DragDropModule],
   templateUrl: './service-variants.component.html',
   styleUrl: './service-variants.component.scss'
 })
@@ -175,12 +176,17 @@ export class ServiceVariantsComponent implements OnInit {
       }
     }
 
+    // Preparar features con el orden actual
+    const features = this.formData.features || { included: [], excluded: [], limits: {} };
+    // Guardar el orden de las características en feature_order
+    (features as any).feature_order = [...this.allFeatures];
+    
     const variant: ServiceVariant = {
       id: this.editingVariant?.id || '',
       service_id: this.serviceId, // Puede ser "" para variantes pendientes
       variant_name: this.formData.variant_name!,
       pricing: this.formData.pricing,
-      features: this.formData.features || { included: [], excluded: [], limits: {} },
+      features: features,
       display_config: this.formData.display_config || { highlight: false, badge: null, color: null },
       is_active: this.formData.is_active !== undefined ? this.formData.is_active : true,
       sort_order: this.formData.sort_order || 0,
@@ -325,16 +331,64 @@ export class ServiceVariantsComponent implements OnInit {
 
   // Feature management
   computeAllFeatures() {
-    const features = new Set<string>();
-    this.variants.forEach(v => {
-      v.features?.included?.forEach(f => features.add(f));
-      v.features?.excluded?.forEach(f => features.add(f));
-    });
-    // Also add features from current formData
-    this.formData.features?.included?.forEach(f => features.add(f));
-    this.formData.features?.excluded?.forEach(f => features.add(f));
+    const seen = new Set<string>();
+    let orderedFeatures: string[] = [];
     
-    this.allFeatures = Array.from(features).sort();
+    // Primero intentar usar el orden guardado en feature_order
+    const savedOrder = (this.formData.features as any)?.feature_order as string[] | undefined;
+    
+    if (savedOrder && savedOrder.length > 0) {
+      // Usar el orden guardado como base
+      savedOrder.forEach(f => {
+        if (!seen.has(f)) {
+          orderedFeatures.push(f);
+          seen.add(f);
+        }
+      });
+    }
+    
+    // Añadir características del formData que no estén en el orden guardado
+    this.formData.features?.included?.forEach(f => {
+      if (!seen.has(f)) {
+        orderedFeatures.push(f);
+        seen.add(f);
+      }
+    });
+    this.formData.features?.excluded?.forEach(f => {
+      if (!seen.has(f)) {
+        orderedFeatures.push(f);
+        seen.add(f);
+      }
+    });
+    
+    // Luego las de otras variantes
+    this.variants.forEach(v => {
+      // Primero revisar si tienen feature_order guardado
+      const variantOrder = (v.features as any)?.feature_order as string[] | undefined;
+      if (variantOrder) {
+        variantOrder.forEach(f => {
+          if (!seen.has(f)) {
+            orderedFeatures.push(f);
+            seen.add(f);
+          }
+        });
+      }
+      
+      v.features?.included?.forEach(f => {
+        if (!seen.has(f)) {
+          orderedFeatures.push(f);
+          seen.add(f);
+        }
+      });
+      v.features?.excluded?.forEach(f => {
+        if (!seen.has(f)) {
+          orderedFeatures.push(f);
+          seen.add(f);
+        }
+      });
+    });
+    
+    this.allFeatures = orderedFeatures;
   }
 
   isFeatureIncluded(feature: string): boolean {
@@ -370,10 +424,27 @@ export class ServiceVariantsComponent implements OnInit {
       const feature = this.newGlobalFeature.trim();
       if (!this.allFeatures.includes(feature)) {
         this.allFeatures.push(feature);
-        this.allFeatures.sort();
+        // No ordenar automáticamente para permitir orden manual
       }
       this.newGlobalFeature = '';
     }
+  }
+
+  removeGlobalFeature(feature: string) {
+    // Eliminar de la lista global
+    this.allFeatures = this.allFeatures.filter(f => f !== feature);
+    
+    // También eliminar de included/excluded del formData actual
+    if (this.formData.features?.included) {
+      this.formData.features.included = this.formData.features.included.filter(f => f !== feature);
+    }
+    if (this.formData.features?.excluded) {
+      this.formData.features.excluded = this.formData.features.excluded.filter(f => f !== feature);
+    }
+  }
+
+  dropFeature(event: CdkDragDrop<string[]>) {
+    moveItemInArray(this.allFeatures, event.previousIndex, event.currentIndex);
   }
 
   addFeature(type: 'included' | 'excluded') {
@@ -401,6 +472,35 @@ export class ServiceVariantsComponent implements OnInit {
     if (this.formData.features && this.formData.features[type]) {
       this.formData.features[type]!.splice(index, 1);
     }
+  }
+
+  /**
+   * Obtiene las características incluidas de una variante ordenadas según feature_order
+   */
+  getOrderedIncludedFeatures(variant: ServiceVariant): string[] {
+    if (!variant.features?.included?.length) return [];
+    
+    const featureOrder = (variant.features as any)?.feature_order as string[] | undefined;
+    if (!featureOrder || featureOrder.length === 0) {
+      return variant.features.included;
+    }
+    
+    // Ordenar según feature_order
+    const orderedFeatures: string[] = [];
+    for (const feature of featureOrder) {
+      if (variant.features.included.includes(feature)) {
+        orderedFeatures.push(feature);
+      }
+    }
+    
+    // Añadir cualquier característica que no esté en el orden (por si acaso)
+    for (const feature of variant.features.included) {
+      if (!orderedFeatures.includes(feature)) {
+        orderedFeatures.push(feature);
+      }
+    }
+    
+    return orderedFeatures;
   }
 
   // ============= VISIBILITY & CLIENT ASSIGNMENT MANAGEMENT =============
