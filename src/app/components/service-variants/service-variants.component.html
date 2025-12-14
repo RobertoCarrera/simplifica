@@ -8,10 +8,20 @@
   <!-- Variants List -->
   <div class="variants-list" *ngIf="variants.length > 0">
     <div class="variant-card" *ngFor="let variant of variants; let i = index"
-         [style.border-left-color]="getVariantBadgeColor(variant)">
+         [style.border-left-color]="getVariantBadgeColor(variant)"
+         [class.variant-hidden]="variant.is_hidden">
       <div class="variant-header">
         <div class="variant-title">
-          <h4>{{ variant.variant_name }}</h4>
+          <h4>
+            {{ variant.variant_name }}
+            <span class="hidden-badge" *ngIf="variant.is_hidden" title="Esta variante está oculta">
+              <i class="fas fa-eye-slash"></i>
+            </span>
+            <span class="assigned-badge" *ngIf="variant.client_assignments && variant.client_assignments.length > 0" 
+                  title="Asignada a clientes específicos">
+              <i class="fas fa-user-lock"></i> {{ variant.client_assignments.length }}
+            </span>
+          </h4>
           <!-- Pills de precios -->
           <div class="pricing-pills" *ngIf="variant.pricing && variant.pricing.length > 0">
             <span class="pricing-pill" *ngFor="let price of variant.pricing"
@@ -29,6 +39,19 @@
           </span>
         </div>
         <div class="variant-actions">
+          <!-- Toggle Hidden -->
+          <button type="button" class="btn-icon" 
+                  (click)="toggleHidden(variant)" 
+                  [title]="variant.is_hidden ? 'Mostrar en catálogo' : 'Ocultar del catálogo'"
+                  [class.active]="variant.is_hidden">
+            <i class="fas" [class.fa-eye]="!variant.is_hidden" [class.fa-eye-slash]="variant.is_hidden"></i>
+          </button>
+          <!-- Assign to Client -->
+          <button type="button" class="btn-icon" 
+                  (click)="openAssignmentModal(variant)" 
+                  title="Asignar a cliente">
+            <i class="fas fa-user-plus"></i>
+          </button>
           <button type="button" class="btn-icon" (click)="moveVariantUp(i)" 
                   [disabled]="i === 0" title="Subir">
             <i class="fas fa-arrow-up"></i>
@@ -43,6 +66,19 @@
           <button type="button" class="btn-icon btn-danger" (click)="deleteVariant(variant.id)" title="Eliminar">
             <i class="fas fa-trash"></i>
           </button>
+        </div>
+      </div>
+
+      <!-- Client Assignments List -->
+      <div class="client-assignments" *ngIf="variant.client_assignments && variant.client_assignments.length > 0">
+        <small class="text-muted">Precio personalizado para:</small>
+        <div class="assignment-chips">
+          <span class="assignment-chip" *ngFor="let assignment of variant.client_assignments">
+            <i class="fas fa-user"></i> {{ assignment.client?.name || 'Cliente' }}
+            <button type="button" class="chip-remove" (click)="removeAssignment(assignment.id, variant)" title="Quitar asignación">
+              <i class="fas fa-times"></i>
+            </button>
+          </span>
         </div>
       </div>
 
@@ -375,6 +411,76 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="closeForm()">Cancelar</button>
         <button type="button" class="btn btn-primary" (click)="saveVariant()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client Assignment Modal -->
+  <div class="modal" *ngIf="showAssignmentModal" (click)="$event.stopPropagation(); closeAssignmentModal()">
+    <div class="modal-content modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <h3>Asignar Variante a Cliente</h3>
+          <p class="modal-subtitle">{{ selectedVariantForAssignment?.variant_name }}</p>
+        </div>
+        <button class="btn-close" type="button" (click)="closeAssignmentModal()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="assignment-info alert alert-info">
+          <i class="fas fa-info-circle"></i>
+          <span>Si asignas esta variante a un cliente, ese cliente <strong>solo verá esta variante</strong> del servicio (precio personalizado).</span>
+        </div>
+
+        <div class="form-group">
+          <label>Seleccionar Cliente</label>
+          <div class="client-search">
+            <input type="text" 
+                   class="form-control" 
+                   [(ngModel)]="clientSearchTerm"
+                   (ngModelChange)="filterClients()"
+                   placeholder="Buscar cliente por nombre...">
+          </div>
+          
+          <div class="client-list" *ngIf="filteredClients.length > 0">
+            <div class="client-item" 
+                 *ngFor="let client of filteredClients"
+                 (click)="assignToClient(client)"
+                 [class.already-assigned]="isClientAssigned(client.id)">
+              <i class="fas fa-user"></i>
+              <div class="client-info">
+                <span class="client-name">{{ client.name }}</span>
+                <span class="client-email" *ngIf="client.email">{{ client.email }}</span>
+              </div>
+              <i class="fas fa-check" *ngIf="isClientAssigned(client.id)"></i>
+            </div>
+          </div>
+          
+          <div class="empty-clients" *ngIf="filteredClients.length === 0 && clientSearchTerm">
+            <p>No se encontraron clientes</p>
+          </div>
+        </div>
+
+        <!-- Current Assignments -->
+        <div class="current-assignments" *ngIf="selectedVariantForAssignment?.client_assignments?.length">
+          <label>Clientes asignados actualmente:</label>
+          <div class="assignment-chips">
+            <span class="assignment-chip" *ngFor="let assignment of selectedVariantForAssignment?.client_assignments">
+              <i class="fas fa-user"></i> {{ assignment.client?.name || 'Cliente' }}
+              <button type="button" class="chip-remove" 
+                      (click)="removeAssignment(assignment.id, selectedVariantForAssignment!)" 
+                      title="Quitar asignación">
+                <i class="fas fa-times"></i>
+              </button>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeAssignmentModal()">Cerrar</button>
       </div>
     </div>
   </div>

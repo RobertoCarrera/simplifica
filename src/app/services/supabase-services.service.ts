@@ -38,9 +38,23 @@ export interface ServiceVariant {
     color?: string | null;
   };
   is_active: boolean;
+  is_hidden?: boolean; // Si true, no se muestra en catálogo público
   sort_order: number;
   created_at: string;
   updated_at: string;
+  
+  // Asignaciones a clientes específicos (precio personalizado)
+  client_assignments?: ClientVariantAssignment[];
+}
+
+export interface ClientVariantAssignment {
+  id: string;
+  client_id: string;
+  service_id: string;
+  variant_id: string;
+  created_at: string;
+  created_by?: string;
+  client?: { id: string; name: string; email?: string };
 }
 
 export interface Service {
@@ -1377,7 +1391,7 @@ export class SupabaseServicesService {
   // =====================================================
 
   /**
-   * Get all variants for a specific service
+   * Get all variants for a specific service, including client assignments
    */
   async getServiceVariants(serviceId: string): Promise<ServiceVariant[]> {
     try {
@@ -1391,7 +1405,37 @@ export class SupabaseServicesService {
         .order('variant_name', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      
+      // Load client assignments for each variant
+      const variants = data || [];
+      if (variants.length > 0) {
+        const variantIds = variants.map(v => v.id);
+        const { data: assignments } = await client
+          .from('client_variant_assignments')
+          .select(`
+            id, client_id, service_id, variant_id, created_at,
+            client:clients(id, name, email)
+          `)
+          .in('variant_id', variantIds);
+        
+        // Attach assignments to their variants
+        if (assignments) {
+          for (const variant of variants) {
+            variant.client_assignments = assignments
+              .filter((a: any) => a.variant_id === variant.id)
+              .map((a: any) => ({
+                id: a.id,
+                client_id: a.client_id,
+                service_id: a.service_id,
+                variant_id: a.variant_id,
+                created_at: a.created_at,
+                client: a.client
+              }));
+          }
+        }
+      }
+      
+      return variants;
     } catch (error) {
       console.error('❌ Error getting service variants:', error);
       throw error;

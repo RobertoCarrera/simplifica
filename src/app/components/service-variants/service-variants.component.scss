@@ -822,3 +822,258 @@
 }
 
 /* ============= FIN ESTILOS MÚLTIPLES PRECIOS ============= */
+
+/* ============= VISIBILITY & ASSIGNMENT STYLES ============= */
+
+.variant-hidden {
+  opacity: 0.6;
+  border-left-color: #9ca3af !important;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.hidden-badge, .assigned-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: 0.5rem;
+}
+
+.hidden-badge {
+  background: #fef3c7;
+  color: #92400e;
+  
+  @media (prefers-color-scheme: dark) {
+    background: #78350f;
+    color: #fde68a;
+  }
+}
+
+.assigned-badge {
+  background: #dbeafe;
+  color: #1e40af;
+  
+  @media (prefers-color-scheme: dark) {
+    background: #1e3a5f;
+    color: #93c5fd;
+  }
+}
+
+.btn-icon.active {
+  background: #fef3c7;
+  color: #92400e;
+  
+  @media (prefers-color-scheme: dark) {
+    background: #78350f;
+    color: #fde68a;
+  }
+}
+
+.client-assignments {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border-color, #e5e7eb);
+  
+  small {
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    border-top-color: #475569;
+  }
+}
+
+.assignment-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.assignment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  
+  .chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    margin-left: 0.25rem;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.4);
+    }
+    
+    i {
+      font-size: 0.625rem;
+    }
+  }
+}
+
+/* Assignment Modal */
+.modal-sm {
+  max-width: 480px !important;
+}
+
+.assignment-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: #dbeafe;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  
+  i {
+    color: #2563eb;
+    margin-top: 0.125rem;
+  }
+  
+  span {
+    font-size: 0.875rem;
+    color: #1e40af;
+    line-height: 1.5;
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    background: #1e3a5f;
+    
+    i {
+      color: #60a5fa;
+    }
+    
+    span {
+      color: #bfdbfe;
+    }
+  }
+}
+
+.client-search {
+  margin-bottom: 1rem;
+}
+
+.client-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  
+  @media (prefers-color-scheme: dark) {
+    border-color: #475569;
+  }
+}
+
+.client-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  transition: background 0.2s;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+  
+  &:hover {
+    background: var(--bg-secondary, #f3f4f6);
+  }
+  
+  &.already-assigned {
+    background: #dcfce7;
+    
+    @media (prefers-color-scheme: dark) {
+      background: #14532d;
+    }
+  }
+  
+  i:first-child {
+    color: var(--text-muted, #9ca3af);
+  }
+  
+  i:last-child {
+    margin-left: auto;
+    color: #16a34a;
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    border-bottom-color: #475569;
+    
+    &:hover {
+      background: #334155;
+    }
+  }
+}
+
+.client-info {
+  display: flex;
+  flex-direction: column;
+  
+  .client-name {
+    font-weight: 500;
+    color: var(--text-primary, #1f2937);
+    
+    @media (prefers-color-scheme: dark) {
+      color: #f9fafb;
+    }
+  }
+  
+  .client-email {
+    font-size: 0.75rem;
+    color: var(--text-muted, #6b7280);
+    
+    @media (prefers-color-scheme: dark) {
+      color: #9ca3af;
+    }
+  }
+}
+
+.empty-clients {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted, #6b7280);
+  
+  @media (prefers-color-scheme: dark) {
+    color: #9ca3af;
+  }
+}
+
+.current-assignments {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+  
+  label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--text-secondary, #6b7280);
+  }
+  
+  @media (prefers-color-scheme: dark) {
+    border-top-color: #475569;
+  }
+}

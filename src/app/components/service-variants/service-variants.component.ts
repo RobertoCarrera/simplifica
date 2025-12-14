@@ -1,9 +1,18 @@
 import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ServiceVariant, VariantPricing } from '../../services/supabase-services.service';
+import { ServiceVariant, VariantPricing, ClientVariantAssignment } from '../../services/supabase-services.service';
 import { SupabaseSettingsService } from '../../services/supabase-settings.service';
+import { SimpleSupabaseService } from '../../services/simple-supabase.service';
+import { ToastService } from '../../services/toast.service';
 import { firstValueFrom } from 'rxjs';
+
+interface SimpleClient {
+  id: string;
+  name: string;
+  email?: string;
+  business_name?: string;
+}
 
 @Component({
   selector: 'app-service-variants',
@@ -14,6 +23,8 @@ import { firstValueFrom } from 'rxjs';
 })
 export class ServiceVariantsComponent implements OnInit {
   private settingsService = inject(SupabaseSettingsService);
+  private supabaseService = inject(SimpleSupabaseService);
+  private toastService = inject(ToastService);
 
   @Input() serviceId: string = '';
   @Input() serviceName: string = '';
@@ -21,6 +32,8 @@ export class ServiceVariantsComponent implements OnInit {
   @Output() variantsChange = new EventEmitter<ServiceVariant[]>();
   @Output() onSave = new EventEmitter<ServiceVariant>();
   @Output() onDelete = new EventEmitter<string>();
+  @Output() onVisibilityChange = new EventEmitter<{ variantId: string; isHidden: boolean }>();
+  @Output() onAssignmentChange = new EventEmitter<void>();
 
   showForm = false;
   editingVariant: ServiceVariant | null = null;
@@ -34,6 +47,13 @@ export class ServiceVariantsComponent implements OnInit {
   copyFeaturesMode = false;
   allFeatures: string[] = [];
   newGlobalFeature: string = '';
+
+  // Client assignment modal
+  showAssignmentModal = false;
+  selectedVariantForAssignment: ServiceVariant | null = null;
+  clients: SimpleClient[] = [];
+  filteredClients: SimpleClient[] = [];
+  clientSearchTerm: string = '';
 
   billingPeriods = [
     { value: 'one_time', label: 'Pago único' },
@@ -57,6 +77,9 @@ export class ServiceVariantsComponent implements OnInit {
     } catch (error) {
       console.error('Error loading settings in ServiceVariants:', error);
     }
+
+    // Load clients for assignment
+    await this.loadClients();
   }
 
   sortVariants() {
@@ -377,6 +400,146 @@ export class ServiceVariantsComponent implements OnInit {
   removeFeature(type: 'included' | 'excluded', index: number) {
     if (this.formData.features && this.formData.features[type]) {
       this.formData.features[type]!.splice(index, 1);
+    }
+  }
+
+  // ============= VISIBILITY & CLIENT ASSIGNMENT MANAGEMENT =============
+
+  async loadClients() {
+    try {
+      const supabase = this.supabaseService.getClient();
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name, email, business_name')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      this.clients = data || [];
+      this.filteredClients = [...this.clients];
+    } catch (error) {
+      console.error('Error loading clients:', error);
+    }
+  }
+
+  async toggleHidden(variant: ServiceVariant) {
+    try {
+      const newValue = !variant.is_hidden;
+      const supabase = this.supabaseService.getClient();
+      
+      const { error } = await supabase
+        .from('service_variants')
+        .update({ is_hidden: newValue })
+        .eq('id', variant.id);
+      
+      if (error) throw error;
+      
+      variant.is_hidden = newValue;
+      this.onVisibilityChange.emit({ variantId: variant.id, isHidden: newValue });
+      this.toastService.success('Visibilidad', newValue ? 'Variante oculta del catálogo' : 'Variante visible en catálogo');
+    } catch (error) {
+      console.error('Error toggling visibility:', error);
+      this.toastService.error('Error', 'Error al cambiar visibilidad');
+    }
+  }
+
+  openAssignmentModal(variant: ServiceVariant) {
+    this.selectedVariantForAssignment = variant;
+    this.clientSearchTerm = '';
+    this.filteredClients = [...this.clients];
+    this.showAssignmentModal = true;
+  }
+
+  closeAssignmentModal() {
+    this.showAssignmentModal = false;
+    this.selectedVariantForAssignment = null;
+    this.clientSearchTerm = '';
+  }
+
+  filterClients() {
+    const term = this.clientSearchTerm.toLowerCase();
+    this.filteredClients = this.clients.filter(c => 
+      c.name.toLowerCase().includes(term) || 
+      (c.email && c.email.toLowerCase().includes(term)) ||
+      (c.business_name && c.business_name.toLowerCase().includes(term))
+    );
+  }
+
+  isClientAssigned(clientId: string): boolean {
+    if (!this.selectedVariantForAssignment?.client_assignments) return false;
+    return this.selectedVariantForAssignment.client_assignments.some(a => a.client_id === clientId);
+  }
+
+  async assignToClient(client: SimpleClient) {
+    if (!this.selectedVariantForAssignment || !this.serviceId) return;
+    
+    // Check if already assigned
+    if (this.isClientAssigned(client.id)) {
+      this.toastService.info('Asignación', 'Este cliente ya tiene esta variante asignada');
+      return;
+    }
+
+    try {
+      const supabase = this.supabaseService.getClient();
+      
+      // First, remove any existing assignment for this client+service (only one variant per service)
+      await supabase
+        .from('client_variant_assignments')
+        .delete()
+        .eq('client_id', client.id)
+        .eq('service_id', this.serviceId);
+      
+      // Insert new assignment
+      const { data, error } = await supabase
+        .from('client_variant_assignments')
+        .insert({
+          client_id: client.id,
+          service_id: this.serviceId,
+          variant_id: this.selectedVariantForAssignment.id
+        })
+        .select('id, client_id, service_id, variant_id, created_at')
+        .single();
+      
+      if (error) throw error;
+      
+      // Update local state
+      if (!this.selectedVariantForAssignment.client_assignments) {
+        this.selectedVariantForAssignment.client_assignments = [];
+      }
+      this.selectedVariantForAssignment.client_assignments.push({
+        ...data,
+        client: { id: client.id, name: client.name, email: client.email }
+      });
+      
+      this.onAssignmentChange.emit();
+      this.toastService.success('Asignado', `Variante asignada a ${client.name}`);
+    } catch (error) {
+      console.error('Error assigning variant:', error);
+      this.toastService.error('Error', 'Error al asignar variante');
+    }
+  }
+
+  async removeAssignment(assignmentId: string, variant: ServiceVariant) {
+    try {
+      const supabase = this.supabaseService.getClient();
+      
+      const { error } = await supabase
+        .from('client_variant_assignments')
+        .delete()
+        .eq('id', assignmentId);
+      
+      if (error) throw error;
+      
+      // Update local state
+      if (variant.client_assignments) {
+        variant.client_assignments = variant.client_assignments.filter(a => a.id !== assignmentId);
+      }
+      
+      this.onAssignmentChange.emit();
+      this.toastService.success('Eliminado', 'Asignación eliminada');
+    } catch (error) {
+      console.error('Error removing assignment:', error);
+      this.toastService.error('Error', 'Error al eliminar asignación');
     }
   }
 }
