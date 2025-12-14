@@ -38,34 +38,90 @@ import { ClientPortalService } from '../../services/client-portal.service';
           <div *ngIf="services().length > 0" class="space-y-4">
             <div *ngFor="let service of services()" 
               class="bg-white dark:bg-slate-800 rounded-xl p-5 border border-gray-200 dark:border-slate-700 shadow-sm transition-all hover:shadow-md">
-              <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div class="flex-1">
-                  <div class="flex items-center gap-2 mb-1">
-                    <h3 class="font-bold text-lg text-gray-900 dark:text-white">{{ service.name }}</h3>
-                    <span *ngIf="service.status === 'paused'" class="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                      Cancelado
-                    </span>
-                  </div>
-                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ service.description }}</p>
-                  
-                  <div class="mt-3 flex flex-wrap gap-3 text-sm">
-                    <div *ngIf="service.nextBillingDate" class="flex items-center text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded">
-                      <i class="far fa-calendar-alt mr-1.5 text-orange-500"></i>
-                      <span *ngIf="service.status === 'accepted'">Próxima factura: {{ service.nextBillingDate | date:'dd/MM/yyyy' }}</span>
-                      <span *ngIf="service.status === 'paused'">Activo hasta: {{ service.nextBillingDate | date:'dd/MM/yyyy' }}</span>
+              <div class="flex flex-col gap-4">
+                <!-- Header -->
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                      <h3 class="font-bold text-lg text-gray-900 dark:text-white">{{ service.name }}</h3>
+                      <span *ngIf="service.status === 'paused'" class="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                        Cancelado
+                      </span>
+                      <span *ngIf="service.selectedVariant" class="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                        {{ service.selectedVariant.name }}
+                      </span>
+                    </div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ service.description }}</p>
+                    
+                    <div class="mt-3 flex flex-wrap gap-3 text-sm">
+                      <div *ngIf="service.nextBillingDate" class="flex items-center text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded">
+                        <i class="far fa-calendar-alt mr-1.5 text-orange-500"></i>
+                        <span *ngIf="service.status === 'accepted'">Próxima factura: {{ service.nextBillingDate | date:'dd/MM/yyyy' }}</span>
+                        <span *ngIf="service.status === 'paused'">Activo hasta: {{ service.nextBillingDate | date:'dd/MM/yyyy' }}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-                
-                <div class="text-right min-w-[120px]">
-                  <p class="font-bold text-xl text-gray-900 dark:text-white">{{ service.price | currency:'EUR' }}</p>
-                  <p *ngIf="service.isRecurring" class="text-xs text-gray-500 mb-2">/ {{ service.billingPeriod }}</p>
                   
-                  <button *ngIf="service.status === 'accepted'" 
-                    (click)="cancelSubscription(service)"
-                    class="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 hover:underline">
-                    Dar de baja
-                  </button>
+                  <div class="text-right min-w-[120px]">
+                    <p class="font-bold text-xl text-gray-900 dark:text-white">{{ service.price | currency:'EUR' }}</p>
+                    <p *ngIf="service.isRecurring" class="text-xs text-gray-500 mb-2">/ {{ service.billingPeriod }}</p>
+                    
+                    <button *ngIf="service.status === 'accepted'" 
+                      (click)="cancelSubscription(service)"
+                      class="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 hover:underline">
+                      Dar de baja
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Variants Comparison -->
+                <div *ngIf="service.variants && service.variants.length > 1" class="border-t border-gray-200 dark:border-slate-700 pt-4">
+                  <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+                    <i class="fas fa-exchange-alt mr-2 text-blue-500"></i>
+                    Comparar y cambiar de plan
+                  </h4>
+                  
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div *ngFor="let variant of service.variants" 
+                         (click)="changeVariant(service, variant)"
+                         class="cursor-pointer p-3 rounded-lg border transition-all duration-200"
+                         [ngClass]="{
+                           'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500/20': service.selectedVariant?.id === variant.id,
+                           'border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-slate-700/50': service.selectedVariant?.id !== variant.id
+                         }">
+                      <div class="flex justify-between items-start mb-2">
+                        <div>
+                          <p class="font-semibold text-sm text-gray-900 dark:text-white">{{ variant.name }}</p>
+                          <p class="text-xs text-gray-500 dark:text-gray-400" *ngIf="variant.billingPeriod === 'monthly'">Mensual</p>
+                          <p class="text-xs text-gray-500 dark:text-gray-400" *ngIf="variant.billingPeriod === 'annually'">Anual</p>
+                        </div>
+                        <div class="text-right">
+                          <p class="font-bold text-lg text-gray-900 dark:text-white">{{ variant.price | currency:'EUR' }}</p>
+                          <p class="text-xs text-gray-500" *ngIf="variant.billingPeriod === 'monthly'">/mes</p>
+                          <p class="text-xs text-gray-500" *ngIf="variant.billingPeriod === 'annually'">/año</p>
+                        </div>
+                      </div>
+                      
+                      <ul class="space-y-1 mt-2" *ngIf="variant.features?.included?.length > 0">
+                        <li *ngFor="let feature of variant.features.included.slice(0, 3)" class="text-xs text-gray-600 dark:text-gray-400 flex items-start">
+                          <i class="fas fa-check text-green-500 mr-1.5 mt-0.5 text-[10px]"></i>
+                          <span>{{ feature }}</span>
+                        </li>
+                        <li *ngIf="variant.features.included.length > 3" class="text-xs text-gray-500 dark:text-gray-500 italic">
+                          +{{ variant.features.included.length - 3 }} más
+                        </li>
+                      </ul>
+                      
+                      <button *ngIf="service.selectedVariant?.id !== variant.id && service.status === 'accepted'"
+                              class="mt-3 w-full text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                        Cambiar a este plan
+                      </button>
+                      <div *ngIf="service.selectedVariant?.id === variant.id" 
+                           class="mt-3 text-xs font-medium text-green-600 dark:text-green-400 flex items-center justify-center">
+                        <i class="fas fa-check-circle mr-1"></i> Plan actual
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -350,13 +406,17 @@ export class PortalServicesComponent implements OnInit {
 
             const supabase = this.supabaseClient.instance;
 
+            // 1. Load quotes with their items
             const { data, error } = await supabase
                 .from('quotes')
                 .select(`
                     id, title, recurrence_type, recurrence_interval,
                     total_amount, currency, status,
                     next_run_at, recurrence_end_date,
-                    created_at
+                    created_at,
+                    items:quote_items(
+                        service_id, variant_id, billing_period
+                    )
                 `)
                 .eq('client_id', profile.client_id)
                 .not('recurrence_type', 'is', null)
@@ -366,18 +426,80 @@ export class PortalServicesComponent implements OnInit {
 
             if (error) throw error;
 
-            const contractedServices: ContractedService[] = (data || []).map((quote: any) => ({
-                id: quote.id,
-                name: quote.title || 'Servicio sin título',
-                description: this.getRecurrenceDescription(quote.recurrence_type, quote.recurrence_interval),
-                price: quote.total_amount || 0,
-                isRecurring: true,
-                billingPeriod: this.getBillingPeriodLabel(quote.recurrence_type, quote.recurrence_interval),
-                status: quote.status,
-                startDate: quote.created_at,
-                endDate: quote.recurrence_end_date || undefined,
-                nextBillingDate: quote.next_run_at
-            }));
+            // 2. Extract unique service IDs
+            const serviceIds = new Set<string>();
+            (data || []).forEach((quote: any) => {
+                if (quote.items && quote.items.length > 0) {
+                    quote.items.forEach((item: any) => {
+                        if (item.service_id) serviceIds.add(item.service_id);
+                    });
+                }
+            });
+
+            // 3. Load services and their variants (even if not public, since they are contracted)
+            let servicesMap = new Map<string, any>();
+            if (serviceIds.size > 0) {
+                // Load each service individually to get variants even if not public
+                for (const serviceId of serviceIds) {
+                    const { data: serviceData } = await this.portalService.getServiceWithVariants(serviceId);
+                    if (serviceData) {
+                        servicesMap.set(serviceId, serviceData);
+                    }
+                }
+            }
+
+            // 4. Map quotes to contracted services with variants
+            const contractedServices: ContractedService[] = (data || []).map((quote: any) => {
+                const firstItem = quote.items && quote.items.length > 0 ? quote.items[0] : null;
+                const serviceId = firstItem?.service_id;
+                const variantId = firstItem?.variant_id;
+                const service = serviceId ? servicesMap.get(serviceId) : null;
+
+                let variants: any[] = [];
+                let selectedVariant = null;
+
+                if (service?.variants) {
+                    // Map variants from service
+                    variants = service.variants.map((v: any) => {
+                        let pricingData = v.pricing;
+                        if (typeof pricingData === 'string') {
+                            try { pricingData = JSON.parse(pricingData); } catch (e) { pricingData = []; }
+                        }
+                        const firstPrice = pricingData && Array.isArray(pricingData) && pricingData.length > 0 ? pricingData[0] : null;
+                        
+                        // Parse features if string
+                        let featuresData = v.features;
+                        if (typeof featuresData === 'string') {
+                            try { featuresData = JSON.parse(featuresData); } catch (e) { featuresData = { included: [], excluded: [] }; }
+                        }
+                        
+                        return {
+                            id: v.id,
+                            name: v.variant_name || v.name,
+                            price: firstPrice?.base_price || v.base_price || 0,
+                            billingPeriod: firstPrice?.billing_period || v.billing_period,
+                            features: featuresData || { included: [], excluded: [] }
+                        };
+                    });
+                    selectedVariant = variants.find(v => v.id === variantId) || null;
+                }
+
+                return {
+                    id: quote.id,
+                    name: quote.title || 'Servicio sin título',
+                    description: this.getRecurrenceDescription(quote.recurrence_type, quote.recurrence_interval),
+                    price: quote.total_amount || 0,
+                    isRecurring: true,
+                    billingPeriod: this.getBillingPeriodLabel(quote.recurrence_type, quote.recurrence_interval),
+                    status: quote.status,
+                    startDate: quote.created_at,
+                    endDate: quote.recurrence_end_date || undefined,
+                    nextBillingDate: quote.next_run_at,
+                    serviceId: serviceId,
+                    variants: variants,
+                    selectedVariant: selectedVariant
+                };
+            });
 
             this.services.set(contractedServices);
         } catch (error) {
@@ -477,6 +599,68 @@ export class PortalServicesComponent implements OnInit {
             }
         }
     }
+
+    async changeVariant(contractedService: ContractedService, newVariant: any) {
+        if (contractedService.selectedVariant?.id === newVariant.id) return;
+        if (contractedService.status !== 'accepted') {
+            alert('No puedes cambiar de plan en un servicio cancelado.');
+            return;
+        }
+
+        const currentVariantName = contractedService.selectedVariant?.name || 'actual';
+        const newPrice = newVariant.price;
+        const priceDiff = newPrice - contractedService.price;
+        const diffText = priceDiff > 0 ? `+${priceDiff.toFixed(2)}€` : `${priceDiff.toFixed(2)}€`;
+
+        if (!confirm(`¿Cambiar de "${currentVariantName}" a "${newVariant.name}"?\n\nNuevo precio: ${newPrice}€ (${diffText})\n\nEl cambio se aplicará en la próxima facturación.`)) {
+            return;
+        }
+
+        try {
+            const supabase = this.supabaseClient.instance;
+            
+            // Update the quote_items to reflect new variant
+            const { error } = await supabase
+                .from('quote_items')
+                .update({
+                    variant_id: newVariant.id,
+                    unit_price: newVariant.price,
+                    description: `${contractedService.name} - ${newVariant.name}`,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('quote_id', contractedService.id);
+
+            if (error) throw error;
+
+            // Recalculate quote totals
+            const { data: items } = await supabase
+                .from('quote_items')
+                .select('subtotal, tax_amount, total')
+                .eq('quote_id', contractedService.id);
+
+            if (items && items.length > 0) {
+                const subtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+                const taxAmount = items.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
+                const total = items.reduce((sum, item) => sum + (item.total || 0), 0);
+
+                await supabase
+                    .from('quotes')
+                    .update({
+                        subtotal,
+                        tax_amount: taxAmount,
+                        total_amount: total,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', contractedService.id);
+            }
+
+            alert('Plan cambiado correctamente. El nuevo precio se aplicará en la próxima facturación.');
+            await this.loadContractedServices();
+        } catch (error) {
+            console.error('Error changing variant:', error);
+            alert('Error al cambiar de plan. Por favor, contacta con soporte.');
+        }
+    }
 }
 
 interface ContractedService {
@@ -490,4 +674,7 @@ interface ContractedService {
     startDate: string;
     endDate?: string;
     nextBillingDate?: string;
+    serviceId?: string;
+    variants?: any[];
+    selectedVariant?: any;
 }

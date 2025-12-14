@@ -140,6 +140,35 @@ export class ClientPortalService {
     return { data: servicesWithVariants, error: null };
   }
 
+  // New method to get service with variants by ID (for contracted services, even if not public)
+  async getServiceWithVariants(serviceId: string): Promise<{ data: any; error?: any }> {
+    const user = await firstValueFrom(this.auth.userProfile$);
+    if (!user?.company_id) return { data: null, error: 'No company context' };
+
+    const client = this.sb.instance;
+    
+    // Fetch service (any service the company has, not just public)
+    const { data: service, error: serviceError } = await client
+      .from('services')
+      .select('*')
+      .eq('id', serviceId)
+      .eq('company_id', user.company_id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (serviceError || !service) return { data: null, error: serviceError || 'Service not found' };
+
+    // Fetch variants
+    const { data: variants } = await client
+      .from('service_variants')
+      .select('*')
+      .eq('service_id', serviceId)
+      .eq('is_active', true)
+      .order('sort_order');
+
+    return { data: { ...service, variants: variants || [] }, error: null };
+  }
+
   async getCompanySettings(): Promise<{ data: any; error?: any }> {
     const user = await firstValueFrom(this.auth.userProfile$);
     if (!user?.company_id) return { data: null, error: 'No company context' };
