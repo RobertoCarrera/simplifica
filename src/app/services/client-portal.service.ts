@@ -197,12 +197,12 @@ export class ClientPortalService {
     }
   }
 
-  async contractService(serviceId: string, variantId?: string, paymentMethodId?: string): Promise<{ data: any; error?: any }> {
+  async contractService(serviceId: string, variantId?: string, preferredPaymentMethod?: string): Promise<{ data: any; error?: any }> {
     // Call edge function to create quote, accept, invoice and pay
     try {
       const token = await this.requireAccessToken();
       const { data, error } = await this.supabase.functions.invoke('client-request-service', {
-        body: { serviceId, variantId, action: 'contract', paymentMethodId },
+        body: { serviceId, variantId, action: 'contract', preferredPaymentMethod },
         headers: { Authorization: `Bearer ${token}` }
       });
       return { data, error };

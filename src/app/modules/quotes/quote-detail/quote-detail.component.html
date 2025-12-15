@@ -59,7 +59,7 @@
       @if (mobileMenuOpen()) {
       <div
         class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
-        @if (quote()!.status === 'draft') {
+        @if (quote()!.status === 'draft' || quote()!.status === 'request') {
         <button (click)="editQuote(); closeMobileMenu()"
           class="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,7 +70,7 @@
           Editar presupuesto
         </button>
         }
-        @if (conversionPolicy() !== 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
+        @if (conversionPolicy() !== 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'request' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
         <button (click)="markAsAccepted(); closeMobileMenu()"
           class="w-full text-left px-4 py-3 text-sm text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 flex items-center gap-3">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,7 +140,7 @@
       </button>
 
       <div class="flex items-center gap-3">
-        @if (quote()!.status === 'draft') {
+        @if (quote()!.status === 'draft' || quote()!.status === 'request') {
         <button (click)="editQuote()"
           class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,7 +151,7 @@
           Editar
         </button>
         }
-        @if (conversionPolicy() !== 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
+        @if (conversionPolicy() !== 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'request' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
         <button (click)="markAsAccepted()"
           class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -234,6 +234,7 @@
             class="inline-flex items-center px-2 py-1 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-semibold ring-1 md:ring-2 ring-white/30 backdrop-blur-sm"
             [ngClass]="{
                 'bg-white/20': quote()!.status === 'draft',
+                'bg-purple-400/30': quote()!.status === 'request',
                 'bg-blue-400/30': quote()!.status === 'sent',
                 'bg-green-400/30': quote()!.status === 'accepted',
                 'bg-red-400/30': quote()!.status === 'rejected',
@@ -712,11 +713,11 @@
         </div>
 
         <!-- Status actions - Solo visible en modo manual -->
-        @if (conversionPolicy() !== 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
+        @if (conversionPolicy() !== 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'request' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4">Cambiar Estado</h3>
           <div class="space-y-3">
-            @if (quote()!.status === 'draft' || quote()!.status === 'pending') {
+            @if (quote()!.status === 'draft' || quote()!.status === 'request' || quote()!.status === 'pending') {
             <button (click)="finalizeQuote()"
               class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -744,7 +745,7 @@
         }
         
         <!-- Info: Modo automático/programado -->
-        @if (conversionPolicy() === 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
+        @if (conversionPolicy() === 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'request' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
         <div class="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700 p-4">
           <div class="flex items-start gap-3">
             <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

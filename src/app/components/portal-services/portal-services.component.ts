@@ -1,16 +1,32 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { SupabaseClientService } from '../../services/supabase-client.service';
 import { ClientPortalService } from '../../services/client-portal.service';
+import { ToastService } from '../../services/toast.service';
+import { ContractProgressDialogComponent } from '../contract-progress-dialog/contract-progress-dialog.component';
+import { PaymentMethodSelectorComponent, PaymentSelection } from '../payment-method-selector/payment-method-selector.component';
 
 @Component({
     selector: 'app-portal-services',
     standalone: true,
-    imports: [CommonModule, RouterModule, FormsModule],
+    imports: [CommonModule, RouterModule, FormsModule, ContractProgressDialogComponent, PaymentMethodSelectorComponent],
     template: `
+    <!-- Contract Progress Dialog -->
+    <app-contract-progress-dialog 
+      #contractDialog
+      (closed)="onContractDialogClosed()"
+    ></app-contract-progress-dialog>
+
+    <!-- Payment Method Selector -->
+    <app-payment-method-selector
+      #paymentSelector
+      (selected)="onPaymentMethodSelected($event)"
+      (cancelled)="onPaymentSelectionCancelled()"
+    ></app-payment-method-selector>
+
     <div class="min-h-screen bg-gray-50 dark:bg-slate-900 p-4">
       <div class="max-w-4xl mx-auto">
         <!-- Header -->
@@ -311,11 +327,19 @@ export class PortalServicesComponent implements OnInit {
     private authService = inject(AuthService);
     private supabaseClient = inject(SupabaseClientService);
     private portalService = inject(ClientPortalService);
+    private toastService = inject(ToastService);
+
+    @ViewChild('contractDialog') contractDialog!: ContractProgressDialogComponent;
+    @ViewChild('paymentSelector') paymentSelector!: PaymentMethodSelectorComponent;
 
     loading = signal(true);
     services = signal<ContractedService[]>([]);
     publicServices = signal<any[]>([]);
     settings = signal<any>(null);
+    
+    // State for payment method selection flow
+    private pendingContractService: any = null;
+    private pendingPaymentData: any = null;
 
     ngOnInit(): void {
         this.loadData();
@@ -677,11 +701,11 @@ export class PortalServicesComponent implements OnInit {
 
             if (error) throw error;
 
-            alert('Servicio dado de baja correctamente.');
+            this.toastService.success('Baja procesada', 'El servicio ha sido dado de baja correctamente.');
             await this.loadContractedServices();
         } catch (error) {
             console.error('Error canceling subscription:', error);
-            alert('Error al cancelar el servicio.');
+            this.toastService.error('Error', 'No se pudo cancelar el servicio. Por favor, contacta con soporte.');
         }
     }
 
@@ -691,47 +715,128 @@ export class PortalServicesComponent implements OnInit {
         
         const { data, error } = await this.portalService.requestService(service.id, service.selectedVariant?.id);
         if (error) {
-            alert('Error al solicitar el servicio: ' + error.message);
+            this.toastService.error('Error', 'No se pudo enviar la solicitud: ' + error.message);
         } else {
             // Show custom message from backend if available
             const message = data?.data?.message || 'Solicitud enviada correctamente. Te contactaremos pronto.';
-            alert(message);
+            this.toastService.success('Solicitud enviada', message);
         }
     }
 
-    async contractService(service: any) {
+    async contractService(service: any, preferredPaymentMethod?: string) {
         const price = service.displayPrice;
         const variantName = service.selectedVariant ? ` (${service.selectedVariant.name})` : '';
+        const serviceName = `${service.name}${variantName}`;
         
-        if (!confirm(`¿Contratar "${service.name}${variantName}" por ${price}€? Serás redirigido al pago.`)) return;
+        // Only ask for confirmation if not coming from payment method selection
+        if (!preferredPaymentMethod && !confirm(`¿Contratar "${serviceName}" por ${price}€?`)) return;
 
-        const { data, error } = await this.portalService.contractService(service.id, service.selectedVariant?.id);
-        if (error) {
-            alert('Error al iniciar contratación: ' + error.message);
-        } else {
+        // Start the visual progress dialog
+        this.contractDialog.startProcess(serviceName);
+
+        try {
+            // Call the backend with preferred payment method if provided
+            const { data, error } = await this.portalService.contractService(
+                service.id, 
+                service.selectedVariant?.id,
+                preferredPaymentMethod
+            );
+            
+            if (error) {
+                this.contractDialog.completeError('quote', error.message, 'Error al iniciar contratación. Por favor, contacta con nosotros.');
+                return;
+            }
+
             const responseData = data?.data || data;
             
-            // If data contains a payment URL, redirect
+            // Check if we need payment method selection (multiple providers available)
+            // Note: requires_payment_selection is at the top level of the response, not inside data
+            if (data?.requires_payment_selection) {
+                // Close progress dialog temporarily
+                this.contractDialog.visible.set(false);
+                
+                // Store service for later
+                this.pendingContractService = service;
+                this.pendingPaymentData = data;
+                
+                // Open payment method selector - data is inside data.data
+                const paymentData = data?.data || {};
+                this.paymentSelector.open(
+                    paymentData.total || price,
+                    paymentData.invoice_number || '',
+                    paymentData.available_providers || []
+                );
+                return;
+            }
+            
+            // Move through steps based on response
+            if (responseData?.quote) {
+                this.contractDialog.nextStep(); // Quote completed
+            }
+            
+            // Check if invoice was created
+            if (responseData?.invoice_id || !responseData?.fallback) {
+                this.contractDialog.nextStep(); // Invoice completed
+            }
+
+            // Handle final result
             if (responseData?.payment_url) {
-                // Small delay to show message
-                alert('Redirigiendo al sistema de pago...');
-                window.location.href = responseData.payment_url;
+                this.contractDialog.completeSuccess({
+                    success: true,
+                    paymentUrl: responseData.payment_url,
+                    message: '¡Todo listo! Haz clic en el botón para completar el pago de forma segura.'
+                });
             } else if (data?.fallback) {
                 // Fallback case - no payment integration or error
-                const message = responseData?.message || 'Factura generada correctamente. Te contactaremos para el pago.';
-                alert(message);
-                await this.loadContractedServices();
+                const message = responseData?.message || 'Tu solicitud ha sido procesada. Te contactaremos para completar el pago.';
+                this.contractDialog.completeFallback(message);
             } else {
-                alert('Servicio contratado correctamente.');
-                await this.loadContractedServices();
+                // Success without payment URL
+                this.contractDialog.completeSuccess({
+                    success: true,
+                    message: 'Servicio contratado correctamente. Pronto recibirás más información.'
+                });
             }
+        } catch (err: any) {
+            this.contractDialog.completeError('quote', err?.message || 'Error desconocido', 'Ha ocurrido un error inesperado. Por favor, contacta con nosotros.');
         }
+    }
+
+    async onPaymentMethodSelected(selection: PaymentSelection) {
+        if (!this.pendingContractService) return;
+        
+        // Resume contract flow with selected payment method
+        await this.contractService(this.pendingContractService, selection.provider);
+        
+        // Clear pending state
+        this.pendingContractService = null;
+        this.pendingPaymentData = null;
+    }
+
+    onPaymentSelectionCancelled() {
+        // User cancelled payment selection - still have quote/invoice created
+        if (this.pendingPaymentData) {
+            this.toastService.info(
+                'Pago pendiente', 
+                'Tu factura ha sido generada. Puedes completar el pago desde tu área de facturas.',
+                8000
+            );
+        }
+        
+        this.pendingContractService = null;
+        this.pendingPaymentData = null;
+        this.loadContractedServices();
+    }
+
+    onContractDialogClosed() {
+        // Refresh services list when dialog closes
+        this.loadContractedServices();
     }
 
     async changeVariant(contractedService: ContractedService, newVariant: any) {
         if (contractedService.selectedVariant?.id === newVariant.id) return;
         if (contractedService.status !== 'accepted') {
-            alert('No puedes cambiar de plan en un servicio cancelado.');
+            this.toastService.warning('No permitido', 'No puedes cambiar de plan en un servicio cancelado.');
             return;
         }
 
@@ -782,11 +887,11 @@ export class PortalServicesComponent implements OnInit {
                     .eq('id', contractedService.id);
             }
 
-            alert('Plan cambiado correctamente. El nuevo precio se aplicará en la próxima facturación.');
+            this.toastService.success('Plan actualizado', 'El nuevo precio se aplicará en la próxima facturación.');
             await this.loadContractedServices();
         } catch (error) {
             console.error('Error changing variant:', error);
-            alert('Error al cambiar de plan. Por favor, contacta con soporte.');
+            this.toastService.error('Error', 'No se pudo cambiar de plan. Por favor, contacta con soporte.');
         }
     }
 }

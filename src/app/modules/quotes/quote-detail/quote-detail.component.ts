@@ -133,14 +133,16 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
 
   editQuote() {
     const q = this.quote();
-    if (q && q.status === QuoteStatus.DRAFT) {
+    // Allow editing for draft and request (solicitud) status
+    if (q && (q.status === QuoteStatus.DRAFT || q.status === QuoteStatus.REQUEST)) {
       this.router.navigate(['/presupuestos/edit', q.id]);
     }
   }
 
   finalizeQuote() {
     const q = this.quote();
-    if (q && q.status === QuoteStatus.DRAFT) {
+    // Allow finalizing for draft and request (solicitud) status
+    if (q && (q.status === QuoteStatus.DRAFT || q.status === QuoteStatus.REQUEST)) {
       this.quotesService.finalizeQuote(q.id).subscribe({
         next: (updated) => {
           this.loadQuote(q.id);
@@ -271,7 +273,8 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
 
   deleteQuote() {
     const q = this.quote();
-    if (q && q.status === QuoteStatus.DRAFT) {
+    // Allow deletion for draft and request (solicitud) status
+    if (q && (q.status === QuoteStatus.DRAFT || q.status === QuoteStatus.REQUEST)) {
       if (confirm('¿Eliminar este presupuesto?')) {
         this.quotesService.deleteQuote(q.id).subscribe({
           next: () => this.router.navigate(['/presupuestos']),
