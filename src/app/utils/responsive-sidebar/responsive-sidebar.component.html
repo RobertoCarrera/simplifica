@@ -1,114 +1,109 @@
 <!-- Mobile overlay -->
 @if (isOpen() && isMobile()) {
-  <div 
-    class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-    (click)="closeSidebar()"
-  ></div>
+<div class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" (click)="closeSidebar()"></div>
 }
 
 <!-- Sidebar -->
-<div 
+<div
   class="hidden md:flex flex-col h-dvh transition-all duration-300 ease-in-out bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 py-3"
-  [class]="getSidebarClasses()"
->
+  [class]="getSidebarClasses()">
   <!-- Header -->
   <div class="flex items-center h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
-    [class.justify-between]="!isCollapsed()"
-    [class.justify-center]="isCollapsed()"
-    [class.px-4]="!isCollapsed()"
+    [class.justify-between]="!isCollapsed()" [class.justify-center]="isCollapsed()" [class.px-4]="!isCollapsed()"
     [class.px-0]="isCollapsed()">
     <!-- Logo area -->
     <div class="flex items-center flex-1" [class.justify-center]="isCollapsed()">
       @if (!isCollapsed()) {
-        <a routerLink="/inicio" class="flex items-center hover:opacity-80 transition-opacity">
-          <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
-            <span class="text-white font-bold text-sm">S</span>
-          </div>
-          <span class="text-xl font-semibold text-gray-900 dark:text-white">Simplifica</span>
-        </a>
+      <a routerLink="/inicio" class="flex items-center hover:opacity-80 transition-opacity">
+        <div
+          class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mr-3">
+          <span class="text-white font-bold text-sm">S</span>
+        </div>
+        <span class="text-xl font-semibold text-gray-900 dark:text-white">Simplifica</span>
+      </a>
       } @else {
-        <a routerLink="/inicio" class="hover:opacity-80 transition-opacity">
-          <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mx-auto">
-            <span class="text-white font-bold text-sm">S</span>
-          </div>
-        </a>
+      <a routerLink="/inicio" class="hover:opacity-80 transition-opacity">
+        <div
+          class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mx-auto">
+          <span class="text-white font-bold text-sm">S</span>
+        </div>
+      </a>
       }
     </div>
 
     <!-- Toggle button (big) : visible when sidebar is expanded (all sizes) -->
     @if (!isCollapsed()) {
-      <button
-        (click)="toggleSidebar()"
-        class="flex items-center justify-center w-8 h-8 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-sm hover:shadow-md"
-        [title]="isCollapsed() ? 'Expandir sidebar' : 'Colapsar sidebar'"
-      >
-        <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
-      </button>
+    <button (click)="toggleSidebar()"
+      class="flex items-center justify-center w-8 h-8 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-sm hover:shadow-md"
+      [title]="isCollapsed() ? 'Expandir sidebar' : 'Colapsar sidebar'">
+      <lucide-icon name="chevron-left" [size]="16"></lucide-icon>
+    </button>
     }
   </div>
 
   <!-- Expand button when collapsed (positioned outside) - visible in all sizes when collapsed -->
   @if (isCollapsed()) {
-    <button
-      (click)="toggleCollapse()"
-      class="sidebar-expand-btn absolute top-4 -right-3 z-50 flex items-center justify-center w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-lg"
-      [title]="'Expandir sidebar'"
-    >
-      <lucide-icon name="chevron-right" [size]="12"></lucide-icon>
-    </button>
+  <button (click)="toggleCollapse()"
+    class="sidebar-expand-btn absolute top-4 -right-3 z-50 flex items-center justify-center w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:border-blue-400 dark:hover:border-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 shadow-lg"
+    [title]="'Expandir sidebar'">
+    <lucide-icon name="chevron-right" [size]="12"></lucide-icon>
+  </button>
   }
 
   <!-- Navigation -->
   <nav class="flex-1 px-2 py-4 space-y-1 bg-white dark:bg-gray-800 overflow-y-auto overflow-x-hidden">
     @if (isModulesLoaded()) {
-      @for (item of menuItems(); track item.id) {
-        <!-- Main menu item -->
-        <div class="relative group">
-          <a
-            [routerLink]="item.route"
-            routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-r-2 border-blue-500"
-            (click)="setActiveItem(item.id); isMobile() && closeSidebar()"
-            class="flex items-center text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
-            [class.justify-center]="isCollapsed()"
-            [class.px-3]="!isCollapsed()"
-            [class.px-1]="isCollapsed()"
-            [class.py-2]="!isCollapsed()"
-            [class.py-1]="isCollapsed()"
-          >
-            <lucide-icon 
-              [name]="item.icon" 
-              [size]="20" 
-              class="flex-shrink-0"
-              [class.mr-3]="!isCollapsed()"
-            ></lucide-icon>
-            
-            @if (!isCollapsed()) {
-              <span class="truncate">{{item.label}}</span>
-              
-              @if (item.badge) {
-                <span class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                  {{item.badge}}
-                </span>
-              }
-            }
-          </a>
+    @for (item of menuItems(); track item.id) {
+    <!-- Main menu item -->
+    <div class="relative group">
+      <a [routerLink]="item.route"
+        routerLinkActive="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-r-2 border-blue-500"
+        (click)="setActiveItem(item.id); isMobile() && closeSidebar()"
+        class="flex items-center text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
+        [class.justify-center]="isCollapsed()" [class.px-3]="!isCollapsed()" [class.px-1]="isCollapsed()"
+        [class.py-2]="!isCollapsed()" [class.py-1]="isCollapsed()">
+        <lucide-icon [name]="item.icon" [size]="20" class="flex-shrink-0" [class.mr-3]="!isCollapsed()"></lucide-icon>
 
-          <!-- Tooltip for collapsed state -->
-          @if (isCollapsed()) {
-            <div class="absolute left-full top-1/2 transform -translate-y-1/2 ml-3 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none whitespace-nowrap z-50 shadow-lg">
-              {{item.label}}
-              @if (item.badge) {
-                <span class="ml-2 px-2 py-0.5 bg-red-500 rounded-full text-xs">{{item.badge}}</span>
-              }
-              <!-- Arrow -->
-              <div class="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45"></div>
-            </div>
-          }
+        @if (!isCollapsed()) {
+        <span class="truncate">{{item.label}}</span>
+
+        @if (item.badge) {
+        <span
+          class="ml-auto inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+          {{item.badge}}
+        </span>
+        }
+        }
+      </a>
+
+      <!-- Tooltip for collapsed state -->
+      @if (isCollapsed()) {
+      <div
+        class="absolute left-full top-1/2 transform -translate-y-1/2 ml-3 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none whitespace-nowrap z-50 shadow-lg">
+        {{item.label}}
+        @if (item.badge) {
+        <span class="ml-2 px-2 py-0.5 bg-red-500 rounded-full text-xs">{{item.badge}}</span>
+        }
+        <!-- Arrow -->
+        <div
+          class="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-gray-900 dark:bg-gray-700 rotate-45">
         </div>
+      </div>
       }
+    </div>
+    }
     } @else {
-      <!-- Loading state to avoid initial flicker while modules are fetched -->
-      <div class="text-xs text-gray-400 px-3 py-2 select-none">Cargando menú…</div>
+    <!-- Loading skeleton for menu items -->
+    <div class="space-y-2 px-2">
+      @for (i of [1, 2, 3, 4, 5]; track i) {
+      <div class="flex items-center px-3 py-2 animate-pulse">
+        <div class="w-5 h-5 bg-gray-200 dark:bg-gray-700 rounded"></div>
+        @if (!isCollapsed()) {
+        <div class="ml-3 flex-1 h-4 bg-gray-200 dark:bg-gray-700 rounded" [style.width.%]="50 + (i * 8)"></div>
+        }
+      </div>
+      }
+    </div>
     }
   </nav>
 
@@ -116,64 +111,57 @@
   <div class="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4">
     <!-- Mobile/PWA actions -->
     @if (isMobile() || pwaService.deviceInfo().screenSize === 'sm') {
-      <div class="space-y-2">
-        <!-- PWA Install button -->
-        @if (pwaService.canInstall() && !isCollapsed()) {
-          <button
-            (click)="installPWA()"
-            class="w-full flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-md transition-colors"
-          >
-            <lucide-icon name="download" [size]="16" class="mr-2"></lucide-icon>
-            Instalar App
-          </button>
+    <div class="space-y-2">
+      <!-- PWA Install button -->
+      @if (pwaService.canInstall() && !isCollapsed()) {
+      <button (click)="installPWA()"
+        class="w-full flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-md transition-colors">
+        <lucide-icon name="download" [size]="16" class="mr-2"></lucide-icon>
+        Instalar App
+      </button>
+      }
+
+      <!-- Mobile dashboard link -->
+      <a routerLink="/mobile"
+        class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
+        [class.justify-center]="isCollapsed()">
+        <lucide-icon name="smartphone" [size]="16" class="mr-2"></lucide-icon>
+        @if (!isCollapsed()) {
+        <span>Dashboard Móvil</span>
         }
-        
-        <!-- Mobile dashboard link -->
-        <a
-          routerLink="/mobile"
-          class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md transition-colors"
-          [class.justify-center]="isCollapsed()"
-        >
-          <lucide-icon name="smartphone" [size]="16" class="mr-2"></lucide-icon>
-          @if (!isCollapsed()) {
-            <span>Dashboard Móvil</span>
-          }
-        </a>
-      </div>
+      </a>
+    </div>
     }
-    
+
     <!-- User profile -->
     @if (!isCollapsed()) {
-      <div class="flex items-center justify-between mt-3">
-        <div class="flex items-center">
-          <div class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-            <span class="text-white font-medium text-sm">{{ getUserInitial() }}</span>
-          </div>
-          <div class="ml-3">
-            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ getUserDisplayName() }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">{{ getUserRoleDisplay() }}</p>
-          </div>
+    <div class="flex items-center justify-between mt-3">
+      <div class="flex items-center">
+        <div
+          class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+          <span class="text-white font-medium text-sm">{{ getUserInitial() }}</span>
         </div>
-        <!-- Logout button -->
-        <button
-          (click)="logout()"
-          class="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
-          title="Cerrar sesión"
-        >
-          <lucide-icon name="log-out" [size]="20"></lucide-icon>
-        </button>
+        <div class="ml-3">
+          <p class="text-sm font-medium text-gray-900 dark:text-white">{{ getUserDisplayName() }}</p>
+          <p class="text-xs text-gray-500 dark:text-gray-400">{{ getUserRoleDisplay() }}</p>
+        </div>
       </div>
+      <!-- Logout button -->
+      <button (click)="logout()"
+        class="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+        title="Cerrar sesión">
+        <lucide-icon name="log-out" [size]="20"></lucide-icon>
+      </button>
+    </div>
     } @else {
-      <!-- Logout button when collapsed -->
-      <div class="flex justify-center">
-        <button
-          (click)="logout()"
-          class="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
-          title="Cerrar sesión"
-        >
-          <lucide-icon name="log-out" [size]="20"></lucide-icon>
-        </button>
-      </div>
+    <!-- Logout button when collapsed -->
+    <div class="flex justify-center">
+      <button (click)="logout()"
+        class="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+        title="Cerrar sesión">
+        <lucide-icon name="log-out" [size]="20"></lucide-icon>
+      </button>
+    </div>
     }
   </div>
 </div>

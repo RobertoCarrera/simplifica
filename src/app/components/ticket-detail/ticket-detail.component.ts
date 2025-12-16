@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ElementRef, ViewChild, OnDestroy, AfterViewInit, AfterViewChecked, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ElementRef, ViewChild, OnDestroy, AfterViewInit, AfterViewChecked, ChangeDetectorRef, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -15,6 +15,8 @@ import { SupabaseServicesService } from '../../services/supabase-services.servic
 import { SupabaseCustomersService } from '../../services/supabase-customers.service';
 import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
+import { TenantService } from '../../services/tenant.service';
+import { AuthService } from '../../services/auth.service';
 
 // TipTap imports
 import { Editor } from '@tiptap/core';
@@ -42,8 +44,8 @@ import Placeholder from '@tiptap/extension-placeholder';
               <span>Atrás</span>
             </button>
             
-            <!-- Fila 2: Quick Actions en grid 2 columnas hasta sm -->
-            <div *ngIf="!loading && !error && ticket" class="grid grid-cols-3 sm:flex gap-2 sm:gap-3">
+            <!-- Fila 2: Quick Actions en grid 2 columnas hasta sm - ADMIN ONLY -->
+            <div *ngIf="!loading && !error && ticket && !isClient()" class="grid grid-cols-3 sm:flex gap-2 sm:gap-3">
               <button (click)="convertToQuoteFromTicket()"
                       [disabled]="!ticket || ticketServices.length === 0 || !(ticket && ticket.client && ticket.client.id)"
                       class="btn btn-primary text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
@@ -108,7 +110,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                       </p>
                     </div>
                   </div>
-                  <div class="prose prose-sm text-gray-800 dark:text-gray-200 mt-4 ml-0 sm:ml-1" [innerHTML]="formatDescription(ticket.description)"></div>
+                  <div class="prose prose-sm prose-gray text-gray-600 dark:text-gray-300 mt-4 ml-0 sm:ml-1" [innerHTML]="formatDescription(ticket.description)"></div>
                 </div>
                 <div class="flex flex-row lg:flex-col items-center lg:items-end gap-2 sm:gap-3">
                   <span [class]="getPriorityClasses(ticket.priority)"
@@ -116,7 +118,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                     <i class="fas {{ getPriorityIcon(ticket.priority) }}"></i>
                     <span class="hidden sm:inline">{{ getPriorityLabel(ticket.priority) }}</span>
                   </span>
-                  <button (click)="showChangeStageModal = true" 
+                  <button *ngIf="!isClient()" (click)="showChangeStageModal = true" 
                           class="btn btn-secondary px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm whitespace-nowrap">
                     <i class="fas fa-arrows-alt mr-1 sm:mr-2"></i>
                     <span class="hidden sm:inline">Cambiar Etapa</span>
@@ -149,7 +151,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                         [class]="getStageMarkerClass(stage)"
                         class="w-5 h-5 rounded-full border-3 border-white dark:border-gray-800 flex items-center justify-center shadow-md cursor-pointer hover:scale-110 transition-transform duration-200"
                         [title]="stage.name"
-                        (click)="showChangeStageModal = true; selectedStageId = stage.id"
+                        (click)="!isClient() && (showChangeStageModal = true); !isClient() && (selectedStageId = stage.id)"
                       >
                         <div *ngIf="isStageCompleted(stage)" class="w-2.5 h-2.5 bg-white rounded-full"></div>
                       </div>
@@ -174,6 +176,18 @@ import Placeholder from '@tiptap/extension-placeholder';
             <!-- Tabs Navigation -->
             <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
               <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-x-auto">
+                <!-- Comments Tab - FIRST for clients -->
+                <button 
+                  (click)="activeTab = 'comments'"
+                  [class.active-tab]="activeTab === 'comments'"
+                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
+                  <i class="fas fa-comments mr-1 sm:mr-2"></i>
+                  <span class="hidden xs:inline">Comentarios</span>
+                  <span class="xs:hidden">Comt.</span>
+                  <span *ngIf="comments.length > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                    {{ comments.length }}
+                  </span>
+                </button>
                 <button 
                   (click)="activeTab = 'services'"
                   [class.active-tab]="activeTab === 'services'"
@@ -207,17 +221,6 @@ import Placeholder from '@tiptap/extension-placeholder';
                     {{ linkedDeviceIds.size }}
                   </span>
                 </button>
-                <button 
-                  (click)="activeTab = 'comments'"
-                  [class.active-tab]="activeTab === 'comments'"
-                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
-                  <i class="fas fa-comments mr-1 sm:mr-2"></i>
-                  <span class="hidden xs:inline">Comentarios</span>
-                  <span class="xs:hidden">Comt.</span>
-                  <span *ngIf="comments.length > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                    {{ comments.length }}
-                  </span>
-                </button>
               </div>
 
               <!-- Tab Content -->
@@ -227,7 +230,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                   <div class="tab-content-animate">
                     <div class="flex justify-between items-center mb-4">
                       <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Servicios Asignados</h3>
-                      <button (click)="openServicesModal()"
+                      <button *ngIf="!isClient()" (click)="openServicesModal()"
                               class="btn btn-primary">
                         <i class="fas fa-wrench"></i>
                         Modificar Servicios
@@ -236,7 +239,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                     <div *ngIf="ticketServices.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
                       <i class="fas fa-box-open text-5xl mb-4 opacity-50"></i>
                       <p class="text-lg">No hay servicios asignados a este ticket</p>
-                      <button (click)="openServicesModal()" class="mt-4 btn btn-secondary">
+                      <button *ngIf="!isClient()" (click)="openServicesModal()" class="mt-4 btn btn-secondary">
                         <i class="fas fa-plus mr-2"></i>
                         Añadir Servicios
                       </button>
@@ -251,7 +254,8 @@ import Placeholder from '@tiptap/extension-placeholder';
                               {{ serviceItem.service.description }}
                             </p>
                             <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
-                              <div class="flex items-center space-x-2">
+                              <!-- Quantity controls - ADMIN ONLY -->
+                              <div *ngIf="!isClient()" class="flex items-center space-x-2">
                                 <div class="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
                                   <button class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="decreaseAssignedQty(serviceItem)">-</button>
                                   <input type="number" class="w-16 text-center bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-x border-gray-300 dark:border-gray-600" [(ngModel)]="serviceItem.quantity" (ngModelChange)="onAssignedQuantityChange(serviceItem, $event)" />
@@ -259,6 +263,8 @@ import Placeholder from '@tiptap/extension-placeholder';
                                 </div>
                                 <span *ngIf="savingAssignedServiceIds.has(serviceItem.service?.id)" class="text-xs text-gray-500 dark:text-gray-400">Guardando...</span>
                               </div>
+                              <!-- Read-only quantity for clients -->
+                              <span *ngIf="isClientPortal"><i class="fas fa-boxes w-4"></i> Cantidad: {{ serviceItem.quantity }}</span>
                               <span><i class="fas fa-clock w-4"></i> {{ getLineEstimatedHours(serviceItem) }}h</span>
                               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
                                 <i class="fas fa-tag w-3"></i>
@@ -281,7 +287,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                   <div class="tab-content-animate">
                     <div class="flex justify-between items-center mb-4">
                       <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Productos Asignados</h3>
-                      <button (click)="openProductsModal()"
+                      <button *ngIf="!isClient()" (click)="openProductsModal()"
                               class="btn btn-primary">
                         <i class="fas fa-box"></i>
                         Modificar Productos
@@ -290,7 +296,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                     <div *ngIf="ticketProducts.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
                       <i class="fas fa-box-open text-5xl mb-4 opacity-50"></i>
                       <p class="text-lg">No hay productos asignados a este ticket</p>
-                      <button (click)="openProductsModal()" class="mt-4 btn btn-secondary">
+                      <button *ngIf="!isClient()" (click)="openProductsModal()" class="mt-4 btn btn-secondary">
                         <i class="fas fa-plus mr-2"></i>
                         Añadir Productos
                       </button>
@@ -319,7 +325,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                           <div class="text-right">
                             <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatPrice(getProductUnitPrice(productItem)) }}</p>
                             <p class="text-sm text-gray-600 dark:text-gray-400">Total: {{ formatPrice(getProductLineTotal(productItem)) }}</p>
-                            <button (click)="removeProductFromTicket(productItem.product?.id)"
+                            <button *ngIf="!isClient()" (click)="removeProductFromTicket(productItem.product?.id)"
                                     class="mt-2 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
                               <i class="fas fa-trash"></i>
                               Eliminar
@@ -336,7 +342,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                   <div class="tab-content-animate">
                     <div class="flex justify-between items-center mb-4">
                       <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Dispositivos Vinculados</h3>
-                      <button (click)="openDevicesModal()"
+                      <button *ngIf="!isClient()" (click)="openDevicesModal()"
                               class="btn btn-primary">
                         <i class="fas fa-mobile-alt"></i>
                         Modificar Dispositivos
@@ -345,7 +351,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                     <div *ngIf="companyDevices.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
                       <i class="fas fa-mobile-alt text-5xl mb-4 opacity-50"></i>
                       <p class="text-lg">No hay dispositivos vinculados a este ticket</p>
-                      <button (click)="openDevicesModal()" class="mt-4 btn btn-secondary">
+                      <button *ngIf="!isClient()" (click)="openDevicesModal()" class="mt-4 btn btn-secondary">
                         <i class="fas fa-plus mr-2"></i>
                         Añadir Dispositivos
                       </button>
@@ -397,12 +403,23 @@ import Placeholder from '@tiptap/extension-placeholder';
                       </div>
                       
                       <div class="mt-2 flex justify-between items-center">
-                        <label class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                        <!-- Internal comment checkbox - ADMIN ONLY -->
+                        <label *ngIf="!isClient()" class="flex items-center text-sm text-gray-600 dark:text-gray-400">
                           <input type="checkbox" [(ngModel)]="isInternalComment" class="mr-2 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
                           Comentario interno (no visible para el cliente)
                         </label>
-                        <div class="flex items-center gap-3">
-                          <span *ngIf="isUploadingImage" class="text-xs text-gray-500 dark:text-gray-400">Subiendo imagen...</span>
+                        <div *ngIf="isClient()"></div><!-- Spacer for flexbox -->
+                        <div class="flex items-center gap-2 sm:gap-3">
+                          <span *ngIf="isUploadingImage" class="text-xs text-gray-500 dark:text-gray-400">Subiendo archivo...</span>
+                          <!-- File attachment button -->
+                          <input #commentFileInput type="file" (change)="onCommentFileSelect($event)" class="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
+                          <button (click)="commentFileInput.click()" 
+                                  [disabled]="isUploadingImage"
+                                  class="btn btn-secondary px-3 py-2 text-sm"
+                                  title="Adjuntar archivo">
+                            <i class="fas fa-paperclip"></i>
+                            <span class="hidden sm:inline ml-1">Adjuntar</span>
+                          </button>
                           <button (click)="addComment()" 
                                   [disabled]="isUploadingImage || !hasEditorContent()"
                                   class="btn btn-primary">
@@ -419,7 +436,9 @@ import Placeholder from '@tiptap/extension-placeholder';
                       <p class="text-lg">No hay comentarios aún</p>
                     </div>
                     <div *ngIf="comments.length > 0" class="space-y-4">
-                      <div *ngFor="let comment of comments" 
+                      <!-- Filter out internal comments for client portal users -->
+                      <ng-container *ngFor="let comment of comments">
+                      <div *ngIf="!isClient() || !comment.is_internal"
                            [class]="comment.is_internal ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700' : 'bg-gray-50 dark:bg-gray-700'"
                            class="rounded-lg p-4 border">
                         <div class="flex justify-between items-start mb-2">
@@ -435,6 +454,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                         </div>
                         <div class="prose prose-sm max-w-none text-gray-800 dark:text-gray-300" [innerHTML]="comment.comment"></div>
                       </div>
+                      </ng-container>
                     </div>
                   </div>
                 }
@@ -445,8 +465,8 @@ import Placeholder from '@tiptap/extension-placeholder';
           <!-- Sidebar (Right Side) -->
           <div class="space-y-4 sm:space-y-6 xl:col-span-1">
 
-            <!-- Client Contact -->
-            <div class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 shadow-md border border-blue-200 dark:border-blue-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
+            <!-- Client Contact - ADMIN ONLY (clients shouldn't see their own info card) -->
+            <div *ngIf="!isClient()" class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 shadow-md border border-blue-200 dark:border-blue-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
               <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
                 <div class="bg-blue-500 text-white p-2 sm:p-3 rounded-lg shadow-md">
                   <i class="fas fa-user text-lg sm:text-xl"></i>
@@ -534,7 +554,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(activity.created_at) }}</p>
                   </div>
                 </div>
-                <button (click)="changeStage()" 
+                <button *ngIf="!isClient()" (click)="changeStage()" 
                         class="btn btn-secondary">
                   <i class="fas fa-exchange-alt"></i>
                   Cambiar Estado
@@ -926,9 +946,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private quotesService = inject(SupabaseQuotesService);
   private customersService = inject(SupabaseCustomersService);
   private toastService = inject(ToastService);
+  private tenantService = inject(TenantService);
+  private authService = inject(AuthService);
 
   // Track if there is an existing active quote derived from this ticket
   activeQuoteId: string | null = null;
+
+  // Client portal mode - using computed signal based on user role (like supabase-tickets)
+  isClient = computed(() => this.authService.userRole() === 'client');
+
+  // Legacy property for backward compatibility (will be removed)
+  isClientPortal = false;
 
   // Services Selection Modal state
   showServicesModal = false;
@@ -964,8 +992,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // Track saving state per assigned service id when persisting inline quantity edits
   savingAssignedServiceIds: Set<string> = new Set();
 
-  // Tab management for content organization
-  activeTab: 'services' | 'products' | 'devices' | 'comments' = 'services';
+  // Tab management for content organization (Comments first as it's most used)
+  activeTab: 'services' | 'products' | 'devices' | 'comments' = 'comments';
 
   // TipTap Editor
   editor: Editor | null = null;
@@ -1045,6 +1073,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   ngOnInit() {
     this.debugLog('TicketDetailComponent ngOnInit called');
+    // Also set legacy isClientPortal for any remaining uses
+    this.isClientPortal = this.tenantService.isClientPortal() || this.authService.userRole() === 'client';
     this.route.params.subscribe(params => {
       this.ticketId = params['id'];
       this.debugLog('Ticket ID from route:', this.ticketId);
@@ -1428,7 +1458,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       }
 
       // Load all devices for the ticket's company (company is authoritative)
-      if (this.ticket?.company_id) {
+      // Skip for client portal users as they don't have access to list-company-devices Edge Function
+      if (this.ticket?.company_id && !this.isClient()) {
         try {
           const devices = await this.devicesService.getDevices(this.ticket.company_id);
           this.companyDevices = devices || [];
@@ -1896,6 +1927,58 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     } finally {
       this.isUploadingImage = false;
     }
+  }
+
+  // Handle file attachment selection from the file input
+  async onCommentFileSelect(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    const isImage = file.type.startsWith('image/');
+
+    try {
+      this.isUploadingImage = true;
+      const url = await this.uploadCommentFile(file);
+
+      if (url && this.editor) {
+        if (isImage) {
+          // Insert image into editor
+          this.editor.chain().focus().setImage({ src: url, alt: file.name } as any).run();
+        } else {
+          // Insert file as a link with icon
+          const fileIcon = this.getFileIcon(file.name);
+          const linkHtml = `<a href="${url}" target="_blank" class="inline-flex items-center gap-1 text-blue-600 hover:underline"><i class="${fileIcon}"></i> ${file.name}</a>`;
+          this.editor.chain().focus().insertContent(linkHtml).run();
+        }
+        this.showToast('Archivo adjuntado correctamente', 'success');
+      }
+    } catch (e) {
+      console.error('Error adjuntando archivo:', e);
+      this.showToast('Error al adjuntar archivo', 'error');
+    } finally {
+      this.isUploadingImage = false;
+      // Reset input to allow selecting same file again
+      input.value = '';
+    }
+  }
+
+  // Helper to get appropriate icon for file types
+  private getFileIcon(filename: string): string {
+    const ext = (filename.split('.').pop() || '').toLowerCase();
+    const icons: Record<string, string> = {
+      pdf: 'fas fa-file-pdf',
+      doc: 'fas fa-file-word',
+      docx: 'fas fa-file-word',
+      xls: 'fas fa-file-excel',
+      xlsx: 'fas fa-file-excel',
+      txt: 'fas fa-file-alt',
+      png: 'fas fa-file-image',
+      jpg: 'fas fa-file-image',
+      jpeg: 'fas fa-file-image',
+      gif: 'fas fa-file-image'
+    };
+    return icons[ext] || 'fas fa-file';
   }
 
   private insertTempImage(objectUrl: string, tempId: string, alt: string) {

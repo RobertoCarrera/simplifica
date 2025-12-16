@@ -169,6 +169,10 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   // Form validation
   formErrors: Record<string, string> = {};
 
+  // Delete reason modal (for client portal)
+  showDeleteReasonModal = false;
+  deleteReasonText = '';
+  ticketToDelete: Ticket | null = null;
   private ticketsService = inject(SupabaseTicketsService);
   private servicesService = inject(SupabaseServicesService);
   private productsService = inject(ProductsService);
@@ -1884,6 +1888,53 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     } catch (error: any) {
       this.error = error.message;
       console.error('❌ Error deleting ticket:', error);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  // Client portal: open delete reason modal instead of direct delete
+  openDeleteReasonModal(ticket: Ticket) {
+    this.ticketToDelete = ticket;
+    this.deleteReasonText = '';
+    this.showDeleteReasonModal = true;
+  }
+
+  closeDeleteReasonModal() {
+    this.showDeleteReasonModal = false;
+    this.ticketToDelete = null;
+    this.deleteReasonText = '';
+  }
+
+  async confirmDeleteWithReason() {
+    if (!this.ticketToDelete) return;
+    if (!this.deleteReasonText.trim()) {
+      this.error = 'Por favor, indica la razón para eliminar el ticket.';
+      return;
+    }
+
+    this.loading = true;
+    try {
+      // Get current user ID for the comment
+      const { data: sessionData } = await this.simpleSupabase.getClient().auth.getSession();
+      const userId = sessionData?.session?.user?.id;
+
+      // Add a comment with the deletion reason before deleting
+      await this.simpleSupabase.getClient()
+        .from('ticket_comments')
+        .insert({
+          ticket_id: this.ticketToDelete.id,
+          user_id: userId,
+          comment: `🗑️ Solicitud de eliminación por cliente: ${this.deleteReasonText}`,
+          is_internal: false
+        });
+
+      await this.ticketsService.deleteTicket(this.ticketToDelete.id);
+      this.closeDeleteReasonModal();
+      await this.loadTickets();
+    } catch (error: any) {
+      this.error = error.message;
+      console.error('❌ Error deleting ticket with reason:', error);
     } finally {
       this.loading = false;
     }
