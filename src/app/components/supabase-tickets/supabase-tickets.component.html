@@ -1261,6 +1261,10 @@
     </div>
   </div>
 
+  <!-- Client Wizard -->
+  <app-portal-ticket-wizard *ngIf="showWizard" (close)="showWizard = false"
+    (ticketCreated)="onWizardTicketCreated()"></app-portal-ticket-wizard>
+
   <!-- Floating Action Button (FAB) -->
   <button (click)="openForm()" class="fab-button" title="Nuevo Ticket" [disabled]="loading">
     <i class="fas fa-plus"></i>

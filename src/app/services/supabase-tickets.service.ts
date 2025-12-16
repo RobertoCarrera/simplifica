@@ -47,7 +47,7 @@ export interface Ticket {
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
-  
+
   // Relaciones populadas
   client?: {
     id: string;
@@ -118,7 +118,7 @@ export interface TicketStats {
   providedIn: 'root'
 })
 export class SupabaseTicketsService {
-  
+
   private supabase = inject(SimpleSupabaseService);
   private currentCompanyId = ''; // Default vacío; usar tenant/current_company_id cuando esté disponible
 
@@ -184,7 +184,7 @@ export class SupabaseTicketsService {
   private getMockTickets(companyId: string): Ticket[] {
     const companies: Record<string, string> = {
       '1': 'SatPCGo',
-      '2': 'Michinanny', 
+      '2': 'Michinanny',
       '3': 'Libera Tus Creencias'
     };
 
@@ -193,7 +193,7 @@ export class SupabaseTicketsService {
     return [
       {
         id: `ticket-${companyId}-001`,
-        ticket_number: `${companyName.toUpperCase().slice(0,3)}-001`,
+        ticket_number: `${companyName.toUpperCase().slice(0, 3)}-001`,
         title: `Reparación de laptop ${companyName}`,
         description: `Laptop HP no enciende. Cliente reporta que se apagó de repente y no vuelve a encender.`,
         client_id: `client-${companyId}-001`,
@@ -226,7 +226,7 @@ export class SupabaseTicketsService {
       },
       {
         id: `ticket-${companyId}-002`,
-        ticket_number: `${companyName.toUpperCase().slice(0,3)}-002`,
+        ticket_number: `${companyName.toUpperCase().slice(0, 3)}-002`,
         title: `Instalación de software ${companyName}`,
         description: `Instalar y configurar suite de oficina completa en 5 equipos.`,
         client_id: `client-${companyId}-002`,
@@ -259,7 +259,7 @@ export class SupabaseTicketsService {
       },
       {
         id: `ticket-${companyId}-003`,
-        ticket_number: `${companyName.toUpperCase().slice(0,3)}-003`,
+        ticket_number: `${companyName.toUpperCase().slice(0, 3)}-003`,
         title: `Mantenimiento preventivo ${companyName}`,
         description: `Mantenimiento trimestral de servidores y equipos de red.`,
         client_id: `client-${companyId}-003`,
@@ -307,7 +307,7 @@ export class SupabaseTicketsService {
       estimated_hours: ticket.estimated_hours,
       actual_hours: ticket.actual_hours,
       total_amount: ticket.total_amount,
-  tags: [],
+      tags: [],
       company_id: ticket.company_id,
       // derive is_active from deleted_at for backward-compat in UI
       is_active: ticket.deleted_at ? false : true,
@@ -319,18 +319,26 @@ export class SupabaseTicketsService {
     };
   }
 
-  async createTicket(ticketData: Partial<Ticket>): Promise<Ticket> {
+  async createTicket(ticketData: Partial<Ticket>, functionEndpoint: string = 'create-ticket'): Promise<Ticket> {
     try {
       // Prefer Edge Function to bypass RLS safely and validate membership
       const client = this.supabase.getClient();
-  const { RuntimeConfigService } = await import('./runtime-config.service');
-  const cfg = new (RuntimeConfigService as any)();
-  await cfg.load?.();
-  const base: string | undefined = cfg.get().edgeFunctionsBaseUrl as any;
+      let edgeBaseUrl = '';
+      try {
+        const { RuntimeConfigService } = await import('./runtime-config.service');
+        const cfg = new (RuntimeConfigService as any)();
+        await cfg.load?.();
+        const conf = cfg.get();
+        if (conf && conf.edgeFunctionsBaseUrl) {
+          edgeBaseUrl = conf.edgeFunctionsBaseUrl;
+        }
+      } catch (e) {
+        console.warn('Could not load RuntimeConfigService', e);
+      }
 
-      if (base) {
+      if (edgeBaseUrl) {
         try {
-          const funcUrl = base.replace(/\/+$/, '') + '/create-ticket';
+          const funcUrl = edgeBaseUrl.replace(/\/+$/, '') + '/' + functionEndpoint;
           const sess = await client.auth.getSession();
           const accessToken = (sess as any)?.data?.session?.access_token || null;
           const headers: any = { 'Content-Type': 'application/json' };
@@ -353,11 +361,11 @@ export class SupabaseTicketsService {
           try { json = await resp.json(); } catch { json = {}; }
           if (!resp.ok) {
             if (resp.status === 404) {
-              console.warn('Edge create-ticket not deployed (404), falling back to direct insert');
+              console.warn(`Edge ${functionEndpoint} not deployed (404), falling back to direct insert`);
             } else if (resp.status >= 500) {
-              console.warn('Edge create-ticket returned 5xx, falling back to direct insert', json);
+              console.warn(`Edge ${functionEndpoint} returned 5xx, falling back to direct insert`, json);
             } else {
-              console.error('Edge create-ticket error', json);
+              console.error(`Edge ${functionEndpoint} error`, json);
               throw new Error(json?.error || 'Error creando ticket');
             }
           } else {
@@ -372,7 +380,7 @@ export class SupabaseTicketsService {
             ? String((edgeErr as any).message)
             : String(edgeErr || '');
           if (/404/.test(msg) || /not deployed/i.test(msg)) {
-            console.warn('Edge create-ticket not available, using direct insert');
+            console.warn(`Edge ${functionEndpoint} not available, using direct insert`);
           } else {
             throw edgeErr;
           }
@@ -402,12 +410,12 @@ export class SupabaseTicketsService {
       if (error) throw error;
 
       return this.transformTicketData(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error creating ticket:', error);
-      throw error;
+      const msg = error?.message || 'Error creando ticket';
+      throw new Error(msg);
     }
   }
-
   // Create a ticket and assign both services and products atomically (via Edge Function when available)
   async createTicketWithItems(
     ticketData: Partial<Ticket>,
@@ -434,14 +442,23 @@ export class SupabaseTicketsService {
     // If no services, we still create the ticket but UI should have prevented this
     try {
       const client = this.supabase.getClient();
-  const { RuntimeConfigService } = await import('./runtime-config.service');
-  const cfg = new (RuntimeConfigService as any)();
-  await cfg.load?.();
-  const base: string | undefined = cfg.get().edgeFunctionsBaseUrl as any;
+      // Try to get runtime config
+      let edgeBaseUrl = '';
+      try {
+        const { RuntimeConfigService } = await import('./runtime-config.service');
+        const cfg = new (RuntimeConfigService as any)();
+        await cfg.load?.();
+        const conf = cfg.get();
+        if (conf && conf.edgeFunctionsBaseUrl) {
+          edgeBaseUrl = conf.edgeFunctionsBaseUrl;
+        }
+      } catch (e) {
+        console.warn('Could not load RuntimeConfigService', e);
+      }
 
-      if (base) {
+      if (edgeBaseUrl) {
         try {
-          const funcUrl = base.replace(/\/+$/, '') + '/create-ticket';
+          const funcUrl = edgeBaseUrl.replace(/\/+$/, '') + '/create-ticket';
           const sess = await client.auth.getSession();
           const accessToken = (sess as any)?.data?.session?.access_token || null;
           const headers: any = { 'Content-Type': 'application/json' };
@@ -478,6 +495,7 @@ export class SupabaseTicketsService {
             }
           }
         } catch (edgeErr: any) {
+          // Only fallback when the function is missing; otherwise bubble up
           const msg = typeof edgeErr === 'object' && edgeErr && 'message' in edgeErr
             ? String((edgeErr as any).message)
             : String(edgeErr || '');
@@ -798,8 +816,8 @@ export class SupabaseTicketsService {
     try {
       let query: any = this.supabase.getClient()
         .from('ticket_stages')
-  .select('*')
-  .is('deleted_at', null)
+        .select('*')
+        .is('deleted_at', null)
         .order('position', { ascending: true });
 
       if (this.isValidUuid(companyId)) {
@@ -877,12 +895,12 @@ export class SupabaseTicketsService {
 
   async getTicketStats(companyId: string): Promise<TicketStats> {
     const tickets = await this.getTickets(companyId);
-    
+
     // Filtrar por stage_category en lugar de nombre
     const openTickets = tickets.filter(t => t.stage?.stage_category === 'open').length;
     const inProgressTickets = tickets.filter(t => t.stage?.stage_category === 'in_progress').length;
     const completedTickets = tickets.filter(t => t.stage?.stage_category === 'completed').length;
-    
+
     const stats: TicketStats = {
       total: tickets.length,
       open: openTickets,
@@ -901,10 +919,10 @@ export class SupabaseTicketsService {
   private async generateTicketNumber(companyId: string): Promise<string> {
     const companies = {
       '1': 'SAT',
-      '2': 'MCH', 
+      '2': 'MCH',
       '3': 'LTC'
     };
-    
+
     const prefix = companies[companyId as keyof typeof companies] || 'TKT';
     const timestamp = Date.now().toString().slice(-6);
     return `${prefix}-${timestamp}`;

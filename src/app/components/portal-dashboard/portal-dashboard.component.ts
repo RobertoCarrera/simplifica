@@ -2,20 +2,33 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ClientPortalService, ClientPortalTicket, ClientPortalQuote } from '../../services/client-portal.service';
+import { PortalTicketWizardComponent } from '../portal-ticket-wizard/portal-ticket-wizard.component';
 
 @Component({
   selector: 'app-portal-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, PortalTicketWizardComponent],
   template: `
   <div class="max-w-6xl mx-auto p-4">
-    <h1 class="text-2xl font-bold mb-6">Portal del Cliente</h1>
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold">Portal del Cliente</h1>
+      <button (click)="showWizard = true" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+        <i class="fas fa-plus"></i> Nuevo Ticket
+      </button>
+    </div>
+
+    <app-portal-ticket-wizard *ngIf="showWizard" 
+      (close)="showWizard = false" 
+      (ticketCreated)="onTicketCreated()">
+    </app-portal-ticket-wizard>
 
     <div class="grid md:grid-cols-2 gap-6">
       <section class="bg-white rounded-xl shadow p-4">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-lg font-semibold">Tus tickets</h2>
-          <span class="text-sm text-gray-500">{{ tickets.length }} total</span>
+          <div class="flex items-center gap-3">
+             <span class="text-sm text-gray-500">{{ tickets.length }} total</span>
+          </div>
         </div>
         <div *ngIf="loadingTickets" class="text-gray-600">Cargando tickets…</div>
         <div *ngIf="!loadingTickets && tickets.length === 0" class="text-gray-500">No hay tickets.</div>
@@ -63,6 +76,7 @@ export class PortalDashboardComponent implements OnInit {
   quotes: ClientPortalQuote[] = [];
   loadingTickets = false;
   loadingQuotes = false;
+  showWizard = false;
 
   async ngOnInit() {
     await Promise.all([this.loadTickets(), this.loadQuotes()]);
@@ -73,6 +87,11 @@ export class PortalDashboardComponent implements OnInit {
     const { data } = await this.portal.listTickets();
     this.tickets = data;
     this.loadingTickets = false;
+  }
+
+  async onTicketCreated() {
+    this.showWizard = false;
+    await this.loadTickets();
   }
 
   async loadQuotes() {

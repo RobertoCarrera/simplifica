@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
@@ -82,15 +82,15 @@ export class SimpleSupabaseService {
         return { success: false, message: error.message };
       }
 
-      return { 
-        success: true, 
-        message: 'Conexión exitosa', 
-        data: data 
+      return {
+        success: true,
+        message: 'Conexión exitosa',
+        data: data
       };
     } catch (error: any) {
-      return { 
-        success: false, 
-        message: 'Error de conexión: ' + error.message 
+      return {
+        success: false,
+        message: 'Error de conexión: ' + error.message
       };
     }
   }
@@ -123,10 +123,10 @@ export class SimpleSupabaseService {
     try {
       // Intentar establecer contexto (puede fallar pero no importa)
       await this.supabase.rpc('set_current_company_context', { company_uuid: companyId } as any);
-      
+
       // Actualizar estado local
       this.currentCompany.next(companyId);
-      
+
       return { success: true };
     } catch (error: any) {
       // Aunque falle la función, al menos establecemos local
@@ -225,10 +225,10 @@ export class SimpleSupabaseService {
   /**
    * Crear cliente con más campos (name, email, phone) y company_id explícito
    */
-  async createClientFull(newClient: { 
-    name: string; 
-    email?: string; 
-    phone?: string; 
+  async createClientFull(newClient: {
+    name: string;
+    email?: string;
+    phone?: string;
     company_id?: string;
     address?: any; // JSON serializable
     metadata?: any; // JSON serializable
@@ -340,27 +340,27 @@ export class SimpleSupabaseService {
   /**
    * Obtener estadísticas simples
    */
-  async getStats(): Promise<{ 
-    success: boolean; 
-    data?: { 
-      companies: number; 
-      clients: number; 
+  async getStats(): Promise<{
+    success: boolean;
+    data?: {
+      companies: number;
+      clients: number;
       users: number;
       clientsInCurrentCompany: number;
-    }; 
-    error?: string 
+    };
+    error?: string
   }> {
     try {
       const companiesResult = await this.rawQuery('companies');
       const clientsResult = await this.rawQuery('clients', 1000);
       const usersResult = await this.rawQuery('users', 1000);
-      
+
       const companies = companiesResult.data?.length || 0;
       const allClients = clientsResult.data?.length || 0;
       const users = usersResult.data?.length || 0;
-      
+
       const currentCompanyId = this.currentCompanyId;
-      const clientsInCurrentCompany = currentCompanyId 
+      const clientsInCurrentCompany = currentCompanyId
         ? (clientsResult.data?.filter(c => c.company_id === currentCompanyId).length || 0)
         : 0;
 
@@ -436,10 +436,10 @@ export class SimpleSupabaseService {
   /**
    * Obtener permisos de un usuario
    */
-  async getUserPermissions(userEmail: string): Promise<{ 
-    success: boolean; 
-    data?: SimpleUser['permissions']; 
-    error?: string 
+  async getUserPermissions(userEmail: string): Promise<{
+    success: boolean;
+    data?: SimpleUser['permissions'];
+    error?: string
   }> {
     try {
       const { data, error } = await this.supabase
@@ -461,18 +461,18 @@ export class SimpleSupabaseService {
   async migrateLegacyUsers(): Promise<{ success: boolean; error?: string; data?: any }> {
     try {
       console.log('🔄 Iniciando migración de usuarios legacy...');
-      
+
       // Verificar que no existan datos ya
       const { data: existingCompanies } = await this.supabase
         .from('companies')
         .select('*')
         .limit(1);
-      
+
       if (existingCompanies && existingCompanies.length > 0) {
         console.log('⚠️ Ya existen datos en companies, saltando migración');
         return { success: true, data: 'Migration skipped - data already exists' };
       }
-      
+
       // Empresa 1: Michinanny
       const { data: michinanny, error: errorMichinanny } = await this.supabase
         .from('companies')
@@ -483,9 +483,9 @@ export class SimpleSupabaseService {
         })
         .select()
         .single();
-      
+
       if (errorMichinanny) throw errorMichinanny;
-      
+
       // Usuarios de Michinanny
       const { error: errorUsersMichinanny } = await this.supabase.from('users').insert([
         {
@@ -496,14 +496,14 @@ export class SimpleSupabaseService {
         },
         {
           company_id: michinanny.id,
-          email: 'eva@michinanny.es', 
+          email: 'eva@michinanny.es',
           name: 'Eva Marín',
           permissions: { moduloFacturas: false, moduloPresupuestos: false, moduloServicios: true, moduloMaterial: false }
         }
       ]);
-      
+
       if (errorUsersMichinanny) throw errorUsersMichinanny;
-      
+
       // Empresa 2: Anscarr
       const { data: anscarr, error: errorAnscarr } = await this.supabase
         .from('companies')
@@ -514,9 +514,9 @@ export class SimpleSupabaseService {
         })
         .select()
         .single();
-        
+
       if (errorAnscarr) throw errorAnscarr;
-      
+
       const { error: errorUsersAnscarr } = await this.supabase.from('users').insert([
         {
           company_id: anscarr.id,
@@ -527,13 +527,13 @@ export class SimpleSupabaseService {
         {
           company_id: anscarr.id,
           email: 'carlosanscarr@gmail.com',
-          name: 'Carlos José Anaya Escalante', 
+          name: 'Carlos José Anaya Escalante',
           permissions: { moduloFacturas: true, moduloPresupuestos: true, moduloServicios: true, moduloMaterial: true }
         }
       ]);
-      
+
       if (errorUsersAnscarr) throw errorUsersAnscarr;
-      
+
       // Empresa 3: Libera Tus Creencias
       const { data: libera, error: errorLibera } = await this.supabase
         .from('companies')
@@ -544,18 +544,18 @@ export class SimpleSupabaseService {
         })
         .select()
         .single();
-        
+
       if (errorLibera) throw errorLibera;
-      
+
       const { error: errorUsersLibera } = await this.supabase.from('users').insert({
         company_id: libera.id,
         email: 'vanesa@liberatuscreencias.com',
         name: 'Vanesa Santa Maria Garibaldi',
         permissions: { moduloFacturas: false, moduloPresupuestos: false, moduloServicios: false, moduloMaterial: false }
       });
-      
+
       if (errorUsersLibera) throw errorUsersLibera;
-      
+
       // Empresa 4: SatPCGo
       const { data: satpcgo, error: errorSatpcgo } = await this.supabase
         .from('companies')
@@ -566,33 +566,33 @@ export class SimpleSupabaseService {
         })
         .select()
         .single();
-        
+
       if (errorSatpcgo) throw errorSatpcgo;
-      
+
       const { error: errorUsersSatpcgo } = await this.supabase.from('users').insert({
         company_id: satpcgo.id,
         email: 'jesus@satpcgo.es',
         name: 'Jesus',
         permissions: { moduloFacturas: false, moduloPresupuestos: false, moduloServicios: false, moduloMaterial: false }
       });
-      
+
       if (errorUsersSatpcgo) throw errorUsersSatpcgo;
-      
+
       console.log('✅ Migración completada exitosamente');
-      return { 
-        success: true, 
+      return {
+        success: true,
         data: {
           companies: 4,
           users: 5,
           message: 'Migration completed successfully'
         }
       };
-      
+
     } catch (error: any) {
       console.error('❌ Error en migración:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Error desconocido en migración' 
+      return {
+        success: false,
+        error: error.message || 'Error desconocido en migración'
       };
     }
   }

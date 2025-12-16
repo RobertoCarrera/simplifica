@@ -10,10 +10,12 @@ import { SupabaseServicesService, Service } from '../../services/supabase-servic
 import { ProductsService } from '../../services/products.service';
 import { ProductMetadataService } from '../../services/product-metadata.service';
 import { firstValueFrom } from 'rxjs';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { SimpleSupabaseService, SimpleClient } from '../../services/simple-supabase.service';
 import { DevicesService, Device } from '../../services/devices.service';
 import { DevRoleService } from '../../services/dev-role.service';
 import { AuthService } from '../../services/auth.service';
+import { PortalTicketWizardComponent } from '../portal-ticket-wizard/portal-ticket-wizard.component';
 
 // Interfaces para tags
 export interface TicketTag {
@@ -31,7 +33,7 @@ export interface TagWithCount extends TicketTag {
 @Component({
   selector: 'app-supabase-tickets',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PortalTicketWizardComponent],
   templateUrl: './supabase-tickets.component.html',
   styleUrl: './supabase-tickets.component.scss'
 })
@@ -76,6 +78,9 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   filterStage = '';
   filterPriority = '';
   filterStatus = '';
+  // Realtime
+  private realtimeChannel: RealtimeChannel | null = null;
+
   filterTags: string[] = [];
   viewMode: 'list' | 'board' = 'list';
   // Visibility toggles
@@ -97,6 +102,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
 
   // Form management
   showForm = false;
+  showWizard = false; // State for client wizard
   editingTicket: Ticket | null = null;
   formData: Partial<Ticket> = {};
 
@@ -200,6 +206,31 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   private isValidUuid(id: string | undefined | null): boolean {
     if (!id) return false;
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  }
+
+  private setupRealtimeSubscription() {
+    if (this.realtimeChannel) {
+      return;
+    }
+
+    const client = this.simpleSupabase.getClient();
+    this.realtimeChannel = client
+      .channel('public:tickets')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tickets' },
+        (payload) => {
+          console.log('[SupabaseTickets] Realtime change received:', payload);
+          // Reload tickets on any change
+          this.loadTickets().then(async () => {
+            // Load tags for the new tickets
+            await this.loadTicketTagsForTickets();
+            // Also reload stats as they might have changed
+            await this.loadStats();
+          });
+        }
+      )
+      .subscribe();
   }
 
   ngOnInit() {
@@ -323,6 +354,8 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
         this.loadTags()
       ]);
 
+      this.setupRealtimeSubscription();
+
     } catch (error) {
       console.error('Error initializing component:', error);
       this.error = 'Error al cargar los datos. Verifique la configuración de la base de datos.';
@@ -332,6 +365,12 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    // Unsubscribe from realtime
+    if (this.realtimeChannel) {
+      this.simpleSupabase.getClient().removeChannel(this.realtimeChannel);
+      this.realtimeChannel = null;
+    }
+
     // Asegurar que el scroll se restaure si el componente se destruye con modal abierto
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
@@ -1010,8 +1049,19 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     return tag?.color || '#6b7280';
   }
 
+  onWizardTicketCreated() {
+    this.showWizard = false;
+    this.loadTickets();
+  }
+
   // Form methods
   async openForm(ticket?: Ticket) {
+    // If client is creating a new ticket, use the wizard
+    if (this.isClient() && !ticket) {
+      this.showWizard = true;
+      return;
+    }
+
     this.editingTicket = ticket || null;
     this.formData = ticket ? { ...ticket } : {
       title: '',
@@ -1070,6 +1120,8 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
           this.closeServiceForm();
         } else if (this.showForm) {
           this.closeForm();
+        } else if (this.showWizard) {
+          this.showWizard = false;
         }
       };
       window.addEventListener('popstate', this.popStateListener);

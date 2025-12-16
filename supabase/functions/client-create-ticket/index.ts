@@ -8,8 +8,8 @@ const ALLOW_ALL_ORIGINS = (Deno.env.get('ALLOW_ALL_ORIGINS') || 'false').toLower
 const ALLOWED_ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map(s => s.trim()).filter(Boolean);
 const AUTO_CREATE_DEFAULT_STAGES = (Deno.env.get('AUTO_CREATE_DEFAULT_STAGES') || 'false').toLowerCase() === 'true';
 
-const FUNCTION_NAME = 'create-ticket';
-const FUNCTION_VERSION = '2025-11-04-1';
+const FUNCTION_NAME = 'client-create-ticket';
+const FUNCTION_VERSION = '2025-12-16-1';
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error(`[${FUNCTION_NAME}] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars`);
@@ -172,20 +172,20 @@ serve(async (req: Request) => {
     const products = Array.from(mergedProd.values());
 
     // Business rule: a ticket must include at least ONE service OR ONE product
-    if (services.length === 0 && products.length === 0) {
-      return jsonResponse(400, { error: 'At least one service or product is required', code: 'no_line_items' }, origin || '*');
-    }
-    // Validate user belongs to the company via public.users (single-company membership)
-    const { data: userRow, error: userErr } = await supabaseAdmin
-      .from('users')
-      .select('id')
+    // RELAXED (Client Portal): Allow creating a ticket without items (request mode)
+    // Admin can add services later during diagnosis
+    // No validation required here.
+    // Validate user is a client of this company (client-create-ticket is for portal clients)
+    // Clients have auth_user_id linking them to authenticated user
+    const { data: clientRowCheck, error: clientCheckErr } = await supabaseAdmin
+      .from('clients')
+      .select('id, company_id')
       .eq('auth_user_id', authUserId)
       .eq('company_id', payload.company_id)
-      .eq('active', true)
       .maybeSingle();
-    if (userErr || !userRow) {
-      if (userErr) console.warn(`[${FUNCTION_NAME}] membership query error (users)`, userErr);
-      return jsonResponse(403, { error: 'User not allowed for this company', code: 'not_company_member' }, origin || '*');
+    if (clientCheckErr || !clientRowCheck) {
+      if (clientCheckErr) console.warn(`[${FUNCTION_NAME}] membership query error (clients)`, clientCheckErr);
+      return jsonResponse(403, { error: 'User not allowed for this company', code: 'not_company_client' }, origin || '*');
     }
 
     // Validate client belongs to same company
