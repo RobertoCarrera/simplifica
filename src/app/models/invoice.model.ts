@@ -104,7 +104,7 @@ export interface Invoice {
   payment_link_token?: string;
   payment_link_expires_at?: string;
   payment_link_provider?: 'paypal' | 'stripe';
-  
+
   // Dual payment support (Stripe + PayPal)
   stripe_payment_url?: string;
   stripe_payment_token?: string;
@@ -206,6 +206,7 @@ export interface UpdateInvoiceDTO {
   notes?: string;
   internal_notes?: string;
   status?: InvoiceStatus;
+  payment_status?: 'pending' | 'pending_local' | 'partial' | 'paid' | 'refunded' | 'cancelled';
 }
 
 export interface CreateInvoicePaymentDTO {

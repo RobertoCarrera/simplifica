@@ -14,7 +14,7 @@ async function decrypt(encryptedBase64: string): Promise<string> {
   try {
     const encoder = new TextEncoder()
     const keyData = encoder.encode(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32))
-    
+
     const key = await crypto.subtle.importKey(
       "raw",
       keyData,
@@ -22,17 +22,17 @@ async function decrypt(encryptedBase64: string): Promise<string> {
       false,
       ["decrypt"]
     )
-    
+
     const combined = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0))
     const iv = combined.slice(0, 12)
     const data = combined.slice(12)
-    
+
     const decrypted = await crypto.subtle.decrypt(
       { name: "AES-GCM", iv },
       key,
       data
     )
-    
+
     return new TextDecoder().decode(decrypted)
   } catch {
     return ""
@@ -81,14 +81,14 @@ async function createPayPalOrder(
     // For recurring services, create a subscription
     if (isRecurring && billingPeriod !== 'one-time') {
       console.log('[client-request-service] Creating PayPal SUBSCRIPTION for period:', billingPeriod)
-      
+
       // First, create a billing plan (product + plan)
       // Note: In production, you'd want to cache/reuse plans for the same service
-      
+
       // Map billing period to PayPal interval
       let intervalUnit = 'MONTH'
       let intervalCount = 1
-      
+
       switch (billingPeriod) {
         case 'monthly':
           intervalUnit = 'MONTH'
@@ -111,7 +111,7 @@ async function createPayPalOrder(
           intervalUnit = 'MONTH'
           intervalCount = 1
       }
-      
+
       // Create product
       const productRes = await fetch(`${baseUrl}/v1/catalogs/products`, {
         method: "POST",
@@ -126,15 +126,15 @@ async function createPayPalOrder(
           category: "SOFTWARE"
         }),
       })
-      
+
       if (!productRes.ok) {
         console.error("[client-request-service] PayPal product creation failed:", await productRes.text())
         return { error: "Error creando producto en PayPal" }
       }
-      
+
       const product = await productRes.json()
       console.log('[client-request-service] PayPal product created:', product.id)
-      
+
       // Create billing plan
       const planRes = await fetch(`${baseUrl}/v1/billing/plans`, {
         method: "POST",
@@ -171,15 +171,15 @@ async function createPayPalOrder(
           }
         }),
       })
-      
+
       if (!planRes.ok) {
         console.error("[client-request-service] PayPal plan creation failed:", await planRes.text())
         return { error: "Error creando plan de suscripción en PayPal" }
       }
-      
+
       const plan = await planRes.json()
       console.log('[client-request-service] PayPal plan created:', plan.id)
-      
+
       // Create subscription
       const subscriptionRes = await fetch(`${baseUrl}/v1/billing/subscriptions`, {
         method: "POST",
@@ -199,15 +199,15 @@ async function createPayPalOrder(
           }
         }),
       })
-      
+
       if (!subscriptionRes.ok) {
         console.error("[client-request-service] PayPal subscription creation failed:", await subscriptionRes.text())
         return { error: "Error creando suscripción en PayPal" }
       }
-      
+
       const subscription = await subscriptionRes.json()
       const approvalUrl = subscription.links?.find((l: any) => l.rel === "approve")?.href
-      
+
       console.log('[client-request-service] PayPal subscription created:', subscription.id)
       return { approvalUrl }
     }
@@ -272,11 +272,11 @@ async function createStripeCheckout(
     // For recurring services, create a subscription checkout
     if (isRecurring && billingPeriod !== 'one-time') {
       console.log('[client-request-service] Creating Stripe SUBSCRIPTION checkout for period:', billingPeriod)
-      
+
       // Map billing period to Stripe interval
       let interval = 'month'
       let intervalCount = 1
-      
+
       switch (billingPeriod) {
         case 'monthly':
           interval = 'month'
@@ -299,7 +299,7 @@ async function createStripeCheckout(
           interval = 'month'
           intervalCount = 1
       }
-      
+
       const params = new URLSearchParams({
         "mode": "subscription",
         "success_url": returnUrl,
@@ -405,7 +405,7 @@ serve(async (req) => {
     if (!authHeader) {
       throw new Error('No authorization header')
     }
-    
+
     const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''))
 
     if (userError || !user) {
@@ -415,12 +415,12 @@ serve(async (req) => {
       )
     }
 
-    const { serviceId, variantId, action, preferredPaymentMethod, existingInvoiceId } = await req.json()
+    const { serviceId, variantId, action, preferredPaymentMethod, existingInvoiceId, comment } = await req.json()
 
     // If existingInvoiceId is provided, skip quote/invoice creation and just generate payment link
     if (existingInvoiceId && preferredPaymentMethod) {
       console.log('[client-request-service] Using existing invoice:', existingInvoiceId, 'with payment method:', preferredPaymentMethod)
-      
+
       // Get the existing invoice
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
@@ -510,7 +510,7 @@ serve(async (req) => {
       if (paymentUrl) {
         const expiresAt = new Date()
         expiresAt.setDate(expiresAt.getDate() + 7)
-        
+
         await supabase.from('invoices').update({
           payment_link_token: paymentToken,
           payment_link_expires_at: expiresAt.toISOString(),
@@ -518,30 +518,30 @@ serve(async (req) => {
         }).eq('id', invoice.id)
 
         return new Response(
-          JSON.stringify({ 
-            success: true, 
+          JSON.stringify({
+            success: true,
             action: 'contract',
-            data: { 
+            data: {
               invoice_id: invoice.id,
               invoice_number: invoice.invoice_number,
               payment_url: paymentUrl,
               payment_provider: paymentProvider,
               message: 'Redirigiendo al pago...'
-            } 
+            }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           action: 'contract',
           fallback: true,
-          data: { 
+          data: {
             invoice_id: invoice.id,
             message: 'No se pudo generar el enlace de pago. Contacta con soporte.'
-          } 
+          }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -556,7 +556,7 @@ serve(async (req) => {
 
     // Get client_id and company_id from clients table using auth_user_id
     console.log('[client-request-service] Looking up client for user:', user.id)
-    
+
     const { data: client, error: clientError } = await supabase
       .from('clients')
       .select('id, company_id, name, email')
@@ -602,7 +602,7 @@ serve(async (req) => {
 
     // Get service
     console.log('[client-request-service] Looking up service:', serviceId)
-    
+
     const { data: service, error: serviceError } = await supabase
       .from('services')
       .select('*')
@@ -626,7 +626,7 @@ serve(async (req) => {
     let variantName: string | null = null
     let title = service.name || 'Servicio'
     let description = service.description || service.name || 'Servicio solicitado'
-    
+
     // Track billing period for recurring services
     let billingPeriod = 'one-time'
     let isRecurring = false
@@ -643,16 +643,16 @@ serve(async (req) => {
     // Only look for variant if variantId is provided and not empty
     if (variantId && variantId !== 'undefined' && variantId !== 'null') {
       console.log('[client-request-service] Looking up variant:', variantId)
-      
+
       const { data: variant, error: variantError } = await supabase
         .from('service_variants')
         .select('*')
         .eq('id', variantId)
         .eq('service_id', serviceId)
         .single()
-      
+
       console.log('[client-request-service] Variant lookup result:', JSON.stringify({ variant, variantError }))
-      
+
       if (variant) {
         // Price is in the pricing array (variant.pricing[0].base_price)
         // Also check direct fields as fallback
@@ -675,7 +675,7 @@ serve(async (req) => {
           isRecurring = billingPeriod !== 'one-time'
           console.log('[client-request-service] Got price from variant direct fields:', variantPrice, 'discount:', discountPercent, 'billingPeriod:', billingPeriod, 'isRecurring:', isRecurring)
         }
-        
+
         // Use the BASE price (before any discount) - discount will be applied as line discount
         basePrice = variantPrice
         variantName = variant.variant_name || variant.name  // Field is variant_name in schema
@@ -695,9 +695,9 @@ serve(async (req) => {
 
     // Calculate prices based on tax configuration
     // The basePrice from the variant is the DISPLAY price (what the customer sees)
-    
+
     const validBasePrice = Number(basePrice) || 0
-    
+
     let unitPrice: number  // Price per unit shown on quote (DISPLAY PRICE)
     let lineSubtotal: number  // Subtotal for this line (accounting base, before tax)
     let taxAmount: number
@@ -711,34 +711,34 @@ serve(async (req) => {
       // 1. Show unit_price = 250€ (the display price)
       // 2. Apply discount to the display price: 250€ - 15% = 212.50€
       // 3. For accounting: extract the base and IVA from the final price
-      
+
       // The display price already includes tax
       unitPrice = validBasePrice  // Show the full display price (250€)
-      
+
       // Apply discount to get the final price the customer pays
       discountAmount = validBasePrice * (discountPercent / 100)  // 250 * 0.15 = 37.50€
       const finalPrice = validBasePrice - discountAmount  // 250 - 37.50 = 212.50€
-      
+
       // For accounting, extract base from final price (final price includes tax)
       // finalPrice = base + (base * taxRate/100) = base * (1 + taxRate/100)
       // base = finalPrice / (1 + taxRate/100)
       const accountingBase = finalPrice / (1 + taxRate / 100)  // 212.50 / 1.21 = 175.62€
-      
+
       lineSubtotal = accountingBase  // 175.62€ (for accounting)
       taxAmount = finalPrice - accountingBase  // 212.50 - 175.62 = 36.88€
       irpfAmount = accountingBase * (irpfRate / 100)
       lineTotal = finalPrice  // 212.50€ (what customer pays)
-      
-      console.log('[client-request-service] pricesIncludeTax=true: displayPrice:', validBasePrice, 
+
+      console.log('[client-request-service] pricesIncludeTax=true: displayPrice:', validBasePrice,
         'discountedFinal:', finalPrice, 'accountingBase:', accountingBase.toFixed(2))
     } else {
       // Price does NOT include tax - it's the base price
       unitPrice = validBasePrice
-      
+
       // Apply discount to get subtotal
       discountAmount = validBasePrice * (discountPercent / 100)
       lineSubtotal = validBasePrice - discountAmount
-      
+
       // Calculate taxes on discounted subtotal  
       taxAmount = lineSubtotal * (taxRate / 100)
       irpfAmount = lineSubtotal * (irpfRate / 100)
@@ -757,8 +757,8 @@ serve(async (req) => {
     const subtotal = lineSubtotal
     const total = lineTotal
 
-    console.log('[client-request-service] Calculated prices:', { 
-      unitPrice, discountPercent, discountAmount, subtotal, taxAmount, total 
+    console.log('[client-request-service] Calculated prices:', {
+      unitPrice, discountPercent, discountAmount, subtotal, taxAmount, total
     })
 
     // Check settings for contract
@@ -827,11 +827,12 @@ serve(async (req) => {
       tax_amount: taxAmount,
       total_amount: total,
       created_by: user.id,
+      notes: comment || null,
       // Recurrence settings - map billing_period to recurrence_type
-      recurrence_type: billingPeriod === 'monthly' ? 'monthly' 
-                     : billingPeriod === 'quarterly' ? 'quarterly'
-                     : billingPeriod === 'yearly' || billingPeriod === 'annually' ? 'yearly'
-                     : 'none',
+      recurrence_type: billingPeriod === 'monthly' ? 'monthly'
+        : billingPeriod === 'quarterly' ? 'quarterly'
+          : billingPeriod === 'yearly' || billingPeriod === 'annually' ? 'yearly'
+            : 'none',
       recurrence_day: isRecurring ? new Date().getDate() : null,  // Day of month for recurring
       next_run_at: isRecurring ? (() => {
         const nextDate = new Date();
@@ -890,7 +891,7 @@ serve(async (req) => {
     if (serviceId) {
       quoteItemData.service_id = serviceId
     }
-    
+
     // Only add variant_id if valid
     if (variantId && variantId !== 'undefined' && variantId !== 'null') {
       quoteItemData.variant_id = variantId
@@ -912,13 +913,13 @@ serve(async (req) => {
     // For 'request' action, we're done
     if (action === 'request') {
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           action: 'request',
-          data: { 
+          data: {
             quote,
             message: 'Tu solicitud ha sido enviada. Te contactaremos pronto.'
-          } 
+          }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -926,7 +927,7 @@ serve(async (req) => {
 
     // For 'contract' action: Convert to invoice and create payment link
     console.log('[client-request-service] Starting contract flow - converting quote to invoice')
-    
+
     // Step 1: Convert quote to invoice using the SQL function
     const { data: invoiceId, error: convertError } = await supabase
       .rpc('convert_quote_to_invoice', {
@@ -937,7 +938,7 @@ serve(async (req) => {
 
     if (convertError) {
       console.error('[client-request-service] Error converting quote to invoice:', JSON.stringify(convertError))
-      
+
       // If the RPC function tried to use 'facturado', update the quote manually with correct status
       if (convertError.message?.includes('facturado') || convertError.code === '22P02') {
         // Update quote status to 'invoiced' (correct enum value)
@@ -947,18 +948,18 @@ serve(async (req) => {
           .eq('id', quote.id)
         console.log('[client-request-service] Updated quote status to invoiced')
       }
-      
+
       // Fallback: return quote with contact info
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           action: 'contract',
           fallback: true,
           error_detail: convertError.message,
-          data: { 
+          data: {
             quote,
             message: 'El presupuesto ha sido aceptado. Nos pondremos en contacto contigo para completar el pago.'
-          } 
+          }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -976,15 +977,15 @@ serve(async (req) => {
     if (invoiceError || !invoice) {
       console.error('[client-request-service] Error fetching invoice:', invoiceError)
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           action: 'contract',
           fallback: true,
-          data: { 
+          data: {
             quote,
             invoice_id: invoiceId,
             message: 'El presupuesto ha sido aceptado y la factura generada. Nos pondremos en contacto contigo para el pago.'
-          } 
+          }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -1010,7 +1011,7 @@ serve(async (req) => {
             p_device_id: 'CLIENT-PORTAL-AUTO',
             p_software_id: 'SIMPLIFICA-VF-001'
           })
-          
+
           if (vfError) {
             console.error('[client-request-service] Verifactu finalization error:', vfError)
           } else {
@@ -1025,33 +1026,33 @@ serve(async (req) => {
 
     // Step 3: Check for payment integrations and local payment option
     console.log('[client-request-service] Checking payment integrations for company:', companyId)
-    
+
     // Get company settings for local payment option
     const { data: companySettingsForPayment } = await supabase
       .from('company_settings')
       .select('allow_local_payment')
       .eq('company_id', companyId)
       .maybeSingle()
-    
+
     const allowLocalPayment = companySettingsForPayment?.allow_local_payment ?? false
     console.log('[client-request-service] Local payment allowed:', allowLocalPayment)
-    
+
     const { data: paymentIntegrations, error: paymentError } = await supabase
       .from('payment_integrations')
       .select('*')
       .eq('company_id', companyId)
       .eq('is_active', true)
 
-    console.log('[client-request-service] Payment integrations:', JSON.stringify({ 
-      count: paymentIntegrations?.length, 
+    console.log('[client-request-service] Payment integrations:', JSON.stringify({
+      count: paymentIntegrations?.length,
       providers: paymentIntegrations?.map((p: any) => p.provider),
-      error: paymentError 
+      error: paymentError
     }))
 
     if (!paymentIntegrations || paymentIntegrations.length === 0) {
       // No payment integrations configured
       console.log('[client-request-service] No payment integrations found, allowLocalPayment:', allowLocalPayment)
-      
+
       // If local payment is allowed, provide that option
       if (allowLocalPayment) {
         const localPaymentOption = {
@@ -1061,36 +1062,36 @@ serve(async (req) => {
           iconClass: 'text-white',
           buttonClass: 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
         }
-        
+
         return new Response(
-          JSON.stringify({ 
-            success: true, 
+          JSON.stringify({
+            success: true,
             action: 'contract',
-            data: { 
+            data: {
               quote,
               invoice_id: invoiceId,
               invoice_number: invoice.invoice_number,
               payment_options_formatted: [localPaymentOption],
               message: '¡Factura generada! Selecciona pago en local para coordinar el pago con la empresa.'
-            } 
+            }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
-      
+
       // No payment options available - fallback
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           action: 'contract',
           fallback: true,
           no_payment_integration: true,
-          data: { 
+          data: {
             quote,
             invoice_id: invoiceId,
             invoice_number: invoice.invoice_number,
             message: 'Factura generada correctamente. Nos pondremos en contacto contigo para coordinar el pago.'
-          } 
+          }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -1115,7 +1116,7 @@ serve(async (req) => {
     let stripePaymentToken: string | null = null
     let paypalPaymentUrl: string | null = null
     let paypalPaymentToken: string | null = null
-    
+
     // For backward compatibility - will be set to first successful provider
     let paymentUrl: string | null = null
     let paymentProvider: string | null = null
@@ -1143,7 +1144,7 @@ serve(async (req) => {
         console.log('[client-request-service] Stripe credentials decrypted, creating checkout...')
         const result = await createStripeCheckout(credentials, invoiceData, stripePaymentToken, isRecurring, billingPeriod)
         console.log('[client-request-service] Stripe result:', JSON.stringify(result))
-        
+
         if ('checkoutUrl' in result) {
           stripePaymentUrl = result.checkoutUrl
           // Set as primary if user prefers or first available
@@ -1166,15 +1167,15 @@ serve(async (req) => {
         const credentials = JSON.parse(await decrypt(paypalIntegration.credentials_encrypted))
         console.log('[client-request-service] PayPal credentials decrypted, creating order...')
         const result = await createPayPalOrder(
-          credentials, 
-          paypalIntegration.is_sandbox, 
-          invoiceData, 
+          credentials,
+          paypalIntegration.is_sandbox,
+          invoiceData,
           paypalPaymentToken,
           isRecurring,
           billingPeriod
         )
         console.log('[client-request-service] PayPal result:', JSON.stringify(result))
-        
+
         if ('approvalUrl' in result) {
           paypalPaymentUrl = result.approvalUrl
           // Set as primary if user prefers or first available
@@ -1189,10 +1190,10 @@ serve(async (req) => {
       }
     }
 
-    console.log('[client-request-service] Final payment results:', { 
+    console.log('[client-request-service] Final payment results:', {
       stripePaymentUrl: !!stripePaymentUrl,
-      paypalPaymentUrl: !!paypalPaymentUrl, 
-      primaryProvider: paymentProvider 
+      paypalPaymentUrl: !!paypalPaymentUrl,
+      primaryProvider: paymentProvider
     })
 
     // Update invoice with payment link token and payment URLs
@@ -1200,14 +1201,14 @@ serve(async (req) => {
     if (anyPaymentUrl) {
       const expiresAt = new Date()
       expiresAt.setDate(expiresAt.getDate() + 7)
-      
+
       // Include all payment-related columns
       const updateData: any = {
         payment_link_token: paymentToken,
         payment_link_expires_at: expiresAt.toISOString(),
         payment_link_provider: paymentProvider,
       }
-      
+
       // Add payment URLs if available
       if (stripePaymentUrl) {
         updateData.stripe_payment_url = stripePaymentUrl
@@ -1217,14 +1218,14 @@ serve(async (req) => {
         updateData.paypal_payment_url = paypalPaymentUrl
         updateData.paypal_payment_token = paypalPaymentToken
       }
-      
+
       console.log('[client-request-service] Updating invoice with payment data:', {
         invoice_id: invoice.id,
         has_stripe_url: !!stripePaymentUrl,
         has_paypal_url: !!paypalPaymentUrl,
         provider: paymentProvider
       })
-      
+
       const { error: updateError } = await supabase.from('invoices').update(updateData).eq('id', invoice.id)
 
       if (updateError) {
@@ -1242,9 +1243,9 @@ serve(async (req) => {
         iconClass: string;
         buttonClass: string;
       }
-      
+
       const paymentOptionsForUI: PaymentOptionForUI[] = []
-      
+
       if (stripePaymentUrl) {
         paymentOptionsForUI.push({
           provider: 'stripe',
@@ -1255,7 +1256,7 @@ serve(async (req) => {
           buttonClass: 'bg-purple-600 hover:bg-purple-700 text-white'
         })
       }
-      
+
       if (paypalPaymentUrl) {
         paymentOptionsForUI.push({
           provider: 'paypal',
@@ -1266,7 +1267,7 @@ serve(async (req) => {
           buttonClass: 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white'
         })
       }
-      
+
       if (allowLocalPayment) {
         paymentOptionsForUI.push({
           provider: 'local',
@@ -1278,14 +1279,14 @@ serve(async (req) => {
       }
 
       // Build response with all payment options
-      const responseData: any = { 
+      const responseData: any = {
         quote,
         invoice_id: invoiceId,
         invoice_number: invoice.invoice_number,
         payment_url: paymentUrl,
         payment_provider: paymentProvider,
         payment_options_formatted: paymentOptionsForUI,
-        message: paymentOptionsForUI.length > 1 
+        message: paymentOptionsForUI.length > 1
           ? '¡Todo listo! Selecciona tu método de pago preferido.'
           : 'Redirigiendo al pago...'
       }
@@ -1303,8 +1304,8 @@ serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           action: 'contract',
           data: responseData
         }),
@@ -1314,16 +1315,16 @@ serve(async (req) => {
 
     // No payment URL could be generated - fallback
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         action: 'contract',
         fallback: true,
-        data: { 
+        data: {
           quote,
           invoice_id: invoiceId,
           invoice_number: invoice.invoice_number,
           message: 'Factura generada correctamente. Te enviaremos los datos de pago por email.'
-        } 
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

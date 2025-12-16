@@ -8,7 +8,7 @@ import { SupabaseModulesService } from '../../../services/supabase-modules.servi
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { PaymentIntegrationsService, PaymentIntegration } from '../../../services/payment-integrations.service';
 import { ToastService } from '../../../services/toast.service';
-import { Invoice, formatInvoiceNumber } from '../../../models/invoice.model';
+import { Invoice, formatInvoiceNumber, InvoiceStatus } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
 import { IssueVerifactuButtonComponent } from '../issue-verifactu-button/issue-verifactu-button.component';
 import { VerifactuBadgeComponent } from '../verifactu-badge/verifactu-badge.component';
@@ -38,6 +38,16 @@ import { firstValueFrom } from 'rxjs';
         <button class="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700" (click)="downloadPdf(inv.id)">Descargar PDF</button>
         <button class="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700" *ngIf="canCancel(inv)" (click)="cancelInvoice(inv.id)">Anular</button>
         <button class="px-3 py-1.5 rounded bg-indigo-600 text-white hover:bg-indigo-700" *ngIf="canRectify(inv)" (click)="rectify(inv.id)">Rectificar</button>
+        <button 
+          *ngIf="canMarkAsPaid(inv)"
+          class="px-3 py-1.5 rounded bg-green-600 text-white hover:bg-green-700 flex items-center gap-1.5"
+          (click)="markAsPaid(inv)">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+          Marcar como Pagada
+        </button>
+
         <button *ngIf="canSendEmail()" class="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60" [disabled]="sendingEmail()" (click)="sendEmail(inv.id)">{{ sendingEmail() ? 'Enviando…' : 'Enviar por email' }}</button>
         
         <!-- Send Payment Link Button -->
@@ -283,7 +293,7 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   dispatcherHealth = signal<{ pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; } | null>(null);
   private refreshInterval: any;
   private realtimeSub: { unsubscribe: () => void } | null = null;
-  
+
   // Tax configuration
   pricesIncludeTax = signal<boolean>(false);
 
@@ -347,7 +357,7 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // Load tax configuration
     this.loadTaxSettings();
-    
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.invoicesService.getInvoice(id).subscribe({
@@ -486,7 +496,7 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
 
   rectify(invoiceId: string) {
     const reason = prompt('Introduce el motivo de la rectificación:\n\n(Requerido por VeriFactu. Ej: "Error en cantidad", "Precio incorrecto", "Factura de prueba emitida por error")');
-    
+
     if (!reason || reason.trim() === '') {
       try { this.toast.error('Motivo requerido', 'Debes introducir un motivo para la rectificación'); } catch { }
       return;
@@ -537,12 +547,12 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     const status = inv.status as string;
     // Don't show for drafts, voided or cancelled invoices
     if (status === 'draft' || status === 'void' || status === 'cancelled') return false;
-    
+
     // If Verifactu module is disabled, allow email for approved/issued/sent/paid invoices
     if (!this.isVerifactuEnabled()) {
       return ['approved', 'issued', 'sent', 'paid'].includes(status);
     }
-    
+
     // If Verifactu is enabled, require a completed VeriFactu status: 'accepted' or 'sent'
     const meta = this.verifactuMeta();
     const s = (meta?.status || '').toLowerCase();
@@ -571,13 +581,13 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
   canCancel(inv: Invoice): boolean {
     // No permitir anular si ya está cancelada, anulada o rectificada
     if (inv.status === 'cancelled' || inv.status === 'void' || inv.status === 'rectified') return false;
-    
+
     // Si VeriFactu está habilitado y la factura está aceptada por AEAT, NO permitir anular
     // (debe rectificarse formalmente en su lugar)
     if (this.isVerifactuEnabled() && this.isVerifactuAccepted()) {
       return false;
     }
-    
+
     // Permitir anular facturas rectificativas (negativas)
     if (inv.invoice_type === 'rectificative' || (inv.total || 0) < 0) return true;
 
@@ -630,7 +640,7 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
       const integrations = await this.paymentService.getIntegrations(inv.company_id);
       const active = integrations.filter(i => i.is_active);
       this.availableProviders.set(active);
-      
+
       // Pre-select if only one provider available
       if (active.length === 1) {
         this.selectedProvider.set(active[0].provider);
@@ -657,10 +667,10 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     try {
       const result = await this.paymentService.generatePaymentLink(inv.id, provider, this.expirationDays);
       this.generatedPaymentLink.set(result);
-      try { this.toast.success('Enlace generado', 'El enlace de pago está listo para compartir'); } catch {}
+      try { this.toast.success('Enlace generado', 'El enlace de pago está listo para compartir'); } catch { }
     } catch (e: any) {
       const msg = e?.message || 'Error al generar enlace de pago';
-      try { this.toast.error('Error', msg); } catch {}
+      try { this.toast.error('Error', msg); } catch { }
       console.error('Error generating payment link', e);
     } finally {
       this.generatingPaymentLink.set(false);
@@ -677,7 +687,7 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
       setTimeout(() => this.copiedLink.set(false), 2000);
     } catch (e) {
       console.error('Error copying to clipboard', e);
-      try { this.toast.error('Error', 'No se pudo copiar al portapapeles'); } catch {}
+      try { this.toast.error('Error', 'No se pudo copiar al portapapeles'); } catch { }
     }
   }
 
@@ -695,13 +705,43 @@ export class InvoiceDetailComponent implements OnInit, OnDestroy {
     try {
       // Use existing email service through invoices service
       await this.invoicesService.sendInvoiceEmail(inv.id, to, subject, message).toPromise();
-      try { this.toast.success('Email enviado', 'El enlace de pago ha sido enviado al cliente'); } catch {}
+      try { this.toast.success('Email enviado', 'El enlace de pago ha sido enviado al cliente'); } catch { }
     } catch (e: any) {
       const msg = e?.message || 'Error al enviar email';
-      try { this.toast.error('Error', msg); } catch {}
+      try { this.toast.error('Error', msg); } catch { }
       console.error('Error sending payment email', e);
     } finally {
       this.sendingPaymentEmail.set(false);
     }
+  }
+
+  canMarkAsPaid(inv: Invoice): boolean {
+    if (!inv) return false;
+    const status = (inv.status || '').toLowerCase();
+    const pStatus = (inv.payment_status || '').toLowerCase();
+
+    // Can mark as paid if not already paid, void, or cancelled
+    if (status === 'void' || status === 'cancelled') return false;
+    if (pStatus === 'paid') return false;
+
+    return true;
+  }
+
+  async markAsPaid(inv: Invoice) {
+    if (!confirm('¿Marcar esta factura como pagada en local/efectivo?')) return;
+
+    this.invoicesService.updateInvoice(inv.id, {
+      status: InvoiceStatus.PAID,
+      payment_status: 'paid'
+    }).subscribe({
+      next: (updated) => {
+        this.invoice.set(updated);
+        try { this.toast.success('Factura pagada', 'La factura ha sido marcada como pagada correctamente'); } catch { }
+      },
+      error: (e) => {
+        console.error('Error marking as paid', e);
+        try { this.toast.error('Error', 'No se pudo actualizar la factura'); } catch { }
+      }
+    });
   }
 }

@@ -27,13 +27,6 @@ interface PaymentInfo {
     <div class="max-w-5xl mx-auto">
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Tus facturas</h1>
-        <div *ngIf="dispatcherHealth() as h" class="hidden sm:flex items-center gap-2">
-          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                [ngClass]="h.pending > 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'">
-            <span class="w-2 h-2 rounded-full mr-1.5" [ngClass]="h.pending > 0 ? 'bg-amber-500' : 'bg-emerald-500'"></span>
-            {{ h.pending > 0 ? (h.pending + ' en proceso') : 'Envíos OK' }}
-          </span>
-        </div>
       </div>
 
       <div class="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
@@ -111,7 +104,7 @@ export class PortalInvoicesComponent implements OnInit {
     this.invoicesSvc.getDispatcherHealth().subscribe(h => this.dispatcherHealth.set(h));
   }
 
-  downloadPdf(id: string){
+  downloadPdf(id: string) {
     this.invoicesSvc.getInvoicePdfUrl(id).subscribe({ next: (signed) => window.open(signed, '_blank') });
   }
 
@@ -129,7 +122,7 @@ export class PortalInvoicesComponent implements OnInit {
   async openPaymentOptions(inv: ClientPortalInvoice) {
     this.selectedInvoice.set(inv);
     this.selectedInvoiceTitle.set(`Factura ${this.displayInvoiceNumber(inv)}`);
-    
+
     // Show dialog with loading state
     this.paymentDialog.visible.set(true);
     this.paymentDialog.steps.set([
@@ -137,11 +130,11 @@ export class PortalInvoicesComponent implements OnInit {
     ]);
     this.paymentDialog.resultMessage.set('');
     this.paymentDialog.paymentOptions.set([]);
-    
+
     try {
       // Call the public-payment-info edge function to get payment options
       const paymentInfo = await this.portal.getPaymentInfo(inv.payment_link_token || '');
-      
+
       if (paymentInfo && paymentInfo.payment_options && paymentInfo.payment_options.length > 0) {
         // Build payment options with URLs from the invoice
         const options: PaymentOption[] = paymentInfo.payment_options.map((opt: any) => {
@@ -156,7 +149,7 @@ export class PortalInvoicesComponent implements OnInit {
             url
           };
         });
-        
+
         this.paymentDialog.steps.set([
           { id: 'ready', label: 'Opciones de pago disponibles', status: 'completed' }
         ]);
@@ -203,7 +196,7 @@ export class PortalInvoicesComponent implements OnInit {
   async onLocalPaymentSelected() {
     const inv = this.selectedInvoice();
     if (!inv) return;
-    
+
     try {
       // Update invoice to pending_local status
       await this.portal.markInvoiceLocalPayment(inv.id);

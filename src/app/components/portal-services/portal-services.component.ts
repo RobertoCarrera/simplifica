@@ -9,14 +9,16 @@ import { ToastService } from '../../services/toast.service';
 import { ContractProgressDialogComponent } from '../contract-progress-dialog/contract-progress-dialog.component';
 import { PaymentMethodSelectorComponent, PaymentSelection } from '../payment-method-selector/payment-method-selector.component';
 import { ConfirmModalComponent } from '../confirm-modal/confirm-modal.component';
+import { PromptModalComponent } from '../prompt-modal/prompt-modal.component';
 
 @Component({
-    selector: 'app-portal-services',
-    standalone: true,
-    imports: [CommonModule, RouterModule, FormsModule, ContractProgressDialogComponent, PaymentMethodSelectorComponent, ConfirmModalComponent],
-    template: `
+  selector: 'app-portal-services',
+  standalone: true,
+  imports: [CommonModule, RouterModule, FormsModule, ContractProgressDialogComponent, PaymentMethodSelectorComponent, ConfirmModalComponent, PromptModalComponent],
+  template: `
     <!-- Confirm Modal -->
     <app-confirm-modal #confirmModal></app-confirm-modal>
+    <app-prompt-modal #promptModal></app-prompt-modal>
 
     <!-- Contract Progress Dialog -->
     <app-contract-progress-dialog 
@@ -329,235 +331,236 @@ import { ConfirmModalComponent } from '../confirm-modal/confirm-modal.component'
   `
 })
 export class PortalServicesComponent implements OnInit {
-    private authService = inject(AuthService);
-    private supabaseClient = inject(SupabaseClientService);
-    private portalService = inject(ClientPortalService);
-    private toastService = inject(ToastService);
+  private authService = inject(AuthService);
+  private supabaseClient = inject(SupabaseClientService);
+  private portalService = inject(ClientPortalService);
+  private toastService = inject(ToastService);
 
-    @ViewChild('contractDialog') contractDialog!: ContractProgressDialogComponent;
-    @ViewChild('paymentSelector') paymentSelector!: PaymentMethodSelectorComponent;
-    @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
+  @ViewChild('contractDialog') contractDialog!: ContractProgressDialogComponent;
+  @ViewChild('paymentSelector') paymentSelector!: PaymentMethodSelectorComponent;
+  @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
+  @ViewChild('promptModal') promptModal!: PromptModalComponent;
 
-    loading = signal(true);
-    services = signal<ContractedService[]>([]);
-    publicServices = signal<any[]>([]);
-    settings = signal<any>(null);
-    
-    // State for payment method selection flow
-    private pendingContractService: any = null;
-    private pendingPaymentData: any = null;
-    private lastCreatedInvoiceId: string | null = null;
+  loading = signal(true);
+  services = signal<ContractedService[]>([]);
+  publicServices = signal<any[]>([]);
+  settings = signal<any>(null);
 
-    ngOnInit(): void {
-        this.loadData();
+  // State for payment method selection flow
+  private pendingContractService: any = null;
+  private pendingPaymentData: any = null;
+  private lastCreatedInvoiceId: string | null = null;
+
+  ngOnInit(): void {
+    this.loadData();
+  }
+
+  private async loadData(): Promise<void> {
+    this.loading.set(true);
+    try {
+      await Promise.all([
+        this.loadContractedServices(),
+        this.loadPublicServices(),
+        this.loadSettings()
+      ]);
+    } finally {
+      this.loading.set(false);
     }
+  }
 
-    private async loadData(): Promise<void> {
-        this.loading.set(true);
-        try {
-            await Promise.all([
-                this.loadContractedServices(),
-                this.loadPublicServices(),
-                this.loadSettings()
-            ]);
-        } finally {
-            this.loading.set(false);
-        }
-    }
+  private async loadSettings() {
+    const { data } = await this.portalService.getCompanySettings();
+    this.settings.set(data);
+  }
 
-    private async loadSettings() {
-        const { data } = await this.portalService.getCompanySettings();
-        this.settings.set(data);
-    }
+  private async loadPublicServices() {
+    const { data } = await this.portalService.listPublicServices();
+    console.log('🔍 RAW public services from DB:', JSON.stringify(data, null, 2));
 
-    private async loadPublicServices() {
-        const { data } = await this.portalService.listPublicServices();
-        console.log('🔍 RAW public services from DB:', JSON.stringify(data, null, 2));
-        
-        const services = (data || []).map(service => {
-            console.log(`📦 Service "${service.name}":`, {
-                variants: service.variants,
-                variantsCount: service.variants?.length,
-                base_price: service.base_price
-            });
-            
-            // Map variants to expected structure
-            const mappedVariants = (service.variants || [])
-                .filter((v: any) => v.is_active !== false)
-                .map((v: any) => {
-                    console.log(`  🏷️ Variant "${v.variant_name}":`, {
-                        base_price: v.base_price,
-                        pricing: v.pricing,
-                        billing_period: v.billing_period
-                    });
-                    
-                    // Extract price from new pricing array if available, fallback to legacy fields
-                    let price = v.base_price ?? v.price ?? 0;
-                    let billingPeriod = v.billing_period;
+    const services = (data || []).map(service => {
+      console.log(`📦 Service "${service.name}":`, {
+        variants: service.variants,
+        variantsCount: service.variants?.length,
+        base_price: service.base_price
+      });
 
-                    // Handle pricing if it's a string (JSON stringified)
-                    let pricingData = v.pricing;
-                    if (typeof pricingData === 'string') {
-                        try {
-                            pricingData = JSON.parse(pricingData);
-                        } catch (e) {
-                            console.error('Error parsing pricing JSON:', e);
-                            pricingData = [];
-                        }
-                    }
+      // Map variants to expected structure
+      const mappedVariants = (service.variants || [])
+        .filter((v: any) => v.is_active !== false)
+        .map((v: any) => {
+          console.log(`  🏷️ Variant "${v.variant_name}":`, {
+            base_price: v.base_price,
+            pricing: v.pricing,
+            billing_period: v.billing_period
+          });
 
-                    if (pricingData && Array.isArray(pricingData) && pricingData.length > 0) {
-                        // Default to the first pricing option found (usually the primary one)
-                        // In a more advanced UI we could allow selecting the billing period too
-                        const firstOption = pricingData[0];
-                        price = firstOption.base_price ?? 0;
-                        billingPeriod = firstOption.billing_period;
-                        console.log(`    💰 Using pricing array:`, firstOption);
-                    }
+          // Extract price from new pricing array if available, fallback to legacy fields
+          let price = v.base_price ?? v.price ?? 0;
+          let billingPeriod = v.billing_period;
 
-                    return {
-                        id: v.id,
-                        name: v.variant_name || v.name,
-                        price: price,
-                        billingPeriod: billingPeriod,
-                        features: v.features || { included: [], excluded: [] },
-                        displayConfig: v.display_config || {}
-                    };
-                })
-                .sort((a: any, b: any) => a.price - b.price);
-
-            console.log(`  ✅ Mapped variants for "${service.name}":`, mappedVariants);
-
-            const hasVariants = mappedVariants.length > 0;
-            let selectedVariant = null;
-            let displayPrice = service.base_price || 0;
-
-            if (hasVariants) {
-                // Select first variant by default (lowest price due to sort)
-                selectedVariant = mappedVariants[0];
-                displayPrice = selectedVariant.price;
+          // Handle pricing if it's a string (JSON stringified)
+          let pricingData = v.pricing;
+          if (typeof pricingData === 'string') {
+            try {
+              pricingData = JSON.parse(pricingData);
+            } catch (e) {
+              console.error('Error parsing pricing JSON:', e);
+              pricingData = [];
             }
+          }
 
-            return {
-                ...service,
-                variants: mappedVariants,
-                selectedVariant,
-                displayPrice
-            };
-        });
-        console.log('🎯 Final processed services:', services);
-        this.publicServices.set(services);
+          if (pricingData && Array.isArray(pricingData) && pricingData.length > 0) {
+            // Default to the first pricing option found (usually the primary one)
+            // In a more advanced UI we could allow selecting the billing period too
+            const firstOption = pricingData[0];
+            price = firstOption.base_price ?? 0;
+            billingPeriod = firstOption.billing_period;
+            console.log(`    💰 Using pricing array:`, firstOption);
+          }
+
+          return {
+            id: v.id,
+            name: v.variant_name || v.name,
+            price: price,
+            billingPeriod: billingPeriod,
+            features: v.features || { included: [], excluded: [] },
+            displayConfig: v.display_config || {}
+          };
+        })
+        .sort((a: any, b: any) => a.price - b.price);
+
+      console.log(`  ✅ Mapped variants for "${service.name}":`, mappedVariants);
+
+      const hasVariants = mappedVariants.length > 0;
+      let selectedVariant = null;
+      let displayPrice = service.base_price || 0;
+
+      if (hasVariants) {
+        // Select first variant by default (lowest price due to sort)
+        selectedVariant = mappedVariants[0];
+        displayPrice = selectedVariant.price;
+      }
+
+      return {
+        ...service,
+        variants: mappedVariants,
+        selectedVariant,
+        displayPrice
+      };
+    });
+    console.log('🎯 Final processed services:', services);
+    this.publicServices.set(services);
+  }
+
+  onVariantChange(service: any, variant: any) {
+    service.selectedVariant = variant;
+    service.displayPrice = variant ? variant.price : service.base_price;
+  }
+
+  getBillingLabel(period: string): string {
+    switch (period) {
+      case 'monthly': return 'Mensual';
+      case 'annually': return 'Anual';
+      case 'one-time': return 'Pago único';
+      case 'custom': return 'Personalizado';
+      default: return period;
+    }
+  }
+
+  parseFeatures(features: any): string[] {
+    if (!features) return [];
+    if (Array.isArray(features)) return features;
+    if (typeof features === 'string') {
+      // Split by comma, semicolon, or newline
+      return features.split(/[,;\n]+/).map(f => f.trim()).filter(f => f.length > 0);
+    }
+    if (typeof features === 'object' && features.included) {
+      return this.getOrderedFeatures(features);
+    }
+    return [];
+  }
+
+  /**
+   * Obtiene las características incluidas ordenadas según feature_order
+   */
+  getOrderedFeatures(features: any): string[] {
+    if (!features?.included?.length) return [];
+
+    const featureOrder = features?.feature_order as string[] | undefined;
+    if (!featureOrder || featureOrder.length === 0) {
+      return features.included;
     }
 
-    onVariantChange(service: any, variant: any) {
-        service.selectedVariant = variant;
-        service.displayPrice = variant ? variant.price : service.base_price;
+    // Ordenar según feature_order
+    const orderedFeatures: string[] = [];
+    for (const feature of featureOrder) {
+      if (features.included.includes(feature)) {
+        orderedFeatures.push(feature);
+      }
     }
 
-    getBillingLabel(period: string): string {
-        switch (period) {
-            case 'monthly': return 'Mensual';
-            case 'annually': return 'Anual';
-            case 'one-time': return 'Pago único';
-            case 'custom': return 'Personalizado';
-            default: return period;
-        }
+    // Añadir cualquier característica que no esté en el orden
+    for (const feature of features.included) {
+      if (!orderedFeatures.includes(feature)) {
+        orderedFeatures.push(feature);
+      }
     }
 
-    parseFeatures(features: any): string[] {
-        if (!features) return [];
-        if (Array.isArray(features)) return features;
-        if (typeof features === 'string') {
-            // Split by comma, semicolon, or newline
-            return features.split(/[,;\n]+/).map(f => f.trim()).filter(f => f.length > 0);
+    return orderedFeatures;
+  }
+
+  /**
+   * Obtiene todas las características ordenadas con su estado (incluida/excluida)
+   */
+  getAllOrderedFeaturesWithState(features: any): Array<{ name: string; state: 'included' | 'excluded' }> {
+    const result: Array<{ name: string; state: 'included' | 'excluded' }> = [];
+    const included = features?.included || [];
+    const excluded = features?.excluded || [];
+    const featureOrder = features?.feature_order as string[] | undefined;
+    const seen = new Set<string>();
+
+    // Si hay orden definido, usarlo
+    if (featureOrder && featureOrder.length > 0) {
+      for (const feature of featureOrder) {
+        if (!seen.has(feature)) {
+          seen.add(feature);
+          if (included.includes(feature)) {
+            result.push({ name: feature, state: 'included' });
+          } else if (excluded.includes(feature)) {
+            result.push({ name: feature, state: 'excluded' });
+          }
         }
-        if (typeof features === 'object' && features.included) {
-            return this.getOrderedFeatures(features);
-        }
-        return [];
+      }
     }
 
-    /**
-     * Obtiene las características incluidas ordenadas según feature_order
-     */
-    getOrderedFeatures(features: any): string[] {
-        if (!features?.included?.length) return [];
-        
-        const featureOrder = features?.feature_order as string[] | undefined;
-        if (!featureOrder || featureOrder.length === 0) {
-            return features.included;
-        }
-        
-        // Ordenar según feature_order
-        const orderedFeatures: string[] = [];
-        for (const feature of featureOrder) {
-            if (features.included.includes(feature)) {
-                orderedFeatures.push(feature);
-            }
-        }
-        
-        // Añadir cualquier característica que no esté en el orden
-        for (const feature of features.included) {
-            if (!orderedFeatures.includes(feature)) {
-                orderedFeatures.push(feature);
-            }
-        }
-        
-        return orderedFeatures;
+    // Añadir características que no están en el orden
+    for (const feature of included) {
+      if (!seen.has(feature)) {
+        seen.add(feature);
+        result.push({ name: feature, state: 'included' });
+      }
+    }
+    for (const feature of excluded) {
+      if (!seen.has(feature)) {
+        seen.add(feature);
+        result.push({ name: feature, state: 'excluded' });
+      }
     }
 
-    /**
-     * Obtiene todas las características ordenadas con su estado (incluida/excluida)
-     */
-    getAllOrderedFeaturesWithState(features: any): Array<{ name: string; state: 'included' | 'excluded' }> {
-        const result: Array<{ name: string; state: 'included' | 'excluded' }> = [];
-        const included = features?.included || [];
-        const excluded = features?.excluded || [];
-        const featureOrder = features?.feature_order as string[] | undefined;
-        const seen = new Set<string>();
+    return result;
+  }
 
-        // Si hay orden definido, usarlo
-        if (featureOrder && featureOrder.length > 0) {
-            for (const feature of featureOrder) {
-                if (!seen.has(feature)) {
-                    seen.add(feature);
-                    if (included.includes(feature)) {
-                        result.push({ name: feature, state: 'included' });
-                    } else if (excluded.includes(feature)) {
-                        result.push({ name: feature, state: 'excluded' });
-                    }
-                }
-            }
-        }
-        
-        // Añadir características que no están en el orden
-        for (const feature of included) {
-            if (!seen.has(feature)) {
-                seen.add(feature);
-                result.push({ name: feature, state: 'included' });
-            }
-        }
-        for (const feature of excluded) {
-            if (!seen.has(feature)) {
-                seen.add(feature);
-                result.push({ name: feature, state: 'excluded' });
-            }
-        }
+  private async loadContractedServices(): Promise<void> {
+    try {
+      const profile = this.authService.userProfile;
+      if (!profile?.client_id) return;
 
-        return result;
-    }
+      const supabase = this.supabaseClient.instance;
 
-    private async loadContractedServices(): Promise<void> {
-        try {
-            const profile = this.authService.userProfile;
-            if (!profile?.client_id) return;
-
-            const supabase = this.supabaseClient.instance;
-
-            // 1. Load quotes with their items
-            const { data, error } = await supabase
-                .from('quotes')
-                .select(`
+      // 1. Load quotes with their items
+      const { data, error } = await supabase
+        .from('quotes')
+        .select(`
                     id, title, recurrence_type, recurrence_interval,
                     total_amount, currency, status,
                     next_run_at, recurrence_end_date,
@@ -566,427 +569,430 @@ export class PortalServicesComponent implements OnInit {
                         service_id, variant_id, billing_period
                     )
                 `)
-                .eq('client_id', profile.client_id)
-                .not('recurrence_type', 'is', null)
-                .neq('recurrence_type', 'none')
-                .in('status', ['accepted', 'paused'])
-                .order('created_at', { ascending: false });
+        .eq('client_id', profile.client_id)
+        .not('recurrence_type', 'is', null)
+        .neq('recurrence_type', 'none')
+        .in('status', ['accepted', 'paused'])
+        .order('created_at', { ascending: false });
 
-            if (error) throw error;
+      if (error) throw error;
 
-            // 2. Extract unique service IDs
-            const serviceIds = new Set<string>();
-            (data || []).forEach((quote: any) => {
-                if (quote.items && quote.items.length > 0) {
-                    quote.items.forEach((item: any) => {
-                        if (item.service_id) serviceIds.add(item.service_id);
-                    });
-                }
-            });
+      // 2. Extract unique service IDs
+      const serviceIds = new Set<string>();
+      (data || []).forEach((quote: any) => {
+        if (quote.items && quote.items.length > 0) {
+          quote.items.forEach((item: any) => {
+            if (item.service_id) serviceIds.add(item.service_id);
+          });
+        }
+      });
 
-            // 3. Load services and their variants (even if not public, since they are contracted)
-            let servicesMap = new Map<string, any>();
-            if (serviceIds.size > 0) {
-                // Load each service individually to get variants even if not public
-                for (const serviceId of serviceIds) {
-                    const { data: serviceData } = await this.portalService.getServiceWithVariants(serviceId);
-                    if (serviceData) {
-                        servicesMap.set(serviceId, serviceData);
-                    }
-                }
+      // 3. Load services and their variants (even if not public, since they are contracted)
+      let servicesMap = new Map<string, any>();
+      if (serviceIds.size > 0) {
+        // Load each service individually to get variants even if not public
+        for (const serviceId of serviceIds) {
+          const { data: serviceData } = await this.portalService.getServiceWithVariants(serviceId);
+          if (serviceData) {
+            servicesMap.set(serviceId, serviceData);
+          }
+        }
+      }
+
+      // 4. Map quotes to contracted services with variants
+      const contractedServices: ContractedService[] = (data || []).map((quote: any) => {
+        const firstItem = quote.items && quote.items.length > 0 ? quote.items[0] : null;
+        const serviceId = firstItem?.service_id;
+        const variantId = firstItem?.variant_id;
+        const service = serviceId ? servicesMap.get(serviceId) : null;
+
+        let variants: any[] = [];
+        let selectedVariant = null;
+
+        if (service?.variants) {
+          // Map variants from service
+          variants = service.variants.map((v: any) => {
+            let pricingData = v.pricing;
+            if (typeof pricingData === 'string') {
+              try { pricingData = JSON.parse(pricingData); } catch (e) { pricingData = []; }
+            }
+            const firstPrice = pricingData && Array.isArray(pricingData) && pricingData.length > 0 ? pricingData[0] : null;
+
+            // Parse features if string
+            let featuresData = v.features;
+            if (typeof featuresData === 'string') {
+              try { featuresData = JSON.parse(featuresData); } catch (e) { featuresData = { included: [], excluded: [] }; }
             }
 
-            // 4. Map quotes to contracted services with variants
-            const contractedServices: ContractedService[] = (data || []).map((quote: any) => {
-                const firstItem = quote.items && quote.items.length > 0 ? quote.items[0] : null;
-                const serviceId = firstItem?.service_id;
-                const variantId = firstItem?.variant_id;
-                const service = serviceId ? servicesMap.get(serviceId) : null;
-
-                let variants: any[] = [];
-                let selectedVariant = null;
-
-                if (service?.variants) {
-                    // Map variants from service
-                    variants = service.variants.map((v: any) => {
-                        let pricingData = v.pricing;
-                        if (typeof pricingData === 'string') {
-                            try { pricingData = JSON.parse(pricingData); } catch (e) { pricingData = []; }
-                        }
-                        const firstPrice = pricingData && Array.isArray(pricingData) && pricingData.length > 0 ? pricingData[0] : null;
-                        
-                        // Parse features if string
-                        let featuresData = v.features;
-                        if (typeof featuresData === 'string') {
-                            try { featuresData = JSON.parse(featuresData); } catch (e) { featuresData = { included: [], excluded: [] }; }
-                        }
-                        
-                        return {
-                            id: v.id,
-                            name: v.variant_name || v.name,
-                            price: firstPrice?.base_price || v.base_price || 0,
-                            billingPeriod: firstPrice?.billing_period || v.billing_period,
-                            features: featuresData || { included: [], excluded: [] }
-                        };
-                    });
-                    selectedVariant = variants.find(v => v.id === variantId) || null;
-                }
-
-                return {
-                    id: quote.id,
-                    name: quote.title || 'Servicio sin título',
-                    description: this.getRecurrenceDescription(quote.recurrence_type, quote.recurrence_interval),
-                    price: quote.total_amount || 0,
-                    isRecurring: true,
-                    billingPeriod: this.getBillingPeriodLabel(quote.recurrence_type, quote.recurrence_interval),
-                    status: quote.status,
-                    startDate: quote.created_at,
-                    endDate: quote.recurrence_end_date || undefined,
-                    nextBillingDate: quote.next_run_at,
-                    serviceId: serviceId,
-                    variants: variants,
-                    selectedVariant: selectedVariant
-                };
-            });
-
-            this.services.set(contractedServices);
-        } catch (error) {
-            console.error('Error loading services:', error);
+            return {
+              id: v.id,
+              name: v.variant_name || v.name,
+              price: firstPrice?.base_price || v.base_price || 0,
+              billingPeriod: firstPrice?.billing_period || v.billing_period,
+              features: featuresData || { included: [], excluded: [] }
+            };
+          });
+          selectedVariant = variants.find(v => v.id === variantId) || null;
         }
+
+        return {
+          id: quote.id,
+          name: quote.title || 'Servicio sin título',
+          description: this.getRecurrenceDescription(quote.recurrence_type, quote.recurrence_interval),
+          price: quote.total_amount || 0,
+          isRecurring: true,
+          billingPeriod: this.getBillingPeriodLabel(quote.recurrence_type, quote.recurrence_interval),
+          status: quote.status,
+          startDate: quote.created_at,
+          endDate: quote.recurrence_end_date || undefined,
+          nextBillingDate: quote.next_run_at,
+          serviceId: serviceId,
+          variants: variants,
+          selectedVariant: selectedVariant
+        };
+      });
+
+      this.services.set(contractedServices);
+    } catch (error) {
+      console.error('Error loading services:', error);
+    }
+  }
+
+  private getRecurrenceDescription(type: string, interval: number): string {
+    const intervalText = interval > 1 ? ` cada ${interval}` : '';
+    switch (type) {
+      case 'weekly': return `Facturación semanal${intervalText}`;
+      case 'monthly': return `Facturación mensual${intervalText}`;
+      case 'quarterly': return `Facturación trimestral${intervalText}`;
+      case 'yearly': return `Facturación anual${intervalText}`;
+      default: return 'Servicio recurrente';
+    }
+  }
+
+  private getBillingPeriodLabel(type: string, interval: number): string {
+    if (interval > 1) {
+      switch (type) {
+        case 'weekly': return `${interval} semanas`;
+        case 'monthly': return `${interval} meses`;
+        case 'quarterly': return `${interval} trimestres`;
+        case 'yearly': return `${interval} años`;
+        default: return 'periodo';
+      }
+    }
+    switch (type) {
+      case 'weekly': return 'semana';
+      case 'monthly': return 'mes';
+      case 'quarterly': return 'trimestre';
+      case 'yearly': return 'año';
+      default: return 'periodo';
+    }
+  }
+
+  async cancelSubscription(service: ContractedService): Promise<void> {
+    if (!confirm(`¿Estás seguro de que deseas dar de baja el servicio "${service.name}"? Se mantendrá activo hasta el final del periodo actual.`)) {
+      return;
     }
 
-    private getRecurrenceDescription(type: string, interval: number): string {
-        const intervalText = interval > 1 ? ` cada ${interval}` : '';
-        switch (type) {
-            case 'weekly': return `Facturación semanal${intervalText}`;
-            case 'monthly': return `Facturación mensual${intervalText}`;
-            case 'quarterly': return `Facturación trimestral${intervalText}`;
-            case 'yearly': return `Facturación anual${intervalText}`;
-            default: return 'Servicio recurrente';
-        }
+    try {
+      const supabase = this.supabaseClient.instance;
+      // Mark as paused. The backend/cron should handle not generating new invoices.
+      // We assume 'paused' means "cancelled but maybe active until end of period".
+      // Ideally we should set recurrence_end_date to next_run_at.
+
+      const updates: any = { status: 'paused' };
+      if (service.nextBillingDate) {
+        updates.recurrence_end_date = service.nextBillingDate;
+      }
+
+      const { error } = await supabase
+        .from('quotes')
+        .update(updates)
+        .eq('id', service.id);
+
+      if (error) throw error;
+
+      this.toastService.success('Baja procesada', 'El servicio ha sido dado de baja correctamente.');
+      await this.loadContractedServices();
+    } catch (error) {
+      console.error('Error canceling subscription:', error);
+      this.toastService.error('Error', 'No se pudo cancelar el servicio. Por favor, contacta con soporte.');
+    }
+  }
+
+  async requestService(service: any) {
+    const variantName = service.selectedVariant ? ` (${service.selectedVariant.name})` : '';
+    const serviceName = `${service.name}${variantName}`;
+
+    const comment = await this.promptModal.open({
+      title: 'Solicitar Información',
+      message: `¿Deseas añadir algún comentario sobre "${serviceName}"? Te contactaremos pronto.`,
+      inputLabel: 'Comentario / Duda',
+      inputPlaceholder: 'Escribe aquí tu duda o comentario...',
+      multiline: true,
+      confirmText: 'Enviar Solicitud',
+      cancelText: 'Cancelar'
+    });
+
+    if (comment === null) return; // User cancelled
+
+    console.log('Sending service request with comment:', comment);
+
+    const { data, error } = await this.portalService.requestService(service.id, service.selectedVariant?.id, comment);
+    if (error) {
+      this.toastService.error('Error', 'No se pudo enviar la solicitud: ' + error.message);
+    } else {
+      // Show custom message from backend if available
+      const message = data?.data?.message || 'Solicitud enviada correctamente. Te contactaremos pronto.';
+      this.toastService.success('Solicitud enviada', message);
+    }
+  }
+
+  async contractService(service: any, preferredPaymentMethod?: string, existingInvoiceId?: string) {
+    const price = service.displayPrice;
+    const variantName = service.selectedVariant ? ` (${service.selectedVariant.name})` : '';
+    const serviceName = `${service.name}${variantName}`;
+
+    // Only ask for confirmation if not coming from payment method selection
+    if (!preferredPaymentMethod) {
+      const confirmed = await this.confirmModal.open({
+        title: 'Confirmar Contratación',
+        message: `¿Contratar "${serviceName}" por ${price}€?`,
+        icon: 'fas fa-shopping-cart',
+        iconColor: 'green',
+        confirmText: 'Contratar',
+        cancelText: 'Cancelar',
+        preventCloseOnBackdrop: true
+      });
+
+      if (!confirmed) return;
     }
 
-    private getBillingPeriodLabel(type: string, interval: number): string {
-        if (interval > 1) {
-            switch (type) {
-                case 'weekly': return `${interval} semanas`;
-                case 'monthly': return `${interval} meses`;
-                case 'quarterly': return `${interval} trimestres`;
-                case 'yearly': return `${interval} años`;
-                default: return 'periodo';
-            }
-        }
-        switch (type) {
-            case 'weekly': return 'semana';
-            case 'monthly': return 'mes';
-            case 'quarterly': return 'trimestre';
-            case 'yearly': return 'año';
-            default: return 'periodo';
-        }
-    }
+    // Start the visual progress dialog
+    this.contractDialog.startProcess(serviceName);
 
-    async cancelSubscription(service: ContractedService): Promise<void> {
-        if (!confirm(`¿Estás seguro de que deseas dar de baja el servicio "${service.name}"? Se mantendrá activo hasta el final del periodo actual.`)) {
-            return;
-        }
+    try {
+      // Call the backend with preferred payment method if provided
+      // Pass existingInvoiceId to avoid duplicate creation
+      const { data, error } = await this.portalService.contractService(
+        service.id,
+        service.selectedVariant?.id,
+        preferredPaymentMethod,
+        existingInvoiceId
+      );
 
-        try {
-            const supabase = this.supabaseClient.instance;
-            // Mark as paused. The backend/cron should handle not generating new invoices.
-            // We assume 'paused' means "cancelled but maybe active until end of period".
-            // Ideally we should set recurrence_end_date to next_run_at.
-            
-            const updates: any = { status: 'paused' };
-            if (service.nextBillingDate) {
-                updates.recurrence_end_date = service.nextBillingDate;
-            }
+      if (error) {
+        this.contractDialog.completeError('quote', error.message, 'Error al iniciar contratación. Por favor, contacta con nosotros.');
+        return;
+      }
 
-            const { error } = await supabase
-                .from('quotes')
-                .update(updates)
-                .eq('id', service.id);
+      const responseData = data?.data || data;
 
-            if (error) throw error;
+      // Check if we need payment method selection (multiple providers available)
+      // Note: requires_payment_selection is at the top level of the response, not inside data
+      if (data?.requires_payment_selection) {
+        // Close progress dialog temporarily
+        this.contractDialog.visible.set(false);
 
-            this.toastService.success('Baja procesada', 'El servicio ha sido dado de baja correctamente.');
-            await this.loadContractedServices();
-        } catch (error) {
-            console.error('Error canceling subscription:', error);
-            this.toastService.error('Error', 'No se pudo cancelar el servicio. Por favor, contacta con soporte.');
-        }
-    }
+        // Store service for later
+        this.pendingContractService = service;
+        this.pendingPaymentData = data;
 
-    async requestService(service: any) {
-        const variantName = service.selectedVariant ? ` (${service.selectedVariant.name})` : '';
-        const serviceName = `${service.name}${variantName}`;
-        
-        const confirmed = await this.confirmModal.open({
-            title: 'Solicitar Información',
-            message: `¿Solicitar información sobre "${serviceName}"? Se generará una solicitud de presupuesto.`,
-            icon: 'fas fa-question-circle',
-            iconColor: 'blue',
-            confirmText: 'Solicitar',
-            cancelText: 'Cancelar'
+        // Open payment method selector - data is inside data.data
+        const paymentData = data?.data || {};
+        this.paymentSelector.open(
+          paymentData.total || price,
+          paymentData.invoice_number || '',
+          paymentData.available_providers || [],
+          service.isRecurring || false,
+          service.billingPeriod || ''
+        );
+        return;
+      }
+
+      // Move through steps based on response
+      if (responseData?.quote) {
+        this.contractDialog.nextStep(); // Quote completed
+      }
+
+      // Check if invoice was created and store the ID
+      if (responseData?.invoice_id) {
+        this.lastCreatedInvoiceId = responseData.invoice_id;
+        this.contractDialog.nextStep(); // Invoice completed
+      } else if (!responseData?.fallback) {
+        this.contractDialog.nextStep(); // Invoice completed
+      }
+
+      // Handle final result - check for multiple payment options first
+      if (responseData?.payment_options_formatted && responseData.payment_options_formatted.length > 0) {
+        // Multiple payment options available - show them all
+        this.contractDialog.completeSuccess({
+          success: true,
+          paymentOptions: responseData.payment_options_formatted,
+          message: responseData.message || '¡Todo listo! Selecciona tu método de pago preferido.'
         });
-        
-        if (!confirmed) return;
-        
-        const { data, error } = await this.portalService.requestService(service.id, service.selectedVariant?.id);
-        if (error) {
-            this.toastService.error('Error', 'No se pudo enviar la solicitud: ' + error.message);
-        } else {
-            // Show custom message from backend if available
-            const message = data?.data?.message || 'Solicitud enviada correctamente. Te contactaremos pronto.';
-            this.toastService.success('Solicitud enviada', message);
-        }
+      } else if (responseData?.payment_url) {
+        // Single payment URL (legacy/fallback)
+        this.contractDialog.completeSuccess({
+          success: true,
+          paymentUrl: responseData.payment_url,
+          message: '¡Todo listo! Haz clic en el botón para completar el pago de forma segura.'
+        });
+      } else if (data?.fallback) {
+        // Fallback case - no payment integration or error
+        const message = responseData?.message || 'Tu solicitud ha sido procesada. Te contactaremos para completar el pago.';
+        this.contractDialog.completeFallback(message);
+      } else {
+        // Success without payment URL
+        this.contractDialog.completeSuccess({
+          success: true,
+          message: 'Servicio contratado correctamente. Pronto recibirás más información.'
+        });
+      }
+    } catch (err: any) {
+      this.contractDialog.completeError('quote', err?.message || 'Error desconocido', 'Ha ocurrido un error inesperado. Por favor, contacta con nosotros.');
+    }
+  }
+
+  async onPaymentMethodSelected(selection: PaymentSelection) {
+    if (!this.pendingContractService) return;
+
+    // Get the existing invoice_id from the pending data to avoid duplicate creation
+    const existingInvoiceId = this.pendingPaymentData?.data?.invoice_id;
+
+    // Resume contract flow with selected payment method and existing invoice
+    await this.contractService(this.pendingContractService, selection.provider, existingInvoiceId);
+
+    // Clear pending state
+    this.pendingContractService = null;
+    this.pendingPaymentData = null;
+  }
+
+  onPaymentSelectionCancelled() {
+    // User cancelled payment selection - still have quote/invoice created
+    if (this.pendingPaymentData) {
+      this.toastService.info(
+        'Pago pendiente',
+        'Tu factura ha sido generada. Puedes completar el pago desde tu área de facturas.',
+        8000
+      );
     }
 
-    async contractService(service: any, preferredPaymentMethod?: string, existingInvoiceId?: string) {
-        const price = service.displayPrice;
-        const variantName = service.selectedVariant ? ` (${service.selectedVariant.name})` : '';
-        const serviceName = `${service.name}${variantName}`;
-        
-        // Only ask for confirmation if not coming from payment method selection
-        if (!preferredPaymentMethod) {
-            const confirmed = await this.confirmModal.open({
-                title: 'Confirmar Contratación',
-                message: `¿Contratar "${serviceName}" por ${price}€?`,
-                icon: 'fas fa-shopping-cart',
-                iconColor: 'green',
-                confirmText: 'Contratar',
-                cancelText: 'Cancelar',
-                preventCloseOnBackdrop: true
-            });
-            
-            if (!confirmed) return;
-        }
+    this.pendingContractService = null;
+    this.pendingPaymentData = null;
+    this.loadContractedServices();
+  }
 
-        // Start the visual progress dialog
-        this.contractDialog.startProcess(serviceName);
+  onContractDialogClosed() {
+    // Refresh services list when dialog closes
+    this.loadContractedServices();
+  }
 
-        try {
-            // Call the backend with preferred payment method if provided
-            // Pass existingInvoiceId to avoid duplicate creation
-            const { data, error } = await this.portalService.contractService(
-                service.id, 
-                service.selectedVariant?.id,
-                preferredPaymentMethod,
-                existingInvoiceId
-            );
-            
-            if (error) {
-                this.contractDialog.completeError('quote', error.message, 'Error al iniciar contratación. Por favor, contacta con nosotros.');
-                return;
-            }
+  async onLocalPaymentSelectedForContract() {
+    // When local payment is selected during contract flow
+    // Mark the invoice as pending_local
+    if (this.lastCreatedInvoiceId) {
+      try {
+        await this.portalService.markInvoiceLocalPayment(this.lastCreatedInvoiceId);
+        this.toastService.success(
+          'Pago en local registrado',
+          'La empresa será notificada. Coordina el pago directamente con ellos.',
+          6000
+        );
+      } catch (err: any) {
+        console.error('Error marking local payment:', err);
+        // Still show a positive message since invoice was created
+        this.toastService.info(
+          'Servicio contratado',
+          'Puedes coordinar el pago directamente con la empresa.',
+          6000
+        );
+      }
+    } else {
+      this.toastService.info(
+        'Pago en local seleccionado',
+        'Coordina el pago directamente con la empresa.',
+        6000
+      );
+    }
+    this.lastCreatedInvoiceId = null;
+    this.loadContractedServices();
+  }
 
-            const responseData = data?.data || data;
-            
-            // Check if we need payment method selection (multiple providers available)
-            // Note: requires_payment_selection is at the top level of the response, not inside data
-            if (data?.requires_payment_selection) {
-                // Close progress dialog temporarily
-                this.contractDialog.visible.set(false);
-                
-                // Store service for later
-                this.pendingContractService = service;
-                this.pendingPaymentData = data;
-                
-                // Open payment method selector - data is inside data.data
-                const paymentData = data?.data || {};
-                this.paymentSelector.open(
-                    paymentData.total || price,
-                    paymentData.invoice_number || '',
-                    paymentData.available_providers || [],
-                    service.isRecurring || false,
-                    service.billingPeriod || ''
-                );
-                return;
-            }
-            
-            // Move through steps based on response
-            if (responseData?.quote) {
-                this.contractDialog.nextStep(); // Quote completed
-            }
-            
-            // Check if invoice was created and store the ID
-            if (responseData?.invoice_id) {
-                this.lastCreatedInvoiceId = responseData.invoice_id;
-                this.contractDialog.nextStep(); // Invoice completed
-            } else if (!responseData?.fallback) {
-                this.contractDialog.nextStep(); // Invoice completed
-            }
-
-            // Handle final result - check for multiple payment options first
-            if (responseData?.payment_options_formatted && responseData.payment_options_formatted.length > 0) {
-                // Multiple payment options available - show them all
-                this.contractDialog.completeSuccess({
-                    success: true,
-                    paymentOptions: responseData.payment_options_formatted,
-                    message: responseData.message || '¡Todo listo! Selecciona tu método de pago preferido.'
-                });
-            } else if (responseData?.payment_url) {
-                // Single payment URL (legacy/fallback)
-                this.contractDialog.completeSuccess({
-                    success: true,
-                    paymentUrl: responseData.payment_url,
-                    message: '¡Todo listo! Haz clic en el botón para completar el pago de forma segura.'
-                });
-            } else if (data?.fallback) {
-                // Fallback case - no payment integration or error
-                const message = responseData?.message || 'Tu solicitud ha sido procesada. Te contactaremos para completar el pago.';
-                this.contractDialog.completeFallback(message);
-            } else {
-                // Success without payment URL
-                this.contractDialog.completeSuccess({
-                    success: true,
-                    message: 'Servicio contratado correctamente. Pronto recibirás más información.'
-                });
-            }
-        } catch (err: any) {
-            this.contractDialog.completeError('quote', err?.message || 'Error desconocido', 'Ha ocurrido un error inesperado. Por favor, contacta con nosotros.');
-        }
+  async changeVariant(contractedService: ContractedService, newVariant: any) {
+    if (contractedService.selectedVariant?.id === newVariant.id) return;
+    if (contractedService.status !== 'accepted') {
+      this.toastService.warning('No permitido', 'No puedes cambiar de plan en un servicio cancelado.');
+      return;
     }
 
-    async onPaymentMethodSelected(selection: PaymentSelection) {
-        if (!this.pendingContractService) return;
-        
-        // Get the existing invoice_id from the pending data to avoid duplicate creation
-        const existingInvoiceId = this.pendingPaymentData?.data?.invoice_id;
-        
-        // Resume contract flow with selected payment method and existing invoice
-        await this.contractService(this.pendingContractService, selection.provider, existingInvoiceId);
-        
-        // Clear pending state
-        this.pendingContractService = null;
-        this.pendingPaymentData = null;
+    const currentVariantName = contractedService.selectedVariant?.name || 'actual';
+    const newPrice = newVariant.price;
+    const priceDiff = newPrice - contractedService.price;
+    const diffText = priceDiff > 0 ? `+${priceDiff.toFixed(2)}€` : `${priceDiff.toFixed(2)}€`;
+
+    if (!confirm(`¿Cambiar de "${currentVariantName}" a "${newVariant.name}"?\n\nNuevo precio: ${newPrice}€ (${diffText})\n\nEl cambio se aplicará en la próxima facturación.`)) {
+      return;
     }
 
-    onPaymentSelectionCancelled() {
-        // User cancelled payment selection - still have quote/invoice created
-        if (this.pendingPaymentData) {
-            this.toastService.info(
-                'Pago pendiente', 
-                'Tu factura ha sido generada. Puedes completar el pago desde tu área de facturas.',
-                8000
-            );
-        }
-        
-        this.pendingContractService = null;
-        this.pendingPaymentData = null;
-        this.loadContractedServices();
+    try {
+      const supabase = this.supabaseClient.instance;
+
+      // Update the quote_items to reflect new variant
+      const { error } = await supabase
+        .from('quote_items')
+        .update({
+          variant_id: newVariant.id,
+          unit_price: newVariant.price,
+          description: `${contractedService.name} - ${newVariant.name}`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('quote_id', contractedService.id);
+
+      if (error) throw error;
+
+      // Recalculate quote totals
+      const { data: items } = await supabase
+        .from('quote_items')
+        .select('subtotal, tax_amount, total')
+        .eq('quote_id', contractedService.id);
+
+      if (items && items.length > 0) {
+        const subtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+        const taxAmount = items.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
+        const total = items.reduce((sum, item) => sum + (item.total || 0), 0);
+
+        await supabase
+          .from('quotes')
+          .update({
+            subtotal,
+            tax_amount: taxAmount,
+            total_amount: total,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', contractedService.id);
+      }
+
+      this.toastService.success('Plan actualizado', 'El nuevo precio se aplicará en la próxima facturación.');
+      await this.loadContractedServices();
+    } catch (error) {
+      console.error('Error changing variant:', error);
+      this.toastService.error('Error', 'No se pudo cambiar de plan. Por favor, contacta con soporte.');
     }
-
-    onContractDialogClosed() {
-        // Refresh services list when dialog closes
-        this.loadContractedServices();
-    }
-
-    async onLocalPaymentSelectedForContract() {
-        // When local payment is selected during contract flow
-        // Mark the invoice as pending_local
-        if (this.lastCreatedInvoiceId) {
-            try {
-                await this.portalService.markInvoiceLocalPayment(this.lastCreatedInvoiceId);
-                this.toastService.success(
-                    'Pago en local registrado',
-                    'La empresa será notificada. Coordina el pago directamente con ellos.',
-                    6000
-                );
-            } catch (err: any) {
-                console.error('Error marking local payment:', err);
-                // Still show a positive message since invoice was created
-                this.toastService.info(
-                    'Servicio contratado',
-                    'Puedes coordinar el pago directamente con la empresa.',
-                    6000
-                );
-            }
-        } else {
-            this.toastService.info(
-                'Pago en local seleccionado',
-                'Coordina el pago directamente con la empresa.',
-                6000
-            );
-        }
-        this.lastCreatedInvoiceId = null;
-        this.loadContractedServices();
-    }
-
-    async changeVariant(contractedService: ContractedService, newVariant: any) {
-        if (contractedService.selectedVariant?.id === newVariant.id) return;
-        if (contractedService.status !== 'accepted') {
-            this.toastService.warning('No permitido', 'No puedes cambiar de plan en un servicio cancelado.');
-            return;
-        }
-
-        const currentVariantName = contractedService.selectedVariant?.name || 'actual';
-        const newPrice = newVariant.price;
-        const priceDiff = newPrice - contractedService.price;
-        const diffText = priceDiff > 0 ? `+${priceDiff.toFixed(2)}€` : `${priceDiff.toFixed(2)}€`;
-
-        if (!confirm(`¿Cambiar de "${currentVariantName}" a "${newVariant.name}"?\n\nNuevo precio: ${newPrice}€ (${diffText})\n\nEl cambio se aplicará en la próxima facturación.`)) {
-            return;
-        }
-
-        try {
-            const supabase = this.supabaseClient.instance;
-            
-            // Update the quote_items to reflect new variant
-            const { error } = await supabase
-                .from('quote_items')
-                .update({
-                    variant_id: newVariant.id,
-                    unit_price: newVariant.price,
-                    description: `${contractedService.name} - ${newVariant.name}`,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('quote_id', contractedService.id);
-
-            if (error) throw error;
-
-            // Recalculate quote totals
-            const { data: items } = await supabase
-                .from('quote_items')
-                .select('subtotal, tax_amount, total')
-                .eq('quote_id', contractedService.id);
-
-            if (items && items.length > 0) {
-                const subtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
-                const taxAmount = items.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
-                const total = items.reduce((sum, item) => sum + (item.total || 0), 0);
-
-                await supabase
-                    .from('quotes')
-                    .update({
-                        subtotal,
-                        tax_amount: taxAmount,
-                        total_amount: total,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', contractedService.id);
-            }
-
-            this.toastService.success('Plan actualizado', 'El nuevo precio se aplicará en la próxima facturación.');
-            await this.loadContractedServices();
-        } catch (error) {
-            console.error('Error changing variant:', error);
-            this.toastService.error('Error', 'No se pudo cambiar de plan. Por favor, contacta con soporte.');
-        }
-    }
+  }
 }
 
 interface ContractedService {
-    id: string;
-    name: string;
-    description: string;
-    price: number;
-    isRecurring: boolean;
-    billingPeriod?: string;
-    status: string;
-    startDate: string;
-    endDate?: string;
-    nextBillingDate?: string;
-    serviceId?: string;
-    variants?: any[];
-    selectedVariant?: any;
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  isRecurring: boolean;
+  billingPeriod?: string;
+  status: string;
+  startDate: string;
+  endDate?: string;
+  nextBillingDate?: string;
+  serviceId?: string;
+  variants?: any[];
+  selectedVariant?: any;
 }

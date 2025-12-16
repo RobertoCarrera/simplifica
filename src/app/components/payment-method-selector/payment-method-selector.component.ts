@@ -58,17 +58,17 @@ export interface PaymentSelection {
                   (click)="selectMethod('stripe')"
                   class="w-full p-4 rounded-xl border-2 transition-all duration-200 flex items-center gap-4 group"
                   [ngClass]="{
-                    'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20': selectedProvider() === 'stripe',
-                    'border-gray-200 dark:border-slate-600 hover:border-indigo-300 dark:hover:border-indigo-700': selectedProvider() !== 'stripe'
+                    'border-purple-500 bg-purple-50 dark:bg-purple-900/20': selectedProvider() === 'stripe',
+                    'border-gray-200 dark:border-slate-600 hover:border-purple-300 dark:hover:border-purple-700': selectedProvider() !== 'stripe'
                   }">
-            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+            <div class="w-14 h-14 rounded-xl bg-purple-600 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
               <i class="fab fa-stripe-s text-white text-2xl"></i>
             </div>
             <div class="flex-1 text-left">
-              <p class="font-semibold text-gray-900 dark:text-white">Tarjeta de crédito/débito</p>
+              <p class="font-semibold text-gray-900 dark:text-white">Tarjeta de crédito/débito (Stripe)</p>
               <p class="text-sm text-gray-500 dark:text-gray-400">Visa, Mastercard, American Express</p>
             </div>
-            <div *ngIf="selectedProvider() === 'stripe'" class="text-indigo-500">
+            <div *ngIf="selectedProvider() === 'stripe'" class="text-purple-500">
               <i class="fas fa-check-circle text-xl"></i>
             </div>
           </button>
@@ -81,7 +81,7 @@ export interface PaymentSelection {
                     'border-blue-500 bg-blue-50 dark:bg-blue-900/20': selectedProvider() === 'paypal',
                     'border-gray-200 dark:border-slate-600 hover:border-blue-300 dark:hover:border-blue-700': selectedProvider() !== 'paypal'
                   }">
-            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+            <div class="w-14 h-14 rounded-xl bg-blue-500 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
               <i class="fab fa-paypal text-white text-2xl"></i>
             </div>
             <div class="flex-1 text-left">
@@ -189,7 +189,7 @@ export class PaymentMethodSelectorComponent {
   @Input() availableProviders: ('stripe' | 'paypal')[] = [];
   @Input() isRecurring = false;
   @Input() billingPeriod = '';
-  
+
   @Output() selected = new EventEmitter<PaymentSelection>();
   @Output() cancelled = new EventEmitter<void>();
 
@@ -211,14 +211,14 @@ export class PaymentMethodSelectorComponent {
     this.availableProviders = providers;
     this._isRecurring.set(isRecurring);
     this._billingPeriod.set(billingPeriod);
-    
+
     // Auto-select if only one provider
     if (providers.length === 1) {
       this.selectedProvider.set(providers[0]);
     } else {
       this.selectedProvider.set(null);
     }
-    
+
     this.selectedInstallments.set(1);
     this.visible.set(true);
   }

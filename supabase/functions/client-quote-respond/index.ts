@@ -36,7 +36,7 @@ serve(async (req) => {
     });
 
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
+
     if (authError || !user) {
       console.error('Auth error:', authError);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -49,7 +49,7 @@ serve(async (req) => {
 
     // Parse request body
     const { id: quoteId, action, rejection_reason } = await req.json();
-    
+
     if (!quoteId || !action || !['accept', 'reject'].includes(action)) {
       return new Response(JSON.stringify({ error: 'Invalid parameters. Provide id and action (accept/reject)' }), {
         status: 400,
@@ -69,7 +69,7 @@ serve(async (req) => {
     // Align with client-quotes: resolve app user and client mapping
     // Use admin client to bypass RLS and ensure we find the user by auth_user_id
     let appUser: any = null;
-    
+
     const { data: userData } = await supabaseAdmin
       .from('users')
       .select('id, email, role, company_id')
@@ -79,21 +79,21 @@ serve(async (req) => {
     if (userData && userData.role === 'client') {
       appUser = userData;
     } else {
-       // Fallback to clients table
-       const { data: clientData } = await supabaseAdmin
+      // Fallback to clients table
+      const { data: clientData } = await supabaseAdmin
         .from('clients')
         .select('id, email, company_id, is_active')
         .eq('auth_user_id', user.id)
         .maybeSingle();
-        
-       if (clientData && clientData.is_active) {
-         appUser = {
-           id: clientData.id,
-           email: clientData.email,
-           role: 'client',
-           company_id: clientData.company_id
-         };
-       }
+
+      if (clientData && clientData.is_active) {
+        appUser = {
+          id: clientData.id,
+          email: clientData.email,
+          role: 'client',
+          company_id: clientData.company_id
+        };
+      }
     }
 
     if (!appUser) {
@@ -171,8 +171,8 @@ serve(async (req) => {
 
     // Check if quote can be responded to (must be in 'sent', 'viewed' or 'pending' status)
     if (!['sent', 'viewed', 'pending'].includes(currentStatus || '')) {
-      return new Response(JSON.stringify({ 
-        error: `Quote cannot be ${action}ed in current status: ${currentStatus}` 
+      return new Response(JSON.stringify({
+        error: `Quote cannot be ${action}ed in current status: ${currentStatus}`
       }), {
         status: 400,
         headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
@@ -184,7 +184,7 @@ serve(async (req) => {
     const updatePayload: any = { status: newStatus };
     if (action === 'accept') updatePayload.accepted_at = new Date().toISOString();
     if (action === 'reject') updatePayload.rejection_reason = rejection_reason;
-    
+
     const { data: updatedQuote, error: updateError } = await supabaseAdmin
       .from('quotes')
       .update(updatePayload)
@@ -203,8 +203,11 @@ serve(async (req) => {
     console.log(`✅ Quote ${quoteId} ${action}ed successfully by ${user.email}`);
 
     // If accepted, resolve automation rules and optionally schedule conversion
+    // If accepted, resolve automation rules and optionally schedule conversion OR convert immediately
     if (action === 'accept') {
       try {
+        console.log(`🤖 Resolving automation rules for quote ${quoteId}...`);
+
         // Effective policy precedence: app_settings.enforce_globally -> company_settings.enforce_company_defaults -> quote.convert_policy -> company_settings.convert_policy -> app_settings.default_convert_policy
         const [{ data: appSettings }, { data: compSettings }] = await Promise.all([
           supabaseAdmin.from('app_settings').select('*').order('created_at', { ascending: true }).limit(1).maybeSingle(),
@@ -244,23 +247,45 @@ serve(async (req) => {
           delayDays = Number(cmp.default_invoice_delay_days ?? app.default_invoice_delay_days ?? 0);
         }
 
-        // If user prefers to be asked, do not schedule anything
-        if (!askBefore) {
-          const deposit = q.deposit_percentage ? Number(q.deposit_percentage) : null;
-          const policy = String(effectivePolicy || 'manual');
+        console.log(`📋 Effective Policy: ${effectivePolicy}, AskBefore: ${askBefore}`);
 
-          if (policy === 'on_accept' || (deposit && deposit > 0)) {
-            const payload = { quote_id: quoteId, policy, deposit_percentage: deposit };
-            await supabaseAdmin.from('scheduled_jobs').insert({
-              scheduled_at: new Date().toISOString(),
-              job_type: 'convert_quote_to_invoice',
-              payload,
-            });
-            await supabaseAdmin
-              .from('quotes')
-              .update({ conversion_status: 'scheduled' })
-              .eq('id', quoteId);
-          } else if (policy === 'scheduled') {
+        // Handle Automatic (Immediate) Conversion
+        // Note: 'automática' or 'automatic' overrides 'askBefore' if the intention is full automation, 
+        // but traditionally we respect askBefore. However, for "Automatic Mode" in UI, it usually implies immediate.
+        // Let's assume if policy is 'automatic', we skip 'askBefore' or assume client just accepted so "asking" is done?
+        // Actually, 'askBefore' is usually for the ADMIN when they accept manually. 
+        // For CLIENT portal acceptance, if policy is automatic, it should just happen.
+
+        if (effectivePolicy === 'automatic' || effectivePolicy === 'automática' || effectivePolicy === 'on_accept') {
+          console.log(`🚀 Executing IMMEDIATE conversion for quote ${quoteId} (Policy: ${effectivePolicy})`);
+
+          // 1. Convert to Invoice
+          const { data: invoiceId, error: convertError } = await supabaseAdmin.rpc('convert_quote_to_invoice', {
+            p_quote_id: quoteId
+          });
+
+          if (convertError) {
+            console.error('Immediate conversion failed:', convertError);
+          } else if (invoiceId) {
+            console.log(`✅ Invoice created: ${invoiceId}`);
+
+            // 2. Generate Payment Link (Random Token)
+            const paymentToken = crypto.randomUUID().replace(/-/g, '');
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 30); // 30 days validity default
+
+            // 3. Update Invoice with Token
+            await supabaseAdmin.from('invoices').update({
+              payment_link_token: paymentToken,
+              payment_link_expires_at: expiresAt.toISOString(),
+            }).eq('id', invoiceId);
+
+            console.log(`🔗 Payment link generated for invoice ${invoiceId}`);
+          }
+        }
+        // Handle Scheduled Conversion
+        else if (effectivePolicy === 'scheduled') {
+          if (!askBefore) { // Only schedule if we don't need to ask admin (or maybe we schedule it anyway? Logic says if askBefore is true, we do nothing and wait for admin)
             // Date precedence: quote.invoice_on_date -> company_settings.invoice_on_date -> now + delayDays
             let when: Date | null = null;
             if (q.invoice_on_date) when = new Date(q.invoice_on_date);
@@ -269,7 +294,7 @@ serve(async (req) => {
               when = new Date();
               when.setUTCDate(when.getUTCDate() + delayDays);
             }
-            const payload = { quote_id: quoteId, policy, delay_days: delayDays };
+            const payload = { quote_id: quoteId, policy: effectivePolicy, delay_days: delayDays };
             await supabaseAdmin.from('scheduled_jobs').insert({
               scheduled_at: when!.toISOString(),
               job_type: 'convert_quote_to_invoice',
@@ -279,10 +304,18 @@ serve(async (req) => {
               .from('quotes')
               .update({ conversion_status: 'scheduled' })
               .eq('id', quoteId);
+            console.log(`⏰ Conversion scheduled for ${when.toISOString()}`);
+          } else {
+            console.log('ℹ️ Conversion pending manual approval (ask_before_convert is true)');
           }
         }
+        else {
+          // Manual or other policies: do nothing
+          console.log(`ℹ️ No auto-conversion action for policy: ${effectivePolicy}`);
+        }
+
       } catch (scheduleErr) {
-        console.error('Scheduling decision failed (non-blocking):', scheduleErr);
+        console.error('Automation logic failed (non-blocking):', scheduleErr);
       }
     }
 
@@ -305,8 +338,8 @@ serve(async (req) => {
       .single();
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         data: fullQuote,
         message: `Presupuesto ${action === 'accept' ? 'aceptado' : 'rechazado'} correctamente`
       }),

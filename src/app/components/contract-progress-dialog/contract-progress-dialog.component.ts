@@ -227,15 +227,15 @@ export class ContractProgressDialogComponent {
     this.resultMessage.set('');
     this.paymentUrl.set('');
     this.paymentOptions.set([]);
-    
+
     this.steps.set([
       { id: 'quote', label: 'Generando presupuesto', status: 'pending' },
       { id: 'invoice', label: 'Creando factura', status: 'pending' },
       { id: 'payment', label: 'Preparando pago', status: 'pending' }
     ]);
-    
+
     this.visible.set(true);
-    
+
     // Start first step
     this.updateStep('quote', 'in-progress');
   }
@@ -244,10 +244,10 @@ export class ContractProgressDialogComponent {
    * Update a specific step's status
    */
   updateStep(stepId: string, status: ContractProgressStep['status'], errorMessage?: string) {
-    this.steps.update(steps => 
-      steps.map(s => 
-        s.id === stepId 
-          ? { ...s, status, errorMessage } 
+    this.steps.update(steps =>
+      steps.map(s =>
+        s.id === stepId
+          ? { ...s, status, errorMessage }
           : s
       )
     );
@@ -259,10 +259,10 @@ export class ContractProgressDialogComponent {
   nextStep() {
     const currentSteps = this.steps();
     const currentIndex = currentSteps.findIndex(s => s.status === 'in-progress');
-    
+
     if (currentIndex >= 0) {
       this.updateStep(currentSteps[currentIndex].id, 'completed');
-      
+
       if (currentIndex < currentSteps.length - 1) {
         this.updateStep(currentSteps[currentIndex + 1].id, 'in-progress');
       }
@@ -274,7 +274,7 @@ export class ContractProgressDialogComponent {
    */
   completeSuccess(result: ContractResult) {
     // Mark all remaining steps as completed
-    this.steps.update(steps => 
+    this.steps.update(steps =>
       steps.map(s => ({ ...s, status: 'completed' as const }))
     );
 
@@ -295,7 +295,7 @@ export class ContractProgressDialogComponent {
    */
   completeWithPaymentOptions(options: PaymentOption[], message?: string) {
     // Mark all steps as completed
-    this.steps.update(steps => 
+    this.steps.update(steps =>
       steps.map(s => ({ ...s, status: 'completed' as const }))
     );
 
@@ -309,13 +309,13 @@ export class ContractProgressDialogComponent {
   completeError(stepId: string, errorMessage: string, fallbackMessage?: string) {
     this._hasError.set(true);
     this.updateStep(stepId, 'error', errorMessage);
-    
+
     // Mark subsequent steps as skipped (keep as pending)
     const currentSteps = this.steps();
     const errorIndex = currentSteps.findIndex(s => s.id === stepId);
-    
+
     this.steps.update(steps =>
-      steps.map((s, i) => 
+      steps.map((s, i) =>
         i > errorIndex ? { ...s, status: 'pending' as const } : s
       )
     );
@@ -331,11 +331,11 @@ export class ContractProgressDialogComponent {
     this.updateStep('quote', 'completed');
     this.updateStep('invoice', 'completed');
     this.updateStep('payment', 'completed');
-    
+
     // Update payment step label for fallback
     this.steps.update(steps =>
-      steps.map(s => 
-        s.id === 'payment' 
+      steps.map(s =>
+        s.id === 'payment'
           ? { ...s, label: 'Contacto configurado' }
           : s
       )
@@ -350,7 +350,7 @@ export class ContractProgressDialogComponent {
   selectPaymentOption(option: PaymentOption) {
     // Emit the generic payment selected event
     this.paymentSelected.emit(option);
-    
+
     if (option.provider === 'local') {
       // For local payment, emit event and close
       this.localPaymentSelected.emit();

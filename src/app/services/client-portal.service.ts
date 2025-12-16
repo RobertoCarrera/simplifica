@@ -55,7 +55,7 @@ export interface ClientPortalInvoice {
 export class ClientPortalService {
   private sb = inject(SupabaseClientService);
   private auth = inject(AuthService);
-  
+
   // Computed properties for service
   private get supabase() { return this.sb.instance; }
 
@@ -75,7 +75,7 @@ export class ClientPortalService {
     if (!user?.client_id) return null;
 
     const channelName = `client-quotes-${user.client_id}-${Date.now()}`;
-    
+
     const channel = this.supabase.channel(channelName, {
       config: {
         broadcast: { self: true },
@@ -112,7 +112,7 @@ export class ClientPortalService {
     if (!user?.company_id) return { data: [], error: 'No company context' };
 
     const client = this.sb.instance;
-    
+
     // 1. Fetch Services
     const { data: services, error: servicesError } = await client
       .from('services')
@@ -135,17 +135,17 @@ export class ClientPortalService {
       .order('sort_order');
 
     if (variantsError) {
-        console.error('Error fetching variants:', variantsError);
-        // Return services without variants if variants fail
-        return { data: services, error: null };
+      console.error('Error fetching variants:', variantsError);
+      // Return services without variants if variants fail
+      return { data: services, error: null };
     }
 
     // 3. Attach variants to services
     const servicesWithVariants = services.map(service => {
-        const serviceVariants = (variants || []).filter(v => v.service_id === service.id);
-        return { ...service, variants: serviceVariants };
+      const serviceVariants = (variants || []).filter(v => v.service_id === service.id);
+      return { ...service, variants: serviceVariants };
     });
-      
+
     return { data: servicesWithVariants, error: null };
   }
 
@@ -155,7 +155,7 @@ export class ClientPortalService {
     if (!user?.company_id) return { data: null, error: 'No company context' };
 
     const client = this.sb.instance;
-    
+
     // Fetch service (any service the company has, not just public)
     const { data: service, error: serviceError } = await client
       .from('services')
@@ -188,23 +188,12 @@ export class ClientPortalService {
       .select('allow_direct_contracting, auto_send_quote_email')
       .eq('company_id', user.company_id)
       .maybeSingle();
-      
+
     return { data, error };
   }
 
-  async requestService(serviceId: string, variantId?: string): Promise<{ data: any; error?: any }> {
-    // Call edge function to create quote in 'request' status
-    try {
-      const token = await this.requireAccessToken();
-      const { data, error } = await this.supabase.functions.invoke('client-request-service', {
-        body: { serviceId, variantId, action: 'request' },
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      return { data, error };
-    } catch (e: any) {
-      return { data: null, error: e };
-    }
-  }
+  // Old requestService removed
+
 
   async contractService(serviceId: string, variantId?: string, preferredPaymentMethod?: string, existingInvoiceId?: string): Promise<{ data: any; error?: any }> {
     // Call edge function to create quote, accept, invoice and pay
@@ -297,17 +286,17 @@ export class ClientPortalService {
       console.log(`📝 Calling client-quote-respond Edge Function for quote ${id} with action ${action}...`);
 
       const token = await this.requireAccessToken();
-      
+
       const { data, error } = await this.supabase.functions.invoke('client-quote-respond', {
         body: { id, action, rejection_reason: rejectionReason },
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (error) {
         console.error('❌ Error from Edge Function:', error);
         return { data: null, error };
       }
-      
+
       console.log('✅ Quote response successful:', data);
       return { data: data?.data || null, error: null };
     } catch (e: any) {
@@ -447,24 +436,49 @@ export class ClientPortalService {
   }> {
     try {
       const { data, error } = await this.supabase.functions.invoke('send-company-invite', {
-        body: { 
-          email, 
-          company_id: companyId, 
+        body: {
+          email,
+          company_id: companyId,
           role,
           force_email: true  // SIEMPRE enviar email, nunca fallar silenciosamente
         }
       });
 
       if (error) throw error;
-      
+
       // Validar que realmente se envió el email
       if (data && !data.success && data.code !== 'email_exists') {
         throw new Error(data.error || 'No se pudo enviar el email de invitación');
       }
-      
+
       return data || { success: false, error: 'Sin respuesta de la función' };
     } catch (err: any) {
       return { success: false, error: err.message || 'Error al enviar invitación' };
+    }
+  }
+
+  async requestService(serviceId: string, variantId?: string, comment?: string) {
+    try {
+      const email = (await firstValueFrom(this.auth.userProfile$))?.email;
+      const companyId = (await firstValueFrom(this.auth.userProfile$))?.company_id;
+      const role = (await firstValueFrom(this.auth.userProfile$))?.role;
+
+      const { data, error } = await this.supabase.functions.invoke('client-request-service', {
+        body: {
+          action: 'request',
+          serviceId,
+          variantId,
+          comment,
+          email,        // Pass context if needed, though usually handled by auth header
+          company_id: companyId
+        }
+      });
+
+      if (error) throw error;
+      return { data, error: null };
+    } catch (err: any) {
+      console.error('Error requesting service:', err);
+      return { data: null, error: err };
     }
   }
 
@@ -491,7 +505,7 @@ export class ClientPortalService {
     try {
       const token = await this.requireAccessToken();
       const { error } = await this.supabase.functions.invoke('client-invoices', {
-        body: { 
+        body: {
           id: invoiceId,
           action: 'mark_local_payment'
         },
