@@ -8,9 +8,19 @@ export interface ContractProgressStep {
   errorMessage?: string;
 }
 
+export interface PaymentOption {
+  provider: 'stripe' | 'paypal' | 'local';
+  url?: string;
+  label: string;
+  icon: string;
+  iconClass: string;
+  buttonClass: string;
+}
+
 export interface ContractResult {
   success: boolean;
   paymentUrl?: string;
+  paymentOptions?: PaymentOption[];
   message?: string;
   error?: string;
   quoteId?: string;
@@ -123,8 +133,23 @@ export interface ContractResult {
 
         <!-- Actions -->
         <div class="p-6 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 rounded-b-2xl">
-          <!-- Payment Button -->
-          <button *ngIf="paymentUrl()" 
+          <!-- Multiple Payment Options -->
+          <div *ngIf="paymentOptions().length > 0" class="space-y-3">
+            <p class="text-sm text-gray-600 dark:text-gray-400 text-center mb-4">
+              Selecciona tu método de pago preferido:
+            </p>
+            <button *ngFor="let option of paymentOptions()" 
+                    (click)="selectPaymentOption(option)"
+                    class="w-full py-3 px-4 font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-3"
+                    [ngClass]="option.buttonClass">
+              <i [class]="option.icon + ' ' + option.iconClass" class="text-xl"></i>
+              {{ option.label }}
+              <i *ngIf="option.provider !== 'local'" class="fas fa-arrow-right text-sm"></i>
+            </button>
+          </div>
+
+          <!-- Single Payment Button (legacy/fallback) -->
+          <button *ngIf="paymentUrl() && paymentOptions().length === 0" 
                   (click)="goToPayment()"
                   class="w-full py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2">
             <i class="fas fa-credit-card"></i>
@@ -133,7 +158,7 @@ export interface ContractResult {
           </button>
 
           <!-- Close Button (when no payment) -->
-          <button *ngIf="isComplete() && !paymentUrl()" 
+          <button *ngIf="isComplete() && !paymentUrl() && paymentOptions().length === 0" 
                   (click)="close()"
                   class="w-full py-3 px-4 bg-gray-200 hover:bg-gray-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-gray-700 dark:text-white font-semibold rounded-xl transition-all duration-200">
             {{ hasError() ? 'Cerrar' : 'Entendido' }}
@@ -174,11 +199,14 @@ export class ContractProgressDialogComponent {
   @Input() serviceName = '';
   @Output() closed = new EventEmitter<void>();
   @Output() paymentRedirect = new EventEmitter<string>();
+  @Output() localPaymentSelected = new EventEmitter<void>();
+  @Output() paymentSelected = new EventEmitter<PaymentOption>();
 
   visible = signal(false);
   steps = signal<ContractProgressStep[]>([]);
   resultMessage = signal<string>('');
   paymentUrl = signal<string>('');
+  paymentOptions = signal<PaymentOption[]>([]);
   private _hasError = signal(false);
 
   isComplete = computed(() => {
@@ -198,6 +226,7 @@ export class ContractProgressDialogComponent {
     this._hasError.set(false);
     this.resultMessage.set('');
     this.paymentUrl.set('');
+    this.paymentOptions.set([]);
     
     this.steps.set([
       { id: 'quote', label: 'Generando presupuesto', status: 'pending' },
@@ -249,12 +278,29 @@ export class ContractProgressDialogComponent {
       steps.map(s => ({ ...s, status: 'completed' as const }))
     );
 
-    if (result.paymentUrl) {
+    // If we have multiple payment options, display them
+    if (result.paymentOptions && result.paymentOptions.length > 0) {
+      this.paymentOptions.set(result.paymentOptions);
+      this.resultMessage.set(result.message || '¡Todo listo! Selecciona cómo quieres realizar el pago.');
+    } else if (result.paymentUrl) {
       this.paymentUrl.set(result.paymentUrl);
       this.resultMessage.set(result.message || '¡Todo listo! Haz clic en el botón para completar el pago.');
     } else {
       this.resultMessage.set(result.message || 'El servicio ha sido contratado correctamente. Te contactaremos para el pago.');
     }
+  }
+
+  /**
+   * Complete with multiple payment options
+   */
+  completeWithPaymentOptions(options: PaymentOption[], message?: string) {
+    // Mark all steps as completed
+    this.steps.update(steps => 
+      steps.map(s => ({ ...s, status: 'completed' as const }))
+    );
+
+    this.paymentOptions.set(options);
+    this.resultMessage.set(message || '¡Todo listo! Selecciona cómo quieres realizar el pago.');
   }
 
   /**
@@ -298,11 +344,36 @@ export class ContractProgressDialogComponent {
     this.resultMessage.set(message);
   }
 
+  /**
+   * Handle payment option selection
+   */
+  selectPaymentOption(option: PaymentOption) {
+    // Emit the generic payment selected event
+    this.paymentSelected.emit(option);
+    
+    if (option.provider === 'local') {
+      // For local payment, emit event and close
+      this.localPaymentSelected.emit();
+      this.visible.set(false);
+      this.closed.emit();
+    } else if (option.url) {
+      // For online payment providers, redirect
+      this.paymentRedirect.emit(option.url);
+      window.open(option.url, '_blank');
+      this.visible.set(false);
+      this.closed.emit();
+    }
+  }
+
   goToPayment() {
     const url = this.paymentUrl();
     if (url) {
       this.paymentRedirect.emit(url);
-      window.location.href = url;
+      // Open in new tab to preserve app state
+      window.open(url, '_blank');
+      // Close the dialog after opening payment
+      this.visible.set(false);
+      this.closed.emit();
     }
   }
 

@@ -362,7 +362,7 @@ serve(async (req) => {
 
         if (series?.verifactu_enabled) {
           try {
-            await admin.rpc('verifactu.finalize_invoice', {
+            await admin.rpc('finalize_invoice', {
               p_invoice_id: invoice_id,
               p_series: invoice_number.split('-')[0],
               p_device_id: 'RECURRING-AUTO',

@@ -32,10 +32,16 @@ export interface PaymentSelection {
           <div class="flex items-center justify-between">
             <div>
               <h3 class="text-xl font-bold text-gray-900 dark:text-white">
-                💳 Selecciona método de pago
+                {{ _isRecurring() ? '🔄 Configurar suscripción' : '💳 Selecciona método de pago' }}
               </h3>
               <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Total a pagar: <span class="font-semibold text-gray-900 dark:text-white">{{ amount | currency:'EUR' }}</span>
+                <span *ngIf="_isRecurring()">
+                  Suscripción: <span class="font-semibold text-gray-900 dark:text-white">{{ amount | currency:'EUR' }}</span>
+                  <span class="text-orange-500 font-medium">/ {{ _billingPeriod() }}</span>
+                </span>
+                <span *ngIf="!_isRecurring()">
+                  Total a pagar: <span class="font-semibold text-gray-900 dark:text-white">{{ amount | currency:'EUR' }}</span>
+                </span>
               </p>
             </div>
             <button (click)="cancel()"
@@ -122,6 +128,17 @@ export interface PaymentSelection {
           </div>
         </div>
 
+        <!-- Recurring Service Info Banner -->
+        <div *ngIf="_isRecurring()" class="mx-6 mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+          <div class="flex items-start gap-2">
+            <i class="fas fa-info-circle text-orange-500 mt-0.5"></i>
+            <div class="text-sm text-orange-700 dark:text-orange-300">
+              <p class="font-medium">Suscripción recurrente</p>
+              <p class="text-xs mt-1">Se te cobrará automáticamente cada {{ _billingPeriod() }}. Puedes cancelar en cualquier momento desde tu área de servicios.</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Actions -->
         <div class="p-6 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50 rounded-b-2xl">
           <button (click)="confirmSelection()"
@@ -133,7 +150,7 @@ export interface PaymentSelection {
                     'bg-gray-300 dark:bg-slate-600 text-gray-500': !selectedProvider()
                   }">
             <i class="fas fa-lock mr-1"></i>
-            Continuar al pago
+            {{ _isRecurring() ? 'Iniciar suscripción' : 'Continuar al pago' }}
             <i class="fas fa-arrow-right text-sm"></i>
           </button>
           
@@ -170,6 +187,8 @@ export class PaymentMethodSelectorComponent {
   @Input() amount = 0;
   @Input() invoiceNumber = '';
   @Input() availableProviders: ('stripe' | 'paypal')[] = [];
+  @Input() isRecurring = false;
+  @Input() billingPeriod = '';
   
   @Output() selected = new EventEmitter<PaymentSelection>();
   @Output() cancelled = new EventEmitter<void>();
@@ -177,15 +196,21 @@ export class PaymentMethodSelectorComponent {
   visible = signal(false);
   selectedProvider = signal<'stripe' | 'paypal' | null>(null);
   selectedInstallments = signal(1);
+  _isRecurring = signal(false);
+  _billingPeriod = signal('');
+
 
   hasStripe = computed(() => this.availableProviders.includes('stripe'));
   hasPayPal = computed(() => this.availableProviders.includes('paypal'));
-  showInstallments = computed(() => this.amount >= 50); // Only show for amounts >= 50€
+  // Don't show installments for recurring services (doesn't make sense to pay monthly service in installments)
+  showInstallments = computed(() => !this._isRecurring() && this.amount >= 50);
 
-  open(amount: number, invoiceNumber: string, providers: ('stripe' | 'paypal')[]) {
+  open(amount: number, invoiceNumber: string, providers: ('stripe' | 'paypal')[], isRecurring = false, billingPeriod = '') {
     this.amount = amount;
     this.invoiceNumber = invoiceNumber;
     this.availableProviders = providers;
+    this._isRecurring.set(isRecurring);
+    this._billingPeriod.set(billingPeriod);
     
     // Auto-select if only one provider
     if (providers.length === 1) {

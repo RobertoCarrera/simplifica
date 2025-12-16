@@ -88,6 +88,74 @@ async function verifyStripeWebhook(
   }
 }
 
+/**
+ * Check if company has Verifactu enabled and emit invoice to AEAT
+ * This only creates the verifactu event if not already created
+ */
+async function tryEmitToVerifactu(supabase: any, invoiceId: string, companyId: string): Promise<void> {
+  try {
+    // Check if company has Verifactu enabled
+    const { data: settings } = await supabase
+      .from("verifactu_settings")
+      .select("is_active, auto_emit")
+      .eq("company_id", companyId)
+      .single();
+
+    if (!settings?.is_active || !settings?.auto_emit) {
+      console.log("[stripe-webhook] Verifactu not enabled or auto_emit off for company:", companyId);
+      return;
+    }
+
+    // Check if invoice already has verifactu event
+    const { data: existingEvent } = await supabase
+      .from("verifactu.events")
+      .select("id")
+      .eq("invoice_id", invoiceId)
+      .eq("event_type", "alta")
+      .single();
+
+    if (existingEvent) {
+      console.log("[stripe-webhook] Verifactu event already exists for invoice:", invoiceId);
+      return;
+    }
+
+    // Get invoice data for verifactu
+    const { data: invoice, error: invoiceError } = await supabase
+      .from("invoices")
+      .select("*, invoice_items(*)")
+      .eq("id", invoiceId)
+      .single();
+
+    if (invoiceError || !invoice) {
+      console.error("[stripe-webhook] Error getting invoice for verifactu:", invoiceError);
+      return;
+    }
+
+    // Check if invoice state allows emission (should be 'final' or we set it)
+    if (invoice.state !== 'final') {
+      // Update invoice to final state
+      await supabase.from("invoices").update({ state: 'final' }).eq("id", invoiceId);
+    }
+
+    // Call finalize_invoice to create verifactu event properly
+    const { error: finalizeError } = await supabase.rpc('finalize_invoice', {
+      p_invoice_id: invoiceId,
+      p_series: invoice.series || 'F',
+      p_device_id: null,
+      p_software_id: null
+    });
+
+    if (finalizeError) {
+      console.error("[stripe-webhook] Error finalizing invoice for verifactu:", finalizeError);
+      return;
+    }
+
+    console.log("[stripe-webhook] Verifactu event created for invoice:", invoiceId);
+  } catch (e) {
+    console.error("[stripe-webhook] Error in tryEmitToVerifactu:", e);
+  }
+}
+
 serve(async (req) => {
   const headers = { "Content-Type": "application/json" };
 
@@ -170,7 +238,7 @@ serve(async (req) => {
           provider_response: event,
         });
 
-        // Update invoice
+        // Update invoice payment status
         await supabase.from("invoices").update({
           payment_status: "paid",
           payment_method: "stripe",
@@ -179,6 +247,10 @@ serve(async (req) => {
         }).eq("id", invoice.id);
 
         console.log("[stripe-webhook] Payment completed for invoice:", invoice.id);
+
+        // Check if company has Verifactu enabled and invoice should be emitted
+        await tryEmitToVerifactu(supabase, invoice.id, invoice.company_id);
+        
         break;
       }
 

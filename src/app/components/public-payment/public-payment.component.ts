@@ -3,6 +3,15 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { environment } from '../../../environments/environment';
 
+interface PaymentOption {
+  provider: string;
+  label: string;
+  icon: string;
+  iconClass: string;
+  buttonClass: string;
+  available: boolean;
+}
+
 interface PaymentInfo {
   invoice: {
     id: string;
@@ -27,6 +36,7 @@ interface PaymentInfo {
     expires_at: string;
     is_expired: boolean;
   };
+  payment_options?: PaymentOption[];
 }
 
 @Component({
@@ -123,37 +133,69 @@ interface PaymentInfo {
             </div>
           </div>
 
-          <!-- Payment method -->
+          <!-- Payment methods -->
           <div class="mb-6">
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Método de pago:</p>
-            <div class="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-600 rounded-lg">
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">Selecciona tu método de pago:</p>
+            
+            <!-- Multiple payment options -->
+            <div *ngIf="hasMultiplePaymentOptions()" class="space-y-3">
+              <button *ngFor="let option of paymentInfo()!.payment_options"
+                (click)="selectPaymentMethod(option.provider)"
+                [disabled]="redirecting()"
+                class="w-full py-3 px-4 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-3 disabled:opacity-60"
+                [ngClass]="option.buttonClass">
+                <i [class]="option.icon + ' text-xl ' + option.iconClass"></i>
+                {{ option.label }}
+                <svg *ngIf="redirecting() && selectedProvider() === option.provider" class="animate-spin h-5 w-5 ml-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Single payment option (legacy) -->
+            <div *ngIf="!hasMultiplePaymentOptions()" class="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-600 rounded-lg mb-4">
               <span class="text-2xl">{{ paymentInfo()!.payment.provider === 'paypal' ? '💳' : '💵' }}</span>
               <span class="font-medium text-gray-900 dark:text-gray-100">{{ paymentInfo()!.payment.provider === 'paypal' ? 'PayPal' : 'Stripe' }}</span>
             </div>
+            
+            <!-- Pay button (legacy single provider) -->
+            <button 
+              *ngIf="!hasMultiplePaymentOptions()"
+              (click)="proceedToPayment()"
+              [disabled]="redirecting()"
+              class="w-full py-3 px-4 rounded-lg font-semibold text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+              [class.bg-blue-600]="paymentInfo()!.payment.provider === 'paypal'"
+              [class.hover:bg-blue-700]="paymentInfo()!.payment.provider === 'paypal' && !redirecting()"
+              [class.bg-purple-600]="paymentInfo()!.payment.provider === 'stripe'"
+              [class.hover:bg-purple-700]="paymentInfo()!.payment.provider === 'stripe' && !redirecting()">
+              <svg *ngIf="redirecting()" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ redirecting() ? 'Redirigiendo...' : 'Pagar ahora' }}
+            </button>
           </div>
 
-          <!-- Pay button -->
-          <button 
-            (click)="proceedToPayment()"
-            [disabled]="redirecting()"
-            class="w-full py-3 px-4 rounded-lg font-semibold text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-            [class.bg-blue-600]="paymentInfo()!.payment.provider === 'paypal'"
-            [class.hover:bg-blue-700]="paymentInfo()!.payment.provider === 'paypal' && !redirecting()"
-            [class.bg-purple-600]="paymentInfo()!.payment.provider === 'stripe'"
-            [class.hover:bg-purple-700]="paymentInfo()!.payment.provider === 'stripe' && !redirecting()">
-            <svg *ngIf="redirecting()" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            {{ redirecting() ? 'Redirigiendo...' : 'Pagar ahora' }}
-          </button>
+          <!-- Local payment confirmation message -->
+          <div *ngIf="localPaymentSelected()" class="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-center">
+            <div class="w-12 h-12 mx-auto rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 class="font-semibold text-green-800 dark:text-green-200 mb-1">¡Pago en local seleccionado!</h3>
+            <p class="text-sm text-green-700 dark:text-green-300">
+              {{ paymentInfo()!.company.name }} ha sido notificado. Te contactarán para coordinar el pago.
+            </p>
+          </div>
 
           <!-- Security note -->
           <p class="text-xs text-gray-500 dark:text-gray-400 text-center mt-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            Pago seguro procesado por {{ paymentInfo()!.payment.provider === 'paypal' ? 'PayPal' : 'Stripe' }}
+            Pago seguro
           </p>
 
           <!-- Link expiration -->
@@ -173,6 +215,13 @@ export class PublicPaymentComponent implements OnInit {
   error = signal<string | null>(null);
   paymentInfo = signal<PaymentInfo | null>(null);
   redirecting = signal(false);
+  selectedProvider = signal<string | null>(null);
+  localPaymentSelected = signal(false);
+
+  hasMultiplePaymentOptions = computed(() => {
+    const info = this.paymentInfo();
+    return info?.payment_options && info.payment_options.length > 0;
+  });
 
   ngOnInit(): void {
     const token = this.route.snapshot.paramMap.get('token');
@@ -226,6 +275,80 @@ export class PublicPaymentComponent implements OnInit {
         },
         body: JSON.stringify({
           token: this.route.snapshot.paramMap.get('token')
+        })
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        this.error.set(json?.error || 'Error al procesar el pago');
+        this.redirecting.set(false);
+        return;
+      }
+
+      // Redirect to payment provider
+      window.location.href = json.payment_url;
+    } catch (e: any) {
+      console.error('Error redirecting to payment', e);
+      this.error.set('Error de conexión. Por favor, inténtalo de nuevo.');
+      this.redirecting.set(false);
+    }
+  }
+
+  async selectPaymentMethod(provider: string) {
+    const info = this.paymentInfo();
+    if (!info) return;
+
+    this.selectedProvider.set(provider);
+
+    // Handle local payment separately
+    if (provider === 'local') {
+      this.redirecting.set(true);
+      try {
+        // Call backend to mark invoice as pending local payment
+        const res = await fetch(`${this.fnBase}/public-payment-redirect`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': environment.supabase.anonKey,
+          },
+          body: JSON.stringify({
+            token: this.route.snapshot.paramMap.get('token'),
+            provider: 'local'
+          })
+        });
+
+        const json = await res.json();
+
+        if (!res.ok) {
+          this.error.set(json?.error || 'Error al procesar la solicitud');
+          this.redirecting.set(false);
+          return;
+        }
+
+        // Show success message instead of redirecting
+        this.localPaymentSelected.set(true);
+        this.redirecting.set(false);
+      } catch (e: any) {
+        console.error('Error processing local payment selection', e);
+        this.error.set('Error de conexión. Por favor, inténtalo de nuevo.');
+        this.redirecting.set(false);
+      }
+      return;
+    }
+
+    // For online payment providers
+    this.redirecting.set(true);
+    try {
+      const res = await fetch(`${this.fnBase}/public-payment-redirect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': environment.supabase.anonKey,
+        },
+        body: JSON.stringify({
+          token: this.route.snapshot.paramMap.get('token'),
+          provider: provider
         })
       });
 

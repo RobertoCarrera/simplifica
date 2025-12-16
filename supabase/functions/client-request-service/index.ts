@@ -45,12 +45,14 @@ function generateToken(): string {
   return Array.from(array, b => b.toString(16).padStart(2, "0")).join("")
 }
 
-// Create PayPal Order
+// Create PayPal Order or Subscription
 async function createPayPalOrder(
   credentials: { clientId: string; clientSecret: string },
   isSandbox: boolean,
   invoice: any,
-  paymentToken: string
+  paymentToken: string,
+  isRecurring: boolean = false,
+  billingPeriod: string = 'one-time'
 ): Promise<{ approvalUrl: string } | { error: string }> {
   const baseUrl = isSandbox
     ? "https://api-m.sandbox.paypal.com"
@@ -76,6 +78,142 @@ async function createPayPalOrder(
 
     const { access_token } = await tokenRes.json()
 
+    // For recurring services, create a subscription
+    if (isRecurring && billingPeriod !== 'one-time') {
+      console.log('[client-request-service] Creating PayPal SUBSCRIPTION for period:', billingPeriod)
+      
+      // First, create a billing plan (product + plan)
+      // Note: In production, you'd want to cache/reuse plans for the same service
+      
+      // Map billing period to PayPal interval
+      let intervalUnit = 'MONTH'
+      let intervalCount = 1
+      
+      switch (billingPeriod) {
+        case 'monthly':
+          intervalUnit = 'MONTH'
+          intervalCount = 1
+          break
+        case 'quarterly':
+          intervalUnit = 'MONTH'
+          intervalCount = 3
+          break
+        case 'biannually':
+          intervalUnit = 'MONTH'
+          intervalCount = 6
+          break
+        case 'annually':
+        case 'yearly':
+          intervalUnit = 'YEAR'
+          intervalCount = 1
+          break
+        default:
+          intervalUnit = 'MONTH'
+          intervalCount = 1
+      }
+      
+      // Create product
+      const productRes = await fetch(`${baseUrl}/v1/catalogs/products`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: invoice.description || `Servicio ${invoice.invoice_number}`,
+          description: `Suscripción - ${invoice.company_name || 'Simplifica'}`,
+          type: "SERVICE",
+          category: "SOFTWARE"
+        }),
+      })
+      
+      if (!productRes.ok) {
+        console.error("[client-request-service] PayPal product creation failed:", await productRes.text())
+        return { error: "Error creando producto en PayPal" }
+      }
+      
+      const product = await productRes.json()
+      console.log('[client-request-service] PayPal product created:', product.id)
+      
+      // Create billing plan
+      const planRes = await fetch(`${baseUrl}/v1/billing/plans`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          product_id: product.id,
+          name: `Plan ${billingPeriod} - ${invoice.invoice_number}`,
+          description: invoice.description || `Suscripción recurrente`,
+          status: "ACTIVE",
+          billing_cycles: [
+            {
+              frequency: {
+                interval_unit: intervalUnit,
+                interval_count: intervalCount
+              },
+              tenure_type: "REGULAR",
+              sequence: 1,
+              total_cycles: 0, // Infinite
+              pricing_scheme: {
+                fixed_price: {
+                  value: invoice.total.toFixed(2),
+                  currency_code: "EUR"
+                }
+              }
+            }
+          ],
+          payment_preferences: {
+            auto_bill_outstanding: true,
+            setup_fee_failure_action: "CONTINUE",
+            payment_failure_threshold: 3
+          }
+        }),
+      })
+      
+      if (!planRes.ok) {
+        console.error("[client-request-service] PayPal plan creation failed:", await planRes.text())
+        return { error: "Error creando plan de suscripción en PayPal" }
+      }
+      
+      const plan = await planRes.json()
+      console.log('[client-request-service] PayPal plan created:', plan.id)
+      
+      // Create subscription
+      const subscriptionRes = await fetch(`${baseUrl}/v1/billing/subscriptions`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          plan_id: plan.id,
+          custom_id: `invoice_${paymentToken}`,
+          application_context: {
+            brand_name: invoice.company_name || "Simplifica",
+            locale: "es-ES",
+            user_action: "SUBSCRIBE_NOW",
+            return_url: returnUrl,
+            cancel_url: cancelUrl
+          }
+        }),
+      })
+      
+      if (!subscriptionRes.ok) {
+        console.error("[client-request-service] PayPal subscription creation failed:", await subscriptionRes.text())
+        return { error: "Error creando suscripción en PayPal" }
+      }
+      
+      const subscription = await subscriptionRes.json()
+      const approvalUrl = subscription.links?.find((l: any) => l.rel === "approve")?.href
+      
+      console.log('[client-request-service] PayPal subscription created:', subscription.id)
+      return { approvalUrl }
+    }
+
+    // Regular one-time payment
+    console.log('[client-request-service] Creating PayPal ONE-TIME order')
     const orderRes = await fetch(`${baseUrl}/v2/checkout/orders`, {
       method: "POST",
       headers: {
@@ -123,12 +261,91 @@ async function createPayPalOrder(
 async function createStripeCheckout(
   credentials: { secretKey: string },
   invoice: any,
-  paymentToken: string
+  paymentToken: string,
+  isRecurring: boolean = false,
+  billingPeriod: string = 'one-time'
 ): Promise<{ checkoutUrl: string } | { error: string }> {
   const returnUrl = `${PUBLIC_SITE_URL}/pago/${paymentToken}?status=success`
   const cancelUrl = `${PUBLIC_SITE_URL}/pago/${paymentToken}?status=cancelled`
 
   try {
+    // For recurring services, create a subscription checkout
+    if (isRecurring && billingPeriod !== 'one-time') {
+      console.log('[client-request-service] Creating Stripe SUBSCRIPTION checkout for period:', billingPeriod)
+      
+      // Map billing period to Stripe interval
+      let interval = 'month'
+      let intervalCount = 1
+      
+      switch (billingPeriod) {
+        case 'monthly':
+          interval = 'month'
+          intervalCount = 1
+          break
+        case 'quarterly':
+          interval = 'month'
+          intervalCount = 3
+          break
+        case 'biannually':
+          interval = 'month'
+          intervalCount = 6
+          break
+        case 'annually':
+        case 'yearly':
+          interval = 'year'
+          intervalCount = 1
+          break
+        default:
+          interval = 'month'
+          intervalCount = 1
+      }
+      
+      const params = new URLSearchParams({
+        "mode": "subscription",
+        "success_url": returnUrl,
+        "cancel_url": cancelUrl,
+        "line_items[0][price_data][currency]": "eur",
+        "line_items[0][price_data][product_data][name]": invoice.description || `Suscripción - Factura ${invoice.invoice_number}`,
+        "line_items[0][price_data][unit_amount]": Math.round(invoice.total * 100).toString(),
+        "line_items[0][price_data][recurring][interval]": interval,
+        "line_items[0][price_data][recurring][interval_count]": intervalCount.toString(),
+        "line_items[0][quantity]": "1",
+        "metadata[payment_link_token]": paymentToken,
+        "metadata[invoice_id]": invoice.id,
+        "metadata[subscription]": "true",
+        "metadata[billing_period]": billingPeriod,
+        "customer_email": invoice.client_email || "",
+        "locale": "es",
+        "currency": "eur",
+        "subscription_data[metadata][invoice_id]": invoice.id,
+        "subscription_data[metadata][billing_period]": billingPeriod,
+      })
+
+      // Add payment method types explicitly
+      params.append("payment_method_types[]", "card")
+
+      const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${credentials.secretKey}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: params,
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        console.error("[client-request-service] Stripe subscription error:", err)
+        return { error: err.error?.message || "Error creando suscripción en Stripe" }
+      }
+
+      const session = await response.json()
+      console.log('[client-request-service] Stripe subscription checkout created:', session.id)
+      return { checkoutUrl: session.url }
+    }
+
+    // Regular one-time payment
+    console.log('[client-request-service] Creating Stripe ONE-TIME payment checkout')
     const params = new URLSearchParams({
       "mode": "payment",
       "success_url": returnUrl,
@@ -198,7 +415,137 @@ serve(async (req) => {
       )
     }
 
-    const { serviceId, variantId, action, preferredPaymentMethod } = await req.json()
+    const { serviceId, variantId, action, preferredPaymentMethod, existingInvoiceId } = await req.json()
+
+    // If existingInvoiceId is provided, skip quote/invoice creation and just generate payment link
+    if (existingInvoiceId && preferredPaymentMethod) {
+      console.log('[client-request-service] Using existing invoice:', existingInvoiceId, 'with payment method:', preferredPaymentMethod)
+      
+      // Get the existing invoice
+      const { data: invoice, error: invoiceError } = await supabase
+        .from('invoices')
+        .select('id, invoice_number, invoice_series, total, company_id, status, series_id, client_id')
+        .eq('id', existingInvoiceId)
+        .single()
+
+      if (invoiceError || !invoice) {
+        console.error('[client-request-service] Error fetching existing invoice:', invoiceError)
+        return new Response(
+          JSON.stringify({ error: 'Invoice not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Get company for payment integrations
+      const { data: paymentIntegrations } = await supabase
+        .from('payment_integrations')
+        .select('*')
+        .eq('company_id', invoice.company_id)
+        .eq('is_active', true)
+
+      const stripeIntegration = paymentIntegrations?.find((p: any) => p.provider === 'stripe')
+      const paypalIntegration = paymentIntegrations?.find((p: any) => p.provider === 'paypal')
+
+      let paymentUrl: string | null = null
+      let paymentProvider: string | null = null
+      const paymentToken = generateToken()
+
+      // Get service info for recurring check
+      const { data: quoteItems } = await supabase
+        .from('quote_items')
+        .select('service_id, variant_id')
+        .eq('quote_id', invoice.source_quote_id || '')
+        .limit(1)
+
+      let isRecurring = false
+      let billingPeriod = 'one-time'
+
+      if (quoteItems && quoteItems.length > 0) {
+        const { data: variant } = await supabase
+          .from('service_variants')
+          .select('pricing, billing_period')
+          .eq('id', quoteItems[0].variant_id || '')
+          .single()
+
+        if (variant) {
+          billingPeriod = variant.pricing?.[0]?.billing_period || variant.billing_period || 'one-time'
+          isRecurring = billingPeriod !== 'one-time'
+        }
+      }
+
+      const invoiceData = {
+        id: invoice.id,
+        invoice_number: invoice.invoice_number,
+        total: invoice.total,
+        description: `Factura ${invoice.invoice_number}`
+      }
+
+      // Try selected provider
+      if (preferredPaymentMethod === 'stripe' && stripeIntegration) {
+        try {
+          const credentials = JSON.parse(await decrypt(stripeIntegration.credentials_encrypted))
+          const result = await createStripeCheckout(credentials, invoiceData, paymentToken, isRecurring, billingPeriod)
+          if ('checkoutUrl' in result) {
+            paymentUrl = result.checkoutUrl
+            paymentProvider = 'stripe'
+          }
+        } catch (e: any) {
+          console.error('[client-request-service] Stripe error:', e)
+        }
+      }
+
+      if (preferredPaymentMethod === 'paypal' && paypalIntegration) {
+        try {
+          const credentials = JSON.parse(await decrypt(paypalIntegration.credentials_encrypted))
+          const result = await createPayPalOrder(credentials, paypalIntegration.is_sandbox, invoiceData, paymentToken, isRecurring, billingPeriod)
+          if ('approvalUrl' in result) {
+            paymentUrl = result.approvalUrl
+            paymentProvider = 'paypal'
+          }
+        } catch (e: any) {
+          console.error('[client-request-service] PayPal error:', e)
+        }
+      }
+
+      if (paymentUrl) {
+        const expiresAt = new Date()
+        expiresAt.setDate(expiresAt.getDate() + 7)
+        
+        await supabase.from('invoices').update({
+          payment_link_token: paymentToken,
+          payment_link_expires_at: expiresAt.toISOString(),
+          payment_link_provider: paymentProvider,
+        }).eq('id', invoice.id)
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            action: 'contract',
+            data: { 
+              invoice_id: invoice.id,
+              invoice_number: invoice.invoice_number,
+              payment_url: paymentUrl,
+              payment_provider: paymentProvider,
+              message: 'Redirigiendo al pago...'
+            } 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          action: 'contract',
+          fallback: true,
+          data: { 
+            invoice_id: invoice.id,
+            message: 'No se pudo generar el enlace de pago. Contacta con soporte.'
+          } 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     if (!serviceId || !['request', 'contract'].includes(action)) {
       return new Response(
@@ -279,6 +626,10 @@ serve(async (req) => {
     let variantName: string | null = null
     let title = service.name || 'Servicio'
     let description = service.description || service.name || 'Servicio solicitado'
+    
+    // Track billing period for recurring services
+    let billingPeriod = 'one-time'
+    let isRecurring = false
 
     console.log('[client-request-service] Initial basePrice:', basePrice, 'from service fields:', {
       base_price: service.base_price,
@@ -312,12 +663,17 @@ serve(async (req) => {
           variantPrice = Number(pricing.base_price) || Number(pricing.price) || 0
           // Get discount from pricing (NOT applied to price - will be applied as line discount)
           discountPercent = Number(pricing.discount_percentage) || 0
-          console.log('[client-request-service] Got price from variant.pricing:', variantPrice, 'discount:', discountPercent)
+          // Extract billing period for recurring services
+          billingPeriod = pricing.billing_period || variant.billing_period || 'one-time'
+          isRecurring = billingPeriod !== 'one-time'
+          console.log('[client-request-service] Got price from variant.pricing:', variantPrice, 'discount:', discountPercent, 'billingPeriod:', billingPeriod, 'isRecurring:', isRecurring)
         } else {
           // Fallback to direct fields
           variantPrice = Number(variant.base_price) || Number(variant.price) || Number(variant.price_cents) / 100 || 0
           discountPercent = Number(variant.discount_percentage) || 0
-          console.log('[client-request-service] Got price from variant direct fields:', variantPrice, 'discount:', discountPercent)
+          billingPeriod = variant.billing_period || 'one-time'
+          isRecurring = billingPeriod !== 'one-time'
+          console.log('[client-request-service] Got price from variant direct fields:', variantPrice, 'discount:', discountPercent, 'billingPeriod:', billingPeriod, 'isRecurring:', isRecurring)
         }
         
         // Use the BASE price (before any discount) - discount will be applied as line discount
@@ -470,7 +826,24 @@ serve(async (req) => {
       subtotal: subtotal,
       tax_amount: taxAmount,
       total_amount: total,
-      created_by: user.id
+      created_by: user.id,
+      // Recurrence settings - map billing_period to recurrence_type
+      recurrence_type: billingPeriod === 'monthly' ? 'monthly' 
+                     : billingPeriod === 'quarterly' ? 'quarterly'
+                     : billingPeriod === 'yearly' || billingPeriod === 'annually' ? 'yearly'
+                     : 'none',
+      recurrence_day: isRecurring ? new Date().getDate() : null,  // Day of month for recurring
+      next_run_at: isRecurring ? (() => {
+        const nextDate = new Date();
+        if (billingPeriod === 'monthly') {
+          nextDate.setMonth(nextDate.getMonth() + 1);
+        } else if (billingPeriod === 'quarterly') {
+          nextDate.setMonth(nextDate.getMonth() + 3);
+        } else if (billingPeriod === 'yearly' || billingPeriod === 'annually') {
+          nextDate.setFullYear(nextDate.getFullYear() + 1);
+        }
+        return nextDate.toISOString();
+      })() : null
     }
 
     // Validate all NOT NULL fields before insert
@@ -631,7 +1004,7 @@ serve(async (req) => {
         console.log('[client-request-service] Verifactu is enabled for this series, attempting to finalize...')
         try {
           // Call the verifactu finalize function
-          const { error: vfError } = await supabase.rpc('verifactu.finalize_invoice', {
+          const { error: vfError } = await supabase.rpc('finalize_invoice', {
             p_invoice_id: invoiceId,
             p_series: invoice.invoice_series?.split('-')[0] || '',
             p_device_id: 'CLIENT-PORTAL-AUTO',
@@ -650,8 +1023,18 @@ serve(async (req) => {
       }
     }
 
-    // Step 3: Check for payment integrations
+    // Step 3: Check for payment integrations and local payment option
     console.log('[client-request-service] Checking payment integrations for company:', companyId)
+    
+    // Get company settings for local payment option
+    const { data: companySettingsForPayment } = await supabase
+      .from('company_settings')
+      .select('allow_local_payment')
+      .eq('company_id', companyId)
+      .maybeSingle()
+    
+    const allowLocalPayment = companySettingsForPayment?.allow_local_payment ?? false
+    console.log('[client-request-service] Local payment allowed:', allowLocalPayment)
     
     const { data: paymentIntegrations, error: paymentError } = await supabase
       .from('payment_integrations')
@@ -666,8 +1049,36 @@ serve(async (req) => {
     }))
 
     if (!paymentIntegrations || paymentIntegrations.length === 0) {
-      // No payment integrations configured - fallback
-      console.log('[client-request-service] No payment integrations found')
+      // No payment integrations configured
+      console.log('[client-request-service] No payment integrations found, allowLocalPayment:', allowLocalPayment)
+      
+      // If local payment is allowed, provide that option
+      if (allowLocalPayment) {
+        const localPaymentOption = {
+          provider: 'local',
+          label: 'Pagar en Local / Efectivo',
+          icon: 'fas fa-money-bill-wave',
+          iconClass: 'text-white',
+          buttonClass: 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            action: 'contract',
+            data: { 
+              quote,
+              invoice_id: invoiceId,
+              invoice_number: invoice.invoice_number,
+              payment_options_formatted: [localPaymentOption],
+              message: '¡Factura generada! Selecciona pago en local para coordinar el pago con la empresa.'
+            } 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      
+      // No payment options available - fallback
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -699,40 +1110,13 @@ serve(async (req) => {
       preferredPaymentMethod
     })
 
-    // If multiple providers and no preference specified, return options for selection
-    if (availableProviders.length > 1 && !preferredPaymentMethod) {
-      console.log('[client-request-service] Multiple payment methods available, returning selection options')
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          action: 'contract',
-          requires_payment_selection: true,
-          data: { 
-            quote,
-            invoice_id: invoiceId,
-            invoice_number: invoice.invoice_number,
-            total: invoice.total,
-            available_providers: availableProviders,
-            message: 'Selecciona tu método de pago preferido'
-          } 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Determine which provider to use
-    let selectedProvider = preferredPaymentMethod
-    if (!selectedProvider) {
-      // Auto-select if only one available
-      selectedProvider = stripeIntegration ? 'stripe' : (paypalIntegration ? 'paypal' : null)
-    }
-
-    // Validate selected provider is available
-    if (selectedProvider && !availableProviders.includes(selectedProvider)) {
-      console.error('[client-request-service] Selected provider not available:', selectedProvider)
-      selectedProvider = availableProviders[0] || null
-    }
-
+    // Generate payment links for ALL available providers
+    let stripePaymentUrl: string | null = null
+    let stripePaymentToken: string | null = null
+    let paypalPaymentUrl: string | null = null
+    let paypalPaymentToken: string | null = null
+    
+    // For backward compatibility - will be set to first successful provider
     let paymentUrl: string | null = null
     let paymentProvider: string | null = null
     const paymentToken = generateToken()
@@ -743,86 +1127,186 @@ serve(async (req) => {
       invoice_number: invoice.invoice_number,
       total: invoice.total,
       client_email: client.email,
-      company_name: company?.name
+      company_name: company?.name,
+      description: title  // Include service title for better description in payment providers
     }
 
     console.log('[client-request-service] Invoice data for payment:', JSON.stringify(invoiceData))
-    console.log('[client-request-service] Selected provider:', selectedProvider)
+    console.log('[client-request-service] isRecurring:', isRecurring, 'billingPeriod:', billingPeriod)
 
-    // Try selected provider first, then fallback
-    if (selectedProvider === 'stripe' && stripeIntegration) {
-      console.log('[client-request-service] Attempting Stripe checkout...')
+    // Generate Stripe payment link if integration exists
+    if (stripeIntegration) {
+      console.log('[client-request-service] Generating Stripe checkout...', isRecurring ? '(SUBSCRIPTION)' : '(ONE-TIME)')
       try {
+        stripePaymentToken = generateToken()
         const credentials = JSON.parse(await decrypt(stripeIntegration.credentials_encrypted))
         console.log('[client-request-service] Stripe credentials decrypted, creating checkout...')
-        const result = await createStripeCheckout(credentials, invoiceData, paymentToken)
+        const result = await createStripeCheckout(credentials, invoiceData, stripePaymentToken, isRecurring, billingPeriod)
         console.log('[client-request-service] Stripe result:', JSON.stringify(result))
         
         if ('checkoutUrl' in result) {
-          paymentUrl = result.checkoutUrl
-          paymentProvider = 'stripe'
-          console.log('[client-request-service] Stripe checkout URL created:', paymentUrl)
+          stripePaymentUrl = result.checkoutUrl
+          // Set as primary if user prefers or first available
+          if (preferredPaymentMethod === 'stripe' || !paymentUrl) {
+            paymentUrl = result.checkoutUrl
+            paymentProvider = 'stripe'
+          }
+          console.log('[client-request-service] Stripe checkout URL created:', stripePaymentUrl)
         }
       } catch (e: any) {
         console.error('[client-request-service] Stripe payment creation failed:', e?.message || e)
       }
     }
 
-    // Try PayPal if selected or Stripe failed
-    if (!paymentUrl && (selectedProvider === 'paypal' || !selectedProvider) && paypalIntegration) {
-      console.log('[client-request-service] Attempting PayPal checkout...')
+    // Generate PayPal payment link if integration exists
+    if (paypalIntegration) {
+      console.log('[client-request-service] Generating PayPal checkout...', isRecurring ? '(SUBSCRIPTION)' : '(ONE-TIME)')
       try {
+        paypalPaymentToken = generateToken()
         const credentials = JSON.parse(await decrypt(paypalIntegration.credentials_encrypted))
         console.log('[client-request-service] PayPal credentials decrypted, creating order...')
         const result = await createPayPalOrder(
           credentials, 
           paypalIntegration.is_sandbox, 
           invoiceData, 
-          paymentToken
+          paypalPaymentToken,
+          isRecurring,
+          billingPeriod
         )
         console.log('[client-request-service] PayPal result:', JSON.stringify(result))
         
         if ('approvalUrl' in result) {
-          paymentUrl = result.approvalUrl
-          paymentProvider = 'paypal'
-          console.log('[client-request-service] PayPal approval URL created:', paymentUrl)
+          paypalPaymentUrl = result.approvalUrl
+          // Set as primary if user prefers or first available
+          if (preferredPaymentMethod === 'paypal' || !paymentUrl) {
+            paymentUrl = result.approvalUrl
+            paymentProvider = 'paypal'
+          }
+          console.log('[client-request-service] PayPal approval URL created:', paypalPaymentUrl)
         }
       } catch (e: any) {
         console.error('[client-request-service] PayPal payment creation failed:', e?.message || e)
       }
     }
 
-    console.log('[client-request-service] Final payment result:', { paymentUrl, paymentProvider })
+    console.log('[client-request-service] Final payment results:', { 
+      stripePaymentUrl: !!stripePaymentUrl,
+      paypalPaymentUrl: !!paypalPaymentUrl, 
+      primaryProvider: paymentProvider 
+    })
 
-    // Update invoice with payment link token if we got a URL
-    if (paymentUrl) {
+    // Update invoice with payment link token and payment URLs
+    const anyPaymentUrl = stripePaymentUrl || paypalPaymentUrl
+    if (anyPaymentUrl) {
       const expiresAt = new Date()
       expiresAt.setDate(expiresAt.getDate() + 7)
       
-      const { error: updateError } = await supabase.from('invoices').update({
+      // Include all payment-related columns
+      const updateData: any = {
         payment_link_token: paymentToken,
         payment_link_expires_at: expiresAt.toISOString(),
         payment_link_provider: paymentProvider,
-      }).eq('id', invoice.id)
+      }
+      
+      // Add payment URLs if available
+      if (stripePaymentUrl) {
+        updateData.stripe_payment_url = stripePaymentUrl
+        updateData.stripe_payment_token = stripePaymentToken
+      }
+      if (paypalPaymentUrl) {
+        updateData.paypal_payment_url = paypalPaymentUrl
+        updateData.paypal_payment_token = paypalPaymentToken
+      }
+      
+      console.log('[client-request-service] Updating invoice with payment data:', {
+        invoice_id: invoice.id,
+        has_stripe_url: !!stripePaymentUrl,
+        has_paypal_url: !!paypalPaymentUrl,
+        provider: paymentProvider
+      })
+      
+      const { error: updateError } = await supabase.from('invoices').update(updateData).eq('id', invoice.id)
 
       if (updateError) {
-        console.error('[client-request-service] Error updating invoice with payment link:', updateError)
+        console.error('[client-request-service] Error updating invoice with payment links:', updateError)
       }
 
-      console.log('[client-request-service] Contract flow completed with payment URL')
+      console.log('[client-request-service] Contract flow completed with payment URLs')
+
+      // Build formatted payment options array for the UI
+      interface PaymentOptionForUI {
+        provider: string;
+        url?: string;
+        label: string;
+        icon: string;
+        iconClass: string;
+        buttonClass: string;
+      }
+      
+      const paymentOptionsForUI: PaymentOptionForUI[] = []
+      
+      if (stripePaymentUrl) {
+        paymentOptionsForUI.push({
+          provider: 'stripe',
+          url: stripePaymentUrl,
+          label: 'Pagar con Tarjeta (Stripe)',
+          icon: 'fab fa-stripe',
+          iconClass: 'text-white',
+          buttonClass: 'bg-purple-600 hover:bg-purple-700 text-white'
+        })
+      }
+      
+      if (paypalPaymentUrl) {
+        paymentOptionsForUI.push({
+          provider: 'paypal',
+          url: paypalPaymentUrl,
+          label: 'Pagar con PayPal',
+          icon: 'fab fa-paypal',
+          iconClass: 'text-white',
+          buttonClass: 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white'
+        })
+      }
+      
+      if (allowLocalPayment) {
+        paymentOptionsForUI.push({
+          provider: 'local',
+          label: 'Pagar en Local / Efectivo',
+          icon: 'fas fa-money-bill-wave',
+          iconClass: 'text-white',
+          buttonClass: 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white'
+        })
+      }
+
+      // Build response with all payment options
+      const responseData: any = { 
+        quote,
+        invoice_id: invoiceId,
+        invoice_number: invoice.invoice_number,
+        payment_url: paymentUrl,
+        payment_provider: paymentProvider,
+        payment_options_formatted: paymentOptionsForUI,
+        message: paymentOptionsForUI.length > 1 
+          ? '¡Todo listo! Selecciona tu método de pago preferido.'
+          : 'Redirigiendo al pago...'
+      }
+
+      // Legacy format for backward compatibility
+      if (stripePaymentUrl && paypalPaymentUrl) {
+        responseData.payment_options = {
+          stripe: stripePaymentUrl,
+          paypal: paypalPaymentUrl
+        }
+        responseData.available_providers = ['stripe', 'paypal']
+        if (allowLocalPayment) {
+          responseData.available_providers.push('local')
+        }
+      }
 
       return new Response(
         JSON.stringify({ 
           success: true, 
           action: 'contract',
-          data: { 
-            quote,
-            invoice_id: invoiceId,
-            invoice_number: invoice.invoice_number,
-            payment_url: paymentUrl,
-            payment_provider: paymentProvider,
-            message: 'Redirigiendo al pago...'
-          } 
+          data: responseData
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )

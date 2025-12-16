@@ -118,6 +118,72 @@ async function verifyPayPalWebhook(
   }
 }
 
+/**
+ * Check if company has Verifactu enabled and emit invoice to AEAT
+ */
+async function tryEmitToVerifactu(supabase: any, invoiceId: string, companyId: string): Promise<void> {
+  try {
+    // Check if company has Verifactu enabled
+    const { data: settings } = await supabase
+      .from("verifactu_settings")
+      .select("is_active, auto_emit")
+      .eq("company_id", companyId)
+      .single();
+
+    if (!settings?.is_active || !settings?.auto_emit) {
+      console.log("[paypal-webhook] Verifactu not enabled or auto_emit off for company:", companyId);
+      return;
+    }
+
+    // Check if invoice already has verifactu event
+    const { data: existingEvent } = await supabase
+      .from("verifactu.events")
+      .select("id")
+      .eq("invoice_id", invoiceId)
+      .eq("event_type", "alta")
+      .single();
+
+    if (existingEvent) {
+      console.log("[paypal-webhook] Verifactu event already exists for invoice:", invoiceId);
+      return;
+    }
+
+    // Get invoice data for verifactu
+    const { data: invoice, error: invoiceError } = await supabase
+      .from("invoices")
+      .select("*, invoice_items(*)")
+      .eq("id", invoiceId)
+      .single();
+
+    if (invoiceError || !invoice) {
+      console.error("[paypal-webhook] Error getting invoice for verifactu:", invoiceError);
+      return;
+    }
+
+    // Check if invoice state allows emission
+    if (invoice.state !== 'final') {
+      await supabase.from("invoices").update({ state: 'final' }).eq("id", invoiceId);
+    }
+
+    // Call finalize_invoice to create verifactu event
+    const { error: finalizeError } = await supabase.rpc('finalize_invoice', {
+      p_invoice_id: invoiceId,
+      p_series: invoice.series || 'F',
+      p_device_id: null,
+      p_software_id: null
+    });
+
+    if (finalizeError) {
+      console.error("[paypal-webhook] Error finalizing invoice for verifactu:", finalizeError);
+      return;
+    }
+
+    console.log("[paypal-webhook] Verifactu event created for invoice:", invoiceId);
+  } catch (e) {
+    console.error("[paypal-webhook] Error in tryEmitToVerifactu:", e);
+  }
+}
+
 serve(async (req) => {
   // PayPal webhooks don't need CORS - they come from PayPal servers
   const headers = { "Content-Type": "application/json" };
@@ -220,6 +286,9 @@ serve(async (req) => {
       }).eq("id", invoice.id);
 
       console.log("[paypal-webhook] Payment completed for invoice:", invoice.id);
+
+      // Check if company has Verifactu enabled and emit invoice
+      await tryEmitToVerifactu(supabase, invoice.id, invoice.company_id);
 
     } else if (PAYMENT_FAILED_EVENTS.includes(event.event_type)) {
       await supabase.from("payment_transactions").insert({

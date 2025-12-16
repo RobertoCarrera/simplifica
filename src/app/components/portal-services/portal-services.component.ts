@@ -8,16 +8,21 @@ import { ClientPortalService } from '../../services/client-portal.service';
 import { ToastService } from '../../services/toast.service';
 import { ContractProgressDialogComponent } from '../contract-progress-dialog/contract-progress-dialog.component';
 import { PaymentMethodSelectorComponent, PaymentSelection } from '../payment-method-selector/payment-method-selector.component';
+import { ConfirmModalComponent } from '../confirm-modal/confirm-modal.component';
 
 @Component({
     selector: 'app-portal-services',
     standalone: true,
-    imports: [CommonModule, RouterModule, FormsModule, ContractProgressDialogComponent, PaymentMethodSelectorComponent],
+    imports: [CommonModule, RouterModule, FormsModule, ContractProgressDialogComponent, PaymentMethodSelectorComponent, ConfirmModalComponent],
     template: `
+    <!-- Confirm Modal -->
+    <app-confirm-modal #confirmModal></app-confirm-modal>
+
     <!-- Contract Progress Dialog -->
     <app-contract-progress-dialog 
       #contractDialog
       (closed)="onContractDialogClosed()"
+      (localPaymentSelected)="onLocalPaymentSelectedForContract()"
     ></app-contract-progress-dialog>
 
     <!-- Payment Method Selector -->
@@ -28,7 +33,7 @@ import { PaymentMethodSelectorComponent, PaymentSelection } from '../payment-met
     ></app-payment-method-selector>
 
     <div class="min-h-screen bg-gray-50 dark:bg-slate-900 p-4">
-      <div class="max-w-4xl mx-auto">
+      <div class="max-w-7xl mx-auto">
         <!-- Header -->
         <div class="mb-6">
           <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Mis Servicios</h1>
@@ -184,7 +189,7 @@ import { PaymentMethodSelectorComponent, PaymentSelection } from '../payment-met
             <i class="fas fa-store text-blue-500 mr-2"></i> Catálogo de Servicios
           </h2>
           
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             <div *ngFor="let service of publicServices()" 
               class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-lg transition-all flex flex-col overflow-hidden group/card">
               
@@ -331,6 +336,7 @@ export class PortalServicesComponent implements OnInit {
 
     @ViewChild('contractDialog') contractDialog!: ContractProgressDialogComponent;
     @ViewChild('paymentSelector') paymentSelector!: PaymentMethodSelectorComponent;
+    @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
 
     loading = signal(true);
     services = signal<ContractedService[]>([]);
@@ -340,6 +346,7 @@ export class PortalServicesComponent implements OnInit {
     // State for payment method selection flow
     private pendingContractService: any = null;
     private pendingPaymentData: any = null;
+    private lastCreatedInvoiceId: string | null = null;
 
     ngOnInit(): void {
         this.loadData();
@@ -711,7 +718,18 @@ export class PortalServicesComponent implements OnInit {
 
     async requestService(service: any) {
         const variantName = service.selectedVariant ? ` (${service.selectedVariant.name})` : '';
-        if (!confirm(`¿Solicitar información sobre "${service.name}${variantName}"? Se generará una solicitud de presupuesto.`)) return;
+        const serviceName = `${service.name}${variantName}`;
+        
+        const confirmed = await this.confirmModal.open({
+            title: 'Solicitar Información',
+            message: `¿Solicitar información sobre "${serviceName}"? Se generará una solicitud de presupuesto.`,
+            icon: 'fas fa-question-circle',
+            iconColor: 'blue',
+            confirmText: 'Solicitar',
+            cancelText: 'Cancelar'
+        });
+        
+        if (!confirmed) return;
         
         const { data, error } = await this.portalService.requestService(service.id, service.selectedVariant?.id);
         if (error) {
@@ -723,23 +741,37 @@ export class PortalServicesComponent implements OnInit {
         }
     }
 
-    async contractService(service: any, preferredPaymentMethod?: string) {
+    async contractService(service: any, preferredPaymentMethod?: string, existingInvoiceId?: string) {
         const price = service.displayPrice;
         const variantName = service.selectedVariant ? ` (${service.selectedVariant.name})` : '';
         const serviceName = `${service.name}${variantName}`;
         
         // Only ask for confirmation if not coming from payment method selection
-        if (!preferredPaymentMethod && !confirm(`¿Contratar "${serviceName}" por ${price}€?`)) return;
+        if (!preferredPaymentMethod) {
+            const confirmed = await this.confirmModal.open({
+                title: 'Confirmar Contratación',
+                message: `¿Contratar "${serviceName}" por ${price}€?`,
+                icon: 'fas fa-shopping-cart',
+                iconColor: 'green',
+                confirmText: 'Contratar',
+                cancelText: 'Cancelar',
+                preventCloseOnBackdrop: true
+            });
+            
+            if (!confirmed) return;
+        }
 
         // Start the visual progress dialog
         this.contractDialog.startProcess(serviceName);
 
         try {
             // Call the backend with preferred payment method if provided
+            // Pass existingInvoiceId to avoid duplicate creation
             const { data, error } = await this.portalService.contractService(
                 service.id, 
                 service.selectedVariant?.id,
-                preferredPaymentMethod
+                preferredPaymentMethod,
+                existingInvoiceId
             );
             
             if (error) {
@@ -764,7 +796,9 @@ export class PortalServicesComponent implements OnInit {
                 this.paymentSelector.open(
                     paymentData.total || price,
                     paymentData.invoice_number || '',
-                    paymentData.available_providers || []
+                    paymentData.available_providers || [],
+                    service.isRecurring || false,
+                    service.billingPeriod || ''
                 );
                 return;
             }
@@ -774,13 +808,24 @@ export class PortalServicesComponent implements OnInit {
                 this.contractDialog.nextStep(); // Quote completed
             }
             
-            // Check if invoice was created
-            if (responseData?.invoice_id || !responseData?.fallback) {
+            // Check if invoice was created and store the ID
+            if (responseData?.invoice_id) {
+                this.lastCreatedInvoiceId = responseData.invoice_id;
+                this.contractDialog.nextStep(); // Invoice completed
+            } else if (!responseData?.fallback) {
                 this.contractDialog.nextStep(); // Invoice completed
             }
 
-            // Handle final result
-            if (responseData?.payment_url) {
+            // Handle final result - check for multiple payment options first
+            if (responseData?.payment_options_formatted && responseData.payment_options_formatted.length > 0) {
+                // Multiple payment options available - show them all
+                this.contractDialog.completeSuccess({
+                    success: true,
+                    paymentOptions: responseData.payment_options_formatted,
+                    message: responseData.message || '¡Todo listo! Selecciona tu método de pago preferido.'
+                });
+            } else if (responseData?.payment_url) {
+                // Single payment URL (legacy/fallback)
                 this.contractDialog.completeSuccess({
                     success: true,
                     paymentUrl: responseData.payment_url,
@@ -805,8 +850,11 @@ export class PortalServicesComponent implements OnInit {
     async onPaymentMethodSelected(selection: PaymentSelection) {
         if (!this.pendingContractService) return;
         
-        // Resume contract flow with selected payment method
-        await this.contractService(this.pendingContractService, selection.provider);
+        // Get the existing invoice_id from the pending data to avoid duplicate creation
+        const existingInvoiceId = this.pendingPaymentData?.data?.invoice_id;
+        
+        // Resume contract flow with selected payment method and existing invoice
+        await this.contractService(this.pendingContractService, selection.provider, existingInvoiceId);
         
         // Clear pending state
         this.pendingContractService = null;
@@ -830,6 +878,37 @@ export class PortalServicesComponent implements OnInit {
 
     onContractDialogClosed() {
         // Refresh services list when dialog closes
+        this.loadContractedServices();
+    }
+
+    async onLocalPaymentSelectedForContract() {
+        // When local payment is selected during contract flow
+        // Mark the invoice as pending_local
+        if (this.lastCreatedInvoiceId) {
+            try {
+                await this.portalService.markInvoiceLocalPayment(this.lastCreatedInvoiceId);
+                this.toastService.success(
+                    'Pago en local registrado',
+                    'La empresa será notificada. Coordina el pago directamente con ellos.',
+                    6000
+                );
+            } catch (err: any) {
+                console.error('Error marking local payment:', err);
+                // Still show a positive message since invoice was created
+                this.toastService.info(
+                    'Servicio contratado',
+                    'Puedes coordinar el pago directamente con la empresa.',
+                    6000
+                );
+            }
+        } else {
+            this.toastService.info(
+                'Pago en local seleccionado',
+                'Coordina el pago directamente con la empresa.',
+                6000
+            );
+        }
+        this.lastCreatedInvoiceId = null;
         this.loadContractedServices();
     }
 

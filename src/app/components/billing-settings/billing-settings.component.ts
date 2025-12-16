@@ -6,6 +6,7 @@ import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { PaymentIntegrationsService, PaymentIntegration } from '../../services/payment-integrations.service';
 import { SupabaseModulesService } from '../../services/supabase-modules.service';
+import { SupabaseSettingsService } from '../../services/supabase-settings.service';
 
 @Component({
   selector: 'app-billing-settings',
@@ -19,6 +20,7 @@ export class BillingSettingsComponent implements OnInit {
   private toast = inject(ToastService);
   private paymentService = inject(PaymentIntegrationsService);
   private modulesService = inject(SupabaseModulesService);
+  private settingsService = inject(SupabaseSettingsService);
   private router = inject(Router);
 
   // Authorization check
@@ -45,6 +47,10 @@ export class BillingSettingsComponent implements OnInit {
   hasVerifactuModule = signal(false);
   hasFacturacionModule = signal(false);
 
+  // Company settings for local payment
+  allowLocalPayment = signal(false);
+  savingLocalPayment = signal(false);
+
   // Forms
   paypalForm!: FormGroup;
   stripeForm!: FormGroup;
@@ -58,6 +64,7 @@ export class BillingSettingsComponent implements OnInit {
     this.initForms();
     this.loadIntegrations();
     this.loadModuleStatus();
+    this.loadCompanySettings();
   }
 
   private initForms(): void {
@@ -94,6 +101,44 @@ export class BillingSettingsComponent implements OnInit {
       }
     } catch (e) {
       console.warn('Error loading module status', e);
+    }
+  }
+
+  private async loadCompanySettings(): Promise<void> {
+    try {
+      this.settingsService.getCompanySettings().subscribe({
+        next: (settings) => {
+          if (settings) {
+            this.allowLocalPayment.set(settings.allow_local_payment ?? false);
+          }
+        },
+        error: (e) => {
+          console.warn('Error loading company settings:', e);
+        }
+      });
+    } catch (e) {
+      console.warn('Error loading company settings', e);
+    }
+  }
+
+  async toggleLocalPayment(event: Event): Promise<void> {
+    const checkbox = event.target as HTMLInputElement;
+    const newValue = checkbox.checked;
+
+    this.savingLocalPayment.set(true);
+    try {
+      await this.settingsService.updateCompanySettings({
+        allow_local_payment: newValue
+      }).toPromise();
+      
+      this.allowLocalPayment.set(newValue);
+      this.toast.success('Guardado', newValue ? 'Pago en local activado' : 'Pago en local desactivado');
+    } catch (e: any) {
+      // Revert checkbox on error
+      checkbox.checked = !newValue;
+      this.toast.error('Error', 'No se pudo guardar la configuración');
+    } finally {
+      this.savingLocalPayment.set(false);
     }
   }
 

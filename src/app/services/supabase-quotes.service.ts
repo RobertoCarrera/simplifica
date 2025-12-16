@@ -499,6 +499,36 @@ export class SupabaseQuotesService {
   }
 
   /**
+   * Aceptar solicitud del cliente
+   * 1. Cambia el estado de 'request' a 'draft' 
+   * 2. Si la política de conversión es automática, aplica finalizeQuote para enviar
+   * 3. Si es manual, se queda en draft para gestión manual
+   */
+  acceptRequest(id: string): Observable<{ quote: Quote; autoFinalized: boolean }> {
+    return from(this.executeAcceptRequest(id));
+  }
+
+  private async executeAcceptRequest(id: string): Promise<{ quote: Quote; autoFinalized: boolean }> {
+    const companyId = this.authService.companyId();
+    
+    // First, change status to DRAFT
+    await this.executeUpdateQuote(id, { status: QuoteStatus.DRAFT });
+    
+    // Check company policy
+    const settings = await this.settingsService.getEffectiveQuoteSettings(companyId);
+    
+    if (settings.autoConvertOnClientAccept) {
+      // Automatic policy: finalize the quote (will send or set to pending based on autoSendEmail)
+      const finalQuote = await this.executeFinalizeQuote(id);
+      return { quote: finalQuote, autoFinalized: true };
+    } else {
+      // Manual policy: leave in draft for admin to manage
+      const quote = await this.executeGetQuote(id);
+      return { quote, autoFinalized: false };
+    }
+  }
+
+  /**
    * Finalizar presupuesto (Generar)
    * Aplica la configuración de auto-envío:
    * - Si auto-envío ON: Envía email y marca como SENT

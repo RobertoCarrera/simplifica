@@ -18,6 +18,7 @@ export interface AppSettings {
   default_irpf_enabled?: boolean | null;
   default_irpf_rate?: number | null; // e.g., 7, 15
   default_auto_send_quote_email?: boolean | null;
+  default_auto_convert_on_client_accept?: boolean | null; // Auto-finalize when client accepts request
   updated_at?: string;
 }
 
@@ -36,8 +37,10 @@ export interface CompanySettings {
   irpf_enabled?: boolean | null;
   irpf_rate?: number | null; // e.g., 7, 15
   auto_send_quote_email?: boolean | null;
+  auto_convert_on_client_accept?: boolean | null; // Auto-finalize when client accepts request
   allow_direct_contracting?: boolean | null; // New automation setting
   copy_features_between_variants?: boolean | null; // New automation setting
+  allow_local_payment?: boolean | null; // Allow clients to select "pay in person/cash" option
   updated_at?: string;
 }
 
@@ -223,6 +226,7 @@ export class SupabaseSettingsService {
    */
   async getEffectiveQuoteSettings(companyId?: string): Promise<{
     autoSendEmail: boolean;
+    autoConvertOnClientAccept: boolean;
   }> {
     const appSettings = await this.executeGetAppSettings();
     const companySettings = await this.executeGetCompanySettings(companyId);
@@ -231,12 +235,14 @@ export class SupabaseSettingsService {
 
     if (enforceGlobally) {
       return {
-        autoSendEmail: appSettings?.default_auto_send_quote_email ?? false
+        autoSendEmail: appSettings?.default_auto_send_quote_email ?? false,
+        autoConvertOnClientAccept: appSettings?.default_auto_convert_on_client_accept ?? true
       };
     }
 
     return {
-      autoSendEmail: companySettings?.auto_send_quote_email ?? appSettings?.default_auto_send_quote_email ?? false
+      autoSendEmail: companySettings?.auto_send_quote_email ?? appSettings?.default_auto_send_quote_email ?? false,
+      autoConvertOnClientAccept: companySettings?.auto_convert_on_client_accept ?? appSettings?.default_auto_convert_on_client_accept ?? true
     };
   }
 }

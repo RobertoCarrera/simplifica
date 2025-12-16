@@ -346,6 +346,13 @@
 
 .accordion-section {
   border-bottom: 1px solid #e5e7eb;
+  position: relative;
+  z-index: 1;
+  background: white;
+
+  @media (prefers-color-scheme: dark) {
+    background: #1e293b;
+  }
 
   &:last-child {
     border-bottom: none;
@@ -423,9 +430,15 @@
   transition: max-height 0.3s ease, padding 0.3s ease;
   background: white;
   padding: 0 20px;
+  position: relative;
+  z-index: 10;
+
+  @media (prefers-color-scheme: dark) {
+    background: #1e293b;
+  }
 
   &.expanded {
-    max-height: 2000px;
+    max-height: none;
     padding: 0 20px 20px 20px;
     overflow: visible;
   }

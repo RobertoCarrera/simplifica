@@ -70,7 +70,16 @@
           Editar presupuesto
         </button>
         }
-        @if (conversionPolicy() !== 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'request' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
+        @if (quote()!.status === 'request') {
+        <button (click)="acceptRequest(); closeMobileMenu()"
+          class="w-full text-left px-4 py-3 text-sm text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 flex items-center gap-3">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Aceptar Solicitud
+        </button>
+        }
+        @if (conversionPolicy() !== 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
         <button (click)="markAsAccepted(); closeMobileMenu()"
           class="w-full text-left px-4 py-3 text-sm text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20 flex items-center gap-3">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,7 +160,16 @@
           Editar
         </button>
         }
-        @if (conversionPolicy() !== 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'request' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
+        @if (quote()!.status === 'request') {
+        <button (click)="acceptRequest()"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Aceptar Solicitud
+        </button>
+        }
+        @if (conversionPolicy() !== 'automatic' && (quote()!.status === 'draft' || quote()!.status === 'pending' || quote()!.status === 'sent' || quote()!.status === 'viewed')) {
         <button (click)="markAsAccepted()"
           class="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -717,7 +735,20 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
           <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4">Cambiar Estado</h3>
           <div class="space-y-3">
-            @if (quote()!.status === 'draft' || quote()!.status === 'request' || quote()!.status === 'pending') {
+            <!-- Botón específico para aceptar solicitud del cliente -->
+            @if (quote()!.status === 'request') {
+            <button (click)="acceptRequest()"
+              class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              Aceptar Solicitud
+            </button>
+            <p class="text-xs text-gray-500 dark:text-gray-400 text-center -mt-1">
+              Al aceptar, el cliente podrá responder a este presupuesto
+            </p>
+            }
+            @if (quote()!.status === 'draft' || quote()!.status === 'pending') {
             <button (click)="finalizeQuote()"
               class="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

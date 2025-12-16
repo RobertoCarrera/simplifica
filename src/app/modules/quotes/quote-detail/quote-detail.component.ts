@@ -157,6 +157,28 @@ export class QuoteDetailComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Aceptar solicitud del cliente
+   * Convierte el presupuesto de estado 'request' a 'draft'
+   * Si la política es automática, se envía automáticamente al cliente
+   */
+  acceptRequest() {
+    const q = this.quote();
+    if (q && q.status === QuoteStatus.REQUEST) {
+      this.quotesService.acceptRequest(q.id).subscribe({
+        next: (result) => {
+          this.loadQuote(q.id);
+          if (result.autoFinalized) {
+            this.toastService.success('Solicitud aceptada', 'El presupuesto ha sido procesado y enviado al cliente automáticamente');
+          } else {
+            this.toastService.success('Solicitud aceptada', 'El presupuesto está ahora en borrador. Puedes editarlo y enviarlo manualmente.');
+          }
+        },
+        error: (err) => this.error.set('Error: ' + err.message)
+      });
+    }
+  }
+
   markAsSent() {
     const q = this.quote();
     if (q) {

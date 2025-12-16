@@ -40,6 +40,15 @@ export interface ClientPortalInvoice {
   due_date?: string | null;
   total: number;
   currency?: string | null;
+  // Payment fields
+  payment_status?: 'none' | 'pending' | 'paid' | string | null;
+  payment_link_token?: string | null;
+  payment_link_expires_at?: string | null;
+  payment_link_provider?: string | null;
+  pending_payment_url?: string | null;
+  // Dual payment support
+  stripe_payment_url?: string | null;
+  paypal_payment_url?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -197,12 +206,13 @@ export class ClientPortalService {
     }
   }
 
-  async contractService(serviceId: string, variantId?: string, preferredPaymentMethod?: string): Promise<{ data: any; error?: any }> {
+  async contractService(serviceId: string, variantId?: string, preferredPaymentMethod?: string, existingInvoiceId?: string): Promise<{ data: any; error?: any }> {
     // Call edge function to create quote, accept, invoice and pay
+    // If existingInvoiceId is provided, skip quote/invoice creation and just generate payment link
     try {
       const token = await this.requireAccessToken();
       const { data, error } = await this.supabase.functions.invoke('client-request-service', {
-        body: { serviceId, variantId, action: 'contract', preferredPaymentMethod },
+        body: { serviceId, variantId, action: 'contract', preferredPaymentMethod, existingInvoiceId },
         headers: { Authorization: `Bearer ${token}` }
       });
       return { data, error };
@@ -455,6 +465,42 @@ export class ClientPortalService {
       return data || { success: false, error: 'Sin respuesta de la función' };
     } catch (err: any) {
       return { success: false, error: err.message || 'Error al enviar invitación' };
+    }
+  }
+
+  /**
+   * Get payment information for an invoice using its payment link token
+   */
+  async getPaymentInfo(paymentToken: string): Promise<any> {
+    try {
+      const { data, error } = await this.supabase.functions.invoke('public-payment-info', {
+        body: { token: paymentToken }
+      });
+      if (error) throw error;
+      return data;
+    } catch (e: any) {
+      console.error('Error getting payment info:', e);
+      throw e;
+    }
+  }
+
+  /**
+   * Mark an invoice as pending local payment (cash/in-person)
+   */
+  async markInvoiceLocalPayment(invoiceId: string): Promise<void> {
+    try {
+      const token = await this.requireAccessToken();
+      const { error } = await this.supabase.functions.invoke('client-invoices', {
+        body: { 
+          id: invoiceId,
+          action: 'mark_local_payment'
+        },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (error) throw error;
+    } catch (e: any) {
+      console.error('Error marking local payment:', e);
+      throw e;
     }
   }
 }

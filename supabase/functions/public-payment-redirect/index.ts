@@ -170,7 +170,7 @@ serve(async (req: Request) => {
     }
 
     const body = await req.json();
-    const { token } = body;
+    const { token, provider: requestedProvider } = body;
 
     if (!token) {
       return new Response(
@@ -225,9 +225,40 @@ serve(async (req: Request) => {
       );
     }
 
-    const provider = invoice.payment_link_provider || "paypal";
+    // Use requested provider or fall back to invoice's configured provider
+    const provider = requestedProvider || invoice.payment_link_provider || "paypal";
 
-    // Get payment integration
+    // Handle local/cash payment specially
+    if (provider === "local") {
+      // Update invoice to indicate local payment was selected
+      const { error: updateError } = await supabase
+        .from("invoices")
+        .update({
+          payment_status: "pending_local",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", invoice.id);
+
+      if (updateError) {
+        console.error("[public-payment-redirect] Error updating invoice for local payment:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Error al procesar la solicitud de pago" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Return success without redirect URL for local payment
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: "Tu solicitud de pago en efectivo ha sido registrada. El negocio se pondrá en contacto contigo para coordinar el pago.",
+          payment_method: "local"
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get payment integration for online providers (PayPal, Stripe)
     const { data: integration, error: integrationError } = await supabase
       .from("payment_integrations")
       .select("*")

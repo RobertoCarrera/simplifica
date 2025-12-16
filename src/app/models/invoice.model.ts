@@ -100,10 +100,16 @@ export interface Invoice {
   gdpr_legal_basis: string;
 
   // Online Payment
-  payment_status?: 'pending' | 'partial' | 'paid' | 'refunded' | 'cancelled';
+  payment_status?: 'pending' | 'pending_local' | 'partial' | 'paid' | 'refunded' | 'cancelled';
   payment_link_token?: string;
   payment_link_expires_at?: string;
   payment_link_provider?: 'paypal' | 'stripe';
+  
+  // Dual payment support (Stripe + PayPal)
+  stripe_payment_url?: string;
+  stripe_payment_token?: string;
+  paypal_payment_url?: string;
+  paypal_payment_token?: string;
 
   // Recurring invoices (from recurring quotes)
   is_recurring?: boolean;

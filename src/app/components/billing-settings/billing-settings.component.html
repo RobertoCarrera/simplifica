@@ -3,10 +3,10 @@
   <div class="flex items-center justify-between mb-6">
     <div>
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-        Configuración de Facturación
+        Configuración de Pagos
       </h1>
       <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-        Configura las integraciones de pago y opciones de facturación
+        Configura las integraciones de pago y opciones de cobro
       </p>
     </div>
     <button 
@@ -184,6 +184,28 @@
                       }
                     </span>
                   </div>
+                </div>
+              </div>
+
+              <!-- Local Payment Option -->
+              <div class="mt-4 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+                      <i class="fas fa-money-bill-wave text-amber-600 dark:text-amber-400"></i>
+                    </div>
+                    <div>
+                      <h4 class="font-medium text-gray-900 dark:text-gray-100">Pago en Local / Efectivo</h4>
+                      <p class="text-sm text-gray-500">Permite a los clientes marcar el pago como "en local" para gestión manual</p>
+                    </div>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" 
+                           [checked]="allowLocalPayment()" 
+                           (change)="toggleLocalPayment($event)" 
+                           class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                  </label>
                 </div>
               </div>
             </div>

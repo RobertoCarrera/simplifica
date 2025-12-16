@@ -9,7 +9,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
 serve(async (req: Request) => {
@@ -19,17 +19,31 @@ serve(async (req: Request) => {
   }
 
   try {
-    // Only allow GET
-    if (req.method !== "GET") {
+    // Allow GET and POST
+    if (req.method !== "GET" && req.method !== "POST") {
       return new Response(
         JSON.stringify({ error: "Method not allowed" }),
         { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Get token from query params
-    const url = new URL(req.url);
-    const token = url.searchParams.get("token");
+    // Get token from query params (GET) or body (POST)
+    let token: string | null = null;
+    
+    if (req.method === "GET") {
+      const url = new URL(req.url);
+      token = url.searchParams.get("token");
+    } else {
+      // POST - get from body
+      try {
+        const body = await req.json();
+        token = body.token || null;
+      } catch {
+        // If body parsing fails, try query params as fallback
+        const url = new URL(req.url);
+        token = url.searchParams.get("token");
+      }
+    }
 
     if (!token) {
       return new Response(
@@ -103,34 +117,74 @@ serve(async (req: Request) => {
       ? new Date(invoice.payment_link_expires_at) < new Date()
       : false;
 
-    // Get payment URL from payment integrations
-    let paymentUrl = "";
-    const provider = invoice.payment_link_provider || "paypal";
+    // Get company settings for local payment option
+    const { data: companySettings } = await supabase
+      .from("company_settings")
+      .select("allow_local_payment")
+      .eq("company_id", invoice.company_id)
+      .maybeSingle();
 
-    // If not expired and not paid, we need to get/regenerate payment URL
-    if (!isExpired && invoice.payment_status !== "paid") {
-      const { data: integration, error: integrationError } = await supabase
-        .from("payment_integrations")
-        .select("*")
-        .eq("company_id", invoice.company_id)
-        .eq("provider", provider)
-        .eq("is_active", true)
-        .single();
+    const allowLocalPayment = companySettings?.allow_local_payment ?? false;
 
-      if (!integrationError && integration) {
-        // For now, we store the payment URL when generating the link
-        // In a real implementation, you might regenerate or verify the URL here
-        // The payment URL should be stored or we regenerate it
-        
-        // Check if we have a cached payment URL (could be stored in a separate table or cache)
-        // For simplicity, we'll construct the public payment page URL
-        const publicPaymentPageUrl = `${Deno.env.get("PUBLIC_SITE_URL") || supabaseUrl.replace('.supabase.co', '.vercel.app')}/pago/${token}`;
-        
-        // The actual redirect URL to PayPal/Stripe should be fetched when user clicks "Pay"
-        // For now, we'll regenerate it on demand
-        paymentUrl = publicPaymentPageUrl; // This will be overridden by actual provider URL
-      }
+    // Get ALL active payment integrations for this company
+    const { data: integrations } = await supabase
+      .from("payment_integrations")
+      .select("provider, is_active, is_sandbox")
+      .eq("company_id", invoice.company_id)
+      .eq("is_active", true);
+
+    // Build available payment options
+    interface PaymentOption {
+      provider: string;
+      label: string;
+      icon: string;
+      iconClass: string;
+      buttonClass: string;
+      available: boolean;
     }
+    
+    const paymentOptions: PaymentOption[] = [];
+
+    // Check for Stripe
+    const stripeIntegration = integrations?.find(i => i.provider === 'stripe');
+    if (stripeIntegration) {
+      paymentOptions.push({
+        provider: 'stripe',
+        label: 'Pagar con Tarjeta (Stripe)',
+        icon: 'fab fa-stripe',
+        iconClass: 'text-white',
+        buttonClass: 'bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white',
+        available: true,
+      });
+    }
+
+    // Check for PayPal
+    const paypalIntegration = integrations?.find(i => i.provider === 'paypal');
+    if (paypalIntegration) {
+      paymentOptions.push({
+        provider: 'paypal',
+        label: 'Pagar con PayPal',
+        icon: 'fab fa-paypal',
+        iconClass: 'text-white',
+        buttonClass: 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white',
+        available: true,
+      });
+    }
+
+    // Check for local payment option
+    if (allowLocalPayment) {
+      paymentOptions.push({
+        provider: 'local',
+        label: 'Pagar en Local / Efectivo',
+        icon: 'fas fa-money-bill-wave',
+        iconClass: 'text-white',
+        buttonClass: 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white',
+        available: true,
+      });
+    }
+
+    // Fallback provider for backwards compatibility
+    const provider = invoice.payment_link_provider || (paypalIntegration ? "paypal" : stripeIntegration ? "stripe" : "local");
 
     // Return public payment info (no sensitive data)
     const response = {
@@ -153,10 +207,11 @@ serve(async (req: Request) => {
       },
       payment: {
         provider: provider,
-        payment_url: paymentUrl,
+        payment_url: "", // Generated on demand
         expires_at: invoice.payment_link_expires_at,
         is_expired: isExpired,
       },
+      payment_options: paymentOptions,
     };
 
     return new Response(

@@ -161,8 +161,8 @@ import { ToastService } from '../../services/toast.service';
                 </div>
               </div>
 
-              <!-- Already responded message -->
-              <div *ngIf="!canRespond() && quote()?.status !== 'draft' && quote()?.effective_convert_policy !== 'manual'" 
+              <!-- Already responded message (not shown for request status - hasn't been sent yet) -->
+              <div *ngIf="!canRespond() && quote()?.status !== 'draft' && quote()?.status !== 'request' && quote()?.effective_convert_policy !== 'manual'" 
                    class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
                 <span class="text-sm text-gray-600 dark:text-gray-400">
                   Ya has respondido a este presupuesto
@@ -340,6 +340,7 @@ export class PortalQuoteDetailComponent implements OnInit {
   statusLabel(status?: string | null): string {
     const labels: Record<string, string> = {
       draft: 'Borrador',
+      request: 'Solicitud',
       pending: 'Pendiente',
       sent: 'Enviado',
       viewed: 'Visto',
@@ -356,6 +357,7 @@ export class PortalQuoteDetailComponent implements OnInit {
     const base = 'text-xs';
     const map: Record<string, string> = {
       draft: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+      request: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
       pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
       sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
       viewed: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',

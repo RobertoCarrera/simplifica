@@ -93,8 +93,9 @@ serve(async (req) => {
 
     if (!clientId) return new Response(JSON.stringify({ data: [] }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
 
-    // Read requested id
+    // Read requested id and action
     let requestedId: string | null = null;
+    let action: string | null = null;
     try {
       if (req.method === 'GET') {
         const u = new URL(req.url);
@@ -102,30 +103,108 @@ serve(async (req) => {
       } else if (req.method === 'POST') {
         const body = await req.json().catch(()=>({}));
         if (body && typeof body.id === 'string') requestedId = body.id;
+        if (body && typeof body.action === 'string') action = body.action;
       }
     } catch(_) {}
+
+    // Handle mark_local_payment action
+    if (action === 'mark_local_payment' && requestedId) {
+      // Verify the invoice belongs to this client
+      const { data: invoice, error: invError } = await admin
+        .from('invoices')
+        .select('id, client_id, company_id, payment_status')
+        .eq('id', requestedId)
+        .eq('client_id', clientId)
+        .eq('company_id', appUser.company_id)
+        .single();
+      
+      if (invError || !invoice) {
+        return new Response(JSON.stringify({ error: 'Invoice not found or access denied' }), { status:404, headers:{...headers,'Content-Type':'application/json'}});
+      }
+      
+      if (invoice.payment_status === 'paid') {
+        return new Response(JSON.stringify({ error: 'Invoice is already paid' }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
+      }
+      
+      // Update invoice to pending_local status
+      const { error: updateError } = await admin
+        .from('invoices')
+        .update({ 
+          payment_status: 'pending_local',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestedId);
+      
+      if (updateError) {
+        return new Response(JSON.stringify({ error: updateError.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
+      }
+      
+      return new Response(JSON.stringify({ success: true, message: 'Invoice marked for local payment' }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
+    }
 
     if (requestedId) {
       const { data, error } = await admin
         .from('invoices')
-        .select('id, company_id, client_id, full_invoice_number, invoice_series, invoice_number, status, invoice_date, due_date, total, currency, items:invoice_items(id,line_order,description,quantity,unit_price,tax_rate,total)')
+        .select('id, company_id, client_id, full_invoice_number, invoice_series, invoice_number, status, payment_status, payment_link_token, payment_link_expires_at, stripe_payment_url, paypal_payment_url, invoice_date, due_date, total, currency, items:invoice_items(id,line_order,description,quantity,unit_price,tax_rate,total)')
         .eq('company_id', appUser.company_id)
         .eq('client_id', clientId)
         .eq('id', requestedId)
         .single();
       if (error) return new Response(JSON.stringify({ error: error.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
-      return new Response(JSON.stringify({ data }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
+      
+      // Add payment URLs if payment is pending
+      let paymentUrl: string | null = null;
+      
+      if (data && data.payment_status !== 'paid') {
+        const expiresAt = new Date(data.payment_link_expires_at);
+        if (expiresAt > new Date()) {
+          const PUBLIC_SITE_URL = Deno.env.get("PUBLIC_SITE_URL") || "https://simplifica.digitalizamostupyme.es";
+          
+          // Use payment_link_token to generate URL
+          if (data.payment_link_token) {
+            paymentUrl = `${PUBLIC_SITE_URL}/pago/${data.payment_link_token}`;
+          }
+        }
+      }
+      
+      return new Response(JSON.stringify({ 
+        data: { 
+          ...data, 
+          pending_payment_url: paymentUrl
+        } 
+      }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
     }
 
     const { data, error } = await admin
       .from('invoices')
-      .select('id, company_id, client_id, full_invoice_number, invoice_series, invoice_number, status, invoice_date, total, currency')
+      .select('id, company_id, client_id, full_invoice_number, invoice_series, invoice_number, status, payment_status, payment_link_token, payment_link_expires_at, stripe_payment_url, paypal_payment_url, invoice_date, total, currency')
       .eq('company_id', appUser.company_id)
       .eq('client_id', clientId)
       .order('invoice_date', { ascending: false });
     if (error) return new Response(JSON.stringify({ error: error.message }), { status:400, headers:{...headers,'Content-Type':'application/json'}});
+    
+    // Add payment URLs to invoices with pending payments
+    const PUBLIC_SITE_URL = Deno.env.get("PUBLIC_SITE_URL") || "https://simplifica.digitalizamostupyme.es";
+    const now = new Date();
+    const enrichedData = (data || []).map(inv => {
+      let pending_payment_url = null;
+      
+      if (inv.payment_status !== 'paid') {
+        const expiresAt = new Date(inv.payment_link_expires_at);
+        if (expiresAt > now) {
+          // Use payment_link_token to generate URL
+          if (inv.payment_link_token) {
+            pending_payment_url = `${PUBLIC_SITE_URL}/pago/${inv.payment_link_token}`;
+          }
+        }
+      }
+      return { 
+        ...inv, 
+        pending_payment_url
+      };
+    });
 
-    return new Response(JSON.stringify({ data: data || [] }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
+    return new Response(JSON.stringify({ data: enrichedData }), { status:200, headers:{...headers,'Content-Type':'application/json'}});
   }catch(e){
     return new Response(JSON.stringify({ error: e?.message || String(e) }), { status:500, headers:{...headers,'Content-Type':'application/json'}});
   }
