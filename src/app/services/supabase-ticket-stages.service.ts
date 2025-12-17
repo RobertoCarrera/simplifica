@@ -514,7 +514,8 @@ export class SupabaseTicketStagesService {
         return { data: null, error: efJson?.error || efJson };
       }
       const genericWithFlags: TicketStage[] = Array.isArray(efJson?.stages) ? efJson.stages : [];
-      const visibleGenerics = genericWithFlags.filter(s => !s.is_hidden);
+      // Force 'Recibido' to be visible to address user issue, otherwise respect is_hidden
+      const visibleGenerics = genericWithFlags.filter(s => !s.is_hidden || s.name === 'Recibido');
 
       // 2) Obtener estados específicos de empresa
       const { data: companyStages, error: compErr } = await this.supabase

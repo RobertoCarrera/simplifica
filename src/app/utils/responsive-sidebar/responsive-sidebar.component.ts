@@ -44,6 +44,29 @@ interface MenuItem {
 export class ResponsiveSidebarComponent implements OnInit {
   pwaService = inject(PWAService);
   sidebarState = inject(SidebarStateService);
+
+  // Tooltip interaction state
+  hoveredItem: any = null;
+  tooltipStyle: { top: string; left: string } = { top: '0px', left: '0px' };
+
+  onMouseEnter(event: MouseEvent, item: any) {
+    if (!this.isCollapsed()) return;
+
+    // Calculate position based on the target element
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+
+    // Position fixed logic
+    this.tooltipStyle = {
+      top: `${rect.top + (rect.height / 2)}px`,
+      left: `${rect.right + 10}px` // 10px offset
+    };
+    this.hoveredItem = item;
+  }
+
+  onMouseLeave() {
+    this.hoveredItem = null;
+  }
   private router = inject(Router);
   private devRoleService = inject(DevRoleService);
   authService = inject(AuthService); // público para template
@@ -64,8 +87,8 @@ export class ResponsiveSidebarComponent implements OnInit {
   // All menu items (productivos, visibles también en desarrollo)
   // Lucide icons para el template
   readonly icons = {
-    Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, 
-    Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, 
+    Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp,
+    Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft,
     ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack
   };
 
@@ -202,16 +225,16 @@ export class ResponsiveSidebarComponent implements OnInit {
         }
         return true;
       }
-      
+
       // Production modules: requieren verificación de módulos; si aún no cargaron, ocultar
       if (item.module === 'production') {
         if (!allowed) return false; // ocultar hasta tener decisión
         return this.isMenuItemAllowedByModules(item, allowed);
       }
-      
-  // Development modules only for admin (o señal dev explícita)
-  if (item.module === 'development') return isAdmin || isDev;
-      
+
+      // Development modules only for admin (o señal dev explícita)
+      if (item.module === 'development') return isAdmin || isDev;
+
       return false;
     });
   });

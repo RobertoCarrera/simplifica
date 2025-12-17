@@ -18,13 +18,15 @@
 
 :host(.collapsed) {
   @media (min-width: 768px) {
-    width: 4rem !important; /* 64px = w-16 */
+    width: 4rem !important;
+    /* 64px = w-16 */
   }
 }
 
 :host(.expanded) {
   @media (min-width: 768px) {
-    width: 16rem !important; /* 256px = w-64 */
+    width: 16rem !important;
+    /* 256px = w-64 */
   }
 }
 
@@ -41,9 +43,16 @@
   }
 }
 
-/* Prevent horizontal scroll from long labels when collapsed */
+/* Allow tooltips to show outside the nav when collapsed */
 :host(.collapsed) nav {
+  /* Reverting overflow visible as it causes artifacts. Tooltips handled via JS now. */
   overflow-x: hidden !important;
+}
+
+/* Inner wrapper for scrolling when collapsed (if needed) */
+:host(.collapsed) nav>div {
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
 }
 
 /* Truncate labels and hide them visually when collapsed */
@@ -57,7 +66,8 @@
 
 /* Ensure collapsed items have reduced padding so no overflow */
 :host(.collapsed) a {
-  padding-left: 0.5rem !important; /* px-2 */
+  padding-left: 0.5rem !important;
+  /* px-2 */
   padding-right: 0.5rem !important;
 }
 
@@ -72,8 +82,9 @@
 
 /* Make sure the expand button is visible outside the sidebar edge */
 .sidebar-expand-btn {
-  right: -12px; /* nudge outside the sidebar */
+  right: -12px;
+  /* nudge outside the sidebar */
   top: 50px;
-  box-shadow: 0 6px 16px rgba(15,23,42,0.12);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
   z-index: 1100;
 }

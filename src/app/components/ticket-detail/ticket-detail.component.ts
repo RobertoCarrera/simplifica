@@ -37,9 +37,9 @@ import Placeholder from '@tiptap/extension-placeholder';
         <!-- Header con navegación -->
         <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 mb-6">
           <div class="flex flex-col sm:flex-row sm:justify-between gap-3">
-            <!-- Fila 1: Botón Atrás (ancho completo en móvil) -->
+            <!-- Botón Atrás -->
             <button (click)="goBack()" 
-                    class="btn btn-secondary text-sm w-full sm:w-auto sm:self-start">
+                    class="btn btn-secondary text-sm">
               <i class="fas fa-arrow-left mr-2"></i>
               <span>Atrás</span>
             </button>
@@ -110,7 +110,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                       </p>
                     </div>
                   </div>
-                  <div class="prose prose-sm prose-gray text-gray-600 dark:text-gray-300 mt-4 ml-0 sm:ml-1" [innerHTML]="formatDescription(ticket.description)"></div>
+                  <div class="mt-4 ml-0 sm:ml-1 text-gray-800 dark:text-gray-200 text-sm leading-relaxed" [innerHTML]="formatDescription(ticket.description)"></div>
                 </div>
                 <div class="flex flex-row lg:flex-col items-center lg:items-end gap-2 sm:gap-3">
                   <span [class]="getPriorityClasses(ticket.priority)"
@@ -237,7 +237,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                       </button>
                     </div>
                     <div *ngIf="ticketServices.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
-                      <i class="fas fa-box-open text-5xl mb-4 opacity-50"></i>
+                      <i class="fas fa-wrench text-5xl mb-4 opacity-50"></i>
                       <p class="text-lg">No hay servicios asignados a este ticket</p>
                       <button *ngIf="!isClient()" (click)="openServicesModal()" class="mt-4 btn btn-secondary">
                         <i class="fas fa-plus mr-2"></i>
@@ -294,7 +294,7 @@ import Placeholder from '@tiptap/extension-placeholder';
                       </button>
                     </div>
                     <div *ngIf="ticketProducts.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
-                      <i class="fas fa-box-open text-5xl mb-4 opacity-50"></i>
+                      <i class="fas fa-box text-5xl mb-4 opacity-50"></i>
                       <p class="text-lg">No hay productos asignados a este ticket</p>
                       <button *ngIf="!isClient()" (click)="openProductsModal()" class="mt-4 btn btn-secondary">
                         <i class="fas fa-plus mr-2"></i>
