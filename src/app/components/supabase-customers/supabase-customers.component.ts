@@ -20,7 +20,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ClientPortalService } from '../../services/client-portal.service';
 import { ClientGdprModalComponent } from '../client-gdpr-modal/client-gdpr-modal.component';
-import { ClientDevicesModalComponent } from '../client-devices-modal.component';
+
 import { SupabaseCustomersService as CustomersSvc } from '../../services/supabase-customers.service';
 
 @Component({
@@ -32,9 +32,8 @@ import { SupabaseCustomersService as CustomersSvc } from '../../services/supabas
     SkeletonComponent,
     LoadingComponent,
     CsvHeaderMapperComponent,
-    AppModalComponent,
     ClientGdprModalComponent,
-    ClientDevicesModalComponent
+    AppModalComponent
   ],
   templateUrl: './supabase-customers.component.html',
   styleUrls: ['./supabase-customers.component.scss']

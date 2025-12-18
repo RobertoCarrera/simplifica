@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DevicesService, Device } from '../services/devices.service';
 import { ToastService } from '../services/toast.service';
+import { AiService } from '../services/ai.service';
 
 @Component({
   selector: 'app-client-devices-modal',
@@ -47,6 +48,42 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
   private toastService = inject(ToastService);
   private renderer = inject(Renderer2);
   private router = inject(Router);
+  private aiService = inject(AiService);
+
+  isScanning = false;
+
+  async handleImageUpload(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+
+    const file = input.files[0];
+    this.isScanning = true;
+
+    try {
+      this.toastService.info('Analizando imagen...', 'La IA está procesando el dispositivo');
+      const result = await this.aiService.scanDevice(file);
+
+      // Auto-fill form
+      this.deviceFormData = {
+        ...this.deviceFormData,
+        brand: result.brand || this.deviceFormData.brand,
+        model: result.model || this.deviceFormData.model,
+        device_type: result.device_type || this.deviceFormData.device_type,
+        color: result.color || this.deviceFormData.color,
+        serial_number: result.serial_number || this.deviceFormData.serial_number,
+        imei: result.imei || this.deviceFormData.imei,
+        reported_issue: (result.reported_issue_inference ? `[IA] ${result.reported_issue_inference}\n` : '') + (result.condition ? `Condición: ${result.condition}` : '')
+      };
+
+      this.toastService.success('Análisis completado', 'Datos extraídos correctamente');
+    } catch (error) {
+      console.error('Scan error:', error);
+      this.toastService.error('Error', 'No se pudo analizar la imagen. Verifica tu API Key.');
+    } finally {
+      this.isScanning = false;
+      input.value = ''; // Reset input
+    }
+  }
 
   ngOnInit() {
     this.renderer.setStyle(document.body, 'overflow', 'hidden');

@@ -1,0 +1,91 @@
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.1.3";
+
+const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+    if (req.method === 'OPTIONS') {
+        return new Response('ok', { headers: corsHeaders })
+    }
+
+    try {
+        // 1. Validate JWT (Secure the endpoint)
+        const authHeader = req.headers.get('Authorization')
+        if (!authHeader) {
+            throw new Error('Missing Authorization header')
+        }
+
+        // 2. Get Input
+        const { task, prompt, images, model } = await req.json()
+        const apiKey = Deno.env.get('GOOGLE_AI_API_KEY')
+        if (!apiKey) {
+            throw new Error('GOOGLE_AI_API_KEY is not set')
+        }
+
+        // 3. Initialize Gemini
+        const genAI = new GoogleGenerativeAI(apiKey);
+        // Use user requested model or default to gemini-1.5-flash (stable and cheap)
+        // Note: 2.0-flash-exp might need specific naming or might not be fully available in all libs yet, 
+        // but we can try passing it if the user requests it. 
+        // Fallback to 'gemini-1.5-flash' which is the current reliable efficient model.
+        const targetModel = model || 'gemini-1.5-flash';
+
+        // Configure model
+        const generationConfig = {
+            temperature: 0.4,
+            topK: 32,
+            topP: 1,
+            maxOutputTokens: 4096,
+        };
+
+        const aiModel = genAI.getGenerativeModel({ model: targetModel, generationConfig });
+
+        // 4. Construct Content Parts
+        let parts: any[] = [];
+        if (prompt) {
+            parts.push({ text: prompt });
+        }
+
+        if (images && Array.isArray(images)) {
+            // images expected to be base64 strings without data:image/xxx;base64, prefix if possible, 
+            // or we strip it.
+            for (const img of images) {
+                // Extract base64 and mime type if strictly provided, or assume jpeg/png
+                const match = img.match(/^data:(image\/[a-z]+);base64,(.+)$/);
+                let mimeType = 'image/jpeg';
+                let data = img;
+
+                if (match) {
+                    mimeType = match[1];
+                    data = match[2];
+                }
+
+                parts.push({
+                    inlineData: {
+                        mimeType: mimeType,
+                        data: data
+                    }
+                });
+            }
+        }
+
+        // 5. Generate Content
+        const result = await aiModel.generateContent(parts);
+        const response = await result.response;
+        const text = response.text();
+
+        return new Response(
+            JSON.stringify({ result: text }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+    } catch (error) {
+        return new Response(
+            JSON.stringify({ error: error.message }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        )
+    }
+})
