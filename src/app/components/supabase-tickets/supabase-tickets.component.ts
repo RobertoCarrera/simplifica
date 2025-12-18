@@ -88,6 +88,12 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   showCompleted = false;
   showDeleted = false;
 
+  // Pagination
+  currentPage = 1;
+  pageSize = 50;
+  totalItems = 0;
+  Math = Math; // For use in template
+
   // Custom dropdown states
   stageDropdownOpen = false;
   priorityDropdownOpen = false;
@@ -344,20 +350,23 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
         }
       }
 
-      // Load stages first, then tickets, then attach tags and stats (which depend on tickets)
+      // Load stages first, then tickets (and tags/stats in parallel after tickets)
       await this.loadStages();
-      await this.loadTickets();
-      // Attach tags from ticket_tag_relations to loaded tickets
-      await this.loadTicketTagsForTickets();
-      await this.loadStats(); // Must be after tickets+tags
 
-      // Load other data in parallel
+      // Load tickets and other independent data in parallel
       await Promise.all([
+        this.loadTickets(1),
+        this.loadStats(), // Does not depend on tickets, only company
         this.loadServices(),
         this.loadProducts(),
         this.loadCustomers(),
         this.loadTags()
       ]);
+
+      // Tags depend on loaded tickets, so run after tickets are loaded if needed
+      // But loadTickets already calls loadTicketTagsForTickets internally now if we structure it right
+      // Or we chain it within loadTickets promise
+
 
       this.setupRealtimeSubscription();
 
@@ -418,11 +427,10 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Load in correct order: stages first, then tickets, then attach tags and stats
+    // Load order: stages first, then tickets
     await this.loadStages();
-    await this.loadTickets();
-    await this.loadTicketTagsForTickets();
-    await this.loadStats(); // Must be after loadTickets
+    await this.loadTickets(1);
+    await this.loadStats();
 
     // Load other data in parallel
     await Promise.all([
@@ -434,9 +442,17 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     ]);
   }
 
-  async loadTickets() {
+  // Pagination Handler
+  async onPageChange(page: number) {
+    if (page < 1 || page > Math.ceil(this.totalItems / this.pageSize)) return;
+    this.currentPage = page;
+    await this.loadTickets(page);
+  }
+
+  async loadTickets(page: number = this.currentPage) {
     this.loading = true;
     this.error = null;
+    this.currentPage = page;
 
     if (!this.selectedCompanyId) {
       this.loading = false;
@@ -444,6 +460,8 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     }
 
     try {
+      const from = (page - 1) * this.pageSize;
+      const to = from + this.pageSize - 1;
 
       // Usar UUID directamente, no convertir a número
       let query: any = this.simpleSupabase.getClient()
@@ -453,21 +471,23 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
           client:clients(id, name, email, phone),
           stage:ticket_stages(id, name, color, position, stage_category, workflow_category),
           company:companies(id, name)
-        `);
+        `, { count: 'exact' });
 
       // Exclude deleted by default; include when toggled
       if (!this.showDeleted) {
         query = query.is('deleted_at', null);
       }
-      query = query.order('created_at', { ascending: false });
 
+      // --- Server-Side Filters ---
+
+      // 1. Company Filter
       if (this.isValidUuid(this.selectedCompanyId)) {
         query = query.eq('company_id', this.selectedCompanyId);
       } else {
         console.warn('⚠️ Skipping company_id filter for tickets because selectedCompanyId is invalid:', this.selectedCompanyId);
       }
 
-      // Client portal: filter by client_id so clients only see their own tickets
+      // 2. Client Portal Filter
       if (this.isClient()) {
         const clientId = (this.authService as any).currentProfile?.client_id;
         if (clientId) {
@@ -475,13 +495,40 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
         }
       }
 
-      const { data: tickets, error } = await query;
+      // 3. Stage Filter
+      if (this.filterStage) {
+        query = query.eq('stage_id', this.filterStage);
+      }
+
+      // 4. Search Filter (Title or Ticket Number)
+      if (this.searchTerm && this.searchTerm.trim() !== '') {
+        const term = this.searchTerm.trim();
+        // Use ILIKE for case-insensitive search on title OR ticket_number
+        query = query.or(`title.ilike.%${term}%,ticket_number.ilike.%${term}%`);
+      }
+
+      // 5. Priority Filter (optional)
+      if (this.filterPriority) {
+        query = query.eq('priority', this.filterPriority);
+      }
+
+      // Order and Pagination
+      query = query.order('created_at', { ascending: false })
+        .range(from, to);
+
+      const { data: tickets, error, count } = await query;
 
       if (error) {
         throw new Error(`Error al cargar tickets: ${error.message}`);
       }
 
       this.tickets = tickets || [];
+      this.totalItems = count || 0;
+
+      // Load tags only for the current page tickets
+      await this.loadTicketTagsForTickets();
+
+      // Client-side filtering check (for legacy compatibility or small adjustments)
       this.updateFilteredTickets();
 
     } catch (error) {
@@ -629,8 +676,8 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
 
   async toggleShowDeleted() {
     this.showDeleted = !this.showDeleted;
-    await this.loadTickets();
-    this.updateFilteredTickets();
+    await this.loadTickets(1);
+    this.updateFilteredTickets(); // Redundant but safe
   }
 
   setViewMode(mode: 'list' | 'board') {
@@ -886,59 +933,13 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   }
 
   updateFilteredTickets() {
+    // With server-side pagination, 'tickets' contains only the current page data.
+    // Client-side filtering is now limited to what's loaded.
+    // Major filters (Stage, Search, Priority) are handled server-side in loadTickets().
+
     let filtered = [...this.tickets];
 
-    // Filter by search term
-    if (this.searchTerm.trim()) {
-      const term = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(ticket =>
-        ticket.title.toLowerCase().includes(term) ||
-        ticket.description.toLowerCase().includes(term) ||
-        ticket.ticket_number.toLowerCase().includes(term) ||
-        ticket.client?.name?.toLowerCase().includes(term)
-      );
-    }
-
-    // Filter by stage
-    if (this.filterStage) {
-      filtered = filtered.filter(ticket => ticket.stage_id === this.filterStage);
-    }
-
-    // Filter by priority
-    if (this.filterPriority) {
-      filtered = filtered.filter(ticket => ticket.priority === this.filterPriority);
-    }
-
-    // Filter by status
-    if (this.filterStatus === 'open') {
-      filtered = filtered.filter(t => (t.stage?.workflow_category === 'waiting' || t.stage?.stage_category === 'open'));
-    } else if (this.filterStatus === 'completed') {
-      filtered = filtered.filter(t => (t.stage?.workflow_category === 'final' || t.stage?.workflow_category === 'cancel' || t.stage?.stage_category === 'completed'));
-    } else if (this.filterStatus === 'overdue') {
-      filtered = filtered.filter(ticket =>
-        ticket.due_date && new Date(ticket.due_date) < new Date()
-      );
-    }
-
-    // Hide completed tickets by default unless toggled on
-    // Now ONLY hides 'final' or 'completed' stage category. 'cancel' is handled by showDeleted.
-    if (!this.showCompleted) {
-      filtered = filtered.filter(t => (
-        t.stage?.workflow_category !== 'final' &&
-        t.stage?.stage_category !== 'completed'
-      ));
-    }
-
-    // Hide deleted locally when we fetched all (showDeleted=false)
-    // Now ALSO hides 'cancel' workflow category
-    if (!this.showDeleted) {
-      filtered = filtered.filter(t =>
-        !t.deleted_at &&
-        t.stage?.workflow_category !== 'cancel'
-      );
-    }
-
-    // Filter by tags
+    // Filter by tags (Client-side usage only on current page)
     if (this.filterTags.length > 0) {
       filtered = filtered.filter(ticket => {
         if (!ticket.tags || ticket.tags.length === 0) return false;
@@ -946,6 +947,21 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
           ticket.tags?.includes(filterTag)
         );
       });
+    }
+
+    // Status visual filtering
+    // Note: server loadTickets does not filter by status/workflow category actively for 'open'/'completed' status toggles
+    // unless mapped to stages.
+    if (!this.showCompleted) {
+      filtered = filtered.filter(t => (
+        t.stage?.workflow_category !== 'final' &&
+        t.stage?.stage_category !== 'completed'
+      ));
+    }
+
+    // Additional cleanup for deleted if server didn't catch it (e.g. recent delete)
+    if (!this.showDeleted) {
+      filtered = filtered.filter(t => !t.deleted_at && t.stage?.workflow_category !== 'cancel');
     }
 
     this.filteredTickets = filtered;
@@ -966,11 +982,11 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   }
 
   onSearch() {
-    this.updateFilteredTickets();
+    this.loadTickets(1);
   }
 
   onFilterChange() {
-    this.updateFilteredTickets();
+    this.loadTickets(1);
   }
 
   // Custom dropdown methods
@@ -987,13 +1003,13 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   selectStageFilter(value: string) {
     this.filterStage = value;
     this.stageDropdownOpen = false;
-    this.updateFilteredTickets();
+    this.loadTickets(1);
   }
 
   selectPriorityFilter(value: string) {
     this.filterPriority = value;
     this.priorityDropdownOpen = false;
-    this.updateFilteredTickets();
+    this.loadTickets(1);
   }
 
   getSelectedStageLabel(): string {

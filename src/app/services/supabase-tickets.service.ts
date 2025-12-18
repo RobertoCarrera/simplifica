@@ -132,21 +132,24 @@ export class SupabaseTicketsService {
     console.log('🎫 SupabaseTicketsService initialized');
   }
 
-  async getTickets(companyId?: string): Promise<Ticket[]> {
+  async getTickets(companyId?: string, page: number = 1, pageSize: number = 50): Promise<{ data: Ticket[], count: number }> {
     try {
       const targetCompanyId = companyId || this.currentCompanyId;
-      console.log(`🎫 Getting tickets for company ID: ${targetCompanyId}`);
+      console.log(`🎫 Getting tickets for company ID: ${targetCompanyId} (Page ${page})`);
 
       // Usar tabla tickets existente o crear mock data
-      return this.getTicketsFromDatabase(targetCompanyId);
+      return this.getTicketsFromDatabase(targetCompanyId, page, pageSize);
     } catch (error) {
       console.error('❌ Error getting tickets:', error);
       throw error;
     }
   }
 
-  private async getTicketsFromDatabase(companyId: string): Promise<Ticket[]> {
+  private async getTicketsFromDatabase(companyId: string, page: number, pageSize: number): Promise<{ data: Ticket[], count: number }> {
     try {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
       // Intentar obtener de tabla tickets real
       let query: any = this.supabase.getClient()
         .from('tickets')
@@ -154,9 +157,10 @@ export class SupabaseTicketsService {
           *,
           clients(id, name, email, phone),
           ticket_stages(id, name, color, position)
-        `)
+        `, { count: 'exact' })
         .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
 
       if (this.isValidUuid(companyId)) {
         query = query.eq('company_id', companyId);
@@ -164,20 +168,25 @@ export class SupabaseTicketsService {
         // Invalid or missing companyId: proceed with global/untagged query (no warning to avoid noisy logs)
       }
 
-      const { data: tickets, error } = await query;
+      const { data: tickets, error, count } = await query;
 
       if (error && error.code === '42P01') {
         // Tabla no existe, crear mock data
         console.log('🎫 Tickets table not found, creating mock data...');
-        return this.getMockTickets(companyId);
+        const mocks = this.getMockTickets(companyId);
+        return { data: mocks, count: mocks.length };
       }
 
       if (error) throw error;
 
-      return (tickets || []).map(this.transformTicketData);
+      return {
+        data: (tickets || []).map(this.transformTicketData),
+        count: count || 0
+      };
     } catch (error) {
       console.log('🎫 Using mock data due to database error:', error);
-      return this.getMockTickets(companyId);
+      const mocks = this.getMockTickets(companyId);
+      return { data: mocks, count: mocks.length };
     }
   }
 
@@ -909,7 +918,9 @@ export class SupabaseTicketsService {
   }
 
   async getTicketStats(companyId: string): Promise<TicketStats> {
-    const tickets = await this.getTickets(companyId);
+    // Fetch a large number of tickets to calculate stats accurately (temporary fallback logic)
+    // ideally proper backend aggregation should be used.
+    const { data: tickets } = await this.getTickets(companyId, 1, 10000);
 
     // Filtrar por stage_category en lugar de nombre
     const openTickets = tickets.filter(t => t.stage?.stage_category === 'open').length;
