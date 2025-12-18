@@ -5,11 +5,12 @@ import { Router } from '@angular/router';
 import { DevicesService, Device } from '../services/devices.service';
 import { ToastService } from '../services/toast.service';
 import { AiService } from '../services/ai.service';
+import { CameraCaptureComponent } from './commons/camera-capture/camera-capture.component';
 
 @Component({
   selector: 'app-client-devices-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CameraCaptureComponent],
   templateUrl: './client-devices-modal.component.html',
   styleUrls: ['./client-devices-modal.component.scss']
 })
@@ -51,12 +52,14 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
   private aiService = inject(AiService);
 
   isScanning = false;
+  showCamera = false;
 
-  async handleImageUpload(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.files?.length) return;
+  handleCameraCapture(file: File) {
+    this.showCamera = false;
+    this.processDeviceImage(file);
+  }
 
-    const file = input.files[0];
+  async processDeviceImage(file: File) {
     this.isScanning = true;
 
     try {
@@ -76,13 +79,20 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
       };
 
       this.toastService.success('Análisis completado', 'Datos extraídos correctamente');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Scan error:', error);
       this.toastService.error('Error', 'No se pudo analizar la imagen. Verifica tu API Key.');
     } finally {
       this.isScanning = false;
-      input.value = ''; // Reset input
     }
+  }
+
+  // Legacy method for fallback file input (if we keep it or redirect)
+  async handleImageUpload(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    this.processDeviceImage(input.files[0]);
+    input.value = '';
   }
 
   ngOnInit() {

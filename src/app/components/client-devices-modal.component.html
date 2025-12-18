@@ -326,23 +326,23 @@
                                     </div>
                                     <div>
                                         <h4 class="font-bold text-gray-900 dark:text-gray-100">Escaner automático</h4>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400">Sube una foto del
-                                            dispositivo para detectar datos automáticamente</p>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400">Escanea el dispositivo para
+                                            detectar datos automáticamente</p>
                                     </div>
                                 </div>
 
                                 <div class="relative">
-                                    <input type="file" id="scanInput" accept="image/*"
-                                        (change)="handleImageUpload($event)" class="hidden" [disabled]="isScanning">
-                                    <label for="scanInput"
+                                    <button (click)="showCamera = true"
                                         class="cursor-pointer flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm"
-                                        [class.opacity-50]="isScanning">
+                                        [disabled]="isScanning">
                                         <i class="fas fa-camera"></i>
-                                        <span>{{ isScanning ? 'Analizando...' : 'Escanear Foto' }}</span>
-                                    </label>
+                                        <span>{{ isScanning ? 'Analizando...' : 'Escanear' }}</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
+
+
 
                         <!-- Basic Info -->
                         <div class="space-y-4">
@@ -461,4 +461,8 @@
         </div>
 
     </div>
+
+    <!-- Camera Modal (Full Screen Overlay) -->
+    <app-camera-capture *ngIf="showCamera" (imageCaptured)="handleCameraCapture($event)" (close)="showCamera = false">
+    </app-camera-capture>
 </div>
