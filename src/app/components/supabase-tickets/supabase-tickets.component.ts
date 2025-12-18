@@ -350,18 +350,20 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
         }
       }
 
-      // Load stages first, then tickets (and tags/stats in parallel after tickets)
+      // Load stages first (needed for filters/columns)
       await this.loadStages();
 
-      // Load tickets and other independent data in parallel
-      await Promise.all([
-        this.loadTickets(1),
-        this.loadStats(), // Does not depend on tickets, only company
+      // Load tickets immediately to show data ASAP
+      await this.loadTickets(1);
+
+      // Load auxiliary data in background (non-blocking)
+      Promise.all([
+        this.loadStats(),
         this.loadServices(),
         this.loadProducts(),
         this.loadCustomers(),
         this.loadTags()
-      ]);
+      ]).catch(err => console.warn('Background data load warning:', err));
 
       // Tags depend on loaded tickets, so run after tickets are loaded if needed
       // But loadTickets already calls loadTicketTagsForTickets internally now if we structure it right

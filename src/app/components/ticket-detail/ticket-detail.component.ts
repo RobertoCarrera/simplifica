@@ -2039,19 +2039,14 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         }
       } catch { }
 
-      await this.loadTicketServices();
-
-      // Cargar productos del ticket
-      await this.loadTicketProducts();
-
-      // Cargar tags del ticket
-      await this.loadTicketTags();
-
-      // Cargar dispositivos vinculados
-      await this.loadTicketDevices();
-
-      // Cargar comentarios
-      await this.loadComments();
+      // Parallelize independent data loading
+      await Promise.all([
+        this.loadTicketServices(),
+        this.loadTicketProducts(),
+        this.loadTicketTags(),
+        this.loadTicketDevices(),
+        this.loadComments()
+      ]);
 
       // Cargar estados visibles (genéricos no ocultos + específicos de empresa)
       try {

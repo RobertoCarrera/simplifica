@@ -157,7 +157,9 @@ export class SupabaseTicketsService {
       let query: any = this.supabase.getClient()
         .from('tickets')
         .select(`
-          *,
+          id, ticket_number, title, description, priority, stage_id, client_id, 
+          due_date, estimated_hours, tags, created_at, is_opened, total_amount, 
+          initial_attachment_url,
           clients(id, name, email, phone),
           ticket_stages(id, name, color, position)
         `, { count: 'exact' })
