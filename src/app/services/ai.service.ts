@@ -31,7 +31,7 @@ export class AiService {
      * @param images Base64 strings of images (optional)
      * @param model Model name (optional, defaults to 'gemini-1.5-flash' in backend)
      */
-    async generateContent(prompt: string, images?: string[], model: string = 'gemini-1.5-flash'): Promise<string> {
+    async generateContent(prompt: string, images?: string[], model: string = 'gemini-2.5-flash-lite'): Promise<string> {
         try {
             const { data: { session } } = await this.supabase.auth.getSession();
             if (!session) throw new Error('No active session');
@@ -89,7 +89,7 @@ export class AiService {
       If a field is not visible, use null.
     `;
 
-        const resultText = await this.generateContent(prompt, [base64Image], 'gemini-1.5-flash');
+        const resultText = await this.generateContent(prompt, [base64Image], 'gemini-2.5-flash-lite');
 
         try {
             // Clean up markdown code blocks if the model adds them despite instructions
