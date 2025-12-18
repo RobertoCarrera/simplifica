@@ -7,7 +7,7 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="fixed inset-0 z-[100] bg-black flex flex-col">
+    <div class="fixed inset-0 z-[99999] bg-black flex flex-col">
       <!-- Header -->
       <div class="absolute top-0 left-0 right-0 z-[60] flex justify-between items-center p-4 bg-gradient-to-b from-black/50 to-transparent pointer-events-none">
         <button (click)="close.emit()" class="pointer-events-auto text-white p-3 rounded-full bg-black/20 backdrop-blur-md hover:bg-white/10 transition-colors" title="Cerrar">
