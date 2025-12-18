@@ -170,8 +170,8 @@
     </div>
     }
 
-    <!-- Floating Audio Button -->
-    <button (click)="toggleRecording()" class="fab-button fab-audio" title="Crear por voz"
+    <!-- Floating Audio Button (Only if AI Module enabled) -->
+    <button *ngIf="hasAiModule()" (click)="toggleRecording()" class="fab-button fab-audio" title="Crear por voz"
       [class.recording]="isRecording()" [disabled]="loading() || isProcessingAudio()">
       <i class="fas" [class.fa-microphone]="!isRecording() && !isProcessingAudio()" [class.fa-stop]="isRecording()"
         [class.fa-spinner]="isProcessingAudio()" [class.fa-pulse]="isProcessingAudio()"></i>

@@ -66,6 +66,34 @@ export class AiService {
     }
 
     /**
+     * Log AI usage for analytics
+     */
+    private async logUsage(featureKey: string, savedSeconds: number) {
+        try {
+            const { data: { session } } = await this.supabase.auth.getSession();
+            if (!session) return; // Silent fail if no session
+
+            const { error } = await this.supabase
+                .from('ai_usage_logs')
+                .insert({
+                    company_id: (session.user as any).user_metadata?.company_id || (await this.getCompanyId(session.user.id)),
+                    user_id: session.user.id,
+                    feature_key: featureKey,
+                    saved_seconds: savedSeconds
+                });
+
+            if (error) console.error('Error logging AI usage', error);
+        } catch (e) {
+            console.error('Error in logUsage', e);
+        }
+    }
+
+    private async getCompanyId(userId: string): Promise<string | null> {
+        const { data } = await this.supabase.from('users').select('company_id').eq('id', userId).single();
+        return data?.company_id || null;
+    }
+
+    /**
      * Specialized method to scan a device image and return structured data.
      * Uses Gemini Vision capabilities.
      */
@@ -95,6 +123,10 @@ export class AiService {
         try {
             // Clean up markdown code blocks if the model adds them despite instructions
             const cleanJson = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+            // Log analytics (Estimate: 3 mins saved)
+            this.logUsage('scan_device', 180);
+
             return JSON.parse(cleanJson) as ScanDeviceResult;
         } catch (e) {
             console.error('Failed to parse AI response:', resultText);
@@ -159,6 +191,9 @@ export class AiService {
             if (!validTypes.includes(data.type)) {
                 data.type = 'question'; // default fallback
             }
+
+            // Log analytics (Estimate: 4 mins saved)
+            this.logUsage('audio_ticket', 240);
 
             return data;
         } catch (e) {
@@ -225,6 +260,9 @@ export class AiService {
             // Basic normalization
             if (data.client_type !== 'business') data.client_type = 'individual';
 
+            // Log analytics (Estimate: 4 mins saved)
+            this.logUsage('audio_client', 240);
+
             return data;
         } catch (e) {
             console.error('Failed to parse Client Audio AI response:', resultText);
@@ -262,6 +300,10 @@ export class AiService {
 
         try {
             const cleanJson = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+            // Log analytics (Estimate: 8 mins saved)
+            this.logUsage('audio_quote', 480);
+
             return JSON.parse(cleanJson);
         } catch (e) {
             console.error('Failed to parse Quote Audio AI response:', resultText);

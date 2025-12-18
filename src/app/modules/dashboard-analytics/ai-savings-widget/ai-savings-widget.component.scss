@@ -1,0 +1,130 @@
+@use 'sass:math';
+
+.ai-savings-card {
+    background: var(--surface-card, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 12px;
+    padding: 1.5rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+
+    &.is-potential {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border-color: #bae6fd;
+
+        .icon-wrapper {
+            background: #bae6fd;
+            color: #0284c7;
+        }
+
+        .value {
+            color: #0284c7;
+        }
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+
+        .icon-wrapper {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #fdf2f8;
+            /* pink-50 */
+            color: #db2777;
+            /* pink-600 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .title {
+            font-weight: 600;
+            color: var(--text-primary, #1e293b);
+            font-size: 0.95rem;
+        }
+    }
+
+    .card-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+
+        .metric-container {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+
+            .value {
+                font-size: 2.5rem;
+                font-weight: 700;
+                color: var(--text-primary, #1e293b);
+                line-height: 1;
+            }
+
+            .unit {
+                font-size: 1rem;
+                color: var(--text-secondary, #64748b);
+                font-weight: 500;
+            }
+        }
+
+        .description {
+            font-size: 0.875rem;
+            color: var(--text-secondary, #64748b);
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .action-footer {
+            margin-top: auto;
+            padding-top: 1rem;
+
+            .btn-upgrade {
+                width: 100%;
+                padding: 0.5rem;
+                background: #0ea5e9;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: background 0.2s;
+
+                &:hover {
+                    background: #0284c7;
+                }
+            }
+        }
+    }
+
+    .loading-state {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100px;
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #db2777;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

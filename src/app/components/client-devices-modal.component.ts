@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { DevicesService, Device } from '../services/devices.service';
 import { ToastService } from '../services/toast.service';
 import { AiService } from '../services/ai.service';
+import { SupabaseModulesService } from '../services/supabase-modules.service';
 import { CameraCaptureComponent } from './commons/camera-capture/camera-capture.component';
 
 @Component({
@@ -50,6 +51,9 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
   private renderer = inject(Renderer2);
   private router = inject(Router);
   private aiService = inject(AiService);
+  private modulesService = inject(SupabaseModulesService);
+
+  hasAiModule = false;
 
   isScanning = false;
   showCamera = false;
@@ -97,6 +101,12 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.renderer.setStyle(document.body, 'overflow', 'hidden');
+
+    // Check AI Module
+    this.modulesService.fetchEffectiveModules().subscribe(modules => {
+      this.hasAiModule = modules.some(m => m.key === 'ai' && m.enabled);
+    });
+
     this.loadDevices();
   }
 

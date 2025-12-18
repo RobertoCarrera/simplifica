@@ -8,6 +8,7 @@ import { AnimationService } from '../../services/animation.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
 import { ToastService } from '../../services/toast.service';
 import { SupabaseModulesService } from '../../services/supabase-modules.service';
+import { AiSavingsWidgetComponent } from '../../modules/dashboard-analytics/ai-savings-widget/ai-savings-widget.component';
 
 export type ChartOptions = {
   series: ApexAxisChartSeries;
@@ -27,7 +28,7 @@ export type ChartOptions = {
 @Component({
   selector: 'app-dashboard-analytics',
   standalone: true,
-  imports: [CommonModule, NgApexchartsModule],
+  imports: [CommonModule, NgApexchartsModule, AiSavingsWidgetComponent],
   template: `
     <div class="container-fluid h-full flex flex-col overflow-hidden pb-20 md:pb-8 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
       [attr.data-sidebar-collapsed]="sidebarService.isCollapsed() ? '1' : '0'">
@@ -116,6 +117,11 @@ export type ChartOptions = {
 
           <!-- Content -->
           @if (!isLoading()) {
+            <!-- AI Savings Widget -->
+             <div class="mb-6">
+                <app-ai-savings-widget></app-ai-savings-widget>
+             </div>
+
             <!-- ========== SECCIÓN 1: INGRESOS REALES (Facturas) ========== -->
             <div class="rounded-xl border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-4">
               <div class="flex items-center gap-3 mb-4">
@@ -319,22 +325,22 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
     const recurring = this.recurringMonthly();
     const pipeline = this.currentPipeline();
     const isDark = document.documentElement.classList.contains('dark');
-    
+
     // Responsive: limit months based on screen size
     const isMobile = window.innerWidth < 768;
     const maxMonths = isMobile ? 4 : 6;
-    
+
     // Mes actual para usar pipeline actual + recurrentes
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    
+
     // Combinar datos por mes
     const allMonths = new Set([
       ...quoteData.map(d => d.month),
       ...invoiceData.map(d => d.month)
     ]);
     const sortedMonths = Array.from(allMonths).sort().slice(-maxMonths);
-    
+
     // Crear series para el gráfico - Presupuestos (potencial) vs Facturas (confirmado)
     const quoteSeries = sortedMonths.map(month => {
       // Si es el mes actual, usar pipeline actual + recurrentes (incluye presupuestos de meses anteriores que siguen pendientes)
@@ -346,12 +352,12 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
       // Para meses pasados: SIEMPRE 0 (los presupuestos pendientes se arrastran al mes actual)
       return 0;
     });
-    
+
     const invoiceTotalSeries = sortedMonths.map(month => {
       const data = invoiceData.find(d => d.month === month);
       return data?.total || 0;
     });
-    
+
     return {
       series: [
         {
@@ -468,16 +474,16 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
           const month = sortedMonths[dataPointIndex];
           const quotePoint = quoteData.find(d => d.month === month);
           const invoicePoint = invoiceData.find(d => d.month === month);
-          
+
           // Si es el mes actual, usar pipeline actual + recurrentes
           const now = new Date();
           const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
           const isCurrentMonth = month === currentMonth;
-          
+
           const bgColor = isDark ? '#1f2937' : '#ffffff';
           const textColor = isDark ? '#f3f4f6' : '#111827';
           const borderColor = isDark ? '#374151' : '#e5e7eb';
-          
+
           // Calcular totales de presupuestos
           let quoteBaseCount = 0;
           let quoteBaseValue = 0;
@@ -485,7 +491,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
           let recurringValue = 0;
           let totalQuoteCount = 0;
           let totalQuoteValue = 0;
-          
+
           if (isCurrentMonth) {
             // Mes actual: usar pipeline actual + recurrentes
             quoteBaseCount = pipeline?.count || 0;
@@ -499,10 +505,10 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
             recurringCount = 0;
             recurringValue = 0;
           }
-          
+
           totalQuoteCount = quoteBaseCount + recurringCount;
           totalQuoteValue = quoteBaseValue + recurringValue;
-          
+
           return `
             <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 8px; padding: 12px; min-width: 240px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
               <div style="font-weight: bold; font-size: 14px; margin-bottom: 10px; color: ${textColor}; border-bottom: 1px solid ${borderColor}; padding-bottom: 6px;">
@@ -611,7 +617,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   ngOnInit() {
     // Load modules for conditional rendering
     this.modulesService.fetchEffectiveModules().subscribe();
-    
+
     // Subscribe to service error
     const serviceError = this.analyticsService.getError();
     if (serviceError) {
@@ -658,14 +664,14 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
     try {
       const [year, m] = month.split('-');
       const date = new Date(Number(year), Number(m) - 1, 1);
-      
+
       // Si es el mes actual, mostrar "actual"
       const now = new Date();
       const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       if (month === currentMonth) {
         return 'actual';
       }
-      
+
       return new Intl.DateTimeFormat('es-ES', { month: 'short' }).format(date);
     } catch {
       return month;

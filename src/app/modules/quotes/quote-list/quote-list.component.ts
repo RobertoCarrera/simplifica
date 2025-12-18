@@ -7,6 +7,7 @@ import { SupabaseSettingsService } from '../../../services/supabase-settings.ser
 import { AuthService } from '../../../services/auth.service';
 import { AiService } from '../../../services/ai.service';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { ToastService } from '../../../services/toast.service';
 import { firstValueFrom } from 'rxjs';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -91,6 +92,13 @@ export class QuoteListComponent implements OnInit, OnDestroy {
         };
         this.statusFilter = statusMap[params['status']] || params['status'];
       }
+    });
+
+
+    // Check AI Module
+    this.modulesService.fetchEffectiveModules().subscribe(modules => {
+      const hasAi = modules.some(m => m.key === 'ai' && m.enabled);
+      this.hasAiModule.set(hasAi);
     });
 
     this.loadTaxSettings().finally(() => {
@@ -438,7 +446,11 @@ export class QuoteListComponent implements OnInit, OnDestroy {
     this.applyFilters();
   }
   private customersService = inject(SupabaseCustomersService);
+  private modulesService = inject(SupabaseModulesService);
   private aiService = inject(AiService);
+
+  // AI Module Check
+  hasAiModule = signal(false);
 
   // Audio Recording State
   isRecording = signal(false);

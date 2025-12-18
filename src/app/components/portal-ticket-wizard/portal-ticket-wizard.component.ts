@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { SupabaseTicketsService, Ticket } from '../../services/supabase-tickets.service';
 import { SimpleSupabaseService } from '../../services/simple-supabase.service';
 import { AiService } from '../../services/ai.service';
+import { SupabaseModulesService } from '../../services/supabase-modules.service';
 import { DevicesService } from '../../services/devices.service';
 import { CameraCaptureComponent } from '../commons/camera-capture/camera-capture.component';
 
@@ -51,12 +52,19 @@ export class PortalTicketWizardComponent {
     isSubmitting = false;
 
     private aiService = inject(AiService);
+    private modulesService = inject(SupabaseModulesService);
     private devicesService = inject(DevicesService);
+
+    hasAiModule = false;
 
     constructor(
         private ticketsService: SupabaseTicketsService,
         private supabase: SimpleSupabaseService
-    ) { }
+    ) {
+        this.modulesService.fetchEffectiveModules().subscribe(modules => {
+            this.hasAiModule = modules.some(m => m.key === 'ai' && m.enabled);
+        });
+    }
 
     selectType(type: TicketType) {
         this.selectedType = type;

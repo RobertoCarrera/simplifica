@@ -2,10 +2,11 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { TenantService, TenantConfig } from '../../services/tenant.service';
+import { AiSavingsWidgetComponent } from '../../modules/dashboard-analytics/ai-savings-widget/ai-savings-widget.component';
 
 @Component({
   selector: 'app-dashboard-home',
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, AiSavingsWidgetComponent],
   templateUrl: './dashboard-home.component.html',
   styleUrl: './dashboard-home.component.scss'
 })
@@ -17,11 +18,11 @@ export class DashboardHomeComponent implements OnInit {
   currentTenant: TenantConfig | null = null;
   isSuperAdmin: boolean = false;
 
-  constructor(private tenantService: TenantService) {}
+  constructor(private tenantService: TenantService) { }
 
   ngOnInit() {
     console.log('Dashboard Home - Componente inicializado');
-    
+
     // Suscribirse a cambios de tenant
     this.tenantService.tenant$.subscribe(tenant => {
       this.currentTenant = tenant;
