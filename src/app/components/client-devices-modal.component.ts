@@ -63,7 +63,7 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
     this.isScanning = true;
 
     try {
-      this.toastService.info('Analizando imagen...', 'La IA está procesando el dispositivo');
+      this.toastService.info('Analizando imagen...', 'El sistema está procesando el dispositivo');
       const result = await this.aiService.scanDevice(file);
 
       // Auto-fill form

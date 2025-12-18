@@ -1,6 +1,5 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.1.3";
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.14.0";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -26,13 +25,12 @@ serve(async (req) => {
             throw new Error('GOOGLE_AI_API_KEY is not set')
         }
 
-        // 3. Initialize Gemini
+        // 3. Initialize Gemini (Explicitly using v1beta often helps with newer models on this SDK, but 1.5-flash is stable on v1 if using latest SDK. 
+        // Note: For now, standard initialization defaults to what the SDK considers stable.)
         const genAI = new GoogleGenerativeAI(apiKey);
-        // Use user requested model or default to gemini-1.5-flash (stable and cheap)
-        // Note: 2.0-flash-exp might need specific naming or might not be fully available in all libs yet, 
-        // but we can try passing it if the user requests it. 
-        // Fallback to 'gemini-1.5-flash' which is the current reliable efficient model.
-        const targetModel = model || 'gemini-1.5-flash';
+
+        // Use user requested model or default to gemini-2.5-flash-lite
+        const targetModel = model || 'gemini-2.5-flash-lite';
 
         // Configure model
         const generationConfig = {
