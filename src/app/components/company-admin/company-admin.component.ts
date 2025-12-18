@@ -11,7 +11,7 @@ import { ToastService } from '../../services/toast.service';
   template: `
   <div class="space-y-6">
     <!-- Company Header Card -->
-    <div class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-lg">
+    <div class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-4 sm:p-6 text-white shadow-lg">
       <div class="flex items-center gap-4">
         <div class="w-16 h-16 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
           <i class="fas fa-building text-2xl"></i>
@@ -58,7 +58,7 @@ import { ToastService } from '../../services/toast.service';
 
       <!-- Users Section -->
       <section *ngIf="tab==='users'" class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
             <i class="fas fa-users text-emerald-500"></i>
             Usuarios de la Empresa
@@ -71,7 +71,7 @@ import { ToastService } from '../../services/toast.service';
           </button>
         </div>
         
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
           <!-- Loading State -->
           <div *ngIf="loadingUsers" class="flex items-center justify-center py-8">
             <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
@@ -160,7 +160,7 @@ import { ToastService } from '../../services/toast.service';
       <!-- Invitations Section -->
       <section *ngIf="tab==='invites'" class="space-y-4">
         <!-- Invite Form Card -->
-        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-6">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-4 sm:p-6">
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
             <i class="fas fa-user-plus text-emerald-500"></i>
             Nueva Invitación
@@ -208,7 +208,7 @@ import { ToastService } from '../../services/toast.service';
         
         <!-- Invitations List Card -->
         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden">
-          <div class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+          <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <i class="fas fa-envelope-open-text text-emerald-500"></i>
               Invitaciones
@@ -221,7 +221,7 @@ import { ToastService } from '../../services/toast.service';
             </button>
           </div>
           
-          <div class="p-6">
+          <div class="p-4 sm:p-6">
             <!-- Loading State -->
             <div *ngIf="loadingInvitations" class="flex items-center justify-center py-8">
               <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
@@ -353,7 +353,7 @@ import { ToastService } from '../../services/toast.service';
 export class CompanyAdminComponent implements OnInit {
   auth = inject(AuthService);
   private toast = inject(ToastService);
-  
+
   // Tabs
   tab: 'users' | 'invites' = 'users';
 
@@ -381,7 +381,7 @@ export class CompanyAdminComponent implements OnInit {
     const profile = await this.auth.userProfile$.toPromise();
     this.currentUserId = profile?.id || null;
     this.currentUserRole = profile?.role as any || null;
-    
+
     await Promise.all([this.loadUsers(), this.loadInvitations()]);
   }
 
@@ -500,7 +500,7 @@ export class CompanyAdminComponent implements OnInit {
     // Store original role in case we need to revert
     const originalRole = user._originalRole || user.role;
     user._originalRole = originalRole;
-    
+
     this.busy = true;
     try {
       const res = await this.auth.updateCompanyUser(user.id, { role: newRole as any });
