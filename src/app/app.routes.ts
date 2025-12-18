@@ -47,6 +47,7 @@ import { InvoiceSeriesSettingsComponent } from './modules/invoices/invoice-serie
 import { QuotesSettingsComponent } from './components/quotes-settings/quotes-settings.component';
 import { BillingSettingsComponent } from './components/billing-settings/billing-settings.component';
 import { AutomationSettingsComponent } from './components/automation-settings/automation-settings.component';
+import { DevicesManagerComponent } from './components/devices-manager/devices-manager.component';
 
 import { PublicPaymentComponent } from './components/public-payment/public-payment.component';
 import { PaymentSuccessComponent } from './components/payment-success/payment-success.component';
@@ -62,6 +63,7 @@ export const routes: Routes = [
     { path: 'ticket/:id', component: TicketDetailComponent, canActivate: [AuthGuard] },
     { path: 'productos', component: ProductsComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloMaterial' } },
     { path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
+    { path: 'dispositivos', component: DevicesManagerComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
     { path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloChat' } },
     { path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard] },
     { path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloAnaliticas' } },
@@ -119,6 +121,8 @@ export const routes: Routes = [
     { path: 'portal/facturas/:id', component: PortalInvoiceDetailComponent, canActivate: [AuthGuard, ClientRoleGuard] },
     // Client portal contracted services (placeholder - to be implemented)
     { path: 'portal/servicios', loadComponent: () => import('./components/portal-services/portal-services.component').then(m => m.PortalServicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
+    // Client portal devices
+    { path: 'portal/dispositivos', loadComponent: () => import('./components/portal-devices/portal-devices.component').then(m => m.PortalDevicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
 
     // Public payment pages (NO AUTH REQUIRED)
     { path: 'pago/:token', component: PublicPaymentComponent },

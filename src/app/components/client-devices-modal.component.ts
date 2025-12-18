@@ -14,6 +14,7 @@ import { ToastService } from '../services/toast.service';
 })
 export class ClientDevicesModalComponent implements OnInit, OnDestroy {
   @Input() mode: 'view' | 'select' = 'view';
+  @Input() isModal: boolean = true;
   @Input() companyId!: string;
   @Input() client: any; // { id, name, ... }
   @Output() close = new EventEmitter<void>();
@@ -61,15 +62,11 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
 
     this.loading = true;
     try {
-      // Fetch all devices for this company
-      const allDevices = await this.devicesService.getDevices(this.companyId, false);
+      // Fetch devices (optionally filtered by client_id at DB level)
+      const clientId = this.client?.id;
+      const allDevices = await this.devicesService.getDevices(this.companyId, false, clientId);
 
-      if (this.client?.id) {
-        this.devices = allDevices.filter(d => d.client_id === this.client.id);
-      } else {
-        this.devices = allDevices;
-      }
-
+      this.devices = allDevices;
       this.filterDevices();
     } catch (error) {
       this.toastService.error('Error', 'Error al cargar dispositivos');
@@ -94,7 +91,8 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
         (d.model || '').toLowerCase().includes(term) ||
         (d.imei || '').toLowerCase().includes(term) ||
         (d.serial_number || '').toLowerCase().includes(term) ||
-        (d.reported_issue || '').toLowerCase().includes(term)
+        (d.reported_issue || '').toLowerCase().includes(term) ||
+        (d.client?.name || '').toLowerCase().includes(term) // Search by Client Name
       );
     }
 

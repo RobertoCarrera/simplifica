@@ -147,7 +147,7 @@ export class DevicesService {
   // CRUD BÁSICO DE DISPOSITIVOS
   // ================================
 
-  async getDevices(companyId: string, showDeleted: boolean = false): Promise<Device[]> {
+  async getDevices(companyId: string, showDeleted: boolean = false, clientId?: string): Promise<Device[]> {
     try {
       console.log('[DevicesService] getDevices companyId =', companyId, 'showDeleted =', showDeleted);
 
@@ -164,6 +164,10 @@ export class DevicesService {
         query = query.eq('company_id', companyId);
       } else if (companyId) {
         console.warn('DevicesService.getDevices: ignoring non-UUID companyId:', companyId);
+      }
+
+      if (clientId) {
+        query = query.eq('client_id', clientId);
       }
 
       if (!showDeleted) {

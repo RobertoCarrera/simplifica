@@ -827,17 +827,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     // Could open a detail view or perform other actions
   }
 
-  // Device Management Modal
-  openClientDevices(customer: Customer) {
-    if (!customer) return;
-    this.devicesModalClient.set(customer);
-    this.showClientDevicesModal.set(true);
-  }
 
-  closeClientDevices() {
-    this.showClientDevicesModal.set(false);
-    this.devicesModalClient.set(null);
-  }
 
   openForm() {
     this.resetForm();
