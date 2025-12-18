@@ -177,7 +177,7 @@
     background: #f9fafb !important;
     backdrop-filter: none !important;
   }
-  
+
   .modal-content {
     border-radius: 0 !important;
     max-height: 100dvh !important;
@@ -189,20 +189,20 @@
     border: none !important;
     margin: 0 !important;
   }
-  
+
   .modal-header {
     display: flex !important;
     border-bottom: none !important;
     background: #f9fafb !important;
     padding: 16px 16px 8px !important;
   }
-  
+
   .modal-body {
     background: #f9fafb !important;
     padding: 0 16px 16px !important;
     padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important;
   }
-  
+
   .modal-actions {
     background: #ffffff !important;
     border-top: 1px solid #e5e7eb !important;
@@ -214,19 +214,19 @@
   .modal-overlay {
     background: #0f172a !important;
   }
-  
+
   .modal-content {
     background: #0f172a !important;
   }
-  
+
   .modal-header {
     background: #0f172a !important;
   }
-  
+
   .modal-body {
     background: #0f172a !important;
   }
-  
+
   .modal-actions {
     background: #1e293b !important;
     border-top-color: #334155 !important;
@@ -280,7 +280,7 @@
   color: #6b7280;
   margin: 0;
   font-weight: 400;
-  
+
   @media (prefers-color-scheme: dark) {
     color: #9ca3af;
   }
@@ -837,4 +837,75 @@ select.form-input {
 /* GDPR Panel */
 .gdpr-panel {
   margin-bottom: 1.5rem;
+}
+
+/* Floating Action Button (FAB) */
+.fab-button {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background-color: #2563eb;
+  color: white;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 5000;
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: scale(1.1);
+    background-color: #1d4ed8;
+  }
+
+  /* Audio FAB specific positioning */
+  &.fab-audio {
+    bottom: calc(2rem + 56px + 1rem); // 2rem bottom + fab height + gap
+    background-color: #7c3aed; // Violet for AI/Audio
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+
+    &:hover {
+      background-color: #6d28d9;
+    }
+
+    &.recording {
+      background-color: #ef4444; // Red
+      animation: breathe-recording 2s infinite ease-in-out;
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3); // Constant subtle ring
+    }
+
+    &:disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+      animation: none;
+      box-shadow: none;
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  }
+}
+
+@keyframes breathe-recording {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

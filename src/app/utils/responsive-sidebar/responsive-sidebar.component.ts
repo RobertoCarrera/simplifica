@@ -109,58 +109,6 @@ export class ResponsiveSidebarComponent implements OnInit {
     },
     {
       id: 3,
-      label: 'Tickets',
-      icon: 'ticket',
-      route: '/tickets',
-      module: 'production',
-      moduleKey: 'moduloSAT'
-    },
-    {
-      id: 4,
-      label: 'Chat',
-      icon: 'message-circle',
-      route: '/chat',
-      module: 'production',
-      moduleKey: 'moduloChat'
-    },
-    {
-      id: 5,
-      label: 'Presupuestos',
-      icon: 'file-text',
-      route: '/presupuestos',
-      module: 'production'
-    },
-    {
-      id: 6,
-      label: 'Facturación',
-      icon: 'receipt',
-      route: '/facturacion',
-      module: 'production'
-    },
-    {
-      id: 7,
-      label: 'Analíticas',
-      icon: 'trending-up',
-      route: '/analytics',
-      module: 'production',
-      moduleKey: 'moduloAnaliticas'
-    },
-    {
-      id: 8,
-      label: 'Productos',
-      icon: 'package',
-      route: '/productos',
-      module: 'production'
-    },
-    {
-      id: 9,
-      label: 'Servicios',
-      icon: 'wrench',
-      route: '/servicios',
-      module: 'production'
-    },
-    {
-      id: 10,
       label: 'Dispositivos',
       icon: 'smartphone',
       route: '/dispositivos',
@@ -168,7 +116,59 @@ export class ResponsiveSidebarComponent implements OnInit {
       moduleKey: 'moduloSAT' // Linked to SAT/Tickets module
     },
     {
-      id: 20,
+      id: 4,
+      label: 'Tickets',
+      icon: 'ticket',
+      route: '/tickets',
+      module: 'production',
+      moduleKey: 'moduloSAT'
+    },
+    {
+      id: 5,
+      label: 'Chat',
+      icon: 'message-circle',
+      route: '/chat',
+      module: 'production',
+      moduleKey: 'moduloChat'
+    },
+    {
+      id: 6,
+      label: 'Presupuestos',
+      icon: 'file-text',
+      route: '/presupuestos',
+      module: 'production'
+    },
+    {
+      id: 7,
+      label: 'Facturación',
+      icon: 'receipt',
+      route: '/facturacion',
+      module: 'production'
+    },
+    {
+      id: 8,
+      label: 'Analíticas',
+      icon: 'trending-up',
+      route: '/analytics',
+      module: 'production',
+      moduleKey: 'moduloAnaliticas'
+    },
+    {
+      id: 9,
+      label: 'Productos',
+      icon: 'package',
+      route: '/productos',
+      module: 'production'
+    },
+    {
+      id: 10,
+      label: 'Servicios',
+      icon: 'wrench',
+      route: '/servicios',
+      module: 'production'
+    },
+    {
+      id: 98,
       label: 'Configuración',
       icon: 'settings',
       route: '/configuracion',

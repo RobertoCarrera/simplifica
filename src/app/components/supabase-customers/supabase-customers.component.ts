@@ -20,6 +20,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ClientPortalService } from '../../services/client-portal.service';
 import { ClientGdprModalComponent } from '../client-gdpr-modal/client-gdpr-modal.component';
+import { AiService } from '../../services/ai.service';
 
 import { SupabaseCustomersService as CustomersSvc } from '../../services/supabase-customers.service';
 
@@ -50,6 +51,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
   private honeypotService = inject(HoneypotService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  private aiService = inject(AiService); // Inject AI Service
   sidebarService = inject(SidebarStateService);
   devRoleService = inject(DevRoleService);
   public auth = inject(AuthService);
@@ -57,6 +59,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
   private completenessSvc = inject(CustomersSvc);
   // Toast de importación (único y actualizable)
   private importToastId: string | null = null;
+
+  // Audio State
+  isRecording = signal(false);
+  isProcessingAudio = signal(false);
+  mediaRecorder: MediaRecorder | null = null;
+  audioChunks: Blob[] = [];
 
   // State signals
   customers = signal<Customer[]>([]);
@@ -1872,4 +1880,74 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
       // Intentionally do not call closeForm() so only explicit UI actions close the modal.
     }
   }
+  // --- Audio Client Creation Logic ---
+  async toggleRecording() {
+    if (this.isRecording()) {
+      this.stopRecording();
+    } else {
+      await this.startRecording();
+    }
+  }
+
+  async startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.mediaRecorder = new MediaRecorder(stream);
+      this.audioChunks = [];
+
+      this.mediaRecorder.ondataavailable = (event) => {
+        this.audioChunks.push(event.data);
+      };
+
+      this.mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+        await this.processAudio(audioBlob);
+        stream.getTracks().forEach(track => track.stop()); // Stop mic
+      };
+
+      this.mediaRecorder.start();
+      this.isRecording.set(true);
+      this.toastService.info('Escuchando...', 'Grabación iniciada');
+    } catch (err) {
+      console.error('Error recording audio', err);
+      this.toastService.error('No se pudo acceder al micrófono. Por favor verifica los permisos.', 'Error');
+    }
+  }
+
+  stopRecording() {
+    if (this.mediaRecorder && this.isRecording()) {
+      this.mediaRecorder.stop();
+      this.isRecording.set(false);
+      this.isProcessingAudio.set(true);
+    }
+  }
+
+  async processAudio(blob: Blob) {
+    try {
+      const result = await this.aiService.processAudioClient(blob);
+      console.log('AI Client Data:', result);
+
+      // Pre-fill form data
+      this.resetForm(); // Ensure clean state
+      this.formData = { ...this.formData, ...result };
+
+      // Handle special fields
+      if (result.addressLocalidad && result.addressLocalidad.trim()) {
+        this.addressLocalityName = result.addressLocalidad;
+        // Try to fuzzy match existing locality?
+        // For now, we leave it as text input for the user to confirm/select
+      }
+
+      this.openForm(); // Open the modal
+      this.toastService.success('Datos extraídos del audio', 'Cliente pre-rellenado');
+
+    } catch (error) {
+      console.error('Error processing audio', error);
+      this.toastService.error('No pudimos entender el audio. Por favor intenta de nuevo.', 'Error IA');
+    } finally {
+      this.isProcessingAudio.set(false);
+    }
+  }
+
+
 }

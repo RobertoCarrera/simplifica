@@ -5,12 +5,15 @@ import { FormsModule } from '@angular/forms';
 import { SupabaseQuotesService } from '../../../services/supabase-quotes.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { AuthService } from '../../../services/auth.service';
+import { AiService } from '../../../services/ai.service';
+import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
+import { ToastService } from '../../../services/toast.service';
 import { firstValueFrom } from 'rxjs';
 import { RealtimeChannel } from '@supabase/supabase-js';
-import { 
-  Quote, 
-  QuoteStatus, 
-  QUOTE_STATUS_LABELS, 
+import {
+  Quote,
+  QuoteStatus,
+  QUOTE_STATUS_LABELS,
   QUOTE_STATUS_COLORS,
   formatQuoteNumber,
   isQuoteExpired
@@ -311,7 +314,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
     }
 
     const irpf = this.irpfEnabled() ? baseNetForIrpf * (this.irpfRate() / 100) : 0;
-    
+
     // SIEMPRE devolver el total real (lo que paga el cliente)
     const total = subtotal + taxAmount - irpf;
     return Math.round(total * 100) / 100;
@@ -330,7 +333,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
     }
   }
 
-  downloadPdf(id: string){
+  downloadPdf(id: string) {
     this.quotesService.getQuotePdfUrl(id).subscribe({
       next: (signed) => window.open(signed, '_blank'),
       error: (e) => {
@@ -343,48 +346,48 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   // Format recurrence for display
   formatRecurrence(quote: Quote): string {
     if (!quote.recurrence_type || quote.recurrence_type === 'none') return '';
-    
+
     const interval = quote.recurrence_interval || 1;
     const type = quote.recurrence_type;
-    
+
     const typeLabels: { [key: string]: string } = {
       'daily': 'día(s)',
       'weekly': 'semana(s)',
       'monthly': 'mes(es)',
       'yearly': 'año(s)'
     };
-    
+
     const label = typeLabels[type] || type;
     const text = interval === 1 ? `Cada ${label.replace('(s)', '').replace('es', '')}` : `Cada ${interval} ${label}`;
-    
+
     if (quote.next_run_at) {
       const nextDate = new Date(quote.next_run_at);
       return `${text} (próximo: ${nextDate.toLocaleDateString('es-ES')})`;
     }
-    
+
     return text;
   }
 
   formatRecurrenceShort(quote: Quote): string {
     if (!quote.recurrence_type || quote.recurrence_type === 'none') return '';
-    
+
     const interval = quote.recurrence_interval || 1;
     const type = quote.recurrence_type;
-    
+
     const typeShort: { [key: string]: string } = {
       'daily': 'D',
       'weekly': 'S',
       'monthly': 'M',
       'yearly': 'A'
     };
-    
+
     const short = typeShort[type] || type[0].toUpperCase();
     return interval === 1 ? short : `${interval}${short}`;
   }
 
   getRecurrenceLetter(recurrenceType: string | null | undefined): string {
     if (!recurrenceType || recurrenceType === 'none') return 'P';
-    
+
     const typeMap: { [key: string]: string } = {
       'daily': 'D',
       'weekly': 'S',
@@ -392,7 +395,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
       'quarterly': 'T',
       'yearly': 'A'
     };
-    
+
     return typeMap[recurrenceType] || 'P';
   }
 
@@ -411,7 +414,7 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   }
 
   handleQuoteUpdate(updatedQuote: any) {
-    this.quotes.update(quotes => 
+    this.quotes.update(quotes =>
       quotes.map(q => {
         if (q.id === updatedQuote.id) {
           // Preserve joined fields (like client) that are not in the payload
@@ -433,6 +436,118 @@ export class QuoteListComponent implements OnInit, OnDestroy {
   handleQuoteDelete(quoteId: string) {
     this.quotes.update(quotes => quotes.filter(q => q.id !== quoteId));
     this.applyFilters();
+  }
+  private customersService = inject(SupabaseCustomersService);
+  private aiService = inject(AiService);
+
+  // Audio Recording State
+  isRecording = signal(false);
+  isProcessingAudio = signal(false);
+  mediaRecorder: MediaRecorder | null = null;
+  audioChunks: any[] = [];
+  private toastService = inject(ToastService); // Assuming you have ToastService injected or available
+
+  // ... (keep existing methods)
+
+  // --- Audio Quote Creation Logic ---
+  async toggleRecording() {
+    if (this.isRecording()) {
+      this.stopRecording();
+    } else {
+      await this.startRecording();
+    }
+  }
+
+  async startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.mediaRecorder = new MediaRecorder(stream);
+      this.audioChunks = [];
+
+      this.mediaRecorder.ondataavailable = (event) => {
+        this.audioChunks.push(event.data);
+      };
+
+      this.mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+        await this.processAudio(audioBlob);
+        stream.getTracks().forEach(track => track.stop()); // Stop mic
+      };
+
+      this.mediaRecorder.start();
+      this.isRecording.set(true);
+      // We need a way to show toast if not injected in constructor, assuming injected or adding it
+      // For now using console if ToastService not imported/injected
+    } catch (err) {
+      console.error('Error recording audio', err);
+      alert('No se pudo acceder al micrófono');
+    }
+  }
+
+  stopRecording() {
+    if (this.mediaRecorder && this.isRecording()) {
+      this.mediaRecorder.stop();
+      this.isRecording.set(false);
+      this.isProcessingAudio.set(true);
+    }
+  }
+
+  async processAudio(blob: Blob) {
+    try {
+      // 1. Get data from AI
+      const result = await this.aiService.processAudioQuote(blob);
+      console.log('AI Quote Data:', result);
+
+      if (!result.client_name) {
+        throw new Error('No se detectó el nombre del cliente');
+      }
+
+      // 2. Find or Create Client
+      let client = await this.findClientByName(result.client_name);
+
+      if (!client) {
+        // Create new individual client
+        const newClientData: any = { // simplified type for creation
+          name: result.client_name,
+          client_type: 'individual',
+          email: 'pendiente@email.com', // Placeholder if not provided
+          phone: '000000000'
+        };
+        // We use firstValueFrom for Observable
+        client = await firstValueFrom(this.customersService.createCustomer(newClientData));
+      }
+
+      // 3. Navigate to New Quote with State
+      this.isProcessingAudio.set(false);
+      this.router.navigate(['/presupuestos/new'], {
+        state: {
+          audioDraft: {
+            client_id: client.id,
+            items: result.items
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error processing audio quote', error);
+      this.isProcessingAudio.set(false);
+      alert('Error procesando audio. Intenta de nuevo.');
+    }
+  }
+
+  // Helper to fuzzy search client (simplified)
+  async findClientByName(name: string): Promise<any> {
+    const term = name.toLowerCase();
+    // Use existing service search
+    const results = await firstValueFrom(this.customersService.getCustomers({ search: term }));
+    // Simple check: first exact-ish match or just the first result?
+    // AI might return "Juan Perez" and DB has "Juan Perez Garcia". 
+    // We'll take the first result if it matches at least partially
+    return results.find(c => {
+      const cName = (c.name + ' ' + (c.apellidos || '')).toLowerCase();
+      const business = (c.business_name || '').toLowerCase();
+      return cName.includes(term) || term.includes(cName) || business.includes(term);
+    }) || null;
   }
 }
 

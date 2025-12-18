@@ -835,6 +835,12 @@
 }
 
 <!-- Floating Action Button (FAB) -->
+<button (click)="toggleRecording()" class="fab-button fab-audio" title="Crear por voz" [class.recording]="isRecording()"
+  [disabled]="isLoading() || isProcessingAudio()">
+  <i class="fas" [class.fa-microphone]="!isRecording() && !isProcessingAudio()" [class.fa-stop]="isRecording()"
+    [class.fa-spinner]="isProcessingAudio()" [class.fa-pulse]="isProcessingAudio()"></i>
+</button>
+
 <button (click)="openForm()" class="fab-button" title="Nuevo Cliente" [disabled]="isLoading()">
   <i class="fas fa-plus"></i>
 </button>

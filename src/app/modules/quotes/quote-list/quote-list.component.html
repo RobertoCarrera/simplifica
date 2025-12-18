@@ -170,6 +170,13 @@
     </div>
     }
 
+    <!-- Floating Audio Button -->
+    <button (click)="toggleRecording()" class="fab-button fab-audio" title="Crear por voz"
+      [class.recording]="isRecording()" [disabled]="loading() || isProcessingAudio()">
+      <i class="fas" [class.fa-microphone]="!isRecording() && !isProcessingAudio()" [class.fa-stop]="isRecording()"
+        [class.fa-spinner]="isProcessingAudio()" [class.fa-pulse]="isProcessingAudio()"></i>
+    </button>
+
     <!-- Floating New Button -->
     <button (click)="createQuote()" class="fab-button" title="Nuevo Presupuesto">
       <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
