@@ -532,7 +532,7 @@ export class AuthService {
       console.log('✅ Login success, session user id:', data.user?.id);
       return { success: true };
     } catch (error: any) {
-      console.error('🔐 Login error raw:', error);
+      // console.error('🔐 Login error raw:', error); // Removed to avoid cluttering console on user error
       return {
         success: false,
         error: this.getErrorMessage(error.message)
