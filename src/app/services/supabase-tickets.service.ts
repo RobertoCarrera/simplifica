@@ -42,6 +42,9 @@ export interface Ticket {
   attachments?: TicketAttachment[];
   services?: TicketService[];
   company_id: string;
+  device_id?: string;
+  initial_comment?: string;
+  initial_attachment_url?: string;
   is_active: boolean;
   is_opened?: boolean;
   created_at: string;
@@ -345,7 +348,9 @@ export class SupabaseTicketsService {
         console.warn('Could not load RuntimeConfigService', e);
       }
 
-      if (edgeBaseUrl) {
+      // FORCE FALLBACK: Docker is not running on host, so we cannot update the Edge Function.
+      // We force client-side insert which has been updated with the correct logic.
+      if (false && edgeBaseUrl) {
         try {
           const funcUrl = edgeBaseUrl.replace(/\/+$/, '') + '/' + functionEndpoint;
           const sess = await client.auth.getSession();
@@ -362,7 +367,10 @@ export class SupabaseTicketsService {
             p_priority: ticketData.priority || 'normal',
             p_due_date: ticketData.due_date,
             p_estimated_hours: ticketData.estimated_hours,
-            p_total_amount: ticketData.total_amount
+            p_total_amount: ticketData.total_amount,
+            p_device_id: ticketData.device_id,
+            p_initial_comment: (ticketData as any).initial_comment,
+            p_initial_attachment_url: (ticketData as any).initial_attachment_url
           };
 
           const resp = await fetch(funcUrl, { method: 'POST', headers, body: JSON.stringify(body) });
@@ -397,15 +405,23 @@ export class SupabaseTicketsService {
       }
 
       // Fallback: client-side insert (subject to RLS) - aligned with current tickets schema
+      let description = ticketData.description || '';
+      const attachmentUrl = (ticketData as any).initial_attachment_url;
+      if (attachmentUrl) {
+        description += `\n\n![Adjunto](${attachmentUrl})`;
+      }
+
       const newTicketData: any = {
         company_id: ticketData.company_id,
         client_id: ticketData.client_id,
         title: ticketData.title,
-        description: ticketData.description,
+        description: description,
         stage_id: ticketData.stage_id,
         priority: ticketData.priority || 'normal',
         due_date: ticketData.due_date || null,
         total_amount: ticketData.total_amount ?? null,
+        // device_id: ticketData.device_id ?? null, // REMOVED: Column does not exist on tickets table
+        // initial_attachment_url: (ticketData as any).initial_attachment_url || null, // REMOVED: Column does not exist
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -417,6 +433,21 @@ export class SupabaseTicketsService {
         .single();
 
       if (error) throw error;
+
+      // Handle Device Link manually (ticket_devices)
+      if (ticketData.device_id && data?.id) {
+        try {
+          await client.from('ticket_devices').insert({
+            ticket_id: data.id,
+            device_id: ticketData.device_id
+          });
+        } catch (devErr) {
+          console.warn('Error linking device in fallback:', devErr);
+        }
+      }
+
+      // REMOVED: Initial comment logic as per user request to NOT use comments for attachments.
+      // The attachment is now appended to the ticket description above.
 
       return this.transformTicketData(data);
     } catch (error: any) {
@@ -483,6 +514,9 @@ export class SupabaseTicketsService {
             p_due_date: ticketData.due_date,
             p_estimated_hours: ticketData.estimated_hours,
             p_total_amount: ticketData.total_amount,
+            p_device_id: ticketData.device_id,
+            p_initial_comment: (ticketData as any).initial_comment,
+            p_initial_attachment_url: (ticketData as any).initial_attachment_url,
             p_services: normalizedServices,
             p_products: normalizedProducts
           };
@@ -527,6 +561,7 @@ export class SupabaseTicketsService {
         priority: ticketData.priority || 'normal',
         due_date: ticketData.due_date || null,
         total_amount: ticketData.total_amount ?? null,
+        device_id: ticketData.device_id ?? null,
         created_at: nowIso,
         updated_at: nowIso
       };
@@ -570,7 +605,7 @@ export class SupabaseTicketsService {
       const allowedColumns = [
         'company_id', 'client_id', 'stage_id', 'title', 'description',
         'priority', 'due_date', 'estimated_hours', 'actual_hours',
-        'total_amount', 'assigned_to', 'is_opened', 'ticket_number'
+        'total_amount', 'assigned_to', 'is_opened', 'ticket_number', 'device_id'
       ];
 
       const cleanData: any = {};
@@ -985,4 +1020,35 @@ export class SupabaseTicketsService {
       minute: '2-digit'
     });
   }
+
+  async uploadTicketAttachment(file: File, ticketId?: string): Promise<string> {
+    try {
+      const ext = file.name.split('.').pop() || 'file';
+      const name = file.name.replace(/[^a-zA-Z0-9]/g, '_');
+      const ts = Date.now();
+
+      // Temporary path if no ticketId yet, or organized path if ticketId exists
+      // If we don't have a ticketId yet (wizard flow), we might store it in a temp folder or just use a timestamp
+      // Strategy: "temp/timestamp_filename.ext"
+      const path = ticketId
+        ? `${ticketId}/${ts}_${name}`
+        : `temp/${ts}_${name}`;
+
+      const { data, error } = await this.supabase.getClient().storage
+        .from('ticket-attachments')
+        .upload(path, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = this.supabase.getClient().storage
+        .from('ticket-attachments')
+        .getPublicUrl(path);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading ticket attachment:', error);
+      throw error;
+    }
+  }
 }
+

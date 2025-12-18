@@ -2267,4 +2267,10 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   removeDeviceImage(index: number) {
     this.selectedDeviceImages.splice(index, 1);
   }
+  // Helper to remove markdown images from preview
+  stripMarkdown(text: string): string {
+    if (!text) return '';
+    // Remove markdown images like ![Alt](Url)
+    return text.replace(/!\[.*?\]\(.*?\)/g, '');
+  }
 }

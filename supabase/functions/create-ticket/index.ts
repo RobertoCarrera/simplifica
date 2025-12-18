@@ -114,7 +114,8 @@ serve(async (req: Request) => {
     // due_date en la tabla es DATE; si nos pasan fecha, la normalizamos a YYYY-MM-DD
     due_date: body.p_due_date ? new Date(body.p_due_date).toISOString().slice(0, 10) : null,
     created_at: nowIso,
-    updated_at: nowIso
+    updated_at: nowIso,
+    initial_attachment_url: body.p_initial_attachment_url || null
   };
 
   // Validate priority
@@ -506,6 +507,39 @@ serve(async (req: Request) => {
         .single();
       if (!updErr && updatedTicket) {
         return jsonResponse(200, { result: updatedTicket }, origin || '*');
+      }
+    }
+
+    // If client provided an initial comment (e.g. for "Question" type), insert it now
+    if (body.p_initial_comment) {
+      try {
+        let commentContent = body.p_initial_comment.toString().trim();
+        // If there's an attachment URL, append it nicely
+        if (body.p_initial_attachment_url) {
+          const url = body.p_initial_attachment_url;
+          // Use Markdown image syntax for preview + link
+          commentContent += `\n\n![Adjunto](${url})`;
+        }
+
+        if (commentContent) {
+          const { error: commentErr } = await supabaseAdmin
+            .from('ticket_comments')
+            .insert({
+              ticket_id: inserted.id,
+              content: commentContent,
+              user_id: userRow.id, // Linked to the public user profile fetched earlier
+              company_id: payload.company_id,
+              is_internal: false,
+              created_at: new Date().toISOString()
+            });
+
+          if (commentErr) {
+            console.warn(`[${FUNCTION_NAME}] Failed to insert initial comment`, commentErr);
+            // Do not fail the request, as the ticket is created successfully
+          }
+        }
+      } catch (cmtEx) {
+        console.warn(`[${FUNCTION_NAME}] Exception inserting initial comment`, cmtEx);
       }
     }
 

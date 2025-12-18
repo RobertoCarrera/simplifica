@@ -18,9 +18,24 @@
                 <i class="fas fa-times text-xl"></i>
             </button>
         </div>
+        <div *ngIf="attachmentUrl" class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center text-green-700">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    <span class="text-sm font-medium">Imagen adjuntada</span>
+                </div>
+                <button (click)="removeAttachment()" class="text-red-500 hover:text-red-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <!-- Image Preview -->
+            <div class="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                <img [src]="attachmentUrl" alt="Adjunto" class="w-full h-full object-contain">
+            </div>
+        </div>
 
         <!-- Content Area -->
-        <div class="flex-1 overflow-y-auto p-6">
+        <div class="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-slate-600">
 
             <!-- Step 1: Type Selection -->
             <div *ngIf="currentStep === 'type'" class="animate-fade-in">
@@ -29,46 +44,75 @@
                 <p class="text-center text-gray-500 dark:text-gray-400 mb-8">Selecciona el tipo de consulta para
                     dirigirte al equipo adecuado.</p>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Audio Assistant (Full Width or Prominent) -->
+                    <button (click)="toggleRecording()"
+                        class="md:col-span-2 group p-6 rounded-xl border-2 border-dashed border-purple-300 bg-purple-50 dark:bg-purple-900/10 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200 text-left flex items-center gap-6 relative overflow-hidden">
+
+                        <!-- Visualizer / Pulse Effect when recording -->
+                        <div *ngIf="isRecording"
+                            class="absolute inset-0 bg-purple-100/50 dark:bg-purple-900/30 animate-pulse"></div>
+
+                        <div
+                            class="relative z-10 w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                            <i class="fas"
+                                [ngClass]="isRecording ? 'fa-stop text-red-500 animate-pulse' : 'fa-microphone text-purple-600 dark:text-purple-400'"></i>
+                        </div>
+                        <div class="relative z-10 flex-1">
+                            <h4 class="font-bold text-purple-800 dark:text-purple-300 mb-1 text-lg">
+                                {{ isRecording ? 'Escuchando... (Haz clic para terminar)' : 'Asistente por Voz'
+                                }}
+                            </h4>
+                            <p class="text-sm text-purple-700/70 dark:text-purple-400/70">
+                                {{ isRecording ? 'Explica tu problema, nosotros rellenamos el formulario.' : 'Graba un
+                                audio explicando qué te pasa y lo rellenamos por ti.' }}
+                            </p>
+                        </div>
+                        <div *ngIf="isProcessingAudio"
+                            class="absolute inset-0 bg-white/80 dark:bg-slate-800/90 z-20 flex flex-col items-center justify-center backdrop-blur-sm">
+                            <i class="fas fa-magic fa-spin text-3xl text-purple-600 mb-3"></i>
+                            <span className="font-medium text-purple-700 dark:text-purple-300">Analizando
+                                audio...</span>
+                        </div>
+                    </button>
+
+                    <!-- Standard Options -->
                     <!-- Incidence -->
                     <button (click)="selectType('incidence')"
-                        class="group p-6 rounded-xl border-2 border-transparent bg-red-50 dark:bg-red-900/10 hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200 text-left flex flex-col items-center gap-4">
+                        class="group p-5 rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-700/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 text-left flex items-center gap-4">
                         <div
-                            class="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <i class="fas fa-bug text-3xl text-red-500 dark:text-red-400"></i>
+                            class="w-12 h-12 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-500 dark:text-red-400">
+                            <i class="fas fa-bug text-xl"></i>
                         </div>
-                        <div class="text-center">
-                            <h4 class="font-bold text-red-700 dark:text-red-400 mb-1">Algo no funciona</h4>
-                            <p class="text-xs text-red-600/70 dark:text-red-400/70">Reportar un error o fallo técnico.
-                            </p>
+                        <div>
+                            <h4 class="font-bold text-gray-800 dark:text-gray-200">Algo no funciona</h4>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Reportar error o avería</p>
                         </div>
                     </button>
 
                     <!-- Request -->
                     <button (click)="selectType('request')"
-                        class="group p-6 rounded-xl border-2 border-transparent bg-blue-50 dark:bg-blue-900/10 hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200 text-left flex flex-col items-center gap-4">
+                        class="group p-5 rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-700/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 text-left flex items-center gap-4">
                         <div
-                            class="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <i class="fas fa-rocket text-3xl text-blue-500 dark:text-blue-400"></i>
+                            class="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-500 dark:text-blue-400">
+                            <i class="fas fa-rocket text-xl"></i>
                         </div>
-                        <div class="text-center">
-                            <h4 class="font-bold text-blue-700 dark:text-blue-400 mb-1">Nueva Solicitud</h4>
-                            <p class="text-xs text-blue-600/70 dark:text-blue-400/70">Pedir una nueva funcionalidad o
-                                servicio.</p>
+                        <div>
+                            <h4 class="font-bold text-gray-800 dark:text-gray-200">Nueva Solicitud</h4>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Pedir servicio o función</p>
                         </div>
                     </button>
 
                     <!-- Question -->
                     <button (click)="selectType('question')"
-                        class="group p-6 rounded-xl border-2 border-transparent bg-amber-50 dark:bg-amber-900/10 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-all duration-200 text-left flex flex-col items-center gap-4">
+                        class="md:col-span-2 group p-5 rounded-xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-700/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-200 text-left flex items-center gap-4">
                         <div
-                            class="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <i class="fas fa-question text-3xl text-amber-500 dark:text-amber-400"></i>
+                            class="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-500 dark:text-amber-400">
+                            <i class="fas fa-question text-xl"></i>
                         </div>
-                        <div class="text-center">
-                            <h4 class="font-bold text-amber-700 dark:text-amber-400 mb-1">Tengo una duda</h4>
-                            <p class="text-xs text-amber-600/70 dark:text-amber-400/70">Preguntas generales o dudas de
-                                uso.</p>
+                        <div>
+                            <h4 class="font-bold text-gray-800 dark:text-gray-200">Tengo una duda</h4>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Preguntas generales</p>
                         </div>
                     </button>
                 </div>
@@ -93,6 +137,72 @@
                 </div>
 
                 <div class="space-y-4">
+                    <!-- Feature: Smart Suggestions based on Type -->
+
+                    <!-- INCIDENCE: Scan Device -->
+                    <div *ngIf="selectedType === 'incidence'" class="mb-4">
+                        <div *ngIf="!createdDeviceId"
+                            class="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-xl flex items-center justify-between">
+                            <div>
+                                <h4 class="font-bold text-blue-800 dark:text-blue-300 text-sm">¿Es un dispositivo
+                                    físico?</h4>
+                                <p class="text-xs text-blue-600 dark:text-blue-400">Escanéalo para rellenar los datos
+                                    automáticamente.</p>
+                            </div>
+                            <button (click)="showCamera = true"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg font-medium transition-colors flex items-center gap-2">
+                                <i class="fas fa-camera"></i> Escanear
+                            </button>
+                        </div>
+
+                        <div *ngIf="createdDeviceId"
+                            class="p-4 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800 rounded-xl flex items-center gap-4">
+                            <div
+                                class="w-10 h-10 rounded-full bg-green-100 dark:bg-green-800 text-green-600 dark:text-green-300 flex items-center justify-center">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-green-800 dark:text-green-300 text-sm">Dispositivo Vinculado
+                                </h4>
+                                <p class="text-xs text-green-600 dark:text-green-400">{{ createdDeviceName }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- QUESTION: Attach Image -->
+                    <div *ngIf="selectedType === 'question'" class="mb-4">
+                        <div
+                            class="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800 rounded-xl">
+                            <h4 class="font-bold text-amber-800 dark:text-amber-300 text-sm mb-2">¿Quieres adjuntar una
+                                captura?</h4>
+
+                            <div *ngIf="!attachmentUrl && !isUploadingAttachment" class="flex items-center gap-3">
+                                <button (click)="fileInput.click()"
+                                    class="px-4 py-2 bg-amber-100 hover:bg-amber-200 dark:bg-amber-800 dark:hover:bg-amber-700 text-amber-800 dark:text-amber-200 text-sm rounded-lg font-medium transition-colors flex items-center gap-2">
+                                    <i class="fas fa-paperclip"></i> Subir Imagen
+                                </button>
+                                <span class="text-xs text-amber-600 dark:text-amber-400">Opcional. Ayuda a entender
+                                    mejor tu duda.</span>
+                                <input #fileInput type="file" accept="image/*" class="hidden"
+                                    (change)="onAttachmentSelected($event)">
+                            </div>
+
+                            <div *ngIf="isUploadingAttachment" class="flex items-center gap-2 text-sm text-amber-600">
+                                <i class="fas fa-spinner fa-spin"></i> Subiendo...
+                            </div>
+
+                            <div *ngIf="attachmentUrl" class="flex items-center gap-2 mt-2">
+                                <i class="fas fa-image text-amber-600"></i>
+                                <span class="text-sm text-amber-800 dark:text-amber-300 truncate max-w-[200px]">Imagen
+                                    adjuntada</span>
+                                <button (click)="attachmentUrl = null; attachmentFile = null"
+                                    class="text-red-500 hover:text-red-700 ml-2">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asunto
                             breve</label>
@@ -104,9 +214,18 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción
                             detallada</label>
-                        <textarea [(ngModel)]="ticketData.description" rows="5"
-                            class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
-                            placeholder="Explica qué sucede, qué esperabas y cualquier detalle relevante..."></textarea>
+                        <div class="relative">
+                            <textarea [(ngModel)]="ticketData.description" rows="5"
+                                class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none"
+                                placeholder="Explica qué sucede, qué esperabas y cualquier detalle relevante..."></textarea>
+
+                            <!-- Scanner Overlay when processing -->
+                            <div *ngIf="isScanningDevice"
+                                class="absolute inset-0 bg-white/90 dark:bg-slate-800/90 flex flex-col items-center justify-center z-10 rounded-lg">
+                                <i class="fas fa-microchip fa-spin text-3xl text-blue-500 mb-2"></i>
+                                <div class="text-sm font-bold text-blue-600">Procesando Dispositivo...</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -125,7 +244,18 @@
 
                 <div class="bg-gray-50 dark:bg-slate-700/30 p-4 rounded-xl text-left max-w-lg mx-auto mb-8">
                     <div class="font-bold text-gray-900 dark:text-white mb-1">{{ ticketData.title }}</div>
-                    <div class="text-sm text-gray-600 dark:text-gray-300">{{ ticketData.description }}</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{{ ticketData.description
+                        }}</div>
+
+                    <!-- Review Extras -->
+                    <div *ngIf="createdDeviceId"
+                        class="mt-3 pt-3 border-t border-gray-200 dark:border-slate-600 flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                        <i class="fas fa-laptop"></i> Dispositivo incluido: {{ createdDeviceName }}
+                    </div>
+                    <div *ngIf="attachmentUrl"
+                        class="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center gap-2">
+                        <i class="fas fa-paperclip"></i> Archivo adjunto incluido
+                    </div>
                 </div>
             </div>
 
@@ -141,7 +271,7 @@
             </button>
 
             <button *ngIf="currentStep === 'details'" (click)="nextStep()"
-                [disabled]="!ticketData.title || !ticketData.description"
+                [disabled]="!ticketData.title || !ticketData.description || isScanningDevice"
                 class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed">
                 Continuar
             </button>
@@ -154,3 +284,7 @@
         </div>
     </div>
 </div>
+
+<!-- Camera Overlay Component -->
+<app-camera-capture *ngIf="showCamera" (close)="showCamera = false" (imageCaptured)="onDeviceCaptured($event)">
+</app-camera-capture>

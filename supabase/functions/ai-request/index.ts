@@ -52,9 +52,9 @@ serve(async (req) => {
             // images expected to be base64 strings without data:image/xxx;base64, prefix if possible, 
             // or we strip it.
             for (const img of images) {
-                // Extract base64 and mime type if strictly provided, or assume jpeg/png
-                const match = img.match(/^data:(image\/[a-z]+);base64,(.+)$/);
-                let mimeType = 'image/jpeg';
+                // Extract base64 and mime type. Support images, audio, and video.
+                const match = img.match(/^data:((?:image|audio|video)\/[a-zA-Z0-9-+.]+);base64,(.+)$/);
+                let mimeType = 'image/jpeg'; // Default fallback, though unlikely to work for audio if unmatched
                 let data = img;
 
                 if (match) {

@@ -73,20 +73,21 @@ export class AiService {
         const base64Image = await this.fileToBase64(imageFile);
 
         const prompt = `
-      Analyze this image of a device.
-      Act as a professional technician.
-      Extract the following information in strict JSON format (do not include markdown formatting like \`\`\`json):
+      Analiza esta imagen de un dispositivo.
+      Actúa como un técnico profesional.
+      Extrae la siguiente información en formato JSON estricto (no incluyas formato markdown como \`\`\`json):
       {
-        "brand": "Brand name if visible (e.g. Apple, Samsung, Dell)",
-        "model": "Model name/number if visible or identifiable",
-        "device_type": "One of: 'smartphone', 'tablet', 'laptop', 'console', 'smartwatch', 'other'",
-        "color": "Device color",
-        "serial_number": "Serial number if visible on screen or label",
-        "imei": "IMEI if visible on screen or label",
-        "condition": "Brief description of physical condition (scratches, cracks, pristine)",
-        "reported_issue_inference": "If you see obvious damage (cracked screen, swollen battery), describe it. Otherwise null."
+        "brand": "Marca si es visible (ej. Apple, Samsung, Dell)",
+        "model": "Modelo si es visible o identificable",
+        "device_type": "Uno de: 'smartphone', 'tablet', 'laptop', 'console', 'smartwatch', 'other'",
+        "color": "Color del dispositivo (en español)",
+        "serial_number": "Número de serie si es visible",
+        "imei": "IMEI si es visible",
+        "condition": "Breve descripción de la condición física (arañazos, grietas, impoluto) EN ESPAÑOL",
+        "reported_issue_inference": "Si ves daños obvios (pantalla rota, batería hinchada), descríbelo EN ESPAÑOL. Si no, null."
       }
-      If a field is not visible, use null.
+      Si un campo no es visible, usa null.
+      ASEGURATE DE QUE TODOS LOS VALORES DE TEXTO ESTÉN EN ESPAÑOL.
     `;
 
         const resultText = await this.generateContent(prompt, [base64Image], 'gemini-2.5-flash-lite');
@@ -108,5 +109,61 @@ export class AiService {
             reader.onload = () => resolve(reader.result as string);
             reader.onerror = error => reject(error);
         });
+    }
+
+    /**
+     * Process audio input to generate ticket details.
+     * @param audioBlob The recorded audio blob (webm/mp3/wav)
+     * @returns Structured ticket data (type, title, description)
+     */
+    async processAudioTicket(audioBlob: Blob): Promise<{ type: 'incidence' | 'request' | 'question', title: string, description: string }> {
+        // 1. Convert Blob to Base64
+        const base64Audio = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = err => reject(err);
+        });
+
+        // 2. Prompt for Gemini
+        const prompt = `
+        Eres un asistente de soporte técnico. Analiza esta grabación de audio de un cliente.
+        IMPORTANTE: EL RESULTADO DEBE SER SIEMPRE EN ESPAÑOL, incluso si el audio es en otro idioma.
+        
+        Tarea:
+        1. Categoriza el problema en uno de estos tipos:
+           - 'incidence' (algo roto, error, fallo, bug)
+           - 'request' (nueva funcionalidad, nuevo servicio, instalación)
+           - 'question' (duda general, consulta, cómo se hace)
+        
+        2. Extrae un Título corto y claro (máx 6 palabras) EN ESPAÑOL.
+        3. Extrae una Descripción detallada del audio EN ESPAÑOL.
+        
+        Devuelve SOLO JSON válido:
+        {
+          "type": "incidence" | "request" | "question",
+          "title": "Título corto en Español",
+          "description": "Descripción completa en Español"
+        }
+      `;
+
+        // 3. Send to AI
+        const resultText = await this.generateContent(prompt, [base64Audio], 'gemini-2.5-flash-lite');
+
+        try {
+            const cleanJson = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+            const data = JSON.parse(cleanJson);
+
+            // Validate type fallback
+            const validTypes = ['incidence', 'request', 'question'];
+            if (!validTypes.includes(data.type)) {
+                data.type = 'question'; // default fallback
+            }
+
+            return data;
+        } catch (e) {
+            console.error('Failed to parse Audio AI response:', resultText);
+            throw new Error('Could not understand audio request');
+        }
     }
 }

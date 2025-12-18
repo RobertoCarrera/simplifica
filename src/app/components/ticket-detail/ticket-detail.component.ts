@@ -139,6 +139,8 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                       </p>
                     </div>
                   </div>
+                  <!-- Initial Attachment Preview REMOVED (Legacy) -->
+                  
                   <div class="mt-4 ml-0 sm:ml-1 text-gray-800 dark:text-gray-200 text-sm leading-relaxed" [innerHTML]="formatDescription(ticket.description)"></div>
                 </div>
                 <div class="flex flex-row lg:flex-col items-center lg:items-end gap-2 sm:gap-3">
@@ -536,7 +538,7 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                 </div>
                 <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Cliente</h3>
               </div>
-              <div *ngIf="ticket.client as client; else noClientInfo">
+              <div *ngIf="ticket?.client as client; else noClientInfo">
                 <div class="text-sm sm:text-base text-gray-900 dark:text-gray-100 font-semibold mb-2 sm:mb-3">{{ client.name }}</div>
                 <div class="space-y-1.5 sm:space-y-2">
                   <div *ngIf="client.email" class="flex items-center gap-2 text-xs sm:text-sm">
@@ -584,41 +586,47 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                 <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm border-2 border-green-500 dark:border-green-600">
                   <div class="flex justify-between items-center">
                     <span class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Total Ticket</span>
-                    <span class="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">{{ formatPrice(ticket.total_amount || calculateServicesTotal()) }}</span>
-                  </div>
+                    <span class="text-gray-900 dark:text-gray-100 font-medium">{{ formatPrice(ticket.total_amount || calculateServicesTotal()) }}</span>
                 </div>
-                <div class="flex justify-between items-center pt-2 border-t border-green-200 dark:border-green-800">
-                  <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                    <i class="fas fa-clock"></i>
-                    Horas Estimadas
+                
+                <!-- Hours Estimated vs Real -->
+                <div class="flex justify-between items-center text-sm border-t border-gray-100 dark:border-slate-600 pt-2">
+                  <span class="text-gray-500 dark:text-gray-400">Horas Estimadas</span>
+                  <span class="font-medium text-gray-900 dark:text-gray-100">{{ ticket.estimated_hours || 0 }}h</span>
+                </div>
+
+                <div class="flex justify-between items-center text-sm">
+                  <span class="text-gray-500 dark:text-gray-400">Horas Reales</span>
+                  <span class="font-medium" [class.text-green-600]="getActualHours() <= (ticket.estimated_hours || 0)" 
+                                            [class.text-orange-500]="getActualHours() > (ticket.estimated_hours || 0)">
+                    {{ getActualHours() }}h
                   </span>
-                  <span class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">{{ getEstimatedHours() }}h</span>
                 </div>
               </div>
             </div>
 
             <!-- Timeline -->
-            <div class="bg-gradient-to-br from-purple-50 to-pink-100 dark:from-purple-900/20 dark:to-pink-800/20 shadow-md border border-purple-200 dark:border-purple-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
-              <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                <div class="bg-purple-500 text-white p-2 sm:p-3 rounded-lg shadow-md">
-                  <i class="fas fa-history text-lg sm:text-xl"></i>
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6">
+              <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
+                  <i class="fas fa-history"></i>
                 </div>
-                <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Timeline</h3>
-              </div>
-              <div class="space-y-3 sm:space-y-4">
-                <div class="flex items-start gap-2 sm:gap-3 bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm">
-                  <div class="flex-shrink-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-500 dark:bg-green-400 rounded-full mt-1.5 shadow-sm"></div>
-                  <div>
-                    <p class="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">Ticket creado</p>
-                    <p class="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ formatDate(ticket.created_at) }}</p>
-                  </div>
+                Timeline
+              </h3>
+
+              <div class="relative border-l-2 border-gray-100 dark:border-gray-700 ml-3 space-y-6">
+                <!-- Creation -->
+                <div class="ml-6 relative">
+                  <div class="absolute -left-[31px] bg-green-500 h-4 w-4 rounded-full border-4 border-white dark:border-gray-800"></div>
+                  <h4 class="font-bold text-gray-900 dark:text-gray-100 text-sm">Ticket creado</h4>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ formatDate(ticket.created_at) }}</p>
                 </div>
                 
-                <div *ngIf="ticket.updated_at !== ticket.created_at" class="flex items-start gap-2 sm:gap-3 bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm">
-                  <div class="flex-shrink-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-blue-500 dark:bg-blue-400 rounded-full mt-1.5 shadow-sm"></div>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Última actualización</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(ticket.updated_at) }}</p>
+                <!-- Last Update -->
+                <div class="ml-6 relative">
+                   <div class="absolute -left-[31px] bg-blue-500 h-4 w-4 rounded-full border-4 border-white dark:border-gray-800"></div>
+                  <h4 class="font-bold text-gray-900 dark:text-gray-100 text-sm">Última actualización</h4>
+                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(ticket.updated_at) }}</p>
                   </div>
                 </div>
                 
@@ -2014,6 +2022,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .single();
 
       if (ticketError) throw new Error('Error cargando ticket: ' + ticketError.message);
+      console.log('🎫 Ticket loaded:', ticketData);
+      console.log('🎫 Initial Attachment URL:', ticketData.initial_attachment_url);
       this.ticket = ticketData;
 
       // UI-level check: does a quote already exist for this ticket?
@@ -2598,6 +2608,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   formatDescription(description?: string): string {
     const text = String(description || '');
     return text
+      .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="mt-2 rounded-lg max-w-full h-auto border border-gray-200 dark:border-gray-700 block" />')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/\n/g, '<br/>');
