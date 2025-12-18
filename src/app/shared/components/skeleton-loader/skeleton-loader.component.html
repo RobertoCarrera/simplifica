@@ -1,0 +1,5 @@
+<div class="skeleton-container" [ngClass]="type">
+    <div *ngFor="let item of items" class="skeleton-item" [ngClass]="[type, styleClass]" [style.width]="width"
+        [style.height]="height">
+    </div>
+</div>

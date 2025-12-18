@@ -16,6 +16,7 @@ import { DevicesService, Device } from '../../services/devices.service';
 import { DevRoleService } from '../../services/dev-role.service';
 import { AuthService } from '../../services/auth.service';
 import { PortalTicketWizardComponent } from '../portal-ticket-wizard/portal-ticket-wizard.component';
+import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader/skeleton-loader.component';
 
 // Interfaces para tags
 export interface TicketTag {
@@ -33,7 +34,7 @@ export interface TagWithCount extends TicketTag {
 @Component({
   selector: 'app-supabase-tickets',
   standalone: true,
-  imports: [CommonModule, FormsModule, PortalTicketWizardComponent],
+  imports: [CommonModule, FormsModule, PortalTicketWizardComponent, SkeletonLoaderComponent],
   templateUrl: './supabase-tickets.component.html',
   styleUrl: './supabase-tickets.component.scss'
 })
@@ -1676,9 +1677,12 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       this.formErrors['estimated_hours'] = 'Las horas estimadas deben ser mayor a 0';
     }
 
-    // Validar que hay al menos un servicio o producto seleccionado
-    if (this.selectedServices.length === 0 && this.selectedProducts.length === 0) {
-      this.formErrors['items'] = 'Debe seleccionar al menos un servicio o producto';
+    // Validar que hay al menos un servicio, producto o dispositivo seleccionado
+    if (this.selectedServices.length === 0 && this.selectedProducts.length === 0 && this.selectedDevices.length === 0) {
+      const msg = 'Debe seleccionar al menos un servicio, producto o dispositivo';
+      this.formErrors['items'] = msg;     // Para la sección de productos
+      this.formErrors['services'] = msg;  // Para la sección de servicios
+      this.formErrors['devices'] = msg;   // Para la sección de dispositivos
     }
 
     return Object.keys(this.formErrors).length === 0;
@@ -2108,7 +2112,10 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
               newDevice.id,
               imageData.file,
               'arrival',
-              'Estado del dispositivo al llegar'
+              'Estado del dispositivo al llegar',
+              undefined, // No ticket link yet
+              undefined, // No ticket ID yet (files will go to root/device folder, which is acceptable for unlinked devices)
+              { brand: newDevice.brand, model: newDevice.model }
             );
           } catch (imageError) {
             console.error('Error uploading device image:', imageError);

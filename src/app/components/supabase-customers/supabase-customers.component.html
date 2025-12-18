@@ -246,6 +246,11 @@
 
             <!-- Right column: Action Buttons Flex (auto-wrap, right-aligned) -->
             <div class="flex flex-col gap-1 flex-shrink-0 ml-auto justify-end">
+              <button (click)="openClientDevices(customer)"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                title="Gestionar Dispositivos">
+                <i class="fas fa-mobile-alt text-sm"></i>
+              </button>
               <button (click)="editCustomer(customer)"
                 class="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                 title="Editar cliente">
@@ -268,6 +273,7 @@
               </button>
               }
               }
+
               <button (click)="openGdprModal(customer)"
                 class="w-8 h-8 flex items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
                 [class.opacity-0]="customer?.metadata?.inactive_on_import"
@@ -275,7 +281,7 @@
                 <i class="fas fa-shield-alt text-sm"></i>
               </button>
               <button (click)="deleteCustomer(customer)"
-                class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-pink-500 text-white hover:bg-pink-600 transition-colors"
                 title="Eliminar cliente">
                 <i class="fas fa-trash text-sm"></i>
               </button>
@@ -386,10 +392,16 @@
                 class="w-8 h-8 flex items-center justify-center rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
                 [class.opacity-0]="customer?.metadata?.inactive_on_import"
                 [disabled]="customer?.metadata?.inactive_on_import" title="Quitar acceso al portal">
-                <i class="fas fa-user-times text-sm"></i>
               </button>
               }
               }
+
+              <button (click)="openClientDevices(customer)"
+                class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                title="Gestionar Dispositivos">
+                <i class="fas fa-mobile-alt text-sm"></i>
+              </button>
+
               <button (click)="openGdprModal(customer)"
                 class="w-8 h-8 flex items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
                 [class.opacity-0]="customer?.metadata?.inactive_on_import"
@@ -460,7 +472,8 @@
           <i class="fas" [class.fa-plus]="!selectedCustomer()" [class.fa-edit]="selectedCustomer()"></i>
           {{ selectedCustomer() ? 'Editar Cliente' : 'Nuevo Cliente' }}
         </h2>
-        <p class="modal-subtitle">{{ selectedCustomer() ? 'Modifica los datos del cliente' : 'Introduce los datos del nuevo cliente' }}</p>
+        <p class="modal-subtitle">{{ selectedCustomer() ? 'Modifica los datos del cliente' : 'Introduce los datos del
+          nuevo cliente' }}</p>
       </div>
       <button (click)="closeForm()" class="modal-close">
         <i class="fas fa-times"></i>
@@ -484,29 +497,29 @@
               </span>
               <i class="fas fa-chevron-down dropdown-arrow" [class.rotated]="clientTypeDropdownOpen()"></i>
             </button>
-            
+
             @if (clientTypeDropdownOpen()) {
-              <div class="client-type-overlay" (click)="clientTypeDropdownOpen.set(false)"></div>
-              <div class="client-type-dropdown">
-                <div class="dropdown-header">
-                  <span>Seleccionar tipo de cliente</span>
-                  <button type="button" (click)="clientTypeDropdownOpen.set(false)" class="dropdown-close">
-                    <i class="fas fa-times"></i>
-                  </button>
-                </div>
-                <div class="dropdown-options">
-                  @for (option of clientTypeOptions; track option.value) {
-                    <button type="button" (click)="selectClientType(option.value)" 
-                      class="dropdown-option" [class.selected]="formData.client_type === option.value">
-                      <i [class]="option.icon"></i>
-                      <span>{{ option.label }}</span>
-                      @if (formData.client_type === option.value) {
-                        <i class="fas fa-check check-icon"></i>
-                      }
-                    </button>
-                  }
-                </div>
+            <div class="client-type-overlay" (click)="clientTypeDropdownOpen.set(false)"></div>
+            <div class="client-type-dropdown">
+              <div class="dropdown-header">
+                <span>Seleccionar tipo de cliente</span>
+                <button type="button" (click)="clientTypeDropdownOpen.set(false)" class="dropdown-close">
+                  <i class="fas fa-times"></i>
+                </button>
               </div>
+              <div class="dropdown-options">
+                @for (option of clientTypeOptions; track option.value) {
+                <button type="button" (click)="selectClientType(option.value)" class="dropdown-option"
+                  [class.selected]="formData.client_type === option.value">
+                  <i [class]="option.icon"></i>
+                  <span>{{ option.label }}</span>
+                  @if (formData.client_type === option.value) {
+                  <i class="fas fa-check check-icon"></i>
+                  }
+                </button>
+                }
+              </div>
+            </div>
             }
           </div>
         </div>
@@ -797,14 +810,13 @@
           </div>
         </div>
 
+
         <div class="modal-actions">
-          <button type="button" class="btn btn-secondary" (click)="closeInviteModal()" [disabled]="inviting()">
-            Cancelar
-          </button>
-          <button type="submit" class="btn btn-primary" [disabled]="inviting() || !inviteEmail">
+          <button type="button" (click)="closeInviteModal()" class="btn-cancel">Cancelar</button>
+          <button type="submit" [disabled]="inviting() || !inviteEmail" class="btn-save">
             <i class="fas" [class.fa-paper-plane]="!inviting()" [class.fa-spinner]="inviting()"
               [class.fa-pulse]="inviting()"></i>
-            {{ inviting() ? 'Enviando...' : 'Enviar invitación' }}
+            <span>{{ inviting() ? 'Enviando...' : 'Enviar Invitación' }}</span>
           </button>
         </div>
       </form>
@@ -813,16 +825,25 @@
 </div>
 }
 
+<!-- Client Devices Modal -->
+@if (showClientDevicesModal() && devicesModalClient()) {
+<app-client-devices-modal [mode]="'view'" [companyId]="auth.companyId() || ''" [client]="devicesModalClient()"
+  (close)="closeClientDevices()">
+</app-client-devices-modal>
+}
+
 <!-- CSV Header Mapper Modal -->
 <app-csv-header-mapper [visible]="showCsvMapper()" [csvHeaders]="csvHeaders()" [csvData]="csvData()"
   [fieldOptions]="customerFieldOptions" [requiredFields]="customerRequiredFields" [aliasMap]="customerAliasMap"
-  (mappingConfirmed)="onCsvMappingConfirmed($event)" (cancelled)="onCsvMappingCancelled()"></app-csv-header-mapper>
+  (mappingConfirmed)="onMappingConfirmed($event)"
+  (cancelled)="pendingCsvFile = null; showCsvMapper.set(false)"></app-csv-header-mapper>
 
 <!-- GDPR Management Modal -->
 @if (gdprModalClient()) {
 <app-client-gdpr-modal [isOpen]="showGdprModal()" [clientId]="gdprModalClient()!.id"
   [clientEmail]="gdprModalClient()!.email"
-  [clientName]="gdprModalClient()!.name + ' ' + (gdprModalClient()!.apellidos || '')" (closeModal)="closeGdprModal()">
+  [clientName]="gdprModalClient()!.name + ' ' + (gdprModalClient()!.apellidos || '')"
+  (closeModal)="showGdprModal.set(false); gdprModalClient.set(null)">
 </app-client-gdpr-modal>
 }
 

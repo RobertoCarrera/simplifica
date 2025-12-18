@@ -35,7 +35,7 @@ export interface Customer {
   fecha_nacimiento?: string;
   profesion?: string;
   empresa?: string;
-  
+
   // GDPR Compliance Fields
   marketing_consent?: boolean;
   marketing_consent_date?: string;
@@ -55,10 +55,11 @@ export interface Customer {
   access_restrictions?: any;
   last_accessed_at?: string;
   access_count?: number;
+  devices?: { count?: number; id?: string; deleted_at?: string }[];
 }
 
 // Interface para crear cliente (sin ID)
-export interface CreateCustomer extends Omit<Customer, 'id' | 'created_at' | 'updated_at'> {}
+export interface CreateCustomer extends Omit<Customer, 'id' | 'created_at' | 'updated_at'> { }
 
 // Interface para crear cliente en DEV mode (usuario_id opcional)
 export interface CreateCustomerDev extends Omit<Customer, 'id' | 'created_at' | 'updated_at' | 'usuario_id'> {
@@ -66,4 +67,4 @@ export interface CreateCustomerDev extends Omit<Customer, 'id' | 'created_at' | 
 }
 
 // Interface para actualizar cliente (campos opcionales)
-export interface UpdateCustomer extends Partial<Omit<Customer, 'id' | 'created_at'>> {}
+export interface UpdateCustomer extends Partial<Omit<Customer, 'id' | 'created_at'>> { }

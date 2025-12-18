@@ -33,12 +33,12 @@ export class SupabaseCustomersService {
   private config = getCurrentSupabaseConfig();
   private authService = inject(AuthService);
   private runtimeConfig = inject(RuntimeConfigService);
-  
+
   // Estado reactivo
   private customersSubject = new BehaviorSubject<Customer[]>([]);
   private loadingSubject = new BehaviorSubject<boolean>(false);
   private statsSubject = new BehaviorSubject<CustomerStats | null>(null);
-  
+
   public customers$ = this.customersSubject.asObservable();
   public loading$ = this.loadingSubject.asObservable();
   public stats$ = this.statsSubject.asObservable();
@@ -51,14 +51,14 @@ export class SupabaseCustomersService {
 
     devLog('Servicio inicializado', {
       config: this.config,
-  environment: 'development'
+      environment: 'development'
     });
-    
+
     // Cargar cache de usuarios al inicializar
     if (this.config.enableDevUserSelector) {
       this.loadSystemUsersCache();
     }
-    
+
     // Escuchar cambios de usuario en DEV mode
     if (this.config.enableDevUserSelector) {
       window.addEventListener('devUserChanged', (event: any) => {
@@ -70,7 +70,7 @@ export class SupabaseCustomersService {
         this.updateStats();
       });
     }
-    
+
     // Cargar datos iniciales
     this.loadCustomers();
   }
@@ -119,14 +119,14 @@ export class SupabaseCustomersService {
    */
   getCustomers(filters: CustomerFilters = {}): Observable<Customer[]> {
     this.loadingSubject.next(true);
-    
+
     console.log('DEV: getCustomers llamado con:', {
       filters,
       currentDevUserId: this.currentDevUserId,
       useRpcFunctions: this.config.useRpcFunctions,
       isDevelopmentMode: this.config.isDevelopmentMode
     });
-    
+
     // Decidir qué método usar basado en la configuración
     if (this.config.useRpcFunctions && this.currentDevUserId) {
       console.log('DEV: Usando funciones RPC para obtener clientes');
@@ -144,14 +144,14 @@ export class SupabaseCustomersService {
    * Método RPC para desarrollo - bypasea RLS
    */
   private getCustomersRpc(filters: CustomerFilters = {}): Observable<Customer[]> {
-    const rpcCall = filters.search 
-      ? this.supabase.rpc('search_customers_dev', { 
-          target_user_id: this.currentDevUserId,
-          search_term: filters.search 
-        })
-      : this.supabase.rpc('get_customers_dev', { 
-          target_user_id: this.currentDevUserId 
-        });
+    const rpcCall = filters.search
+      ? this.supabase.rpc('search_customers_dev', {
+        target_user_id: this.currentDevUserId,
+        search_term: filters.search
+      })
+      : this.supabase.rpc('get_customers_dev', {
+        target_user_id: this.currentDevUserId
+      });
 
     return from(rpcCall).pipe(
       map(({ data, error }) => {
@@ -181,7 +181,7 @@ export class SupabaseCustomersService {
     // Nota: Usando LEFT JOIN (sin !) para permitir clientes sin dirección
     let query = this.supabase
       .from('clients')
-      .select('*, direccion:addresses(*)');  // ← LEFT JOIN: permite NULL
+      .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at)');  // ← Fetch ID and deleted_at for client-side filtering
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
     const companyId = this.authService.companyId();
@@ -220,7 +220,12 @@ export class SupabaseCustomersService {
         }
         // Schema cache may lack relation: fallback without embed
         if ((error as any)?.code === 'PGRST200') {
-          let q2 = this.supabase.from('clients').select('*');
+          let q2 = this.supabase.from('clients').select('*, devices(id, deleted_at)'); // Try with devices even in fallback if possible, or revert to * if failing again? 
+          // If PGRST200 happened on main query, it might be due to devices embed? 
+          // But usually fallback queries are simpler. 
+          // Let's stick to * but assume we might miss devices if embed fails.
+          // Actually, let's try to get devices if we can.
+          q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)');
           if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
           if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
           q2 = q2
@@ -252,57 +257,58 @@ export class SupabaseCustomersService {
     );
   }
 
-    // Helper to convert clients row -> Customer
-    private toCustomerFromClient(client: any): Customer {
-      return {
-        id: client.id,
-        name: client.name?.split(' ')[0] || '',
-        apellidos: client.apellidos || '',
-        email: client.email,
-        phone: client.phone,
-        // Prefer the real column; fallback to metadata only if needed
-        dni: client.dni || this.extractFromMetadata(client.metadata, 'dni') || '',
-        client_type: client.client_type || 'individual',
-        business_name: client.business_name || undefined,
-        cif_nif: client.cif_nif || undefined,
-        trade_name: client.trade_name || undefined,
-        legal_representative_name: client.legal_representative_name || undefined,
-        legal_representative_dni: client.legal_representative_dni || undefined,
-        mercantile_registry_data: client.mercantile_registry_data || undefined,
-        usuario_id: client.company_id,
-        created_at: client.created_at,
-        updated_at: client.updated_at,
-        activo: client.is_active === false ? false : !client.deleted_at,
-        direccion_id: client.direccion_id || null,
-        direccion: client.direccion || null,
-        metadata: client.metadata || undefined,
-        // GDPR fields
-        marketing_consent: client.marketing_consent ?? undefined,
-        marketing_consent_date: client.marketing_consent_date ?? undefined,
-        marketing_consent_method: client.marketing_consent_method ?? undefined,
-        data_processing_consent: client.data_processing_consent ?? undefined,
-        data_processing_consent_date: client.data_processing_consent_date ?? undefined,
-        data_processing_legal_basis: client.data_processing_legal_basis ?? undefined,
-        data_retention_until: client.data_retention_until ?? undefined,
-        deletion_requested_at: client.deletion_requested_at ?? undefined,
-        deletion_reason: client.deletion_reason ?? undefined,
-        anonymized_at: client.anonymized_at ?? undefined,
-        is_minor: client.is_minor ?? undefined,
-        parental_consent_verified: client.parental_consent_verified ?? undefined,
-        parental_consent_date: client.parental_consent_date ?? undefined,
-        data_minimization_applied: client.data_minimization_applied ?? undefined,
-        last_data_review_date: client.last_data_review_date ?? undefined,
-        access_restrictions: client.access_restrictions ?? undefined,
-        last_accessed_at: client.last_accessed_at ?? undefined,
-        access_count: client.access_count ?? undefined
-      } as Customer;
-    }
+  // Helper to convert clients row -> Customer
+  private toCustomerFromClient(client: any): Customer {
+    return {
+      id: client.id,
+      name: client.name?.split(' ')[0] || '',
+      apellidos: client.apellidos || '',
+      email: client.email,
+      phone: client.phone,
+      // Prefer the real column; fallback to metadata only if needed
+      dni: client.dni || this.extractFromMetadata(client.metadata, 'dni') || '',
+      client_type: client.client_type || 'individual',
+      business_name: client.business_name || undefined,
+      cif_nif: client.cif_nif || undefined,
+      trade_name: client.trade_name || undefined,
+      legal_representative_name: client.legal_representative_name || undefined,
+      legal_representative_dni: client.legal_representative_dni || undefined,
+      mercantile_registry_data: client.mercantile_registry_data || undefined,
+      usuario_id: client.company_id,
+      created_at: client.created_at,
+      updated_at: client.updated_at,
+      activo: client.is_active === false ? false : !client.deleted_at,
+      direccion_id: client.direccion_id || null,
+      direccion: client.direccion || null,
+      metadata: client.metadata || undefined,
+      // GDPR fields
+      marketing_consent: client.marketing_consent ?? undefined,
+      marketing_consent_date: client.marketing_consent_date ?? undefined,
+      marketing_consent_method: client.marketing_consent_method ?? undefined,
+      data_processing_consent: client.data_processing_consent ?? undefined,
+      data_processing_consent_date: client.data_processing_consent_date ?? undefined,
+      data_processing_legal_basis: client.data_processing_legal_basis ?? undefined,
+      data_retention_until: client.data_retention_until ?? undefined,
+      deletion_requested_at: client.deletion_requested_at ?? undefined,
+      deletion_reason: client.deletion_reason ?? undefined,
+      anonymized_at: client.anonymized_at ?? undefined,
+      is_minor: client.is_minor ?? undefined,
+      parental_consent_verified: client.parental_consent_verified ?? undefined,
+      parental_consent_date: client.parental_consent_date ?? undefined,
+      data_minimization_applied: client.data_minimization_applied ?? undefined,
+      last_data_review_date: client.last_data_review_date ?? undefined,
+      access_restrictions: client.access_restrictions ?? undefined,
+      last_accessed_at: client.last_accessed_at ?? undefined,
+      access_count: client.access_count ?? undefined,
+      devices: client.devices || []
+    } as Customer;
+  }
 
   /**
    * Método fallback (desarrollo) sin embed explícito
    */
   private getCustomersWithFallback(filters: CustomerFilters = {}): Observable<Customer[]> {
-    let query = this.supabase.from('clients').select('*');
+    let query = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)');
 
     const companyId = this.authService.companyId();
     if (this.isValidUuid(companyId)) {
@@ -359,7 +365,7 @@ export class SupabaseCustomersService {
   }
 
   // Cache de usuarios del sistema cargados dinámicamente
-  private systemUsersCache: Array<{id: string, company_id: string, name: string, email: string, role: string}> = [];
+  private systemUsersCache: Array<{ id: string, company_id: string, name: string, email: string, role: string }> = [];
 
   // Método auxiliar para obtener usuario del sistema (ahora sincrónico usando cache)
   private getCurrentUserFromSystemUsers(userId: string) {
@@ -445,12 +451,12 @@ export class SupabaseCustomersService {
    */
   createCustomer(customer: CreateCustomerDev): Observable<Customer> {
     this.loadingSubject.next(true);
-    
+
     // En modo desarrollo con RPC
     if (this.config.useRpcFunctions && this.currentDevUserId) {
       return this.createCustomerRpc(customer);
     }
-    
+
     // Método estándar
     return this.createCustomerStandard(customer);
   }
@@ -460,7 +466,7 @@ export class SupabaseCustomersService {
    */
   private createCustomerRpc(customer: CreateCustomerDev): Observable<Customer> {
     devLog('Creando cliente via RPC', { userId: this.currentDevUserId });
-    
+
     const rpcCall = this.supabase.rpc('create_customer_dev', {
       target_user_id: this.currentDevUserId,
       p_nombre: customer.name,
@@ -475,14 +481,14 @@ export class SupabaseCustomersService {
       // No enviar p_direccion_id: el esquema actual de clients no lo soporta
       // notas and activo fields removed per UI change; free-text address handled separately
     });
-    
+
     return from(rpcCall).pipe(
       switchMap(({ data: customerId, error }) => {
         if (error) {
           devError('Error en RPC create_customer_dev', error);
           throw error;
         }
-        
+
         // Obtener el cliente completo creado
         return this.getCustomer(customerId);
       }),
@@ -512,7 +518,7 @@ export class SupabaseCustomersService {
     }
 
     devLog('Creando cliente via Edge Function (producción segura)', { companyId });
-    
+
     // PRODUCTION: Always use Edge Function for security
     return from(this.callUpsertClientEdgeFunction(customer, companyId)).pipe(
       tap(newCustomer => {
@@ -565,32 +571,32 @@ export class SupabaseCustomersService {
       payload.p_direccion_id = (customer as any).direccion_id ?? null;
     }
 
-  const cfg = this.runtimeConfig.get();
-  const fnBase = cfg.edgeFunctionsBaseUrl || `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1`;
+    const cfg = this.runtimeConfig.get();
+    const fnBase = cfg.edgeFunctionsBaseUrl || `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1`;
     const fnUrl = `${fnBase.replace(/\/$/, '')}/upsert-client`;
-    
+
     const res = await fetch(fnUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
-  'apikey': cfg.supabase.anonKey,
+        'apikey': cfg.supabase.anonKey,
         'x-client-info': 'simplifica-app',
       },
       mode: 'cors',
       credentials: 'omit',
       body: JSON.stringify(payload),
     });
-    
+
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
       const errorMsg = json?.error || `Edge Function failed with status ${res.status}`;
       throw new Error(errorMsg);
     }
-    
+
     const row = json.client;
     if (!row) throw new Error('No client returned from Edge Function');
-    
+
     const converted: Customer = this.toCustomerFromClient(row);
     return converted;
   }
@@ -600,12 +606,12 @@ export class SupabaseCustomersService {
    */
   updateCustomer(id: string, updates: UpdateCustomer): Observable<Customer> {
     this.loadingSubject.next(true);
-    
+
     // En modo desarrollo con RPC
     if (this.config.useRpcFunctions && this.currentDevUserId) {
       return this.updateCustomerRpc(id, updates);
     }
-    
+
     // Método estándar
     return this.updateCustomerStandard(id, updates);
   }
@@ -615,7 +621,7 @@ export class SupabaseCustomersService {
    */
   private updateCustomerRpc(id: string, updates: UpdateCustomer): Observable<Customer> {
     devLog('Actualizando cliente via RPC', { id, userId: this.currentDevUserId });
-    
+
     const rpcCall = this.supabase.rpc('update_customer_dev', {
       customer_id: id,
       target_user_id: this.currentDevUserId,
@@ -631,14 +637,14 @@ export class SupabaseCustomersService {
       p_avatar_url: updates.avatar_url || null,
       // p_activo removed - active state handled by default/deleted_at
     });
-    
+
     return from(rpcCall).pipe(
       switchMap(({ data: success, error }) => {
         if (error || !success) {
           devError('Error en RPC update_customer_dev', error);
           throw error || new Error('Update failed');
         }
-        
+
         // Obtener el cliente actualizado
         return this.getCustomer(id);
       }),
@@ -646,7 +652,7 @@ export class SupabaseCustomersService {
         devSuccess('Cliente actualizado via RPC', updatedCustomer.id);
         // Actualizar lista local
         const currentCustomers = this.customersSubject.value;
-        const updatedList = currentCustomers.map(c => 
+        const updatedList = currentCustomers.map(c =>
           c.id === id ? updatedCustomer : c
         );
         this.customersSubject.next(updatedList);
@@ -665,7 +671,7 @@ export class SupabaseCustomersService {
    */
   private updateCustomerStandard(id: string, updates: UpdateCustomer): Observable<Customer> {
     devLog('Actualizando cliente via Edge Function (producción segura)', { id });
-    
+
     // PRODUCTION: Always use Edge Function for security
     return from(this.callUpsertClientEdgeFunction({ ...updates, id } as any, undefined)).pipe(
       tap(updatedCustomer => {
@@ -688,12 +694,12 @@ export class SupabaseCustomersService {
    */
   deleteCustomer(id: string): Observable<void> {
     this.loadingSubject.next(true);
-    
+
     // En modo desarrollo con RPC
     if (this.config.useRpcFunctions && this.currentDevUserId) {
       return this.deleteCustomerRpc(id);
     }
-    
+
     // Método estándar (legacy soft delete) replaced by conditional remove/deactivate
     return this.removeOrDeactivateCustomer(id);
   }
@@ -703,12 +709,12 @@ export class SupabaseCustomersService {
    */
   private deleteCustomerRpc(id: string): Observable<void> {
     devLog('Eliminando cliente via RPC', { id, userId: this.currentDevUserId });
-    
+
     const rpcCall = this.supabase.rpc('delete_customer_dev', {
       customer_id: id,
       target_user_id: this.currentDevUserId
     });
-    
+
     return from(rpcCall).pipe(
       map(({ data: success, error }) => {
         if (error || !success) {
@@ -793,7 +799,7 @@ export class SupabaseCustomersService {
         },
         body: JSON.stringify({ p_id: id })
       });
-      const json = await res.json().catch(()=>({}));
+      const json = await res.json().catch(() => ({}));
       if (!res.ok || !json.ok) {
         const err = json?.error || `Edge Function error (${res.status})`;
         throw new Error(err);
@@ -838,7 +844,7 @@ export class SupabaseCustomersService {
       .select('*')
       .or(`name.ilike.%${query}%,apellidos.ilike.%${query}%,email.ilike.%${query}%,dni.ilike.%${query}%,phone.ilike.%${query}%`)
       .order('created_at', { ascending: false });
-      
+
     // Aplicar filtro de desarrollo si es necesario
     if (this.config.isDevelopmentMode && this.currentDevUserId) {
       const selectedUser = this.getCurrentUserFromSystemUsers(this.currentDevUserId);
@@ -850,7 +856,7 @@ export class SupabaseCustomersService {
     return from(searchQuery).pipe(
       map(({ data, error }) => {
         if (error) throw error;
-        
+
         // Convertir de clients a Customer[]
         return data.map((client: any) => ({
           id: client.id,
@@ -879,7 +885,7 @@ export class SupabaseCustomersService {
     if (this.config.useRpcFunctions && this.currentDevUserId) {
       return this.getCustomerStatsRpc();
     }
-    
+
     // Método estándar
     return this.getCustomerStatsStandard();
   }
@@ -889,7 +895,7 @@ export class SupabaseCustomersService {
    */
   private getCustomerStatsRpc(): Observable<CustomerStats> {
     devLog('Obteniendo estadísticas via RPC', { userId: this.currentDevUserId });
-    
+
     return from(
       this.supabase.rpc('get_customer_stats_dev', {
         target_user_id: this.currentDevUserId
@@ -900,9 +906,9 @@ export class SupabaseCustomersService {
           devError('Error en RPC get_customer_stats_dev', error);
           throw error;
         }
-        
+
         devSuccess('Estadísticas obtenidas via RPC', data);
-        
+
         return {
           total: data.total || 0,
           newThisWeek: data.new_this_week || 0,
@@ -945,12 +951,12 @@ export class SupabaseCustomersService {
 
   private getCustomerStatsStandard(): Observable<CustomerStats> {
     devLog('Obteniendo estadísticas via método estándar');
-    
+
     const now = new Date();
-    
+
     // Inicio de este mes (día 1 a las 00:00:00)
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    
+
     // Inicio de esta semana (lunes a las 00:00:00)
     const startOfWeek = new Date(now);
     const dayOfWeek = now.getDay();
@@ -966,19 +972,19 @@ export class SupabaseCustomersService {
       Promise.all([
         // Total de clientes
         this.applyDevFilter(this.buildClientQuery().select('id', { count: 'exact', head: true })),
-        
+
         // Clientes nuevos esta semana
         this.applyDevFilter(this.buildClientQuery()
           .select('id', { count: 'exact', head: true })
           .gte('created_at', startOfWeek.toISOString())
           .is('deleted_at', null)),
-        
+
         // Clientes nuevos este mes
         this.applyDevFilter(this.buildClientQuery()
           .select('id', { count: 'exact', head: true })
           .gte('created_at', startOfMonth.toISOString())
           .is('deleted_at', null)),
-        
+
         // Por localidad - simplificado por ahora debido a diferente estructura
         this.applyDevFilter(this.buildClientQuery().select('id'))
       ])
@@ -1030,12 +1036,12 @@ export class SupabaseCustomersService {
     ).pipe(
       switchMap(({ error }) => {
         if (error) throw error;
-        
+
         // Obtener URL pública
         const { data } = this.supabase.storage
           .from('customer-avatars')
           .getPublicUrl(filePath);
-        
+
         return from(Promise.resolve(data.publicUrl));
       }),
       switchMap(avatarUrl => {
@@ -1068,7 +1074,7 @@ export class SupabaseCustomersService {
   /**
    * Parse CSV file and return headers and data for mapping
    */
-  parseCSVForMapping(file: File): Observable<{headers: string[], data: string[][]}> {
+  parseCSVForMapping(file: File): Observable<{ headers: string[], data: string[][] }> {
     return new Observable(observer => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -1147,128 +1153,128 @@ export class SupabaseCustomersService {
     );
   }
 
-/**
- * Importar clientes desde CSV
- * Maneja v2 de Supabase y obtiene el bearer token correctamente
- */
-importFromCSV(file: File): Observable<Customer[]> {
-  const MAX_RECORDS = 500;
+  /**
+   * Importar clientes desde CSV
+   * Maneja v2 de Supabase y obtiene el bearer token correctamente
+   */
+  importFromCSV(file: File): Observable<Customer[]> {
+    const MAX_RECORDS = 500;
 
-  return new Observable(observer => {
-    const reader = new FileReader();
-    reader.onload = async e => {
-      try {
-        const csv = e.target?.result as string;
-        const customers = this.parseCSV(csv);
-        if (!customers.length) {
-          observer.error(new Error('El archivo CSV está vacío o no tiene un formato válido.'));
-          return;
-        }
-        if (customers.length > MAX_RECORDS) {
-          observer.error(new Error(`El archivo contiene ${customers.length} registros. El límite máximo es ${MAX_RECORDS} clientes por archivo.`));
-          return;
-        }
-
-        // Construcción de payload y token
-        const payloadRows = customers.map(c => ({
-          name: c.name,
-          surname: c.apellidos, // unified field for Edge Function
-          email: c.email,
-          phone: c.phone,
-          dni: c.dni,
-          client_type: (c as any).client_type || 'individual',
-          business_name: (c as any).business_name || undefined,
-          cif_nif: (c as any).cif_nif || undefined,
-          trade_name: (c as any).trade_name || undefined,
-          metadata: (c as any).metadata,
-          direccion_id: (c as any).direccion_id || null,
-          company_id: (this.getCurrentUserFromSystemUsers?.(this.currentDevUserId || 'default-user')?.company_id) || this.authService.companyId() || undefined
-        }));
-
-        // Obtención del acceso (Supabase v2)
-        let accessToken: string | undefined;
+    return new Observable(observer => {
+      const reader = new FileReader();
+      reader.onload = async e => {
         try {
-          const sessionRes: any = await this.authService.client.auth.getSession();
-          const session = sessionRes?.data?.session || null;
-          accessToken = session?.access_token || session?.accessToken || undefined;
-        } catch (_) { /* Ignorar */ }
+          const csv = e.target?.result as string;
+          const customers = this.parseCSV(csv);
+          if (!customers.length) {
+            observer.error(new Error('El archivo CSV está vacío o no tiene un formato válido.'));
+            return;
+          }
+          if (customers.length > MAX_RECORDS) {
+            observer.error(new Error(`El archivo contiene ${customers.length} registros. El límite máximo es ${MAX_RECORDS} clientes por archivo.`));
+            return;
+          }
 
-        // RefreshSession si no hubiese acceso
-        if (!accessToken) {
+          // Construcción de payload y token
+          const payloadRows = customers.map(c => ({
+            name: c.name,
+            surname: c.apellidos, // unified field for Edge Function
+            email: c.email,
+            phone: c.phone,
+            dni: c.dni,
+            client_type: (c as any).client_type || 'individual',
+            business_name: (c as any).business_name || undefined,
+            cif_nif: (c as any).cif_nif || undefined,
+            trade_name: (c as any).trade_name || undefined,
+            metadata: (c as any).metadata,
+            direccion_id: (c as any).direccion_id || null,
+            company_id: (this.getCurrentUserFromSystemUsers?.(this.currentDevUserId || 'default-user')?.company_id) || this.authService.companyId() || undefined
+          }));
+
+          // Obtención del acceso (Supabase v2)
+          let accessToken: string | undefined;
           try {
-            await this.authService.client.auth.refreshSession();
-            const sessionRes2: any = await this.authService.client.auth.getSession();
-            const session2 = sessionRes2?.data?.session || null;
-            accessToken = session2?.access_token || session2?.accessToken || undefined;
+            const sessionRes: any = await this.authService.client.auth.getSession();
+            const session = sessionRes?.data?.session || null;
+            accessToken = session?.access_token || session?.accessToken || undefined;
           } catch (_) { /* Ignorar */ }
-        }
 
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (!accessToken) {
-          observer.error(new Error('No se pudo obtener un token válido de sesión. Inicia sesión antes de importar.'));
-          return;
-        }
-        headers['Authorization'] = `Bearer ${accessToken}`;
+          // RefreshSession si no hubiese acceso
+          if (!accessToken) {
+            try {
+              await this.authService.client.auth.refreshSession();
+              const sessionRes2: any = await this.authService.client.auth.getSession();
+              const session2 = sessionRes2?.data?.session || null;
+              accessToken = session2?.access_token || session2?.accessToken || undefined;
+            } catch (_) { /* Ignorar */ }
+          }
 
-    const proxyUrl = '/api/import-customers';
-    const cfg = this.runtimeConfig.get();
-  const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
-    headers['apikey'] = cfg.supabase.anonKey;
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (!accessToken) {
+            observer.error(new Error('No se pudo obtener un token válido de sesión. Inicia sesión antes de importar.'));
+            return;
+          }
+          headers['Authorization'] = `Bearer ${accessToken}`;
 
-        // First try proxy (if configured in hosting). If it returns non-JSON, fallback to direct.
-        let resp = await fetch(proxyUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ rows: payloadRows })
-        });
+          const proxyUrl = '/api/import-customers';
+          const cfg = this.runtimeConfig.get();
+          const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
+          headers['apikey'] = cfg.supabase.anonKey;
 
-        // Fallback directo si el proxy no responde correctamente o devuelve HTML
-        const ct = resp.headers.get('content-type') || '';
-        if ((!resp.ok && (resp.status === 404 || resp.status === 405)) || !ct.includes('application/json')) {
-          resp = await fetch(functionUrl, {
+          // First try proxy (if configured in hosting). If it returns non-JSON, fallback to direct.
+          let resp = await fetch(proxyUrl, {
             method: 'POST',
             headers,
             body: JSON.stringify({ rows: payloadRows })
           });
+
+          // Fallback directo si el proxy no responde correctamente o devuelve HTML
+          const ct = resp.headers.get('content-type') || '';
+          if ((!resp.ok && (resp.status === 404 || resp.status === 405)) || !ct.includes('application/json')) {
+            resp = await fetch(functionUrl, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ rows: payloadRows })
+            });
+          }
+
+          if (!resp.ok) {
+            const text = await resp.text().catch(() => null);
+            throw new Error(`Error en importación masiva: ${resp.status} ${text || ''}`);
+          }
+
+          const json = await resp.json();
+          const inserted = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
+          const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
+            id: row.id,
+            name: row.name || '',
+            apellidos: row.apellidos || '',
+            dni: row.dni || '',
+            email: row.email || '',
+            phone: row.phone || '',
+            usuario_id: row.company_id || this.currentDevUserId || '',
+            created_at: row.created_at,
+            updated_at: row.updated_at || row.created_at,
+            activo: true
+          })) as Customer[];
+
+          // Actualizar caché local y finalizar
+          const currentCustomers = this.customersSubject.value;
+          this.customersSubject.next([...newCustomers, ...currentCustomers]);
+          this.updateStats?.();
+
+          observer.next(newCustomers);
+          observer.complete();
+        } catch (err) {
+          observer.error(new Error('Error en la importación masiva: ' + String(err)));
         }
-
-        if (!resp.ok) {
-          const text = await resp.text().catch(() => null);
-          throw new Error(`Error en importación masiva: ${resp.status} ${text || ''}`);
-        }
-
-  const json = await resp.json();
-        const inserted = Array.isArray(json.inserted) ? json.inserted : (json.inserted || []);
-        const newCustomers = inserted.filter((r: any) => r && r.id).map((row: any) => ({
-          id: row.id,
-          name: row.name || '',
-          apellidos: row.apellidos || '',
-          dni: row.dni || '',
-          email: row.email || '',
-          phone: row.phone || '',
-          usuario_id: row.company_id || this.currentDevUserId || '',
-          created_at: row.created_at,
-          updated_at: row.updated_at || row.created_at,
-          activo: true
-        })) as Customer[];
-
-        // Actualizar caché local y finalizar
-        const currentCustomers = this.customersSubject.value;
-        this.customersSubject.next([...newCustomers, ...currentCustomers]);
-        this.updateStats?.();
-
-        observer.next(newCustomers);
-        observer.complete();
-      } catch (err) {
-        observer.error(new Error('Error en la importación masiva: ' + String(err)));
-      }
-    };
-    reader.onerror = () => {
-      observer.error(new Error('Error al leer el archivo.'));
-    };
-    reader.readAsText(file, 'UTF-8');
-  });
-}
+      };
+      reader.onerror = () => {
+        observer.error(new Error('Error al leer el archivo.'));
+      };
+      reader.readAsText(file, 'UTF-8');
+    });
+  }
 
 
   // Métodos públicos para testing
@@ -1311,7 +1317,7 @@ importFromCSV(file: File): Observable<Customer[]> {
     if (rows.length < 2) {
       throw new Error('El archivo CSV debe contener al menos una fila de cabeceras y una fila de datos.');
     }
-    
+
     // Headers from first row
     const headers = rows[0].map(h => this.cleanCellValue(h)).map(h => h.trim().toLowerCase());
 
@@ -1351,7 +1357,7 @@ importFromCSV(file: File): Observable<Customer[]> {
       .map((row, index) => {
         try {
           const values = row.map(c => this.cleanCellValue(c));
-          
+
           // Mapear por posición o name de columna
           // Map required fields using headerAliases
           let name = this.findValueByHeader(headers, values, headerAliases['name']) || '';
@@ -1388,7 +1394,7 @@ importFromCSV(file: File): Observable<Customer[]> {
             dni: this.findValueByHeader(headers, values, ['dni', 'nif', 'documento']) || '',
             phone: this.findValueByHeader(headers, values, ['phone', 'teléfono', 'movil']) || ''
           };
-          
+
           // attach metadata (as JSON string) for server-side insertion if there are any extra fields
           if (attentionReasons.length) {
             metaObj['needs_attention'] = true;
@@ -1411,7 +1417,7 @@ importFromCSV(file: File): Observable<Customer[]> {
    */
   private parseCSVWithMappings(headers: string[], dataRows: string[][], fieldMappings: any[]): Partial<Customer>[] {
     const MAX_RECORDS = 500;
-    
+
     if (dataRows.length > MAX_RECORDS) {
       throw new Error(`El archivo contiene ${dataRows.length} registros. El límite máximo es ${MAX_RECORDS} clientes por archivo.`);
     }
@@ -1494,7 +1500,7 @@ importFromCSV(file: File): Observable<Customer[]> {
         return customer;
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-          const rowText = Array.isArray(row) ? row.join(',') : String(row || '');
+        const rowText = Array.isArray(row) ? row.join(',') : String(row || '');
         const displayRow = rowText && rowText.trim() ? rowText : '<vacío>';
         throw new Error(`Error en fila ${index + 2}: ${errorMessage} | Contenido fila: ${displayRow}`);
       }
@@ -1529,12 +1535,12 @@ importFromCSV(file: File): Observable<Customer[]> {
         company_id: (this.getCurrentUserFromSystemUsers(this.currentDevUserId || 'default-user')?.company_id) || this.authService.companyId() || undefined
       }));
 
-    const proxyUrl = '/api/import-customers';
-    const cfg = this.runtimeConfig.get();
-  const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
+      const proxyUrl = '/api/import-customers';
+      const cfg = this.runtimeConfig.get();
+      const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
 
       (async () => {
-          try {
+        try {
           // Try to get access token from AuthService-managed supabase client session
           let accessToken: string | undefined;
           try {
@@ -1624,7 +1630,7 @@ importFromCSV(file: File): Observable<Customer[]> {
   async testImportEndpoints(): Promise<{ proxy?: { status: number; text: string }, direct?: { status: number; text: string }, errors?: any[] }> {
     const proxyUrl = '/api/import-customers';
     const cfg = this.runtimeConfig.get();
-  const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
+    const functionUrl = `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1/import-customers`;
     const samplePayload = { rows: [{ name: 'DEBUG', surname: 'USER', email: 'debug@example.com' }] };
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     headers['apikey'] = cfg.supabase.anonKey;
@@ -1689,10 +1695,10 @@ importFromCSV(file: File): Observable<Customer[]> {
     const result = [];
     let current = '';
     let inQuotes = false;
-    
+
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
-      
+
       if (char === '"') {
         if (inQuotes && line[i + 1] === '"') {
           // Doble comilla dentro de comillas = comilla literal
@@ -1710,7 +1716,7 @@ importFromCSV(file: File): Observable<Customer[]> {
         current += char;
       }
     }
-    
+
     result.push(current);
     return result.map(value => value.trim());
   }
@@ -1841,7 +1847,7 @@ importFromCSV(file: File): Observable<Customer[]> {
     const totalCsvRows = csvData.length;
     const nonEmptyRowsArr = csvData.filter(r => Array.isArray(r) && r.some(c => (c || '').trim()));
     const nonEmptyCount = nonEmptyRowsArr.length;
-    try { console.log('[CSV-MAP] Rows received:', totalCsvRows, 'non-empty:', nonEmptyCount, 'mappings:', mappings.length); } catch {}
+    try { console.log('[CSV-MAP] Rows received:', totalCsvRows, 'non-empty:', nonEmptyCount, 'mappings:', mappings.length); } catch { }
 
     const rows: Partial<Customer>[] = nonEmptyRowsArr
       .map(row => {
@@ -1854,12 +1860,12 @@ importFromCSV(file: File): Observable<Customer[]> {
           // Campos comunes
           email: pick('email'),
           phone: pick('phone') || pick('telefono'),
-          
+
           // Campos persona física
           name: pick('name'),
           apellidos: pick('apellidos') || pick('surname'),
           dni: pick('dni') || pick('nif') || pick('documento'),
-          
+
           // Campos empresa/persona jurídica
           client_type: (pick('client_type') as 'individual' | 'business') || 'individual', // default a 'individual' si no se especifica
           business_name: pick('business_name'),
@@ -1873,7 +1879,7 @@ importFromCSV(file: File): Observable<Customer[]> {
         // Legacy address field (dirección completa como texto) - ahora en variable adicional
         const address = pick('address') || pick('direccion');
         if (address) (item as any).address = address;
-        
+
         // Campos de dirección estructurada (si los necesitamos más adelante)
         const addressTipoVia = pick('addressTipoVia');
         const addressNombre = pick('addressNombre');
@@ -1881,7 +1887,7 @@ importFromCSV(file: File): Observable<Customer[]> {
         if (addressTipoVia) (item as any).addressTipoVia = addressTipoVia;
         if (addressNombre) (item as any).addressNombre = addressNombre;
         if (addressNumero) (item as any).addressNumero = addressNumero;
-        
+
         return item;
       });
 
@@ -1894,7 +1900,7 @@ importFromCSV(file: File): Observable<Customer[]> {
       return copy as Partial<Customer>;
     });
     const mapped = normalized.filter(r => (r.name && r.name.trim()) || (r.email && r.email.trim()));
-    try { console.log('[CSV-MAP] After mapping defaults -> candidates:', rows.length, 'kept:', mapped.length); } catch {}
+    try { console.log('[CSV-MAP] After mapping defaults -> candidates:', rows.length, 'kept:', mapped.length); } catch { }
     return mapped;
   }
 
@@ -1912,8 +1918,8 @@ importFromCSV(file: File): Observable<Customer[]> {
     latestImported: Customer[] | null;
     error?: any;
   }> {
-  const totalCount = allCustomers.length;
-  try { console.log('[IMPORT] Starting batch import. totalCount:', totalCount, 'batchSize:', batchSize); } catch {}
+    const totalCount = allCustomers.length;
+    try { console.log('[IMPORT] Starting batch import. totalCount:', totalCount, 'batchSize:', batchSize); } catch { }
     let importedCount = 0;
 
     const batches: Partial<Customer>[][] = [];

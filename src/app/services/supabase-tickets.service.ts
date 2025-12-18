@@ -556,8 +556,23 @@ export class SupabaseTicketsService {
 
   async updateTicket(ticketId: string, ticketData: Partial<Ticket>): Promise<Ticket> {
     try {
+      // Filter out non-column fields to prevent 400 errors
+      // Explicitly allow only columns that exist in the 'tickets' table
+      const allowedColumns = [
+        'company_id', 'client_id', 'stage_id', 'title', 'description',
+        'priority', 'due_date', 'estimated_hours', 'actual_hours',
+        'total_amount', 'assigned_to', 'is_opened', 'ticket_number'
+      ];
+
+      const cleanData: any = {};
+      Object.keys(ticketData).forEach(key => {
+        if (allowedColumns.includes(key)) {
+          cleanData[key] = (ticketData as any)[key];
+        }
+      });
+
       const updateData = {
-        ...ticketData,
+        ...cleanData,
         updated_at: new Date().toISOString()
       };
 

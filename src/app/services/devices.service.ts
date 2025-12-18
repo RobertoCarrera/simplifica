@@ -7,52 +7,53 @@ export interface Device {
   id: string;
   company_id: string;
   client_id: string;
-  
+
   // Información básica
   brand: string;
   model: string;
   device_type: string;
   serial_number?: string;
   imei?: string;
-  
+
   // Estado y condición
   status: 'received' | 'in_progress' | 'completed' | 'delivered' | 'cancelled';
   condition_on_arrival?: string;
   reported_issue: string;
-  
+
   // Información técnica
   operating_system?: string;
   storage_capacity?: string;
   color?: string;
   purchase_date?: string;
   warranty_status?: 'in_warranty' | 'out_of_warranty' | 'unknown';
-  
+
   // Gestión interna
   priority: 'low' | 'normal' | 'high' | 'urgent';
   estimated_repair_time?: number;
   actual_repair_time?: number;
-  
+
   // Fechas
   received_at: string;
   started_repair_at?: string;
   completed_at?: string;
   delivered_at?: string;
-  
+
   // Costos
   estimated_cost?: number;
   final_cost?: number;
-  
+
   // Metadata
   created_at: string;
   updated_at: string;
   created_by?: string;
-  
+
   // IA y multimedia
   ai_diagnosis?: any;
   ai_confidence_score?: number;
   device_images?: string[];
+  media?: DeviceMedia[];
   repair_notes?: string[];
-  
+
   // Relaciones
   client?: {
     id: string;
@@ -60,6 +61,8 @@ export interface Device {
     email?: string;
     phone?: string;
   };
+  deleted_at?: string;
+  deletion_reason?: string;
 }
 
 export interface DeviceStatusHistory {
@@ -144,9 +147,9 @@ export class DevicesService {
   // CRUD BÁSICO DE DISPOSITIVOS
   // ================================
 
-  async getDevices(companyId: string): Promise<Device[]> {
+  async getDevices(companyId: string, showDeleted: boolean = false): Promise<Device[]> {
     try {
-  console.log('[DevicesService] getDevices companyId =', companyId);
+      console.log('[DevicesService] getDevices companyId =', companyId, 'showDeleted =', showDeleted);
 
       // Primary query with embed
       let query: any = this.supabase
@@ -163,16 +166,44 @@ export class DevicesService {
         console.warn('DevicesService.getDevices: ignoring non-UUID companyId:', companyId);
       }
 
+      if (!showDeleted) {
+        query = query.is('deleted_at', null);
+      } else {
+        // If showing deleted, maybe we want ONLY deleted? Or ALL?
+        // User request: "list deleted devices if desired".
+        // Usually "Show Deleted" toggles between "Active Only" and "Active + Deleted" or "Deleted Only".
+        // Let's assume this flag means "Include Deleted" or "Show Deleted Only"?
+        // Let's implement as "Include Deleted" essentially disables the filter.
+        // Or if we want separate list, we might need a status filter.
+        // For now, let's treat `showDeleted` as "Include everything".
+        // Wait, typical pattern is separate lists.
+        // Let's stick to: default = active only. If true = all (or just deleted?).
+        // Let's make it efficient: if true, we don't filter.
+        // Actually, let's make it a filter mode? 'active' | 'deleted' | 'all'.
+        // But for simplicity of signature, let's stick to boolean.
+        // If showDeleted is true, we ONLY show deleted? Or we show ALL?
+        // Let's make it `includeDeleted`.
+        // But I can't change signature easily without refactoring callers.
+        // Let's check callers. Only TicketDetail calls it.
+        // I will change it to `includeDeleted: boolean = false`.
+        // If true, we remove the .is('deleted_at', null) filter.
+        // Actually, better to be explicit.
+      }
+      // If we want to only show deleted, we would add .not('deleted_at', 'is', null).
+      // Let's assume true = show ALL (active + deleted).
+
       let { data, error } = await query;
 
       // Fallback: some setups might fail on embed alias; try plain select
       if (error) {
-  console.warn('[DevicesService] getDevices with embed failed, retrying with plain select:', error?.message || error);
+        console.warn('[DevicesService] getDevices with embed failed, retrying with plain select:', error?.message || error);
         let q2: any = this.supabase
           .from('devices')
           .select('*')
           .order('received_at', { ascending: false });
         if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId);
+        if (!showDeleted) q2 = q2.is('deleted_at', null);
+
         const res2 = await q2;
         data = res2.data;
         error = res2.error;
@@ -364,6 +395,46 @@ export class DevicesService {
     }
   }
 
+  async softDeleteDevice(deviceId: string, reason: string): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('devices')
+        .update({
+          deleted_at: new Date().toISOString(),
+          deletion_reason: reason
+        })
+        .eq('id', deviceId);
+
+      if (error) {
+        console.error('Error soft deleting device:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error in softDeleteDevice:', error);
+      throw error;
+    }
+  }
+
+  async restoreDevice(deviceId: string): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('devices')
+        .update({
+          deleted_at: null,
+          deletion_reason: null
+        })
+        .eq('id', deviceId);
+
+      if (error) {
+        console.error('Error restoring device:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error in restoreDevice:', error);
+      throw error;
+    }
+  }
+
   // ================================
   // GESTIÓN DE ESTADOS
   // ================================
@@ -371,7 +442,7 @@ export class DevicesService {
   async updateDeviceStatus(deviceId: string, newStatus: Device['status'], notes?: string): Promise<Device> {
     try {
       const updates: Partial<Device> = { status: newStatus };
-      
+
       // Actualizar fechas automáticamente según el estado
       const now = new Date().toISOString();
       switch (newStatus) {
@@ -529,10 +600,55 @@ export class DevicesService {
     }
   }
 
-  async uploadDeviceImage(deviceId: string, file: File, context: DeviceMedia['media_context'], description?: string): Promise<DeviceMedia> {
+  async getTicketDeviceMedia(ticketDeviceId: string): Promise<DeviceMedia[]> {
     try {
-      // Subir archivo a Supabase Storage
-      const fileName = `${deviceId}/${Date.now()}_${file.name}`;
+      const { data, error } = await this.supabase
+        .from('device_media')
+        .select('*')
+        .eq('ticket_device_id', ticketDeviceId)
+        .order('taken_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching ticket device media:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getTicketDeviceMedia:', error);
+      throw error;
+    }
+  }
+
+  async uploadDeviceImage(
+    deviceId: string,
+    file: File,
+    context: DeviceMedia['media_context'],
+    description?: string,
+    ticketDeviceId?: string,
+    ticketId?: string,
+    deviceInfo?: { brand?: string; model?: string }
+  ): Promise<DeviceMedia> {
+    try {
+      // Generate descriptive filename
+      const ext = file.name.split('.').pop() || 'jpg';
+      const sanitize = (s?: string) => (s || '').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+      const brand = sanitize(deviceInfo?.brand) || 'device';
+      const model = sanitize(deviceInfo?.model) || '';
+      const contextLabel = context || 'img';
+      const ts = Date.now();
+      const baseName = model ? `${brand}_${model}_${contextLabel}_${ts}.${ext}` : `${brand}_${contextLabel}_${ts}.${ext}`;
+
+      let fileName = `${deviceId}/${baseName}`;
+
+      // Si tenemos ticketId, usar estructura ordenada por año/mes
+      if (ticketId) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        fileName = `${year}/${month}/${ticketId}/${baseName}`;
+      }
+
       const { data: uploadData, error: uploadError } = await this.supabase.storage
         .from('device-images')
         .upload(fileName, file);
@@ -548,18 +664,25 @@ export class DevicesService {
         .getPublicUrl(fileName);
 
       // Registrar en la base de datos
+      const insertPayload: any = {
+        device_id: deviceId,
+        media_type: 'image',
+        file_url: publicUrl,
+        file_name: file.name,
+        file_size: file.size,
+        mime_type: file.type,
+        media_context: context,
+        description: description
+      };
+
+      // Link to ticket-device relationship if provided
+      if (ticketDeviceId) {
+        insertPayload.ticket_device_id = ticketDeviceId;
+      }
+
       const { data, error } = await this.supabase
         .from('device_media')
-        .insert([{
-          device_id: deviceId,
-          media_type: 'image',
-          file_url: publicUrl,
-          file_name: file.name,
-          file_size: file.size,
-          mime_type: file.type,
-          media_context: context,
-          description: description
-        }])
+        .insert([insertPayload])
         .select('*')
         .single();
 
@@ -685,34 +808,39 @@ export class DevicesService {
   // INTEGRACIÓN CON TICKETS
   // ================================
 
-  async linkDeviceToTicket(ticketId: string, deviceId: string, relationType: string = 'repair'): Promise<void> {
+  async linkDeviceToTicket(ticketId: string, deviceId: string, relationType: string = 'repair'): Promise<string> {
     try {
-      const { error } = await this.supabase
+      const { data, error } = await this.supabase
         .from('ticket_devices')
         .insert([{
           ticket_id: ticketId,
           device_id: deviceId,
           relation_type: relationType
-        }]);
+        }])
+        .select('id')
+        .single();
 
       if (error) {
         console.error('Error linking device to ticket:', error);
         throw error;
       }
+
+      return data.id;
     } catch (error) {
       console.error('Error in linkDeviceToTicket:', error);
       throw error;
     }
   }
 
-  async getTicketDevices(ticketId: string): Promise<Device[]> {
+  async getTicketDevices(ticketId: string, includeDeleted: boolean = false): Promise<Device[]> {
     try {
       const { data, error } = await this.supabase
         .from('ticket_devices')
         .select(`
           device:devices(
             *,
-            client:clients!devices_client_id_fkey(id, name, email, phone)
+            client:clients!devices_client_id_fkey(id, name, email, phone),
+            media:device_media(*)
           )
         `)
         .eq('ticket_id', ticketId);
@@ -722,9 +850,78 @@ export class DevicesService {
         throw error;
       }
 
-      return (data?.map((item: any) => item.device).filter(Boolean) || []) as Device[];
+      // Map results - media is now nested inside device
+      let devices = (data?.map((item: any) => {
+        const device = item.device;
+        return device;
+      }).filter(Boolean) || []) as Device[];
+
+      if (!includeDeleted) {
+        devices = devices.filter(d => !d.deleted_at);
+      }
+
+      return devices;
     } catch (error) {
       console.error('Error in getTicketDevices:', error);
+      throw error;
+    }
+  }
+
+  async getDeviceTickets(deviceId: string): Promise<any[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('ticket_devices')
+        .select(`
+          relation_type,
+          created_at,
+          ticket:tickets(
+            id,
+            ticket_number,
+            title,
+            status:ticket_stages(name),
+            priority,
+            created_at,
+            total_amount
+          )
+        `)
+        .eq('device_id', deviceId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching device tickets:', error);
+        throw error;
+      }
+
+      return data?.map((item: any) => ({
+        ...item.ticket,
+        relation_type: item.relation_type,
+        linked_at: item.created_at
+      })) || [];
+    } catch (error) {
+      console.error('Error in getDeviceTickets:', error);
+      throw error;
+    }
+  }
+
+  async linkDevicesToTicket(ticketId: string, deviceIds: string[]): Promise<void> {
+    try {
+      if (!deviceIds.length) return;
+
+      const records = deviceIds.map(deviceId => ({
+        ticket_id: ticketId,
+        device_id: deviceId
+      }));
+
+      const { error } = await this.supabase
+        .from('ticket_devices')
+        .insert(records);
+
+      if (error) {
+        console.error('Error linking devices to ticket:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error in linkDevicesToTicket:', error);
       throw error;
     }
   }

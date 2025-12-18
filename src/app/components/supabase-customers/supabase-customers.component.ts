@@ -20,25 +20,27 @@ import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ClientPortalService } from '../../services/client-portal.service';
 import { ClientGdprModalComponent } from '../client-gdpr-modal/client-gdpr-modal.component';
+import { ClientDevicesModalComponent } from '../client-devices-modal.component';
 import { SupabaseCustomersService as CustomersSvc } from '../../services/supabase-customers.service';
 
 @Component({
   selector: 'app-supabase-customers',
   standalone: true,
   imports: [
-    CommonModule, 
-    FormsModule, 
-    SkeletonComponent, 
+    CommonModule,
+    FormsModule,
+    SkeletonComponent,
     LoadingComponent,
     CsvHeaderMapperComponent,
     AppModalComponent,
     ClientGdprModalComponent,
+    ClientDevicesModalComponent
   ],
   templateUrl: './supabase-customers.component.html',
   styleUrls: ['./supabase-customers.component.scss']
 })
 export class SupabaseCustomersComponent implements OnInit, OnDestroy {
-  
+
   // Services
   private customersService = inject(SupabaseCustomersService);
   private gdprService = inject(GdprComplianceService);
@@ -51,7 +53,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   sidebarService = inject(SidebarStateService);
   devRoleService = inject(DevRoleService);
-  private auth = inject(AuthService);
+  public auth = inject(AuthService);
   portal = inject(ClientPortalService);
   private completenessSvc = inject(CustomersSvc);
   // Toast de importación (único y actualizable)
@@ -62,25 +64,29 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
   isLoading = signal(false);
   showForm = signal(false);
   selectedCustomer = signal<Customer | null>(null);
-  
+
   // Client type dropdown
   clientTypeDropdownOpen = signal(false);
   clientTypeOptions = [
     { value: 'individual', label: 'Persona física', icon: 'fas fa-user' },
     { value: 'business', label: 'Empresa', icon: 'fas fa-building' }
   ];
-  
+
   // History management for modals
   private popStateListener: any = null;
-  
+
   // GDPR signals
   gdprPanelVisible = signal(false);
   complianceStats = signal<any>(null);
-  
+
   // GDPR Modal signals
   showGdprModal = signal(false);
   gdprModalClient = signal<Customer | null>(null);
   flippedCardId = signal<string | null>(null);
+
+  // Devices Modal
+  showClientDevicesModal = signal(false);
+  devicesModalClient = signal<Customer | null>(null);
 
   // Invite modal state
   showInviteModal = signal(false);
@@ -113,12 +119,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     // Campos comunes (opcionales pero recomendados)
     { value: 'email', label: 'Email', required: false },
     { value: 'phone', label: 'Teléfono', required: false },
-    
+
     // Campos de Persona Física
     { value: 'name', label: 'Nombre (persona física)', required: false },
     { value: 'surname', label: 'Apellidos (persona física)', required: false },
     { value: 'dni', label: 'DNI (persona física)', required: false },
-    
+
     // Campos de Empresa/Persona Jurídica
     { value: 'client_type', label: 'Tipo de Cliente (individual/business)', required: false },
     { value: 'business_name', label: 'Razón Social (empresa)', required: false },
@@ -127,13 +133,13 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     { value: 'legal_representative_name', label: 'Representante Legal - Nombre', required: false },
     { value: 'legal_representative_dni', label: 'Representante Legal - DNI', required: false },
     { value: 'mercantile_registry_data', label: 'Datos Registro Mercantil', required: false },
-    
+
     // Dirección
     { value: 'address', label: 'Dirección Completa', required: false },
     { value: 'addressTipoVia', label: 'Tipo Vía', required: false },
     { value: 'addressNombre', label: 'Nombre Vía', required: false },
     { value: 'addressNumero', label: 'Número', required: false },
-    
+
     // Otros
     { value: 'notes', label: 'Notas', required: false },
     { value: 'metadata', label: 'Metadata (otros datos)', required: false }
@@ -144,12 +150,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     // Campos comunes
     email: ['email', 'correo', 'e-mail', 'mail', 'bill_to:email', 'bill to email', 'billto:email', 'ship_to:email', 'ship to email', 'shipto:email'],
     phone: ['phone', 'telefono', 'teléfono', 'tel', 'mobile', 'movil', 'móvil', 'bill_to:phone', 'bill to phone', 'billto:phone', 'ship_to:phone', 'ship to phone', 'shipto:phone'],
-    
+
     // Persona física
     name: ['name', 'nombre', 'first_name', 'firstname', 'first name', 'bill_to:first_name', 'bill to first name', 'billto:first_name', 'ship_to:first_name', 'ship to first name', 'shipto:first_name'],
     surname: ['surname', 'last_name', 'lastname', 'last name', 'apellidos', 'bill_to:last_name', 'bill to last name', 'billto:last_name', 'ship_to:last_name', 'ship to last name', 'shipto:last_name'],
     dni: ['dni', 'nif', 'documento', 'id', 'legal', 'bill_to:legal', 'bill to legal', 'billto:legal', 'ship_to:legal', 'ship to legal', 'shipto:legal'],
-    
+
     // Empresa
     client_type: ['client_type', 'tipo_cliente', 'tipo cliente', 'type', 'customer_type', 'customer type'],
     business_name: ['business_name', 'razon_social', 'razón social', 'razon social', 'company_name', 'company name', 'empresa', 'bill_to:company', 'bill to company', 'billto:company'],
@@ -158,13 +164,13 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     legal_representative_name: ['legal_representative_name', 'representante_legal', 'representante legal', 'representative', 'rep_name'],
     legal_representative_dni: ['legal_representative_dni', 'representante_dni', 'dni representante', 'dni_rep', 'rep_dni'],
     mercantile_registry_data: ['mercantile_registry_data', 'registro_mercantil', 'registro mercantil', 'registry', 'mercantile_data'],
-    
+
     // Dirección
     address: ['address', 'direccion', 'dirección', 'domicilio', 'bill_to:address', 'bill to address', 'billto:address', 'ship_to:address', 'ship to address', 'shipto:address'],
     addressTipoVia: ['addressTipoVia', 'tipo_via', 'tipo vía', 'tipo via', 'street_type', 'via'],
     addressNombre: ['addressNombre', 'nombre_via', 'nombre vía', 'nombre via', 'street_name', 'calle'],
     addressNumero: ['addressNumero', 'numero', 'número', 'number', 'num'],
-    
+
     // Otros
     notes: ['notes', 'notas', 'observaciones', 'comments', 'comentarios'],
     metadata: ['metadata', 'metadatos', 'otros', 'additional', 'extra']
@@ -232,38 +238,38 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
   existingLocalityByCP: Locality | null = null;
 
   onFileInputChange(event: Event): void {
-  const input = event.target as HTMLInputElement | null;
-  if (!input?.files || input.files.length === 0) {
-    this.toastService.error('Por favor selecciona un archivo CSV válido.', 'Error');
-    return;
-  }
-  const file = input.files[0];
-
-  this.customersService.importFromCSV(file).subscribe({
-    next: (importedCustomers) => {
-      this.toastService.success(`${importedCustomers.length} clientes importados correctamente.`, 'Éxito');
-      // Aquí puedes poner lógica extra para actualizar la UI si es necesario
-      // Por ejemplo, recargar la lista de clientes si no se actualiza automáticamente
-    },
-    error: (error) => {
-      this.toastService.error(`Error importando clientes: ${error.message || error}`, 'Error');
+    const input = event.target as HTMLInputElement | null;
+    if (!input?.files || input.files.length === 0) {
+      this.toastService.error('Por favor selecciona un archivo CSV válido.', 'Error');
+      return;
     }
-  });
-}
+    const file = input.files[0];
 
-// Método manejador de selección de archivo CSV
-onCsvFileSelected(event: Event): void {
-  const input = event.target as HTMLInputElement | null;
-  if (!input?.files || input.files.length === 0) {
-    this.toastService.error('Por favor selecciona un archivo CSV válido.', 'Error');
-    return;
+    this.customersService.importFromCSV(file).subscribe({
+      next: (importedCustomers) => {
+        this.toastService.success(`${importedCustomers.length} clientes importados correctamente.`, 'Éxito');
+        // Aquí puedes poner lógica extra para actualizar la UI si es necesario
+        // Por ejemplo, recargar la lista de clientes si no se actualiza automáticamente
+      },
+      error: (error) => {
+        this.toastService.error(`Error importando clientes: ${error.message || error}`, 'Error');
+      }
+    });
   }
 
-  const file = input.files[0];
-  this.pendingCsvFile = file;
+  // Método manejador de selección de archivo CSV
+  onCsvFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    if (!input?.files || input.files.length === 0) {
+      this.toastService.error('Por favor selecciona un archivo CSV válido.', 'Error');
+      return;
+    }
 
-  this.customersService.parseCSVForMapping(file).subscribe({
-    next: ({ headers, data }) => {
+    const file = input.files[0];
+    this.pendingCsvFile = file;
+
+    this.customersService.parseCSVForMapping(file).subscribe({
+      next: ({ headers, data }) => {
         // Guardamos cabeceras
         this.csvHeaders.set(headers);
         // Guardamos dataset completo para importación posterior
@@ -272,47 +278,68 @@ onCsvFileSelected(event: Event): void {
         const preview = data.slice(0, Math.min(10, data.length));
         this.csvData.set(preview);
         this.showCsvMapper.set(true); // muestra el modal
-    },
-    error: (err) => {
-      this.toastService.error('Error leyendo CSV: ' + (err.message || err), 'Error');
-    }
-  });
-}
-
-// Método que se llama cuando el usuario confirma el mapeo de columnas en el modal
-onMappingConfirmed(mappings: any[]): void {
-  this.showCsvMapper.set(false);
-
-  if (!this.pendingCsvFile) {
-    this.toastService.error('No hay archivo CSV pendiente para importar.', 'Error');
-    return;
+      },
+      error: (err) => {
+        this.toastService.error('Error leyendo CSV: ' + (err.message || err), 'Error');
+      }
+    });
   }
 
-  // Llamar a función del servicio que importa con mapeos y en lotes
-  this.customersService.importFromCSVWithMapping(this.pendingCsvFile, mappings).subscribe({
-    next: (importedCustomers) => {
-      this.toastService.success(`${importedCustomers.length} clientes importados correctamente.`, 'Éxito');
-      this.customersService.customers$.subscribe(customers => {
-      this.customers.set(customers);
-    });
-    },
-    error: (error) => {
-      this.toastService.error('Error importando CSV: ' + (error.message || error), 'Error');
-    }
-  });
 
-  // Limpiar archivo pendiente
-  this.pendingCsvFile = null;
-}
+  hasDevices(customer: Customer): boolean {
+    if (!customer?.devices) return false;
+    if (!Array.isArray(customer.devices)) return false;
+    if (customer.devices.length === 0) return false;
+
+    const firstItem = customer.devices[0];
+    // Supabase count object format: [{ count: N }]
+    if (firstItem && 'count' in firstItem && typeof firstItem.count === 'number') {
+      return firstItem.count > 0;
+    }
+
+    // List of devices: Filter out soft-deleted ones
+    const activeDevices = customer.devices.filter(d => !d.deleted_at);
+    return activeDevices.length > 0;
+  }
+
+
+
+
+  // Método que se llama cuando el usuario confirma el mapeo de columnas en el modal
+  onMappingConfirmed(result: CsvMappingResult): void {
+    this.showCsvMapper.set(false);
+    const mappings = result.mappings;
+
+    if (!this.pendingCsvFile) {
+      this.toastService.error('No hay archivo CSV pendiente para importar.', 'Error');
+      return;
+    }
+
+    // Llamar a función del servicio que importa con mapeos y en lotes
+    this.customersService.importFromCSVWithMapping(this.pendingCsvFile, mappings).subscribe({
+      next: (importedCustomers) => {
+        this.toastService.success(`${importedCustomers.length} clientes importados correctamente.`, 'Éxito');
+        this.customersService.customers$.subscribe(customers => {
+          this.customers.set(customers);
+        });
+      },
+      error: (error) => {
+        this.toastService.error('Error importando CSV: ' + (error.message || error), 'Error');
+      }
+    });
+
+    // Limpiar archivo pendiente
+    this.pendingCsvFile = null;
+  }
 
 
   // Computed
   filteredCustomers = computed(() => {
     let filtered = this.customers();
-    
+
     // ✅ Filtrar clientes anonimizados (ocultarlos de la lista)
     filtered = filtered.filter(customer => !this.isCustomerAnonymized(customer));
-    
+
     // Apply search filter
     const search = this.searchTerm().toLowerCase().trim();
     if (search) {
@@ -324,7 +351,7 @@ onMappingConfirmed(mappings: any[]): void {
         (customer.phone && customer.phone.toLowerCase().includes(search))
       );
     }
-    
+
     // Filter only incomplete if toggled
     if (this.onlyIncomplete) {
       filtered = filtered.filter((c: any) => c?.metadata?.needs_attention || c?.metadata?.inactive_on_import);
@@ -333,20 +360,20 @@ onMappingConfirmed(mappings: any[]): void {
     // Apply sorting
     const sortBy = this.sortBy();
     const sortOrder = this.sortOrder();
-    
+
     filtered.sort((a, b) => {
       let aValue = a[sortBy];
       let bValue = b[sortBy];
-      
+
       if (typeof aValue === 'string') {
         aValue = aValue.toLowerCase();
         bValue = (bValue as string).toLowerCase();
       }
-      
+
       const result = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
       return sortOrder === 'asc' ? result : -result;
     });
-    
+
     return filtered;
   });
 
@@ -380,7 +407,7 @@ onMappingConfirmed(mappings: any[]): void {
     // Initialize honeypot protection
     this.honeypotFieldName = this.honeypotService.getHoneypotFieldName();
     this.formLoadTime = this.honeypotService.getFormLoadTime();
-    
+
     this.loadData();
     this.loadGdprData();
     // Initialize portal access cache
@@ -395,7 +422,7 @@ onMappingConfirmed(mappings: any[]): void {
     document.body.style.width = '';
     document.body.style.height = '';
     document.documentElement.style.overflow = '';
-    
+
     // Limpiar listener de popstate
     if (this.popStateListener) {
       window.removeEventListener('popstate', this.popStateListener);
@@ -432,7 +459,7 @@ onMappingConfirmed(mappings: any[]): void {
         if (cid && em) keys.add(`${cid}:${em}`);
       }
       this.portalAccessKeys.set(keys);
-    } catch {}
+    } catch { }
   }
 
   // Helper used by template to avoid async pipes per item
@@ -467,7 +494,7 @@ onMappingConfirmed(mappings: any[]): void {
         role: 'client',
         message: (this.inviteMessage || '').trim() || undefined,
       });
-      
+
       if (!mail.success) {
         this.toastService.error(mail.error || 'No se pudo enviar la invitación', 'Error');
         return;
@@ -600,11 +627,11 @@ onMappingConfirmed(mappings: any[]): void {
   openCreateLocality() {
     this.newLocalityName = this.addressLocalityName || '';
     this.newLocalityCP = '';
-  this.showCreateLocalityModal = true;
+    this.showCreateLocalityModal = true;
     // focus behavior could be implemented with ViewChild if needed
     // default country to Spain and clear other fields
-  // keep País as default (España) and do not allow modifications
-  this.newLocalityCountry = 'España';
+    // keep País as default (España) and do not allow modifications
+    this.newLocalityCountry = 'España';
     this.newLocalityProvince = '';
     this.filteredNameSuggestions = [];
     this.nameMatchesList = [];
@@ -613,7 +640,7 @@ onMappingConfirmed(mappings: any[]): void {
 
     // focus the name input on next tick
     setTimeout(() => {
-      try { this.newLocalityNameInput?.nativeElement?.focus(); } catch(e){}
+      try { this.newLocalityNameInput?.nativeElement?.focus(); } catch (e) { }
     }, 50);
   }
 
@@ -631,11 +658,11 @@ onMappingConfirmed(mappings: any[]): void {
   }
 
   createLocalityFromInput() {
-  console.log('[DEBUG] createLocalityFromInput called', { newLocalityName: this.newLocalityName, addressLocalityName: this.addressLocalityName, newLocalityCP: this.newLocalityCP });
-  const name = (this.newLocalityName || this.addressLocalityName || '').trim();
-  const cpRaw = (this.newLocalityCP || '').trim();
-  // normalize CP (digits only)
-  const cp = cpRaw.replace(/\D+/g, '').trim();
+    console.log('[DEBUG] createLocalityFromInput called', { newLocalityName: this.newLocalityName, addressLocalityName: this.addressLocalityName, newLocalityCP: this.newLocalityCP });
+    const name = (this.newLocalityName || this.addressLocalityName || '').trim();
+    const cpRaw = (this.newLocalityCP || '').trim();
+    // normalize CP (digits only)
+    const cp = cpRaw.replace(/\D+/g, '').trim();
     // Validate required fields
     if (!name || !this.newLocalityProvince.trim() || !this.newLocalityCountry.trim() || !cp) {
       this.toastService.error('Campos requeridos', 'Nombre, Provincia, País y Código Postal son obligatorios.');
@@ -740,7 +767,7 @@ onMappingConfirmed(mappings: any[]): void {
           this.cpExists = true;
           this.existingLocalityByCP = existing;
           // focus CP input for quick action
-          setTimeout(() => { try { this.newLocalityCPInput?.nativeElement?.focus(); } catch(e){} }, 10);
+          setTimeout(() => { try { this.newLocalityCPInput?.nativeElement?.focus(); } catch (e) { } }, 10);
         } else {
           this.cpExists = false;
           this.existingLocalityByCP = null;
@@ -800,14 +827,26 @@ onMappingConfirmed(mappings: any[]): void {
     // Could open a detail view or perform other actions
   }
 
+  // Device Management Modal
+  openClientDevices(customer: Customer) {
+    if (!customer) return;
+    this.devicesModalClient.set(customer);
+    this.showClientDevicesModal.set(true);
+  }
+
+  closeClientDevices() {
+    this.showClientDevicesModal.set(false);
+    this.devicesModalClient.set(null);
+  }
+
   openForm() {
     this.resetForm();
     this.selectedCustomer.set(null);
     this.showForm.set(true);
-    
+
     // Añadir entrada al historial para que el botón "atrás" cierre el modal
     history.pushState({ modal: 'customer-form' }, '');
-    
+
     // Configurar listener de popstate si no existe
     if (!this.popStateListener) {
       this.popStateListener = (event: PopStateEvent) => {
@@ -817,7 +856,7 @@ onMappingConfirmed(mappings: any[]): void {
       };
       window.addEventListener('popstate', this.popStateListener);
     }
-    
+
     // Bloquear scroll de la página principal de forma más agresiva
     document.body.classList.add('modal-open');
     document.body.style.overflow = 'hidden';
@@ -834,10 +873,10 @@ onMappingConfirmed(mappings: any[]): void {
     // ensure dropdowns are closed on open
     this.viaDropdownOpen = false;
     this.localityDropdownOpen = false;
-    
+
     // Añadir entrada al historial para que el botón "atrás" cierre el modal
     history.pushState({ modal: 'customer-form' }, '');
-    
+
     // Configurar listener de popstate si no existe
     if (!this.popStateListener) {
       this.popStateListener = (event: PopStateEvent) => {
@@ -847,7 +886,7 @@ onMappingConfirmed(mappings: any[]): void {
       };
       window.addEventListener('popstate', this.popStateListener);
     }
-    
+
     // Prefill dirección: try customer's linked direccion_id first; if absent, fallback to latest for current auth user
     try {
       const direccionId = (customer as any).direccion_id;
@@ -887,7 +926,7 @@ onMappingConfirmed(mappings: any[]): void {
                     const m2 = this.localities.find(l => l._id === this.formData.addressLocalidadId);
                     if (m2) this.addressLocalityName = m2.nombre;
                   },
-                  error: () => {}
+                  error: () => { }
                 });
               }
             }
@@ -898,8 +937,8 @@ onMappingConfirmed(mappings: any[]): void {
         },
         error: (e) => console.warn('No se pudo cargar dirección:', e)
       });
-    } catch {}
-    
+    } catch { }
+
     // Bloquear scroll de la página principal de forma más agresiva
     document.body.classList.add('modal-open');
     document.body.style.overflow = 'hidden';
@@ -950,10 +989,10 @@ onMappingConfirmed(mappings: any[]): void {
     this.showForm.set(false);
     this.selectedCustomer.set(null);
     this.resetForm();
-    
+
     // Close client type dropdown
     this.clientTypeDropdownOpen.set(false);
-    
+
     // Close and clear any dropdowns and nested modal state so reopening shows a clean form
     try {
       // Visible flags
@@ -994,7 +1033,7 @@ onMappingConfirmed(mappings: any[]): void {
   }
 
   saveCustomer() {
-  if (this.selectedCustomer()) {
+    if (this.selectedCustomer()) {
       // Actualizar cliente existente
       this.updateExistingCustomer();
     } else {
@@ -1012,10 +1051,10 @@ onMappingConfirmed(mappings: any[]): void {
       this.toastService.error('Error', 'No se pudo procesar la solicitud. Inténtelo de nuevo.');
       return;
     }
-    
+
     // SECURITY: All normalization now happens server-side in Edge Function
     // Send raw values - server will sanitize, validate and normalize
-    
+
     const createCustomerWithDireccion = (direccion_id?: string) => {
       // Validaciones condicionales
       if (this.formData.client_type === 'business') {
@@ -1044,13 +1083,13 @@ onMappingConfirmed(mappings: any[]): void {
         legal_representative_dni: this.formData.legal_representative_dni || undefined,
         mercantile_registry_data: this.safeParseRegistryData(this.formData.mercantile_registry_data),
         direccion_id: direccion_id
-      } as CreateCustomerDev & { [k:string]: any };
+      } as CreateCustomerDev & { [k: string]: any };
 
       this.customersService.createCustomer(customerData).subscribe({
         next: (customer) => {
           this.closeForm();
           this.toastService.success('Éxito', 'Cliente creado correctamente');
-          
+
           // Reset form load time for next submission
           this.formLoadTime = this.honeypotService.getFormLoadTime();
         },
@@ -1096,8 +1135,8 @@ onMappingConfirmed(mappings: any[]): void {
     const customerId = this.selectedCustomer()?.id;
     if (!customerId) return;
 
-      // SECURITY: Send raw values - server handles normalization
-      const applyUpdate = (direccion_id?: string) => {
+    // SECURITY: Send raw values - server handles normalization
+    const applyUpdate = (direccion_id?: string) => {
       const updates: any = {
         name: this.formData.name,
         apellidos: this.formData.apellidos,
@@ -1221,12 +1260,12 @@ onMappingConfirmed(mappings: any[]): void {
       legal_representative_name: (customer as any).legal_representative_name || '',
       legal_representative_dni: (customer as any).legal_representative_dni || '',
       mercantile_registry_data: this.stringifyRegistryData((customer as any).mercantile_registry_data),
-  // try to show an address string if the customer has a direccion relation
-  // populate structured address fields from the direccion relation if available
-  addressTipoVia: customer.direccion?.tipo_via || '',
-  addressNombre: (customer.direccion && customer.direccion.nombre) ? customer.direccion.nombre : (customer.address || ''),
-  addressNumero: customer.direccion?.numero || '',
-  addressLocalidadId: customer.direccion?.localidad_id || '',
+      // try to show an address string if the customer has a direccion relation
+      // populate structured address fields from the direccion relation if available
+      addressTipoVia: customer.direccion?.tipo_via || '',
+      addressNombre: (customer.direccion && customer.direccion.nombre) ? customer.direccion.nombre : (customer.address || ''),
+      addressNumero: customer.direccion?.numero || '',
+      addressLocalidadId: customer.direccion?.localidad_id || '',
       honeypot: '' // Always empty when populating (not visible to user)
     };
   }
@@ -1293,8 +1332,8 @@ onMappingConfirmed(mappings: any[]): void {
       return;
     }
 
-  console.log('CSV import selected, starting parse for mapping...');
-  this.toastService.info('Procesando...', 'Analizando estructura del CSV');
+    console.log('CSV import selected, starting parse for mapping...');
+    this.toastService.info('Procesando...', 'Analizando estructura del CSV');
     this.pendingCsvFile = file;
 
     // Parse CSV to show mapping interface
@@ -1325,9 +1364,9 @@ onMappingConfirmed(mappings: any[]): void {
     }
 
     this.showCsvMapper.set(false);
-  // Toast persistente de progreso (se cerrará al terminar o error)
-  // Crear un único toast persistente que iremos actualizando
-  this.importToastId = this.toastService.info('Importación iniciada', 'Importando clientes con el mapeo configurado', 8000, true, 'customers-import');
+    // Toast persistente de progreso (se cerrará al terminar o error)
+    // Crear un único toast persistente que iremos actualizando
+    this.importToastId = this.toastService.info('Importación iniciada', 'Importando clientes con el mapeo configurado', 8000, true, 'customers-import');
 
     // Construir array de clientes a partir del mapeo
     const mappedCustomers = this.customersService.buildPayloadRowsFromMapping(
@@ -1344,34 +1383,34 @@ onMappingConfirmed(mappings: any[]): void {
       return;
     }
 
-  const total = mappedCustomers.length;
-  console.log('[CSV-MAP] Mapped customers ready to import:', total);
-  if (this.importToastId) {
-    this.toastService.updateToast(this.importToastId, { title: 'Importación iniciada', message: `Se importarán ${total} filas` });
-  }
-  const batchSize = 5;
-  let importedCount = 0;
+    const total = mappedCustomers.length;
+    console.log('[CSV-MAP] Mapped customers ready to import:', total);
+    if (this.importToastId) {
+      this.toastService.updateToast(this.importToastId, { title: 'Importación iniciada', message: `Se importarán ${total} filas` });
+    }
+    const batchSize = 5;
+    let importedCount = 0;
 
     this.customersService.importCustomersInBatches(mappedCustomers, batchSize).subscribe({
       next: (p) => {
         const msg = `Importados ${p.importedCount}/${p.totalCount} (lote ${p.batchNumber}, tamaño ${p.batchSize})`;
         console.log('[Import progreso]', p);
-  // Actualiza mostrando progreso (persistente)
-  if (this.importToastId) {
-    const progress = p.totalCount > 0 ? p.importedCount / p.totalCount : 0;
-    this.toastService.updateToast(this.importToastId, { title: 'Progreso importación', message: msg, progress });
-  }
+        // Actualiza mostrando progreso (persistente)
+        if (this.importToastId) {
+          const progress = p.totalCount > 0 ? p.importedCount / p.totalCount : 0;
+          this.toastService.updateToast(this.importToastId, { title: 'Progreso importación', message: msg, progress });
+        }
         importedCount = p.importedCount;
       },
       complete: () => {
-  if (this.importToastId) {
-    this.toastService.updateToast(this.importToastId, { type: 'success', title: '¡Éxito!', message: `Importación completada (${importedCount}/${total} clientes)`, duration: 6000 });
-    this.importToastId = null;
-  } else {
-    this.toastService.success('¡Éxito!', `Importación completada (${importedCount}/${total} clientes)`, 6000);
-  }
-  // refrescar lista para ver los nuevos clientes inmediatamente
-  this.customersService.loadCustomers();
+        if (this.importToastId) {
+          this.toastService.updateToast(this.importToastId, { type: 'success', title: '¡Éxito!', message: `Importación completada (${importedCount}/${total} clientes)`, duration: 6000 });
+          this.importToastId = null;
+        } else {
+          this.toastService.success('¡Éxito!', `Importación completada (${importedCount}/${total} clientes)`, 6000);
+        }
+        // refrescar lista para ver los nuevos clientes inmediatamente
+        this.customersService.loadCustomers();
         this.pendingCsvFile = null;
         this.fullCsvData.set([]);
         // refrescar datos visibles
@@ -1379,12 +1418,12 @@ onMappingConfirmed(mappings: any[]): void {
       },
       error: (err) => {
         console.error('Error importando por lotes:', err);
-  if (this.importToastId) {
-    this.toastService.updateToast(this.importToastId, { type: 'error', title: 'Error de Importación', message: String(err?.message || err), duration: 8000 });
-    this.importToastId = null;
-  } else {
-    this.toastService.error('Error de Importación', String(err?.message || err), 8000);
-  }
+        if (this.importToastId) {
+          this.toastService.updateToast(this.importToastId, { type: 'error', title: 'Error de Importación', message: String(err?.message || err), duration: 8000 });
+          this.importToastId = null;
+        } else {
+          this.toastService.error('Error de Importación', String(err?.message || err), 8000);
+        }
         this.pendingCsvFile = null;
         this.fullCsvData.set([]);
       }
@@ -1415,7 +1454,7 @@ onMappingConfirmed(mappings: any[]): void {
       if (res.direct) messages.push(`Direct: ${res.direct.status} ${res.direct.text}`);
       if (res.errors && res.errors.length) messages.push(`Errors: ${JSON.stringify(res.errors)}`);
 
-      this.toastService.success('Test completado', messages.slice(0,2).join(' | '));
+      this.toastService.success('Test completado', messages.slice(0, 2).join(' | '));
     } catch (err) {
       console.error('Error testing import endpoints:', err);
       this.toastService.error('Test fallido', String(err));
@@ -1424,9 +1463,9 @@ onMappingConfirmed(mappings: any[]): void {
 
   showImportInfo(event: Event) {
     event.stopPropagation(); // Evitar que se abra el selector de archivos
-    
+
     const infoMessage = `Formato: Nombre, Apellidos, Email, DNI, Teléfono - Máximo 500 clientes.`;
-    
+
     this.toastService.info('CSV requerido', infoMessage, 6000);
   }
 
@@ -1546,7 +1585,7 @@ onMappingConfirmed(mappings: any[]): void {
         a.download = `gdpr-export-${customer.email}-${new Date().toISOString().split('T')[0]}.json`;
         a.click();
         window.URL.revokeObjectURL(url);
-        
+
         this.toastService.success('RGPD', 'Datos exportados correctamente');
       },
       error: (error: any) => {
@@ -1562,7 +1601,7 @@ onMappingConfirmed(mappings: any[]): void {
       this.toastService.error('Error', 'El cliente debe tener un email para solicitar consentimiento');
       return;
     }
-    this.gdprService.createConsentRequest(customer.id, customer.email, ['data_processing','marketing','analytics'], 'Gestión de consentimiento')
+    this.gdprService.createConsentRequest(customer.id, customer.email, ['data_processing', 'marketing', 'analytics'], 'Gestión de consentimiento')
       .subscribe({
         next: ({ path }) => {
           const url = `${window.location.origin}${path}`;
@@ -1585,7 +1624,7 @@ onMappingConfirmed(mappings: any[]): void {
     }
 
     const confirmMessage = `¿Estás seguro de que quieres anonimizar los datos de ${customer.name} ${customer.apellidos}?\n\nEsta acción es irreversible y cumple con el derecho al olvido del RGPD.`;
-    
+
     if (!confirm(confirmMessage)) {
       return;
     }
@@ -1613,10 +1652,10 @@ onMappingConfirmed(mappings: any[]): void {
             return c;
           });
           this.customers.set(updatedCustomers);
-          
+
           // ✅ Forzar detección de cambios de Angular
           this.cdr.detectChanges();
-          
+
           // ✅ Recargar datos reales de Supabase después de un momento
           setTimeout(() => {
             this.loadData();
@@ -1656,7 +1695,7 @@ onMappingConfirmed(mappings: any[]): void {
     event.stopPropagation();
     this.flippedCardId.set(customerId);
   }
-  
+
   // Close GDPR card and flip back to customer info
   closeGdprCard(event: Event) {
     event.stopPropagation();
@@ -1665,9 +1704,9 @@ onMappingConfirmed(mappings: any[]): void {
 
   // Check if customer is already anonymized
   isCustomerAnonymized(customer: Customer): boolean {
-    return customer.anonymized_at != null || 
-           customer.name?.startsWith('ANONYMIZED_') || 
-           customer.email?.includes('@anonymized.local');
+    return customer.anonymized_at != null ||
+      customer.name?.startsWith('ANONYMIZED_') ||
+      customer.email?.includes('@anonymized.local');
   }
 
   // Show GDPR compliance status for a customer
@@ -1737,11 +1776,11 @@ onMappingConfirmed(mappings: any[]): void {
 
   toggleGdprMenu(event: Event, customerId: string) {
     event.stopPropagation();
-    
+
     // Get the button that was clicked
     const button = (event.target as HTMLElement).closest('.action-btn.gdpr') as HTMLElement;
     if (!button) return;
-    
+
     // Close all other menus first
     const allMenus = document.querySelectorAll('.gdpr-dropdown');
     allMenus.forEach(menu => {
@@ -1749,19 +1788,19 @@ onMappingConfirmed(mappings: any[]): void {
         menu.classList.add('hidden');
       }
     });
-    
+
     // Toggle current menu
     const menu = document.getElementById(`gdpr-menu-${customerId}`) as HTMLElement;
     if (!menu) return;
-    
+
     const isCurrentlyHidden = menu.classList.contains('hidden');
-    
+
     if (isCurrentlyHidden) {
       // Position the menu relative to the card (not the button)
       const card = button.closest('.customer-card') as HTMLElement;
       if (card) {
         const cardRect = card.getBoundingClientRect();
-        
+
         // Position overlay over the card
         menu.style.position = 'fixed';
         menu.style.top = `${cardRect.top}px`;
