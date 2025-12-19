@@ -46,25 +46,45 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
               <i class="fas fa-arrow-left mr-2"></i>
               <span>Atrás</span>
             </button>
-            
-            <!-- Fila 2: Quick Actions en grid 2 columnas hasta sm - ADMIN ONLY -->
-            <div *ngIf="!loading && !error && ticket && !isClient()" class="grid grid-cols-3 sm:flex gap-2 sm:gap-3">
-              <button (click)="convertToQuoteFromTicket()"
-                      [disabled]="!ticket || ticketServices.length === 0 || !(ticket && ticket.client && ticket.client.id)"
-                      class="btn btn-primary text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
-                <i class="fas fa-file-invoice text-base sm:text-sm"></i>
-                <span class="text-[10px] sm:text-sm">{{ activeQuoteId ? 'Ir a Presup.' : 'Convertir' }}</span>
-              </button>
-              <button (click)="printTicket()" 
-                      class="btn btn-secondary text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
-                <i class="fas fa-print text-base sm:text-sm"></i>
-                <span class="text-[10px] sm:text-sm">Imprimir</span>
-              </button>
-              <button (click)="deleteTicket()" 
-                      class="btn btn-danger text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
-                <i class="fas fa-trash text-base sm:text-sm"></i>
-                <span class="text-[10px] sm:text-sm">Eliminar</span>
-              </button>
+
+            <!-- Right Side Actions Wrapper -->
+            <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto mt-3 sm:mt-0">
+              
+              <!-- Client Actions -->
+              <ng-container *ngIf="isClient()">
+                <button (click)="openCreateDeviceForm()" 
+                        class="btn btn-primary text-sm px-4 w-full sm:w-auto">
+                  <i class="fas fa-plus mr-2"></i>
+                  <span>Añadir Dispositivo</span>
+                </button>
+
+                <button (click)="scrollToComment()" 
+                        class="btn btn-secondary text-sm px-4 w-full sm:w-auto">
+                  <i class="fas fa-comment mr-2"></i>
+                  <span>Añadir Comentario</span>
+                </button>
+              </ng-container>
+              
+              <!-- Admin Actions -->
+              <div *ngIf="!loading && !error && ticket && !isClient()" class="grid grid-cols-3 sm:flex gap-2 sm:gap-3 w-full sm:w-auto">
+                <button (click)="convertToQuoteFromTicket()"
+                        [disabled]="!ticket || ticketServices.length === 0 || !(ticket && ticket.client && ticket.client.id)"
+                        class="btn btn-primary text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+                  <i class="fas fa-file-invoice text-base sm:text-sm"></i>
+                  <span class="text-[10px] sm:text-sm">{{ activeQuoteId ? 'Ir a Presup.' : 'Convertir' }}</span>
+                </button>
+                <button (click)="printTicket()" 
+                        class="btn btn-secondary text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+                  <i class="fas fa-print text-base sm:text-sm"></i>
+                  <span class="text-[10px] sm:text-sm">Imprimir</span>
+                </button>
+                <button (click)="deleteTicket()" 
+                        class="btn btn-danger text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+                  <i class="fas fa-trash text-base sm:text-sm"></i>
+                  <span class="text-[10px] sm:text-sm">Eliminar</span>
+                </button>
+              </div>
+
             </div>
           </div>
         </div>
@@ -382,19 +402,13 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                           <i class="fas fa-mobile-alt"></i>
                           Modificar Dispositivos
                         </button>
-                        <button *ngIf="isClient()" (click)="openCreateDeviceForm()" class="btn btn-primary">
-                          <i class="fas fa-plus"></i>
-                          Añadir Dispositivo
-                        </button>
+
                       </div>
                     </div>
                     <div *ngIf="ticketDevices.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
                       <i class="fas fa-mobile-alt text-5xl mb-4 opacity-50"></i>
                       <p class="text-lg">No hay dispositivos vinculados a este ticket</p>
-                      <button (click)="openCreateDeviceForm()" class="mt-4 btn btn-secondary">
-                        <i class="fas fa-plus mr-2"></i>
-                        Añadir Dispositivos
-                      </button>
+
                     </div>
                     <div *ngIf="ticketDevices.length > 0" class="space-y-4">
                       <div *ngFor="let device of ticketDevices" 
@@ -2446,6 +2460,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       console.error('Error guardando servicios:', err);
       this.showToast('Error al guardar servicios: ' + (err?.message || err), 'error');
     }
+  }
+
+  scrollToComment() {
+    this.activeTab = 'comments';
+    // Small delay to allow tab switch/DOM render
+    setTimeout(() => {
+      if (this.editorElement && this.editorElement.nativeElement) {
+        this.editorElement.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        this.focusEditor();
+      }
+    }, 100);
   }
 
   // Helpers for modal quantity + pricing display
