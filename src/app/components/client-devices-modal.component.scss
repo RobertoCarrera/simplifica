@@ -17,7 +17,7 @@
   background: #94a3b8;
 }
 
-/* Modal Overlay & Content Base (inherits largely from global styles but ensuring specifics here) */
+/* Modal Overlay & Content Base */
 .modal-overlay {
   background-color: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
@@ -25,19 +25,55 @@
   inset: 0;
   z-index: 50;
   display: flex;
-  align-items: center;
+  align-items: flex-end; // Align to bottom for slide-up effect
   justify-content: center;
+  overflow: visible; // Allow slide animation to be visible
+
+  // Mobile: full screen, no overlay visible
+  @media (max-width: 767px) {
+    background-color: transparent;
+    backdrop-filter: none;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0 !important;
+    overflow: visible;
+  }
 }
 
 .modal-content {
+  // Desktop: card style
   background-color: white;
-  border-radius: 0.75rem; /* rounded-xl */
+  border-radius: 0.75rem;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   max-width: 90vw;
   max-height: 90vh;
+
+  // Mobile: full screen, no card appearance
+  @media (max-width: 767px) {
+    background-color: #f9fafb !important; // bg-gray-50
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    width: 100vw !important;
+    height: 100vh !important;
+  }
 }
 
 :host-context(.dark) .modal-content {
-  background-color: #1f2937; /* bg-gray-800 */
-  border: 1px solid #374151; /* border-gray-700 */
+  background-color: #1f2937;
+  /* bg-gray-800 */
+  border: 1px solid #374151;
+  /* border-gray-700 */
+
+  @media (max-width: 767px) {
+    background-color: #111827; // bg-gray-900
+    border: none;
+  }
 }
+
+/* =========================================
+   MODAL ANIMATIONS
+   Note: Using Angular animations (@slideUpDown, @fadeInOut)
+   CSS animation removed to avoid conflicts
+   ========================================= */

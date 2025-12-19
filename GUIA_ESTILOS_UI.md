@@ -169,6 +169,137 @@ Estructura de card:
 - Ítems: doble representación — tabla (desktop) y cards (móvil), con visibilidad mutua `hidden md:block` vs `md:hidden`.
 - Historial: bloque colapsable con animación (expand/contraer) y control por signal `historyExpanded` en el componente.
 
+## Modales Full-Screen en Móvil
+
+En móvil, los modales deben ocupar toda la pantalla para maximizar espacio y foco. Deben usar una animación de "hoja" (slide-up) suave.
+
+**Animación Requerida:**
+- **Entrada**: Slide-up desde abajo (100% viewport) con easing suave (`cubic-bezier`).
+- **Salida**: Slide-down hacia abajo (100% viewport).
+- **Backdrop**: Fade-in/out independiente (no debe "arrastrarse" con el modal).
+
+**1. Estructura HTML (Crucial para animación independiente):**
+Usar `ng-container` como raíz para separar el backdrop del contenido y permitir animaciones independientes.
+
+```html
+<ng-container *ngIf="isModal">
+    <!-- Backdrop: Fade In/Out (independiente) -->
+    <div *ngIf="isVisible"
+         class="fixed inset-0 bg-black/50 z-[9998] backdrop-blur-[4px]" 
+         @fadeInOut 
+         (click)="closeModal()">
+    </div>
+
+    <!-- Layout Container: Centrado y layout -->
+    <div class="fixed inset-0 z-[9999] flex items-end md:items-center justify-center pointer-events-none">
+        
+        <!-- Contenido Modal: Slide Up/Down -->
+        <!-- pointer-events-auto es necesario porque el padre tiene none -->
+        <div *ngIf="isVisible"
+            @slideUpDown
+            (@slideUpDown.done)="onAnimationDone($event)"
+            class="modal-content w-full h-screen md:h-[calc(100vh-2rem)] md:max-w-5xl flex flex-col p-0 md:mx-auto md:rounded-xl bg-gray-50 dark:bg-gray-900 pointer-events-auto shadow-2xl"
+            (click)="$event.stopPropagation()">
+             
+             <!-- Contenido real del modal... -->
+        </div>
+    </div>
+</ng-container>
+```
+
+**2. Definición de Animaciones (Componente TS):**
+```typescript
+import { trigger, transition, style, animate } from '@angular/animations';
+
+@Component({
+  // ...
+  animations: [
+    trigger('slideUpDown', [
+      transition(':enter', [
+        style({ transform: 'translateY(100vh)' }), // Empieza fuera de pantalla
+        animate('500ms cubic-bezier(0.32, 0.72, 0, 1)', style({ transform: 'translateY(0)' }))
+      ]),
+      transition(':leave', [
+        animate('400ms cubic-bezier(0.32, 0.72, 0, 1)', style({ transform: 'translateY(100vh)' }))
+      ])
+    ]),
+    trigger('fadeInOut', [
+      transition(':enter', [
+        style({ opacity: 0 }),
+        animate('150ms ease-out', style({ opacity: 1 }))
+      ]),
+      transition(':leave', [
+        animate('100ms ease-in', style({ opacity: 0 }))
+      ])
+    ])
+  ]
+})
+```
+
+**3. Lógica de Cierre (Delay para animación):**
+El modal no debe destruirse inmediatamente (`*ngIf="isModal"` false) sino esperar a que termine la animación interna (`isVisible` false).
+
+```typescript
+export class ExampleModalComponent {
+  // Control interno para animación
+  isVisible = true; 
+  private pendingAction: (() => void) | null = null;
+  
+  @Output() close = new EventEmitter<void>();
+
+  // Usar en lugar de close.emit() directo
+  // CRUCIAL: Aplicar este método a TODOS los elementos de cierre:
+  // - Botón "Cancelar"
+  // - Botón "X" de la cabecera
+  // - Click en el Backdrop
+  // - Cualquier acción de éxito que cierre el modal
+  closeModal() {
+    this.isVisible = false; // Dispara animación :leave
+    this.pendingAction = () => this.close.emit(); // Acción al terminar
+  }
+
+  // Bindear a (@slideUpDown.done)
+  onAnimationDone(event: any) {
+    if (event.toState === 'void' && this.pendingAction) {
+      this.pendingAction();
+      this.pendingAction = null;
+    }
+  }
+}
+```
+
+**4. SCSS del componente (Override de `shared.scss`):**
+```scss
+.modal-content {
+  @media (max-width: 767px) {
+    background-color: #f9fafb !important; // bg-gray-50
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    width: 100vw !important;
+    height: 100vh !important;
+  }
+}
+
+:host-context(.dark) .modal-content {
+  @media (max-width: 767px) {
+    background-color: #111827 !important; // bg-gray-900
+    border: none !important;
+  }
+}
+```
+
+**Bottom-Sheet Dropdowns (móvil):**
+(Igual que sección anterior...)
+
+**Scroll Lock:**
+(Igual que sección anterior...)
+```typescript
+ngOnInit() { this.renderer.setStyle(document.body, 'overflow', 'hidden'); }
+ngOnDestroy() { this.renderer.removeStyle(document.body, 'overflow'); }
+```
+
 ## Comportamiento de scroll y layout
 
 - El layout principal gestiona el área de scroll con `<main class="flex-1 overflow-auto">`.

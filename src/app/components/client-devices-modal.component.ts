@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, inject, Rend
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { trigger, transition, style, animate } from '@angular/animations';
 import { DevicesService, Device } from '../services/devices.service';
 import { ToastService } from '../services/toast.service';
 import { AiService } from '../services/ai.service';
@@ -13,7 +14,27 @@ import { CameraCaptureComponent } from './commons/camera-capture/camera-capture.
   standalone: true,
   imports: [CommonModule, FormsModule, CameraCaptureComponent],
   templateUrl: './client-devices-modal.component.html',
-  styleUrls: ['./client-devices-modal.component.scss']
+  styleUrls: ['./client-devices-modal.component.scss'],
+  animations: [
+    trigger('slideUpDown', [
+      transition(':enter', [
+        style({ transform: 'translateY(100vh)' }),
+        animate('500ms ease-out', style({ transform: 'translateY(0)' }))
+      ]),
+      transition(':leave', [
+        animate('400ms ease-in', style({ transform: 'translateY(100vh)' }))
+      ])
+    ]),
+    trigger('fadeInOut', [
+      transition(':enter', [
+        style({ opacity: 0 }),
+        animate('150ms ease-out', style({ opacity: 1 }))
+      ]),
+      transition(':leave', [
+        animate('100ms ease-in', style({ opacity: 0 }))
+      ])
+    ])
+  ]
 })
 export class ClientDevicesModalComponent implements OnInit, OnDestroy {
   @Input() mode: 'view' | 'select' = 'view';
@@ -28,6 +49,8 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
   devices: Device[] = [];
   filteredDevices: Device[] = [];
   loading = false;
+  isVisible = true;
+  private pendingAction: (() => void) | null = null;
 
   // Search & Filter
   searchTerm = '';
@@ -57,6 +80,27 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
 
   isScanning = false;
   showCamera = false;
+
+  // Device Type Dropdown
+  deviceTypeDropdownOpen = false;
+  deviceTypeOptions = [
+    { value: 'smartphone', label: 'Smartphone' },
+    { value: 'tablet', label: 'Tablet' },
+    { value: 'laptop', label: 'Portátil' },
+    { value: 'desktop', label: 'Sobremesa' },
+    { value: 'console', label: 'Consola' },
+    { value: 'other', label: 'Otro' }
+  ];
+
+  getDeviceTypeLabel(type: string | undefined): string {
+    const option = this.deviceTypeOptions.find(o => o.value === type);
+    return option?.label || 'Seleccionar tipo';
+  }
+
+  selectDeviceType(value: string) {
+    this.deviceFormData.device_type = value;
+    this.deviceTypeDropdownOpen = false;
+  }
 
   handleCameraCapture(file: File) {
     this.showCamera = false;
@@ -107,11 +151,29 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
       this.hasAiModule = modules.some(m => m.key === 'ai' && m.enabled);
     });
 
-    this.loadDevices();
+    // Load devices if client is provided
+    if (this.client) {
+      this.loadDevices();
+    }
   }
 
   ngOnDestroy() {
     this.renderer.removeStyle(document.body, 'overflow');
+  }
+
+  // Handle animation end
+  onAnimationDone(event: any) {
+    // When leave animation finishes (void state)
+    if (event.toState === 'void' && this.pendingAction) {
+      this.pendingAction();
+      this.pendingAction = null;
+    }
+  }
+
+  // Trigger close animation then emit
+  closeModal() {
+    this.isVisible = false;
+    this.pendingAction = () => this.close.emit();
   }
 
   async loadDevices() {
@@ -119,8 +181,8 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
 
     this.loading = true;
     try {
-      // Fetch devices (optionally filtered by client_id at DB level)
       const clientId = this.client?.id;
+      // Reverted to getDevices as getClientDevices does not exist
       const allDevices = await this.devicesService.getDevices(this.companyId, false, clientId);
 
       this.devices = allDevices;
@@ -156,7 +218,7 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
     this.filteredDevices = temp;
   }
 
-  async selectDevice(device: Device) {
+  selectDevice(device: Device) {
     if (this.mode === 'select') {
       this.toggleSelection(device);
       return;
@@ -164,13 +226,11 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
 
     this.selectedDevice = device;
     this.loadingHistory = true;
-    try {
-      this.deviceHistory = await this.devicesService.getDeviceTickets(device.id);
-    } catch (error) {
-      this.toastService.error('Error', 'Error al cargar historial');
-    } finally {
+    this.devicesService.getDeviceTickets(device.id).then(history => {
+      this.deviceHistory = history;
+    }).finally(() => {
       this.loadingHistory = false;
-    }
+    });
   }
 
   toggleSelection(device: Device) {
@@ -183,7 +243,9 @@ export class ClientDevicesModalComponent implements OnInit, OnDestroy {
 
   submitSelection() {
     const selected = this.devices.filter(d => this.selectedDevicesForAdd.has(d.id));
-    this.selectDevices.emit(selected);
+    // Trigger animation out, then emit
+    this.isVisible = false;
+    this.pendingAction = () => this.selectDevices.emit(selected);
   }
 
   onCreateNew() {
