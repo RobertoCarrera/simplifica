@@ -56,13 +56,22 @@ export class PortalTicketWizardComponent {
     private devicesService = inject(DevicesService);
 
     hasAiModule = false;
+    isLoadingModules = true;
 
     constructor(
         private ticketsService: SupabaseTicketsService,
         private supabase: SimpleSupabaseService
-    ) {
-        this.modulesService.fetchEffectiveModules().subscribe(modules => {
-            this.hasAiModule = modules.some(m => m.key === 'ai' && m.enabled);
+    ) { }
+
+    ngOnInit() {
+        this.modulesService.fetchEffectiveModules().subscribe({
+            next: (modules) => {
+                this.hasAiModule = modules.some(m => m.key === 'ai' && m.enabled);
+                this.isLoadingModules = false;
+            },
+            error: () => {
+                this.isLoadingModules = false;
+            }
         });
     }
 
@@ -207,12 +216,17 @@ export class PortalTicketWizardComponent {
             this.createdDeviceName = `${created.brand} ${created.model}`;
 
             // Optional: Upload the image to the device
-            await this.devicesService.uploadDeviceImage(created.id, file, 'arrival', 'Foto inicial (Scan)');
+            const deviceImage = await this.devicesService.uploadDeviceImage(created.id, file, 'arrival', 'Foto inicial (Scan)');
 
             // Auto-fill if empty
             if (!this.ticketData.title) this.ticketData.title = `Problema con ${created.brand} ${created.model}`;
             if (!this.ticketData.description && scanResult.reported_issue_inference) {
                 this.ticketData.description = `(Autodetectado): ${scanResult.reported_issue_inference}`;
+            }
+
+            // Append Image to Description
+            if (deviceImage && deviceImage.file_url) {
+                this.ticketData.description += `\n\n![Dispositivo escaneado](${deviceImage.file_url})`;
             }
 
         } catch (error) {

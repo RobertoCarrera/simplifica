@@ -44,7 +44,15 @@
                 <p class="text-center text-gray-500 dark:text-gray-400 mb-8">Selecciona el tipo de consulta para
                     dirigirte al equipo adecuado.</p>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Loading Skeleton -->
+                <div *ngIf="isLoadingModules" class="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse">
+                    <div class="md:col-span-2 h-32 bg-gray-100 dark:bg-slate-700 rounded-xl"></div>
+                    <div class="h-24 bg-gray-100 dark:bg-slate-700 rounded-xl"></div>
+                    <div class="h-24 bg-gray-100 dark:bg-slate-700 rounded-xl"></div>
+                    <div class="md:col-span-2 h-24 bg-gray-100 dark:bg-slate-700 rounded-xl"></div>
+                </div>
+
+                <div *ngIf="!isLoadingModules" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Audio Assistant (Full Width or Prominent) -->
                     <button *ngIf="hasAiModule" (click)="toggleRecording()"
                         class="md:col-span-2 group p-6 rounded-xl border-2 border-dashed border-purple-300 bg-purple-50 dark:bg-purple-900/10 hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-all duration-200 text-left flex items-center gap-6 relative overflow-hidden">
@@ -144,10 +152,9 @@
                         <div *ngIf="!createdDeviceId"
                             class="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-xl flex items-center justify-between">
                             <div>
-                                <h4 class="font-bold text-blue-800 dark:text-blue-300 text-sm">¿Es un dispositivo
-                                    físico?</h4>
-                                <p class="text-xs text-blue-600 dark:text-blue-400">Escanéalo para rellenar los datos
-                                    automáticamente.</p>
+                                <h4 class="font-bold text-blue-800 dark:text-blue-300 text-sm">¿Lo tienes a mano?</h4>
+                                <p class="text-xs text-blue-600 dark:text-blue-400">Hazle una foto para rellenar los
+                                    datos automáticamente.</p>
                             </div>
                             <button *ngIf="hasAiModule" (click)="showCamera = true"
                                 class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg font-medium transition-colors flex items-center gap-2">

@@ -89,8 +89,23 @@ export class AiService {
     }
 
     private async getCompanyId(userId: string): Promise<string | null> {
-        const { data } = await this.supabase.from('users').select('company_id').eq('id', userId).single();
-        return data?.company_id || null;
+        // 1. Try 'users' table (staff)
+        const { data: userData, error: userError } = await this.supabase
+            .from('users')
+            .select('company_id')
+            .eq('id', userId)
+            .maybeSingle();
+
+        if (userData?.company_id) return userData.company_id;
+
+        // 2. Try 'clients' table (end users)
+        const { data: clientData } = await this.supabase
+            .from('clients')
+            .select('company_id')
+            .eq('auth_user_id', userId)
+            .maybeSingle();
+
+        return clientData?.company_id || null;
     }
 
     /**

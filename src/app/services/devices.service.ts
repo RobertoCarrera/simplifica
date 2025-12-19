@@ -319,7 +319,8 @@ export class DevicesService {
             if (resp.status === 404) {
               console.warn('Edge create-device not deployed (404), falling back to direct insert');
             } else if (resp.status === 403) {
-              console.error('Edge create-device forbidden (membership or CORS):', json);
+              // Expected for clients who are not company members (RLS fallback handles this)
+              console.warn('Edge create-device skipped (auth/permissions):', json);
               throw json;
             } else {
               console.error('Edge create-device error', json);

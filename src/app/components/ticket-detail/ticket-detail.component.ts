@@ -618,6 +618,7 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                 </div>
               </div>
             </div>
+            </div>
 
             <!-- Timeline -->
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6">
@@ -642,7 +643,7 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                   <h4 class="font-bold text-gray-900 dark:text-gray-100 text-sm">Última actualización</h4>
                   <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(ticket.updated_at) }}</p>
                   </div>
-                </div>
+
                 
                 <div *ngFor="let activity of recentActivity" class="flex items-start space-x-3">
                   <div class="flex-shrink-0 w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full mt-2"></div>
@@ -668,6 +669,7 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       <!-- Change Stage Modal -->

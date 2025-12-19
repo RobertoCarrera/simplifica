@@ -313,11 +313,10 @@
                     <div class="flex items-center gap-3">
                         <div
                             class="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">
-                            <i class="fas" [class.fa-robot]="!isScanning" [class.fa-spinner]="isScanning"
+                            <i class="fas" [class.fa-camera]="!isScanning" [class.fa-spinner]="isScanning"
                                 [class.fa-spin]="isScanning"></i>
                         </div>
-                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Escanear
-                            dispositivo</span>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Escanear dispositivo</span>
                     </div>
                     <button (click)="showCamera = true"
                         class="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
