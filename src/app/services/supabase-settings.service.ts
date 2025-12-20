@@ -40,6 +40,9 @@ export interface CompanySettings {
   auto_convert_on_client_accept?: boolean | null; // Auto-finalize when client accepts request
   allow_direct_contracting?: boolean | null; // New automation setting
   copy_features_between_variants?: boolean | null; // New automation setting
+  ticket_stage_on_delete?: string | null; // UUID
+  ticket_stage_on_staff_reply?: string | null; // UUID
+  ticket_stage_on_client_reply?: string | null; // UUID
   allow_local_payment?: boolean | null; // Allow clients to select "pay in person/cash" option
   updated_at?: string;
 }

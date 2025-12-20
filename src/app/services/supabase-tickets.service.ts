@@ -882,7 +882,7 @@ export class SupabaseTicketsService {
         .order('position', { ascending: true });
 
       if (this.isValidUuid(companyId)) {
-        query = query.eq('company_id', companyId);
+        query = query.or(`company_id.eq.${companyId},company_id.is.null`);
       }
 
       const { data, error } = await query;

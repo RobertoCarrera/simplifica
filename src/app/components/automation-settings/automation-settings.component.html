@@ -1,8 +1,8 @@
 <div class="p-4 md:p-6 space-y-6">
   <!-- Header -->
   <div class="flex items-center gap-4 mb-6">
-    <a routerLink="/configuracion" 
-       class="inline-flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
+    <a routerLink="/configuracion"
+      class="inline-flex items-center px-4 py-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">
       <i class="fas fa-arrow-left mr-2"></i>
       Volver
     </a>
@@ -27,7 +27,7 @@
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
       <div class="p-6">
         <form [formGroup]="settingsForm" (ngSubmit)="saveSettings()" class="space-y-6">
-          
+
           <!-- Presupuestos -->
           <div>
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 border-b pb-2 dark:border-gray-700">
@@ -74,7 +74,8 @@
             <div class="space-y-4">
               <div class="flex items-start">
                 <div class="flex items-center h-5">
-                  <input id="copy_features_between_variants" formControlName="copy_features_between_variants" type="checkbox"
+                  <input id="copy_features_between_variants" formControlName="copy_features_between_variants"
+                    type="checkbox"
                     class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
                 </div>
                 <div class="ml-3 text-sm">
@@ -82,9 +83,61 @@
                     Copiar características entre variantes
                   </label>
                   <p class="text-gray-500 dark:text-gray-400">
-                    Si se marca, las características serán las mismas en todas las variantes. Solo tendrás que decidir si se incluyen o excluyen.
+                    Si se marca, las características serán las mismas en todas las variantes. Solo tendrás que decidir
+                    si se incluyen o excluyen.
                   </p>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tickets -->
+          <div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 border-b pb-2 dark:border-gray-700">
+              Tickets de Soporte
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              <!-- Delete -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Al eliminar un ticket (Soft Delete)
+                </label>
+                <select formControlName="ticket_stage_on_delete"
+                  class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                  <option [ngValue]="null">🤖 Automático (Buscar 'Cancelado')</option>
+                  <option *ngFor="let stage of stages()" [ngValue]="stage.id">{{ stage.name }}</option>
+                </select>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Si se deja en automático, buscará una etapa de
+                  tipo 'Cancelación'.</p>
+              </div>
+
+              <!-- Staff Reply -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Al responder un agente (Staff)
+                </label>
+                <select formControlName="ticket_stage_on_staff_reply"
+                  class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                  <option [ngValue]="null">🤖 Automático (Mover a 'En Análisis')</option>
+                  <option *ngFor="let stage of stages()" [ngValue]="stage.id">{{ stage.name }}</option>
+                </select>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Se aplica en la primera respuesta del staff. Si
+                  automático, busca 'En Análisis'.</p>
+              </div>
+
+              <!-- Client Reply -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Al responder el cliente
+                </label>
+                <select formControlName="ticket_stage_on_client_reply"
+                  class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                  <option [ngValue]="null">⚪ No hacer nada (Mantener estado)</option>
+                  <option *ngFor="let stage of stages()" [ngValue]="stage.id">{{ stage.name }}</option>
+                </select>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Si se configura, el ticket se moverá a esta
+                  etapa tras respuesta del cliente.</p>
               </div>
             </div>
           </div>

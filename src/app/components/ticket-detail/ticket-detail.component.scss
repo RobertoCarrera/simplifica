@@ -546,7 +546,7 @@
 
 /* Ticket Description Images (Thumbnails) */
 .ticket-description {
-  img {
+  ::ng-deep img {
     max-height: 150px;
     width: auto;
     border-radius: 8px;

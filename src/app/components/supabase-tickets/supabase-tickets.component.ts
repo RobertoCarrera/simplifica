@@ -510,8 +510,15 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       // 4. Search Filter (Title or Ticket Number)
       if (this.searchTerm && this.searchTerm.trim() !== '') {
         const term = this.searchTerm.trim();
-        // Use ILIKE for case-insensitive search on title OR ticket_number
-        query = query.or(`title.ilike.%${term}%,ticket_number.ilike.%${term}%`);
+        const isNumeric = /^\d+$/.test(term);
+
+        if (isNumeric) {
+          // If numeric, search in title OR exact match in ticket_number
+          query = query.or(`title.ilike.%${term}%,ticket_number.eq.${term}`);
+        } else {
+          // If text, search ONLY in title (searching text in integer column causes 500 error)
+          query = query.or(`title.ilike.%${term}%`);
+        }
       }
 
       // 5. Priority Filter (optional)
@@ -678,11 +685,19 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   // Toggle handlers
   toggleShowCompleted() {
     this.showCompleted = !this.showCompleted;
+    // Mutually exclusive: if showing completed, hide deleted
+    if (this.showCompleted) {
+      this.showDeleted = false;
+    }
     this.updateFilteredTickets();
   }
 
   async toggleShowDeleted() {
     this.showDeleted = !this.showDeleted;
+    // Mutually exclusive: if showing deleted, hide completed
+    if (this.showDeleted) {
+      this.showCompleted = false;
+    }
     await this.loadTickets(1);
     this.updateFilteredTickets(); // Redundant but safe
   }
@@ -956,19 +971,31 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       });
     }
 
-    // Status visual filtering
-    // Note: server loadTickets does not filter by status/workflow category actively for 'open'/'completed' status toggles
-    // unless mapped to stages.
-    if (!this.showCompleted) {
+    // Status visual filtering - EXCLUSIVE MODE
+    // When showCompleted is ON: show ONLY completed tickets
+    // When showDeleted is ON: show ONLY deleted tickets  
+    // Default (both OFF): show only active, non-completed, non-deleted tickets
+
+    if (this.showDeleted) {
+      // Show ONLY deleted tickets
+      filtered = filtered.filter(t =>
+        t.deleted_at || t.stage?.workflow_category === 'cancel'
+      );
+    } else if (this.showCompleted) {
+      // Show ONLY completed tickets (not deleted)
       filtered = filtered.filter(t => (
+        !t.deleted_at &&
+        t.stage?.workflow_category !== 'cancel' &&
+        (t.stage?.workflow_category === 'final' || t.stage?.stage_category === 'completed')
+      ));
+    } else {
+      // Default: show only active tickets (not deleted, not completed)
+      filtered = filtered.filter(t => (
+        !t.deleted_at &&
+        t.stage?.workflow_category !== 'cancel' &&
         t.stage?.workflow_category !== 'final' &&
         t.stage?.stage_category !== 'completed'
       ));
-    }
-
-    // Additional cleanup for deleted if server didn't catch it (e.g. recent delete)
-    if (!this.showDeleted) {
-      filtered = filtered.filter(t => !t.deleted_at && t.stage?.workflow_category !== 'cancel');
     }
 
     // Sort by priority (critical first), then by created_at (newest first)

@@ -5,6 +5,8 @@ import { RouterLink } from '@angular/router';
 import { ToastService } from '../../services/toast.service';
 import { SupabaseSettingsService } from '../../services/supabase-settings.service';
 import { firstValueFrom } from 'rxjs';
+import { SupabaseTicketsService, TicketStage } from '../../services/supabase-tickets.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-automation-settings',
@@ -16,16 +18,22 @@ export class AutomationSettingsComponent implements OnInit {
   private fb = inject(FormBuilder);
   private toast = inject(ToastService);
   private settingsService = inject(SupabaseSettingsService);
+  private ticketsService = inject(SupabaseTicketsService);
+  private authService = inject(AuthService);
 
   settingsForm: FormGroup;
   loading = signal(false);
   saving = signal(false);
+  stages = signal<TicketStage[]>([]);
 
   constructor() {
     this.settingsForm = this.fb.group({
       auto_send_quote_email: [false],
       allow_direct_contracting: [false],
-      copy_features_between_variants: [false]
+      copy_features_between_variants: [false],
+      ticket_stage_on_delete: [null],
+      ticket_stage_on_staff_reply: [null],
+      ticket_stage_on_client_reply: [null]
     });
   }
 
@@ -41,8 +49,18 @@ export class AutomationSettingsComponent implements OnInit {
         this.settingsForm.patchValue({
           auto_send_quote_email: settings.auto_send_quote_email ?? false,
           allow_direct_contracting: settings.allow_direct_contracting ?? false,
-          copy_features_between_variants: settings.copy_features_between_variants ?? false
+          copy_features_between_variants: settings.copy_features_between_variants ?? false,
+          ticket_stage_on_delete: settings.ticket_stage_on_delete ?? null,
+          ticket_stage_on_staff_reply: settings.ticket_stage_on_staff_reply ?? null,
+          ticket_stage_on_client_reply: settings.ticket_stage_on_client_reply ?? null
         });
+
+        // Load stages
+        const cid = this.authService.companyId();
+        if (cid) {
+          const stages = await this.ticketsService.getTicketStages(cid);
+          this.stages.set(stages);
+        }
       }
     } catch (error) {
       console.error('Error loading settings:', error);

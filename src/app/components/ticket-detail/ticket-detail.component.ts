@@ -90,6 +90,12 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                   <i class="fas fa-comment mr-2"></i>
                   <span>Añadir Comentario</span>
                 </button>
+
+                <button *ngIf="!isTicketSolved()" (click)="markAsSolved()" 
+                        class="btn btn-success text-sm px-4 w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white border-transparent">
+                  <i class="fas fa-check mr-2"></i>
+                  <span>Marcar como Solucionado</span>
+                </button>
               </ng-container>
               
               <!-- Admin Actions -->
@@ -208,14 +214,15 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                     <i class="fas fa-chart-line text-blue-500"></i>
                     Progreso del Ticket
                   </span>
-                  <span class="text-lg font-bold text-blue-600 dark:text-blue-400">{{ getProgressPercentage() | number:'1.0-0' }}%</span>
+                  <span class="text-lg font-bold" [style.color]="getCurrentStageColor()">{{ getProgressPercentage() | number:'1.0-0' }}%</span>
                 </div>
                 <div class="relative">
                   <!-- Progress Bar Background -->
                   <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 relative overflow-hidden shadow-inner">
                     <div 
-                      class="bg-gradient-to-r from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 h-4 rounded-full transition-all duration-500 ease-out"
+                      class="h-4 rounded-full transition-all duration-500 ease-out"
                       [style.width.%]="getProgressPercentage()"
+                      [style.background]="getCurrentStageColor()"
                     ></div>
                     
                     <!-- Stage Markers -->
@@ -224,11 +231,11 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                          [style.left.%]="getStagePosition(i)">
                       <div 
                         [class]="getStageMarkerClass(stage)"
-                        class="w-5 h-5 rounded-full border-3 border-white dark:border-gray-800 flex items-center justify-center shadow-md cursor-pointer hover:scale-110 transition-transform duration-200"
+                        class="w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center shadow-sm cursor-pointer hover:scale-125 transition-all duration-300"
                         [title]="stage.name"
                         (click)="!isClient() && (showChangeStageModal = true); !isClient() && (selectedStageId = stage.id)"
                       >
-                        <div *ngIf="isStageCompleted(stage)" class="w-2.5 h-2.5 bg-white rounded-full"></div>
+                        <div *ngIf="isStageCompleted(stage)" class="w-1.5 h-1.5 bg-white rounded-full"></div>
                       </div>
                     </div>
                   </div>
@@ -525,7 +532,7 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                           </button>
                           <div class="flex items-center shadow-sm rounded-lg relative">
                             <button (click)="addComment()" 
-                                    [disabled]="isUploadingImage || !hasEditorContent()"
+                                    [disabled]="isUploadingImage || !hasEditorContent() || isSubmitting"
                                     [ngClass]="{'rounded-r-none border-r border-white/20': !isClient() && activeCommentsCount > 0, 'rounded-lg': isClient() || activeCommentsCount === 0}"
                                     class="btn btn-primary">
                               <i class="fas fa-comment"></i>
@@ -533,7 +540,7 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                             </button>
                             <button *ngIf="!isClient() && activeCommentsCount > 0"
                                     class="btn btn-primary rounded-l-none px-2 border-l border-white/10" 
-                                    [disabled]="isUploadingImage || !hasEditorContent()"
+                                    [disabled]="isUploadingImage || !hasEditorContent() || isSubmitting"
                                     (click)="toggleSmartSendDropdown()">
                               <i class="fas fa-chevron-down"></i>
                             </button>
@@ -545,7 +552,8 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                               
                               <!-- Send & Solve -->
                               <button *ngIf="solvedStage" 
-                                      (click)="replyAndSetStage(solvedStage.id)" 
+                                      (click)="replyAndSetStage(solvedStage.id)"
+                                      [disabled]="isSubmitting" 
                                       class="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors">
                                   <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 flex items-center justify-center shrink-0">
                                       <i class="fas fa-check text-xs"></i>
@@ -1365,6 +1373,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   showDeletedComments = false;
   isInternalComment = false;
   isUploadingImage = false;
+  isSubmitting = false; // Prevent double-submission race conditions
 
   // Rich editor state
   commentEditorHtml: string = '';
@@ -2241,8 +2250,14 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     // If user replies to an internal comment, the reply MUST be internal
     const isInternal = parentComment.is_internal;
 
-    await this.postComment(content, parentComment.id, isInternal);
-    parentComment.showReplyEditor = false;
+    if (this.isSubmitting) return;
+    this.isSubmitting = true;
+    try {
+      await this.postComment(content, parentComment.id, isInternal);
+      parentComment.showReplyEditor = false;
+    } finally {
+      this.isSubmitting = false;
+    }
   }
 
   toggleEdit(comment: TicketComment) {
@@ -2412,8 +2427,14 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   // Wrapper for template
   async addComment() {
-    const content = this.editor?.getHTML()?.trim() || '';
-    await this.postComment(content);
+    if (this.isSubmitting) return;
+    this.isSubmitting = true;
+    try {
+      const content = this.editor?.getHTML()?.trim() || '';
+      await this.postComment(content);
+    } finally {
+      this.isSubmitting = false;
+    }
   }
 
   // --- Smart Send Actions ---
@@ -2433,6 +2454,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   async replyAndSetStage(stageId: string | undefined) {
     if (!stageId) return;
+    if (this.isSubmitting) return;
+    this.isSubmitting = true;
 
     // Validar contenido
     const content = this.editor?.getHTML()?.trim() || '';
@@ -2460,6 +2483,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       console.error('Error in smart send:', e);
     } finally {
       this.showSmartSendDropdown = false;
+      this.isSubmitting = false;
     }
   }
 
@@ -2577,8 +2601,48 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
   }
 
+  // Helper: Check if ticket is in a final/solved state
+  isTicketSolved(): boolean {
+    return this.ticket?.stage?.workflow_category === 'final' || this.ticket?.stage?.name === 'Solucionado';
+  }
+
+  // Client action: Mark ticket as solved
+  async markAsSolved() {
+    if (!this.ticket) return;
+
+    // Find 'Solucionado' or a final stage
+    const solvedStage = this.allStages.find(s =>
+      s.name.toLowerCase() === 'solucionado' ||
+      s.workflow_category === 'final'
+    );
+
+    if (!solvedStage) {
+      this.showToast('No se encontró un estado "Solucionado" configurado.', 'error');
+      return;
+    }
+
+    if (!confirm('¿Estás seguro de que quieres marcar este ticket como solucionado?')) return;
+
+    try {
+      this.loading = true;
+      const { error } = await this.supabase.getClient()
+        .from('tickets')
+        .update({ stage_id: solvedStage.id })
+        .eq('id', this.ticket.id);
+
+      if (error) throw error;
+
+      this.showToast('Ticket marcado como solucionado', 'success');
+      await this.loadTicketDetail();
+    } catch (err: any) {
+      this.showToast('Error al actualizar ticket: ' + err.message, 'error');
+    } finally {
+      this.loading = false;
+    }
+  }
 
   async deleteTicket() {
+
     if (!confirm('¿Estás seguro de que deseas eliminar este ticket?')) return;
 
     try {
@@ -2701,9 +2765,15 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           this.allStages = (data || []).slice().sort((a: any, b: any) => (Number(a?.position ?? 0) - Number(b?.position ?? 0)));
 
           // --- First Open Auto-Advance ---
-          // When a staff member opens a ticket that wasn't opened before
+          // DISABLED: User requested "First Open" logic to be replaced by "First Staff Comment" logic.
+          /*
           if (this.ticket && !this.ticket.is_opened && !this.isClient()) {
             await this.handleFirstOpenAutoAdvance();
+          }
+           */
+          // Ensure it is marked as opened regardless
+          if (this.ticket && !this.ticket.is_opened && !this.isClient()) {
+            try { this.ticketsService.markTicketOpened(this.ticket.id); } catch { }
           }
         }
       } catch (err) {
@@ -2711,11 +2781,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         this.allStages = [];
       }
 
-      // Simular actividad reciente
-      this.recentActivity = [
-        { action: 'Servicio añadido', created_at: this.ticket?.updated_at || new Date().toISOString() },
-        { action: 'Estado actualizado', created_at: this.ticket?.updated_at || new Date().toISOString() }
-      ];
+      // Load history (timeline)
+      await this.loadTicketHistory();
+
 
     } catch (error: any) {
       this.error = error.message;
@@ -2728,6 +2796,53 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         } catch { }
       }, 0);
     }
+  }
+
+  async loadTicketHistory() {
+    this.recentActivity = [];
+
+    // 1. Initial Creation
+    if (this.ticket?.created_at) {
+      this.recentActivity.push({
+        action: 'Ticket creado',
+        created_at: this.ticket.created_at,
+        icon: 'fas fa-plus-circle',
+        color: 'text-green-500'
+      });
+    }
+
+    // 2. Fetch history from system comments (Stage changes, file attachments, etc.)
+    // We filter for specific system messages to build the timeline
+    try {
+      const { data: historyComments } = await this.supabase.getClient()
+        .from('ticket_comments')
+        .select('comment, created_at')
+        .eq('ticket_id', this.ticketId)
+        .eq('is_internal', true)
+        .or('comment.ilike.Cambiado a:%,comment.ilike.Servicio añadido:%,comment.ilike.Archivo adjuntado:%')
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (historyComments) {
+        historyComments.forEach(h => {
+          this.recentActivity.push({
+            action: h.comment,
+            created_at: h.created_at,
+            icon: 'fas fa-history', // Default icon
+            color: 'text-blue-500'
+          });
+        });
+      }
+    } catch (err) {
+      console.warn('Error fetching history:', err);
+    }
+
+    // 3. Add services from ticket_services creation time (if not covered by comments)
+    // We already do this in loadTicketServices, but that pushes to this array.
+    // If we want a unified sort, we should sort afterwards.
+
+    // Sort all activity by date descending
+    this.recentActivity.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }
 
   /**
@@ -2754,7 +2869,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
   }
 
-  // Persist stage change from modal
   async saveStageChange() {
     if (!this.ticket || !this.selectedStageId) return;
     try {
@@ -2763,7 +2877,14 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .update({ stage_id: this.selectedStageId })
         .eq('id', this.ticket.id);
       if (error) throw error;
-      await this.loadTicketDetail();
+
+      // Log timeline history
+      const newStage = this.allStages.find(s => s.id === this.selectedStageId);
+      if (newStage) {
+        await this.addSystemComment(`Cambiado a: ${newStage.name}`);
+      }
+
+      await this.loadTicketDetail(); // This will reload activity
       this.closeChangeStageModal();
     } catch (err: any) {
       this.showToast('Error al cambiar estado: ' + (err?.message || err), 'error');
@@ -3253,6 +3374,31 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         const category_name = isUuid ? (categoriesById[cat]?.name || 'Sin categoría') : (cat || 'Sin categoría');
         return { ...it, service: { ...svc, category_name } };
       });
+
+      // Add service names to timeline activity (if not already present)
+      if (this.ticketServices && this.ticketServices.length > 0) {
+        this.ticketServices.forEach((ts: any) => {
+          const serviceName = ts?.service?.name;
+          const createdAt = ts?.created_at || this.ticket?.updated_at;
+
+          // Check if already exists from system comments to avoid duplicates
+          const alreadyExists = this.recentActivity.some(a =>
+            a.action.includes(serviceName) &&
+            Math.abs(new Date(a.created_at).getTime() - new Date(createdAt).getTime()) < 5000 // 5 sec threshold
+          );
+
+          if (serviceName && !alreadyExists) {
+            this.recentActivity.push({
+              action: `Servicio añadido: ${serviceName}`,
+              created_at: createdAt,
+              icon: 'fas fa-tools',
+              color: 'text-purple-500'
+            });
+          }
+        });
+        // Re-sort
+        this.recentActivity.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
     } catch (error) {
       console.error('Error en loadTicketServices:', error);
       this.ticketServices = [];
@@ -3335,6 +3481,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   getProgressPercentage(): number {
     const total = Math.max(1, (this.allStages || []).length - 1);
     return (this.currentStageIndex() / total) * 100;
+  }
+
+  // Get current stage color for progress bar styling
+  getCurrentStageColor(): string {
+    const stage = this.allStages?.find(s => s.id === this.ticket?.stage_id);
+    return stage?.color || '#3b82f6'; // Fallback to blue-500
   }
 
   formatPrice(amount: number): string {
