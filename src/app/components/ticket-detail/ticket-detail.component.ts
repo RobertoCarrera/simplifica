@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, ElementRef, ViewChild, OnDestroy, AfterViewInit, AfterViewChecked, ChangeDetectorRef, computed, Renderer2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DomSanitizer } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SimpleSupabaseService } from '../../services/simple-supabase.service';
@@ -24,6 +25,32 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
+
+interface TicketComment {
+  id: string;
+  ticket_id: string;
+  user_id: string;
+  client_id?: string; // Add client_id
+  comment: string;
+  created_at: string;
+  is_internal: boolean;
+  parent_id?: string | null;  // For nesting
+  deleted_at?: string | null; // For soft delete
+  edited_at?: string | null;  // For edit tracking
+  user?: {
+    name: string;
+    surname?: string;
+    email: string;
+  };
+  client?: {
+    name: string;
+    email: string;
+  };
+  children?: TicketComment[]; // UI helper for nesting
+  showReplyEditor?: boolean;  // UI helper
+  isEditing?: boolean;        // UI helper
+  editContent?: string;       // UI helper
+}
 
 import { ClientDevicesModalComponent } from '../client-devices-modal.component';
 import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader/skeleton-loader.component';
@@ -169,11 +196,6 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                     <i class="fas {{ getPriorityIcon(ticket.priority) }}"></i>
                     <span class="hidden sm:inline">{{ getPriorityLabel(ticket.priority) }}</span>
                   </span>
-                  <button *ngIf="!isClient()" (click)="showChangeStageModal = true" 
-                          class="btn btn-secondary px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm whitespace-nowrap">
-                    <i class="fas fa-arrows-alt mr-1 sm:mr-2"></i>
-                    <span class="hidden sm:inline">Cambiar Etapa</span>
-                  </button>
                 </div>
               </div>
               
@@ -235,8 +257,8 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                   <i class="fas fa-comments mr-1 sm:mr-2"></i>
                   <span class="hidden xs:inline">Comentarios</span>
                   <span class="xs:hidden">Comt.</span>
-                  <span *ngIf="comments.length > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                    {{ comments.length }}
+                  <span *ngIf="activeCommentsCount > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+                    {{ activeCommentsCount }}
                   </span>
                 </button>
                 <button 
@@ -510,30 +532,109 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                     </div>
 
                     <!-- Comments List -->
-                    <div *ngIf="comments.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
+                    <div *ngIf="activeCommentsCount === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
                       <i class="fas fa-comments text-5xl mb-4 opacity-50"></i>
                       <p class="text-lg">No hay comentarios aún</p>
                     </div>
-                    <div *ngIf="comments.length > 0" class="space-y-4">
-                      <!-- Filter out internal comments for client portal users -->
-                      <ng-container *ngFor="let comment of comments">
-                      <div *ngIf="!isClient() || !comment.is_internal"
-                           [class]="comment.is_internal ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700' : 'bg-gray-50 dark:bg-gray-700'"
-                           class="rounded-lg p-4 border">
-                        <div class="flex justify-between items-start mb-2">
-                          <div class="flex items-center space-x-2">
-                            <span class="font-medium text-gray-900 dark:text-gray-100">{{ comment.user?.name || 'Usuario' }}</span>
-                            <span *ngIf="comment.is_internal" 
-                                  class="px-2 py-1 text-xs bg-yellow-200 dark:bg-yellow-800/50 text-yellow-800 dark:text-yellow-200 rounded inline-flex items-center gap-1">
-                              <i class="fas fa-lock w-3"></i>
-                              Interno
-                            </span>
-                          </div>
-                          <span class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(comment.created_at) }}</span>
+                    <div *ngIf="activeCommentsCount > 0" class="space-y-4">
+                      <!-- Recursive Template for Comments -->
+                      <ng-template #commentNode let-comment="comment" let-level="level">
+                        <div class="mb-4" [style.margin-left.px]="level * 24">
+                            <!-- Comment Body -->
+                            <div *ngIf="!comment.deleted_at || (!isClient() && showDeletedComments)"
+                                 [class]="comment.is_internal ? 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-700' : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 shadow-sm'"
+                                 [class.opacity-60]="comment.deleted_at"
+                                 class="rounded-lg p-4 border relative group transition-all"> 
+                                
+                                <!-- Header -->
+                                <div class="flex justify-between items-start mb-2">
+                                  <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-gray-900 dark:text-gray-100">
+                                      {{ getCommentAuthorName(comment) }}
+                                    </span>
+                                    <span *ngIf="comment.is_internal" 
+                                          class="px-2 py-0.5 text-[10px] bg-yellow-200 dark:bg-yellow-800/50 text-yellow-800 dark:text-yellow-200 rounded uppercase font-bold tracking-wider">
+                                      Interno
+                                    </span>
+                                    <span *ngIf="comment.deleted_at" class="px-2 py-0.5 text-[10px] bg-red-100 text-red-700 rounded uppercase font-bold">Eliminado</span>
+                                  </div>
+                                  <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                      <span *ngIf="comment.edited_at" class="italic" title="{{ formatDate(comment.edited_at) }}">(Editado)</span>
+                                      <span>{{ formatDate(comment.created_at) }}</span>
+                                      
+                                      <!-- Actions Dropdown (Persistent) -->
+                                      <div class="flex gap-3 ml-4 opacity-100 transition-opacity">
+                                          <button (click)="toggleReply(comment)" class="hover:text-blue-500" title="Responder"><i class="fas fa-reply"></i></button>
+                                          
+                                          <!-- Edit/Delete for Owners/Staff -->
+                                          <ng-container *ngIf="!comment.deleted_at"> 
+                                              <button (click)="toggleEdit(comment)" class="hover:text-orange-500" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                                              <button *ngIf="!isClient()" (click)="softDeleteComment(comment)" class="hover:text-red-500" title="Eliminar"><i class="fas fa-trash"></i></button>
+                                          </ng-container>
+
+                                          <button *ngIf="comment.deleted_at && !isClient()" (click)="restoreComment(comment)" class="hover:text-green-500" title="Restaurar"><i class="fas fa-undo"></i></button>
+                                      </div>
+                                  </div>
+                                </div>
+
+                                <!-- Content (View Mode) with forced text colors for prose content -->
+                                <div *ngIf="!comment.isEditing" 
+                                     (click)="handleImageClick($event)"
+                                     class="prose prose-sm max-w-none !text-gray-900 dark:!text-gray-100 [&>*]:!text-gray-900 dark:[&>*]:!text-gray-100 [&_p]:!text-gray-900 dark:[&_p]:!text-gray-100 [&_li]:!text-gray-900 dark:[&_li]:!text-gray-100 [&_strong]:!text-gray-900 dark:[&_strong]:!text-gray-100 [&_span]:!text-gray-900 dark:[&_span]:!text-gray-100 [&_ul]:!text-gray-900 dark:[&_ul]:!text-gray-100 [&_ol]:!text-gray-900 dark:[&_ol]:!text-gray-100" 
+                                     [innerHTML]="getProcessedContent(comment.comment)"></div>
+                                
+                                <!-- Content (Edit Mode) -->
+                                <div *ngIf="comment.isEditing" class="mt-2">
+                                    <textarea [(ngModel)]="comment.editContent" class="w-full p-2 border rounded dark:bg-gray-800 dark:text-white" rows="3"></textarea>
+                                    <div class="flex justify-end gap-2 mt-2">
+                                        <button (click)="toggleEdit(comment)" class="btn btn-sm btn-secondary">Cancelar</button>
+                                        <button (click)="saveEdit(comment)" class="btn btn-sm btn-primary">Guardar</button>
+                                    </div>
+                                </div>
+
+                                <!-- Reply Editor -->
+                                <div *ngIf="comment.showReplyEditor" class="mt-4 pl-4 border-l-2 border-gray-300 dark:border-gray-600">
+                                    <textarea [id]="'reply-input-' + comment.id" #replyInput class="w-full p-2 border rounded dark:bg-gray-800 dark:text-white mb-2" rows="2" placeholder="Escribe una respuesta..."></textarea>
+                                    <div class="flex justify-end gap-2">
+                                        <button (click)="toggleReply(comment)" class="btn btn-sm btn-secondary">Cancelar</button>
+                                        <button (click)="replyTo(comment, replyInput.value)" class="btn btn-sm btn-primary">Responder</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Recursively render children -->
+                            <div *ngIf="comment.children && comment.children.length > 0">
+                                <ng-container *ngFor="let child of comment.children">
+                                    <ng-container *ngTemplateOutlet="commentNode; context:{comment: child, level: level + 1}"></ng-container>
+                                </ng-container>
+                            </div>
                         </div>
-                        <div class="prose prose-sm max-w-none text-gray-800 dark:text-gray-300" [innerHTML]="comment.comment"></div>
+                      </ng-template>
+
+                      <!-- Main List Loop -->
+                      <div class="space-y-4">
+                        <div *ngIf="!isClient()" class="flex justify-end mb-2">
+                           <label class="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
+                               <input type="checkbox" [(ngModel)]="showDeletedComments" class="rounded border-gray-300">
+                               Mostrar eliminados
+                           </label>
+                        </div>
+
+                        <ng-container *ngFor="let comment of comments">
+                           <ng-container *ngTemplateOutlet="commentNode; context:{comment: comment, level: 0}"></ng-container>
+                        </ng-container>
+
+                        <!-- Load More / Fade Section -->
+                        <div *ngIf="!commentsExpanded && totalCommentsCount > visibleCommentsLimit" class="relative mt-2 text-center">
+                           <!-- Fade Overlay -->
+                           <div class="absolute -top-24 left-0 right-0 h-24 bg-gradient-to-t from-white dark:from-gray-800 to-transparent pointer-events-none"></div>
+                           
+                           <button (click)="toggleCommentsExpansion()" 
+                                   class="relative z-10 px-4 py-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-full text-xs font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors shadow-sm cursor-pointer hover:shadow-md">
+                             <i class="fas fa-history mr-1"></i> Ver historial completo
+                           </button>
+                        </div>
                       </div>
-                      </ng-container>
                     </div>
                   </div>
                 }
@@ -652,11 +753,6 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(activity.created_at) }}</p>
                   </div>
                 </div>
-                <button *ngIf="!isClient()" (click)="changeStage()" 
-                        class="btn btn-secondary">
-                  <i class="fas fa-exchange-alt"></i>
-                  Cambiar Estado
-                </button>
               </div>
             </div>
             <!-- Tags Section (moved from header) -->
@@ -1131,6 +1227,25 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
     </div>
   </div>
 
+  <!-- Image Lightbox Modal -->
+  <div *ngIf="selectedImage" 
+       class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+       (click)="closeLightbox()">
+    
+    <!-- Close Button -->
+    <button (click)="closeLightbox()" 
+            class="absolute top-4 right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-50">
+      <i class="fas fa-times text-2xl"></i>
+    </button>
+
+    <!-- Image Container -->
+    <div class="relative max-w-full max-h-full flex items-center justify-center" (click)="$event.stopPropagation()">
+      <img [src]="selectedImage" 
+           class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl animate-in zoom-in-95 duration-200"
+           alt="Full size view">
+    </div>
+  </div>
+
   `
 })
 export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
@@ -1148,16 +1263,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   availableTags: any[] = [];
   allStages: ConfigStage[] = [];
   private stagesSvc = inject(SupabaseTicketStagesService);
-  comments: any[] = [];
   recentActivity: any[] = [];
   ticketId: string | null = null;
 
-  // Comment form
-  newComment: string = '';
-  isInternalComment: boolean = false;
+  // State for comments
+  comments: TicketComment[] = [];
+  showDeletedComments = false;
+  isInternalComment = false;
+  isUploadingImage = false;
+
   // Rich editor state
   commentEditorHtml: string = '';
-  isUploadingImage: boolean = false;
 
   // Modal controls
   showChangeStageModal = false;
@@ -1246,6 +1362,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private editorTried = false;
   private cdr = inject(ChangeDetectorRef);
   private renderer = inject(Renderer2);
+  private sanitizer = inject(DomSanitizer);
 
   // Client Devices Modal Mode
   clientDevicesModalMode: 'view' | 'select' = 'view';
@@ -1303,9 +1420,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     };
     this.selectedDeviceImages = [];
     this.showCreateDeviceForm = true;
-    this.lockBodyScroll();
+
   }
 
+  // Counters
+  activeCommentsCount: number = 0;
+
+  // Lazy Loading / Fade Logic
+  visibleCommentsLimit: number = 3;
+  totalCommentsCount: number = 0;
+  commentsExpanded: boolean = false;
+  commentsLoading: boolean = false;
 
   // Unified Badge Configurations (following app style guide)
   ticketStatusConfig: Record<string, { label: string; classes: string; icon: string }> = {
@@ -1377,6 +1502,32 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     },
   });
 
+  // Lightbox State
+  selectedImage: string | null = null;
+
+
+
+  // Handle delegated clicks for images
+  handleImageClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'IMG' && target.classList.contains('comment-thumbnail')) {
+      const src = target.getAttribute('src');
+      if (src) {
+        this.selectedImage = src;
+        this.lockBodyScroll(); // Block scroll
+        event.stopPropagation();
+        event.preventDefault();
+      }
+    }
+  }
+
+  closeLightbox() {
+    this.selectedImage = null;
+    this.unlockBodyScroll(); // Restore scroll
+  }
+
+
+
   ngOnInit() {
     this.debugLog('TicketDetailComponent ngOnInit called');
     // Also set legacy isClientPortal for any remaining uses
@@ -1386,6 +1537,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.debugLog('Ticket ID from route:', this.ticketId);
       if (this.ticketId) {
         this.loadTicketDetail();
+        // Subscribe to comments regardless of initial load success to ensure we catch updates
+        this.subscribeToComments();
       } else {
         this.error = 'ID de ticket no válido';
         this.loading = false;
@@ -1414,13 +1567,91 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (this.editor) {
       this.editor.destroy();
     }
-    // Asegurar que el scroll se restaure si el componente se destruye con modal abierto
+    if (this.commentsSubscription) {
+      this.commentsSubscription.unsubscribe();
+    }
+    // Asegurar que el scroll se restaure
+    document.documentElement.style.overflow = '';
     document.body.classList.remove('modal-open');
     document.body.style.overflow = '';
-    document.body.style.position = '';
-    document.body.style.width = '';
-    document.body.style.height = '';
-    document.documentElement.style.overflow = '';
+  }
+
+  private commentsSubscription: any;
+  private subscribeToComments() {
+    if (!this.ticketId) return;
+
+    // Log start of subscription attempt
+    console.log('Starting Realtime subscription for ticket:', this.ticketId);
+
+    // Use a unique channel name to avoid collisions if multiple tabs are open
+    const channelName = `ticket-comments-${this.ticketId}-${Date.now()}`;
+
+    const channel = this.supabase.getClient()
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'ticket_comments', filter: `ticket_id=eq.${this.ticketId}` },
+        (payload) => {
+          this.debugLog('Realtime update received:', payload);
+
+          // Verify if we should show this update (e.g. internal comment for client)
+          if (this.isClient() && payload.new && (payload.new as any).is_internal) {
+            return; // Ignore internal updates for clients
+          }
+          // Trigger reload
+          this.loadComments();
+        }
+      )
+      .subscribe((status, err) => {
+        console.log('Realtime subscription status:', status, err); // Force log
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully subscribed to ticket comments updates. Channel:', channelName);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Realtime subscription error:', err);
+        }
+      });
+
+    this.commentsSubscription = channel;
+  }
+
+  // Helper to transform HTML content (e.g. make images clickable thumbnails)
+  getProcessedContent(htmlContent: string): any {
+    if (!htmlContent) return '';
+    // simple string manipulation to add class/onclick logic or wrap in anchor
+    // We want: output <a href="src" target="_blank"><img src="src" class="comment-thumbnail" /></a>
+
+    // Create a temporary DOM element to parse content
+    const div = document.createElement('div');
+    div.innerHTML = htmlContent;
+
+    const images = div.querySelectorAll('img');
+    images.forEach((img: HTMLImageElement) => {
+      // Skip if already wrapped in anchor (avoid double wrapping on re-renders if logic changes)
+      // Skip if already wrapped (should not happen with this new logic)
+      if (img.parentElement?.tagName === 'A') return;
+
+      const src = img.getAttribute('src');
+      if (src) {
+        // Use a simple span wrapper with cursor-pointer to indicate clickability
+        // We rely on the container's click handler to catch the click on the img
+
+        const newImg = img.cloneNode(true) as HTMLImageElement;
+        newImg.classList.add('comment-thumbnail');
+        newImg.style.maxWidth = '150px';
+        newImg.style.maxHeight = '150px';
+        newImg.style.objectFit = 'contain';
+        newImg.style.cursor = 'zoom-in';
+        newImg.style.borderRadius = '0.375rem';
+        newImg.style.border = '1px solid #e5e7eb';
+
+        // No <a> wrapper needed, just the img
+        img.replaceWith(newImg);
+      }
+
+
+    });
+
+    return this.sanitizer.bypassSecurityTrustHtml(div.innerHTML);
   }
 
   // Development-only logger: will be a no-op in production
@@ -1533,7 +1764,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         },
       },
       onUpdate: ({ editor }) => {
-        this.newComment = editor.getHTML();
+        this.commentEditorHtml = editor.getHTML();
       },
       onCreate: ({ editor }) => {
         this.debugLog('TipTap editor created successfully');
@@ -1594,8 +1825,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
                   if (node.type.name === 'image' && (node.attrs as any)?.dataTempId === tmpId) {
                     const newAttrs = { ...(node.attrs as any), src: url, alt: f.name, dataTempId: null };
                     tr.setNodeMarkup(pos, undefined, newAttrs as any);
-                    replaced = true;
-                    return false; // stop traversal
+                    replaced = true; // stop traversal
                   }
                   return true;
                 });
@@ -1803,67 +2033,267 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     return this.linkedDeviceIds.has(deviceId);
   }
 
+
+  toggleCommentsExpansion() {
+    this.commentsExpanded = !this.commentsExpanded;
+    this.loadComments(); // Reload with new limit/no limit
+  }
+
   async loadComments() {
+    if (!this.ticketId) return;
+
     try {
-      const { data: comments, error } = await this.supabase.getClient()
+      this.commentsLoading = true;
+      const isClient = this.isClient();
+      let query = this.supabase.getClient()
         .from('ticket_comments')
         .select(`
           *,
-          user:users(name, email)
-        `)
+          user:users(name, surname, email),
+          client:clients(name, email)
+        `, { count: 'exact' }) // Get count
         .eq('ticket_id', this.ticketId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false }); // Newest first
+
+      // Clients should NOT see internal comments
+      if (isClient) {
+        query = query.eq('is_internal', false);
+      }
+
+      // Apply limit if not expanded
+      if (!this.commentsExpanded) {
+        query = query.range(0, this.visibleCommentsLimit - 1);
+      }
+
+      const { data: comments, count, error } = await query;
 
       if (error) {
         console.warn('Error cargando comentarios:', error);
         this.comments = [];
+        this.activeCommentsCount = 0;
+        this.totalCommentsCount = 0;
         return;
       }
 
-      this.comments = comments || [];
+      this.totalCommentsCount = count || 0;
+
+      // Use DB count for badge
+      this.activeCommentsCount = count || 0;
+
+      // Build Tree Structure
+      this.comments = this.buildCommentTree(comments || []);
     } catch (error) {
       console.error('Error en loadComments:', error);
       this.comments = [];
+    } finally {
+      this.commentsLoading = false;
     }
   }
 
-  async addComment() {
-    // Use TipTap editor HTML content
-    const content = this.editor?.getHTML()?.trim() || '';
-    if (!content || content === '<p></p>') return;
+  buildCommentTree(flatComments: any[]): TicketComment[] {
+    const map = new Map<string, TicketComment>();
+    const roots: TicketComment[] = [];
+
+    // 1. Initialize map and add UI flags
+    flatComments.forEach(c => {
+      c.children = [];
+      c.showReplyEditor = false;
+      c.isEditing = false;
+      c.editContent = c.comment;
+      map.set(c.id, c);
+    });
+
+    // 2. Build tree
+    flatComments.forEach(c => {
+      if (c.parent_id && map.has(c.parent_id)) {
+        map.get(c.parent_id)!.children!.push(c);
+      } else {
+        roots.push(c);
+      }
+    });
+
+    return roots;
+  }
+
+  // --- NEW ACTIONS ---
+
+  toggleReply(comment: TicketComment) {
+    comment.showReplyEditor = !comment.showReplyEditor;
+    if (comment.showReplyEditor) {
+      setTimeout(() => {
+        const el = document.getElementById('reply-input-' + comment.id);
+        if (el) el.focus();
+      }, 50);
+    }
+  }
+
+  async replyTo(parentComment: TicketComment, content: string) {
+    if (!content.trim()) return;
+
+    // Inherit internal status from parent if it is internal
+    // If user replies to an internal comment, the reply MUST be internal
+    const isInternal = parentComment.is_internal;
+
+    await this.postComment(content, parentComment.id, isInternal);
+    parentComment.showReplyEditor = false;
+  }
+
+  toggleEdit(comment: TicketComment) {
+    comment.isEditing = !comment.isEditing;
+    // Strip HTML for plain text editing
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = comment.comment;
+    comment.editContent = tempDiv.textContent || tempDiv.innerText || '';
+  }
+
+  async saveEdit(comment: TicketComment) {
+    if (!comment.editContent || comment.editContent === comment.comment) {
+      comment.isEditing = false;
+      return;
+    }
 
     try {
-      const { data, error } = await this.supabase.getClient()
-        .from('ticket_comments')
+      // 1. Save specific version history (Frontend triggered for simplicity, could be trigger based)
+      const { error: versionError } = await this.supabase.getClient()
+        .from('ticket_comment_versions')
         .insert({
-          ticket_id: this.ticketId,
-          comment: content,
-          is_internal: this.isInternalComment
+          comment_id: comment.id,
+          content: comment.comment, // Old content
+          changed_by: (await this.supabase.getClient().auth.getUser()).data.user?.id
+        });
+
+      if (versionError) console.warn('Error saving version history', versionError);
+
+      // 2. Update comment
+      // Wrap in <p> if saving as simple text to maintain consistency with editor, or just save text
+      // User requested "Texto plano y limpio" but system uses HTML. 
+      // best compromise: basic wrapping or just text (will render as text).
+      // Let's replace newlines with <br> for basic formatting if we save as "plain".
+      const formattedContent = comment.editContent?.replace(/\\n/g, '<br>') || '';
+
+      const { error } = await this.supabase.getClient()
+        .from('ticket_comments')
+        .update({
+          comment: formattedContent,
+          edited_at: new Date().toISOString()
         })
-        .select(`
-          *,
-          user:users(name, email)
-        `)
-        .single();
+        .eq('id', comment.id);
 
       if (error) throw error;
 
-      this.comments.push(data);
-      this.editor?.commands.clearContent();
-      this.newComment = '';
-      this.isInternalComment = false;
+      // Reload
+      this.loadComments();
+      this.showToast('Comentario actualizado', 'success');
+    } catch (err) {
+      console.error('Error editing comment', err);
+      this.showToast('Error al editar comentario', 'error');
+    }
+  }
 
-      // Optionally link pasted images as attachments
-      try {
-        await this.linkCommentAttachments(data.id, content);
-      } catch (e) {
-        console.warn('No se pudieron vincular adjuntos del comentario:', e);
+  async softDeleteComment(comment: TicketComment) {
+    if (!confirm('¿Estás seguro de eliminar este comentario?')) return;
+
+    try {
+      const { error } = await this.supabase.getClient()
+        .from('ticket_comments')
+        .update({
+          deleted_at: new Date().toISOString()
+        })
+        .eq('id', comment.id);
+
+      if (error) throw error;
+      this.loadComments();
+    } catch (err) {
+      console.error('Error deleted comment', err);
+      this.showToast('Error al eliminar comentario', 'error');
+    }
+  }
+
+  async restoreComment(comment: TicketComment) {
+    try {
+      const { error } = await this.supabase.getClient()
+        .from('ticket_comments')
+        .update({
+          deleted_at: null
+        })
+        .eq('id', comment.id);
+
+      if (error) throw error;
+      this.loadComments();
+    } catch (err) {
+      console.error('Error restoring comment', err);
+    }
+  }
+
+  getCommentAuthorName(comment: TicketComment): string {
+    if (comment.user?.name) {
+      const surname = comment.user.surname || '';
+      return surname ? `${comment.user.name} ${surname.charAt(0)}.` : comment.user.name;
+    }
+    if (comment.user?.surname) return comment.user.surname; // Fallback just in case
+    if (comment.client) return this.getClientFullName(comment.client);
+    return comment.client_id ? 'Cliente' : (comment.user?.email ? comment.user.email.split('@')[0] : 'Usuario');
+  }
+
+  // --- REFACTORED ADD ---
+  async postComment(content: string, parentId: string | null = null, forceInternal: boolean | null = null) {
+    if (!content || content === '<p></p>') return;
+
+    try {
+      const { data: { user } } = await this.supabase.getClient().auth.getUser();
+      if (!user) throw new Error('Usuario no autenticado');
+
+      const isClient = this.isClient();
+      let payload: any = {
+        ticket_id: this.ticketId,
+        comment: content,
+        // If forceInternal is true (relying to internal), enforce it.
+        // Otherwise fallback to checkbox or false for clients.
+        is_internal: forceInternal === true ? true : (isClient ? false : this.isInternalComment),
+        parent_id: parentId // Set parent for reply
+      };
+
+      if (isClient) {
+        const { data: clientData } = await this.supabase.getClient()
+          .from('clients')
+          .select('id')
+          .eq('auth_user_id', user.id)
+          .single();
+
+        if (!clientData) throw new Error('Perfil de cliente no encontrado');
+        payload.client_id = clientData.id;
+        payload.user_id = null;
+      } else {
+        payload.user_id = user.id;
       }
 
-    } catch (error: any) {
-      console.error('Error añadiendo comentario:', error);
-      this.showToast('Error al añadir comentario: ' + (error?.message || ''), 'error');
+      const { error } = await this.supabase.getClient()
+        .from('ticket_comments')
+        .insert(payload);
+
+      if (error) throw error;
+
+      if (error) throw error;
+
+      this.editor?.commands.setContent('');
+      this.isInternalComment = false; // Reset internal check
+      this.loadComments();
+      this.showToast('Comentario añadido', 'success');
+
+    } catch (e: any) {
+      console.error('Error adding comment', e);
+      if (e.code === '23503') {
+        this.showToast('Error de permisos: No puedes comentar en este ticket.', 'error');
+      } else {
+        this.showToast('Error al añadir comentario: ' + (e?.message || ''), 'error');
+      }
     }
+  }
+
+  // Wrapper for template
+  async addComment() {
+    const content = this.editor?.getHTML()?.trim() || '';
+    await this.postComment(content);
   }
 
   // Navigation and actions
