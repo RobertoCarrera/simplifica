@@ -452,10 +452,10 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                           <div *ngIf="device.media?.length" class="mt-3">
                             <h5 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Imágenes adjuntas:</h5>
                             <div class="flex flex-wrap gap-2">
-                              <div *ngFor="let media of device.media" class="relative group">
-                                <a [href]="media.file_url" target="_blank" class="block w-16 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-colors">
+                              <div *ngFor="let media of device.media" class="relative group cursor-pointer" (click)="openLightbox(media.file_url)">
+                                <div class="block w-16 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-colors">
                                   <img [src]="media.file_url" [alt]="media.description || 'Imagen del dispositivo'" class="w-full h-full object-cover">
-                                </a>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1583,6 +1583,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         event.preventDefault();
       }
     }
+  }
+
+  openLightbox(imageUrl: string) {
+    if (!imageUrl) return;
+    this.selectedImage = imageUrl;
+    this.lockBodyScroll();
   }
 
   closeLightbox() {
