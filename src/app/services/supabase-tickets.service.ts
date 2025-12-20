@@ -94,6 +94,7 @@ export interface TicketService {
   id: string;
   ticket_id: string;
   service_id: string;
+  variant_id?: string;
   quantity: number;
   unit_price: number;
   total_price: number;
@@ -102,6 +103,11 @@ export interface TicketService {
     name: string;
     description: string;
     base_price: number;
+  };
+  variant?: {
+    id: string;
+    name: string;
+    price_adjustment: number;
   };
 }
 
@@ -461,13 +467,14 @@ export class SupabaseTicketsService {
   // Create a ticket and assign both services and products atomically (via Edge Function when available)
   async createTicketWithItems(
     ticketData: Partial<Ticket>,
-    serviceItems: Array<{ service_id: string; quantity: number; unit_price?: number }>,
+    serviceItems: Array<{ service_id: string; variant_id?: string; quantity: number; unit_price?: number }>,
     productItems: Array<{ product_id: string; quantity: number; unit_price?: number }>
   ): Promise<Ticket> {
     // Normalize items
     const normalizedServices = (serviceItems || [])
       .map(it => ({
         service_id: it.service_id,
+        variant_id: it.variant_id || null,
         quantity: Math.max(1, Number(it.quantity || 1)),
         unit_price: typeof it.unit_price === 'number' ? it.unit_price : undefined
       }))
@@ -683,7 +690,7 @@ export class SupabaseTicketsService {
 
   // Replace all services for a ticket in ticket_services table.
   // This approach is simple and idempotent for small lists: delete existing, then insert current selection.
-  async replaceTicketServices(ticketId: string, companyId: string, items: Array<{ service_id: string; quantity: number; unit_price?: number }>): Promise<void> {
+  async replaceTicketServices(ticketId: string, companyId: string, items: Array<{ service_id: string; variant_id?: string | null; quantity: number; unit_price?: number }>): Promise<void> {
     if (!ticketId) return;
     const client = this.supabase.getClient();
 
@@ -694,6 +701,7 @@ export class SupabaseTicketsService {
       return {
         ticket_id: ticketId,
         service_id: it.service_id,
+        variant_id: it.variant_id || null,
         quantity: qty,
         price_per_unit: price,
         total_price: Number((price * qty).toFixed(2)),

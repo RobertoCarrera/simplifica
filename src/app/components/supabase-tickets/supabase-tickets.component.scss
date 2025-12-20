@@ -2904,3 +2904,125 @@ textarea.form-control {
     opacity: 1;
   }
 }
+
+/* Service Variant Styles */
+.service-item {
+  &.has-variants {
+    cursor: default !important;
+
+    .service-info {
+      width: 100%;
+    }
+  }
+
+  .price-label-badge {
+    font-size: 0.7em;
+    background: rgba(245, 158, 11, 0.1);
+    /* Amber tint */
+    color: #f59e0b;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    vertical-align: middle;
+    display: inline-block;
+
+    @media (prefers-color-scheme: dark) {
+      color: #fbbf24;
+      background: rgba(251, 191, 36, 0.1);
+      border-color: rgba(251, 191, 36, 0.2);
+    }
+  }
+
+  .service-variants-list {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+
+    @media (prefers-color-scheme: dark) {
+      border-top-color: #334155;
+    }
+
+    .variant-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      margin-bottom: 8px;
+      font-weight: 600;
+
+      @media (prefers-color-scheme: dark) {
+        color: #94a3b8;
+      }
+    }
+
+    .variants-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .variant-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: #475569;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+
+      @media (prefers-color-scheme: dark) {
+        background: #1e293b;
+        border-color: #334155;
+        color: #cbd5e1;
+      }
+
+      &:hover {
+        background: #f59e0b;
+        color: white;
+        border-color: #f59e0b;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+
+        .v-price {
+          color: rgba(255, 255, 255, 0.9);
+        }
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+
+      .v-price {
+        font-size: 0.75em;
+        opacity: 0.8;
+        font-weight: 600;
+        margin-left: 2px;
+      }
+    }
+  }
+}
+
+.selected-variant-badge {
+  display: inline-block;
+  font-size: 0.7em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #e0f2fe;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
+  margin-left: 8px;
+  vertical-align: middle;
+
+  @media (prefers-color-scheme: dark) {
+    background: rgba(14, 165, 233, 0.15);
+    color: #38bdf8;
+    border-color: rgba(14, 165, 233, 0.3);
+  }
+}

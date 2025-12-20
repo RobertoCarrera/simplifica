@@ -107,15 +107,14 @@ serve(async (req: Request) => {
     company_id: body.p_company_id,
     client_id: body.p_client_id,
     title: (body.p_title || '').toString().trim(),
-    description: (body.p_description || '').toString().trim(),
+    description: ((body.p_description || '').toString().trim() + (body.p_initial_attachment_url ? `\n\n![Adjunto](${body.p_initial_attachment_url})` : '')).trim(),
     stage_id: body.p_stage_id ?? null,
     priority: (body.p_priority || 'normal'),
     total_amount: body.p_total_amount ?? null,
     // due_date en la tabla es DATE; si nos pasan fecha, la normalizamos a YYYY-MM-DD
     due_date: body.p_due_date ? new Date(body.p_due_date).toISOString().slice(0, 10) : null,
     created_at: nowIso,
-    updated_at: nowIso,
-    initial_attachment_url: body.p_initial_attachment_url || null
+    updated_at: nowIso
   };
 
   // Validate priority
@@ -128,22 +127,25 @@ serve(async (req: Request) => {
     const preServices = rawServices
       .map((s: any) => ({
         service_id: s?.service_id,
+        variant_id: s?.variant_id || null,
         quantity: Math.max(1, Number(s?.quantity || 1)),
         unit_price: typeof s?.unit_price === 'number' ? s.unit_price : null
       }))
       .filter((s: any) => typeof s.service_id === 'string' && s.service_id.length > 0);
-    // Merge duplicates by service_id to avoid unique/duplicate errors
-    const merged = new Map<string, { service_id: string; quantity: number; unit_price: number | null }>();
+    // Merge duplicates by service_id + variant_id to avoid unique/duplicate errors
+    const merged = new Map<string, { service_id: string; variant_id: string | null; quantity: number; unit_price: number | null }>();
     for (const s of preServices) {
-      const prev = merged.get(s.service_id);
+      const key = `${s.service_id}:${s.variant_id || 'base'}`;
+      const prev = merged.get(key);
       if (prev) {
-        merged.set(s.service_id, {
+        merged.set(key, {
           service_id: s.service_id,
+          variant_id: s.variant_id,
           quantity: Math.max(1, Number(prev.quantity + (s.quantity || 0))),
           unit_price: prev.unit_price != null ? prev.unit_price : s.unit_price
         });
       } else {
-        merged.set(s.service_id, s);
+        merged.set(key, s);
       }
     }
     const services = Array.from(merged.values());
@@ -404,6 +406,7 @@ serve(async (req: Request) => {
           id: crypto.randomUUID(),
           ticket_id: inserted.id,
           service_id: s.service_id,
+          variant_id: s.variant_id,
           quantity: qty,
           price_per_unit: unit,
           total_price: total,

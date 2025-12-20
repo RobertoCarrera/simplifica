@@ -353,12 +353,12 @@ export class AiService {
         Extrae la siguiente información ESTRUCTURADA:
 
         1. Categoría ('incidence', 'request', 'question').
-        2. Prioridad ('low', 'normal', 'high', 'critical'). Si no se menciona o es urgente, usa 'normal' o inferencia lógica.
-        3. Título corto y claro (máx 8 palabras).
-        4. Descripción detallada completa.
+        2. Prioridad ('low', 'normal', 'high', 'critical').
+        3. Título: Si el usuario dice "Título: X", usa "X" verbatim. Si no, genera uno corto y claro (máx 8 palabras).
+        4. Descripción: Si el usuario dice "Descripción: Y", usa "Y" verbatim. Si no, resume todo el detalle técnico.
         5. Nombre del CLIENTE (si se menciona). Intenta capturar el nombre completo o empresa.
-        6. Servicios solicitados (si se mencionan, ej: "reparación", "instalación", "mantenimiento").
-        7. Productos mencionados (si se mencionan, ej: "cable", "ratón", "toner").
+        6. Servicios solicitados: { name: "...", variant: "..." (si menciona variante como 'esencial', 'premium'), quantity: 1 }.
+        7. Productos mencionados: { name: "...", quantity: 1 }.
 
         JSON Output:
         {
@@ -367,13 +367,14 @@ export class AiService {
           "title": "...",
           "description": "...",
           "client_name": "Nombre o null",
-          "services": [ { "name": "nombre servicio", "quantity": 1 } ],
+          "services": [ { "name": "nombre servicio", "variant": "nombre variante o null", "quantity": 1 } ],
           "products": [ { "name": "nombre producto", "quantity": 1 } ]
         }
         
         Notas:
         - Si no menciona cantidad, asume 1.
         - Si no menciona cliente, client_name: null.
+        - Prioriza EXACTITUD en Título y Descripción si el usuario los dicta explícitamente.
         `;
 
         const resultText = await this.generateContent(prompt, [base64Audio], 'gemini-2.5-flash-lite');

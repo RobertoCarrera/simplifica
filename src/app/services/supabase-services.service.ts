@@ -42,7 +42,7 @@ export interface ServiceVariant {
   sort_order: number;
   created_at: string;
   updated_at: string;
-  
+
   // Asignaciones a clientes específicos (precio personalizado)
   client_assignments?: ClientVariantAssignment[];
 }
@@ -72,7 +72,7 @@ export interface Service {
   // Campos para presupuestos y facturación
   tax_rate?: number;
   unit_type?: string;
-  
+
   // Campos para Portal de Cliente
   is_public?: boolean;
   allow_direct_contracting?: boolean;
@@ -381,7 +381,7 @@ export class SupabaseServicesService {
    * Load variants for all services that have has_variants = true
    * and calculate display prices for ALL services
    */
-  private async loadVariantsForServices(services: Service[]): Promise<Service[]> {
+  public async loadVariantsForServices(services: Service[]): Promise<Service[]> {
     // Get IDs of services that have variants
     const serviceIdsWithVariants = services
       .filter(s => s.has_variants)
@@ -1405,7 +1405,7 @@ export class SupabaseServicesService {
         .order('variant_name', { ascending: true });
 
       if (error) throw error;
-      
+
       // Load client assignments for each variant
       const variants = data || [];
       if (variants.length > 0) {
@@ -1417,7 +1417,7 @@ export class SupabaseServicesService {
             client:clients(id, name, email)
           `)
           .in('variant_id', variantIds);
-        
+
         // Attach assignments to their variants
         if (assignments) {
           for (const variant of variants) {
@@ -1434,7 +1434,7 @@ export class SupabaseServicesService {
           }
         }
       }
-      
+
       return variants;
     } catch (error) {
       console.error('❌ Error getting service variants:', error);
@@ -1623,6 +1623,38 @@ export class SupabaseServicesService {
       console.error('❌ Error enabling service variants:', error);
       throw error;
     }
+  }
+
+  public async resolveCategoryNames(services: Service[]): Promise<Service[]> {
+    if (!services || services.length === 0) return services;
+
+    const isValidUuid = (id: any) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+    // Extract potential UUIDs from category field
+    const categoryIds = services
+      .map(s => s.category)
+      .filter(c => c && isValidUuid(c));
+
+    if (categoryIds.length === 0) return services;
+
+    const uniqueIds = [...new Set(categoryIds)];
+
+    const { data: categories } = await this.supabase.getClient()
+      .from('service_categories')
+      .select('id, name')
+      .in('id', uniqueIds);
+
+    if (!categories || categories.length === 0) return services;
+
+    const catMap = new Map((categories as any[]).map((c: any) => [c.id, c.name]));
+
+    return services.map(s => {
+      // Only replace if it was a UUID and we found a name
+      if (s.category && isValidUuid(s.category) && catMap.has(s.category)) {
+        return { ...s, category: catMap.get(s.category) };
+      }
+      return s;
+    });
   }
 }
 

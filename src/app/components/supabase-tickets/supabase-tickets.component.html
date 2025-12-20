@@ -652,19 +652,38 @@
 
               <div class="services-grid">
                 <div *ngFor="let service of filteredServices" class="service-item"
-                  [class.selected]="isServiceSelected(service.id)" (click)="addServiceToTicket(service)">
+                  [class.selected]="isServiceSelected(service.id)"
+                  (click)="!service.has_variants ? addServiceToTicket(service) : null"
+                  [class.has-variants]="service.has_variants">
                   <div class="service-info">
-                    <div class="service-name">{{ service.name }}</div>
+                    <div class="service-name">
+                      {{ service.name }}
+                      <span *ngIf="service.display_price_label && service.has_variants" class="price-label-badge">{{
+                        service.display_price_label }}</span>
+                    </div>
                     <div class="service-details">
-                      {{ service.estimated_hours }}h • {{ service.base_price }}€
+                      {{ (service.display_hours || service.estimated_hours) | number:'1.0-2' }}h •
+                      {{ service.display_price || service.base_price }}€
                       <span *ngIf="service.category" class="service-category">• {{ service.category }}</span>
                     </div>
                     <div *ngIf="service.description" class="service-description">{{ service.description }}</div>
+
+                    <div *ngIf="service.has_variants && service.variants?.length" class="service-variants-list">
+                      <div class="variant-label">Variantes:</div>
+                      <div class="variants-chips">
+                        <button *ngFor="let v of service.variants" type="button" class="variant-chip"
+                          title="{{v.variant_name}}" (click)="addServiceToTicket(service, v); $event.stopPropagation()">
+                          <span class="v-name">{{ v.variant_name }}</span>
+                          <span class="v-price">{{ getVariantPrice(v) }}€</span>
+                        </button>
+                      </div>
+                    </div>
+
                     <div *ngIf="service.tags?.length" class="service-tags">
                       <span *ngFor="let t of service.tags" class="service-tag">{{ t }}</span>
                     </div>
                   </div>
-                  <div class="service-actions">
+                  <div class="service-actions" *ngIf="!service.has_variants">
                     <button type="button" class="btn-add">
                       <i class="fas fa-plus"></i>
                     </button>
@@ -691,14 +710,18 @@
               <div class="selected-services-list">
                 <div *ngFor="let item of selectedServices" class="selected-service-item">
                   <div class="service-info">
-                    <div class="service-name">{{ item.service.name }}</div>
-                    <div class="service-price">{{ item.service.base_price }}€ × {{ item.quantity }}</div>
+                    <div class="service-name">
+                      {{ item.service.name }}
+                      <span *ngIf="item.variant" class="selected-variant-badge">{{ item.variant.variant_name }}</span>
+                    </div>
+                    <div class="service-price">{{ item.unit_price }}€ × {{ item.quantity }}</div>
                   </div>
                   <div class="service-controls">
                     <input type="number" [value]="item.quantity"
-                      (input)="updateServiceQuantity(item.service.id, +$any($event.target).value)" min="1"
-                      class="quantity-input">
-                    <button type="button" class="btn-remove" (click)="removeServiceFromTicket(item.service.id)">
+                      (input)="updateServiceQuantity(item.service.id, +$any($event.target).value, item.variant?.id)"
+                      min="1" class="quantity-input">
+                    <button type="button" class="btn-remove"
+                      (click)="removeServiceFromTicket(item.service.id, item.variant?.id)">
                       <i class="fas fa-trash"></i>
                     </button>
                   </div>

@@ -6,7 +6,8 @@ import { ActivatedRoute } from '@angular/router';
 import { TicketModalService } from '../../services/ticket-modal.service';
 import { SupabaseTicketsService, Ticket, TicketStage, TicketStats } from '../../services/supabase-tickets.service';
 import { SupabaseTicketStagesService, TicketStage as ConfigStage } from '../../services/supabase-ticket-stages.service';
-import { SupabaseServicesService, Service } from '../../services/supabase-services.service';
+import { SupabaseServicesService, Service, ServiceVariant } from '../../services/supabase-services.service';
+import { TicketsService } from '../../services/tickets.service';
 import { ProductsService } from '../../services/products.service';
 import { ProductMetadataService } from '../../services/product-metadata.service';
 import { firstValueFrom } from 'rxjs';
@@ -50,9 +51,9 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   devRoleService = inject(DevRoleService);
   private authService = inject(AuthService);
   private aiService = inject(AiService);
+  private servicesService = inject(SupabaseServicesService);
   private toast = inject(ToastService);
 
-  // Permission access
   // Permission access
   canUseAiTicket(): boolean {
     const role = this.authService.userRole();
@@ -142,7 +143,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   filteredServices: Service[] = [];
   topUsedServices: Service[] = [];
   serviceSearchText: string = '';
-  selectedServices: { service: Service; quantity: number }[] = [];
+  selectedServices: { service: Service; quantity: number; variant?: ServiceVariant; unit_price?: number }[] = [];
   showServiceForm = false;
   serviceFormData: Partial<Service> = {};
 
@@ -202,7 +203,6 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   deleteReasonText = '';
   ticketToDelete: Ticket | null = null;
   private ticketsService = inject(SupabaseTicketsService);
-  private servicesService = inject(SupabaseServicesService);
   private productsService = inject(ProductsService);
   private productMetadataService = inject(ProductMetadataService);
   private simpleSupabase = inject(SimpleSupabaseService);
@@ -758,7 +758,9 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
           .getClient()
           .rpc('get_top_used_services', { target_company_id: this.selectedCompanyId, limit_count: 3 });
         if (!error && Array.isArray(data)) {
-          return data as Service[];
+          const topServices = data as Service[];
+          const withVariants = await this.servicesService.loadVariantsForServices(topServices);
+          return await this.servicesService.resolveCategoryNames(withVariants);
         }
         if (error) {
           console.warn('get_top_used_services RPC failed, falling back to local slice:', error);
@@ -843,7 +845,8 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       // Transform the data to match our selectedServices format
       this.selectedServices = (ticketServices || []).map((ts: any) => ({
         service: ts.service,
-        quantity: ts.quantity || 1
+        quantity: ts.quantity || 1,
+        unit_price: ts.price_per_unit
       }));
 
 
@@ -1275,24 +1278,54 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   }
 
   // Services management methods
-  addServiceToTicket(service: Service) {
-    const existing = this.selectedServices.find(s => s.service.id === service.id);
+  getVariantPrice(variant: ServiceVariant): number {
+    if (variant.pricing && variant.pricing.length > 0) {
+      // Find one_time price first, or monthly as second priority
+      const oneTime = variant.pricing.find(p => p.billing_period === 'one_time');
+      if (oneTime) return oneTime.base_price;
+      const monthly = variant.pricing.find(p => p.billing_period === 'monthly');
+      if (monthly) return monthly.base_price;
+      // Else return first price
+      return variant.pricing[0].base_price;
+    }
+    // Fallback deprecated
+    return variant.base_price || 0;
+  }
+
+  addServiceToTicket(service: Service, variant?: ServiceVariant) {
+    // Check if same service AND same variant (or no variant) already exists
+    const existing = this.selectedServices.find(s =>
+      s.service.id === service.id &&
+      (variant && s.variant ? s.variant.id === variant.id : (!variant && !s.variant))
+    );
+
     if (existing) {
       existing.quantity += 1;
     } else {
-      this.selectedServices.push({ service, quantity: 1 });
+      const price = variant ? this.getVariantPrice(variant) : (typeof service.base_price === 'number' ? service.base_price : 0);
+      this.selectedServices.push({
+        service,
+        quantity: 1,
+        variant,
+        unit_price: price
+      });
     }
     // Clear search after adding and return to top used services
     this.serviceSearchText = '';
     this.filteredServices = [...this.topUsedServices];
   }
 
-  removeServiceFromTicket(serviceId: string) {
-    this.selectedServices = this.selectedServices.filter(s => s.service.id !== serviceId);
+  removeServiceFromTicket(serviceId: string, variantId?: string) {
+    this.selectedServices = this.selectedServices.filter(s =>
+      !(s.service.id === serviceId && (variantId ? s.variant?.id === variantId : !s.variant))
+    );
   }
 
-  updateServiceQuantity(serviceId: string, quantity: number) {
-    const serviceItem = this.selectedServices.find(s => s.service.id === serviceId);
+  updateServiceQuantity(serviceId: string, quantity: number, variantId?: string) {
+    const serviceItem = this.selectedServices.find(s =>
+      s.service.id === serviceId &&
+      (variantId ? s.variant?.id === variantId : !s.variant)
+    );
     if (serviceItem) {
       serviceItem.quantity = Math.max(1, quantity);
     }
@@ -1808,7 +1841,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       // Add company_id to form data
       // Compute total amount from selected services and products (unit price * quantity)
       const servicesTotal = (this.selectedServices || []).reduce((sum, s) => {
-        const unit = typeof s.service.base_price === 'number' ? s.service.base_price : 0;
+        const unit = s.unit_price !== undefined ? s.unit_price : (typeof s.service.base_price === 'number' ? s.service.base_price : 0);
         const qty = Math.max(1, Number(s.quantity || 1));
         return sum + (unit * qty);
       }, 0);
@@ -1833,8 +1866,9 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
         // Build service and product items payload
         const serviceItems = (this.selectedServices || []).map(s => ({
           service_id: s.service.id,
+          variant_id: s.variant?.id,
           quantity: s.quantity || 1,
-          unit_price: typeof s.service.base_price === 'number' ? s.service.base_price : 0
+          unit_price: s.unit_price !== undefined ? s.unit_price : (typeof s.service.base_price === 'number' ? s.service.base_price : 0)
         }));
 
         const productItems = (this.selectedProducts || []).map(p => ({
@@ -1859,8 +1893,9 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
         try {
           const serviceItems = (this.selectedServices || []).map(s => ({
             service_id: s.service.id,
+            variant_id: s.variant?.id,
             quantity: s.quantity || 1,
-            unit_price: typeof s.service.base_price === 'number' ? s.service.base_price : 0
+            unit_price: s.unit_price !== undefined ? s.unit_price : (typeof s.service.base_price === 'number' ? s.service.base_price : 0)
           }));
           await this.ticketsService.replaceTicketServices(savedTicket.id, this.selectedCompanyId, serviceItems);
         } catch (svcErr) {
@@ -2438,12 +2473,23 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
           await this.loadServices();
         }
 
-        result.services.forEach(sItem => {
+        result.services.forEach((sItem: any) => {
           const match = this.findServiceByName(sItem.name);
           if (match) {
-            this.addServiceToTicket(match);
-            // Update quantity
-            const added = this.selectedServices.find(x => x.service.id === match.id);
+            let variantMatch: ServiceVariant | undefined;
+            // Try to match variant if provided by AI
+            if (sItem.variant && match.variants && match.variants.length > 0) {
+              const vTerm = sItem.variant.toLowerCase();
+              variantMatch = match.variants.find((v: ServiceVariant) => v.variant_name.toLowerCase().includes(vTerm));
+            }
+
+            this.addServiceToTicket(match, variantMatch);
+
+            // Update quantity (find the exact added item including variant)
+            const added = this.selectedServices.find(x =>
+              x.service.id === match.id &&
+              (variantMatch ? x.variant?.id === variantMatch.id : !x.variant)
+            );
             if (added && sItem.quantity > 1) {
               added.quantity = sItem.quantity;
             }
@@ -2463,7 +2509,8 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
 
   // Helper: Fuzzy Search Client
   async findClientByName(name: string): Promise<any> {
-    const term = name.toLowerCase();
+    const term = name.toLowerCase().trim();
+    if (!term) return null;
 
     // Ensure customers are loaded if empty (basic check)
     if ((!this.customers || this.customers.length === 0) && this.selectedCompanyId) {
@@ -2480,8 +2527,13 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       const fullName = `${cName} ${cSurname}`.trim();
       const business = (client.business_name || '').toLowerCase();
 
-      return fullName.includes(term) || term.includes(fullName) ||
-        business.includes(term) || term.includes(business);
+      // STRICTER MATCHING:
+      // 1. Full name must NOT be empty to match
+      // 2. Term must match a significant part of the name
+      const matchesName = fullName.length > 0 && (fullName.includes(term) || (term.length > 3 && term.includes(fullName)));
+      const matchesBusiness = business.length > 0 && (business.includes(term) || (term.length > 3 && term.includes(business)));
+
+      return matchesName || matchesBusiness;
     });
   }
 
