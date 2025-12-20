@@ -18,6 +18,7 @@ import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../../services/toast.service';
 import { TenantService } from '../../services/tenant.service';
 import { AuthService } from '../../services/auth.service';
+import { SupabaseSettingsService } from '../../services/supabase-settings.service';
 
 // TipTap imports
 import { Editor } from '@tiptap/core';
@@ -79,7 +80,7 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
               
               <!-- Client Actions -->
               <ng-container *ngIf="isClient()">
-                <button (click)="openCreateDeviceForm()" 
+                <button *ngIf="!ticketConfig || ticketConfig.ticket_client_can_create_devices !== false" (click)="openCreateDeviceForm()" 
                         class="btn btn-primary text-sm px-4 w-full sm:w-auto">
                   <i class="fas fa-plus mr-2"></i>
                   <span>Añadir Dispositivo</span>
@@ -91,7 +92,7 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                   <span>Añadir Comentario</span>
                 </button>
 
-                <button *ngIf="!isTicketSolved()" (click)="markAsSolved()" 
+                <button *ngIf="!isTicketSolved() && (!ticketConfig || ticketConfig.ticket_client_can_close !== false)" (click)="markAsSolved()" 
                         class="btn btn-success text-sm px-4 w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white border-transparent">
                   <i class="fas fa-check mr-2"></i>
                   <span>Marcar como Solucionado</span>
@@ -204,6 +205,17 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                     <i class="fas {{ getPriorityIcon(ticket.priority) }}"></i>
                     <span class="hidden sm:inline">{{ getPriorityLabel(ticket.priority) }}</span>
                   </span>
+                  
+                  <!-- Assignment Dropdown (Staff Only) -->
+                  <div *ngIf="!isClient()" class="ml-0 lg:ml-4">
+                    <select 
+                        [ngModel]="ticket.assigned_to" 
+                        (ngModelChange)="assignTicket($event)"
+                        class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
+                        <option [ngValue]="null">Sin Asignar</option>
+                        <option *ngFor="let user of staffUsers" [ngValue]="user.id">{{ user.name }}</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               
@@ -347,7 +359,7 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                               </div>
                               <!-- Read-only quantity for clients -->
                               <span *ngIf="isClientPortal"><i class="fas fa-boxes w-4"></i> Cantidad: {{ serviceItem.quantity }}</span>
-                              <span><i class="fas fa-clock w-4"></i> {{ getLineEstimatedHours(serviceItem) }}h</span>
+                              <span *ngIf="!isClient() || ticketConfig?.ticket_client_view_estimated_hours !== false"><i class="fas fa-clock w-4"></i> {{ getLineEstimatedHours(serviceItem) }}h</span>
                               <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
                                 <i class="fas fa-tag w-3"></i>
                                 {{ serviceItem.service?.category_name || serviceItem.service?.category || 'Sin categoría' }}
@@ -642,6 +654,12 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
 
                                   <!-- Actions (Always visible) -->
                                   <div class="flex items-center gap-1">
+                                      <button *ngIf="!isClient()" (click)="openVisibilityModal(comment); $event.stopPropagation()" 
+                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors" 
+                                              [title]="comment.is_internal ? 'Hacer público' : 'Hacer interno'">
+                                        <i class="fas" [ngClass]="comment.is_internal ? 'fa-eye-slash' : 'fa-eye'"></i>
+                                      </button>
+
                                       <button (click)="toggleReply(comment)" 
                                               class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors" 
                                               title="Responder">
@@ -1348,6 +1366,39 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
     </div>
   </div>
 
+  <!-- Visibility Confirmation Modal -->
+  <div *ngIf="showVisibilityModal" class="fixed inset-0 z-[100001] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" (click)="showVisibilityModal = false">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 border border-gray-200 dark:border-gray-700" (click)="$event.stopPropagation()">
+          <div class="p-6">
+              <div class="flex items-center gap-4 mb-4">
+                  <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                      <i class="fas" [ngClass]="commentToToggle?.is_internal ? 'fa-eye' : 'fa-eye-slash'" class="text-blue-600 dark:text-blue-400 text-xl"></i>
+                  </div>
+                  <div>
+                      <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ visibilityModalTitle }}</h3>
+                      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Confirmar cambio de visibilidad</p>
+                  </div>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700">
+                  <p class="text-sm text-gray-600 dark:text-gray-300">{{ visibilityModalMessage }}</p>
+                  <div *ngIf="commentToToggle" class="mt-3 text-xs text-gray-500 dark:text-gray-500 italic border-l-2 border-gray-300 dark:border-gray-600 pl-3 line-clamp-2">
+                      "{{ commentToToggle.comment | slice:0:100 }}"
+                  </div>
+              </div>
+
+              <div class="flex items-center justify-end gap-3">
+                  <button (click)="showVisibilityModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                      Cancelar
+                  </button>
+                  <button (click)="confirmVisibilityChange()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-lg shadow-blue-500/30 transition-all transform hover:scale-105">
+                      Confirmar
+                  </button>
+              </div>
+          </div>
+      </div>
+  </div>
+
   `
 })
 export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
@@ -1390,6 +1441,15 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   newHoursValue: number = 0;
   selectedFile: File | null = null;
   // Edit modal form data (handled by central modal)
+  // Advanced Config & Agents
+  staffUsers: { id: string, name: string, email: string }[] = [];
+  ticketConfig: any = {};
+
+  // Visibility Modal
+  showVisibilityModal = false;
+  commentToToggle: TicketComment | null = null;
+  visibilityModalTitle = '';
+  visibilityModalMessage = '';
 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -1398,6 +1458,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private servicesService = inject(SupabaseServicesService);
   private devicesService = inject(DevicesService);
   private productsService = inject(ProductsService);
+  private settingsService = inject(SupabaseSettingsService);
   private ticketModalService = inject(TicketModalService);
 
   private quotesService = inject(SupabaseQuotesService);
@@ -1635,6 +1696,66 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!imageUrl) return;
     this.selectedImage = imageUrl;
     this.lockBodyScroll();
+    this.loadStaff();
+    this.loadConfig();
+  }
+
+  async loadStaff() {
+    const user = this.authService.userProfile;
+    if (user?.role && user.role !== 'client' && user.company_id) {
+      this.staffUsers = await this.ticketsService.getCompanyStaff(user.company_id);
+    }
+  }
+
+  loadConfig() {
+    const user = this.authService.userProfile;
+    if (user?.company?.settings) {
+      this.ticketConfig = user.company.settings;
+      // Set default internal comment state
+      if (this.ticketConfig.ticket_default_internal_comment) {
+        this.isInternalComment = true;
+      }
+    }
+  }
+
+  async assignTicket(userId: string) {
+    if (!this.ticket || this.isClient()) return;
+    try {
+      await this.ticketsService.updateTicket(this.ticket.id, { assigned_to: userId });
+      this.ticket.assigned_to = userId;
+      this.toastService.success('Agente asignado', 'El agente ha sido asignado correctamente');
+    } catch (error) {
+      this.toastService.error('Error', 'Error al asignar agente');
+    }
+  }
+
+  openVisibilityModal(comment: TicketComment) {
+    this.commentToToggle = comment;
+    const willBeInternal = !comment.is_internal;
+    this.visibilityModalTitle = willBeInternal ? '¿Marcar como Interno?' : '¿Hacer Público?';
+    this.visibilityModalMessage = willBeInternal
+      ? 'El cliente dejará de ver este comentario.'
+      : '⚠️ ATENCIÓN: El cliente podrá ver este comentario y recibirá una notificación.';
+    this.showVisibilityModal = true;
+  }
+
+  async confirmVisibilityChange() {
+    if (!this.commentToToggle) return;
+
+    const newStatus = !this.commentToToggle.is_internal;
+    const { error } = await this.authService.client
+      .from('ticket_comments')
+      .update({ is_internal: newStatus })
+      .eq('id', this.commentToToggle.id);
+
+    if (error) {
+      this.toastService.error('Error', 'Error al cambiar visibilidad');
+    } else {
+      this.commentToToggle.is_internal = newStatus;
+      this.toastService.success('Correcto', 'Visibilidad actualizada');
+    }
+    this.showVisibilityModal = false;
+    this.commentToToggle = null;
   }
 
   closeLightbox() {
@@ -2408,12 +2529,16 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
       if (error) throw error;
 
-      if (error) throw error;
-
       this.editor?.commands.setContent('');
-      this.isInternalComment = false; // Reset internal check
+      // Reset internal check based on config
+      this.isInternalComment = this.ticketConfig?.ticket_default_internal_comment || false;
       this.loadComments();
       this.showToast('Comentario añadido', 'success');
+
+      // Auto-assign Logic
+      if (!isClient && !this.ticket?.assigned_to && this.ticketConfig?.ticket_auto_assign_on_reply) {
+        this.assignTicket(user.id);
+      }
 
     } catch (e: any) {
       console.error('Error adding comment', e);

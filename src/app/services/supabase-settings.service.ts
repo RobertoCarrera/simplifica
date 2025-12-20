@@ -43,6 +43,12 @@ export interface CompanySettings {
   ticket_stage_on_delete?: string | null; // UUID
   ticket_stage_on_staff_reply?: string | null; // UUID
   ticket_stage_on_client_reply?: string | null; // UUID
+  // Advanced Ticket Configs
+  ticket_client_view_estimated_hours?: boolean | null;
+  ticket_client_can_close?: boolean | null;
+  ticket_client_can_create_devices?: boolean | null;
+  ticket_default_internal_comment?: boolean | null;
+  ticket_auto_assign_on_reply?: boolean | null;
   allow_local_payment?: boolean | null; // Allow clients to select "pay in person/cash" option
   updated_at?: string;
 }

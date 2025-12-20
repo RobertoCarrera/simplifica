@@ -142,6 +142,89 @@
             </div>
           </div>
 
+          <!-- Client Customization -->
+          <div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 border-b pb-2 dark:border-gray-700">
+              Personalización del Portal de Cliente
+            </h3>
+            <div class="space-y-4">
+              <div class="flex items-start">
+                <div class="flex items-center h-5">
+                  <input id="ticket_client_view_estimated_hours" formControlName="ticket_client_view_estimated_hours"
+                    type="checkbox"
+                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
+                </div>
+                <div class="ml-3 text-sm">
+                  <label for="ticket_client_view_estimated_hours"
+                    class="font-medium text-gray-700 dark:text-gray-300">Mostrar horas estimadas</label>
+                  <p class="text-gray-500 dark:text-gray-400">Si se desmarca, el cliente solo verá precios, no las horas
+                    calculadas.</p>
+                </div>
+              </div>
+
+              <div class="flex items-start">
+                <div class="flex items-center h-5">
+                  <input id="ticket_client_can_close" formControlName="ticket_client_can_close" type="checkbox"
+                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
+                </div>
+                <div class="ml-3 text-sm">
+                  <label for="ticket_client_can_close" class="font-medium text-gray-700 dark:text-gray-300">Permitir
+                    marcar como solucionado</label>
+                  <p class="text-gray-500 dark:text-gray-400">Si se desmarca, solo el Staff podrá cerrar tickets.</p>
+                </div>
+              </div>
+
+              <div class="flex items-start">
+                <div class="flex items-center h-5">
+                  <input id="ticket_client_can_create_devices" formControlName="ticket_client_can_create_devices"
+                    type="checkbox"
+                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
+                </div>
+                <div class="ml-3 text-sm">
+                  <label for="ticket_client_can_create_devices"
+                    class="font-medium text-gray-700 dark:text-gray-300">Permitir crear dispositivos</label>
+                  <p class="text-gray-500 dark:text-gray-400">Si se desmarca, el cliente solo podrá elegir dispositivos
+                    existentes.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Workflow -->
+          <div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 border-b pb-2 dark:border-gray-700">
+              Flujo de Trabajo (Staff)
+            </h3>
+            <div class="space-y-4">
+              <div class="flex items-start">
+                <div class="flex items-center h-5">
+                  <input id="ticket_default_internal_comment" formControlName="ticket_default_internal_comment"
+                    type="checkbox"
+                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
+                </div>
+                <div class="ml-3 text-sm">
+                  <label for="ticket_default_internal_comment"
+                    class="font-medium text-gray-700 dark:text-gray-300">Comentario interno por defecto</label>
+                  <p class="text-gray-500 dark:text-gray-400">La casilla de "no visible para cliente" empezará marcada.
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex items-start">
+                <div class="flex items-center h-5">
+                  <input id="ticket_auto_assign_on_reply" formControlName="ticket_auto_assign_on_reply" type="checkbox"
+                    class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 dark:bg-gray-700">
+                </div>
+                <div class="ml-3 text-sm">
+                  <label for="ticket_auto_assign_on_reply"
+                    class="font-medium text-gray-700 dark:text-gray-300">Auto-asignar al responder</label>
+                  <p class="text-gray-500 dark:text-gray-400">Si un ticket no tiene agente, y respondes, se te asignará
+                    automáticamente.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Submit Button -->
           <div class="pt-4 flex justify-end">
             <button type="submit" [disabled]="saving()"

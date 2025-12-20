@@ -890,13 +890,28 @@ export class SupabaseTicketsService {
       if (error && error.code === '42P01') {
         return this.getMockStages(companyId);
       }
-
       if (error) throw error;
 
       return data || this.getMockStages(companyId);
     } catch (error) {
       return this.getMockStages(companyId);
     }
+  }
+
+  async getCompanyStaff(companyId: string): Promise<{ id: string, name: string, email: string }[]> {
+    const { data, error } = await this.supabase.getClient()
+      .from('users')
+      .select('id, name, email')
+      .eq('company_id', companyId)
+      .eq('active', true)
+      .in('role', ['owner', 'admin', 'member'])
+      .order('name');
+
+    if (error) {
+      console.error('getCompanyStaff error', error);
+      return [];
+    }
+    return data || [];
   }
 
   private getMockStages(companyId: string): TicketStage[] {

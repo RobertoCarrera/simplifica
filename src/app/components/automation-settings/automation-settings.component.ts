@@ -33,7 +33,13 @@ export class AutomationSettingsComponent implements OnInit {
       copy_features_between_variants: [false],
       ticket_stage_on_delete: [null],
       ticket_stage_on_staff_reply: [null],
-      ticket_stage_on_client_reply: [null]
+      ticket_stage_on_client_reply: [null],
+      // Advanced Configs
+      ticket_client_view_estimated_hours: [true],
+      ticket_client_can_close: [true],
+      ticket_client_can_create_devices: [true],
+      ticket_default_internal_comment: [false],
+      ticket_auto_assign_on_reply: [false]
     });
   }
 
@@ -52,7 +58,13 @@ export class AutomationSettingsComponent implements OnInit {
           copy_features_between_variants: settings.copy_features_between_variants ?? false,
           ticket_stage_on_delete: settings.ticket_stage_on_delete ?? null,
           ticket_stage_on_staff_reply: settings.ticket_stage_on_staff_reply ?? null,
-          ticket_stage_on_client_reply: settings.ticket_stage_on_client_reply ?? null
+          ticket_stage_on_client_reply: settings.ticket_stage_on_client_reply ?? null,
+          // Advanced Configs
+          ticket_client_view_estimated_hours: settings.ticket_client_view_estimated_hours ?? true,
+          ticket_client_can_close: settings.ticket_client_can_close ?? true,
+          ticket_client_can_create_devices: settings.ticket_client_can_create_devices ?? true,
+          ticket_default_internal_comment: settings.ticket_default_internal_comment ?? false,
+          ticket_auto_assign_on_reply: settings.ticket_auto_assign_on_reply ?? false
         });
 
         // Load stages
