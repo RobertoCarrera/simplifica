@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack } from 'lucide-angular';
+import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell } from 'lucide-angular';
 import { PWAService } from '../../services/pwa.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
 import { DevRoleService } from '../../services/dev-role.service';
@@ -38,7 +38,7 @@ interface MenuItem {
   providers: [
     {
       provide: LUCIDE_ICONS,
-      useValue: new LucideIconProvider({ Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack })
+      useValue: new LucideIconProvider({ Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell })
     }
   ],
   templateUrl: './responsive-sidebar.component.html',
@@ -97,7 +97,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   readonly icons = {
     Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp,
     Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft,
-    ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack
+    ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell
   };
 
   private allMenuItems: MenuItem[] = [

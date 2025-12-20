@@ -1,1 +1,0 @@
-ALTER TABLE quotes ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
