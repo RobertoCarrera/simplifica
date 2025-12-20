@@ -142,14 +142,16 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Presupuestos',
       icon: 'file-text',
       route: '/presupuestos',
-      module: 'production'
+      module: 'production',
+      moduleKey: 'moduloPresupuestos'
     },
     {
       id: 7,
       label: 'Facturación',
       icon: 'receipt',
       route: '/facturacion',
-      module: 'production'
+      module: 'production',
+      moduleKey: 'moduloFacturas'
     },
     {
       id: 8,
@@ -164,14 +166,16 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Productos',
       icon: 'package',
       route: '/productos',
-      module: 'production'
+      module: 'production',
+      moduleKey: 'moduloProductos'
     },
     {
       id: 10,
       label: 'Servicios',
       icon: 'wrench',
       route: '/servicios',
-      module: 'production'
+      module: 'production',
+      moduleKey: 'moduloServicios'
     },
     {
       id: 98,
@@ -253,36 +257,23 @@ export class ResponsiveSidebarComponent implements OnInit {
       // Agent (member) filtering
       if (userRole === 'member') {
         const perms = this.agentPermissions();
-        if (!perms) return true; // Fail safe allow or wait? defaulting to allow for now during load, or check defaults? 
-        // Actually, db default handles it.
+        if (!perms) return true; // Fail safe
 
-        // Map item to permission key
-        let permKey = '';
-        switch (item.id) {
-          case 1: permKey = 'dashboard'; break;
-          case 2: permKey = 'clients'; break;
-          case 3: permKey = 'tickets'; break; // Devices grouped with tickets/sat? Or separate? Default list has 'tickets', 'services', 'products'. 'dispositivos'? I should add 'devices' to default.
-          case 4: permKey = 'tickets'; break;
-          case 5: permKey = 'chat'; break;
-          case 6: permKey = 'invoices'; break;
-          case 7: permKey = 'invoices'; break;
-          case 8: permKey = 'analytics'; break;
-          case 9: permKey = 'products'; break;
-          case 10: permKey = 'services'; break;
-          case 98: permKey = 'settings'; break; // Config
-          default: return true;
+        // Logic: if item has moduleKey, check if it's in perms
+        if (item.moduleKey) {
+          return perms.includes(item.moduleKey);
         }
 
-        // Special case for Devices (id 3). If 'devices' key exists?
-        // My migration default was: ["dashboard", "tickets", "clients", "invoices", "calendar", "services", "products"]
-        // Chat and Analytics were missing. Devices missing.
-        // Assuming 'tickets' implies SAT which includes Devices?
-        // Or I should check if permKey is in allowed list.
-        // If key is mapped, check it.
+        // Special cases for Core items lacking moduleKey
+        if (item.id === 1) return perms.includes('dashboard'); // Inicio
+        if (item.id === 2) return perms.includes('clients');   // Clientes
 
-        if (permKey === 'tickets' && item.id === 3) return perms.includes('tickets'); // Dispositivos uses tickets permission?
+        // Settings (98) is usually restricted. Implicitly hidden if not 'settings' (or whatever key we assign).
+        // Since we are using Dynamic Catalog which likely doesn't have 'settings', it's hidden.
+        // Unless we decide to allow it via specific 'settings' key. User wanted it hidden.
+        if (item.id === 98) return false;
 
-        return perms.includes(permKey);
+        return true;
       }
 
       return false;

@@ -1093,8 +1093,10 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     this.filterPriority = '';
     this.filterStatus = '';
     this.filterTags = [];
+    this.showCompleted = false;
+    this.showDeleted = false;
     this.closeAllDropdowns();
-    this.updateFilteredTickets();
+    this.loadTickets(1);
   }
 
   // Tag management methods

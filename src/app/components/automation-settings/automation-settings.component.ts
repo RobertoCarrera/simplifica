@@ -1,12 +1,13 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, FormControl } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ToastService } from '../../services/toast.service';
 import { SupabaseSettingsService } from '../../services/supabase-settings.service';
 import { firstValueFrom } from 'rxjs';
 import { SupabaseTicketsService, TicketStage } from '../../services/supabase-tickets.service';
 import { AuthService } from '../../services/auth.service';
+import { SimpleSupabaseService } from '../../services/simple-supabase.service';
 
 @Component({
   selector: 'app-automation-settings',
@@ -20,30 +21,17 @@ export class AutomationSettingsComponent implements OnInit {
   private settingsService = inject(SupabaseSettingsService);
   private ticketsService = inject(SupabaseTicketsService);
   private authService = inject(AuthService);
+  private simpleSupabase = inject(SimpleSupabaseService);
 
   settingsForm: FormGroup;
   loading = signal(false);
   saving = signal(false);
   stages = signal<TicketStage[]>([]);
 
-  // Agent Permission Modules
-  agentModules = [
-    { key: 'dashboard', label: 'Tablero (Dashboard)' },
-    { key: 'tickets', label: 'Tickets y Dispositivos' },
-    { key: 'clients', label: 'Clientes' },
-    { key: 'invoices', label: 'Facturas y Presupuestos' },
-    { key: 'services', label: 'Servicios' },
-    { key: 'products', label: 'Productos' },
-    { key: 'chat', label: 'Chat' },
-    { key: 'analytics', label: 'Analíticas' },
-    { key: 'calendar', label: 'Calendario' }
-  ];
+  // Agent Permission Modules (Loaded dynamically)
+  agentModules: { key: string; label: string }[] = [];
 
   constructor() {
-    // Dynamic permissions controls map
-    const permControls: Record<string, any> = {};
-    this.agentModules.forEach(m => permControls[`perm_${m.key}`] = [true]); // Default true
-
     this.settingsForm = this.fb.group({
       auto_send_quote_email: [false],
       allow_direct_contracting: [false],
@@ -56,14 +44,47 @@ export class AutomationSettingsComponent implements OnInit {
       ticket_client_can_close: [true],
       ticket_client_can_create_devices: [true],
       ticket_default_internal_comment: [false],
-      ticket_auto_assign_on_reply: [false],
-      // Spread permission controls
-      ...permControls
+      ticket_auto_assign_on_reply: [false]
     });
   }
 
-  ngOnInit() {
+  async ngOnInit() {
+    await this.loadCatalog();
     this.loadSettings();
+  }
+
+  async loadCatalog() {
+    try {
+      const { data } = await this.simpleSupabase.getClient()
+        .from('modules')
+        .select('key, name')
+        .eq('is_active', true)
+        .order('position');
+
+      this.agentModules = [
+        { key: 'dashboard', label: 'Tablero (Dashboard)' },
+        { key: 'clients', label: 'Clientes' }
+      ];
+
+      if (data) {
+        data.forEach((m: any) => {
+          // Ignore if it's already in static list (unlikely based on naming)
+          // Remove 'calendar' if present as requested (but it's not in DB list provided)
+          if (m.key) {
+            this.agentModules.push({ key: m.key, label: m.name });
+          }
+        });
+      }
+
+      // Add controls to form
+      this.agentModules.forEach(m => {
+        this.settingsForm.addControl(`perm_${m.key}`, new FormControl(true));
+      });
+
+    } catch (e) {
+      console.error('Error loading module catalog', e);
+      // Fallback controls?
+    }
   }
 
   async loadSettings() {
