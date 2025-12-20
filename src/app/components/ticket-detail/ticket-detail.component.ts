@@ -539,75 +539,139 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                     <div *ngIf="activeCommentsCount > 0" class="space-y-4">
                       <!-- Recursive Template for Comments -->
                       <ng-template #commentNode let-comment="comment" let-level="level">
-                        <div class="mb-4" [style.margin-left.px]="level * 24">
+                        <div class="mb-4 relative transition-all duration-300" 
+                             [style.margin-left.px]="level * 24"
+                             [class.pl-6]="level > 0">
+                            
+                            <!-- Thread connector lines (only for depth > 0) -->
+                            <div *ngIf="level > 0" 
+                                 class="absolute left-0 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700 -ml-3 rounded-full"></div>
+                            
+                            <div *ngIf="level > 0" 
+                                 class="absolute left-0 top-8 w-6 h-[2px] bg-gray-200 dark:bg-gray-700 -ml-3 rounded-r-full"></div>
+
                             <!-- Comment Body -->
                             <div *ngIf="!comment.deleted_at || (!isClient() && showDeletedComments)"
-                                 [class]="comment.is_internal ? 'bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-700' : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 shadow-sm'"
+                                 [ngClass]="{
+                                   'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700/50': comment.is_internal,
+                                   'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 shadow-sm': !comment.is_internal && !comment.client_id,
+                                   'bg-blue-50/40 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800/30': !comment.is_internal && comment.client_id
+                                 }"
                                  [class.opacity-60]="comment.deleted_at"
-                                 class="rounded-lg p-4 border relative group transition-all"> 
+                                 class="rounded-2xl p-4 border relative group overflow-hidden transition-shadow"> 
                                 
-                                <!-- Header -->
-                                <div class="flex justify-between items-start mb-2">
-                                  <div class="flex items-center gap-2">
-                                    <span class="font-semibold text-gray-900 dark:text-gray-100">
-                                      {{ getCommentAuthorName(comment) }}
-                                    </span>
-                                    <span *ngIf="comment.is_internal" 
-                                          class="px-2 py-0.5 text-[10px] bg-yellow-200 dark:bg-yellow-800/50 text-yellow-800 dark:text-yellow-200 rounded uppercase font-bold tracking-wider">
-                                      Interno
-                                    </span>
-                                    <span *ngIf="comment.deleted_at" class="px-2 py-0.5 text-[10px] bg-red-100 text-red-700 rounded uppercase font-bold">Eliminado</span>
-                                  </div>
-                                  <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                                      <span *ngIf="comment.edited_at" class="italic" title="{{ formatDate(comment.edited_at) }}">(Editado)</span>
-                                      <span>{{ formatDate(comment.created_at) }}</span>
-                                      
-                                      <!-- Actions Dropdown (Persistent) -->
-                                      <div class="flex gap-3 ml-4 opacity-100 transition-opacity">
-                                          <button (click)="toggleReply(comment)" class="hover:text-blue-500" title="Responder"><i class="fas fa-reply"></i></button>
-                                          
-                                          <!-- Edit/Delete for Owners/Staff -->
-                                          <ng-container *ngIf="!comment.deleted_at"> 
-                                              <button (click)="toggleEdit(comment)" class="hover:text-orange-500" title="Editar"><i class="fas fa-pencil-alt"></i></button>
-                                              <button *ngIf="!isClient()" (click)="softDeleteComment(comment)" class="hover:text-red-500" title="Eliminar"><i class="fas fa-trash"></i></button>
-                                          </ng-container>
+                                <!-- Accent Bars -->
+                                <div *ngIf="comment.is_internal" class="absolute left-0 top-0 bottom-0 w-1 bg-amber-400/80"></div>
+                                <div *ngIf="!comment.is_internal && comment.client_id" class="absolute left-0 top-0 bottom-0 w-1 bg-blue-400/80"></div>
 
-                                          <button *ngIf="comment.deleted_at && !isClient()" (click)="restoreComment(comment)" class="hover:text-green-500" title="Restaurar"><i class="fas fa-undo"></i></button>
+                                <!-- Header -->
+                                <div class="flex justify-between items-start mb-3 pl-2">
+                                  <div class="flex items-center gap-3">
+                                    <!-- Avatar -->
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm shrink-0 border border-white/20"
+                                         [ngClass]="{
+                                           'bg-amber-100 text-amber-900 dark:bg-amber-800 dark:text-amber-100': comment.is_internal,
+                                           'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300': !comment.is_internal && !comment.client_id,
+                                           'bg-blue-100 text-blue-900 dark:bg-blue-800 dark:text-blue-100': !comment.is_internal && comment.client_id
+                                         }">
+                                         {{ getAuthorInitials(comment) }}
+                                    </div>
+
+                                    <div class="flex flex-col">
+                                      <div class="flex items-center gap-2">
+                                        <span class="font-bold text-sm text-gray-900 dark:text-white">
+                                          {{ getCommentAuthorName(comment) }}
+                                        </span>
+                                        <span *ngIf="comment.is_internal" 
+                                              class="px-1.5 py-0.5 text-[8px] bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 rounded border border-amber-200 dark:border-amber-700/50 uppercase font-bold tracking-wider">
+                                          Interno
+                                        </span>
+                                        <!-- Hide "Cliente" tag if viewer is client (isClient() is true) -->
+                                        <span *ngIf="comment.client_id && !isClient()" 
+                                              class="px-1.5 py-0.5 text-[8px] bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 rounded border border-blue-200 dark:border-blue-700/50 uppercase font-bold tracking-wider">
+                                          Cliente
+                                        </span>
+                                        <span *ngIf="comment.deleted_at" class="px-1.5 py-0.5 text-[8px] bg-red-100 text-red-700 rounded uppercase font-bold">
+                                          Eliminado
+                                        </span>
                                       </div>
+                                      <div class="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+                                        <span>{{ formatDate(comment.created_at) }}</span>
+                                        <span *ngIf="comment.edited_at" class="italic" title="{{ formatDate(comment.edited_at) }}">• Editado</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <!-- Actions (Always visible) -->
+                                  <div class="flex items-center gap-1">
+                                      <button (click)="toggleReply(comment)" 
+                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors" 
+                                              title="Responder">
+                                        <i class="fas fa-reply text-xs"></i>
+                                      </button>
+                                      
+                                      <ng-container *ngIf="!comment.deleted_at"> 
+                                          <button (click)="toggleEdit(comment)" 
+                                                  class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-orange-600 transition-colors" 
+                                                  title="Editar">
+                                            <i class="fas fa-pencil-alt text-xs"></i>
+                                          </button>
+                                          <button *ngIf="!isClient()" 
+                                                  (click)="softDeleteComment(comment)" 
+                                                  class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 transition-colors" 
+                                                  title="Eliminar">
+                                            <i class="fas fa-trash text-xs"></i>
+                                          </button>
+                                      </ng-container>
+
+                                      <button *ngIf="comment.deleted_at && !isClient()" 
+                                              (click)="restoreComment(comment)" 
+                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-green-100 text-green-600 transition-colors" 
+                                              title="Restaurar">
+                                        <i class="fas fa-undo text-xs"></i>
+                                      </button>
                                   </div>
                                 </div>
 
-                                <!-- Content (View Mode) with forced text colors for prose content -->
+                                <!-- Content -->
                                 <div *ngIf="!comment.isEditing" 
-                                     (click)="handleImageClick($event)"
-                                     class="prose prose-sm max-w-none !text-gray-900 dark:!text-gray-100 [&>*]:!text-gray-900 dark:[&>*]:!text-gray-100 [&_p]:!text-gray-900 dark:[&_p]:!text-gray-100 [&_li]:!text-gray-900 dark:[&_li]:!text-gray-100 [&_strong]:!text-gray-900 dark:[&_strong]:!text-gray-100 [&_span]:!text-gray-900 dark:[&_span]:!text-gray-100 [&_ul]:!text-gray-900 dark:[&_ul]:!text-gray-100 [&_ol]:!text-gray-900 dark:[&_ol]:!text-gray-100" 
+                                     class="pl-11 prose prose-sm max-w-none text-gray-900 dark:text-gray-100 [&>*]:text-gray-900 dark:[&>*]:text-gray-100 leading-relaxed text-[13.5px] font-normal" 
                                      [innerHTML]="getProcessedContent(comment.comment)"></div>
                                 
-                                <!-- Content (Edit Mode) -->
-                                <div *ngIf="comment.isEditing" class="mt-2">
-                                    <textarea [(ngModel)]="comment.editContent" class="w-full p-2 border rounded dark:bg-gray-800 dark:text-white" rows="3"></textarea>
-                                    <div class="flex justify-end gap-2 mt-2">
-                                        <button (click)="toggleEdit(comment)" class="btn btn-sm btn-secondary">Cancelar</button>
-                                        <button (click)="saveEdit(comment)" class="btn btn-sm btn-primary">Guardar</button>
+                                <!-- Edit Mode -->
+                                <div *ngIf="comment.isEditing" class="mt-3 pl-11">
+                                    <textarea [(ngModel)]="comment.editContent" class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800/80 focus:ring-2 focus:ring-blue-500 min-h-[100px] text-sm shadow-inner" rows="3"></textarea>
+                                    <div class="flex justify-end gap-2 mt-3">
+                                        <button (click)="toggleEdit(comment)" class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Cancelar</button>
+                                        <button (click)="saveEdit(comment)" class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors shadow-sm">Guardar cambios</button>
                                     </div>
                                 </div>
 
                                 <!-- Reply Editor -->
-                                <div *ngIf="comment.showReplyEditor" class="mt-4 pl-4 border-l-2 border-gray-300 dark:border-gray-600">
-                                    <textarea [id]="'reply-input-' + comment.id" #replyInput class="w-full p-2 border rounded dark:bg-gray-800 dark:text-white mb-2" rows="2" placeholder="Escribe una respuesta..."></textarea>
-                                    <div class="flex justify-end gap-2">
-                                        <button (click)="toggleReply(comment)" class="btn btn-sm btn-secondary">Cancelar</button>
-                                        <button (click)="replyTo(comment, replyInput.value)" class="btn btn-sm btn-primary">Responder</button>
+                                <div *ngIf="comment.showReplyEditor" class="mt-4 pt-4 ml-11 border-t border-gray-100 dark:border-gray-700/50">
+                                    <div class="flex gap-3">
+                                      <div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                                        <i class="fas fa-reply text-gray-400 text-xs"></i>
+                                      </div>
+                                      <div class="flex-1">
+                                        <textarea [id]="'reply-input-' + comment.id" #replyInput class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800/50 focus:ring-2 focus:ring-blue-500 min-h-[80px] text-sm shadow-inner" placeholder="Escribe tu respuesta..."></textarea>
+                                        <div class="flex justify-end gap-2 mt-2">
+                                            <button (click)="toggleReply(comment)" class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Cancelar</button>
+                                            <button (click)="replyTo(comment, replyInput.value)" class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
+                                              <i class="fas fa-paper-plane text-[10px]"></i> Responder
+                                            </button>
+                                        </div>
+                                      </div>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Recursively render children -->
-                            <div *ngIf="comment.children && comment.children.length > 0">
-                                <ng-container *ngFor="let child of comment.children">
-                                    <ng-container *ngTemplateOutlet="commentNode; context:{comment: child, level: level + 1}"></ng-container>
-                                </ng-container>
-                            </div>
+                        </div>
+                        
+                        <!-- Recursively render children -->
+                        <div *ngIf="comment.children && comment.children.length > 0">
+                            <ng-container *ngFor="let child of comment.children">
+                                <ng-container *ngTemplateOutlet="commentNode; context:{comment: child, level: level + 1}"></ng-container>
+                            </ng-container>
                         </div>
                       </ng-template>
 
@@ -2233,6 +2297,19 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (comment.user?.surname) return comment.user.surname; // Fallback just in case
     if (comment.client) return this.getClientFullName(comment.client);
     return comment.client_id ? 'Cliente' : (comment.user?.email ? comment.user.email.split('@')[0] : 'Usuario');
+  }
+
+  getAuthorInitials(comment: TicketComment): string {
+    const name = this.getCommentAuthorName(comment);
+    if (!name) return '?';
+    // If it's "Usuario" or "Cliente", take 2 chars?
+    if (name === 'Usuario' || name === 'Cliente') return name.substring(0, 2).toUpperCase();
+
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
   }
 
   // --- REFACTORED ADD ---
