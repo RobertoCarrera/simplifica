@@ -511,10 +511,12 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label for="description">Descripción *</label>
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <label for="description" class="mb-0">Descripción *</label>
+              </div>
               <textarea id="description" [(ngModel)]="formData.description" name="description" class="form-control"
                 [class.error]="formErrors['description']" rows="4"
-                placeholder="Descripción detallada del problema o solicitud"></textarea>
+                placeholder="Descripción detallada del problema o solicitud (puedes dictarlo pulsando el micrófono)"></textarea>
               <div *ngIf="formErrors['description']" class="error-message">{{ formErrors['description'] }}</div>
             </div>
           </div>
@@ -1371,4 +1373,19 @@
     </div>
   </div>
   }
+  <ng-container *ngIf="canUseAiTicket()">
+    <!-- Floating Audio Button (AI) -->
+    <button (click)="toggleRecording()" class="fab-button fab-audio" title="Crear Ticket por voz"
+      [class.recording]="isRecording" [disabled]="isProcessingAudio">
+      <i class="fas" [class.fa-microphone]="!isRecording && !isProcessingAudio" [class.fa-stop]="isRecording"
+        [class.fa-spinner]="isProcessingAudio" [class.fa-spin]="isProcessingAudio"></i>
+    </button>
+  </ng-container>
+
+  <!-- Floating New Ticket Button -->
+  <button (click)="openForm()" class="fab-button" title="Nuevo Ticket">
+    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+    </svg>
+  </button>
 </div>

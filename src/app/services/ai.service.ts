@@ -29,7 +29,7 @@ export class AiService {
      * Generic method to generate content using Gemini
      * @param prompt Text prompt
      * @param images Base64 strings of images (optional)
-     * @param model Model name (optional, defaults to 'gemini-1.5-flash' in backend)
+     * @param model Model name (optional, defaults to 'gemini-2.5-flash-lite' in backend)
      */
     async generateContent(prompt: string, images?: string[], model: string = 'gemini-2.5-flash-lite'): Promise<string> {
         try {
@@ -73,10 +73,22 @@ export class AiService {
             const { data: { session } } = await this.supabase.auth.getSession();
             if (!session) return; // Silent fail if no session
 
+            let companyId = (session.user as any).user_metadata?.company_id;
+
+            if (!companyId) {
+                companyId = await this.getCompanyId(session.user.id);
+            }
+
+            if (!companyId) {
+                // Warn but don't crash
+                console.warn('Cannot log AI usage: No company_id found for user', session.user.id);
+                return;
+            }
+
             const { error } = await this.supabase
                 .from('ai_usage_logs')
                 .insert({
-                    company_id: (session.user as any).user_metadata?.company_id || (await this.getCompanyId(session.user.id)),
+                    company_id: companyId,
                     user_id: session.user.id,
                     feature_key: featureKey,
                     saved_seconds: savedSeconds
@@ -165,12 +177,7 @@ export class AiService {
      */
     async processAudioTicket(audioBlob: Blob): Promise<{ type: 'incidence' | 'request' | 'question', title: string, description: string }> {
         // 1. Convert Blob to Base64
-        const base64Audio = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(audioBlob);
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = err => reject(err);
-        });
+        const base64Audio = await this.fileToBase64(new File([audioBlob], 'audio.webm', { type: 'audio/webm' }));
 
         // 2. Prompt for Gemini
         const prompt = `
@@ -237,7 +244,7 @@ export class AiService {
         addressProvincia?: string
     }> {
         // 1. Convert Blob to Base64
-        const base64Audio = await this.fileToBase64(new File([audioBlob], 'audio.webm'));
+        const base64Audio = await this.fileToBase64(new File([audioBlob], 'audio.webm', { type: 'audio/webm' }));
 
         // 2. Prompt for Gemini
         const prompt = `
@@ -289,7 +296,7 @@ export class AiService {
         client_name: string,
         items: Array<{ description: string, quantity: number, price: number }>
     }> {
-        const base64Audio = await this.fileToBase64(new File([audioBlob], 'audio.webm'));
+        const base64Audio = await this.fileToBase64(new File([audioBlob], 'audio.webm', { type: 'audio/webm' }));
 
         const prompt = `
         Eres un asistente administrativo. Analiza esta grabación donde se describe un presupuesto.
@@ -323,6 +330,70 @@ export class AiService {
         } catch (e) {
             console.error('Failed to parse Quote Audio AI response:', resultText);
             throw new Error('No se pudieron extraer datos del presupuesto.');
+        }
+    }
+    /**
+     * Fully process audio ticket to extract client, services, products, etc.
+     */
+    async processAudioTicketFull(audioBlob: Blob): Promise<{
+        type: 'incidence' | 'request' | 'question',
+        priority: 'low' | 'normal' | 'high' | 'critical',
+        title: string,
+        description: string,
+        client_name?: string, // To fuzzy search
+        services: Array<{ name: string, quantity: number }>,
+        products: Array<{ name: string, quantity: number }> // if any
+    }> {
+        const base64Audio = await this.fileToBase64(new File([audioBlob], 'audio.webm', { type: 'audio/webm' }));
+
+        const prompt = `
+        Eres un asistente de soporte técnico experto. Analiza esta grabación de audio.
+        IMPORTANTE: EL RESULTADO DEBE SER SIEMPRE EN ESPAÑOL.
+        
+        Extrae la siguiente información ESTRUCTURADA:
+
+        1. Categoría ('incidence', 'request', 'question').
+        2. Prioridad ('low', 'normal', 'high', 'critical'). Si no se menciona o es urgente, usa 'normal' o inferencia lógica.
+        3. Título corto y claro (máx 8 palabras).
+        4. Descripción detallada completa.
+        5. Nombre del CLIENTE (si se menciona). Intenta capturar el nombre completo o empresa.
+        6. Servicios solicitados (si se mencionan, ej: "reparación", "instalación", "mantenimiento").
+        7. Productos mencionados (si se mencionan, ej: "cable", "ratón", "toner").
+
+        JSON Output:
+        {
+          "type": "incidence",
+          "priority": "normal",
+          "title": "...",
+          "description": "...",
+          "client_name": "Nombre o null",
+          "services": [ { "name": "nombre servicio", "quantity": 1 } ],
+          "products": [ { "name": "nombre producto", "quantity": 1 } ]
+        }
+        
+        Notas:
+        - Si no menciona cantidad, asume 1.
+        - Si no menciona cliente, client_name: null.
+        `;
+
+        const resultText = await this.generateContent(prompt, [base64Audio], 'gemini-2.5-flash-lite');
+
+        try {
+            const cleanJson = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+            const data = JSON.parse(cleanJson);
+
+            // Validation/Normalization
+            const validTypes = ['incidence', 'request', 'question'];
+            if (!validTypes.includes(data.type)) data.type = 'question';
+
+            const validPriorities = ['low', 'normal', 'high', 'critical'];
+            if (!validPriorities.includes(data.priority)) data.priority = 'normal';
+
+            this.logUsage('audio_ticket_full', 360); // higher value
+            return data;
+        } catch (e) {
+            console.error('Failed to parse Full Audio AI response', resultText);
+            throw new Error('No se pudo procesar el audio del ticket.');
         }
     }
 }

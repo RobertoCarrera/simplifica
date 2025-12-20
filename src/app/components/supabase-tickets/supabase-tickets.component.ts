@@ -17,6 +17,8 @@ import { DevRoleService } from '../../services/dev-role.service';
 import { AuthService } from '../../services/auth.service';
 import { PortalTicketWizardComponent } from '../portal-ticket-wizard/portal-ticket-wizard.component';
 import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader/skeleton-loader.component';
+import { AiService } from '../../services/ai.service';
+import { ToastService } from '../../services/toast.service';
 
 // Interfaces para tags
 export interface TicketTag {
@@ -47,6 +49,21 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   companies: any[] = [];
   devRoleService = inject(DevRoleService);
   private authService = inject(AuthService);
+  private aiService = inject(AiService);
+  private toast = inject(ToastService);
+
+  // Permission access
+  // Permission access
+  canUseAiTicket(): boolean {
+    const role = this.authService.userRole();
+    return role === 'admin' || role === 'owner';
+  }
+
+  // Audio State
+  isRecording = false;
+  isProcessingAudio = false;
+  mediaRecorder: MediaRecorder | null = null;
+  audioChunks: Blob[] = [];
 
   // Role detection for client portal
   isClient = computed(() => this.authService.userRole() === 'client');
@@ -2348,5 +2365,129 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     if (!text) return '';
     // Remove markdown images like ![Alt](Url)
     return text.replace(/!\[.*?\]\(.*?\)/g, '');
+  }
+
+  // --- Audio Assistant Logic ---
+  async toggleRecording() {
+    if (this.isRecording) {
+      this.stopRecording();
+    } else {
+      await this.startRecording();
+    }
+  }
+
+  async startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.mediaRecorder = new MediaRecorder(stream);
+      this.audioChunks = [];
+
+      this.mediaRecorder.ondataavailable = (event) => {
+        this.audioChunks.push(event.data);
+      };
+
+      this.mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+        await this.processAudio(audioBlob);
+        stream.getTracks().forEach(track => track.stop()); // Stop mic
+      };
+
+      this.mediaRecorder.start();
+      this.isRecording = true;
+    } catch (err) {
+      console.error('Error recording audio', err);
+      this.toast.error('No se pudo acceder al micrófono', 'Error');
+    }
+  }
+
+  stopRecording() {
+    if (this.mediaRecorder && this.isRecording) {
+      this.mediaRecorder.stop();
+      this.isRecording = false;
+      this.isProcessingAudio = true;
+    }
+  }
+
+  async processAudio(blob: Blob) {
+    try {
+      const result = await this.aiService.processAudioTicketFull(blob);
+
+      // 1. Open New Ticket Form
+      await this.openForm();
+
+      // 2. Populate Fields
+      this.formData.title = result.title;
+      this.formData.description = result.description;
+      if (result.priority) this.formData.priority = result.priority;
+
+      // 3. Find Client
+      if (result.client_name) {
+        const client = await this.findClientByName(result.client_name);
+        if (client) {
+          this.selectedCustomer = client;
+          this.formData.client_id = client.id;
+          this.customerSearchText = client.name + (client.apellidos ? ' ' + client.apellidos : '');
+          this.showCustomerDropdown = false;
+        }
+      }
+
+      // 4. Find Services
+      if (result.services && result.services.length > 0) {
+        // Ensure services are loaded
+        if (!this.availableServices || this.availableServices.length === 0) {
+          await this.loadServices();
+        }
+
+        result.services.forEach(sItem => {
+          const match = this.findServiceByName(sItem.name);
+          if (match) {
+            this.addServiceToTicket(match);
+            // Update quantity
+            const added = this.selectedServices.find(x => x.service.id === match.id);
+            if (added && sItem.quantity > 1) {
+              added.quantity = sItem.quantity;
+            }
+          }
+        });
+      }
+
+      this.toast.success('Ticket generado por voz', 'AI Assistant');
+
+    } catch (error) {
+      console.error('Error processing audio', error);
+      this.toast.error('No pudimos entender el audio', 'Error');
+    } finally {
+      this.isProcessingAudio = false;
+    }
+  }
+
+  // Helper: Fuzzy Search Client
+  async findClientByName(name: string): Promise<any> {
+    const term = name.toLowerCase();
+
+    // Ensure customers are loaded if empty (basic check)
+    if ((!this.customers || this.customers.length === 0) && this.selectedCompanyId) {
+      await this.loadCustomers();
+    }
+
+    if (!this.customers) return null;
+
+    // Fuzzy matching logic
+    return this.customers.find(c => {
+      const client = c as any;
+      const cName = (client.name || '').toLowerCase();
+      const cSurname = (client.apellidos || '').toLowerCase();
+      const fullName = `${cName} ${cSurname}`.trim();
+      const business = (client.business_name || '').toLowerCase();
+
+      return fullName.includes(term) || term.includes(fullName) ||
+        business.includes(term) || term.includes(business);
+    });
+  }
+
+  // Helper: Find Service
+  findServiceByName(name: string): any {
+    const term = name.toLowerCase();
+    return this.availableServices?.find(s => s.name.toLowerCase().includes(term));
   }
 }
