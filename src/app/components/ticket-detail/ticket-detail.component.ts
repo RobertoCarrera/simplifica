@@ -188,7 +188,9 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                   </div>
                   <!-- Initial Attachment Preview REMOVED (Legacy) -->
                   
-                  <div class="mt-4 ml-0 sm:ml-1 text-gray-800 dark:text-gray-200 text-sm leading-relaxed" [innerHTML]="formatDescription(ticket.description)"></div>
+                  <div class="ticket-description mt-4 ml-0 sm:ml-1 text-gray-800 dark:text-gray-200 text-sm leading-relaxed" 
+                       [innerHTML]="formatDescription(ticket.description)"
+                       (click)="handleDescriptionClick($event)"></div>
                 </div>
                 <div class="flex flex-row lg:flex-col items-center lg:items-end gap-2 sm:gap-3">
                   <span [class]="getPriorityClasses(ticket.priority)"
@@ -1574,14 +1576,21 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // Handle delegated clicks for images
   handleImageClick(event: MouseEvent) {
     const target = event.target as HTMLElement;
-    if (target.tagName === 'IMG' && target.classList.contains('comment-thumbnail')) {
-      const src = target.getAttribute('src');
-      if (src) {
-        this.selectedImage = src;
-        this.lockBodyScroll(); // Block scroll
-        event.stopPropagation();
+    if (target.tagName === 'IMG') {
+      const img = target as HTMLImageElement;
+      this.openLightbox(img.src);
+    }
+  }
+
+  handleDescriptionClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'IMG') {
+      const img = target as HTMLImageElement;
+      // If image is inside a link, prevent default navigation
+      if (img.parentElement?.tagName === 'A') {
         event.preventDefault();
       }
+      this.openLightbox(img.src);
     }
   }
 
