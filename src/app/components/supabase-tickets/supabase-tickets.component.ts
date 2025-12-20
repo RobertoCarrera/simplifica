@@ -211,6 +211,11 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       label: 'Crítica',
       classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400',
       icon: 'fa-flag'
+    },
+    critical: {
+      label: 'Crítica',
+      classes: 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400',
+      icon: 'fa-flag'
     }
   };
 
@@ -514,7 +519,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
         query = query.eq('priority', this.filterPriority);
       }
 
-      // Order and Pagination
+      // Order: Priority first (nullif trick not available, use client-side reorder below), then by date
       query = query.order('created_at', { ascending: false })
         .range(from, to);
 
@@ -964,6 +969,28 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     // Additional cleanup for deleted if server didn't catch it (e.g. recent delete)
     if (!this.showDeleted) {
       filtered = filtered.filter(t => !t.deleted_at && t.stage?.workflow_category !== 'cancel');
+    }
+
+    // Sort by priority (critical first), then by created_at (newest first)
+    try {
+      const priorityOrder: Record<string, number> = { 'urgent': 0, 'critical': 0, 'high': 1, 'normal': 2, 'low': 3 };
+
+      filtered.sort((a, b) => {
+        const pA = priorityOrder[a.priority || 'normal'] ?? 2;
+        const pB = priorityOrder[b.priority || 'normal'] ?? 2;
+
+        if (pA !== pB) return pA - pB;
+
+        // Fallback: newest first using string comparison (works for ISO dates)
+        // If created_at is missing, treat as old
+        const dateA = a.created_at || '';
+        const dateB = b.created_at || '';
+
+        // Descending order (newest first)
+        return dateB.localeCompare(dateA);
+      });
+    } catch (e) {
+      console.error('Error sorting tickets:', e);
     }
 
     this.filteredTickets = filtered;

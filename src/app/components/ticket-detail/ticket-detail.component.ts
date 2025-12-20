@@ -523,12 +523,40 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
                             <i class="fas fa-paperclip"></i>
                             <span class="hidden sm:inline ml-1">Adjuntar</span>
                           </button>
-                          <button (click)="addComment()" 
-                                  [disabled]="isUploadingImage || !hasEditorContent()"
-                                  class="btn btn-primary">
-                            <i class="fas fa-comment"></i>
-                            Añadir Comentario
-                          </button>
+                          <div class="flex items-center shadow-sm rounded-lg relative">
+                            <button (click)="addComment()" 
+                                    [disabled]="isUploadingImage || !hasEditorContent()"
+                                    [ngClass]="{'rounded-r-none border-r border-white/20': !isClient() && activeCommentsCount > 0, 'rounded-lg': isClient() || activeCommentsCount === 0}"
+                                    class="btn btn-primary">
+                              <i class="fas fa-comment"></i>
+                              <span class="hidden sm:inline ml-2">Enviar</span>
+                            </button>
+                            <button *ngIf="!isClient() && activeCommentsCount > 0"
+                                    class="btn btn-primary rounded-l-none px-2 border-l border-white/10" 
+                                    [disabled]="isUploadingImage || !hasEditorContent()"
+                                    (click)="toggleSmartSendDropdown()">
+                              <i class="fas fa-chevron-down"></i>
+                            </button>
+                            
+                            <!-- Check dropup vs dropdown based on position? Usually fixed is safer or standard absolute -->
+                             <div *ngIf="showSmartSendDropdown" class="fixed inset-0 z-40" (click)="showSmartSendDropdown = false"></div>
+                             
+                            <div *ngIf="showSmartSendDropdown" class="absolute bottom-full right-0 mb-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                              
+                              <!-- Send & Solve -->
+                              <button *ngIf="solvedStage" 
+                                      (click)="replyAndSetStage(solvedStage.id)" 
+                                      class="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors">
+                                  <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 flex items-center justify-center shrink-0">
+                                      <i class="fas fa-check text-xs"></i>
+                                  </div>
+                                  <div>
+                                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">Enviar y Solucionar</div>
+                                      <div class="text-[10px] text-gray-500 uppercase tracking-wide">Cambiar a {{solvedStage.name}}</div>
+                                  </div>
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2388,6 +2416,91 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     await this.postComment(content);
   }
 
+  // --- Smart Send Actions ---
+  showSmartSendDropdown = false;
+
+  get waitingStage() {
+    return this.allStages.find(s => s.workflow_category === 'waiting' || s.stage_category === 'on_hold');
+  }
+
+  get solvedStage() {
+    return this.allStages.find(s => s.workflow_category === 'final' || s.stage_category === 'completed');
+  }
+
+  toggleSmartSendDropdown() {
+    this.showSmartSendDropdown = !this.showSmartSendDropdown;
+  }
+
+  async replyAndSetStage(stageId: string | undefined) {
+    if (!stageId) return;
+
+    // Validar contenido
+    const content = this.editor?.getHTML()?.trim() || '';
+    if (!content || content === '<p></p>') return;
+
+    try {
+      // 1. Enviar comentario
+      // Reuse postComment logic but we capture the promise to ensure order
+      await this.postComment(content);
+
+      // 2. Cambiar estado
+      if (this.ticket && this.ticket.stage_id !== stageId) {
+        try {
+          await this.ticketsService.updateTicket(this.ticket.id, { stage_id: stageId });
+          this.showToast('Estado actualizado automáticamente', 'success');
+          // Update local state purely for UI snapiness before reload? 
+          // Better to just reload to be safe
+          this.loadTicketDetail();
+        } catch (error) {
+          console.error('Error auto-updating stage:', error);
+          this.showToast('Comentario enviado, pero falló el cambio de estado', 'info');
+        }
+      }
+    } catch (e) {
+      console.error('Error in smart send:', e);
+    } finally {
+      this.showSmartSendDropdown = false;
+    }
+  }
+
+  // Auto-advance logic for First Open
+  async handleFirstOpenAutoAdvance() {
+    if (!this.ticket || !this.allStages?.length) return;
+
+    const currentStageIndex = this.allStages.findIndex(s => s.id === this.ticket!.stage_id);
+    if (currentStageIndex === -1) return; // Current stage not found?
+
+    // Check if there is a next stage
+    if (currentStageIndex < this.allStages.length - 1) {
+      const nextStage = this.allStages[currentStageIndex + 1];
+
+      console.log('🚀 Auto-advancing ticket on first open:', nextStage);
+
+      // Update DB
+      try {
+        const updatePayload = {
+          is_opened: true,
+          stage_id: nextStage.id
+        };
+        await this.ticketsService.updateTicket(this.ticket.id, updatePayload);
+
+        // Update Local State
+        this.ticket.is_opened = true;
+        this.ticket.stage_id = nextStage.id;
+        this.ticket.stage = nextStage as any; // Update relation object nicely if possible
+
+        this.showToast(`Ticket abierto: Avanzado a ${nextStage.name}`, 'info');
+      } catch (e) {
+        console.warn('Error auto-advancing ticket:', e);
+        // Fallback: at least mark opened
+        this.ticketsService.markTicketOpened(this.ticket.id);
+      }
+    } else {
+      // Is last stage? Just mark opened
+      this.ticketsService.markTicketOpened(this.ticket.id);
+    }
+  }
+
   // Navigation and actions
   goBack() {
     this.router.navigate(['/tickets']);
@@ -2569,14 +2682,6 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         await this.checkActiveQuoteForTicket();
       } catch { }
 
-      // Cargar servicios del ticket desde ticket_services
-      // Mark as opened (non-blocking). Ignore result; UI will refresh from list next time.
-      try {
-        if (this.ticket?.id) {
-          this.ticketsService.markTicketOpened(this.ticket.id);
-        }
-      } catch { }
-
       // Parallelize independent data loading
       await Promise.all([
         this.loadTicketServices(),
@@ -2594,6 +2699,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           this.allStages = [];
         } else {
           this.allStages = (data || []).slice().sort((a: any, b: any) => (Number(a?.position ?? 0) - Number(b?.position ?? 0)));
+
+          // --- First Open Auto-Advance ---
+          // When a staff member opens a ticket that wasn't opened before
+          if (this.ticket && !this.ticket.is_opened && !this.isClient()) {
+            await this.handleFirstOpenAutoAdvance();
+          }
         }
       } catch (err) {
         console.warn('Excepción cargando estados visibles:', err);

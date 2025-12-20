@@ -147,9 +147,12 @@ export class SupabaseTicketStagesService {
         return { data: null, error: { message: 'No active session' } };
       }
 
+      const companyId = await this.resolveCompanyId();
+      const url = `${this.supabaseUrl}/functions/v1/get-config-stages` + (companyId ? `?company_id=${encodeURIComponent(companyId)}` : '');
+
       // Llamar a la Edge Function get-config-stages para unificar lógica
       const response = await fetch(
-        `${this.supabaseUrl}/functions/v1/get-config-stages`,
+        url,
         {
           method: 'GET',
           headers: {
