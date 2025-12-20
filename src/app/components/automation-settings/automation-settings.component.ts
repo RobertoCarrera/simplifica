@@ -26,7 +26,24 @@ export class AutomationSettingsComponent implements OnInit {
   saving = signal(false);
   stages = signal<TicketStage[]>([]);
 
+  // Agent Permission Modules
+  agentModules = [
+    { key: 'dashboard', label: 'Tablero (Dashboard)' },
+    { key: 'tickets', label: 'Tickets y Dispositivos' },
+    { key: 'clients', label: 'Clientes' },
+    { key: 'invoices', label: 'Facturas y Presupuestos' },
+    { key: 'services', label: 'Servicios' },
+    { key: 'products', label: 'Productos' },
+    { key: 'chat', label: 'Chat' },
+    { key: 'analytics', label: 'Analíticas' },
+    { key: 'calendar', label: 'Calendario' }
+  ];
+
   constructor() {
+    // Dynamic permissions controls map
+    const permControls: Record<string, any> = {};
+    this.agentModules.forEach(m => permControls[`perm_${m.key}`] = [true]); // Default true
+
     this.settingsForm = this.fb.group({
       auto_send_quote_email: [false],
       allow_direct_contracting: [false],
@@ -39,7 +56,9 @@ export class AutomationSettingsComponent implements OnInit {
       ticket_client_can_close: [true],
       ticket_client_can_create_devices: [true],
       ticket_default_internal_comment: [false],
-      ticket_auto_assign_on_reply: [false]
+      ticket_auto_assign_on_reply: [false],
+      // Spread permission controls
+      ...permControls
     });
   }
 
@@ -67,6 +86,26 @@ export class AutomationSettingsComponent implements OnInit {
           ticket_auto_assign_on_reply: settings.ticket_auto_assign_on_reply ?? false
         });
 
+        // Load Agent Permissions
+        const perms = settings.agent_module_access || [];
+        // If empty/null and not previously saved? Rely on migrated defaults or settings service defaults.
+        // Assuming migrated default 'tickets' etc.
+        // If settings.agent_module_access is array, patch values.
+        const permPatch: Record<string, boolean> = {};
+        this.agentModules.forEach(m => {
+          // If array is populated, use it. If array is empty (which shouldn't happen if default set), assume logic?
+          // Actually, if migration ran, it has defaults.
+          // If perms is empty array, it means NO permissions? Or legacy?
+          // Safest: if perms.length > 0 check inclusion. If 0 check if it's explicitly empty?
+          // Let's assume perms array is authoritative.
+          permPatch[`perm_${m.key}`] = perms.includes(m.key);
+          // Special case: if perms is totally null/undefined (legacy row), default all true?
+          if (!settings.agent_module_access) {
+            permPatch[`perm_${m.key}`] = true; // Enable all by default for existing companies before migration
+          }
+        });
+        this.settingsForm.patchValue(permPatch);
+
         // Load stages
         const cid = this.authService.companyId();
         if (cid) {
@@ -88,7 +127,25 @@ export class AutomationSettingsComponent implements OnInit {
     this.saving.set(true);
     try {
       const formValue = this.settingsForm.value;
-      await firstValueFrom(this.settingsService.updateCompanySettings(formValue));
+
+      // Reconstruct agent_module_access array
+      const agent_module_access: string[] = [];
+      this.agentModules.forEach(m => {
+        if (formValue[`perm_${m.key}`]) {
+          agent_module_access.push(m.key);
+        }
+      });
+
+      const { ...cleanForm } = formValue;
+      // Remove perm keys
+      this.agentModules.forEach(m => delete cleanForm[`perm_${m.key}`]);
+
+      const payload = {
+        ...cleanForm,
+        agent_module_access
+      };
+
+      await firstValueFrom(this.settingsService.updateCompanySettings(payload));
       this.toast.success('Guardado', 'Ajustes guardados correctamente');
     } catch (error) {
       console.error('Error saving settings:', error);

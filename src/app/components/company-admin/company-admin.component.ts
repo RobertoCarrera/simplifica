@@ -129,7 +129,7 @@ import { ToastService } from '../../services/toast.service';
                   [title]="getRoleChangeTooltip(u)">
                   <option value="owner" [disabled]="!canAssignRole('owner')">Owner</option>
                   <option value="admin" [disabled]="!canAssignRole('admin')">Admin</option>
-                  <option value="member">Member</option>
+                  <option value="member">Agente</option>
                 </select>
                 
                 <span 
@@ -180,7 +180,7 @@ import { ToastService } from '../../services/toast.service';
               [(ngModel)]="inviteForm.role" 
               name="role"
               class="px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-              <option value="member">Member</option>
+              <option value="member">Agente</option>
               <option value="owner" *ngIf="currentUserRole === 'owner'">Owner</option>
             </select>
             <input 
@@ -401,7 +401,7 @@ export class CompanyAdminComponent implements OnInit {
     const labels: Record<string, string> = {
       'owner': 'Propietario',
       'admin': 'Administrador',
-      'member': 'Miembro'
+      'member': 'Agente'
     };
     return labels[role || ''] || role || 'Sin rol';
   }

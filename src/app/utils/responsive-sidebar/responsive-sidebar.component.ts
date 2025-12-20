@@ -7,6 +7,8 @@ import { SidebarStateService } from '../../services/sidebar-state.service';
 import { DevRoleService } from '../../services/dev-role.service';
 import { AuthService } from '../../services/auth.service';
 import { SupabaseModulesService, EffectiveModule } from '../../services/supabase-modules.service';
+import { SupabaseSettingsService } from '../../services/supabase-settings.service';
+import { firstValueFrom } from 'rxjs';
 
 // Menu item shape used by this component
 interface MenuItem {
@@ -71,6 +73,10 @@ export class ResponsiveSidebarComponent implements OnInit {
   private devRoleService = inject(DevRoleService);
   authService = inject(AuthService); // público para template
   private modulesService = inject(SupabaseModulesService);
+  private settingsService = inject(SupabaseSettingsService);
+
+  // Agent permissions
+  private agentPermissions = signal<string[] | null>(null);
 
   // Server-side modules allowed for this user
   private _allowedModuleKeys = signal<Set<string> | null>(null);
@@ -244,6 +250,41 @@ export class ResponsiveSidebarComponent implements OnInit {
       // Development modules only for admin (o señal dev explícita)
       if (item.module === 'development') return isAdmin || isDev;
 
+      // Agent (member) filtering
+      if (userRole === 'member') {
+        const perms = this.agentPermissions();
+        if (!perms) return true; // Fail safe allow or wait? defaulting to allow for now during load, or check defaults? 
+        // Actually, db default handles it.
+
+        // Map item to permission key
+        let permKey = '';
+        switch (item.id) {
+          case 1: permKey = 'dashboard'; break;
+          case 2: permKey = 'clients'; break;
+          case 3: permKey = 'tickets'; break; // Devices grouped with tickets/sat? Or separate? Default list has 'tickets', 'services', 'products'. 'dispositivos'? I should add 'devices' to default.
+          case 4: permKey = 'tickets'; break;
+          case 5: permKey = 'chat'; break;
+          case 6: permKey = 'invoices'; break;
+          case 7: permKey = 'invoices'; break;
+          case 8: permKey = 'analytics'; break;
+          case 9: permKey = 'products'; break;
+          case 10: permKey = 'services'; break;
+          case 98: permKey = 'settings'; break; // Config
+          default: return true;
+        }
+
+        // Special case for Devices (id 3). If 'devices' key exists?
+        // My migration default was: ["dashboard", "tickets", "clients", "invoices", "calendar", "services", "products"]
+        // Chat and Analytics were missing. Devices missing.
+        // Assuming 'tickets' implies SAT which includes Devices?
+        // Or I should check if permKey is in allowed list.
+        // If key is mapped, check it.
+
+        if (permKey === 'tickets' && item.id === 3) return perms.includes('tickets'); // Dispositivos uses tickets permission?
+
+        return perms.includes(permKey);
+      }
+
       return false;
     });
   });
@@ -269,6 +310,18 @@ export class ResponsiveSidebarComponent implements OnInit {
         this._allowedModuleKeys.set(null);
       }
     });
+
+    // Cargar permisos de agente si es member
+    if (this.authService.userRole() === 'member') {
+      this.settingsService.getCompanySettings().subscribe(settings => {
+        if (settings?.agent_module_access) {
+          this.agentPermissions.set(settings.agent_module_access);
+        } else {
+          // Default if not set (fallback)
+          this.agentPermissions.set(["dashboard", "tickets", "clients", "invoices", "services", "products"]);
+        }
+      });
+    }
   }
 
   @HostListener('window:resize', ['$event'])

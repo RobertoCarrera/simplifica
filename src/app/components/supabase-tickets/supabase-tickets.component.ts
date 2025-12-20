@@ -98,6 +98,10 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   stageDropdownOpen = false;
   priorityDropdownOpen = false;
 
+  // Staff for assignment
+  staffUsers: any[] = [];
+
+
   // Priority options for dropdown
   priorityOptions = [
     { value: '', label: 'Todas las prioridades' },
@@ -1131,6 +1135,16 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     this.loadTickets();
   }
 
+  loadStaff() {
+    // Only load if not loaded or force refresh? simpler to load always or check length
+    const companyId = this.selectedCompanyId || (this.selectedCustomer?.company_id);
+    if (!companyId) return;
+
+    this.ticketsService.getCompanyStaff(companyId).then((staff) => {
+      this.staffUsers = staff || [];
+    });
+  }
+
   // Form methods
   async openForm(ticket?: Ticket) {
     // If client is creating a new ticket, use the wizard
@@ -1140,7 +1154,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     }
 
     this.editingTicket = ticket || null;
-    this.formData = ticket ? { ...ticket } : {
+    this.formData = ticket ? { ...ticket, assigned_to: ticket.assigned_to } : {
       title: '',
       description: '',
       client_id: '',
@@ -1148,8 +1162,12 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
       priority: 'normal',
       estimated_hours: 1,
       company_id: this.selectedCompanyId,
+      assigned_to: undefined,
       tags: []
     };
+
+    // Load staff for assignment dropdown
+    this.loadStaff();
     this.selectedTags = [];
     this.formErrors = {};
     this.selectedServices = [];

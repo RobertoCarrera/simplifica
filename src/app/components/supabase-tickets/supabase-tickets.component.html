@@ -596,6 +596,13 @@
           </div>
 
           <div class="form-row">
+            <div class="form-group" *ngIf="!isClient()">
+              <label for="assigned_to">Asignado a</label>
+              <select id="assigned_to" [(ngModel)]="formData.assigned_to" name="assigned_to" class="form-control">
+                <option [ngValue]="undefined">Sin asignar</option>
+                <option *ngFor="let staff of staffUsers" [value]="staff.id">{{ staff.name }}</option>
+              </select>
+            </div>
             <div class="form-group">
               <label for="estimated_hours">Horas estimadas</label>
               <input type="number" id="estimated_hours" [(ngModel)]="formData.estimated_hours" name="estimated_hours"

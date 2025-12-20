@@ -50,6 +50,7 @@ export interface CompanySettings {
   ticket_default_internal_comment?: boolean | null;
   ticket_auto_assign_on_reply?: boolean | null;
   allow_local_payment?: boolean | null; // Allow clients to select "pay in person/cash" option
+  agent_module_access?: string[] | null; // List of modules accessible to agents
   updated_at?: string;
 }
 
