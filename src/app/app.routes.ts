@@ -50,6 +50,7 @@ import { AutomationSettingsComponent } from './components/automation-settings/au
 import { DevicesManagerComponent } from './components/devices-manager/devices-manager.component';
 
 import { PublicPaymentComponent } from './components/public-payment/public-payment.component';
+import { NotificationsComponent } from './components/notifications/notifications.component';
 import { PaymentSuccessComponent } from './components/payment-success/payment-success.component';
 import { PaymentCancelledComponent } from './components/payment-cancelled/payment-cancelled.component';
 
@@ -66,6 +67,7 @@ export const routes: Routes = [
     { path: 'dispositivos', component: DevicesManagerComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
     { path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloChat' } },
     { path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard] },
+    { path: 'notifications', component: NotificationsComponent, canActivate: [AuthGuard] },
     { path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloAnaliticas' } },
     { path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard] },

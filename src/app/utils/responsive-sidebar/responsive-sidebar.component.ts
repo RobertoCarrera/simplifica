@@ -8,6 +8,7 @@ import { DevRoleService } from '../../services/dev-role.service';
 import { AuthService } from '../../services/auth.service';
 import { SupabaseModulesService, EffectiveModule } from '../../services/supabase-modules.service';
 import { SupabaseSettingsService } from '../../services/supabase-settings.service';
+import { SupabaseNotificationsService } from '../../services/supabase-notifications.service';
 import { firstValueFrom } from 'rxjs';
 
 // Menu item shape used by this component
@@ -74,6 +75,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   authService = inject(AuthService); // público para template
   private modulesService = inject(SupabaseModulesService);
   private settingsService = inject(SupabaseSettingsService);
+  notificationsService = inject(SupabaseNotificationsService); // Public for template access if needed
 
   // Agent permissions
   private agentPermissions = signal<string[] | null>(null);
@@ -104,6 +106,13 @@ export class ResponsiveSidebarComponent implements OnInit {
       label: 'Inicio',
       icon: 'home',
       route: '/inicio',
+      module: 'core'
+    },
+    {
+      id: 90,
+      label: 'Notificaciones',
+      icon: 'bell',
+      route: '/notifications',
       module: 'core'
     },
     {
@@ -218,6 +227,7 @@ export class ResponsiveSidebarComponent implements OnInit {
     if (isClient) {
       let clientMenu: MenuItem[] = [
         { id: 2000, label: 'Inicio', icon: 'home', route: '/inicio', module: 'core' },
+        { id: 2007, label: 'Notificaciones', icon: 'bell', route: '/notifications', module: 'core', badge: this.notificationsService.unreadCount() },
         { id: 2001, label: 'Tickets', icon: 'ticket', route: '/tickets', module: 'production', moduleKey: 'moduloSAT' },
         { id: 2002, label: 'Presupuestos', icon: 'file-text', route: '/portal/presupuestos', module: 'production', moduleKey: 'moduloPresupuestos' },
         { id: 2003, label: 'Facturas', icon: 'receipt', route: '/portal/facturas', module: 'production', moduleKey: 'moduloFacturas' },
@@ -277,6 +287,12 @@ export class ResponsiveSidebarComponent implements OnInit {
       }
 
       return false;
+    }).map(item => {
+      // Inject badge for notifications
+      if (item.id === 90) {
+        return { ...item, badge: this.notificationsService.unreadCount() };
+      }
+      return item;
     });
   });
 

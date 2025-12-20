@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ElementRef, ViewChild, OnDestroy, AfterViewInit, AfterViewChecked, ChangeDetectorRef, computed, Renderer2 } from '@angular/core';
+import { Component, OnInit, inject, ElementRef, ViewChild, OnDestroy, AfterViewInit, AfterViewChecked, ChangeDetectorRef, computed, Renderer2, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
@@ -1402,6 +1402,7 @@ import { SkeletonLoaderComponent } from '../../shared/components/skeleton-loader
   `
 })
 export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
+  @Input() inputTicketId?: string;
   loading = true;
   error: string | null = null;
   ticket: Ticket | null = null;
@@ -1769,18 +1770,26 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     this.debugLog('TicketDetailComponent ngOnInit called');
     // Also set legacy isClientPortal for any remaining uses
     this.isClientPortal = this.tenantService.isClientPortal() || this.authService.userRole() === 'client';
-    this.route.params.subscribe(params => {
-      this.ticketId = params['id'];
-      this.debugLog('Ticket ID from route:', this.ticketId);
-      if (this.ticketId) {
-        this.loadTicketDetail();
-        // Subscribe to comments regardless of initial load success to ensure we catch updates
-        this.subscribeToComments();
-      } else {
-        this.error = 'ID de ticket no válido';
-        this.loading = false;
-      }
-    });
+
+    if (this.inputTicketId) {
+      this.ticketId = this.inputTicketId;
+      this.debugLog('Ticket ID from Input:', this.ticketId);
+      this.loadTicketDetail();
+      this.subscribeToComments();
+    } else {
+      this.route.params.subscribe(params => {
+        this.ticketId = params['id'];
+        this.debugLog('Ticket ID from route:', this.ticketId);
+        if (this.ticketId) {
+          this.loadTicketDetail();
+          // Subscribe to comments regardless of initial load success to ensure we catch updates
+          this.subscribeToComments();
+        } else {
+          this.error = 'ID de ticket no válido';
+          this.loading = false;
+        }
+      });
+    }
   }
 
   ngAfterViewInit() {
