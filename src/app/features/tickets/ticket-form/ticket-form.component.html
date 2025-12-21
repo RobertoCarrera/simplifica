@@ -1,0 +1,575 @@
+<div class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4" (click)="closeForm()">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+        (click)="$event.stopPropagation()">
+
+        <!-- Header -->
+        <div
+            class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <i class="fas fa-ticket-alt text-orange-500"></i>
+                    {{ initialTicket ? 'Editar Ticket' : 'Nuevo Ticket' }}
+                </h2>
+                <p class="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Complete la información del ticket</p>
+            </div>
+            <button (click)="closeForm()"
+                class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="flex-1 overflow-y-auto p-6 scrollbar-thin">
+            <form (ngSubmit)="onSubmit()" class="space-y-6">
+
+                <!-- Row 1: Title -->
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Título *</label>
+                    <input type="text" [(ngModel)]="formData.title" name="title"
+                        class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                        [class.border-red-500]="formErrors['title']" placeholder="Ej: Problema con la impresora">
+                    <p *ngIf="formErrors['title']" class="mt-1 text-sm text-red-500">{{ formErrors['title'] }}</p>
+                </div>
+
+                <!-- Row 2: Description -->
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Descripción</label>
+                    <textarea [(ngModel)]="formData.description" name="description" rows="3"
+                        class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                        placeholder="Detalles del ticket..."></textarea>
+                </div>
+
+                <!-- Row 3: Client & Stage -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <!-- Client Search -->
+                    <div class="form-group relative customer-search-container">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Cliente
+                            *</label>
+                        <div class="relative customer-input-wrapper">
+                            <input type="text" [(ngModel)]="customerSearchText" (input)="filterCustomers()"
+                                (focus)="onDocumentClick($event)" name="client_search"
+                                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all pl-10"
+                                [class.border-red-500]="formErrors['client_id']" placeholder="Buscar cliente..."
+                                autocomplete="off">
+                            <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+
+                            <!-- Selected Customer Indicator -->
+                            <button *ngIf="selectedCustomer" type="button" (click)="clearCustomerSelection()"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500">
+                                <i class="fas fa-times-circle"></i>
+                            </button>
+
+                            <!-- Dropdown -->
+                            <div *ngIf="showCustomerDropdown"
+                                class="customer-dropdown absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 z-50 max-h-60 overflow-y-auto">
+                                <div *ngFor="let customer of filteredCustomers" (click)="selectCustomer(customer)"
+                                    class="customer-option px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-100 dark:border-slate-700/50 last:border-0">
+                                    <div class="customer-info">
+                                        <div class="customer-name font-medium text-gray-900 dark:text-white">{{
+                                            customer.name }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-slate-400">{{ customer.email }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div *ngIf="filteredCustomers.length === 0"
+                                    class="px-4 py-3 text-sm text-gray-500 text-center">
+                                    No se encontraron clientes
+                                </div>
+                            </div>
+                        </div>
+                        <p *ngIf="formErrors['client_id']" class="mt-1 text-sm text-red-500">{{ formErrors['client_id']
+                            }}</p>
+                    </div>
+
+                    <!-- Stage -->
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Estado *</label>
+                        <select [(ngModel)]="formData.stage_id" name="stage_id"
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all appearance-none"
+                            [class.border-red-500]="formErrors['stage_id']">
+                            <option value="">Seleccionar estado</option>
+                            <option *ngFor="let stage of stages" [value]="stage.id">{{ stage.name }}</option>
+                        </select>
+                        <p *ngIf="formErrors['stage_id']" class="mt-1 text-sm text-red-500">{{ formErrors['stage_id'] }}
+                        </p>
+                    </div>
+                </div>
+
+                <hr class="border-gray-100 dark:border-slate-700">
+
+                <!-- SERVICES SECTION -->
+                <div class="services-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-tools"></i> Servicios</h3>
+                        <!-- Optional: Add Service Button -->
+                    </div>
+
+                    <div class="search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" [(ngModel)]="serviceSearchText" (input)="filterServices()"
+                            name="serviceSearch" class="search-input" placeholder="Buscar servicios...">
+                    </div>
+
+                    <!-- Available Services Grid -->
+                    <div class="items-grid" *ngIf="filteredServices.length > 0">
+                        <div *ngFor="let service of filteredServices" (click)="addServiceToTicket(service)"
+                            class="item-card">
+                            <div class="item-name">{{ service.name }}</div>
+                            <div class="item-meta">
+                                <span>{{ service.base_price | currency:'EUR' }}</span>
+                                <span>{{ service.estimated_hours }}h</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Selected Services List -->
+                    <div class="selected-items-list" *ngIf="selectedServices.length > 0">
+                        <h4 class="text-xs uppercase text-gray-500 font-semibold mb-2">Servicios Seleccionados</h4>
+                        <div *ngFor="let item of selectedServices" class="selected-item-row">
+                            <div class="item-info">
+                                {{ item.service.name }} <span *ngIf="item.variant" class="text-xs text-gray-500">({{
+                                    item.variant.variant_name || 'Variante' }})</span>
+                            </div>
+                            <div class="item-controls">
+                                <div class="qty-controls">
+                                    <button type="button"
+                                        (click)="item.quantity = item.quantity - 1; updateServiceQuantity(item.service.id, item.quantity, item.variant?.id)">-</button>
+                                    <span>{{ item.quantity }}</span>
+                                    <button type="button"
+                                        (click)="item.quantity = item.quantity + 1; updateServiceQuantity(item.service.id, item.quantity, item.variant?.id)">+</button>
+                                </div>
+                                <div class="price">
+                                    {{ (item.unit_price || 0) * item.quantity | currency:'EUR' }}
+                                </div>
+                                <button type="button" class="btn-remove"
+                                    (click)="removeServiceFromTicket(item.service.id, item.variant?.id)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PRODUCTS SECTION -->
+                <div class="products-section">
+                    <div class="section-header">
+                        <h3><i class="fas fa-box"></i> Productos</h3>
+                    </div>
+
+                    <div class="search-container">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" [(ngModel)]="productSearchText" (input)="filterProducts()"
+                            name="productSearch" class="search-input" placeholder="Buscar productos...">
+                    </div>
+
+                    <div class="items-grid" *ngIf="filteredProducts.length > 0">
+                        <div *ngFor="let product of filteredProducts" (click)="addProductToTicket(product)"
+                            class="item-card">
+                            <div class="item-name truncate">{{ product.name }}</div>
+                            <div class="item-meta">
+                                <span>{{ product.price | currency:'EUR' }}</span>
+                                <span>Stock: {{ product.stock_quantity }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="selected-items-list" *ngIf="selectedProducts.length > 0">
+                        <h4 class="text-xs uppercase text-gray-500 font-semibold mb-2">Productos Seleccionados</h4>
+                        <div *ngFor="let item of selectedProducts" class="selected-item-row">
+                            <div class="item-info">
+                                {{ item.product.name }}
+                            </div>
+                            <div class="item-controls">
+                                <div class="qty-controls">
+                                    <button type="button"
+                                        (click)="item.quantity = item.quantity - 1; updateProductQuantity(item.product.id, item.quantity)">-</button>
+                                    <span>{{ item.quantity }}</span>
+                                    <button type="button"
+                                        (click)="item.quantity = item.quantity + 1; updateProductQuantity(item.product.id, item.quantity)">+</button>
+                                </div>
+                                <div class="price">
+                                    {{ (item.unit_price || 0) * item.quantity | currency:'EUR' }}
+                                </div>
+                                <button type="button" class="btn-remove"
+                                    (click)="removeProductFromTicket(item.product.id)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DEVICES SECTION -->
+                <div class="services-section" *ngIf="selectedCustomer">
+                    <div class="section-header">
+                        <h3><i class="fas fa-laptop"></i> Dispositivos del Cliente</h3>
+                        <button type="button" class="text-sm text-blue-500 hover:underline"
+                            (click)="loadCustomerDevices()">
+                            <i class="fas fa-sync"></i> Recargar
+                        </button>
+                    </div>
+
+                    <div *ngIf="customerDevices.length === 0" class="text-center py-4 text-gray-500 italic">
+                        El cliente no tiene dispositivos registrados.
+                    </div>
+
+                    <div class="items-grid" *ngIf="customerDevices.length > 0">
+                        <div *ngFor="let device of customerDevices"
+                            (click)="isDeviceSelected(device.id) ? removeDeviceFromTicket(device.id) : addDeviceToTicket(device)"
+                            class="item-card" [class.border-green-500]="isDeviceSelected(device.id)"
+                            [class.bg-green-50]="isDeviceSelected(device.id)">
+
+                            <div class="flex items-start gap-3">
+                                <div class="text-2xl text-gray-400">
+                                    <i class="fas" [class.fa-mobile-alt]="device.device_type === 'smartphone'"
+                                        [class.fa-laptop]="device.device_type === 'laptop'"
+                                        [class.fa-desktop]="device.device_type === 'desktop'"
+                                        [class.fa-tablet-alt]="device.device_type === 'tablet'"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-gray-900 dark:text-gray-100">{{ device.brand }} {{
+                                        device.model }}</div>
+                                    <div class="text-xs text-gray-500">{{ device.serial_number || 'S/N: N/A' }}</div>
+                                </div>
+                            </div>
+                            <div class="absolute top-2 right-2 text-green-600" *ngIf="isDeviceSelected(device.id)">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Totals -->
+                <div
+                    class="bg-gray-50 dark:bg-slate-700/50 p-4 rounded-xl border border-gray-100 dark:border-slate-700">
+                    <div class="flex justify-between items-center text-sm mb-2">
+                        <span class="text-gray-600 dark:text-gray-300">Horas estimadas:</span>
+                        <span class="font-medium text-gray-900 dark:text-white">{{ getTotalEstimatedHours() |
+                            number:'1.1-1' }}h</span>
+                    </div>
+                    <div class="flex justify-between items-center text-lg font-bold">
+                        <span class="text-gray-800 dark:text-gray-200">Total Estimado:</span>
+                        <span class="text-orange-600 dark:text-orange-400">{{ getGrandTotal() | currency:'EUR' }}</span>
+                    </div>
+                </div>
+
+                <!-- Tags Section -->
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Etiquetas</label>
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" [(ngModel)]="tagSearchText" (input)="filterTags()" name="tag_search"
+                            class="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                            placeholder="Buscar etiquetas..." autocomplete="off">
+
+                        <!-- Suggestions Dropdown -->
+                        <div *ngIf="tagSearchText && filteredTags.length > 0"
+                            class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 z-10 max-h-48 overflow-y-auto">
+                            <div *ngFor="let tag of filteredTags"
+                                (click)="toggleTag(tag.name); tagSearchText = ''; filterTags()"
+                                class="px-4 py-2 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-between border-b border-gray-100 dark:border-slate-700/50 last:border-0">
+                                <span class="text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full"
+                                        [style.backgroundColor]="tag.color || '#6b7280'"></span>
+                                    {{ tag.name }}
+                                </span>
+                                <i *ngIf="selectedTags.includes(tag.name)" class="fas fa-check text-green-500"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Selected Tags List -->
+                    <div class="flex flex-wrap gap-2 mt-3" *ngIf="selectedTags.length > 0">
+                        <span *ngFor="let tagName of selectedTags"
+                            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-slate-600 shadow-sm">
+                            {{ tagName }}
+                            <button type="button" (click)="removeTag(tagName)"
+                                class="text-gray-400 hover:text-red-500 transition-colors ml-1">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Row 4: Priority & Assigned To -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="form-group">
+                        <label
+                            class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Prioridad</label>
+                        <select [(ngModel)]="formData.priority" name="priority"
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all appearance-none">
+                            <option value="low">Baja</option>
+                            <option value="normal">Normal</option>
+                            <option value="high">Alta</option>
+                            <option value="critical">Crítica</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" *ngIf="!isClient()">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Asignado
+                            a</label>
+                        <select [(ngModel)]="formData.assigned_to" name="assigned_to"
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all appearance-none">
+                            <option [ngValue]="null">Sin asignar</option>
+                            <option *ngFor="let staff of staffUsers" [value]="staff.id">{{ staff.name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <div
+            class="px-6 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-2xl">
+            <button type="button" (click)="closeForm()"
+                class="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors">
+                Cancelar
+            </button>
+            <button type="button" (click)="onSubmit()" [disabled]="loading"
+                class="px-5 py-2.5 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-md shadow-orange-500/20 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2">
+                <i class="fas" [class.fa-spinner]="loading" [class.fa-spin]="loading" [class.fa-save]="!loading"></i>
+                {{ loading ? 'Guardando...' : 'Guardar Ticket' }}
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal para crear dispositivo -->
+    <div *ngIf="showCreateDeviceForm"
+        class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        (click)="$event.stopPropagation(); closeDeviceForm()">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]"
+            (click)="$event.stopPropagation()">
+            <div
+                class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-mobile-alt text-blue-500"></i>
+                        Nuevo Dispositivo
+                    </h2>
+                    <p class="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Registre el dispositivo del cliente</p>
+                </div>
+                <button (click)="closeDeviceForm()"
+                    class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 scrollbar-thin space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Marca *</label>
+                        <input type="text" [(ngModel)]="deviceFormData.brand" name="device_brand"
+                            class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                            placeholder="Ej: Apple">
+                    </div>
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Modelo *</label>
+                        <input type="text" [(ngModel)]="deviceFormData.model" name="device_model"
+                            class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                            placeholder="Ej: iPhone 14">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">IMEI /
+                            S/N</label>
+                        <input type="text" [(ngModel)]="deviceFormData.imei" name="device_imei"
+                            class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                            placeholder="Opcional">
+                    </div>
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Tipo *</label>
+                        <select [(ngModel)]="deviceFormData.device_type" name="device_type"
+                            class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white appearance-none">
+                            <option value="">Seleccionar</option>
+                            <option value="smartphone">Smartphone</option>
+                            <option value="tablet">Tablet</option>
+                            <option value="laptop">Portátil</option>
+                            <option value="desktop">Ordenador</option>
+                            <option value="console">Consola</option>
+                            <option value="other">Otro</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Problema Reportado
+                        *</label>
+                    <textarea [(ngModel)]="deviceFormData.reported_issue" name="reported_issue"
+                        class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                        rows="2" placeholder="Descripción del problema..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Imágenes</label>
+                    <div
+                        class="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-4 text-center hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer relative">
+                        <input type="file" (change)="onDeviceImagesSelected($event)" accept="image/*" multiple
+                            class="absolute inset-0 opacity-0 cursor-pointer">
+                        <i class="fas fa-camera text-2xl text-gray-400 mb-2"></i>
+                        <p class="text-sm text-gray-500">Click para agregar fotos</p>
+                    </div>
+                    <div *ngIf="selectedDeviceImages.length > 0" class="grid grid-cols-4 gap-2 mt-2">
+                        <div *ngFor="let image of selectedDeviceImages; let i = index"
+                            class="relative aspect-square rounded-lg overflow-hidden group">
+                            <img [src]="image.preview" class="w-full h-full object-cover">
+                            <button type="button"
+                                class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
+                                (click)="removeDeviceImage(i)">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                class="px-6 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-2xl">
+                <button type="button" (click)="closeDeviceForm()"
+                    class="px-4 py-2 rounded-xl text-sm font-medium text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors">
+                    Cancelar
+                </button>
+                <button type="button" (click)="createAndSelectDevice()"
+                    class="px-4 py-2 rounded-xl text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-md shadow-blue-500/20">
+                    Crear Dispositivo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para crear servicio rápido -->
+    <div *ngIf="showServiceForm"
+        class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        (click)="$event.stopPropagation(); closeServiceForm()">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col"
+            (click)="$event.stopPropagation()">
+            <div
+                class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-tools text-purple-500"></i>
+                        Nuevo Servicio
+                    </h2>
+                </div>
+                <button (click)="closeServiceForm()"
+                    class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Nombre *</label>
+                    <input type="text" [(ngModel)]="serviceFormData.name" name="service_name"
+                        class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Precio
+                            (€)</label>
+                        <input type="number" [(ngModel)]="serviceFormData.base_price"
+                            class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white">
+                    </div>
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Horas</label>
+                        <input type="number" [(ngModel)]="serviceFormData.estimated_hours"
+                            class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white">
+                    </div>
+                </div>
+            </div>
+            <div
+                class="px-6 py-4 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-3 bg-gray-50 dark:bg-slate-800/50">
+                <button (click)="closeServiceForm()"
+                    class="px-4 py-2 rounded-xl text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300">Cancelar</button>
+                <button (click)="createServiceFromTicket()"
+                    class="px-4 py-2 rounded-xl text-sm font-medium text-white bg-purple-600 hover:bg-purple-700">Crear</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para crear cliente -->
+    <div *ngIf="showCustomerForm"
+        class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        (click)="$event.stopPropagation(); closeCustomerForm()">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col"
+            (click)="$event.stopPropagation()">
+            <div
+                class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Nuevo Cliente</h2>
+                <button (click)="closeCustomerForm()" class="text-gray-400"><i
+                        class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4 overflow-y-auto max-h-[70vh]">
+                <div class="form-group">
+                    <label class="block text-sm font-medium mb-1 dark:text-slate-300">Nombre *</label>
+                    <input type="text" [(ngModel)]="customerFormData.name"
+                        class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label class="block text-sm font-medium mb-1 dark:text-slate-300">Email</label>
+                        <input type="email" [(ngModel)]="customerFormData.email"
+                            class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white">
+                    </div>
+                    <div class="form-group">
+                        <label class="block text-sm font-medium mb-1 dark:text-slate-300">Teléfono</label>
+                        <input type="tel" [(ngModel)]="customerFormData.phone"
+                            class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white">
+                    </div>
+                </div>
+            </div>
+            <div
+                class="px-6 py-4 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-3 bg-gray-50 dark:bg-slate-800/50">
+                <button (click)="closeCustomerForm()"
+                    class="px-4 py-2 rounded-xl text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300">Cancelar</button>
+                <button (click)="saveCustomer()"
+                    class="px-4 py-2 rounded-xl text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">Guardar
+                    Cliente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para crear producto -->
+    <div *ngIf="showProductForm"
+        class="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        (click)="$event.stopPropagation(); closeProductForm()">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]"
+            (click)="$event.stopPropagation()">
+            <div
+                class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white">Nuevo Producto</h2>
+                <button (click)="closeProductForm()" class="text-gray-400"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4 overflow-y-auto">
+                <div class="form-group">
+                    <label class="block text-sm font-medium mb-1 dark:text-slate-300">Nombre *</label>
+                    <input type="text" [(ngModel)]="productFormData.name"
+                        class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-group">
+                        <label class="block text-sm font-medium mb-1 dark:text-slate-300">Precio</label>
+                        <input type="number" [(ngModel)]="productFormData.price"
+                            class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white">
+                    </div>
+                    <div class="form-group">
+                        <label class="block text-sm font-medium mb-1 dark:text-slate-300">Stock</label>
+                        <input type="number" [(ngModel)]="productFormData.stock_quantity"
+                            class="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-white">
+                    </div>
+                </div>
+            </div>
+            <div
+                class="px-6 py-4 border-t border-gray-100 dark:border-slate-700 flex justify-end gap-3 bg-gray-50 dark:bg-slate-800/50">
+                <button (click)="closeProductForm()"
+                    class="px-4 py-2 rounded-xl text-sm font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300">Cancelar</button>
+                <button (click)="createProductFromTicket()"
+                    class="px-4 py-2 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-700">Crear
+                    Producto</button>
+            </div>
+        </div>
+    </div>
+</div>

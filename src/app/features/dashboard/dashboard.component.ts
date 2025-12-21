@@ -9,7 +9,7 @@ import { SupabaseModulesService } from '../../services/supabase-modules.service'
 import { Customer } from '../../models/customer';
 
 import { AuthService } from '../../services/auth.service';
-import { TicketFormComponent } from '../tickets/components/ticket-form/ticket-form.component';
+import { TicketFormComponent } from '../tickets/ticket-form/ticket-form.component';
 import { AppModalComponent } from '../../shared/ui/app-modal/app-modal.component';
 import { FormNewCustomerComponent } from "../customers/form-new-customer/form-new-customer.component";
 
