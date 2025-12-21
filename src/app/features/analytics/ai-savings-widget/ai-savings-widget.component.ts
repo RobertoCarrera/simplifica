@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, effect, importProvidersFrom } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AiAnalyticsService } from '../../../../services/ai-analytics.service';
-import { SupabaseModulesService } from '../../../../services/supabase-modules.service';
+import { AiAnalyticsService } from '../../../services/ai-analytics.service';
+import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { LucideAngularModule, Sparkles, Ticket, Users, Smartphone, Clock, LUCIDE_ICONS, LucideIconProvider } from 'lucide-angular';
 import { toObservable } from '@angular/core/rxjs-interop';
 

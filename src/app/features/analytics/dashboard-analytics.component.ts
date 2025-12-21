@@ -3,11 +3,11 @@ import { CommonModule } from '@angular/common';
 import { Subject } from 'rxjs';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { ApexAxisChartSeries, ApexChart, ApexXAxis, ApexYAxis, ApexDataLabels, ApexTooltip, ApexStroke, ApexLegend, ApexGrid, ApexPlotOptions, ApexTheme } from 'ng-apexcharts';
-import { AnalyticsService } from '../../../services/analytics.service';
-import { AnimationService } from '../../../services/animation.service';
-import { SidebarStateService } from '../../../services/sidebar-state.service';
-import { ToastService } from '../../../services/toast.service';
-import { SupabaseModulesService } from '../../../services/supabase-modules.service';
+import { AnalyticsService } from '../../services/analytics.service';
+import { AnimationService } from '../../services/animation.service';
+import { SidebarStateService } from '../../services/sidebar-state.service';
+import { ToastService } from '../../services/toast.service';
+import { SupabaseModulesService } from '../../services/supabase-modules.service';
 import { AiSavingsWidgetComponent } from './ai-savings-widget/ai-savings-widget.component';
 
 export type ChartOptions = {
