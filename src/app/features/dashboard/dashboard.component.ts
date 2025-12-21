@@ -2,17 +2,26 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { AiSavingsWidgetComponent } from '../analytics/ai-savings-widget/ai-savings-widget.component';
 import { AnalyticsService } from '../../services/analytics.service';
 import { SupabaseTicketsService, Ticket } from '../../services/supabase-tickets.service';
 import { SupabaseCustomersService } from '../../services/supabase-customers.service';
 import { SupabaseModulesService } from '../../services/supabase-modules.service';
 import { Customer } from '../../models/customer';
 
+import { AuthService } from '../../services/auth.service';
+import { TicketFormComponent } from '../tickets/components/ticket-form/ticket-form.component';
+import { AppModalComponent } from '../../shared/ui/app-modal/app-modal.component';
+import { FormNewCustomerComponent } from "../customers/form-new-customer/form-new-customer.component";
+
 @Component({
     selector: 'app-dashboard',
     standalone: true,
-    imports: [CommonModule, RouterModule, AiSavingsWidgetComponent],
+    imports: [
+        CommonModule,
+        RouterModule,
+        TicketFormComponent,
+        FormNewCustomerComponent
+    ],
     templateUrl: './dashboard.component.html',
     styleUrls: ['./dashboard.component.scss']
 })
@@ -21,6 +30,7 @@ export class DashboardComponent implements OnInit {
     private ticketsService = inject(SupabaseTicketsService);
     private customersService = inject(SupabaseCustomersService);
     private modulesService = inject(SupabaseModulesService);
+    public authService = inject(AuthService);
 
     // Kpis from AnalyticsService
     invoiceMetrics = this.analyticsService.getInvoiceMetrics;
@@ -31,6 +41,10 @@ export class DashboardComponent implements OnInit {
     recentTickets = signal<Ticket[]>([]);
     recentCustomers = signal<Customer[]>([]);
     loadingRecents = signal(true);
+
+    // Modal State
+    showTicketForm = signal(false);
+    showCustomerForm = signal(false);
 
     // Module check
     hasTicketsModule = computed(() => {
@@ -89,5 +103,24 @@ export class DashboardComponent implements OnInit {
             case 'low': return 'text-gray-600 bg-gray-50 ring-gray-500/10';
             default: return 'text-gray-600 bg-gray-50 ring-gray-500/10';
         }
+    }
+
+    // Modal Actions
+    openNewTicket() {
+        this.showTicketForm.set(true);
+    }
+
+    openNewCustomer() {
+        this.showCustomerForm.set(true);
+    }
+
+    onTicketSaved() {
+        this.showTicketForm.set(false);
+        this.refreshDashboard();
+    }
+
+    onCustomerSaved() {
+        this.showCustomerForm.set(false);
+        this.refreshDashboard();
     }
 }

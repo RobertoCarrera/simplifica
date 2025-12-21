@@ -1,0 +1,131 @@
+<div class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4" (click)="closeForm()">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+        (click)="$event.stopPropagation()">
+
+        <!-- Header -->
+        <div
+            class="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <i class="fas fa-ticket-alt text-orange-500"></i>
+                    {{ initialTicket ? 'Editar Ticket' : 'Nuevo Ticket' }}
+                </h2>
+                <p class="text-sm text-gray-500 dark:text-slate-400 mt-0.5">Complete la información del ticket</p>
+            </div>
+            <button (click)="closeForm()"
+                class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="flex-1 overflow-y-auto p-6 scrollbar-thin">
+            <form (ngSubmit)="onSubmit()" class="space-y-6">
+
+                <!-- Row 1: Title -->
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Título *</label>
+                    <input type="text" [(ngModel)]="formData.title" name="title"
+                        class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                        [class.border-red-500]="formErrors['title']" placeholder="Ej: Problema con la impresora">
+                    <p *ngIf="formErrors['title']" class="mt-1 text-sm text-red-500">{{ formErrors['title'] }}</p>
+                </div>
+
+                <!-- Row 2: Description -->
+                <div class="form-group">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Descripción</label>
+                    <textarea [(ngModel)]="formData.description" name="description" rows="4"
+                        class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                        placeholder="Detalles del ticket..."></textarea>
+                </div>
+
+                <!-- Row 3: Client & Stage -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <!-- Client Search -->
+                    <div class="form-group relative">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Cliente
+                            *</label>
+                        <div class="relative">
+                            <input type="text" [(ngModel)]="customerSearchText" (input)="filterCustomers()"
+                                name="client_search"
+                                class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all pl-10"
+                                [class.border-red-500]="formErrors['client_id']" placeholder="Buscar cliente..."
+                                autocomplete="off">
+                            <i class="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+
+                            <!-- Dropdown -->
+                            <div *ngIf="showCustomerDropdown"
+                                class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 z-50 max-h-60 overflow-y-auto">
+                                <div *ngFor="let customer of filteredCustomers" (click)="selectCustomer(customer)"
+                                    class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer border-b border-gray-100 dark:border-slate-700/50 last:border-0">
+                                    <div class="font-medium text-gray-900 dark:text-white">{{ customer.name }}</div>
+                                    <div class="text-xs text-gray-500 dark:text-slate-400">{{ customer.email }}</div>
+                                </div>
+                                <div *ngIf="filteredCustomers.length === 0"
+                                    class="px-4 py-3 text-sm text-gray-500 text-center">
+                                    No se encontraron clientes
+                                </div>
+                            </div>
+                        </div>
+                        <p *ngIf="formErrors['client_id']" class="mt-1 text-sm text-red-500">{{ formErrors['client_id']
+                            }}</p>
+                    </div>
+
+                    <!-- Stage -->
+                    <div class="form-group">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Estado *</label>
+                        <select [(ngModel)]="formData.stage_id" name="stage_id"
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all appearance-none"
+                            [class.border-red-500]="formErrors['stage_id']">
+                            <option value="">Seleccionar estado</option>
+                            <option *ngFor="let stage of stages" [value]="stage.id">{{ stage.name }}</option>
+                        </select>
+                        <p *ngIf="formErrors['stage_id']" class="mt-1 text-sm text-red-500">{{ formErrors['stage_id'] }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Row 4: Priority & Assigned To -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="form-group">
+                        <label
+                            class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Prioridad</label>
+                        <select [(ngModel)]="formData.priority" name="priority"
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all appearance-none">
+                            <option value="low">Baja</option>
+                            <option value="normal">Normal</option>
+                            <option value="high">Alta</option>
+                            <option value="critical">Crítica</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" *ngIf="!isClient()">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Asignado
+                            a</label>
+                        <select [(ngModel)]="formData.assigned_to" name="assigned_to"
+                            class="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all appearance-none">
+                            <option [ngValue]="null">Sin asignar</option>
+                            <option *ngFor="let staff of staffUsers" [value]="staff.id">{{ staff.name }}</option>
+                        </select>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <div
+            class="px-6 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50 flex justify-end gap-3 rounded-b-2xl">
+            <button type="button" (click)="closeForm()"
+                class="px-5 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors">
+                Cancelar
+            </button>
+            <button type="button" (click)="onSubmit()" [disabled]="loading"
+                class="px-5 py-2.5 rounded-xl text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-md shadow-orange-500/20 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2">
+                <i class="fas" [class.fa-spinner]="loading" [class.fa-spin]="loading" [class.fa-save]="!loading"></i>
+                {{ loading ? 'Guardando...' : 'Guardar Ticket' }}
+            </button>
+        </div>
+    </div>
+</div>

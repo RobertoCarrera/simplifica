@@ -166,8 +166,8 @@ export class SupabaseTicketsService {
           id, ticket_number, title, description, priority, stage_id, client_id, 
           due_date, estimated_hours, tags, created_at, is_opened, total_amount, 
           initial_attachment_url,
-          clients(id, name, email, phone),
-          ticket_stages(id, name, color, position)
+          client:clients(id, name, email, phone),
+          stage:ticket_stages(id, name, color, position)
         `, { count: 'exact' })
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
@@ -334,8 +334,8 @@ export class SupabaseTicketsService {
       is_opened: typeof ticket.is_opened === 'boolean' ? ticket.is_opened : undefined,
       created_at: ticket.created_at,
       updated_at: ticket.updated_at,
-      client: ticket.clients,
-      stage: ticket.ticket_stages
+      client: ticket.client || ticket.clients, // Handle alias or direct
+      stage: ticket.stage || ticket.ticket_stages // Handle alias or direct
     };
   }
 

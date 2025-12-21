@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, effect } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Observable, from, throwError, BehaviorSubject, combineLatest, Subject, of } from 'rxjs';
@@ -71,8 +71,14 @@ export class SupabaseCustomersService {
       });
     }
 
-    // Cargar datos iniciales
-    this.loadCustomers();
+    // Cargar datos iniciales y reaccionar a cambios de empresa
+    effect(() => {
+      const companyId = this.authService.companyId();
+      if (companyId) { // Reload even if it changes to something else, provided it's truthy
+        this.loadCustomers();
+        this.updateStats(); // Update stats too
+      }
+    });
   }
 
   /**

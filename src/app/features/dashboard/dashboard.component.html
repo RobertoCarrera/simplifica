@@ -1,29 +1,4 @@
 <div class="dashboard-container p-6 space-y-8 bg-gray-50 dark:bg-slate-900 min-h-full">
-
-    <!-- Header & Welcome -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-bold text-slate-800 dark:text-white">
-                Panel de Control
-            </h1>
-            <p class="text-slate-500 dark:text-slate-400">
-                Bienvenido de nuevo. Aquí tienes un resumen de hoy.
-            </p>
-        </div>
-        <div class="flex items-center gap-3">
-            <span
-                class="px-3 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 shadow-sm">
-                <i class="far fa-calendar-alt mr-2 text-indigo-500"></i>
-                {{ 1 | date:'fullDate' }}
-                <!-- Note: Real date would actually be managed by the component if needed, or just standard angular date pipe on Date.now() -->
-            </span>
-            <button (click)="refreshDashboard()"
-                class="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500 dark:text-slate-400">
-                <i class="fas fa-sync-alt" [class.fa-spin]="loadingRecents()"></i>
-            </button>
-        </div>
-    </div>
-
     <!-- KPI Grid -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Invoice KPI -->
@@ -35,7 +10,7 @@
             </div>
             <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Facturado este mes</p>
             <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
-                {{ metrics[0]?.value || '—' }}
+                {{ metrics[0].value || '—' }}
             </p>
             <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
                 <i class="fas fa-arrow-up text-emerald-500"></i>
@@ -53,7 +28,7 @@
             </div>
             <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Pipeline Ventas</p>
             <p class="text-2xl font-bold text-violet-600 dark:text-violet-400 mt-1">
-                {{ metrics[0]?.value || '—' }}
+                {{ metrics[0].value || '—' }}
             </p>
             <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
                 <span>Presupuestos pendientes</span>
@@ -70,7 +45,7 @@
             </div>
             <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Tickets Abiertos</p>
             <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
-                {{ ticketMetrics()[0]?.value || '0' }}
+                {{ ticketMetrics()[0].value || '0' }}
             </p>
             <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
                 <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">SAT</span>
@@ -207,54 +182,83 @@
         <!-- Right Column: Quick Actions & System -->
         <div class="space-y-6">
 
-            <!-- Quick Actions -->
-            <div
-                class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-5">
-                <h3 class="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                    <i class="fas fa-bolt text-amber-500"></i> Acciones Rápidas
-                </h3>
-                <div class="grid grid-cols-2 gap-3">
-                    <a routerLink="/clientes"
-                        class="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-center border border-slate-100 dark:border-slate-600 group">
-                        <i
-                            class="fas fa-user-plus text-2xl mb-2 text-indigo-500 group-hover:scale-110 transition-transform"></i>
-                        <span class="text-xs font-medium text-slate-600 dark:text-slate-300">Nuevo Cliente</span>
-                    </a>
-                    @if (hasTicketsModule()) {
-                    <a routerLink="/tickets"
-                        class="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-center border border-slate-100 dark:border-slate-600 group">
-                        <i
-                            class="fas fa-ticket-alt text-2xl mb-2 text-blue-500 group-hover:scale-110 transition-transform"></i>
-                        <span class="text-xs font-medium text-slate-600 dark:text-slate-300">Nuevo Ticket</span>
-                    </a>
-                    }
-                    <a routerLink="/presupuestos"
-                        class="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-center border border-slate-100 dark:border-slate-600 group">
-                        <i
-                            class="fas fa-file-signature text-2xl mb-2 text-violet-500 group-hover:scale-110 transition-transform"></i>
-                        <span class="text-xs font-medium text-slate-600 dark:text-slate-300">Presupuesto</span>
-                    </a>
-                    <a routerLink="/facturacion"
-                        class="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-center border border-slate-100 dark:border-slate-600 group">
-                        <i
-                            class="fas fa-file-invoice text-2xl mb-2 text-emerald-500 group-hover:scale-110 transition-transform"></i>
-                        <span class="text-xs font-medium text-slate-600 dark:text-slate-300">Factura</span>
-                    </a>
+            <!-- Quick Actions Grid -->
+            <div class="lg:col-span-1">
+                <div class="bg-gray-900 rounded-2xl p-6 border border-gray-800 h-full">
+                    <div class="flex items-center gap-2 mb-6">
+                        <i class="fas fa-bolt text-yellow-500"></i>
+                        <h2 class="text-lg font-bold text-white">Acciones Rápidas</h2>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <button (click)="openNewCustomer()"
+                            class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="fas fa-user-plus text-lg"></i>
+                            </div>
+                            <span class="text-sm font-medium text-gray-300 group-hover:text-white">Nuevo Cliente</span>
+                        </button>
+
+                        <button (click)="openNewTicket()"
+                            class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-indigo-500/10 text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="fas fa-ticket-alt text-lg"></i>
+                            </div>
+                            <span class="text-sm font-medium text-gray-300 group-hover:text-white">Nuevo Ticket</span>
+                        </button>
+
+                        <button [routerLink]="['/presupuestos/nuevo']"
+                            class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="fas fa-file-invoice-dollar text-lg"></i>
+                            </div>
+                            <span class="text-sm font-medium text-gray-300 group-hover:text-white">Presupuesto</span>
+                        </button>
+
+                        <button [routerLink]="['/facturas']"
+                            class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-green-500/10 text-green-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <i class="fas fa-file-invoice text-lg"></i>
+                            </div>
+                            <span class="text-sm font-medium text-gray-300 group-hover:text-white">Factura</span>
+                        </button>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Links -->
-            <div
-                class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-md p-6 text-white text-center">
-                <h3 class="font-bold text-lg mb-2">¿Necesitas Ayuda?</h3>
-                <p class="text-indigo-100 text-sm mb-4">Consulta nuestra documentación o contacta con soporte.</p>
-                <a routerLink="/ayuda"
-                    class="inline-block px-4 py-2 bg-white text-indigo-600 font-semibold rounded-lg text-sm hover:bg-indigo-50 transition-colors">
+        <!-- Help Banner -->
+        <div
+            class="mt-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-8 text-center text-white relative overflow-hidden">
+            <div class="relative z-10">
+                <h2 class="text-2xl font-bold mb-2">¿Necesitas Ayuda?</h2>
+                <p class="text-indigo-100 mb-6">Consulta nuestra documentación o contacta con soporte.</p>
+                <a href="https://ayuda.ejemplo.com" target="_blank"
+                    class="inline-flex items-center px-6 py-3 bg-white text-indigo-600 rounded-xl font-bold hover:bg-indigo-50 transition-colors shadow-lg">
                     Ir al Centro de Ayuda
                 </a>
             </div>
-
+            <!-- Decorative bubbles -->
+            <div
+                class="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl">
+            </div>
+            <div
+                class="absolute bottom-0 right-0 w-64 h-64 bg-purple-500/30 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl">
+            </div>
         </div>
 
     </div>
+
+    <!-- Modals -->
+    <app-ticket-form *ngIf="showTicketForm()" [companyId]="authService.companyId()" (close)="showTicketForm.set(false)"
+        (saved)="onTicketSaved()">
+    </app-ticket-form>
+
+    <app-form-new-customer *ngIf="showCustomerForm()" [companyId]="authService.companyId()"
+        (close)="showCustomerForm.set(false)" (saved)="onCustomerSaved()">
+    </app-form-new-customer>
 </div>
