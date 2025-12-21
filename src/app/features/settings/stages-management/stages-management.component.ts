@@ -1,0 +1,1467 @@
+import { Component, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import { SupabaseTicketStagesService, TicketStage, CreateStagePayload, UpdateStagePayload } from '../../../services/supabase-ticket-stages.service';
+import { TextContrastPipe } from '../../../pipes/text-contrast.pipe';
+import { ToastService } from '../../../services/toast.service';
+
+@Component({
+  selector: 'app-stages-management',
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterLink, DragDropModule, TextContrastPipe],
+  template: `
+    <!-- Header -->
+    <div class="header">
+      <div class="header-top">
+        <button class="btn-back" routerLink="/configuracion" title="Volver a Configuración">
+          <i class="fas fa-arrow-left"></i> Volver
+        </button>
+      </div>
+    </div>
+    <div class="two-columns-layout">
+      <div class="section">
+        <div class="section-header">
+          <h3><i class="fas fa-globe"></i> Estados del Sistema</h3>
+          <button
+            class="btn btn-outline"
+            (click)="hideAllSystemStages()"
+            [disabled]="hidingAllGenericStages"
+            title="Ocultar todos los estados del sistema"
+            [style.color]="newStage.color | textContrast"
+            [style.background-color]="(newStage.color | textContrast) === '#000' ? '#fff' : '#000'"
+          >
+            <i class="fas fa-eye-slash"></i> Ocultar Todos
+          </button>
+        </div>
+        <p class="info-text">
+          <i class="fas fa-info-circle"></i>
+          Estados predeterminados. Puedes reordenarlos arrastrando (solo los visibles; los ocultos quedan al final) y ocultarlos si no los necesitas.
+        </p>
+        <div 
+          class="stages-grid" 
+          cdkDropList 
+          [cdkDropListData]="visibleGenericStages" 
+          (cdkDropListDropped)="onDropGeneric($event)"
+          cdkDropListSortingDisabled="false"
+          [cdkDropListAutoScrollDisabled]="false"
+        >
+          @for (stage of visibleGenericStages; track stage.id) {
+            <div
+              class="stage-card generic"
+              cdkDrag
+              [style.background-color]="stage.color"
+              [style.color]="stage.color | textContrast"
+            >
+              <div class="drag-handle" cdkDragHandle [style.color]="stage.color | textContrast">
+                <i class="fas fa-grip-vertical"></i>
+              </div>
+
+              <ng-template cdkDragPreview>
+                <div class="stage-card generic drag-preview" [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
+                  <div class="drag-handle" [style.color]="stage.color | textContrast">
+                    <i class="fas fa-grip-vertical"></i>
+                  </div>
+                  <div class="card-body">
+                    <div class="title-row">
+                      <div class="name">{{ stage.name }}</div>
+                      <div>
+                        <span
+                          class="badge"
+                          [style.color]="stage.color | textContrast"
+                          [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
+                          Pos: {{ stage.position }}
+                        </span>
+                        <span
+                          class="badge badge-system"
+                          [style.color]="stage.color | textContrast"
+                          [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
+                          Sistema
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ng-template>
+
+              <ng-template cdkDragPlaceholder>
+                <div class="stage-card generic placeholder"></div>
+              </ng-template>
+
+              <div class="stage-info">
+                <div class="stage-name">{{ stage.name }}</div>
+                <div class="stage-meta">
+                  <span
+                    class="badge"
+                    [style.color]="stage.color | textContrast"
+                    [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
+                    Posición: {{ stage.position }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="stage-actions">
+                <button
+                  class="btn-icon btn-secondary"
+                  (click)="hideStage(stage)"
+                  [disabled]="!!togglingVisibilityById[stage.id]"
+                  title="Ocultar este estado"
+                  (mouseenter)="setBtnHover(stage.id, true)"
+                  (mouseleave)="setBtnHover(stage.id, false)"
+                  [style.color]="stage.color | textContrast"
+                  [style.background-color]="btnHoverById[stage.id] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
+                >
+                  <i class="fas fa-eye-slash"></i>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+        @if (hiddenGenericStages.length > 0) {
+          <div class="hidden-divider">
+            <button
+              class="btn btn-outline btn-sm"
+              (click)="toggleHiddenGenerics()"
+              [attr.aria-expanded]="!hiddenGenericsCollapsed"
+              (mouseenter)="setBtnHover('hidden-toggle', true)"
+              (mouseleave)="setBtnHover('hidden-toggle', false)"
+              [style.color]="btnHoverById['hidden-toggle'] ? ((((newStage.color || '#6366f1') | textContrast) === '#000') ? '#fff' : '#000') : ((newStage.color || '#6366f1') | textContrast)"
+              [style.background-color]="btnHoverById['hidden-toggle'] ? ((((newStage.color || '#6366f1') | textContrast) === '#000') ? '#000' : '#fff') : ((((newStage.color || '#6366f1') | textContrast) === '#000') ? 'transparent' : '#000')"
+            >
+              <i class="fas" [class.fa-chevron-down]="hiddenGenericsCollapsed" [class.fa-chevron-up]="!hiddenGenericsCollapsed"></i>
+              Estados ocultos ({{ hiddenGenericStages.length }})
+            </button>
+          </div>
+          @if (!hiddenGenericsCollapsed) {
+            <div class="stages-grid hidden-list">
+              @for (stage of hiddenGenericStages; track stage.id) {
+                  <div class="stage-card generic hidden-stage" [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
+                    <div class="stage-info">
+                      <div class="stage-name">{{ stage.name }}</div>
+                      <div class="stage-meta">
+                        <span
+                          class="badge"
+                          [style.color]="stage.color | textContrast"
+                          [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
+                          Posición: {{ stage.position }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="stage-actions">
+                      <button
+                        class="btn-icon btn-secondary"
+                        (click)="unhideStage(stage)"
+                        [disabled]="!!togglingVisibilityById[stage.id]"
+                        title="Mostrar este estado"
+                        (mouseenter)="setBtnHover(stage.id + '-unhide', true)"
+                        (mouseleave)="setBtnHover(stage.id + '-unhide', false)"
+                        [style.color]="stage.color | textContrast"
+                        [style.background-color]="btnHoverById[stage.id + '-unhide'] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
+                      >
+                        <i class="fas fa-eye"></i>
+                      </button>
+                    </div>
+                  </div>
+              }
+            </div>
+          }
+        }
+      </div>
+
+        <!-- Company-Specific Stages Section -->
+
+        <!-- Company-Specific Stages Section -->
+        <div class="section">
+          <div class="section-header">
+            <h3><i class="fas fa-building"></i> Estados Personalizados</h3>
+            <button class="btn btn-primary" (click)="showCreateForm = !showCreateForm">
+              <i class="fas" [class.fa-plus]="!showCreateForm" [class.fa-times]="showCreateForm"></i>
+              {{ showCreateForm ? 'Cancelar' : 'Nuevo Estado' }}
+            </button>
+          </div>
+
+          <!-- Create Form -->
+          @if (showCreateForm) {
+            <div class="form-card">
+              <h4>Crear Nuevo Estado</h4>
+              <form (ngSubmit)="createStage()" class="stage-form">
+                <div class="form-group">
+                  <label for="newName">Nombre del Estado *</label>
+                  <input
+                    type="text"
+                    id="newName"
+                    [(ngModel)]="newStage.name"
+                    name="newName"
+                    class="form-control"
+                    placeholder="Ej: En Revisión"
+                    required
+                  />
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="newPosition">Posición *</label>
+                    <input
+                      type="number"
+                      id="newPosition"
+                      [(ngModel)]="newStage.position"
+                      name="newPosition"
+                      class="form-control"
+                      min="0"
+                      required
+                    />
+                    <small class="form-hint">Orden en que aparece en la lista</small>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="newColor">Color *</label>
+                    <input
+                      type="color"
+                      id="newColor"
+                      [(ngModel)]="newStage.color"
+                      name="newColor"
+                      class="form-control color-input"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="newWorkflowCategory">Categoría de flujo *</label>
+                    <select
+                      id="newWorkflowCategory"
+                      [(ngModel)]="newStage.workflow_category"
+                      name="newWorkflowCategory"
+                      class="form-control"
+                      required
+                    >
+                      <option value="waiting">Espera (Abierto)</option>
+                      <option value="analysis">Análisis (En Progreso)</option>
+                      <option value="action">Acción (En Progreso)</option>
+                      <option value="final">Final (Completado)</option>
+                      <option value="cancel">Cancelación (Completado)</option>
+                    </select>
+                    <small class="form-hint">Define cómo cuenta este estado en las estadísticas</small>
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-success" [disabled]="creating">
+                    <i class="fas" [class.fa-spinner]="creating" [class.fa-spin]="creating" [class.fa-save]="!creating"></i>
+                    {{ creating ? 'Guardando...' : 'Guardar Estado' }}
+                  </button>
+                  <button type="button" class="btn btn-secondary" (click)="cancelCreate()">
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          }
+
+          <!-- Company Stages List -->
+          @if (companyStages.length === 0) {
+            <div class="empty-state">
+              <i class="fas fa-inbox fa-3x"></i>
+              <p>No tienes estados personalizados aún</p>
+              <p class="small">Crea estados específicos para las necesidades de tu empresa</p>
+            </div>
+          } @else {
+            <div class="stages-grid" cdkDropList (cdkDropListDropped)="onDropCompany($event)">
+              @for (stage of companyStages; track stage.id) {
+                  <div class="stage-card company" cdkDrag [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
+                    <div class="drag-handle" cdkDragHandle [style.color]="stage.color | textContrast">
+                        <i class="fas fa-grip-vertical"></i>
+                      </div>
+                  @if (editingStageId === stage.id) {
+                    <!-- Edit Form -->
+                    <form (ngSubmit)="saveEdit()" class="edit-form">
+                      <div class="form-group-inline">
+                        <input
+                          type="text"
+                          [(ngModel)]="editStage.name"
+                          name="editName"
+                          class="form-control"
+                          required
+                        />
+                      </div>
+                      <div class="form-row-inline">
+                        <input
+                          type="number"
+                          [(ngModel)]="editStage.position"
+                          name="editPosition"
+                          class="form-control-small"
+                          min="0"
+                          required
+                        />
+                        <input
+                          type="color"
+                          [(ngModel)]="editStage.color"
+                          name="editColor"
+                          class="form-control-small"
+                          required
+                        />
+                        <select
+                          [(ngModel)]="editStage.workflow_category"
+                          name="editWorkflowCategory"
+                          class="form-control-small"
+                          required
+                        >
+                          <option value="waiting">Espera</option>
+                          <option value="analysis">Análisis</option>
+                          <option value="action">Acción</option>
+                          <option value="final">Final</option>
+                          <option value="cancel">Cancelación</option>
+                        </select>
+                      </div>
+                      <div class="edit-actions">
+                        <button
+                          type="submit"
+                          class="btn-icon btn-success"
+                          title="Guardar"
+                          (mouseenter)="setBtnHover(stage.id + '-save', true)"
+                          (mouseleave)="setBtnHover(stage.id + '-save', false)"
+                          [style.color]="(editStage.color || stage.color) | textContrast"
+                          [style.background-color]="btnHoverById[stage.id + '-save'] ? (((editStage.color || stage.color) | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'">
+                          <i class="fas fa-check"></i>
+                        </button>
+                        <button
+                          type="button"
+                          class="btn-icon btn-secondary"
+                          (click)="cancelEdit()"
+                          title="Cancelar"
+                          (mouseenter)="setBtnHover(stage.id + '-cancel', true)"
+                          (mouseleave)="setBtnHover(stage.id + '-cancel', false)"
+                          [style.color]="(editStage.color || stage.color) | textContrast"
+                          [style.background-color]="btnHoverById[stage.id + '-cancel'] ? (((editStage.color || stage.color) | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'">
+                          <i class="fas fa-times"></i>
+                        </button>
+                      </div>
+                    </form>
+                  } @else {
+                    <!-- View Mode -->
+                    <div class="stage-info">
+                      <div class="stage-name">{{ stage.name }}</div>
+                      <div class="stage-meta">
+                        <span
+                          class="badge"
+                          [style.color]="stage.color | textContrast"
+                          [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
+                          Posición: {{ stage.position }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="stage-actions">
+                      <button
+                        class="btn-icon btn-primary"
+                        (click)="startEdit(stage)"
+                        title="Editar"
+                        (mouseenter)="setBtnHover(stage.id + '-edit', true)"
+                        (mouseleave)="setBtnHover(stage.id + '-edit', false)"
+                        [style.color]="stage.color | textContrast"
+                        [style.background-color]="btnHoverById[stage.id + '-edit'] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
+                      >
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button
+                        class="btn-icon btn-danger"
+                        (click)="deleteStage(stage.id)"
+                        title="Eliminar"
+                        (mouseenter)="setBtnHover(stage.id + '-delete', true)"
+                        (mouseleave)="setBtnHover(stage.id + '-delete', false)"
+                        [style.color]="stage.color | textContrast"
+                        [style.background-color]="btnHoverById[stage.id + '-delete'] ? ((stage.color | textContrast) === '#000' ? '#fff' : '#000') : 'transparent'"
+                      >
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+            @if (showingReassignPicker && pendingDeleteStageId) {
+              <div class="form-card" style="margin-top:1rem">
+                <h4>Reasignar tickets antes de eliminar</h4>
+                <p>Este estado tiene tickets asociados. Selecciona a qué estado moverlos para poder eliminarlo.</p>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="reassignTarget">Mover tickets a</label>
+                    <select id="reassignTarget" class="form-control" [(ngModel)]="reassignTargetId" name="reassignTarget">
+                      <option [ngValue]="null" disabled>Selecciona un estado</option>
+                      @for (s of getReassignOptions(pendingDeleteStageId); track s.id) {
+                        <option [ngValue]="s.id">{{ s.name }}</option>
+                      }
+                    </select>
+                    <small class="form-hint">No puedes reasignar a un estado genérico oculto</small>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button class="btn btn-success" [disabled]="!reassignTargetId" (click)="confirmReassignAndDelete()">
+                    <i class="fas fa-check"></i> Confirmar y eliminar
+                  </button>
+                  <button class="btn btn-secondary" (click)="cancelReassign()">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </div>
+
+      <!-- Info Box -->
+      <div class="info-box">
+        <h4><i class="fas fa-lightbulb"></i> Información Importante</h4>
+        <ul>
+          <li><strong>Estados del Sistema:</strong> Son comunes para todas las empresas y no se pueden modificar ni eliminar, pero puedes ocultarlos si no los necesitas.</li>
+          <li><strong>Ocultar Estados:</strong> Los estados del sistema que ocultes no aparecerán en tus listas y formularios, pero seguirán disponibles para otras empresas.</li>
+          <li><strong>Estados Personalizados:</strong> Puedes crear estados específicos para tu empresa que complementen los del sistema.</li>
+          <li><strong>Posición:</strong> Determina el orden en que aparecen los estados en las listas y tableros.</li>
+          <li><strong>Color:</strong> Ayuda a identificar visualmente cada estado en el sistema.</li>
+        </ul>
+      </div>
+  `,
+  styles: [`
+    .header {
+      margin-bottom: 2rem;
+    }
+
+    .header-top {
+      margin-bottom: 1rem;
+    }
+
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      color: #374151;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-back:hover {
+      background: #e5e7eb;
+      border-color: #9ca3af;
+      color: #1f2937;
+    }
+
+    .btn-back i {
+      font-size: 0.875rem;
+    }
+
+    .header h2 {
+      color: #1f2937;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin: 0;
+    }
+
+    .alert {
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .alert-success {
+      background-color: #d1fae5;
+      border: 1px solid #10b981;
+      color: #065f46;
+    }
+
+    .alert-danger {
+      background-color: #fee2e2;
+      border: 1px solid #ef4444;
+      color: #991b1b;
+    }
+
+    .loading-container {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: #6b7280;
+    }
+
+    /* Two Column Layout */
+    .two-columns-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 1024px) {
+      .two-columns-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .section {
+      background: white;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .section h3 {
+      color: #1f2937;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.125rem;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .section-header h3 {
+      margin: 0;
+    }
+
+    .info-text {
+      color: #4b5563;
+      padding: 0.75rem;
+      background: #f3f4f6;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .stages-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      position: relative;
+    }
+
+    .stages-grid.cdk-drop-list-dragging {
+      position: relative;
+    }
+
+    @media (max-width: 768px) {
+      .stages-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .stage-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      border: 2px solid #e5e7eb;
+      transition: all 0.2s;
+      background: white;
+    }
+
+    .stage-card:hover {
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Drag and Drop styles */
+    .drag-handle {
+      cursor: grab;
+      color: #9ca3af;
+      padding: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+
+    .drag-handle:hover {
+      color: #6366f1;
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .cdk-drag-preview {
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3), 0 2px 8px rgba(0, 0, 0, 0.15);
+      opacity: 0.92;
+      border-radius: 0.5rem;
+      transform: rotate(2deg) scale(1.05);
+      border: 2px solid #6366f1;
+    }
+
+    .cdk-drag-animating {
+      transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .stages-grid.cdk-drop-list-dragging .stage-card:not(.cdk-drag-placeholder) {
+      transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .cdk-drag-placeholder,
+    .stage-card.placeholder {
+      opacity: 0;
+      background: transparent;
+      border: 2px dashed #6366f1;
+      border-radius: 0.5rem;
+      min-height: 84px;
+      transform: scale(0.95);
+      transition: all 200ms ease;
+    }
+
+    .drag-preview {
+      will-change: transform;
+    }
+
+    .stage-card.hidden-stage {
+      opacity: 0.6;
+      border-color: #d1d5db;
+      background-color: #f9fafb;
+      cursor: not-allowed;
+    }
+
+    .stage-card.hidden-stage:hover {
+      opacity: 0.8;
+    }
+
+    .stage-card.generic {
+      background: #f9fafb;
+      cursor: move;
+      position: relative;
+      transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1), 
+                  box-shadow 200ms ease, 
+                  border-color 200ms ease,
+                  background 200ms ease;
+      will-change: transform;
+    }
+
+    .stage-card.generic:active {
+      cursor: grabbing;
+    }
+
+    .stage-card.generic.cdk-drag-dragging {
+      cursor: grabbing;
+    }
+
+    .hidden-list .stage-card {
+      cursor: default;
+    }
+
+    .hidden-list {
+      /* Hidden stages should appear in two columns on desktop for easier scanning */
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .hidden-divider {
+      margin: 1.5rem 0 0.75rem;
+      color: #6b7280;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+    }
+
+    .stage-card.company {
+      background: white;
+      cursor: move; /* draggable */
+    }
+
+
+
+    .stage-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .stage-name {
+      font-weight: 600;
+      color: inherit;
+      margin-bottom: 0.25rem;
+    }
+
+    .stage-meta {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.25rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: #e5e7eb;
+      color: #4b5563;
+    }
+
+    .badge-system {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge-hidden {
+      background: #fee2e2;
+      color: #991b1b;
+      margin-left: 0.5rem;
+    }
+
+    .stage-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .badge-company {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .stage-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .form-card {
+      background: #f9fafb;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-card h4 {
+      color: #1f2937;
+      margin-bottom: 1rem;
+    }
+
+    .stage-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-control {
+      padding: 0.5rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 1rem;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .color-input {
+      height: 45px;
+      cursor: pointer;
+    }
+
+    .form-hint {
+      font-size: 0.875rem;
+      color: #6b7280;
+      margin-top: 0.25rem;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .btn {
+      padding: 0.625rem 1.25rem;
+      border: none;
+      border-radius: 0.375rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: #6366f1;
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #4f46e5;
+    }
+
+    .btn-ocultar {
+      background: transparent;
+      color: white;
+      border: 1px solid transparent;
+    }
+
+    .btn-ocultar:hover:not(:disabled) {
+      border: 1px solid white;
+      color: black;
+      background: white;
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn-sm {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.875rem;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid #d1d5db;
+      color: white;
+    }
+
+    .btn-outline:hover:not(:disabled) {
+      background: #f3f4f6;
+      border-color: #9ca3af;
+    }
+
+    .btn-icon {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border: none;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .btn-icon.btn-primary {
+      background: #6366f1;
+      color: white;
+    }
+
+    .btn-icon.btn-primary:hover {
+      background: #4f46e5;
+    }
+
+    .btn-icon.btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-icon.btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn-icon.btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-icon.btn-secondary {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .edit-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
+    }
+
+    .form-group-inline {
+      width: 100%;
+    }
+
+    .form-row-inline {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .form-control-small {
+      padding: 0.375rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #9ca3af;
+    }
+
+    .empty-state i {
+      color: #d1d5db;
+      margin-bottom: 1rem;
+    }
+
+    .empty-state p {
+      margin: 0.5rem 0;
+    }
+
+    .empty-state .small {
+      font-size: 0.875rem;
+    }
+
+    .info-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+    }
+
+    .info-box h4 {
+      color: #1e40af;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .info-box ul {
+      margin: 0;
+      padding-left: 1.5rem;
+      color: #1e3a8a;
+    }
+
+    .info-box li {
+      margin-bottom: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .stages-management-container {
+        padding: 1rem;
+      }
+
+      .stages-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+    }
+  `]
+})
+export class StagesManagementComponent implements OnInit {
+  private stagesService = inject(SupabaseTicketStagesService);
+  private toast = inject(ToastService);
+
+  loading = false;
+  creating = false;
+  // Per-item loading map for hide/unhide actions
+  togglingVisibilityById: Record<string, boolean> = {};
+  // Per-button hover state map for outline buttons inside colored cards
+  btnHoverById: Record<string, boolean> = {};
+  showCreateForm = false;
+  successMessage = '';
+  errorMessage = '';
+  hidingAllGenericStages = false;
+  // Control collapsed state for hidden generic stages accordion
+  hiddenGenericsCollapsed = true;
+
+  genericStages: TicketStage[] = [];
+  companyStages: TicketStage[] = [];
+  visibleGenericStages: TicketStage[] = [];
+  hiddenGenericStages: TicketStage[] = [];
+  // UI state for delete-with-reassign flow
+  pendingDeleteStageId: string | null = null;
+  reassignTargetId: string | null = null;
+  showingReassignPicker = false;
+
+  newStage: CreateStagePayload = {
+    name: '',
+    position: 0,
+    color: '#6366f1',
+    workflow_category: 'waiting'
+  };
+
+  editingStageId: string | null = null;
+  editStage: UpdateStagePayload = {};
+
+  private refreshGenericBuckets() {
+    const sorted = this.sortGenerics(this.genericStages);
+    this.genericStages = sorted;
+    this.visibleGenericStages = sorted.filter(stage => !stage.is_hidden);
+    this.hiddenGenericStages = sorted.filter(stage => !!stage.is_hidden);
+  }
+
+  async ngOnInit() {
+    await this.loadStages();
+  }
+
+  async hideAllSystemStages() {
+    if (!confirm('¿Estás seguro de que quieres ocultar todos los estados del sistema visibles?')) return;
+    this.hidingAllGenericStages = true;
+    try {
+      const toHide = this.genericStages.filter(s => !s.is_hidden);
+      for (const s of toHide) {
+        const res = await this.stagesService.hideGenericStage(s.id);
+        if (res.error) throw res.error;
+      }
+      this.toast.success('Operación completada', 'Todos los estados del sistema visibles han sido ocultados');
+      await this.loadStages();
+    } catch (e: any) {
+      this.errorMessage = 'Error al ocultar todos los estados: ' + (e?.message || 'Error desconocido');
+    } finally {
+      this.hidingAllGenericStages = false;
+    }
+  }
+
+  async loadStages() {
+    this.loading = true;
+    this.clearMessages();
+
+    try {
+      // Load generic stages
+      const genericResult = await this.stagesService.getGenericStages();
+      if (genericResult.error) {
+        throw genericResult.error;
+      }
+      this.genericStages = genericResult.data || [];
+      this.refreshGenericBuckets();
+
+      // 🔍 DEBUG: Ver datos recibidos
+      console.log('🔍 DEBUG - Generic stages loaded:', this.genericStages);
+      console.log('🔍 DEBUG - Hidden stages:', this.hiddenGenericStages.map(s => s.name));
+
+      // Load company stages
+      const companyResult = await this.stagesService.getCompanyStages();
+      if (companyResult.error) {
+        throw companyResult.error;
+      }
+      this.companyStages = companyResult.data || [];
+
+    } catch (error: any) {
+      this.errorMessage = 'Error al cargar los estados: ' + (error.message || 'Error desconocido');
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  private sortGenerics(list: TicketStage[]): TicketStage[] {
+    // Visible first by position asc, then hidden by position asc (but at the end)
+    return [...list].sort((a, b) => {
+      const ah = !!a.is_hidden;
+      const bh = !!b.is_hidden;
+      if (ah !== bh) return ah ? 1 : -1; // hidden to the end
+      const ap = Number(a.position ?? 0);
+      const bp = Number(b.position ?? 0);
+      return ap - bp;
+    });
+  }
+
+  async createStage() {
+    if (!this.newStage.name.trim()) {
+      this.errorMessage = 'El nombre del estado es obligatorio';
+      return;
+    }
+    if (!this.newStage.workflow_category) {
+      this.errorMessage = 'Selecciona una categoría de flujo';
+      return;
+    }
+
+    this.creating = true;
+    this.clearMessages();
+
+    try {
+      const result = await this.stagesService.createStage(this.newStage);
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      this.successMessage = 'Estado creado correctamente';
+      this.showCreateForm = false;
+      this.resetNewStage();
+      await this.loadStages();
+
+    } catch (error: any) {
+      const msg = (error?.message || '').toLowerCase();
+      if (msg.includes('ux_ticket_stages_company_final') || msg.includes('workflow_category = "final"')) {
+        this.errorMessage = 'Ya existe un estado "Final" en tu empresa. Solo puede haber uno.';
+      } else if (msg.includes('ux_ticket_stages_company_cancel') || msg.includes('workflow_category = "cancel"')) {
+        this.errorMessage = 'Ya existe un estado de "Cancelación" en tu empresa. Solo puede haber uno.';
+      } else if (msg.includes('debe existir al menos un estado de la categoría')) {
+        this.errorMessage = 'No puedes eliminar o mover el último estado de una categoría requerida. Asegúrate de mantener al menos uno por categoría.';
+      } else {
+        this.errorMessage = 'Error al crear el estado: ' + (error.message || 'Error desconocido');
+      }
+      this.toast.error('No se pudo crear el estado', this.errorMessage);
+    } finally {
+      this.creating = false;
+    }
+  }
+
+  startEdit(stage: TicketStage) {
+    this.editingStageId = stage.id;
+    this.editStage = {
+      name: stage.name,
+      position: stage.position,
+      color: stage.color,
+      workflow_category: stage.workflow_category || 'waiting'
+    };
+    this.clearMessages();
+  }
+
+  async saveEdit() {
+    if (!this.editingStageId) return;
+
+    this.clearMessages();
+
+    try {
+      const result = await this.stagesService.updateStage(this.editingStageId, this.editStage);
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      this.successMessage = 'Estado actualizado correctamente';
+      this.editingStageId = null;
+      await this.loadStages();
+
+    } catch (error: any) {
+      const msg = (error?.message || '').toLowerCase();
+      if (msg.includes('ux_ticket_stages_company_final') || msg.includes('workflow_category = "final"')) {
+        this.errorMessage = 'Ya existe un estado "Final" en tu empresa. Solo puede haber uno.';
+      } else if (msg.includes('ux_ticket_stages_company_cancel') || msg.includes('workflow_category = "cancel"')) {
+        this.errorMessage = 'Ya existe un estado de "Cancelación" en tu empresa. Solo puede haber uno.';
+      } else if (msg.includes('debe existir al menos un estado de la categoría')) {
+        this.errorMessage = 'No puedes eliminar o mover el último estado de una categoría requerida. Asegúrate de mantener al menos uno por categoría.';
+      } else {
+        this.errorMessage = 'Error al actualizar el estado: ' + (error.message || 'Error desconocido');
+      }
+      this.toast.error('No se pudo actualizar', this.errorMessage);
+    }
+  }
+
+  cancelEdit() {
+    this.editingStageId = null;
+    this.editStage = {};
+    this.clearMessages();
+  }
+
+  private resetNewStage() {
+    this.newStage = {
+      name: '',
+      position: 0,
+      color: '#6366f1',
+      workflow_category: 'waiting'
+    };
+  }
+
+  async deleteStage(stageId: string) {
+    if (!confirm('¿Estás seguro de que quieres eliminar este estado?')) {
+      return;
+    }
+
+    this.clearMessages();
+
+    try {
+      const result = await this.stagesService.deleteStage(stageId);
+
+      if (result.error) {
+        const status = Number(result.error?.status || 0);
+        const code = result.error?.code as string | undefined;
+        const msg = (result.error?.message || result.error?.error || '').toString().toLowerCase();
+
+        // Only open reassignment picker when the backend explicitly requests it
+        if (status === 409 && (code === 'REASSIGN_REQUIRED' || msg.includes('reassign') || msg.includes('asignar') || msg.includes('tickets referenciando'))) {
+          this.pendingDeleteStageId = stageId;
+          this.reassignTargetId = null;
+          this.showingReassignPicker = true;
+          this.toast.info('Este estado tiene tickets', 'Selecciona un estado destino para reasignar los tickets.');
+          return;
+        }
+
+        // Show clear coverage message when category coverage would break
+        if (status === 409 && (code === 'COVERAGE_BREAK' || msg.includes('categor') || msg.includes('coverage'))) {
+          this.errorMessage = 'No puedes eliminar este estado porque dejaría una categoría sin cobertura. Muestra un estado del sistema equivalente o crea otro antes de eliminar.';
+          this.toast.error('Cobertura insuficiente', this.errorMessage);
+          return;
+        }
+
+        throw result.error;
+      }
+
+      this.successMessage = 'Estado eliminado correctamente';
+      await this.loadStages();
+
+    } catch (error: any) {
+      const msg = (error?.message || '').toLowerCase();
+      if (msg.includes('debe existir al menos un estado de la categoría') || msg.includes('coverage') || msg.includes('categoría requerida')) {
+        this.errorMessage = 'No puedes eliminar este estado porque dejaría una categoría sin cobertura. Muestra un estado del sistema equivalente o crea otro antes de eliminar.';
+      } else {
+        this.errorMessage = 'Error al eliminar el estado: ' + (error.message || 'Error desconocido');
+      }
+    }
+  }
+
+  getReassignOptions(excludeStageId: string): TicketStage[] {
+    // Options: all visible generics + company stages except the one being deleted
+    const visibleGenerics = this.visibleGenericStages;
+    const company = this.companyStages.filter(s => s.id !== excludeStageId);
+    return [...visibleGenerics, ...company]
+      .sort((a, b) => (Number(a.position ?? 0) - Number(b.position ?? 0)));
+  }
+
+  async confirmReassignAndDelete() {
+    if (!this.pendingDeleteStageId || !this.reassignTargetId) return;
+    this.clearMessages();
+    try {
+      // Prefer hide-with-reassign when the pending action was triggered by hide, but we don't track origin explicitly.
+      // Heuristic: try hide-with-reassign first; if it returns 400/404 fallback to delete-with-reassign.
+      let res = await this.stagesService.hideGenericStageWithReassign(this.pendingDeleteStageId, this.reassignTargetId);
+      if (res.error && Number(res.error.status || 0) >= 400) {
+        res = await this.stagesService.deleteStageWithReassign(this.pendingDeleteStageId, this.reassignTargetId);
+      }
+      if (res.error) {
+        throw res.error;
+      }
+      this.toast.success('Reasignado', 'Tickets reasignados y operación completada.');
+      this.cancelReassign();
+      await this.loadStages();
+    } catch (e: any) {
+      const msg = (e?.message || '').toLowerCase();
+      if (msg.includes('debe existir al menos un estado de la categoría') || msg.includes('coverage') || msg.includes('categoría requerida')) {
+        this.errorMessage = 'No se pudo completar porque se rompería la cobertura de categorías. Revisa los estados visibles.';
+      } else {
+        this.errorMessage = 'No se pudo completar la reasignación: ' + (e?.message || 'Error desconocido');
+      }
+    }
+  }
+
+  cancelReassign() {
+    this.pendingDeleteStageId = null;
+    this.reassignTargetId = null;
+    this.showingReassignPicker = false;
+  }
+
+  cancelCreate() {
+    this.showCreateForm = false;
+    this.resetNewStage();
+    this.clearMessages();
+  }
+
+  isToggling(id: string): boolean {
+    return !!this.togglingVisibilityById[id];
+  }
+
+  private setToggling(id: string, value: boolean) {
+    this.togglingVisibilityById = { ...this.togglingVisibilityById, [id]: value };
+  }
+
+  setBtnHover(id: string, value: boolean) {
+    this.btnHoverById = { ...this.btnHoverById, [id]: value };
+  }
+
+  toggleHiddenGenerics() {
+    this.hiddenGenericsCollapsed = !this.hiddenGenericsCollapsed;
+  }
+
+  async hideStage(stage: TicketStage) {
+    this.setToggling(stage.id, true);
+    this.clearMessages();
+
+    try {
+      const result = await this.stagesService.hideGenericStage(stage.id);
+
+      if (result.error) {
+        const status = Number(result.error?.status || 0);
+        const code = result.error?.code;
+        const msg = (result.error?.message || result.error?.error || '').toString().toLowerCase();
+        if (status === 409 && (code === 'REASSIGN_REQUIRED' || msg.includes('reassign') || msg.includes('asignar'))) {
+          this.pendingDeleteStageId = stage.id;
+          this.reassignTargetId = null;
+          this.showingReassignPicker = true;
+          this.toast.info('Este estado tiene tickets', 'Selecciona un estado destino para reasignar los tickets y vuelve a ocultar.');
+          return;
+        }
+        if (status === 409 && (code === 'COVERAGE_BREAK' || msg.includes('categor') || msg.includes('coverage'))) {
+          this.errorMessage = 'No se puede ocultar: dejaría la categoría sin estados visibles.';
+          this.toast.error('Cobertura insuficiente', this.errorMessage);
+          return;
+        }
+        throw result.error;
+      }
+      // Notify via global toast system for consistency
+      this.toast.success('Estado ocultado', `"${stage.name}" ocultado correctamente`);
+      // Update only the affected item locally
+      const idx = this.genericStages.findIndex(s => s.id === stage.id);
+      if (idx !== -1) {
+        this.genericStages[idx] = { ...this.genericStages[idx], is_hidden: true } as TicketStage;
+        this.refreshGenericBuckets();
+      }
+
+    } catch (error: any) {
+      this.errorMessage = 'Error al ocultar el estado: ' + (error.message || 'Error desconocido');
+    } finally {
+      this.setToggling(stage.id, false);
+    }
+  }
+
+  async unhideStage(stage: TicketStage) {
+    this.setToggling(stage.id, true);
+    this.clearMessages();
+
+    try {
+      const result = await this.stagesService.unhideGenericStage(stage.id);
+
+      if (result.error) {
+        throw result.error;
+      }
+      // Notify via global toast system for consistency
+      this.toast.success('Estado mostrado', `"${stage.name}" ahora está visible`);
+      // Update only the affected item locally
+      const idx = this.genericStages.findIndex(s => s.id === stage.id);
+      if (idx !== -1) {
+        this.genericStages[idx] = { ...this.genericStages[idx], is_hidden: false } as TicketStage;
+        this.refreshGenericBuckets();
+      }
+
+    } catch (error: any) {
+      this.errorMessage = 'Error al mostrar el estado: ' + (error.message || 'Error desconocido');
+    } finally {
+      this.setToggling(stage.id, false);
+    }
+  }
+
+  private clearMessages() {
+    this.successMessage = '';
+    this.errorMessage = '';
+  }
+
+
+
+  // Drag and Drop handlers
+  async onDropGeneric(event: CdkDragDrop<TicketStage[]>) {
+    if (event.previousIndex === event.currentIndex) {
+      return;
+    }
+
+    // Clone arrays to compute new order for visible stages
+    const visible = [...this.visibleGenericStages];
+    const hidden = [...this.hiddenGenericStages];
+
+    moveItemInArray(visible, event.previousIndex, event.currentIndex);
+
+    visible.forEach((stage, index) => {
+      stage.position = index;
+    });
+    hidden.forEach((stage, index) => {
+      stage.position = 9999 + index;
+    });
+
+    const combined = [...visible, ...hidden];
+    this.genericStages = combined;
+    this.refreshGenericBuckets();
+
+    // Persist full ordered list of generic stage IDs (visible first, then hidden)
+    try {
+      const orderedIds = this.genericStages.map(s => s.id);
+      const { error } = await this.stagesService.reorderGenericStages(orderedIds);
+      if (error) throw error;
+      this.toast.success('Orden actualizado', 'El orden de los estados del sistema se ha guardado');
+    } catch (error: any) {
+      this.errorMessage = 'Error al actualizar el orden: ' + (error.message || 'Error desconocido');
+      await this.loadStages();
+    }
+  }
+
+  async onDropCompany(event: CdkDragDrop<TicketStage[]>) {
+    if (event.previousIndex === event.currentIndex) return;
+
+    // Reorder locally
+    moveItemInArray(this.companyStages, event.previousIndex, event.currentIndex);
+
+    // Update positions in backend
+    try {
+      await this.updateStagePositions(this.companyStages);
+      this.toast.success('Orden actualizado', 'El orden de los estados se ha actualizado correctamente');
+    } catch (error: any) {
+      this.errorMessage = 'Error al actualizar el orden: ' + (error.message || 'Error desconocido');
+      // Reload to restore correct order
+      await this.loadStages();
+    }
+  }
+
+  private async updateStagePositions(stages: TicketStage[]) {
+    // Only update company-specific stages; generic/system stages are handled by reorderGenericStages overlay
+    const updatable = stages.filter(s => s.company_id !== null);
+    const updates = updatable.map((stage, index) =>
+      this.stagesService.updateStage(stage.id, { position: index })
+    );
+    await Promise.all(updates);
+  }
+}
+

@@ -1,9 +1,9 @@
 import { Component, inject } from '@angular/core';
-import { ResponsiveLayoutComponent } from './components/responsive-layout/responsive-layout.component';
-import { ToastComponent } from './components/toast/toast.component';
-import { PwaInstallComponent } from './components/pwa-install/pwa-install.component';
-import { MobileStatusComponent } from './components/mobile-status/mobile-status.component';
-import { DevNavComponent } from './components/dev-nav/dev-nav.component';
+import { ResponsiveLayoutComponent } from './shared/layout/responsive-layout/responsive-layout.component';
+import { ToastComponent } from './shared/ui/toast/toast.component';
+import { PwaInstallComponent } from './shared/ui/pwa-install/pwa-install.component';
+import { MobileStatusComponent } from './shared/layout/mobile-status/mobile-status.component';
+import { DevNavComponent } from './shared/layout/dev-nav/dev-nav.component';
 import { ToastService } from './services/toast.service';
 import { PWAService } from './services/pwa.service';
 import { DevRoleService } from './services/dev-role.service';

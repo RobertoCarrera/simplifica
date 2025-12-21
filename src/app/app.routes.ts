@@ -1,63 +1,54 @@
 import { Routes } from '@angular/router';
-import { SetupDbComponent } from './components/setup-db/setup-db.component';
-import { TicketDetailComponent } from './components/ticket-detail/ticket-detail.component';
-import { ProductsComponent } from './components/products/products.component';
-import { WorksComponent } from './components/works/works.component';
-import { DashboardAnalyticsComponent } from './components/dashboard-analytics/dashboard-analytics.component';
-import { AdvancedSearchComponent } from './components/advanced-search/advanced-search.component';
-import { OnboardingCenterComponent } from './components/onboarding-center/onboarding-center.component';
-import { SupabaseCustomersComponent } from './components/supabase-customers/supabase-customers.component';
-import { HomeComponent } from './components/home/home.component';
-import { HelpComponent } from './components/help/help.component';
-import { SupabaseServicesComponent } from './components/supabase-services/supabase-services.component';
-import { SupabaseTicketsComponent } from './components/supabase-tickets/supabase-tickets.component';
-import { LoginComponent } from './components/login/login.component';
-import { RegisterComponent } from './components/register/register.component';
-import { ConfiguracionComponent } from './components/configuracion/configuracion.component';
-import { EmergencyLoginComponent } from './components/emergency-login/emergency-login.component';
+
+import { ProductsComponent } from './features/products/products/products.component';
+import { SupabaseCustomersComponent } from './features/customers/supabase-customers/supabase-customers.component';
+import { HelpComponent } from './features/help/help.component';
+import { SupabaseServicesComponent } from './features/services/supabase-services/supabase-services.component';
+import { LoginComponent } from './features/auth/login/login.component';
+import { RegisterComponent } from './features/auth/register/register.component';
+import { SupabaseTicketsComponent } from './features/tickets/list/supabase-tickets.component';
+import { TicketDetailComponent } from './features/tickets/detail/ticket-detail.component';
+import { ConfiguracionComponent } from './features/settings/configuracion/configuracion.component';
+import { EmergencyLoginComponent } from './features/auth/emergency-login/emergency-login.component';
 import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard } from './guards/auth.guard';
 import { ModuleGuard } from './guards/module.guard';
 import { ClientRoleGuard } from './guards/client-role.guard';
-import { AuthCallbackComponent } from './components/auth-callback/auth-callback.component';
-import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
-import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
-import { EmailConfirmationComponent } from './components/email-confirmation/email-confirmation.component';
-import { CompanyAdminComponent } from './components/company-admin/company-admin.component';
-import { ConsentPortalComponent } from './components/consent-portal/consent-portal.component';
-import { GdprCustomerManagerComponent } from './components/gdpr-customer-manager/gdpr-customer-manager.component';
-import { AnychatComponent } from './components/anychat/anychat.component';
-import { StagesManagementComponent } from './components/stages-management/stages-management.component';
-import { UnitsManagementComponent } from './components/units-management/units-management.component';
-import { PortalInviteComponent } from './components/portal-invite/portal-invite.component';
-import { PortalDashboardComponent } from './components/portal-dashboard/portal-dashboard.component';
-import { ClientPortalAdminComponent } from './components/client-portal-admin/client-portal-admin.component';
-import { ClientPasswordSetupComponent } from './components/client-password-setup/client-password-setup.component';
-import { PortalQuotesComponent } from './components/portal-quotes/portal-quotes.component';
-import { PortalInvoicesComponent } from './components/portal-invoices/portal-invoices.component';
-import { PortalInvoiceDetailComponent } from './components/portal-invoice-detail/portal-invoice-detail.component';
-import { PortalQuoteDetailComponent } from './components/portal-quote-detail/portal-quote-detail.component';
-import { ModulesAdminComponent } from './components/modules-admin/modules-admin.component';
-import { TestSimpleComponent } from './components/test-simple/test-simple.component';
-import { TestMultitenantComponent } from './components/test-multitenant/test-multitenant.component';
-import { NotificationDemoComponent } from './components/notification-demo/notification-demo.component';
-import { CustomerFormComponent } from './components/customer-form_old/customer-form.component';
-import { MigrateClientsComponent } from './components/migrate-clients/migrate-clients.component';
-import { VerifactuSettingsComponent } from './modules/invoices/verifactu-settings/verifactu-settings.component';
-import { InvoiceSeriesSettingsComponent } from './modules/invoices/invoice-series-settings/invoice-series-settings.component';
-import { QuotesSettingsComponent } from './components/quotes-settings/quotes-settings.component';
-import { BillingSettingsComponent } from './components/billing-settings/billing-settings.component';
-import { AutomationSettingsComponent } from './components/automation-settings/automation-settings.component';
-import { DevicesManagerComponent } from './components/devices-manager/devices-manager.component';
+import { AuthCallbackComponent } from './features/auth/auth-callback/auth-callback.component';
+import { ResetPasswordComponent } from './features/auth/reset-password/reset-password.component';
+import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-password.component';
+import { EmailConfirmationComponent } from './features/auth/email-confirmation/email-confirmation.component';
+import { CompanyAdminComponent } from './features/admin/company/company-admin.component';
+import { ConsentPortalComponent } from './features/portal/consent/consent-portal.component';
+import { GdprCustomerManagerComponent } from './features/customers/gdpr-customer-manager/gdpr-customer-manager.component';
+import { AnychatComponent } from './features/chat/anychat/anychat.component';
+import { StagesManagementComponent } from './features/settings/stages-management/stages-management.component';
+import { UnitsManagementComponent } from './features/settings/units-management/units-management.component';
+import { PortalInviteComponent } from './features/portal/invite/portal-invite.component';
+import { PortalDashboardComponent } from './features/portal/dashboard/portal-dashboard.component';
+import { ClientPortalAdminComponent } from './features/admin/client-portal/client-portal-admin.component';
+import { ClientPasswordSetupComponent } from './features/portal/password-setup/client-password-setup.component';
+import { PortalInvoicesComponent } from './features/invoices/portal/list/portal-invoices.component';
+import { PortalInvoiceDetailComponent } from './features/invoices/portal/detail/portal-invoice-detail.component';
+import { PortalQuotesComponent } from './features/quotes/portal/list/portal-quotes.component';
+import { PortalQuoteDetailComponent } from './features/quotes/portal/detail/portal-quote-detail.component';
+import { ModulesAdminComponent } from './features/admin/modules/modules-admin.component';
+import { MigrateClientsComponent } from './features/customers/migrate-clients/migrate-clients.component';
+import { VerifactuSettingsComponent } from './features/invoices/verifactu-settings/verifactu-settings.component';
+import { InvoiceSeriesSettingsComponent } from './features/invoices/invoice-series-settings/invoice-series-settings.component';
+import { QuotesSettingsComponent } from './features/settings/quotes-settings/quotes-settings.component';
+import { BillingSettingsComponent } from './features/settings/billing-settings/billing-settings.component';
+import { AutomationSettingsComponent } from './features/settings/automation-settings/automation-settings.component';
+import { DevicesManagerComponent } from './features/devices/devices-manager/devices-manager.component';
 
-import { PublicPaymentComponent } from './components/public-payment/public-payment.component';
-import { NotificationsComponent } from './components/notifications/notifications.component';
-import { PaymentSuccessComponent } from './components/payment-success/payment-success.component';
-import { PaymentCancelledComponent } from './components/payment-cancelled/payment-cancelled.component';
+import { PublicPaymentComponent } from './features/payments/public/public-payment.component';
+import { NotificationsComponent } from './features/notifications/notifications.component';
+import { PaymentSuccessComponent } from './features/payments/success/payment-success.component';
+import { PaymentCancelledComponent } from './features/payments/cancelled/payment-cancelled.component';
 
 export const routes: Routes = [
     // Rutas principales con guards apropiados
     { path: '', redirectTo: '/inicio', pathMatch: 'full' },
-    { path: 'inicio', component: HomeComponent, canActivate: [AuthGuard] },
+    { path: 'inicio', loadComponent: () => import('./features/dashboard/home/dashboard-home.component').then(m => m.DashboardHomeComponent), canActivate: [AuthGuard] },
     { path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard] },
     { path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
@@ -68,7 +59,7 @@ export const routes: Routes = [
     { path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloChat' } },
     { path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard] },
     { path: 'notifications', component: NotificationsComponent, canActivate: [AuthGuard] },
-    { path: 'analytics', component: DashboardAnalyticsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloAnaliticas' } },
+    { path: 'analytics', loadComponent: () => import('./features/dashboard/analytics/dashboard-analytics.component').then(m => m.DashboardAnalyticsComponent), canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloAnaliticas' } },
     { path: 'configuracion/estados', component: StagesManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/unidades', component: UnitsManagementComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion', component: ConfiguracionComponent, canActivate: [AuthGuard], pathMatch: 'full' },
@@ -87,18 +78,26 @@ export const routes: Routes = [
     // Módulo de presupuestos (lazy loading)
     {
         path: 'presupuestos',
-        loadChildren: () => import('./modules/quotes/quotes.module').then(m => m.QuotesModule),
+        loadChildren: () => import('./features/quotes/quotes.module').then(m => m.QuotesModule),
         canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloPresupuestos' }
     },
     // Módulo de facturación (lazy loading)
     {
         path: 'facturacion',
-        loadChildren: () => import('./modules/invoices/invoices.module').then(m => m.InvoicesModule),
+        loadChildren: () => import('./features/invoices/invoices.module').then(m => m.InvoicesModule),
         canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloFacturas' }
     },
-    // Compatibilidad: rutas antiguas
-    { path: 'invoices', redirectTo: 'facturacion', pathMatch: 'full' },
-    { path: 'invoices/:id', redirectTo: 'facturacion/:id', pathMatch: 'full' },
+    // Nuevas rutas (English)
+    {
+        path: 'invoices', canActivate: [AuthGuard, ModuleGuard], data: { module: 'invoices' },
+        loadChildren: () => import('./features/invoices/invoices.module').then(m => m.InvoicesModule),
+        title: 'Facturas | Simplifica'
+    },
+    {
+        path: 'quotes', canActivate: [AuthGuard, ModuleGuard], data: { module: 'quotes' },
+        loadChildren: () => import('./features/quotes/quotes.module').then(m => m.QuotesModule),
+        title: 'Presupuestos | Simplifica'
+    },
 
     // Rutas de autenticación (sin guards)
     { path: 'login', component: LoginComponent, canActivate: [GuestGuard] },
@@ -122,9 +121,9 @@ export const routes: Routes = [
     { path: 'portal/facturas', component: PortalInvoicesComponent, canActivate: [AuthGuard, ClientRoleGuard] },
     { path: 'portal/facturas/:id', component: PortalInvoiceDetailComponent, canActivate: [AuthGuard, ClientRoleGuard] },
     // Client portal contracted services (placeholder - to be implemented)
-    { path: 'portal/servicios', loadComponent: () => import('./components/portal-services/portal-services.component').then(m => m.PortalServicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
+    { path: 'portal/servicios', loadComponent: () => import('./features/services/portal-services/portal-services.component').then(m => m.PortalServicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
     // Client portal devices
-    { path: 'portal/dispositivos', loadComponent: () => import('./components/portal-devices/portal-devices.component').then(m => m.PortalDevicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
+    { path: 'portal/dispositivos', loadComponent: () => import('./features/devices/portal-devices/portal-devices.component').then(m => m.PortalDevicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
 
     // Public payment pages (NO AUTH REQUIRED)
     { path: 'pago/:token', component: PublicPaymentComponent },

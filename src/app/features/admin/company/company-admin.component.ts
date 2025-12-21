@@ -1,0 +1,618 @@
+import { Component, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../../services/auth.service';
+import { ToastService } from '../../../services/toast.service';
+
+@Component({
+  selector: 'app-company-admin',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
+  <div class="space-y-6">
+    <!-- Company Header Card -->
+    <div class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-4 sm:p-6 text-white shadow-lg">
+      <div class="flex items-center gap-4">
+        <div class="w-16 h-16 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
+          <i class="fas fa-building text-2xl"></i>
+        </div>
+        <div>
+          <h2 class="text-2xl font-bold">{{ (auth.userProfile$ | async)?.company?.name || 'Mi Empresa' }}</h2>
+          <div class="flex items-center gap-3 mt-1 text-emerald-100">
+            <span class="flex items-center gap-1">
+              <i class="fas fa-user-tag text-sm"></i>
+              {{ getRoleLabel((auth.userProfile$ | async)?.role) }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ng-container *ngIf="(auth.userProfile$ | async)?.role === 'owner' || (auth.userProfile$ | async)?.role === 'admin'; else noAccess">
+      <!-- Sub-tabs Navigation -->
+      <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-1">
+        <nav class="flex gap-1">
+          <button 
+            (click)="tab='users'"
+            class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+            [class]="tab === 'users' 
+              ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' 
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50'">
+            <i class="fas fa-users"></i>
+            <span>Usuarios</span>
+          </button>
+          <button 
+            (click)="tab='invites'"
+            class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
+            [class]="tab === 'invites' 
+              ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' 
+              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50'">
+            <i class="fas fa-envelope-open-text"></i>
+            <span>Invitaciones</span>
+            <span *ngIf="pendingInvitationsCount > 0" class="ml-1 px-2 py-0.5 text-xs bg-emerald-500 text-white rounded-full">
+              {{ pendingInvitationsCount }}
+            </span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Users Section -->
+      <section *ngIf="tab==='users'" class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden">
+        <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <i class="fas fa-users text-emerald-500"></i>
+            Usuarios de la Empresa
+          </h3>
+          <button 
+            (click)="loadUsers()" 
+            [disabled]="loadingUsers"
+            class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50">
+            <i class="fas fa-sync-alt" [class.animate-spin]="loadingUsers"></i>
+          </button>
+        </div>
+        
+        <div class="p-4 sm:p-6">
+          <!-- Loading State -->
+          <div *ngIf="loadingUsers" class="flex items-center justify-center py-8">
+            <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+              <i class="fas fa-spinner animate-spin text-xl"></i>
+              <span>Cargando usuarios...</span>
+            </div>
+          </div>
+          
+          <!-- Empty State -->
+          <div *ngIf="!loadingUsers && users.length===0" class="text-center py-8">
+            <div class="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="fas fa-user-slash text-2xl text-gray-400 dark:text-gray-500"></i>
+            </div>
+            <p class="text-gray-500 dark:text-gray-400">No hay usuarios en la empresa.</p>
+          </div>
+          
+          <!-- Users List -->
+          <div *ngIf="!loadingUsers && users.length > 0" class="space-y-3">
+            <div *ngFor="let u of users" 
+              class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all"
+              [ngClass]="{
+                'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800': isCurrentUser(u),
+                'bg-gray-50 dark:bg-slate-700/50 border-gray-100 dark:border-slate-600': !isCurrentUser(u)
+              }">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center"
+                  [ngClass]="{
+                    'bg-blue-100 dark:bg-blue-900/40': isCurrentUser(u),
+                    'bg-emerald-100 dark:bg-emerald-900/40': !isCurrentUser(u)
+                  }">
+                  <i class="fas fa-user"
+                    [ngClass]="{
+                      'text-blue-600 dark:text-blue-400': isCurrentUser(u),
+                      'text-emerald-600 dark:text-emerald-400': !isCurrentUser(u)
+                    }"></i>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <p class="font-medium text-gray-900 dark:text-white">{{ u.name || 'Sin nombre' }}</p>
+                    <span *ngIf="isCurrentUser(u)" class="px-1.5 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded">
+                      Tú
+                    </span>
+                  </div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">{{ u.email }}</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center gap-3 ml-auto sm:ml-0">
+                <!-- Role Select - with restrictions -->
+                <select 
+                  [(ngModel)]="u.role" 
+                  (ngModelChange)="changeRole(u, $event)" 
+                  [disabled]="busy || isCurrentUser(u) || !canChangeRole(u)"
+                  class="px-3 py-1.5 text-sm bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                  [title]="getRoleChangeTooltip(u)">
+                  <option value="owner" [disabled]="!canAssignRole('owner')">Owner</option>
+                  <option value="admin" [disabled]="!canAssignRole('admin')">Admin</option>
+                  <option value="member">Agente</option>
+                </select>
+                
+                <span 
+                  class="px-2.5 py-1 text-xs font-medium rounded-full"
+                  [class]="u.active 
+                    ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' 
+                    : 'bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-gray-400'">
+                  {{ u.active ? 'Activo' : 'Inactivo' }}
+                </span>
+                
+                <!-- Toggle Active Button - disabled for self -->
+                <button 
+                  (click)="toggleActive(u)" 
+                  [disabled]="busy || isCurrentUser(u) || !canToggleActive(u)"
+                  class="p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  [class]="u.active 
+                    ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' 
+                    : 'text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20'"
+                  [title]="getToggleActiveTooltip(u)">
+                  <i class="fas" [class]="u.active ? 'fa-user-slash' : 'fa-user-check'"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Invitations Section -->
+      <section *ngIf="tab==='invites'" class="space-y-4">
+        <!-- Invite Form Card -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-4 sm:p-6">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+            <i class="fas fa-user-plus text-emerald-500"></i>
+            Nueva Invitación
+          </h3>
+          
+          <form class="flex flex-col md:flex-row gap-3" (ngSubmit)="sendInvite()">
+            <div class="flex-1">
+              <input 
+                type="email"
+                placeholder="email@ejemplo.com"
+                [(ngModel)]="inviteForm.email" 
+                name="email" 
+                required
+                class="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
+            </div>
+            <select 
+              [(ngModel)]="inviteForm.role" 
+              name="role"
+              class="px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              <option value="member">Agente</option>
+              <option value="owner" *ngIf="currentUserRole === 'owner'">Owner</option>
+            </select>
+            <input 
+              type="text"
+              placeholder="Mensaje (opcional)"
+              [(ngModel)]="inviteForm.message" 
+              name="message"
+              class="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent" />
+            <button 
+              type="submit" 
+              [disabled]="busy || !inviteForm.email"
+              class="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+              <i class="fas fa-paper-plane"></i>
+              <span>Invitar</span>
+            </button>
+          </form>
+          
+          <!-- Help text about roles -->
+          <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            <i class="fas fa-info-circle mr-1"></i>
+            <span *ngIf="currentUserRole === 'owner'">Como owner, puedes invitar usuarios con rol Member u Owner.</span>
+            <span *ngIf="currentUserRole === 'admin'">Como admin, solo puedes invitar usuarios con rol Member.</span>
+          </p>
+        </div>
+        
+        <!-- Invitations List Card -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden">
+          <div class="px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <i class="fas fa-envelope-open-text text-emerald-500"></i>
+              Invitaciones
+            </h3>
+            <button 
+              (click)="loadInvitations()" 
+              [disabled]="loadingInvitations"
+              class="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50">
+              <i class="fas fa-sync-alt" [class.animate-spin]="loadingInvitations"></i>
+            </button>
+          </div>
+          
+          <div class="p-4 sm:p-6">
+            <!-- Loading State -->
+            <div *ngIf="loadingInvitations" class="flex items-center justify-center py-8">
+              <div class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
+                <i class="fas fa-spinner animate-spin text-xl"></i>
+                <span>Cargando invitaciones...</span>
+              </div>
+            </div>
+            
+            <!-- Empty State -->
+            <div *ngIf="!loadingInvitations && invitations.length === 0" class="text-center py-8">
+              <div class="w-16 h-16 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-inbox text-2xl text-gray-400 dark:text-gray-500"></i>
+              </div>
+              <p class="text-gray-500 dark:text-gray-400">No hay invitaciones.</p>
+            </div>
+            
+            <!-- Invitations List -->
+            <div *ngIf="!loadingInvitations && invitations.length > 0" class="space-y-3">
+              <div *ngFor="let inv of invitations" 
+                class="flex flex-col gap-4 p-4 rounded-xl border"
+                [ngClass]="{
+                  'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800': getInvitationStatus(inv) === 'accepted',
+                  'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800': getInvitationStatus(inv) === 'rejected',
+                  'bg-gray-50 dark:bg-slate-700/50 border-gray-100 dark:border-slate-600': getInvitationStatus(inv) === 'pending'
+                }">
+                <div class="flex items-start justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center"
+                      [ngClass]="{
+                        'bg-green-100 dark:bg-green-900/40': getInvitationStatus(inv) === 'accepted',
+                        'bg-red-100 dark:bg-red-900/40': getInvitationStatus(inv) === 'rejected',
+                        'bg-amber-100 dark:bg-amber-900/40': getInvitationStatus(inv) === 'pending'
+                      }">
+                      <i class="fas"
+                        [ngClass]="{
+                          'fa-check text-green-600 dark:text-green-400': getInvitationStatus(inv) === 'accepted',
+                          'fa-times text-red-600 dark:text-red-400': getInvitationStatus(inv) === 'rejected',
+                          'fa-envelope text-amber-600 dark:text-amber-400': getInvitationStatus(inv) === 'pending'
+                        }"></i>
+                    </div>
+                    <div>
+                      <p class="font-medium text-gray-900 dark:text-white">{{ inv.email }}</p>
+                      <div class="flex items-center gap-2 mt-1">
+                        <span class="px-2 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 rounded">
+                          {{ getRoleLabel(inv.role) }}
+                        </span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">
+                          {{ inv.created_at | date:'dd/MM/yyyy HH:mm' }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <span 
+                    class="px-2.5 py-1 text-xs font-medium rounded-full"
+                    [ngClass]="{
+                      'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400': getInvitationStatus(inv) === 'pending',
+                      'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400': getInvitationStatus(inv) === 'accepted',
+                      'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400': getInvitationStatus(inv) === 'rejected'
+                    }">
+                    {{ getStatusLabel(getInvitationStatus(inv)) }}
+                  </span>
+                </div>
+                
+                <!-- Actions - only show for pending invitations -->
+                <div *ngIf="getInvitationStatus(inv) === 'pending'" class="flex flex-wrap gap-2 pt-2 border-t border-gray-200 dark:border-slate-600">
+                  <button 
+                    (click)="resend(inv)" 
+                    [disabled]="busy"
+                    class="flex-1 sm:flex-none px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
+                    <i class="fas fa-redo text-xs"></i>
+                    <span>Reenviar</span>
+                  </button>
+                  <button 
+                    (click)="copyLink(inv)" 
+                    [disabled]="busy"
+                    class="flex-1 sm:flex-none px-3 py-1.5 text-sm bg-gray-100 dark:bg-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-500 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
+                    <i class="fas fa-link text-xs"></i>
+                    <span>Copiar enlace</span>
+                  </button>
+                  <button 
+                    (click)="approve(inv.id)" 
+                    [disabled]="busy"
+                    class="flex-1 sm:flex-none px-3 py-1.5 text-sm bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
+                    <i class="fas fa-check text-xs"></i>
+                    <span>Aprobar</span>
+                  </button>
+                  <button 
+                    (click)="reject(inv.id)" 
+                    [disabled]="busy"
+                    class="flex-1 sm:flex-none px-3 py-1.5 text-sm bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
+                    <i class="fas fa-times text-xs"></i>
+                    <span>Cancelar</span>
+                  </button>
+                </div>
+                
+                <!-- Info for accepted/rejected -->
+                <div *ngIf="getInvitationStatus(inv) !== 'pending'" class="pt-2 border-t border-gray-200 dark:border-slate-600">
+                  <p class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                    <i class="fas fa-info-circle"></i>
+                    <span *ngIf="getInvitationStatus(inv) === 'accepted'">Esta invitación ya fue aceptada. El usuario ya forma parte de la empresa.</span>
+                    <span *ngIf="getInvitationStatus(inv) === 'rejected'">Esta invitación fue rechazada o cancelada.</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </ng-container>
+
+    <ng-template #noAccess>
+      <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-6">
+        <div class="flex items-start gap-4">
+          <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900/40 rounded-xl flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-lock text-amber-600 dark:text-amber-400 text-xl"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold text-amber-800 dark:text-amber-300">Acceso Restringido</h3>
+            <p class="text-amber-700 dark:text-amber-400 text-sm mt-1">
+              Solo el propietario o administrador de la empresa puede gestionar usuarios e invitaciones.
+            </p>
+          </div>
+        </div>
+      </div>
+    </ng-template>
+  </div>
+  `
+})
+export class CompanyAdminComponent implements OnInit {
+  auth = inject(AuthService);
+  private toast = inject(ToastService);
+
+  // Tabs
+  tab: 'users' | 'invites' = 'users';
+
+  // Users state
+  users: any[] = [];
+  loadingUsers = false;
+  currentUserId: string | null = null;
+  currentUserRole: 'owner' | 'admin' | 'member' | null = null;
+
+  // Invitations state
+  invitations: any[] = [];
+  loadingInvitations = false;
+  inviteForm = { email: '', role: 'member', message: '' };
+
+  // Busy flag for actions
+  busy = false;
+
+  // Computed: pending invitations count
+  get pendingInvitationsCount(): number {
+    return this.invitations.filter(inv => this.getInvitationStatus(inv) === 'pending').length;
+  }
+
+  async ngOnInit() {
+    // Get current user info
+    const profile = await this.auth.userProfile$.toPromise();
+    this.currentUserId = profile?.id || null;
+    this.currentUserRole = profile?.role as any || null;
+
+    await Promise.all([this.loadUsers(), this.loadInvitations()]);
+  }
+
+  // ==========================================
+  // HELPER METHODS
+  // ==========================================
+
+  isCurrentUser(user: any): boolean {
+    return user.id === this.currentUserId;
+  }
+
+  getInvitationStatus(inv: any): string {
+    return inv.effective_status || inv.status || 'pending';
+  }
+
+  getRoleLabel(role: string | undefined): string {
+    const labels: Record<string, string> = {
+      'owner': 'Propietario',
+      'admin': 'Administrador',
+      'member': 'Agente'
+    };
+    return labels[role || ''] || role || 'Sin rol';
+  }
+
+  getStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      'pending': 'Pendiente',
+      'accepted': 'Aceptada',
+      'rejected': 'Rechazada',
+      'expired': 'Expirada'
+    };
+    return labels[status] || status;
+  }
+
+  // ==========================================
+  // PERMISSION CHECKS (UI hints - server validates)
+  // ==========================================
+
+  canAssignRole(role: string): boolean {
+    // Admin can only assign admin role
+    // Owner can assign member or owner, but NOT admin
+    if (role === 'admin') {
+      return this.currentUserRole === 'admin';
+    }
+    if (role === 'owner') {
+      return this.currentUserRole === 'owner';
+    }
+    return true; // member can be assigned by both
+  }
+
+  canChangeRole(user: any): boolean {
+    if (this.isCurrentUser(user)) return false;
+    // Admin cannot change owner's role
+    if (this.currentUserRole === 'admin' && user.role === 'owner') return false;
+    return true;
+  }
+
+  canToggleActive(user: any): boolean {
+    if (this.isCurrentUser(user)) return false;
+    // Admin cannot toggle owner's active status
+    if (this.currentUserRole === 'admin' && user.role === 'owner') return false;
+    return true;
+  }
+
+  getRoleChangeTooltip(user: any): string {
+    if (this.isCurrentUser(user)) {
+      return 'No puedes cambiar tu propio rol';
+    }
+    if (this.currentUserRole === 'admin' && user.role === 'owner') {
+      return 'Un administrador no puede modificar el rol de un owner';
+    }
+    return '';
+  }
+
+  getToggleActiveTooltip(user: any): string {
+    if (this.isCurrentUser(user)) {
+      return 'No puedes desactivarte a ti mismo';
+    }
+    if (this.currentUserRole === 'admin' && user.role === 'owner') {
+      return 'Un administrador no puede desactivar a un owner';
+    }
+    return user.active ? 'Desactivar usuario' : 'Activar usuario';
+  }
+
+  // ==========================================
+  // DATA LOADING
+  // ==========================================
+
+  async loadUsers() {
+    this.loadingUsers = true;
+    try {
+      const res = await this.auth.listCompanyUsers();
+      if (res.success) this.users = res.users || [];
+    } finally {
+      this.loadingUsers = false;
+    }
+  }
+
+  async loadInvitations() {
+    this.loadingInvitations = true;
+    try {
+      const res = await this.auth.getCompanyInvitations();
+      if (res.success) {
+        this.invitations = res.invitations || [];
+      }
+    } finally {
+      this.loadingInvitations = false;
+    }
+  }
+
+  // ==========================================
+  // USER ACTIONS
+  // ==========================================
+
+  async changeRole(user: any, newRole: string) {
+    // Store original role in case we need to revert
+    const originalRole = user._originalRole || user.role;
+    user._originalRole = originalRole;
+
+    this.busy = true;
+    try {
+      const res = await this.auth.updateCompanyUser(user.id, { role: newRole as any });
+      if (!res.success) {
+        // Revert to original role
+        user.role = originalRole;
+        this.toast.error('Error', res.error || 'No se pudo actualizar el rol');
+      } else {
+        user._originalRole = newRole;
+        this.toast.success('Éxito', 'Rol actualizado correctamente');
+      }
+    } catch (e: any) {
+      user.role = originalRole;
+      this.toast.error('Error', e.message || 'Error al actualizar rol');
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  async toggleActive(user: any) {
+    this.busy = true;
+    try {
+      const res = await this.auth.updateCompanyUser(user.id, { active: !user.active });
+      if (res.success) {
+        user.active = !user.active;
+        this.toast.success('Éxito', user.active ? 'Usuario activado' : 'Usuario desactivado');
+      } else {
+        this.toast.error('Error', res.error || 'No se pudo cambiar estado');
+      }
+    } catch (e: any) {
+      this.toast.error('Error', e.message || 'Error al cambiar estado');
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  // ==========================================
+  // INVITATION ACTIONS
+  // ==========================================
+
+  async approve(id: string) {
+    this.busy = true;
+    try {
+      const { data, error } = await this.auth.client.rpc('approve_company_invitation', { p_invitation_id: id });
+      if (error) throw error;
+      this.toast.success('Éxito', 'Invitación aprobada');
+      await this.loadInvitations();
+    } catch (e: any) {
+      this.toast.error('Error', e.message || 'Error al aprobar invitación');
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  async reject(id: string) {
+    this.busy = true;
+    try {
+      const { data, error } = await this.auth.client.rpc('reject_company_invitation', { p_invitation_id: id });
+      if (error) throw error;
+      this.toast.success('Éxito', 'Invitación cancelada');
+      await this.loadInvitations();
+    } catch (e: any) {
+      this.toast.error('Error', e.message || 'Error al cancelar invitación');
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  async sendInvite() {
+    if (!this.inviteForm.email) return;
+    this.busy = true;
+    try {
+      const res = await this.auth.sendCompanyInvite({
+        email: this.inviteForm.email,
+        role: this.inviteForm.role,
+        message: this.inviteForm.message || undefined,
+      });
+      if (!res.success) throw new Error(res.error || 'No se pudo enviar la invitación');
+      this.toast.success('Éxito', 'Invitación enviada correctamente');
+      this.inviteForm = { email: '', role: 'member', message: '' };
+      await this.loadInvitations();
+    } catch (e: any) {
+      this.toast.error('Error', e.message || 'Error al enviar invitación');
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  async resend(inv: any) {
+    this.busy = true;
+    try {
+      const res = await this.auth.sendCompanyInvite({ email: inv.email, role: inv.role });
+      if (!res.success) throw new Error(res.error || 'No se pudo reenviar');
+      this.toast.success('Éxito', 'Invitación reenviada');
+    } catch (e: any) {
+      this.toast.error('Error', e.message || 'Error al reenviar invitación');
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  async copyLink(inv: any) {
+    this.busy = true;
+    try {
+      const res = await this.auth.getInvitationLink(inv.id);
+      if (!res.success || !res.url) throw new Error(res.error || 'No se pudo obtener enlace');
+      await navigator.clipboard.writeText(res.url);
+      this.toast.success('Éxito', 'Enlace copiado al portapapeles');
+    } catch (e: any) {
+      this.toast.error('Error', e.message || 'Error al copiar enlace');
+    } finally {
+      this.busy = false;
+    }
+  }
+}
