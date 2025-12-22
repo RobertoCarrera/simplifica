@@ -254,8 +254,8 @@
     </div>
 
     <!-- Modals -->
-    <app-ticket-form *ngIf="showTicketForm()" [companyId]="authService.companyId()" (close)="showTicketForm.set(false)"
-        (saved)="onTicketSaved()">
+    <app-ticket-form *ngIf="showTicketForm()" [showForm]="true" [companyId]="authService.companyId()"
+        (close)="showTicketForm.set(false)" (saved)="onTicketSaved()">
     </app-ticket-form>
 
     <app-form-new-customer *ngIf="showCustomerForm()" [companyId]="authService.companyId()"

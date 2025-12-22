@@ -673,8 +673,12 @@ export class SupabaseTicketsService {
     }
   }
 
-  async deleteTicket(ticketId: string): Promise<void> {
+  async deleteTicket(ticketId: string, reason?: string): Promise<void> {
     try {
+      if (reason) {
+        console.log(`Deleting ticket ${ticketId} with reason: ${reason}`);
+        // Future: log reason to a separate table or activity log
+      }
       const { error } = await this.supabase.getClient()
         .from('tickets')
         // Soft delete: set deleted_at timestamp
