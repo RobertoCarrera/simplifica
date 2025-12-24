@@ -27,29 +27,6 @@
                             [class.error]="formErrors['title']" placeholder="Ej: Pantalla rota iPhone 13" required>
                         <span class="error-message" *ngIf="formErrors['title']">{{ formErrors['title'] }}</span>
                     </div>
-                    <div class="form-group">
-                        <label for="priority">Prioridad</label>
-                        <select id="priority" [(ngModel)]="formData.priority" name="priority" class="form-select">
-                            <option value="low">Baja</option>
-                            <option value="normal">Normal</option>
-                            <option value="high">Alta</option>
-                            <option value="critical">Crítica</option>
-                            <option value="urgent">Urgente</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="description">Descripción Detallada *</label>
-                    <textarea id="description" [(ngModel)]="formData.description" name="description"
-                        class="form-textarea" [class.error]="formErrors['description']" rows="4"
-                        placeholder="Describa el problema detalladamente..." required></textarea>
-                    <span class="error-message" *ngIf="formErrors['description']">{{ formErrors['description'] }}</span>
-                </div>
-
-                <!-- Cliente y Estado -->
-                <div class="form-row">
-                    <!-- Buscador de Clientes -->
                     <div class="form-group relative customer-search-container">
                         <label for="client">Cliente *</label>
                         <div class="customer-input-wrapper">
@@ -92,6 +69,40 @@
                             </div>
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label for="assigned_to">Asignar a</label>
+                        <select id="assigned_to" [(ngModel)]="formData.assigned_to" name="assigned_to"
+                            class="form-select">
+                            <option [ngValue]="undefined">Sin asignar</option>
+                            <!-- Use ngValue undefined for unassigned -->
+                            <option *ngFor="let staff of staffUsers" [value]="staff.id">
+                                {{ staff.full_name || staff.email }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Descripción Detallada *</label>
+                    <textarea id="description" [(ngModel)]="formData.description" name="description"
+                        class="form-textarea" [class.error]="formErrors['description']" rows="4"
+                        placeholder="Describa el problema detalladamente..." required></textarea>
+                    <span class="error-message" *ngIf="formErrors['description']">{{ formErrors['description'] }}</span>
+                </div>
+
+                <!-- Cliente y Estado -->
+                <div class="form-row">
+                    <!-- Buscador de Clientes -->
+                    <div class="form-group">
+                        <label for="priority">Prioridad</label>
+                        <select id="priority" [(ngModel)]="formData.priority" name="priority" class="form-select">
+                            <option value="low">Baja</option>
+                            <option value="normal">Normal</option>
+                            <option value="high">Alta</option>
+                            <option value="critical">Crítica</option>
+                            <option value="urgent">Urgente</option>
+                        </select>
+                    </div>
 
                     <div class="form-group">
                         <label for="stage">Estado *</label>
@@ -103,21 +114,6 @@
                             </option>
                         </select>
                         <span class="error-message" *ngIf="formErrors['stage_id']">{{ formErrors['stage_id'] }}</span>
-                    </div>
-                </div>
-
-                <!-- Asignación y Fechas (Opcional) -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="assigned_to">Asignar a</label>
-                        <select id="assigned_to" [(ngModel)]="formData.assigned_to" name="assigned_to"
-                            class="form-select">
-                            <option [ngValue]="undefined">Sin asignar</option>
-                            <!-- Use ngValue undefined for unassigned -->
-                            <option *ngFor="let staff of staffUsers" [value]="staff.id">
-                                {{ staff.full_name || staff.email }}
-                            </option>
-                        </select>
                     </div>
                     <div class="form-group">
                         <label for="estimated_hours">Horas Estimadas</label>

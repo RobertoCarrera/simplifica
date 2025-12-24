@@ -2,13 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../services/auth.service';
-import { InvitationPendingComponent } from '../invitation-pending/invitation-pending.component';
+
 import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-email-confirmation',
   standalone: true,
-  imports: [CommonModule, InvitationPendingComponent],
+  imports: [CommonModule],
   template: `
     <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div class="max-w-md w-full space-y-8">
@@ -46,13 +46,7 @@ import { Subscription } from 'rxjs';
         </div>
 
         <!-- Invitación Pendiente -->
-        <div *ngIf="requiresInvitationApproval">
-          <app-invitation-pending
-            [companyName]="invitationCompanyName"
-            [ownerEmail]="invitationOwnerEmail"
-            [message]="invitationMessage">
-          </app-invitation-pending>
-        </div>
+        <!-- Invitación Pendiente (Removed) -->
         
         <!-- Error -->
         <div *ngIf="isError" class="text-center">
@@ -81,13 +75,7 @@ import { Subscription } from 'rxjs';
         </div>
         
         <!-- Instrucciones iniciales: mostrar mensaje especial si viene como pendiente sin token -->
-        <div *ngIf="!isLoading && !isSuccess && !isError && !hasToken && pendingByGuard" class="text-center">
-          <app-invitation-pending
-            [companyName]="''"
-            [ownerEmail]="''"
-            [message]="'Dile al propietario de tu empresa que acepte tu invitación para poder acceder.'">
-          </app-invitation-pending>
-        </div>
+        <!-- Instrucciones iniciales (Removed pending logic) -->
 
         <div *ngIf="!isLoading && !isSuccess && !isError && !hasToken && !pendingByGuard" class="text-center">
           <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100">
@@ -137,7 +125,7 @@ export class EmailConfirmationComponent implements OnInit {
         // Si vino con ?pending=1 pero ya tiene perfil, redirigir a inicio
         const hasPending = this.route.snapshot.queryParamMap.get('pending') === '1';
         if (hasPending || !this.hasToken) {
-          this.router.navigate(['/inicio']);
+          this.router.navigate(['/dashboard']);
         }
       }
     });

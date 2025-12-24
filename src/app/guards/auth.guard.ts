@@ -13,7 +13,7 @@ export class AuthGuard implements CanActivate {
     private authService: AuthService,
     private devRoleService: DevRoleService,
     private router: Router
-  ) {}
+  ) { }
 
   canActivate(
     route: ActivatedRouteSnapshot,
@@ -27,8 +27,8 @@ export class AuthGuard implements CanActivate {
     ]).pipe(
       // Wait until the auth service finished initializing/restoring session
       filter(([_, loading]) => !loading),
-  take(1),
-  timeout(15000),
+      take(1),
+      timeout(15000),
       switchMap(([user]) => {
         console.log('🔐 AuthGuard: User state:', user ? 'authenticated' : 'not authenticated');
         if (!user) {
@@ -49,17 +49,12 @@ export class AuthGuard implements CanActivate {
           take(1),
           timeout(15000),
           map(([profile]) => {
-            if (profile && profile.active) {
-              return true;
-            }
-            console.warn('🔐 AuthGuard: Authenticated but no active app profile. Redirecting to confirmation.');
-            this.router.navigate(['/auth/confirm'], { queryParams: { pending: '1' } });
-            return false;
+            // User is authenticated. Allow access regardless of profile status as requested.
+            return true;
           }),
           catchError(err => {
-            console.error('🔐 AuthGuard: Error checking user profile:', err);
-            this.router.navigate(['/auth/confirm'], { queryParams: { pending: '1' } });
-            return of(false);
+            console.error('AuthGuard error', err);
+            return of(true);
           })
         );
       }),
@@ -91,7 +86,7 @@ export class AdminGuard implements CanActivate {
     private authService: AuthService,
     private devRoleService: DevRoleService,
     private router: Router
-  ) {}
+  ) { }
 
   canActivate(): Observable<boolean> | Promise<boolean> | boolean {
     // Esperar a que termine la carga de auth antes de evaluar el perfil
@@ -125,7 +120,7 @@ export class GuestGuard implements CanActivate {
   constructor(
     private authService: AuthService,
     private router: Router
-  ) {}
+  ) { }
 
   canActivate(): Observable<boolean> | Promise<boolean> | boolean {
     // Esperar a que termine la carga de auth antes de decidir
@@ -160,7 +155,7 @@ export class DevGuard implements CanActivate {
     private authService: AuthService,
     private devRoleService: DevRoleService,
     private router: Router
-  ) {}
+  ) { }
 
   canActivate(): Observable<boolean> | Promise<boolean> | boolean {
     if (!environment.production) {
@@ -215,7 +210,7 @@ export class DevGuard implements CanActivate {
   providedIn: 'root'
 })
 export class OwnerAdminGuard implements CanActivate {
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(private authService: AuthService, private router: Router) { }
 
   canActivate(): Observable<boolean> | Promise<boolean> | boolean {
     return combineLatest([
