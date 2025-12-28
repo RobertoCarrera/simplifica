@@ -123,7 +123,7 @@ export class SupabaseCustomersService {
   /**
    * Obtener todos los clientes con filtros opcionales
    */
-  getCustomers(filters: CustomerFilters = {}): Observable<Customer[]> {
+  getCustomers(filters: CustomerFilters = {}, updateState: boolean = true): Observable<Customer[]> {
     this.loadingSubject.next(true);
 
     console.log('DEV: getCustomers llamado con:', {
@@ -139,10 +139,10 @@ export class SupabaseCustomersService {
       return this.getCustomersRpc(filters);
     } else if (this.config.isDevelopmentMode) {
       console.log('DEV: Usando método fallback en desarrollo');
-      return this.getCustomersWithFallback(filters);
+      return this.getCustomersWithFallback(filters, updateState);
     } else {
       console.log('DEV: Usando consulta estándar para producción');
-      return this.getCustomersStandard(filters);
+      return this.getCustomersStandard(filters, updateState);
     }
   }
 
@@ -182,7 +182,7 @@ export class SupabaseCustomersService {
   /**
    * Método estándar para producción - usa autenticación normal
    */
-  private getCustomersStandard(filters: CustomerFilters = {}): Observable<Customer[]> {
+  private getCustomersStandard(filters: CustomerFilters = {}, updateState: boolean = true): Observable<Customer[]> {
     // Include direccion (addresses) relation when available
     // Nota: Usando LEFT JOIN (sin !) para permitir clientes sin dirección
     let query = this.supabase
@@ -253,7 +253,9 @@ export class SupabaseCustomersService {
         return throwError(() => error);
       }),
       tap(customers => {
-        this.customersSubject.next(customers);
+        if (updateState) {
+          this.customersSubject.next(customers);
+        }
         this.loadingSubject.next(false);
       }),
       catchError(error => {
@@ -315,7 +317,7 @@ export class SupabaseCustomersService {
   /**
    * Método fallback (desarrollo) sin embed explícito
    */
-  private getCustomersWithFallback(filters: CustomerFilters = {}): Observable<Customer[]> {
+  private getCustomersWithFallback(filters: CustomerFilters = {}, updateState: boolean = true): Observable<Customer[]> {
     let query = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)');
 
     const companyId = this.authService.companyId();
@@ -350,7 +352,9 @@ export class SupabaseCustomersService {
         return customers as Customer[];
       }),
       tap(customers => {
-        this.customersSubject.next(customers);
+        if (updateState) {
+          this.customersSubject.next(customers);
+        }
         this.loadingSubject.next(false);
       }),
       catchError(error => {

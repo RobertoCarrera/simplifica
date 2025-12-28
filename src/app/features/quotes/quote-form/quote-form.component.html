@@ -1,296 +1,341 @@
-<div
-  class="container-fluid h-full flex flex-col overflow-hidden pb-20 md:pb-8 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-  <div class="flex-1 flex flex-col p-0 overflow-hidden">
-    <div class="flex-1 overflow-auto">
-      <!-- Header -->
-      <div
-        class="md:bg-white md:dark:bg-gray-800 md:rounded-lg md:shadow-sm md:p-6 mb-6 md:border md:border-gray-200 md:dark:border-gray-700">
-        <div class="flex justify-between items-center">
+<div [class.modal-overlay]="isModal" (click)="isModal && close.emit()">
+  <div [class.modal-content]="isModal" [class.container-fluid]="!isModal" [class.h-full]="!isModal"
+    [class.flex]="!isModal" [class.flex-col]="!isModal" [class.overflow-hidden]="!isModal" [class.pb-20]="!isModal"
+    [class.md:pb-8]="!isModal" [class.bg-gray-50]="!isModal" [class.dark:bg-gray-900]="!isModal"
+    [class.text-gray-900]="!isModal" [class.dark:text-gray-100]="!isModal" (click)="$event.stopPropagation()">
+
+    <div class="flex-1 flex flex-col p-0 overflow-hidden" [class.h-[90vh]]="isModal" [class.rounded-lg]="isModal"
+      [class.bg-gray-50]="isModal" [class.dark:bg-gray-900]="isModal">
+      <div class="flex-1 overflow-auto p-4 md:p-6" [class.p-0]="!isModal">
+        <!-- Modal Header -->
+        @if (isModal) {
+        <div class="flex justify-between items-center mb-6">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
                 </path>
               </svg>
               {{ editMode() ? 'Editar' : 'Nuevo' }} Presupuesto
-            </h1>
-            <p class="text-gray-600 dark:text-gray-400 mt-1">Complete la información del presupuesto</p>
+            </h2>
           </div>
+          <button (click)="close.emit()"
+            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
-      </div>
+        }
 
-      <!-- Error Alert -->
-      @if (error()) {
-      <div
-        class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg mb-6 flex items-start gap-3">
-        <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-            clip-rule="evenodd"></path>
-        </svg>
-        <div class="flex-1">{{ error() }}</div>
-        <button type="button" (click)="error.set(null)"
-          class="text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100">
-          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd"
-              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-              clip-rule="evenodd"></path>
-          </svg>
-        </button>
-      </div>
-      }
-
-      <form [formGroup]="quoteForm" (ngSubmit)="save()">
-
-        <!-- Mobile Summary Bar - Fixed at bottom on mobile -->
+        <!-- Header (Page Mode) -->
+        @if (!isModal) {
         <div
-          class="lg:hidden fixed left-0 right-0 bottom-0 z-[5510] bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-700 shadow-lg safe-area-pb">
-          <div class="p-4">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="flex-1">
-                <div class="text-xs text-gray-600 dark:text-gray-400">Total del presupuesto</div>
-                <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ formatCurrency(displayAmount()) }}
-                </div>
-              </div>
-              <button type="button" (click)="cancel()"
-                class="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white p-3 rounded-lg transition-colors duration-200 flex items-center justify-center"
-                title="Cancelar">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </button>
-              <button type="submit" [disabled]="loading()"
-                class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                @if (loading()) {
-                <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+          class="md:bg-white md:dark:bg-gray-800 md:rounded-lg md:shadow-sm md:p-6 mb-6 md:border md:border-gray-200 md:dark:border-gray-700">
+          <div class="flex justify-between items-center">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
                   </path>
                 </svg>
-                }
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-                <span class="hidden sm:inline">{{ editMode() ? 'Actualizar' : 'Crear' }}</span>
-              </button>
+                {{ editMode() ? 'Editar' : 'Nuevo' }} Presupuesto
+              </h1>
+              <p class="text-gray-600 dark:text-gray-400 mt-1">Complete la información del presupuesto</p>
             </div>
-            <details class="group">
-              <summary
-                class="cursor-pointer text-sm text-blue-600 dark:text-blue-400 font-medium flex items-center justify-center gap-1 hover:text-blue-700 dark:hover:text-blue-300">
-                Ver desglose
-                <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor"
-                  viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </summary>
-              <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2 text-sm">
-                <div class="flex justify-between text-gray-700 dark:text-gray-300">
-                  <span>Subtotal:</span>
-                  <span class="font-semibold">{{ formatCurrency(subtotal()) }}</span>
-                </div>
-                <div class="flex justify-between text-gray-700 dark:text-gray-300">
-                  <span>IVA:</span>
-                  <span class="font-semibold">{{ formatCurrency(taxAmount()) }}</span>
-                </div>
-                @if (irpfEnabled()) {
-                <div class="flex justify-between text-gray-700 dark:text-gray-300">
-                  <span>IRPF:</span>
-                  <span class="font-semibold">-{{ formatCurrency(irpfAmount()) }}</span>
-                </div>
-                }
-              </div>
-            </details>
           </div>
         </div>
+        }
 
-        <div class="flex flex-col lg:flex-row gap-6 pb-48 lg:pb-0">
-          <!-- Left Column - Form (2/3) -->
-          <div class="flex-1 lg:flex-[2]">
+        <!-- Error Alert -->
+        @if (error()) {
+        <div
+          class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg mb-6 flex items-start gap-3">
+          <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+              clip-rule="evenodd"></path>
+          </svg>
+          <div class="flex-1">{{ error() }}</div>
+          <button type="button" (click)="error.set(null)"
+            class="text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"></path>
+            </svg>
+          </button>
+        </div>
+        }
 
-            <!-- Client & Basic Info Card -->
-            <div
-              class="md:bg-white md:dark:bg-gray-800 md:rounded-lg md:shadow-sm md:p-6 mb-6 md:border md:border-gray-200 md:dark:border-gray-700">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                </svg>
-                Información Básica
-              </h2>
+        <form [formGroup]="quoteForm" (ngSubmit)="save()">
 
-              <!-- Client Selector -->
-              <div class="mb-4 client-dropdown-container">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Cliente <span class="text-red-600">*</span>
-                </label>
-                <div class="relative">
-                  <button type="button" (click)="toggleClientDropdown()"
-                    class="w-full px-4 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200 flex items-center justify-between"
-                    [class.border-red-500]="quoteForm.get('client_id')?.invalid && quoteForm.get('client_id')?.touched">
-                    <span [class]="quoteForm.get('client_id')?.value ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-500 dark:text-gray-400'">{{ getSelectedClientName() }}</span>
-                    <svg class="w-5 h-5 text-gray-400 transition-transform duration-200"
-                      [class.rotate-180]="clientDropdownOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                  </button>
+          <!-- Mobile Summary Bar - Fixed at bottom on mobile -->
+          <div
+            class="lg:hidden fixed left-0 right-0 bottom-0 z-[5510] bg-white dark:bg-gray-800 border-t-2 border-gray-200 dark:border-gray-700 shadow-lg safe-area-pb">
+            <div class="p-4">
+              <div class="flex items-center gap-3 mb-3">
+                <div class="flex-1">
+                  <div class="text-xs text-gray-600 dark:text-gray-400">Total del presupuesto</div>
+                  <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ formatCurrency(displayAmount()) }}
+                  </div>
+                </div>
+                <button type="button" (click)="cancel()"
+                  class="bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white p-3 rounded-lg transition-colors duration-200 flex items-center justify-center"
+                  title="Cancelar">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                  </svg>
+                </button>
+                <button type="submit" [disabled]="loading()"
+                  class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                  @if (loading()) {
+                  <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                    </path>
+                  </svg>
+                  }
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  <span class="hidden sm:inline">{{ editMode() ? 'Actualizar' : 'Crear' }}</span>
+                </button>
+              </div>
+              <details class="group">
+                <summary
+                  class="cursor-pointer text-sm text-blue-600 dark:text-blue-400 font-medium flex items-center justify-center gap-1 hover:text-blue-700 dark:hover:text-blue-300">
+                  Ver desglose
+                  <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </summary>
+                <div class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2 text-sm">
+                  <div class="flex justify-between text-gray-700 dark:text-gray-300">
+                    <span>Subtotal:</span>
+                    <span class="font-semibold">{{ formatCurrency(subtotal()) }}</span>
+                  </div>
+                  <div class="flex justify-between text-gray-700 dark:text-gray-300">
+                    <span>IVA:</span>
+                    <span class="font-semibold">{{ formatCurrency(taxAmount()) }}</span>
+                  </div>
+                  @if (irpfEnabled()) {
+                  <div class="flex justify-between text-gray-700 dark:text-gray-300">
+                    <span>IRPF:</span>
+                    <span class="font-semibold">-{{ formatCurrency(irpfAmount()) }}</span>
+                  </div>
+                  }
+                </div>
+              </details>
+            </div>
+          </div>
 
-                  @if (clientDropdownOpen()) {
-                  <div
-                    class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-                    <div class="p-3 border-b border-gray-200 dark:border-gray-700">
-                      <input type="text"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="🔍 Buscar cliente..." [value]="clientSearch()"
-                        (input)="clientSearch.set($any($event.target).value)" (click)="$event.stopPropagation()">
-                    </div>
-                    <div class="max-h-60 overflow-y-auto">
-                      @for (client of filteredClients(); track client.id) {
-                      <button type="button"
-                        class="w-full px-4 py-3 text-left hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-150 border-b border-gray-100 dark:border-gray-700 last:border-0"
-                        (click)="selectClient(client.id)">
-                        <div class="font-medium text-gray-900 dark:text-gray-100">
-                          {{ client.business_name || (client.name + (client.apellidos ? ' ' + client.apellidos : '')) }}
-                        </div>
-                        <div class="flex gap-3 mt-1 text-sm text-gray-500">
-                          @if (client.tax_id) {
-                          <span>📋 {{ client.tax_id }}</span>
-                          }
-                          @if (client.email) {
-                          <span>✉️ {{ client.email }}</span>
-                          }
-                          @if (client.phone) {
-                          <span>📞 {{ client.phone }}</span>
-                          }
-                        </div>
-                      </button>
-                      }
-                      @if (filteredClients().length === 0) {
-                      <div class="px-4 py-3 text-gray-500 dark:text-gray-400 text-center">No se encontraron clientes
+          <div class="flex flex-col lg:flex-row gap-6 pb-48 lg:pb-0">
+            <!-- Left Column - Form (2/3) -->
+            <div class="flex-1 lg:flex-[2]">
+
+              <!-- Client & Basic Info Card -->
+              <div
+                class="md:bg-white md:dark:bg-gray-800 md:rounded-lg md:shadow-sm md:p-6 mb-6 md:border md:border-gray-200 md:dark:border-gray-700">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
+                  Información Básica
+                </h2>
+
+                <!-- Client Selector -->
+                <div class="mb-4 client-dropdown-container">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Cliente <span class="text-red-600">*</span>
+                  </label>
+                  <div class="relative">
+                    <button type="button" (click)="toggleClientDropdown()"
+                      class="w-full px-4 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200 flex items-center justify-between"
+                      [class.border-red-500]="quoteForm.get('client_id')?.invalid && quoteForm.get('client_id')?.touched">
+                      <span
+                        [class]="quoteForm.get('client_id')?.value ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-500 dark:text-gray-400'">{{
+                        getSelectedClientName() }}</span>
+                      <svg class="w-5 h-5 text-gray-400 transition-transform duration-200"
+                        [class.rotate-180]="clientDropdownOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                    </button>
+
+                    @if (clientDropdownOpen()) {
+                    <div
+                      class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+                      <div class="p-3 border-b border-gray-200 dark:border-gray-700">
+                        <input type="text"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="🔍 Buscar cliente..." [value]="clientSearch()"
+                          (input)="clientSearch.set($any($event.target).value)" (click)="$event.stopPropagation()">
                       </div>
-                      }
+                      <div class="max-h-60 overflow-y-auto">
+                        @for (client of filteredClients(); track client.id) {
+                        <button type="button"
+                          class="w-full px-4 py-3 text-left hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-150 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                          (click)="selectClient(client.id)">
+                          <div class="font-medium text-gray-900 dark:text-gray-100">
+                            {{ client.business_name || (client.name + (client.apellidos ? ' ' + client.apellidos : ''))
+                            }}
+                          </div>
+                          <div class="flex gap-3 mt-1 text-sm text-gray-500">
+                            @if (client.tax_id) {
+                            <span>📋 {{ client.tax_id }}</span>
+                            }
+                            @if (client.email) {
+                            <span>✉️ {{ client.email }}</span>
+                            }
+                            @if (client.phone) {
+                            <span>📞 {{ client.phone }}</span>
+                            }
+                          </div>
+                        </button>
+                        }
+                        @if (filteredClients().length === 0) {
+                        <div class="px-4 py-3 text-gray-500 dark:text-gray-400 text-center">No se encontraron clientes
+                        </div>
+                        }
+                      </div>
+                    </div>
+                    }
+                  </div>
+                  <!-- Alerta si el cliente seleccionado está incompleto -->
+                  @if (isSelectedClientIncomplete()) {
+                  <div
+                    class="mt-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-300 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+                    <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.707a1 1 0 00-1.414 0L8 8.586 6.707 7.293a1 1 0 10-1.414 1.414L6.586 10l-1.293 1.293a1 1 0 101.414 1.414L8 11.414l1.293 1.293a1 1 0 001.414-1.414L9.414 10l1.293-1.293a1 1 0 000-1.414z"
+                        clip-rule="evenodd"></path>
+                    </svg>
+                    <div class="flex-1">
+                      Este cliente está incompleto y no puede generar presupuestos todavía.<br>
+                      <strong>Faltan:</strong> {{ getSelectedClientMissingFields().join(', ') }}.
                     </div>
                   </div>
                   }
                 </div>
-                <!-- Alerta si el cliente seleccionado está incompleto -->
-                @if (isSelectedClientIncomplete()) {
-                <div
-                  class="mt-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-300 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
-                  <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.707a1 1 0 00-1.414 0L8 8.586 6.707 7.293a1 1 0 10-1.414 1.414L6.586 10l-1.293 1.293a1 1 0 101.414 1.414L8 11.414l1.293 1.293a1 1 0 001.414-1.414L9.414 10l1.293-1.293a1 1 0 000-1.414z"
-                      clip-rule="evenodd"></path>
-                  </svg>
-                  <div class="flex-1">
-                    Este cliente está incompleto y no puede generar presupuestos todavía.<br>
-                    <strong>Faltan:</strong> {{ getSelectedClientMissingFields().join(', ') }}.
+
+                <!-- Title -->
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Título <span class="text-red-600">*</span>
+                  </label>
+                  <input type="text" formControlName="title" placeholder="Ej: Presupuesto para desarrollo web"
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    [class.border-red-500]="quoteForm.get('title')?.invalid && quoteForm.get('title')?.touched">
+                  @if (quoteForm.get('title')?.invalid && quoteForm.get('title')?.touched) {
+                  <p class="text-red-600 text-sm mt-1">El título es obligatorio</p>
+                  }
+                </div>
+
+                <!-- Description -->
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descripción</label>
+                  <textarea formControlName="description" rows="3"
+                    placeholder="Descripción detallada del presupuesto..."
+                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                </div>
+
+                <!-- Dates Row -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Fecha de Emisión <span class="text-red-600">*</span>
+                    </label>
+                    <input type="date" formControlName="issue_date"
+                      class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      [class.border-red-500]="quoteForm.get('issue_date')?.invalid && quoteForm.get('issue_date')?.touched">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Válido Hasta <span class="text-red-600">*</span>
+                    </label>
+                    <input type="date" formControlName="valid_until"
+                      class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      [class.border-red-500]="quoteForm.get('valid_until')?.invalid && quoteForm.get('valid_until')?.touched">
                   </div>
                 </div>
-                }
-              </div>
 
-              <!-- Title -->
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Título <span class="text-red-600">*</span>
-                </label>
-                <input type="text" formControlName="title" placeholder="Ej: Presupuesto para desarrollo web"
-                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  [class.border-red-500]="quoteForm.get('title')?.invalid && quoteForm.get('title')?.touched">
-                @if (quoteForm.get('title')?.invalid && quoteForm.get('title')?.touched) {
-                <p class="text-red-600 text-sm mt-1">El título es obligatorio</p>
-                }
-              </div>
-
-              <!-- Description -->
-              <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descripción</label>
-                <textarea formControlName="description" rows="3" placeholder="Descripción detallada del presupuesto..."
-                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
-              </div>
-
-              <!-- Dates Row -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Fecha de Emisión <span class="text-red-600">*</span>
-                  </label>
-                  <input type="date" formControlName="issue_date"
-                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    [class.border-red-500]="quoteForm.get('issue_date')?.invalid && quoteForm.get('issue_date')?.touched">
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Válido Hasta <span class="text-red-600">*</span>
-                  </label>
-                  <input type="date" formControlName="valid_until"
-                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    [class.border-red-500]="quoteForm.get('valid_until')?.invalid && quoteForm.get('valid_until')?.touched">
-                </div>
-              </div>
-
-              <!-- Status & Templates -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="status-dropdown-container relative">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estado</label>
-                  <button type="button" (click)="toggleStatusDropdown()"
-                    class="w-full px-4 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200 flex items-center justify-between">
-                    <span class="text-gray-900 dark:text-gray-100 font-medium">{{ getSelectedStatusLabel() }}</span>
-                    <svg class="w-5 h-5 text-gray-400 transition-transform duration-200"
-                      [class.rotate-180]="statusDropdownOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                  </button>
-                  @if (statusDropdownOpen()) {
-                    <div class="fixed inset-0 bg-black/50 z-[5999] md:hidden" (click)="statusDropdownOpen.set(false)"></div>
-                    <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl z-[6000] max-h-[60vh] overflow-y-auto md:absolute md:bottom-auto md:top-full md:mt-1 md:rounded-lg md:shadow-lg md:border md:border-gray-200 md:dark:border-gray-700 md:max-h-60 md:w-full">
-                      <div class="md:hidden p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <!-- Status & Templates -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="status-dropdown-container relative">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estado</label>
+                    <button type="button" (click)="toggleStatusDropdown()"
+                      class="w-full px-4 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200 flex items-center justify-between">
+                      <span class="text-gray-900 dark:text-gray-100 font-medium">{{ getSelectedStatusLabel() }}</span>
+                      <svg class="w-5 h-5 text-gray-400 transition-transform duration-200"
+                        [class.rotate-180]="statusDropdownOpen()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                    </button>
+                    @if (statusDropdownOpen()) {
+                    <div class="fixed inset-0 bg-black/50 z-[5999] md:hidden" (click)="statusDropdownOpen.set(false)">
+                    </div>
+                    <div
+                      class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl z-[6000] max-h-[60vh] overflow-y-auto md:absolute md:bottom-auto md:top-full md:mt-1 md:rounded-lg md:shadow-lg md:border md:border-gray-200 md:dark:border-gray-700 md:max-h-60 md:w-full">
+                      <div
+                        class="md:hidden p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                         <span class="font-medium text-gray-900 dark:text-gray-100">Seleccionar estado</span>
                         <button type="button" (click)="statusDropdownOpen.set(false)" class="text-gray-500">
                           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M6 18L18 6M6 6l12 12"></path>
                           </svg>
                         </button>
                       </div>
                       <div class="py-2">
                         @for (option of statusOptions; track option.value) {
-                          <button type="button" (click)="selectStatus(option.value)"
-                            class="w-full px-4 py-3 md:py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between"
-                            [ngClass]="quoteForm.get('status')?.value === option.value ? 'bg-blue-50 dark:bg-blue-900/30' : ''">
-                            <span class="text-gray-900 dark:text-gray-100">{{ option.label }}</span>
-                            @if (quoteForm.get('status')?.value === option.value) {
-                              <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                              </svg>
-                            }
-                          </button>
+                        <button type="button" (click)="selectStatus(option.value)"
+                          class="w-full px-4 py-3 md:py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between"
+                          [ngClass]="quoteForm.get('status')?.value === option.value ? 'bg-blue-50 dark:bg-blue-900/30' : ''">
+                          <span class="text-gray-900 dark:text-gray-100">{{ option.label }}</span>
+                          @if (quoteForm.get('status')?.value === option.value) {
+                          <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clip-rule="evenodd"></path>
+                          </svg>
+                          }
+                        </button>
                         }
                       </div>
                     </div>
-                  }
-                </div>
-                <div class="template-dropdown-container relative">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Plantilla</label>
-                  <button type="button" (click)="toggleTemplateDropdown()"
-                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-left flex items-center justify-between">
-                    <span [class]="quoteForm.get('template_id')?.value ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'">
-                      {{ getSelectedTemplateLabel() }}
-                    </span>
-                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
-                  </button>
-                  
-                  @if (templateDropdownOpen()) {
-                    <div class="fixed inset-0 bg-black/50 z-[5999] md:hidden" (click)="templateDropdownOpen.set(false)"></div>
-                    <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl z-[6000] max-h-[60vh] overflow-y-auto md:absolute md:bottom-auto md:top-full md:mt-1 md:rounded-lg md:shadow-lg md:border md:border-gray-200 md:dark:border-gray-700 md:max-h-60">
-                      <div class="md:hidden p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                    }
+                  </div>
+                  <div class="template-dropdown-container relative">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Plantilla</label>
+                    <button type="button" (click)="toggleTemplateDropdown()"
+                      class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-left flex items-center justify-between">
+                      <span
+                        [class]="quoteForm.get('template_id')?.value ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'">
+                        {{ getSelectedTemplateLabel() }}
+                      </span>
+                      <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                      </svg>
+                    </button>
+
+                    @if (templateDropdownOpen()) {
+                    <div class="fixed inset-0 bg-black/50 z-[5999] md:hidden" (click)="templateDropdownOpen.set(false)">
+                    </div>
+                    <div
+                      class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl z-[6000] max-h-[60vh] overflow-y-auto md:absolute md:bottom-auto md:top-full md:mt-1 md:rounded-lg md:shadow-lg md:border md:border-gray-200 md:dark:border-gray-700 md:max-h-60">
+                      <div
+                        class="md:hidden p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                         <span class="font-medium text-gray-900 dark:text-gray-100">Seleccionar plantilla</span>
                         <button type="button" (click)="templateDropdownOpen.set(false)" class="text-gray-500">
                           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M6 18L18 6M6 6l12 12"></path>
                           </svg>
                         </button>
                       </div>
@@ -300,513 +345,534 @@
                           [ngClass]="!quoteForm.get('template_id')?.value ? 'bg-blue-50 dark:bg-blue-900/30' : ''">
                           <span class="text-gray-900 dark:text-gray-100">Sin plantilla</span>
                           @if (!quoteForm.get('template_id')?.value) {
-                            <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                            </svg>
+                          <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clip-rule="evenodd"></path>
+                          </svg>
                           }
                         </button>
                         @for (template of templates(); track template.id) {
-                          <button type="button" (click)="selectTemplate(template.id)"
-                            class="w-full px-4 py-3 md:py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between"
-                            [ngClass]="quoteForm.get('template_id')?.value === template.id ? 'bg-blue-50 dark:bg-blue-900/30' : ''">
-                            <span class="text-gray-900 dark:text-gray-100">{{ template.name }}</span>
-                            @if (quoteForm.get('template_id')?.value === template.id) {
-                              <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                              </svg>
-                            }
-                          </button>
+                        <button type="button" (click)="selectTemplate(template.id)"
+                          class="w-full px-4 py-3 md:py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between"
+                          [ngClass]="quoteForm.get('template_id')?.value === template.id ? 'bg-blue-50 dark:bg-blue-900/30' : ''">
+                          <span class="text-gray-900 dark:text-gray-100">{{ template.name }}</span>
+                          @if (quoteForm.get('template_id')?.value === template.id) {
+                          <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clip-rule="evenodd"></path>
+                          </svg>
+                          }
+                        </button>
                         }
                       </div>
                     </div>
-                  }
+                    }
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Items Card -->
-            <div
-              class="md:bg-white md:dark:bg-gray-800 md:rounded-lg md:shadow-sm overflow-visible md:border md:border-gray-200 md:dark:border-gray-700">
+              <!-- Items Card -->
               <div
-                class="md:px-6 py-4 md:border-b md:border-gray-200 md:dark:border-gray-700 flex justify-between items-center">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
-                    </path>
-                  </svg>
-                  Items del Presupuesto
-                </h2>
-              </div>
+                class="md:bg-white md:dark:bg-gray-800 md:rounded-lg md:shadow-sm overflow-visible md:border md:border-gray-200 md:dark:border-gray-700">
+                <div
+                  class="md:px-6 py-4 md:border-b md:border-gray-200 md:dark:border-gray-700 flex justify-between items-center">
+                  <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                      </path>
+                    </svg>
+                    Items del Presupuesto
+                  </h2>
+                </div>
 
-              <div formArrayName="items" class="divide-y divide-gray-200 dark:divide-gray-700">
-                @for (item of items.controls; track $index; let i = $index) {
-                <div [formGroupName]="i"
-                  class="py-6 md:p-6 md:hover:bg-gray-50 md:dark:hover:bg-gray-700/50 transition-colors duration-150 border-b border-gray-200 dark:border-gray-700 md:border-none last:border-0">
-                  <div class="flex justify-between items-start mb-4">
-                    <h3 class="text-md font-medium text-gray-900 dark:text-gray-100">Item #{{ i + 1 }}</h3>
-                    <button type="button" (click)="removeItem(i)"
-                      class="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors duration-150">
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                        </path>
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Service Selector -->
-                    <div class="md:col-span-2 relative service-dropdown-container">
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Servicio
-                        <span class="text-gray-500 dark:text-gray-400 text-xs ml-2">(Opcional - Seleccione para
-                          autocompletar)</span>
-                      </label>
-                      <button type="button" (click)="toggleServiceDropdown(i)"
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150 flex items-center justify-between">
-                        <span [class]="items.at(i).get('service_id')?.value ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-500 dark:text-gray-400'">
-                          <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                          </svg>
-                          {{ getSelectedServiceName(i) }}
-                        </span>
-                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                <div formArrayName="items" class="divide-y divide-gray-200 dark:divide-gray-700">
+                  @for (item of items.controls; track $index; let i = $index) {
+                  <div [formGroupName]="i"
+                    class="py-6 md:p-6 md:hover:bg-gray-50 md:dark:hover:bg-gray-700/50 transition-colors duration-150 border-b border-gray-200 dark:border-gray-700 md:border-none last:border-0">
+                    <div class="flex justify-between items-start mb-4">
+                      <h3 class="text-md font-medium text-gray-900 dark:text-gray-100">Item #{{ i + 1 }}</h3>
+                      <button type="button" (click)="removeItem(i)"
+                        class="text-red-600 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors duration-150">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
                           </path>
                         </svg>
                       </button>
+                    </div>
 
-                      <!-- Service Dropdown -->
-                      @if (serviceDropdownOpen() && selectedItemIndex() === i) {
-                      <div
-                        class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-hidden">
-                        <div class="p-3 border-b border-gray-200 dark:border-gray-700">
-                          <div class="relative">
-                            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-                              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <!-- Service Selector -->
+                      <div class="md:col-span-2 relative service-dropdown-container">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Servicio
+                          <span class="text-gray-500 dark:text-gray-400 text-xs ml-2">(Opcional - Seleccione para
+                            autocompletar)</span>
+                        </label>
+                        <button type="button" (click)="toggleServiceDropdown(i)"
+                          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150 flex items-center justify-between">
+                          <span
+                            [class]="items.at(i).get('service_id')?.value ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-500 dark:text-gray-400'">
+                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                             </svg>
-                            <input type="text" [value]="serviceSearch()"
-                              (input)="serviceSearch.set($any($event.target).value)" placeholder="Buscar servicios..."
-                              class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                              (click)="$event.stopPropagation()">
-                          </div>
-                        </div>
-
-                        <div class="max-h-48 overflow-y-auto">
-                          @if (filteredServices().length === 0) {
-                          <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
-                            <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor"
-                              viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
-                              </path>
-                            </svg>
-                            No se encontraron servicios
-                          </div>
-                          }
-                          @for (service of filteredServices(); track service.id) {
-                          <button type="button" (click)="selectService(service, i)"
-                            class="w-full px-4 py-3 text-left hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-150 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
-                            <div class="font-medium text-gray-900 dark:text-gray-100">{{ service.name }}</div>
-                            @if (service.description) {
-                            <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ service.description }}</div>
-                            }
-                            @if (service.category) {
-                            <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">Categoría: {{ service.category }}
-                            </div>
-                            }
-                            @if (service.base_price > 0) {
-                            <div class="text-sm text-blue-600 dark:text-blue-400 font-semibold mt-1">{{
-                              formatCurrency(service.base_price) }}</div>
-                            }
-                          </button>
-                          }
-                        </div>
-                      </div>
-                      }
-                    </div>
-
-                    <!-- Variant Selector (only show if service has variants) -->
-                    @if (serviceHasVariants(i)) {
-                    <div class="md:col-span-2 relative variant-dropdown-container mt-2">
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Variante del Servicio
-                        <span class="text-red-600">*</span>
-                        <span class="text-gray-500 dark:text-gray-400 text-xs ml-2">(Seleccione una variante)</span>
-                      </label>
-                      <button type="button" (click)="toggleVariantDropdown(i)"
-                        class="w-full px-4 py-2 border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors duration-150 flex items-center justify-between"
-                        [class.border-yellow-400]="!items.at(i).get('variant_id')?.value"
-                        [class.bg-yellow-50]="!items.at(i).get('variant_id')?.value">
-                        <span [class]="items.at(i).get('variant_id')?.value ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-500 dark:text-gray-400'">
-                          <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
+                            {{ getSelectedServiceName(i) }}
+                          </span>
+                          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
                             </path>
                           </svg>
-                          {{ getSelectedVariantName(i) }}
-                        </span>
-                        <svg class="w-5 h-5 text-gray-400"
-                          [class.rotate-180]="variantDropdownOpen() && selectedVariantIndex() === i" fill="none"
-                          stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
-                          </path>
-                        </svg>
-                      </button>
+                        </button>
 
-                      <!-- Warning when variant not selected -->
-                      @if (!items.at(i).get('variant_id')?.value) {
-                      <div
-                        class="mt-2 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-300 px-3 py-2 rounded-lg text-xs flex items-start gap-2">
-                        <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fill-rule="evenodd"
-                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                            clip-rule="evenodd"></path>
-                        </svg>
-                        <span>Este servicio requiere que seleccione una variante para definir precio y periodicidad de
-                          facturación.</span>
+                        <!-- Service Dropdown -->
+                        @if (serviceDropdownOpen() && selectedItemIndex() === i) {
+                        <div
+                          class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-hidden">
+                          <div class="p-3 border-b border-gray-200 dark:border-gray-700">
+                            <div class="relative">
+                              <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                              </svg>
+                              <input type="text" [value]="serviceSearch()"
+                                (input)="serviceSearch.set($any($event.target).value)" placeholder="Buscar servicios..."
+                                class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                (click)="$event.stopPropagation()">
+                            </div>
+                          </div>
+
+                          <div class="max-h-48 overflow-y-auto">
+                            @if (filteredServices().length === 0) {
+                            <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+                              <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
+                                </path>
+                              </svg>
+                              No se encontraron servicios
+                            </div>
+                            }
+                            @for (service of filteredServices(); track service.id) {
+                            <button type="button" (click)="selectService(service, i)"
+                              class="w-full px-4 py-3 text-left hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-150 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                              <div class="font-medium text-gray-900 dark:text-gray-100">{{ service.name }}</div>
+                              @if (service.description) {
+                              <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ service.description }}</div>
+                              }
+                              @if (service.category) {
+                              <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">Categoría: {{ service.category
+                                }}
+                              </div>
+                              }
+                              @if (service.base_price > 0) {
+                              <div class="text-sm text-blue-600 dark:text-blue-400 font-semibold mt-1">{{
+                                formatCurrency(service.base_price) }}</div>
+                              }
+                            </button>
+                            }
+                          </div>
+                        </div>
+                        }
                       </div>
-                      }
 
-                      <!-- Variant Dropdown -->
-                      @if (variantDropdownOpen() && selectedVariantIndex() === i) {
-                      <div
-                        class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-600 rounded-lg shadow-lg max-h-96 overflow-hidden">
-                        <div class="p-3 bg-blue-50 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-700">
-                          <div class="text-sm font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <!-- Variant Selector (only show if service has variants) -->
+                      @if (serviceHasVariants(i)) {
+                      <div class="md:col-span-2 relative variant-dropdown-container mt-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Variante del Servicio
+                          <span class="text-red-600">*</span>
+                          <span class="text-gray-500 dark:text-gray-400 text-xs ml-2">(Seleccione una variante)</span>
+                        </label>
+                        <button type="button" (click)="toggleVariantDropdown(i)"
+                          class="w-full px-4 py-2 border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors duration-150 flex items-center justify-between"
+                          [class.border-yellow-400]="!items.at(i).get('variant_id')?.value"
+                          [class.bg-yellow-50]="!items.at(i).get('variant_id')?.value">
+                          <span
+                            [class]="items.at(i).get('variant_id')?.value ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-500 dark:text-gray-400'">
+                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
                               </path>
                             </svg>
-                            Seleccione una variante
-                          </div>
-                        </div>
-
-                        <div class="max-h-80 overflow-y-auto">
-                          @if (getServiceVariants(i).length === 0) {
-                          <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
-                            <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor"
-                              viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
-                              </path>
-                            </svg>
-                            No hay variantes disponibles
-                          </div>
-                          }
-                          @for (variant of getServiceVariants(i); track variant.id) {
-                          @if (variantPricing(variant).length > 0) {
-                          @for (p of variantPricing(variant); track p) {
-                          <button type="button" (click)="selectVariantPeriod(variant, p, i)"
-                            class="w-full px-4 py-4 text-left hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-150 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-                            [class.bg-blue-100]="isVariantPeriodSelected(variant, p.billing_period, i)"
-                            [ngClass]="{'dark:bg-blue-900/50': isVariantPeriodSelected(variant, p.billing_period, i)}">
-                            <div class="flex items-start justify-between gap-3">
-                              <div class="flex-1">
-                                <div class="flex items-center gap-2">
-                                  <span class="font-semibold text-gray-900 dark:text-gray-100">{{ variant.variant_name
-                                    }}</span>
-                                  <span
-                                    class="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                                    {{ formatBillingPeriodLabel(p.billing_period) }}
-                                  </span>
-                                  @if (variant.display_config?.badge) {
-                                  <span class="px-2 py-0.5 text-xs font-medium rounded-full"
-                                    [style.background-color]="variant.display_config?.color || '#3b82f6'"
-                                    [style.color]="'white'">
-                                    {{ variant.display_config?.badge }}
-                                  </span>
-                                  }
-                                </div>
-
-                                @if (variant.features && variant.features.included && variant.features.included.length >
-                                0) {
-                                <div class="mt-2">
-                                  <div class="text-xs font-semibold text-green-700 dark:text-green-400 mb-1">✓ Incluye:
-                                  </div>
-                                  <ul class="text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
-                                    @for (feature of variant.features.included.slice(0, 3); track feature) {
-                                    <li class="flex items-start gap-1">
-                                      <svg class="w-3 h-3 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor"
-                                        viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd"
-                                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                          clip-rule="evenodd"></path>
-                                      </svg>
-                                      <span>{{ feature }}</span>
-                                    </li>
-                                    }
-                                    @if (variant.features.included.length > 3) {
-                                    <li class="text-blue-600 font-medium">+{{ variant.features.included.length - 3 }}
-                                      más...</li>
-                                    }
-                                  </ul>
-                                </div>
-                                }
-                              </div>
-
-                              <div class="text-right flex-shrink-0">
-                                <div class="text-lg font-bold text-blue-600 dark:text-blue-400">{{
-                                  formatCurrency(p.base_price || 0) }}</div>
-                                @if (p.estimated_hours || variant.estimated_hours) {
-                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">~{{ p.estimated_hours ||
-                                  variant.estimated_hours }}h estimadas</div>
-                                }
-                              </div>
-                            </div>
-                          </button>
-                          }
-                          } @else {
-                          <button type="button" (click)="selectVariant(variant, i)"
-                            class="w-full px-4 py-4 text-left hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-150 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
-                            [class.bg-blue-100]="items.at(i).get('variant_id')?.value === variant.id"
-                            [ngClass]="{'dark:bg-blue-900/50': items.at(i).get('variant_id')?.value === variant.id}">
-                            <div class="flex items-start justify-between gap-3">
-                              <div class="flex-1">
-                                <div class="flex items-center gap-2">
-                                  <span class="font-semibold text-gray-900 dark:text-gray-100">{{ variant.variant_name
-                                    }}</span>
-                                  @switch (getVariantBillingPeriod(variant)) {
-                                  @case ('one-time') { <span
-                                    class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700 border border-gray-200">Pago
-                                    único</span> }
-                                  @case ('monthly') { <span
-                                    class="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-50 text-purple-700 border border-purple-200">Mensual</span>
-                                  }
-                                  @case ('annually') { <span
-                                    class="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-50 text-purple-700 border border-purple-200">Anual</span>
-                                  }
-                                  @case ('custom') { <span
-                                    class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700 border border-gray-200">Personalizado</span>
-                                  }
-                                  }
-                                  @if (variant.display_config?.badge) {
-                                  <span class="px-2 py-0.5 text-xs font-medium rounded-full"
-                                    [style.background-color]="variant.display_config?.color || '#3b82f6'"
-                                    [style.color]="'white'">
-                                    {{ variant.display_config?.badge }}
-                                  </span>
-                                  }
-                                </div>
-
-                                @if (variant.features && variant.features.included && variant.features.included.length >
-                                0) {
-                                <div class="mt-2">
-                                  <div class="text-xs font-semibold text-green-700 mb-1">✓ Incluye:</div>
-                                  <ul class="text-xs text-gray-600 space-y-0.5">
-                                    @for (feature of variant.features.included.slice(0, 3); track feature) {
-                                    <li class="flex items-start gap-1">
-                                      <svg class="w-3 h-3 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor"
-                                        viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd"
-                                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                          clip-rule="evenodd"></path>
-                                      </svg>
-                                      <span>{{ feature }}</span>
-                                    </li>
-                                    }
-                                    @if (variant.features.included.length > 3) {
-                                    <li class="text-blue-600 font-medium">+{{ variant.features.included.length - 3 }}
-                                      más...</li>
-                                    }
-                                  </ul>
-                                </div>
-                                }
-                              </div>
-
-                              <div class="text-right flex-shrink-0">
-                                <div class="text-lg font-bold text-blue-600">{{
-                                  formatCurrency(getVariantDisplayPrice(variant)) }}</div>
-                                @if (variant.estimated_hours) {
-                                <div class="text-xs text-gray-500 mt-1">~{{ variant.estimated_hours }}h estimadas</div>
-                                }
-                              </div>
-                            </div>
-                          </button>
-                          }
-                          }
-                        </div>
-                      </div>
-                      }
-                    </div>
-                    }
-
-                    <!-- Product Selector (hidden if module not enabled) -->
-                    @if (productModuleEnabled()) {
-                    <div class="md:col-span-2 relative service-dropdown-container mt-2">
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Producto
-                        <span class="text-gray-500 dark:text-gray-400 text-xs ml-2">(Opcional - Seleccione para
-                          autocompletar)</span>
-                      </label>
-                      <button type="button" (click)="toggleProductDropdown(i)"
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150 flex items-center justify-between">
-                        <span [class]="items.at(i).get('product_id')?.value ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-500 dark:text-gray-400'">
-                          <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            {{ getSelectedVariantName(i) }}
+                          </span>
+                          <svg class="w-5 h-5 text-gray-400"
+                            [class.rotate-180]="variantDropdownOpen() && selectedVariantIndex() === i" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
                           </svg>
-                          {{ getSelectedProductName(i) }}
-                        </span>
-                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
-                          </path>
-                        </svg>
-                      </button>
+                        </button>
 
-                      <!-- Product Dropdown -->
-                      @if (productDropdownOpen() && selectedProductIndex() === i) {
-                      <div
-                        class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-hidden">
-                        <div class="p-3 border-b border-gray-200 dark:border-gray-700">
-                          <div class="relative">
-                            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-                              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <!-- Warning when variant not selected -->
+                        @if (!items.at(i).get('variant_id')?.value) {
+                        <div
+                          class="mt-2 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-300 px-3 py-2 rounded-lg text-xs flex items-start gap-2">
+                          <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                              d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                              clip-rule="evenodd"></path>
+                          </svg>
+                          <span>Este servicio requiere que seleccione una variante para definir precio y periodicidad de
+                            facturación.</span>
+                        </div>
+                        }
+
+                        <!-- Variant Dropdown -->
+                        @if (variantDropdownOpen() && selectedVariantIndex() === i) {
+                        <div
+                          class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-600 rounded-lg shadow-lg max-h-96 overflow-hidden">
+                          <div class="p-3 bg-blue-50 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-700">
+                            <div class="text-sm font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-2">
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
+                                </path>
+                              </svg>
+                              Seleccione una variante
+                            </div>
+                          </div>
+
+                          <div class="max-h-80 overflow-y-auto">
+                            @if (getServiceVariants(i).length === 0) {
+                            <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+                              <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z">
+                                </path>
+                              </svg>
+                              No hay variantes disponibles
+                            </div>
+                            }
+                            @for (variant of getServiceVariants(i); track variant.id) {
+                            @if (variantPricing(variant).length > 0) {
+                            @for (p of variantPricing(variant); track p) {
+                            <button type="button" (click)="selectVariantPeriod(variant, p, i)"
+                              class="w-full px-4 py-4 text-left hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-150 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                              [class.bg-blue-100]="isVariantPeriodSelected(variant, p.billing_period, i)"
+                              [ngClass]="{'dark:bg-blue-900/50': isVariantPeriodSelected(variant, p.billing_period, i)}">
+                              <div class="flex items-start justify-between gap-3">
+                                <div class="flex-1">
+                                  <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-gray-900 dark:text-gray-100">{{ variant.variant_name
+                                      }}</span>
+                                    <span
+                                      class="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                                      {{ formatBillingPeriodLabel(p.billing_period) }}
+                                    </span>
+                                    @if (variant.display_config?.badge) {
+                                    <span class="px-2 py-0.5 text-xs font-medium rounded-full"
+                                      [style.background-color]="variant.display_config?.color || '#3b82f6'"
+                                      [style.color]="'white'">
+                                      {{ variant.display_config?.badge }}
+                                    </span>
+                                    }
+                                  </div>
+
+                                  @if (variant.features && variant.features.included && variant.features.included.length
+                                  >
+                                  0) {
+                                  <div class="mt-2">
+                                    <div class="text-xs font-semibold text-green-700 dark:text-green-400 mb-1">✓
+                                      Incluye:
+                                    </div>
+                                    <ul class="text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
+                                      @for (feature of variant.features.included.slice(0, 3); track feature) {
+                                      <li class="flex items-start gap-1">
+                                        <svg class="w-3 h-3 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor"
+                                          viewBox="0 0 20 20">
+                                          <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                        </svg>
+                                        <span>{{ feature }}</span>
+                                      </li>
+                                      }
+                                      @if (variant.features.included.length > 3) {
+                                      <li class="text-blue-600 font-medium">+{{ variant.features.included.length - 3 }}
+                                        más...</li>
+                                      }
+                                    </ul>
+                                  </div>
+                                  }
+                                </div>
+
+                                <div class="text-right flex-shrink-0">
+                                  <div class="text-lg font-bold text-blue-600 dark:text-blue-400">{{
+                                    formatCurrency(p.base_price || 0) }}</div>
+                                  @if (p.estimated_hours || variant.estimated_hours) {
+                                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">~{{ p.estimated_hours ||
+                                    variant.estimated_hours }}h estimadas</div>
+                                  }
+                                </div>
+                              </div>
+                            </button>
+                            }
+                            } @else {
+                            <button type="button" (click)="selectVariant(variant, i)"
+                              class="w-full px-4 py-4 text-left hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-150 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+                              [class.bg-blue-100]="items.at(i).get('variant_id')?.value === variant.id"
+                              [ngClass]="{'dark:bg-blue-900/50': items.at(i).get('variant_id')?.value === variant.id}">
+                              <div class="flex items-start justify-between gap-3">
+                                <div class="flex-1">
+                                  <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-gray-900 dark:text-gray-100">{{ variant.variant_name
+                                      }}</span>
+                                    @switch (getVariantBillingPeriod(variant)) {
+                                    @case ('one-time') { <span
+                                      class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700 border border-gray-200">Pago
+                                      único</span> }
+                                    @case ('monthly') { <span
+                                      class="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-50 text-purple-700 border border-purple-200">Mensual</span>
+                                    }
+                                    @case ('annually') { <span
+                                      class="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-50 text-purple-700 border border-purple-200">Anual</span>
+                                    }
+                                    @case ('custom') { <span
+                                      class="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-700 border border-gray-200">Personalizado</span>
+                                    }
+                                    }
+                                    @if (variant.display_config?.badge) {
+                                    <span class="px-2 py-0.5 text-xs font-medium rounded-full"
+                                      [style.background-color]="variant.display_config?.color || '#3b82f6'"
+                                      [style.color]="'white'">
+                                      {{ variant.display_config?.badge }}
+                                    </span>
+                                    }
+                                  </div>
+
+                                  @if (variant.features && variant.features.included && variant.features.included.length
+                                  >
+                                  0) {
+                                  <div class="mt-2">
+                                    <div class="text-xs font-semibold text-green-700 mb-1">✓ Incluye:</div>
+                                    <ul class="text-xs text-gray-600 space-y-0.5">
+                                      @for (feature of variant.features.included.slice(0, 3); track feature) {
+                                      <li class="flex items-start gap-1">
+                                        <svg class="w-3 h-3 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor"
+                                          viewBox="0 0 20 20">
+                                          <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                        </svg>
+                                        <span>{{ feature }}</span>
+                                      </li>
+                                      }
+                                      @if (variant.features.included.length > 3) {
+                                      <li class="text-blue-600 font-medium">+{{ variant.features.included.length - 3 }}
+                                        más...</li>
+                                      }
+                                    </ul>
+                                  </div>
+                                  }
+                                </div>
+
+                                <div class="text-right flex-shrink-0">
+                                  <div class="text-lg font-bold text-blue-600">{{
+                                    formatCurrency(getVariantDisplayPrice(variant)) }}</div>
+                                  @if (variant.estimated_hours) {
+                                  <div class="text-xs text-gray-500 mt-1">~{{ variant.estimated_hours }}h estimadas
+                                  </div>
+                                  }
+                                </div>
+                              </div>
+                            </button>
+                            }
+                            }
+                          </div>
+                        </div>
+                        }
+                      </div>
+                      }
+
+                      <!-- Product Selector (hidden if module not enabled) -->
+                      @if (productModuleEnabled()) {
+                      <div class="md:col-span-2 relative service-dropdown-container mt-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Producto
+                          <span class="text-gray-500 dark:text-gray-400 text-xs ml-2">(Opcional - Seleccione para
+                            autocompletar)</span>
+                        </label>
+                        <button type="button" (click)="toggleProductDropdown(i)"
+                          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150 flex items-center justify-between">
+                          <span
+                            [class]="items.at(i).get('product_id')?.value ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-500 dark:text-gray-400'">
+                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                             </svg>
-                            <input type="text" [value]="productSearch()"
-                              (input)="productSearch.set($any($event.target).value)" placeholder="Buscar productos..."
-                              class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                              (click)="$event.stopPropagation()">
+                            {{ getSelectedProductName(i) }}
+                          </span>
+                          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                          </svg>
+                        </button>
+
+                        <!-- Product Dropdown -->
+                        @if (productDropdownOpen() && selectedProductIndex() === i) {
+                        <div
+                          class="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg max-h-64 overflow-hidden">
+                          <div class="p-3 border-b border-gray-200 dark:border-gray-700">
+                            <div class="relative">
+                              <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
+                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                              </svg>
+                              <input type="text" [value]="productSearch()"
+                                (input)="productSearch.set($any($event.target).value)" placeholder="Buscar productos..."
+                                class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                (click)="$event.stopPropagation()">
+                            </div>
+                          </div>
+                          <div class="max-h-48 overflow-y-auto">
+                            @if (filteredProducts().length === 0) {
+                            <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
+                              <svg class="w-12 h-12 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none"
+                                stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
+                                </path>
+                              </svg>
+                              No se encontraron productos
+                            </div>
+                            }
+                            @for (product of filteredProducts(); track product.id) {
+                            <button type="button" (click)="selectProduct(product, i)"
+                              class="w-full px-4 py-3 text-left hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-150 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                              <div class="font-medium text-gray-900 dark:text-gray-100">{{ product.name }}</div>
+                              @if (product.description) {
+                              <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ product.description }}</div>
+                              }
+                              <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                <span *ngIf="product.brand">Marca: {{ product.brand }} </span>
+                                <span *ngIf="product.model">Modelo: {{ product.model }} </span>
+                                <span *ngIf="product.category">Categoría: {{ product.category }}</span>
+                              </div>
+                              @if (product.price > 0) {
+                              <div class="text-sm text-blue-600 dark:text-blue-400 font-semibold mt-1">{{
+                                formatCurrency(product.price) }}</div>
+                              }
+                            </button>
+                            }
                           </div>
                         </div>
-                        <div class="max-h-48 overflow-y-auto">
-                          @if (filteredProducts().length === 0) {
-                          <div class="px-4 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
-                            <svg class="w-12 h-12 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none"
-                              stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4">
-                              </path>
-                            </svg>
-                            No se encontraron productos
-                          </div>
-                          }
-                          @for (product of filteredProducts(); track product.id) {
-                          <button type="button" (click)="selectProduct(product, i)"
-                            class="w-full px-4 py-3 text-left hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors duration-150 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
-                            <div class="font-medium text-gray-900 dark:text-gray-100">{{ product.name }}</div>
-                            @if (product.description) {
-                            <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ product.description }}</div>
-                            }
-                            <div class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                              <span *ngIf="product.brand">Marca: {{ product.brand }} </span>
-                              <span *ngIf="product.model">Modelo: {{ product.model }} </span>
-                              <span *ngIf="product.category">Categoría: {{ product.category }}</span>
-                            </div>
-                            @if (product.price > 0) {
-                            <div class="text-sm text-blue-600 dark:text-blue-400 font-semibold mt-1">{{
-                              formatCurrency(product.price) }}</div>
-                            }
-                          </button>
-                          }
+                        }
+                      </div>
+                      } @else {
+                      <div class="md:col-span-2 mt-2 hidden" aria-hidden="true" style="display: none;">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Producto</label>
+                        <div
+                          class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400">
+                          Esta cuenta no tiene activado el módulo de Productos (/Material). Si necesita añadir
+                          productos,
+                          active el módulo en Configuración.
                         </div>
                       </div>
                       }
-                    </div>
-                    } @else {
-                    <div class="md:col-span-2 mt-2 hidden" aria-hidden="true" style="display: none;">
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Producto</label>
-                      <div
-                        class="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm text-gray-500 dark:text-gray-400">
-                        Esta cuenta no tiene activado el módulo de Productos (/Material). Si necesita añadir productos,
-                        active el módulo en Configuración.
+
+                      <!-- Descripción del item: se autocompleta desde el servicio si está vacía -->
+                      <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descripción del
+                          ítem</label>
+                        <input type="text" formControlName="description"
+                          placeholder="Descripción del ítem (se autocompleta desde el servicio)"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" />
                       </div>
-                    </div>
-                    }
 
-                    <!-- Descripción del item: se autocompleta desde el servicio si está vacía -->
-                    <div class="md:col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descripción del
-                        ítem</label>
-                      <input type="text" formControlName="description"
-                        placeholder="Descripción del ítem (se autocompleta desde el servicio)"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm" />
-                    </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cantidad <span
+                            class="text-red-600">*</span></label>
+                        <input type="number" formControlName="quantity" min="1" step="1"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                      </div>
 
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Cantidad <span
-                          class="text-red-600">*</span></label>
-                      <input type="number" formControlName="quantity" min="1" step="1"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
-                    </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Precio Unit. (€)
+                          <span class="text-gray-500 dark:text-gray-400 text-xs ml-1">{{ pricesIncludeTax() ? '(IVA
+                            inc.)'
+                            : '(sin IVA)' }}</span>
+                          <span class="text-red-600">*</span>
+                        </label>
+                        <!-- Binding manual para asegurar refresco inmediato del valor -->
+                        <input type="number" [value]="items.at(i).get('unit_price')?.value ?? ''"
+                          (input)="items.at(i).get('unit_price')?.setValue($any($event.target).valueAsNumber ?? 0); calculateTotals()"
+                          min="0" step="0.01"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-right">
+                      </div>
 
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Precio Unit. (€)
-                        <span class="text-gray-500 dark:text-gray-400 text-xs ml-1">{{ pricesIncludeTax() ? '(IVA inc.)'
-                          : '(sin IVA)' }}</span>
-                        <span class="text-red-600">*</span>
-                      </label>
-                      <!-- Binding manual para asegurar refresco inmediato del valor -->
-                      <input type="number" [value]="items.at(i).get('unit_price')?.value ?? ''"
-                        (input)="items.at(i).get('unit_price')?.setValue($any($event.target).valueAsNumber ?? 0); calculateTotals()"
-                        min="0" step="0.01"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-right">
-                    </div>
-
-                    <div class="tax-dropdown-container relative">
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">IVA (%) <span
-                          class="text-red-600">*</span></label>
-                      <button type="button" (click)="toggleTaxDropdown(i)"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-left flex items-center justify-between text-sm">
-                        <span class="text-gray-900 dark:text-gray-100">{{ getItemTaxLabel(i) }}</span>
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                      </button>
-                      @if (taxDropdownOpenIndex() === i) {
-                        <div class="fixed inset-0 bg-black/50 z-[5999] md:hidden" (click)="taxDropdownOpenIndex.set(null)"></div>
-                        <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl z-[6000] max-h-[60vh] overflow-y-auto md:absolute md:bottom-auto md:top-full md:mt-1 md:rounded-lg md:shadow-lg md:border md:border-gray-200 md:dark:border-gray-700 md:max-h-60 md:w-full">
-                          <div class="md:hidden p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                      <div class="tax-dropdown-container relative">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">IVA (%) <span
+                            class="text-red-600">*</span></label>
+                        <button type="button" (click)="toggleTaxDropdown(i)"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-left flex items-center justify-between text-sm">
+                          <span class="text-gray-900 dark:text-gray-100">{{ getItemTaxLabel(i) }}</span>
+                          <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
+                            </path>
+                          </svg>
+                        </button>
+                        @if (taxDropdownOpenIndex() === i) {
+                        <div class="fixed inset-0 bg-black/50 z-[5999] md:hidden"
+                          (click)="taxDropdownOpenIndex.set(null)"></div>
+                        <div
+                          class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 rounded-t-2xl z-[6000] max-h-[60vh] overflow-y-auto md:absolute md:bottom-auto md:top-full md:mt-1 md:rounded-lg md:shadow-lg md:border md:border-gray-200 md:dark:border-gray-700 md:max-h-60 md:w-full">
+                          <div
+                            class="md:hidden p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                             <span class="font-medium text-gray-900 dark:text-gray-100">Seleccionar IVA</span>
                             <button type="button" (click)="taxDropdownOpenIndex.set(null)" class="text-gray-500">
                               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M6 18L18 6M6 6l12 12"></path>
                               </svg>
                             </button>
                           </div>
                           <div class="py-2">
                             @for (option of taxOptions; track option.value) {
-                              <button type="button" (click)="selectTax(option.value, i)"
-                                class="w-full px-4 py-3 md:py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between"
-                                [ngClass]="getItemTaxRate(i) === option.value ? 'bg-blue-50 dark:bg-blue-900/30' : ''">
-                                <span class="text-gray-900 dark:text-gray-100">{{ option.label }}</span>
-                                @if (getItemTaxRate(i) === option.value) {
-                                  <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
-                                  </svg>
-                                }
-                              </button>
+                            <button type="button" (click)="selectTax(option.value, i)"
+                              class="w-full px-4 py-3 md:py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-between"
+                              [ngClass]="getItemTaxRate(i) === option.value ? 'bg-blue-50 dark:bg-blue-900/30' : ''">
+                              <span class="text-gray-900 dark:text-gray-100">{{ option.label }}</span>
+                              @if (getItemTaxRate(i) === option.value) {
+                              <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                  clip-rule="evenodd"></path>
+                              </svg>
+                              }
+                            </button>
                             }
                           </div>
                         </div>
-                      }
-                    </div>
+                        }
+                      </div>
 
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descuento
-                        (%)</label>
-                      <input type="number" formControlName="discount_percent" min="0" max="100" step="1"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-right">
-                    </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descuento
+                          (%)</label>
+                        <input type="number" formControlName="discount_percent" min="0" max="100" step="1"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-right">
+                      </div>
 
-                    <div class="md:col-span-2">
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notas</label>
-                      <input type="text" formControlName="notes" placeholder="Notas adicionales (opcional)"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                      <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notas</label>
+                        <input type="text" formControlName="notes" placeholder="Notas adicionales (opcional)"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm">
+                      </div>
                     </div>
                   </div>
-                </div>
-                }
+                  }
 
-                <!-- Add Item button (shown below items) -->
-                @if (items.length > 0) {
+                  <!-- Add Item button (shown below items) -->
+                  @if (items.length > 0) {
                   <div class="py-4 px-2 md:px-6 flex items-end justify-end">
                     <button type="button" (click)="addItem()"
                       class="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 md:py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2">
@@ -816,263 +882,267 @@
                       Añadir Item
                     </button>
                   </div>
-                }
+                  }
 
-                @if (items.length === 0) {
-                <div class="p-12 text-center">
-                  <div class="text-6xl mb-4">📋</div>
-                  <p class="text-gray-500 dark:text-gray-400 mb-4">No hay items en el presupuesto</p>
-                  <button type="button" (click)="addItem()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200">
-                    Añadir Primer Item
-                  </button>
-                </div>
-                }
-              </div>
-            </div>
-
-            <!-- Notes & Terms Card -->
-            <div
-              class="mt-8 md:mt-6 md:bg-white md:dark:bg-gray-800 md:rounded-lg md:shadow-sm md:p-6 md:border md:border-gray-200 md:dark:border-gray-700">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z">
-                  </path>
-                </svg>
-                Notas y Condiciones
-              </h2>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notas internas</label>
-                  <textarea formControlName="notes" rows="4" placeholder="Notas para uso interno..."
-                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Términos y
-                    condiciones</label>
-                  <textarea formControlName="terms_conditions" rows="4" placeholder="Términos que verá el cliente..."
-                    class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                  @if (items.length === 0) {
+                  <div class="p-12 text-center">
+                    <div class="text-6xl mb-4">📋</div>
+                    <p class="text-gray-500 dark:text-gray-400 mb-4">No hay items en el presupuesto</p>
+                    <button type="button" (click)="addItem()"
+                      class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200">
+                      Añadir Primer Item
+                    </button>
+                  </div>
+                  }
                 </div>
               </div>
-            </div>
-          </div>
 
-          <!-- Right Column - Summary (1/3) - Hidden on mobile, shown on desktop -->
-          <div #rightCol class="hidden lg:block w-full lg:w-80 flex-shrink-0">
-            <aside #summaryAside [ngStyle]="summaryStyles"
-              class="space-y-6 overflow-y-auto transition-shadow duration-200" style="max-height: calc(100vh - 3rem);">
-
-              <!-- Totals Card -->
+              <!-- Notes & Terms Card -->
               <div
-                class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
-                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                  <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
-                      </path>
-                    </svg>
-                    Resumen
-                  </h2>
-                </div>
+                class="mt-8 md:mt-6 md:bg-white md:dark:bg-gray-800 md:rounded-lg md:shadow-sm md:p-6 md:border md:border-gray-200 md:dark:border-gray-700">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z">
+                    </path>
+                  </svg>
+                  Notas y Condiciones
+                </h2>
 
-                <div class="p-6">
-                  <div class="space-y-3">
-                    <div class="flex justify-between items-center text-gray-700 dark:text-gray-300">
-                      <span>Subtotal:</span>
-                      <span class="font-semibold">{{ formatCurrency(subtotal()) }}</span>
-                    </div>
-                    <div class="flex justify-between items-center text-gray-700 dark:text-gray-300">
-                      <span>IVA:</span>
-                      <span class="font-semibold">{{ formatCurrency(taxAmount()) }}</span>
-                    </div>
-                    <div class="flex justify-between items-center text-gray-700 dark:text-gray-300"
-                      *ngIf="irpfEnabled()">
-                      <span>IRPF:</span>
-                      <span class="font-semibold">-{{ formatCurrency(irpfAmount()) }}</span>
-                    </div>
-                    <div class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
-                      <div class="flex justify-between items-center">
-                        <span class="text-lg font-bold text-gray-900 dark:text-gray-100">TOTAL:</span>
-                        <span class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{
-                          formatCurrency(displayAmount()) }}</span>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notas
+                      internas</label>
+                    <textarea formControlName="notes" rows="4" placeholder="Notas para uso interno..."
+                      class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Términos y
+                      condiciones</label>
+                    <textarea formControlName="terms_conditions" rows="4" placeholder="Términos que verá el cliente..."
+                      class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column - Summary (1/3) - Hidden on mobile, shown on desktop -->
+            <div #rightCol class="hidden lg:block w-full lg:w-80 flex-shrink-0">
+              <aside #summaryAside [ngStyle]="summaryStyles"
+                class="space-y-6 overflow-y-auto transition-shadow duration-200"
+                style="max-height: calc(100vh - 3rem);">
+
+                <!-- Totals Card -->
+                <div
+                  class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+                  <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                        </path>
+                      </svg>
+                      Resumen
+                    </h2>
+                  </div>
+
+                  <div class="p-6">
+                    <div class="space-y-3">
+                      <div class="flex justify-between items-center text-gray-700 dark:text-gray-300">
+                        <span>Subtotal:</span>
+                        <span class="font-semibold">{{ formatCurrency(subtotal()) }}</span>
+                      </div>
+                      <div class="flex justify-between items-center text-gray-700 dark:text-gray-300">
+                        <span>IVA:</span>
+                        <span class="font-semibold">{{ formatCurrency(taxAmount()) }}</span>
+                      </div>
+                      <div class="flex justify-between items-center text-gray-700 dark:text-gray-300"
+                        *ngIf="irpfEnabled()">
+                        <span>IRPF:</span>
+                        <span class="font-semibold">-{{ formatCurrency(irpfAmount()) }}</span>
+                      </div>
+                      <div class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+                        <div class="flex justify-between items-center">
+                          <span class="text-lg font-bold text-gray-900 dark:text-gray-100">TOTAL:</span>
+                          <span class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{
+                            formatCurrency(displayAmount()) }}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div class="mt-6 space-y-3">
-                    <button type="submit" [disabled]="loading()"
-                      class="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                      @if (loading()) {
-                      <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-                        </circle>
-                        <path class="opacity-75" fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                        </path>
-                      </svg>
-                      }
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                      {{ editMode() ? 'Actualizar' : 'Crear' }} Presupuesto
-                    </button>
-
-                    <button type="button" (click)="cancel()"
-                      class="w-full bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2">
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
-                        </path>
-                      </svg>
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Recurrence Card -->
-                <div
-                  class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6 border border-gray-200 dark:border-gray-700">
-                  <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
-                      </path>
-                    </svg>
-                    Recurrencia
-                  </h2>
-
-                  <div class="grid grid-cols-1 gap-4">
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Tipo
-                        @if (recurrenceLocked()) {
-                        <span
-                          class="ml-2 px-2 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full">
-                          🔒 Bloqueado
-                        </span>
-                        }
-                      </label>
-                      <select formControlName="recurrence_type"
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        [class.bg-gray-100]="recurrenceLocked()" [ngClass]="{'dark:bg-gray-800': recurrenceLocked()}"
-                        [class.cursor-not-allowed]="recurrenceLocked()">
-                        <option value="none">Puntual (por defecto)</option>
-                        <option value="weekly">Semanal</option>
-                        <option value="monthly">Mensual</option>
-                        <option value="quarterly">Trimestral</option>
-                        <option value="yearly">Anual</option>
-                      </select>
-                      @if (recurrenceLocked() && recurrenceLockedReason()) {
-                      <p class="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
-                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path fill-rule="evenodd"
-                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                            clip-rule="evenodd"></path>
+                    <div class="mt-6 space-y-3">
+                      <button type="submit" [disabled]="loading()"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        @if (loading()) {
+                        <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                          </circle>
+                          <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                          </path>
                         </svg>
-                        {{ recurrenceLockedReason() }}
-                      </p>
+                        }
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                          </path>
+                        </svg>
+                        {{ editMode() ? 'Actualizar' : 'Crear' }} Presupuesto
+                      </button>
+
+                      <button type="button" (click)="cancel()"
+                        class="w-full bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12">
+                          </path>
+                        </svg>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Recurrence Card -->
+                  <div
+                    class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6 border border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                        </path>
+                      </svg>
+                      Recurrencia
+                    </h2>
+
+                    <div class="grid grid-cols-1 gap-4">
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Tipo
+                          @if (recurrenceLocked()) {
+                          <span
+                            class="ml-2 px-2 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full">
+                            🔒 Bloqueado
+                          </span>
+                          }
+                        </label>
+                        <select formControlName="recurrence_type"
+                          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                          [class.bg-gray-100]="recurrenceLocked()" [ngClass]="{'dark:bg-gray-800': recurrenceLocked()}"
+                          [class.cursor-not-allowed]="recurrenceLocked()">
+                          <option value="none">Puntual (por defecto)</option>
+                          <option value="weekly">Semanal</option>
+                          <option value="monthly">Mensual</option>
+                          <option value="quarterly">Trimestral</option>
+                          <option value="yearly">Anual</option>
+                        </select>
+                        @if (recurrenceLocked() && recurrenceLockedReason()) {
+                        <p class="text-xs text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1">
+                          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                              clip-rule="evenodd"></path>
+                          </svg>
+                          {{ recurrenceLockedReason() }}
+                        </p>
+                        }
+                      </div>
+
+                      <!-- Weekly: day of week -->
+                      @if (quoteForm.get('recurrence_type')?.value === 'weekly') {
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Día de la
+                          semana</label>
+                        <select formControlName="recurrence_day"
+                          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                          <option [ngValue]="0">Domingo</option>
+                          <option [ngValue]="1">Lunes</option>
+                          <option [ngValue]="2">Martes</option>
+                          <option [ngValue]="3">Miércoles</option>
+                          <option [ngValue]="4">Jueves</option>
+                          <option [ngValue]="5">Viernes</option>
+                          <option [ngValue]="6">Sábado</option>
+                        </select>
+                      </div>
+                      }
+
+                      <!-- Monthly/Quarterly/Yearly: day of month -->
+                      @if (['monthly','quarterly','yearly'].includes(quoteForm.get('recurrence_type')?.value)) {
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Día de ejecución
+                          (1-28)</label>
+                        <input type="number" min="1" max="28" formControlName="recurrence_day"
+                          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="1" />
+                      </div>
+                      }
+
+                      <!-- Start/End dates shown for any recurring type -->
+                      @if (quoteForm.get('recurrence_type')?.value !== 'none') {
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha
+                          inicio</label>
+                        <input type="date" formControlName="recurrence_start_date"
+                          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha fin</label>
+                        <input type="date" formControlName="recurrence_end_date"
+                          class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
                       }
                     </div>
 
-                    <!-- Weekly: day of week -->
-                    @if (quoteForm.get('recurrence_type')?.value === 'weekly') {
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Día de la
-                        semana</label>
-                      <select formControlName="recurrence_day"
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                        <option [ngValue]="0">Domingo</option>
-                        <option [ngValue]="1">Lunes</option>
-                        <option [ngValue]="2">Martes</option>
-                        <option [ngValue]="3">Miércoles</option>
-                        <option [ngValue]="4">Jueves</option>
-                        <option [ngValue]="5">Viernes</option>
-                        <option [ngValue]="6">Sábado</option>
-                      </select>
-                    </div>
-                    }
-
-                    <!-- Monthly/Quarterly/Yearly: day of month -->
-                    @if (['monthly','quarterly','yearly'].includes(quoteForm.get('recurrence_type')?.value)) {
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Día de ejecución
-                        (1-28)</label>
-                      <input type="number" min="1" max="28" formControlName="recurrence_day"
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="1" />
-                    </div>
-                    }
-
-                    <!-- Start/End dates shown for any recurring type -->
-                    @if (quoteForm.get('recurrence_type')?.value !== 'none') {
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha
-                        inicio</label>
-                      <input type="date" formControlName="recurrence_start_date"
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha fin</label>
-                      <input type="date" formControlName="recurrence_end_date"
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                    </div>
-                    }
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                      • Puntual: no se programa repetición.
+                      • Semanal: selecciona un día de la semana.
+                      • Mensual/Trimestral/Anual: ejecuta el día del mes indicado (1-28).
+                    </p>
                   </div>
-
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
-                    • Puntual: no se programa repetición.
-                    • Semanal: selecciona un día de la semana.
-                    • Mensual/Trimestral/Anual: ejecuta el día del mes indicado (1-28).
-                  </p>
                 </div>
-              </div>
 
-              <!-- Info Card -->
-              <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-6">
-                <h3 class="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-3 flex items-center gap-2">
-                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd"
-                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                      clip-rule="evenodd"></path>
-                  </svg>
-                  Información
-                </h3>
-                <ul class="space-y-2 text-sm text-blue-800 dark:text-blue-200">
-                  <li class="flex items-start gap-2">
-                    <svg class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <!-- Info Card -->
+                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-6">
+                  <h3 class="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-3 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
                         clip-rule="evenodd"></path>
                     </svg>
-                    Los totales se calculan automáticamente
-                  </li>
-                  <li class="flex items-start gap-2">
-                    <svg class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clip-rule="evenodd"></path>
-                    </svg>
-                    Puedes agregar múltiples items
-                  </li>
-                  <li class="flex items-start gap-2">
-                    <svg class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clip-rule="evenodd"></path>
-                    </svg>
-                    IVA por ítem; IRPF se aplica como retención si está activado
-                  </li>
-                </ul>
-              </div>
+                    Información
+                  </h3>
+                  <ul class="space-y-2 text-sm text-blue-800 dark:text-blue-200">
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clip-rule="evenodd"></path>
+                      </svg>
+                      Los totales se calculan automáticamente
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clip-rule="evenodd"></path>
+                      </svg>
+                      Puedes agregar múltiples items
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clip-rule="evenodd"></path>
+                      </svg>
+                      IVA por ítem; IRPF se aplica como retención si está activado
+                    </li>
+                  </ul>
+                </div>
 
-            </aside>
-            <!-- Spacer to avoid layout jump when fixed -->
-            <div class="hidden lg:block" [style.height.px]="fixedSpacerHeight"></div>
+              </aside>
+              <!-- Spacer to avoid layout jump when fixed -->
+              <div class="hidden lg:block" [style.height.px]="fixedSpacerHeight"></div>
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
-  </div>

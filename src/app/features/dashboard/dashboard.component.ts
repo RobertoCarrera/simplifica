@@ -10,6 +10,7 @@ import { Customer } from '../../models/customer';
 
 import { AuthService } from '../../services/auth.service';
 import { TicketFormComponent } from '../tickets/ticket-form/ticket-form.component';
+import { QuoteFormComponent } from '../quotes/quote-form/quote-form.component';
 import { AppModalComponent } from '../../shared/ui/app-modal/app-modal.component';
 import { FormNewCustomerComponent } from "../customers/form-new-customer/form-new-customer.component";
 
@@ -20,6 +21,7 @@ import { FormNewCustomerComponent } from "../customers/form-new-customer/form-ne
         CommonModule,
         RouterModule,
         TicketFormComponent,
+        QuoteFormComponent,
         FormNewCustomerComponent
     ],
     templateUrl: './dashboard.component.html',
@@ -45,6 +47,7 @@ export class DashboardComponent implements OnInit {
     // Modal State
     showTicketForm = signal(false);
     showCustomerForm = signal(false);
+    showQuoteForm = signal(false);
 
     // Module check
     hasTicketsModule = computed(() => {
@@ -81,7 +84,7 @@ export class DashboardComponent implements OnInit {
                 limit: 5,
                 sortBy: 'created_at',
                 sortOrder: 'desc'
-            });
+            }, false);
 
             const customers = await firstValueFrom(customers$);
             if (customers) {

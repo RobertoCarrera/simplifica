@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, HostListener, ViewChild, ElementRef, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, AfterViewInit, HostListener, ViewChild, ElementRef, inject, signal, computed, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -98,6 +98,12 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   quoteForm!: FormGroup;
   loading = signal(false);
   error = signal<string | null>(null);
+
+  @Input() isModal = false;
+  @Output() close = new EventEmitter<void>();
+  @Output() saved = new EventEmitter<void>();
+
+  // Signals for dropdowns
   editMode = signal(false);
   quoteId = signal<string | null>(null);
 
@@ -1642,7 +1648,11 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
             this.loading.set(false);
             console.log('✅ Presupuesto actualizado correctamente');
             this.toast.success('Presupuesto actualizado', 'Los cambios fueron guardados correctamente.');
-            this.router.navigate(['/presupuestos', quote.id]);
+            if (this.isModal) {
+              this.saved.emit();
+            } else {
+              this.router.navigate(['/presupuestos', quote.id]);
+            }
           } catch (err: any) {
             console.error('❌ Error al actualizar items:', err);
             this.error.set('Error al actualizar items: ' + err.message);
@@ -1684,7 +1694,11 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
           this.loading.set(false);
           console.log('✅ Presupuesto creado correctamente');
           this.toast.success('Presupuesto creado', 'El presupuesto se creó correctamente.');
-          this.router.navigate(['/presupuestos', quote.id]);
+          if (this.isModal) {
+            this.saved.emit();
+          } else {
+            this.router.navigate(['/presupuestos', quote.id]);
+          }
         },
         error: (err) => {
           console.error('❌ Error al crear presupuesto:', err);
@@ -1697,7 +1711,11 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   }
 
   cancel() {
-    this.router.navigate(['/presupuestos']);
+    if (this.isModal) {
+      this.close.emit();
+    } else {
+      this.router.navigate(['/presupuestos']);
+    }
   }
 
   formatCurrency(amount: number): string {

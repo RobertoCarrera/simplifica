@@ -209,7 +209,7 @@
                             <span class="text-sm font-medium text-gray-300 group-hover:text-white">Nuevo Ticket</span>
                         </button>
 
-                        <button [routerLink]="['/presupuestos/new']"
+                        <button type="button" (click)="showQuoteForm.set(true)"
                             class="p-4 bg-gray-800 hover:bg-gray-700 rounded-xl border border-gray-700 hover:border-gray-600 transition-all group text-center h-full flex flex-col items-center justify-center gap-3">
                             <div
                                 class="w-10 h-10 rounded-full bg-purple-500/10 text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -261,4 +261,8 @@
     <app-form-new-customer *ngIf="showCustomerForm()" [companyId]="authService.companyId()"
         (close)="showCustomerForm.set(false)" (saved)="onCustomerSaved()">
     </app-form-new-customer>
+
+    <app-quote-form *ngIf="showQuoteForm()" [isModal]="true" (close)="showQuoteForm.set(false)"
+        (saved)="showQuoteForm.set(false); refreshDashboard()">
+    </app-quote-form>
 </div>
