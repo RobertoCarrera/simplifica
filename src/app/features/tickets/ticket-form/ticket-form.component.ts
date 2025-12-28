@@ -11,6 +11,7 @@ import { SimpleSupabaseService, SimpleClient } from '../../../services/simple-su
 import { ToastService } from '../../../services/toast.service';
 import { AuthService } from '../../../services/auth.service';
 import { ProductMetadataService } from '../../../services/product-metadata.service';
+import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 import { firstValueFrom } from 'rxjs';
 
 export interface TicketTag {
@@ -60,6 +61,7 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
     public authService = inject(AuthService);
     private devicesService = inject(DevicesService);
     private productMetadataService = inject(ProductMetadataService);
+    private globalTagsService = inject(GlobalTagsService);
 
     // Form State
     formData: Partial<Ticket> = {};
@@ -118,7 +120,7 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
     selectedDeviceImages: any[] = [];
 
     // Tags
-    availableTags: TicketTag[] = [];
+    availableTags: GlobalTag[] = [];
     selectedTags: string[] = [];
     tagSearchText: string = '';
 
@@ -253,24 +255,19 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
 
     // --- Tags ---
     async loadTags() {
-        // Similar logic to SupabaseTickets
-        try {
-            const client = this.simpleSupabase.getClient();
-            const { data } = await (client as any)
-                .from('ticket_tags')
-                .select('*')
-                .or(`company_id.eq.${this.companyId},company_id.is.null`)
-                .order('name');
-
-            this.availableTags = data || [];
-        } catch (e) { console.error('Error loading tags', e); }
+        this.globalTagsService.getTags('tickets').subscribe({
+            next: (tags) => {
+                this.availableTags = tags;
+            },
+            error: (err) => console.error('Error loading tags', err)
+        });
     }
 
     async loadTagsForTicket(ticketId: string): Promise<string[]> {
         const client = this.simpleSupabase.getClient();
         const { data } = await (client as any)
             .from('ticket_tag_relations')
-            .select('tag:ticket_tags(name)')
+            .select('tag:global_tags(name)')
             .eq('ticket_id', ticketId);
 
         return (data || []).map((r: any) => r.tag?.name).filter(Boolean);
@@ -280,6 +277,19 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
         const tag = this.availableTags.find(t => t.name === tagName);
         return tag?.color || '#6b7280';
     }
+
+    getContrastColor(hexColor: string): string {
+        if (!hexColor) return '#ffffff';
+        // Handle #RRGGBB format
+        const r = parseInt(hexColor.substr(1, 2), 16);
+        const g = parseInt(hexColor.substr(3, 2), 16);
+        const b = parseInt(hexColor.substr(5, 2), 16);
+        // YIQ equation
+        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        return (yiq >= 128) ? '#000000' : '#ffffff';
+    }
+
+
 
     addTagToTicket(tagName: string) { // Updated to accept name directly
         if (!tagName) return;

@@ -8,13 +8,15 @@ import { SupabaseCustomersService } from '../../../services/supabase-customers.s
 import { ToastService } from '../../../services/toast.service';
 import { HoneypotService } from '../../../services/honeypot.service';
 import { AppModalComponent } from '../../../shared/ui/app-modal/app-modal.component';
+import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
 import { AuthService } from '../../../services/auth.service';
 import { AddressesService } from '../../../services/addresses.service';
+import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 
 @Component({
   selector: 'app-form-new-customer',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppModalComponent],
+  imports: [CommonModule, FormsModule, AppModalComponent, TagManagerComponent],
   templateUrl: './form-new-customer.component.html',
   styleUrl: './form-new-customer.component.scss'
 })
@@ -35,6 +37,10 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   private honeypotService = inject(HoneypotService);
   private auth = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
+  private tagsService = inject(GlobalTagsService);
+
+  // States
+  pendingTags: GlobalTag[] = [];
 
   // Loading state
   isLoading = signal(false);
@@ -485,11 +491,31 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       }
 
       this.customersService.createCustomer(customerData).subscribe({
-        next: (res) => {
-          this.toastService.success('Cliente creado correctamente', 'Éxito');
-          this.saved.emit();
-          this.close.emit();
-          this.isLoading.set(false);
+        next: (res: any) => {
+          // If we have pending tags, save them now
+          if (this.pendingTags.length > 0 && res && (res.id || res.ID || res.Id)) {
+            const newId = res.id || res.ID || res.Id;
+            this.tagsService.assignMultipleTags('clients', newId, this.pendingTags.map(t => t.id)).subscribe({
+              next: () => {
+                this.toastService.success('Cliente creado correctamente', 'Éxito');
+                this.saved.emit();
+                this.close.emit();
+                this.isLoading.set(false);
+              },
+              error: (err) => {
+                console.error('Error saving tags', err);
+                this.toastService.warning('Cliente creado', 'Pero hubo un error al guardar las etiquetas');
+                this.saved.emit();
+                this.close.emit();
+                this.isLoading.set(false);
+              }
+            });
+          } else {
+            this.toastService.success('Cliente creado correctamente', 'Éxito');
+            this.saved.emit();
+            this.close.emit();
+            this.isLoading.set(false);
+          }
         },
         error: (err) => {
           console.error('Error creating customer', err);

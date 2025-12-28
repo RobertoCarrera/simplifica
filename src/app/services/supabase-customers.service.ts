@@ -523,18 +523,20 @@ export class SupabaseCustomersService {
    * Crear cliente usando método estándar
    * SECURITY: In production, always use Edge Function for server-side validation and normalization
    */
+  /**
+   * Crear cliente usando método estándar (ahora via RPC por seguridad y robustez)
+   */
   private createCustomerStandard(customer: CreateCustomerDev): Observable<Customer> {
     const companyId = this.authService.companyId();
     if (!companyId) {
       return throwError(() => new Error('Usuario no tiene empresa asignada'));
     }
 
-    devLog('Creando cliente via Edge Function (producción segura)', { companyId });
+    devLog('Creando cliente via RPC (upsert_client)', { companyId });
 
-    // PRODUCTION: Always use Edge Function for security
-    return from(this.callUpsertClientEdgeFunction(customer, companyId)).pipe(
+    return from(this.callUpsertClientRpc(customer)).pipe(
       tap(newCustomer => {
-        devSuccess('Cliente creado via Edge Function', newCustomer.id);
+        devSuccess('Cliente creado via RPC', newCustomer.id);
         const currentCustomers = this.customersSubject.value;
         this.customersSubject.next([newCustomer, ...currentCustomers]);
         this.loadingSubject.next(false);
@@ -542,76 +544,53 @@ export class SupabaseCustomersService {
       }),
       catchError(error => {
         this.loadingSubject.next(false);
-        devError('Error al crear cliente via Edge Function', error);
+        devError('Error al crear cliente via RPC', error);
         return throwError(() => error);
       })
     );
   }
 
   /**
-   * SECURITY: Call Edge Function for client upsert (create/update)
-   * Handles server-side validation, sanitization, and normalization
+   * SECURITY: Call RPC for client upsert (create/update)
+   * Replaces the old Edge Function logic.
    */
-  private async callUpsertClientEdgeFunction(customer: CreateCustomerDev | UpdateCustomer, companyId?: string): Promise<Customer> {
-    const session = await this.supabase.auth.getSession();
-    const token = session.data.session?.access_token;
-    if (!token) throw new Error('No auth token for Edge Function');
-
+  private async callUpsertClientRpc(customer: CreateCustomerDev | UpdateCustomer): Promise<Customer> {
     const payload: any = {
-      // All keys must start with p_ (canonical format required by Edge Function)
-      p_client_type: (customer as any).client_type || 'individual',
-      p_name: (customer as any).name,
-      p_apellidos: (customer as any).apellidos ?? null,
-      p_email: (customer as any).email ?? null,
-      p_phone: (customer as any).phone ?? null,
-      p_dni: (customer as any).dni ?? null,
-      p_business_name: (customer as any).business_name ?? null,
-      p_cif_nif: (customer as any).cif_nif ?? null,
-      p_trade_name: (customer as any).trade_name ?? null,
-      p_legal_representative_name: (customer as any).legal_representative_name ?? null,
-      p_legal_representative_dni: (customer as any).legal_representative_dni ?? null,
-      p_mercantile_registry_data: (customer as any).mercantile_registry_data ?? null,
+      // Clean keys matching RPC expectation
+      client_type: (customer as any).client_type || 'individual',
+      name: (customer as any).name,
+      apellidos: (customer as any).apellidos ?? null,
+      email: (customer as any).email ?? null,
+      phone: (customer as any).phone ?? null,
+      dni: (customer as any).dni ?? null,
+      business_name: (customer as any).business_name ?? null,
+      cif_nif: (customer as any).cif_nif ?? null,
+      trade_name: (customer as any).trade_name ?? null,
+      legal_representative_name: (customer as any).legal_representative_name ?? null,
+      legal_representative_dni: (customer as any).legal_representative_dni ?? null,
+      mercantile_registry_data: (customer as any).mercantile_registry_data ?? null,
+      metadata: (customer as any).metadata ?? {},
     };
 
     // If updating, include ID
     if ('id' in customer && (customer as any).id) {
-      payload.p_id = (customer as any).id;
+      payload.id = (customer as any).id;
     }
 
     // Add direccion_id if present
     if ('direccion_id' in customer) {
-      payload.p_direccion_id = (customer as any).direccion_id ?? null;
+      payload.direccion_id = (customer as any).direccion_id ?? null;
     }
 
-    const cfg = this.runtimeConfig.get();
-    const fnBase = cfg.edgeFunctionsBaseUrl || `${cfg.supabase.url.replace(/\/$/, '')}/functions/v1`;
-    const fnUrl = `${fnBase.replace(/\/$/, '')}/upsert-client`;
+    const { data, error } = await this.supabase.rpc('upsert_client', { payload });
 
-    const res = await fetch(fnUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'apikey': cfg.supabase.anonKey,
-        'x-client-info': 'simplifica-app',
-      },
-      mode: 'cors',
-      credentials: 'omit',
-      body: JSON.stringify(payload),
-    });
+    if (error) throw error;
+    if (!data) throw new Error('No data returned from upsert_client');
 
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const errorMsg = json?.error || `Edge Function failed with status ${res.status}`;
-      throw new Error(errorMsg);
-    }
-
-    const row = json.client;
-    if (!row) throw new Error('No client returned from Edge Function');
-
-    const converted: Customer = this.toCustomerFromClient(row);
-    return converted;
+    // Convert response (jsonb) to Customer
+    return this.toCustomerFromClient(data);
   }
+
 
   /**
    * Actualizar un cliente existente
@@ -632,7 +611,9 @@ export class SupabaseCustomersService {
    * Actualizar cliente usando RPC en desarrollo
    */
   private updateCustomerRpc(id: string, updates: UpdateCustomer): Observable<Customer> {
-    devLog('Actualizando cliente via RPC', { id, userId: this.currentDevUserId });
+    devLog('Actualizando cliente via RPC', {
+      id, userId: this.currentDevUserId
+    });
 
     const rpcCall = this.supabase.rpc('update_customer_dev', {
       customer_id: id,
@@ -682,12 +663,11 @@ export class SupabaseCustomersService {
    * SECURITY: In production, use Edge Function for server-side validation
    */
   private updateCustomerStandard(id: string, updates: UpdateCustomer): Observable<Customer> {
-    devLog('Actualizando cliente via Edge Function (producción segura)', { id });
+    devLog('Actualizando cliente via RPC (upsert_client)', { id });
 
-    // PRODUCTION: Always use Edge Function for security
-    return from(this.callUpsertClientEdgeFunction({ ...updates, id } as any, undefined)).pipe(
+    return from(this.callUpsertClientRpc({ ...updates, id } as any)).pipe(
       tap(updatedCustomer => {
-        devSuccess('Cliente actualizado via Edge Function', updatedCustomer.id);
+        devSuccess('Cliente actualizado via RPC', updatedCustomer.id);
         const currentCustomers = this.customersSubject.value;
         const updatedList = currentCustomers.map(c => c.id === id ? updatedCustomer : c);
         this.customersSubject.next(updatedList);
@@ -695,7 +675,7 @@ export class SupabaseCustomersService {
       }),
       catchError(error => {
         this.loadingSubject.next(false);
-        devError('Error al actualizar cliente via Edge Function', error);
+        devError('Error al actualizar cliente via RPC', error);
         return throwError(() => error);
       })
     );
@@ -720,7 +700,9 @@ export class SupabaseCustomersService {
    * Eliminar cliente usando RPC en desarrollo
    */
   private deleteCustomerRpc(id: string): Observable<void> {
-    devLog('Eliminando cliente via RPC', { id, userId: this.currentDevUserId });
+    devLog('Eliminando cliente via RPC', {
+      id, userId: this.currentDevUserId
+    });
 
     const rpcCall = this.supabase.rpc('delete_customer_dev', {
       customer_id: id,
@@ -906,7 +888,9 @@ export class SupabaseCustomersService {
    * Obtener estadísticas usando RPC en desarrollo
    */
   private getCustomerStatsRpc(): Observable<CustomerStats> {
-    devLog('Obteniendo estadísticas via RPC', { userId: this.currentDevUserId });
+    devLog('Obteniendo estadísticas via RPC', {
+      userId: this.currentDevUserId
+    });
 
     return from(
       this.supabase.rpc('get_customer_stats_dev', {

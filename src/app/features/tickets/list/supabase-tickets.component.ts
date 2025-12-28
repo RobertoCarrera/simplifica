@@ -219,7 +219,7 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
     const ids = this.tickets.map(t => t.id);
     const { data } = await this.simpleSupabase.getClient()
       .from('ticket_tag_relations')
-      .select('ticket_id, tag:ticket_tags(name)')
+      .select('ticket_id, tag:global_tags(name)')
       .in('ticket_id', ids);
 
     const map: any = {};

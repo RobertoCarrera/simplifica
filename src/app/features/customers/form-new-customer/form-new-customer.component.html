@@ -236,6 +236,17 @@
 
             </form>
 
+            <!-- Tags Section -->
+            <div class="mt-6 border-t border-gray-100 dark:border-gray-700 pt-6 px-1">
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                    <i class="fas fa-tags text-indigo-500"></i>
+                    Etiquetas
+                </h3>
+                <app-tag-manager [entityId]="customer?.id" entityType="clients"
+                    (pendingTagsChange)="pendingTags = $event">
+                </app-tag-manager>
+            </div>
+
             <!-- create-locality modal (moved out of the parent <form> to avoid ngModel inside a form) -->
             <app-modal [visible]="showCreateLocalityModal" (close)="closeCreateLocality()">
                 <h3 class="text-lg font-semibold mb-2">Crear nueva localidad</h3>

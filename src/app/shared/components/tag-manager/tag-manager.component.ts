@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal } from '@angular/core';
+import { Component, Input, OnInit, inject, signal, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
@@ -11,28 +11,50 @@ import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags
     styleUrls: ['./tag-manager.component.scss']
 })
 export class TagManagerComponent implements OnInit {
-    @Input({ required: true }) entityId!: string;
+    @Input() entityId?: string | null;
     @Input({ required: true }) entityType!: 'clients' | 'tickets';
+    @Output() pendingTagsChange = new EventEmitter<GlobalTag[]>();
 
     private tagsService = inject(GlobalTagsService);
 
     // State
     assignedTags = signal<GlobalTag[]>([]);
     availableTags = signal<GlobalTag[]>([]);
+    topTags = signal<GlobalTag[]>([]);
 
     // UI State
     isAdding = signal(false);
     searchTerm = signal('');
 
     // Computed
+    // Computed
+    get showRecommendations() {
+        // Show recommendations only if search is empty AND we have enough total tags
+        return !this.searchTerm() && this.topTags().length > 0 && this.availableTags().length >= 5;
+    }
+
     get filteredTags() {
         const term = this.searchTerm().toLowerCase();
         const assignedIds = new Set(this.assignedTags().map(t => t.id));
 
-        return this.availableTags().filter(tag =>
-            !assignedIds.has(tag.id) &&
-            tag.name.toLowerCase().includes(term)
-        );
+        let tags = this.availableTags().filter(tag => !assignedIds.has(tag.id));
+
+        if (term) {
+            return tags.filter(tag => tag.name.toLowerCase().includes(term));
+        }
+
+        // If showing recommendations, exclude them from the main list to avoid duplication
+        if (this.showRecommendations) {
+            const recommendedIds = new Set(this.recommendedTags.map(t => t.id));
+            tags = tags.filter(tag => !recommendedIds.has(tag.id));
+        }
+
+        return tags;
+    }
+
+    get recommendedTags() {
+        const assignedIds = new Set(this.assignedTags().map(t => t.id));
+        return this.topTags().filter(t => !assignedIds.has(t.id));
     }
 
     ngOnInit() {
@@ -40,14 +62,21 @@ export class TagManagerComponent implements OnInit {
     }
 
     loadData() {
-        // Load assigned tags
-        this.tagsService.getEntityTags(this.entityType, this.entityId).subscribe(tags => {
-            this.assignedTags.set(tags);
-        });
+        // Load assigned tags if entityId exists
+        if (this.entityId) {
+            this.tagsService.getEntityTags(this.entityType, this.entityId).subscribe(tags => {
+                this.assignedTags.set(tags);
+            });
+        }
 
         // Load all available tags for this scope
         this.tagsService.getTags(this.entityType).subscribe(tags => {
             this.availableTags.set(tags);
+        });
+
+        // Load top tags for recommendations
+        this.tagsService.getTopTags(this.entityType, 5).subscribe(tags => {
+            this.topTags.set(tags);
         });
     }
 
@@ -57,23 +86,37 @@ export class TagManagerComponent implements OnInit {
     }
 
     addTag(tag: GlobalTag) {
-        this.tagsService.assignTag(this.entityType, this.entityId, tag.id).subscribe({
-            next: () => {
-                this.assignedTags.update(tags => [...tags, tag]);
-                this.isAdding.set(false);
-                this.searchTerm.set('');
-            },
-            error: (err) => console.error('Error adding tag:', err)
-        });
+        if (this.entityId) {
+            // Immediate update mode
+            this.tagsService.assignTag(this.entityType, this.entityId, tag.id).subscribe({
+                next: () => {
+                    this.assignedTags.update(tags => [...tags, tag]);
+                    this.isAdding.set(false);
+                    this.searchTerm.set('');
+                },
+                error: (err) => console.error('Error adding tag:', err)
+            });
+        } else {
+            // Pending mode
+            this.assignedTags.update(tags => [...tags, tag]);
+            this.pendingTagsChange.emit(this.assignedTags());
+            this.isAdding.set(false);
+            this.searchTerm.set('');
+        }
     }
 
     removeTag(tagId: string) {
-        this.tagsService.removeTag(this.entityType, this.entityId, tagId).subscribe({
-            next: () => {
-                this.assignedTags.update(tags => tags.filter(t => t.id !== tagId));
-            },
-            error: (err) => console.error('Error removing tag:', err)
-        });
+        if (this.entityId) {
+            this.tagsService.removeTag(this.entityType, this.entityId, tagId).subscribe({
+                next: () => {
+                    this.assignedTags.update(tags => tags.filter(t => t.id !== tagId));
+                },
+                error: (err) => console.error('Error removing tag:', err)
+            });
+        } else {
+            this.assignedTags.update(tags => tags.filter(t => t.id !== tagId));
+            this.pendingTagsChange.emit(this.assignedTags());
+        }
     }
 
     createAndAddTag() {
