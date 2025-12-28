@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, HostListener, ViewChild, ElementRef, inject, signal, computed, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, AfterViewInit, HostListener, inject, signal, computed, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -289,16 +289,12 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     return s.has('moduloMaterial');
   }
 
-  // Sticky sidebar handling
-  @ViewChild('rightCol') rightCol!: ElementRef<HTMLDivElement>;
-  @ViewChild('summaryAside') summaryAside!: ElementRef<HTMLElement>;
-  private stickyInitialTop = 0;
-  private isFixed = false;
-  private rAFPending = false;
-  fixedSpacerHeight = 0;
-  summaryStyles: { [k: string]: any } = {};
+
 
   ngOnInit() {
+    if (this.isModal) {
+      document.body.style.overflow = 'hidden';
+    }
     this.initForm();
     this.loadClients();
     this.loadServices();
@@ -363,11 +359,7 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    // Initialize sticky after view is ready
-    setTimeout(() => {
-      this.initSticky();
-      this.scheduleStickyUpdate();
-    });
+    // No initialization needed for CSS sticky
   }
 
   @HostListener('document:click', ['$event'])
@@ -405,68 +397,12 @@ export class QuoteFormComponent implements OnInit, AfterViewInit {
     }
   }
 
-  @HostListener('window:scroll')
-  onWindowScroll() { this.scheduleStickyUpdate(); }
-
-  @HostListener('window:resize')
-  onWindowResize() {
-    this.initSticky();
-    this.scheduleStickyUpdate();
-  }
-
-  private initSticky() {
-    if (!this.rightCol) return;
-    const rect = this.rightCol.nativeElement.getBoundingClientRect();
-    this.stickyInitialTop = window.scrollY + rect.top;
-  }
-
-  private scheduleStickyUpdate() {
-    if (this.rAFPending) return;
-    this.rAFPending = true;
-    requestAnimationFrame(() => {
-      this.rAFPending = false;
-      this.applySticky();
-    });
-  }
-
-  private applySticky() {
-    // Only apply on large screens (lg: 1024px)
-    if (window.innerWidth < 1024 || !this.rightCol) {
-      this.isFixed = false;
-      this.fixedSpacerHeight = 0;
-      this.summaryStyles = {};
-      return;
-    }
-
-    const offset = 24; // matches top-6
-    const containerRect = this.rightCol.nativeElement.getBoundingClientRect();
-    const width = Math.round(containerRect.width);
-
-    const shouldFix = window.scrollY + offset >= this.stickyInitialTop;
-    if (shouldFix) {
-      const left = Math.round(containerRect.left + window.scrollX);
-      // set spacer height once when entering fixed
-      if (!this.isFixed && this.summaryAside) {
-        this.fixedSpacerHeight = this.summaryAside.nativeElement.offsetHeight || 0;
-      }
-      this.isFixed = true;
-      this.summaryStyles = {
-        position: 'fixed',
-        top: offset + 'px',
-        left: left + 'px',
-        width: width + 'px',
-        zIndex: 40,
-        transition: 'top 180ms ease-out, left 180ms ease-out, width 180ms ease-out'
-      };
-
-
-
-    } else {
-      this.isFixed = false;
-      this.fixedSpacerHeight = 0;
-      this.summaryStyles = {};
+  ngOnDestroy() {
+    if (this.isModal) {
+      document.body.style.overflow = '';
     }
   }
+
 
   initForm() {
     const today = new Date().toISOString().split('T')[0];

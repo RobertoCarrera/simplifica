@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -8,9 +8,23 @@ import { CommonModule } from '@angular/common';
   templateUrl: './app-modal.component.html',
   styleUrls: ['./app-modal.component.scss']
 })
-export class AppModalComponent {
+export class AppModalComponent implements OnChanges, OnDestroy {
   @Input() visible: boolean = false;
   @Output() close = new EventEmitter<void>();
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['visible']) {
+      if (this.visible) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    }
+  }
+
+  ngOnDestroy() {
+    document.body.style.overflow = '';
+  }
 
   backdropClick() {
     this.close.emit();

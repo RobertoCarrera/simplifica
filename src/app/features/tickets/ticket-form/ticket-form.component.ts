@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output, inject, computed, HostListener } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject, computed, HostListener, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Ticket, SupabaseTicketsService } from '../../../services/supabase-tickets.service';
@@ -28,7 +28,7 @@ export interface TicketTag {
     templateUrl: './ticket-form.component.html',
     styleUrls: ['./ticket-form.component.scss']
 })
-export class TicketFormComponent implements OnInit {
+export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
     // Inputs/Outputs
     @Input() companyId: string = '';
     @Input() showForm = false; // Add showForm input to handle visibility logic references if any
@@ -145,6 +145,20 @@ export class TicketFormComponent implements OnInit {
             // Ensure selected customer context is loaded
             this.selectCustomer(this.editingTicket.client);
         }
+    }
+
+    ngOnChanges(changes: SimpleChanges) {
+        if (changes['showForm']) {
+            if (this.showForm) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+            }
+        }
+    }
+
+    ngOnDestroy() {
+        document.body.style.overflow = '';
     }
 
     async loadCustomers() {

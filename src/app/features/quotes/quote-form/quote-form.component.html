@@ -928,9 +928,8 @@
             </div>
 
             <!-- Right Column - Summary (1/3) - Hidden on mobile, shown on desktop -->
-            <div #rightCol class="hidden lg:block w-full lg:w-80 flex-shrink-0">
-              <aside #summaryAside [ngStyle]="summaryStyles"
-                class="space-y-6 overflow-y-auto transition-shadow duration-200"
+            <div class="hidden lg:block w-full lg:w-80 flex-shrink-0">
+              <aside class="sticky top-10 space-y-6 overflow-y-auto transition-shadow duration-200"
                 style="max-height: calc(100vh - 3rem);">
 
                 <!-- Totals Card -->
@@ -1139,8 +1138,6 @@
                 </div>
 
               </aside>
-              <!-- Spacer to avoid layout jump when fixed -->
-              <div class="hidden lg:block" [style.height.px]="fixedSpacerHeight"></div>
             </div>
           </div>
         </form>
