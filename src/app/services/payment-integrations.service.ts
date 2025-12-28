@@ -41,78 +41,50 @@ export class PaymentIntegrationsService {
   /**
    * Get all payment integrations for a company (credentials are masked)
    */
+  /**
+   * Get all payment integrations for a company (credentials are masked)
+   */
   async getIntegrations(companyId: string): Promise<PaymentIntegration[]> {
-    const client = this.supabaseClient.instance;
-    const { data: { session } } = await client.auth.getSession();
-    const token = session?.access_token;
+    const { data, error } = await this.supabaseClient.instance
+      .rpc('get_payment_integrations', { p_company_id: companyId });
 
-    const res = await fetch(`${this.fnBase}/payment-integrations?company_id=${companyId}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token ?? ''}`,
-        'apikey': environment.supabase.anonKey,
-      }
-    });
-
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || 'Error al obtener integraciones');
-    return json?.integrations || [];
+    if (error) throw new Error(error.message || 'Error al obtener integraciones');
+    return (data as any[]) || [];
   }
 
   /**
    * Save or update a payment integration
    */
   async saveIntegration(
-    companyId: string, 
-    provider: 'paypal' | 'stripe', 
+    companyId: string,
+    provider: 'paypal' | 'stripe',
     payload: SaveIntegrationPayload
   ): Promise<PaymentIntegration> {
-    const client = this.supabaseClient.instance;
-    const { data: { session } } = await client.auth.getSession();
-    const token = session?.access_token;
+    const { data, error } = await this.supabaseClient.instance
+      .rpc('save_payment_integration', {
+        p_company_id: companyId,
+        p_provider: provider,
+        p_credentials: payload.credentials || {},
+        p_webhook_secret: payload.webhook_secret || null,
+        p_is_sandbox: payload.is_sandbox ?? false,
+        p_is_active: payload.is_active ?? true
+      });
 
-    const res = await fetch(`${this.fnBase}/payment-integrations`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token ?? ''}`,
-        'Content-Type': 'application/json',
-        'apikey': environment.supabase.anonKey,
-      },
-      body: JSON.stringify({
-        company_id: companyId,
-        provider,
-        ...payload
-      })
-    });
-
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || 'Error al guardar integración');
-    return json?.integration;
+    if (error) throw new Error(error.message || 'Error al guardar integración');
+    return data as PaymentIntegration;
   }
 
   /**
    * Delete a payment integration
    */
   async deleteIntegration(companyId: string, provider: 'paypal' | 'stripe'): Promise<void> {
-    const client = this.supabaseClient.instance;
-    const { data: { session } } = await client.auth.getSession();
-    const token = session?.access_token;
+    const { error } = await this.supabaseClient.instance
+      .rpc('delete_payment_integration', {
+        p_company_id: companyId,
+        p_provider: provider
+      });
 
-    const res = await fetch(`${this.fnBase}/payment-integrations`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token ?? ''}`,
-        'Content-Type': 'application/json',
-        'apikey': environment.supabase.anonKey,
-      },
-      body: JSON.stringify({
-        company_id: companyId,
-        provider
-      })
-    });
-
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || 'Error al eliminar integración');
+    if (error) throw new Error(error.message || 'Error al eliminar integración');
   }
 
   /**
@@ -140,13 +112,13 @@ export class PaymentIntegrationsService {
       });
 
       console.log('[payment-integrations] Response status:', res.status);
-      
+
       const json = await res.json();
       console.log('[payment-integrations] Response body:', json);
-      
+
       if (!res.ok) {
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: json?.error || `Error HTTP ${res.status}`,
           details: json?.details
         };
@@ -154,9 +126,9 @@ export class PaymentIntegrationsService {
       return json;
     } catch (fetchError: any) {
       console.error('[payment-integrations] Fetch error:', fetchError);
-      return { 
-        success: false, 
-        error: fetchError?.message || 'Error de red al conectar con el servidor' 
+      return {
+        success: false,
+        error: fetchError?.message || 'Error de red al conectar con el servidor'
       };
     }
   }
@@ -165,7 +137,7 @@ export class PaymentIntegrationsService {
    * Generate a payment link for an invoice
    */
   async generatePaymentLink(
-    invoiceId: string, 
+    invoiceId: string,
     provider: 'paypal' | 'stripe',
     expiresInDays: number = 7
   ): Promise<{ payment_url: string; shareable_link: string; token: string; expires_at: string; provider: string }> {

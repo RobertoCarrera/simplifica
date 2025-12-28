@@ -224,6 +224,7 @@ export class SupabaseCustomersService {
           devSuccess('Clientes obtenidos via consulta estándar', customers.length);
           return of(customers);
         }
+
         // Schema cache may lack relation: fallback without embed
         if ((error as any)?.code === 'PGRST200') {
           let q2 = this.supabase.from('clients').select('*, devices(id, deleted_at)'); // Try with devices even in fallback if possible, or revert to * if failing again? 
@@ -256,6 +257,7 @@ export class SupabaseCustomersService {
         this.loadingSubject.next(false);
       }),
       catchError(error => {
+        console.error('[DEBUG] Critical error in getCustomersStandard:', error);
         this.loadingSubject.next(false);
         devError('Error al cargar clientes', error);
         return throwError(() => error);

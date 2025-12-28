@@ -309,7 +309,9 @@ export class ResponsiveSidebarComponent implements OnInit {
     // Cargar módulos efectivos (server-side) y construir set de claves permitidas
     this.modulesService.fetchEffectiveModules().subscribe({
       next: (mods: EffectiveModule[]) => {
+        console.log('🔍 Sidebar: Raw fetched modules:', mods);
         const allowed = new Set<string>(mods.filter(m => m.enabled).map(m => m.key));
+        console.log('🔍 Sidebar: Allowed module keys:', allowed);
         this._allowedModuleKeys.set(allowed);
       },
       error: (e) => {

@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { from, Observable } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
-import { environment } from '../../environments/environment';
+import { RuntimeConfigService } from './runtime-config.service';
 
 export interface EffectiveModule {
   key: string;
@@ -15,7 +15,8 @@ export interface EffectiveModule {
 @Injectable({ providedIn: 'root' })
 export class SupabaseModulesService {
   private supabaseClient = inject(SupabaseClientService);
-  private get fnBase() { return (environment.edgeFunctionsBaseUrl || '').replace(/\/+$/, ''); }
+  private rc = inject(RuntimeConfigService);
+  private get fnBase() { return (this.rc.get().edgeFunctionsBaseUrl || '').replace(/\/+$/, ''); }
 
   // Cache in-memory to avoid repeated calls during a session
   private _modules = signal<EffectiveModule[] | null>(null);
@@ -47,33 +48,30 @@ export class SupabaseModulesService {
   }
 
   private async executeFetchEffectiveModules(): Promise<EffectiveModule[]> {
-    const token = await this.requireAccessToken();
-    const res = await fetch(`${this.fnBase}/get-effective-modules`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'apikey': environment.supabase.anonKey,
-      }
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || 'No se pudieron obtener los módulos');
-    const list = (json?.modules || []) as EffectiveModule[];
+    // Now using RPC for better local/prod compatibility and performance
+    const { data, error } = await this.supabaseClient.instance.rpc('get_effective_modules');
+    if (error) {
+      console.error('Error fetching effective modules via RPC:', error);
+      throw new Error(error.message || 'No se pudieron obtener los módulos');
+    }
+    console.log('🔍 ModulesService: RPC get_effective_modules result:', data);
+    const list = (data || []) as EffectiveModule[];
     this._modules.set(list);
     return list;
   }
 
-  adminSetUserModule(targetUserId: string, moduleKey: string, status: 'activado' | 'desactivado'): Observable<{ success: boolean }>{
+  adminSetUserModule(targetUserId: string, moduleKey: string, status: 'activado' | 'desactivado'): Observable<{ success: boolean }> {
     return from(this.executeAdminSetUserModule(targetUserId, moduleKey, status));
   }
 
-  private async executeAdminSetUserModule(targetUserId: string, moduleKey: string, status: 'activado' | 'desactivado'): Promise<{ success: boolean }>{
+  private async executeAdminSetUserModule(targetUserId: string, moduleKey: string, status: 'activado' | 'desactivado'): Promise<{ success: boolean }> {
     const token = await this.requireAccessToken();
     const res = await fetch(`${this.fnBase}/admin-set-user-module`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
-        'apikey': environment.supabase.anonKey,
+        'apikey': this.rc.get().supabase.anonKey,
       },
       body: JSON.stringify({ target_user_id: targetUserId, module_key: moduleKey, status })
     });
@@ -95,7 +93,7 @@ export class SupabaseModulesService {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'apikey': environment.supabase.anonKey,
+        'apikey': this.rc.get().supabase.anonKey,
       }
     });
     const json = await res.json();
@@ -116,7 +114,7 @@ export class SupabaseModulesService {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'apikey': environment.supabase.anonKey,
+        'apikey': this.rc.get().supabase.anonKey,
       }
     });
     const json = await res.json();

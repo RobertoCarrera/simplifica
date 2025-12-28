@@ -1,0 +1,80 @@
+<div class="tag-manager-container flex flex-wrap items-center gap-2">
+  <!-- Assigned Tags -->
+  <div 
+    *ngFor="let tag of assignedTags()" 
+    class="tag-chip flex items-center px-3 py-1 rounded-full text-sm font-medium text-white transition-all hover:shadow-md"
+    [style.backgroundColor]="tag.color"
+  >
+    <span>{{ tag.name }}</span>
+    <button 
+      (click)="removeTag(tag.id)" 
+      class="ml-2 hover:text-gray-200 focus:outline-none"
+      title="Remove tag"
+    >
+      ×
+    </button>
+  </div>
+
+  <!-- Add Button -->
+  <div class="relative">
+    <button 
+      *ngIf="!isAdding()"
+      (click)="toggleAddMode()"
+      class="add-btn flex items-center justify-center w-8 h-8 rounded-full border-2 border-dashed border-gray-400 text-gray-400 hover:border-gray-600 hover:text-gray-600 dark:border-gray-500 dark:text-gray-500 dark:hover:border-gray-300 dark:hover:text-gray-300 transition-colors"
+      title="Add Tag"
+    >
+      +
+    </button>
+
+    <!-- Dropdown / Input Area -->
+    <div 
+      *ngIf="isAdding()" 
+      class="add-dropdown absolute top-full left-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 z-50 overflow-hidden"
+    >
+      <div class="p-2 border-b border-gray-100 dark:border-gray-700">
+        <input 
+          type="text" 
+          [ngModel]="searchTerm()" 
+          (input)="onSearchInput($event)"
+          (keydown.enter)="createAndAddTag()"
+          (keydown.escape)="toggleAddMode()"
+          placeholder="Search or create tag..."
+          class="w-full px-2 py-1 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          autoFocus
+        >
+      </div>
+      
+      <div class="max-h-48 overflow-y-auto">
+        <!-- Existing Tags -->
+        <button 
+          *ngFor="let tag of filteredTags"
+          (click)="addTag(tag)"
+          class="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
+        >
+          <span class="w-3 h-3 rounded-full" [style.backgroundColor]="tag.color"></span>
+          <span class="text-gray-700 dark:text-gray-200">{{ tag.name }}</span>
+        </button>
+
+        <!-- No Results / Create New -->
+        <button 
+          *ngIf="searchTerm() && filteredTags.length === 0"
+          (click)="createAndAddTag()"
+          class="w-full text-left px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-medium"
+        >
+          Create "{{ searchTerm() }}"
+        </button>
+        
+        <div *ngIf="!searchTerm() && filteredTags.length === 0" class="px-3 py-2 text-xs text-gray-400 text-center">
+          No matching tags found.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Click outside overlay to close dropdown -->
+<div 
+  *ngIf="isAdding()" 
+  class="fixed inset-0 z-40 bg-transparent"
+  (click)="toggleAddMode()"
+></div>

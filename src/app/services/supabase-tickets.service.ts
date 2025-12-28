@@ -165,7 +165,6 @@ export class SupabaseTicketsService {
         .select(`
           id, ticket_number, title, description, priority, stage_id, client_id, 
           due_date, estimated_hours, tags, created_at, is_opened, total_amount, 
-          initial_attachment_url,
           client:clients(id, name, email, phone),
           stage:ticket_stages(id, name, color, position)
         `, { count: 'exact' })

@@ -55,11 +55,12 @@ interface TicketComment {
 
 import { ClientDevicesModalComponent } from '../../../features/devices/client-devices-modal/client-devices-modal.component';
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
+import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
 
 @Component({
   selector: 'app-ticket-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, ClientDevicesModalComponent, SkeletonLoaderComponent],
+  imports: [CommonModule, FormsModule, ClientDevicesModalComponent, SkeletonLoaderComponent, TagManagerComponent],
   styleUrls: ['./ticket-detail.component.scss'],
   template: `
     <div class="min-h-0 bg-gray-50 dark:bg-gray-900">
@@ -764,6 +765,17 @@ import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loa
 
           <!-- Sidebar (Right Side) -->
           <div class="space-y-4 sm:space-y-6 lg:col-span-1">
+
+            <!-- Tags Card -->
+            <div *ngIf="!isClient()" class="bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
+              <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+                <div class="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 p-2 sm:p-3 rounded-lg shadow-md">
+                  <i class="fas fa-tags text-lg sm:text-xl"></i>
+                </div>
+                <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Etiquetas</h3>
+              </div>
+              <app-tag-manager [entityId]="ticket.id" entityType="tickets"></app-tag-manager>
+            </div>
 
             <!-- Client Contact - ADMIN ONLY (clients shouldn't see their own info card) -->
             <div *ngIf="!isClient()" class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 shadow-md border border-blue-200 dark:border-blue-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">

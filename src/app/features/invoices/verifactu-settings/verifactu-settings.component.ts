@@ -31,10 +31,10 @@ export class VerifactuSettingsComponent implements OnInit {
   existingSettings = signal<VerifactuSettingsForm | null>(null);
   certificateConfigured = signal<boolean>(false);
   certificateMode = signal<'none' | 'encrypted'>('none');
-  history = signal<Array<{version: number; stored_at: string; rotated_by: string | null; integrity_hash: string | null; notes: string | null; cert_len: number | null; key_len: number | null; pass_present: boolean;}> | null>(null);
+  history = signal<Array<{ version: number; stored_at: string; rotated_by: string | null; integrity_hash: string | null; notes: string | null; cert_len: number | null; key_len: number | null; pass_present: boolean; }> | null>(null);
   loadingHistory = signal(false);
   showUploader = signal(true); // hide if already configured until user chooses to replace
-  
+
   // Certificate test state
   testingCertificate = signal(false);
   testResult = signal<TestCertificateResponse | null>(null);
@@ -51,7 +51,7 @@ export class VerifactuSettingsComponent implements OnInit {
     this.authService.userProfile$.subscribe(profile => {
       const authorized = profile?.role === 'admin' || profile?.role === 'owner';
       this.isAuthorized.set(authorized);
-      
+
       if (!authorized) {
         this.toast.error('Acceso denegado', 'No tienes permisos para acceder a esta sección');
       }
@@ -116,37 +116,37 @@ export class VerifactuSettingsComponent implements OnInit {
     this.processedCert.set(null);
   }
 
-  private loadSettingsAndHistory(companyId: string) {
+  private async loadSettingsAndHistory(companyId: string) {
     this.loadingHistory.set(true);
-    this.verifactuService.fetchCertificateHistory(companyId).subscribe({
-      next: (data) => {
-        if (data?.settings) {
-          // Prefill non-sensitive fields from Edge response
-          this.form.software_code = data.settings.software_code || '';
-          this.form.issuer_nif = data.settings.issuer_nif || '';
-          this.existingSettings.set({
-            software_code: this.form.software_code,
-            issuer_nif: this.form.issuer_nif
-          });
-          // Use mode from Edge response (no client-side detection)
-          // Safeguard: treat legacy as none since legacy columns are deleted
-          const mode = data.settings.mode === 'encrypted' ? 'encrypted' : 'none';
-          this.certificateMode.set(mode);
-          this.certificateConfigured.set(data.settings.configured);
-          if (this.certificateConfigured()) {
-            // Hide uploader by default; user can replace
-            this.showUploader.set(false);
-          }
+    try {
+      const data = await this.verifactuService.fetchCertificateHistory(companyId);
+
+      if (data?.settings) {
+        // Prefill non-sensitive fields from Edge response
+        this.form.software_code = data.settings.software_code || '';
+        this.form.issuer_nif = data.settings.issuer_nif || '';
+        this.existingSettings.set({
+          software_code: this.form.software_code,
+          issuer_nif: this.form.issuer_nif
+        });
+        // Use mode from Edge response (no client-side detection)
+        // Safeguard: treat legacy as none since legacy columns are deleted
+        const mode = data.settings.mode === 'encrypted' ? 'encrypted' : 'none';
+        this.certificateMode.set(mode);
+        this.certificateConfigured.set(data.settings.configured);
+        if (this.certificateConfigured()) {
+          // Hide uploader by default; user can replace
+          this.showUploader.set(false);
         }
-        if (data?.history) {
-          this.history.set(data.history);
-        }
-      },
-      error: (err) => {
-        console.warn('No se pudo cargar configuración Verifactu:', err);
-      },
-      complete: () => this.loadingHistory.set(false)
-    });
+      }
+      if (data?.history) {
+        this.history.set(data.history);
+      }
+    } catch (err) {
+      console.warn('No se pudo cargar configuración Verifactu:', err);
+    } finally {
+      this.loadingHistory.set(false);
+    }
   }
 
   onReplaceCertificate() {
@@ -168,7 +168,7 @@ export class VerifactuSettingsComponent implements OnInit {
     try {
       const result = await this.verifactuService.testCertificate(company).toPromise();
       this.testResult.set(result ?? null);
-      
+
       if (result?.ok) {
         this.toast.success('Test completado', 'Certificado y conexión verificados');
       } else {

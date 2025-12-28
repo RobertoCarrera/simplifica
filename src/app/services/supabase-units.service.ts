@@ -123,43 +123,37 @@ export class SupabaseUnitsService {
     if (error) throw new Error(error.message);
   }
 
-  // Edge-backed config units (generic with is_hidden)
+  // RPC-backed config units (generic with is_hidden)
   async getConfigUnits(): Promise<{ units: Array<UnitOfMeasure & { is_hidden?: boolean }>; error?: any }> {
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (!session?.access_token) return { units: [], error: { message: 'No active session' } };
-    const resp = await fetch(`${environment.supabase.url}/functions/v1/get-config-units`, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': environment.supabase.anonKey },
-    });
-    const json = await resp.json();
-    if (!resp.ok) return { units: [], error: json?.error || json };
-    return { units: json?.units || [] };
+    const { data, error } = await this.supabase.rpc('get_config_units');
+
+    if (error) {
+      console.error('Error fetching config units via RPC:', error);
+      return { units: [], error };
+    }
+
+    return { units: (data as any[]) || [] };
   }
 
-  // Hide/show generic units via Edge Function
+  // Hide generic unit via RPC
   async hideGenericUnit(unitId: string): Promise<{ error?: any }> {
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (!session?.access_token) return { error: { message: 'No active session' } };
-    const resp = await fetch(`${environment.supabase.url}/functions/v1/hide-unit`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': environment.supabase.anonKey },
-      body: JSON.stringify({ p_unit_id: unitId, p_operation: 'hide' })
+    const { error } = await this.supabase.rpc('toggle_unit_visibility', {
+      p_unit_id: unitId,
+      p_operation: 'hide'
     });
-    const json = await resp.json();
-    if (!resp.ok) return { error: json?.error || json };
+
+    if (error) return { error };
     return {};
   }
 
+  // Unhide generic unit via RPC
   async unhideGenericUnit(unitId: string): Promise<{ error?: any }> {
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (!session?.access_token) return { error: { message: 'No active session' } };
-    const resp = await fetch(`${environment.supabase.url}/functions/v1/hide-unit`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${session.access_token}`, 'Content-Type': 'application/json', 'apikey': environment.supabase.anonKey },
-      body: JSON.stringify({ p_unit_id: unitId, p_operation: 'unhide' })
+    const { error } = await this.supabase.rpc('toggle_unit_visibility', {
+      p_unit_id: unitId,
+      p_operation: 'unhide'
     });
-    const json = await resp.json();
-    if (!resp.ok) return { error: json?.error || json };
+
+    if (error) return { error };
     return {};
   }
 }

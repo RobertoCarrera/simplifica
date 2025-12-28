@@ -320,29 +320,35 @@ export class VerifactuService {
   /**
    * Obtiene configuración actual y historial de rotaciones de certificados
    */
-  fetchCertificateHistory(companyId: string): Observable<{ settings: { software_code: string; issuer_nif: string; environment: 'pre' | 'prod'; configured: boolean; mode: 'encrypted' | 'none' }; history: Array<{ version: number; stored_at: string; rotated_by: string | null; integrity_hash: string | null; notes: string | null; cert_len: number | null; key_len: number | null; pass_present: boolean; }> } | null> {
-    return from(
-      callEdgeFunction<any, { ok: boolean; settings: any; history: any[] }>(
-        this.supabase,
-        'verifactu-cert-history',
-        {}
-      )
-    ).pipe(
-      map(resp => {
-        if (!resp.ok || !resp.data) {
-          console.warn('⚠️ History fetch failed:', resp.error);
-          return null;
-        }
-        return {
-          settings: resp.data.settings || { software_code: '', issuer_nif: '', environment: 'pre', configured: false, mode: 'none' },
-          history: resp.data.history || []
-        };
-      }),
-      catchError(err => {
-        console.error('❌ fetchCertificateHistory error:', err);
-        return of(null);
-      })
-    );
+  async fetchCertificateHistory(companyId: string): Promise<{ settings: VerifactuSettings & { configured: boolean; mode: 'encrypted' | 'none' }; history: Array<{ version: number; stored_at: string; rotated_by: string | null; integrity_hash: string | null; notes: string | null; cert_len: number | null; key_len: number | null; pass_present: boolean; }> } | null> {
+    const { data: response, error } = await this.supabase
+      .rpc('get_verifactu_cert_status', {
+        p_company_id: companyId
+      });
+
+    if (error) {
+      console.error('❌ fetchCertificateHistory RPC error:', error);
+      return null;
+    }
+
+    if (!response || !response.ok) {
+      console.warn('⚠️ History fetch failed (logic error)');
+      return null;
+    }
+
+    return {
+      settings: {
+        software_code: response.settings.software_code,
+        issuer_nif: response.settings.issuer_nif,
+        environment: response.settings.environment,
+        cert_pem_enc: response.settings.configured ? '***' : undefined, // Masked for safety, existence check is enough for UI
+        key_pem_enc: response.settings.configured ? '***' : undefined,
+        key_pass_enc: null,
+        configured: response.settings.configured,
+        mode: response.settings.mode
+      },
+      history: response.history || []
+    };
   }
 
   // =====================================================
