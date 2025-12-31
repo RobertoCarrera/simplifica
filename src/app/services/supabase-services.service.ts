@@ -609,14 +609,8 @@ export class SupabaseServicesService {
 
     if (error) throw error;
 
-    // If tags were provided, sync them to relations
-    if (serviceData.tags && Array.isArray(serviceData.tags) && data?.id) {
-      try {
-        await this.syncServiceTags(data.id, serviceData.tags as string[]);
-      } catch (e) {
-        console.warn('Could not sync tags on createService:', e);
-      }
-    }
+    // Tags are now handled via GlobalTagsService in the UI layer
+    // if (serviceData.tags && Array.isArray(serviceData.tags) && data?.id) { ... }
 
     return {
       id: data.id,
@@ -686,14 +680,8 @@ export class SupabaseServicesService {
       .single();
 
     if (error) throw error;
-    // If tags were provided, sync them to relations
-    if (updates.tags && Array.isArray(updates.tags)) {
-      try {
-        await this.syncServiceTags(id, updates.tags as string[]);
-      } catch (e) {
-        console.warn('Could not sync tags on updateService:', e);
-      }
-    }
+    // Tags are now handled via GlobalTagsService in the UI layer
+    // if (updates.tags && Array.isArray(updates.tags)) { ... }
 
     return {
       id: data.id,
@@ -863,74 +851,6 @@ export class SupabaseServicesService {
   // MÉTODOS PARA GESTIÓN DE TAGS
   // ====================================
 
-  async getServiceTags(companyId: string): Promise<ServiceTag[]> {
-    try {
-      const client = this.supabase.getClient();
-      let query: any = client
-        .from('service_tags')
-        .select('*')
-        .eq('is_active', true)
-        .order('name', { ascending: true });
-
-      if (this.isValidUuid(companyId)) {
-        query = query.eq('company_id', companyId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('❌ Error getting service tags:', error);
-      throw error;
-    }
-  }
-
-  async createServiceTag(tag: Partial<ServiceTag>): Promise<ServiceTag> {
-    try {
-      const client = this.supabase.getClient();
-      const payload = [{
-        name: (tag.name || '').trim(),
-        color: tag.color || '#6b7280',
-        description: tag.description,
-        company_id: tag.company_id,
-        is_active: true
-      }];
-
-      // Use upsert to avoid unique constraint conflicts when the tag already exists
-      // on (company_id, name). upsert will insert or update the existing row.
-      const { data, error } = await client
-        .from('service_tags')
-        .upsert(payload, { onConflict: 'company_id,name' })
-        .select()
-        .limit(1)
-        .single();
-
-      // If the driver returns a 409 or similar for race conditions, try a read fallback
-      if (error) {
-        // If it's a conflict-like error, attempt to fetch the existing tag
-        try {
-          const { data: existing, error: fetchErr } = await client
-            .from('service_tags')
-            .select('*')
-            .eq('company_id', tag.company_id)
-            .eq('name', (tag.name || '').trim())
-            .maybeSingle();
-          if (fetchErr) throw fetchErr;
-          if (existing) return existing as ServiceTag;
-        } catch (e) {
-          // Fall through to throwing the original error
-        }
-        throw error;
-      }
-
-      return data as ServiceTag;
-    } catch (error) {
-      console.error('❌ Error creating service tag:', error);
-      throw error;
-    }
-  }
-
   async loadServiceTagsForServices(services: Service[]): Promise<Service[]> {
     try {
       if (!services || services.length === 0) return services;
@@ -938,11 +858,12 @@ export class SupabaseServicesService {
       const serviceIds = services.map(s => s.id);
       const client = this.supabase.getClient();
 
+      // Updated to fetch from services_tags -> global_tags
       const { data: relations, error } = await client
-        .from('service_tag_relations')
+        .from('services_tags')
         .select(`
           service_id,
-          tag:service_tags(id, name, color)
+          tag:global_tags(id, name, color)
         `)
         .in('service_id', serviceIds);
 
@@ -973,85 +894,8 @@ export class SupabaseServicesService {
     }
   }
 
-  async syncServiceTags(serviceId: string, tagNames: string[]): Promise<void> {
-    try {
-      const client = this.supabase.getClient();
+  // NOTE: Legacy syncServiceTags removed. Tag management is now handled by GlobalTagsService and app-tag-manager.
 
-      // 1. Obtener company_id del servicio
-      const { data: service, error: serviceError } = await client
-        .from('services')
-        .select('*')
-        .eq('id', serviceId)
-        .single();
-
-      if (serviceError || !service) {
-        throw new Error('No se pudo obtener el servicio');
-      }
-
-      const companyId = service.company_id;
-      const uniqueTagNames = Array.from(new Set(tagNames.filter(name => name && name.trim())));
-
-      // 2. Create or update tags in a single upsert to avoid unique constraint errors
-      const tagPayload = uniqueTagNames.map(n => ({
-        name: n.trim(),
-        color: '#6b7280',
-        company_id: companyId,
-        is_active: true
-      }));
-
-      if (tagPayload.length > 0) {
-        try {
-          // upsert on (company_id, name) so concurrent creations don't fail
-          const { error: upsertErr } = await client
-            .from('service_tags')
-            .upsert(tagPayload, { onConflict: 'company_id,name' });
-          if (upsertErr) {
-            // If it's a conflict or similar, ignore; otherwise log
-            const msg = String(upsertErr.message || upsertErr.code || '');
-            if (!msg.includes('duplicate') && !msg.includes('unique') && !msg.includes('conflict')) {
-              console.warn('Warning upserting tags:', upsertErr);
-            }
-          }
-        } catch (e: any) {
-          // In case the driver throws, try to continue — we'll fetch existing tags later
-          console.warn('Warning: unexpected error during tags upsert, continuing to fetch existing tags', e);
-        }
-      }
-
-      // 3. Obtener IDs de los tags
-      const { data: tags, error: tagsError } = await client
-        .from('service_tags')
-        .select('id, name')
-        .eq('company_id', companyId)
-        .in('name', uniqueTagNames);
-
-      if (tagsError) throw tagsError;
-
-      const tagIds = (tags || []).map(tag => tag.id);
-
-      // 4. Eliminar relaciones existentes
-      await client
-        .from('service_tag_relations')
-        .delete()
-        .eq('service_id', serviceId);
-
-      // 5. Crear nuevas relaciones
-      if (tagIds.length > 0) {
-        const relations = tagIds.map(tagId => ({
-          service_id: serviceId,
-          tag_id: tagId
-        }));
-
-        await client
-          .from('service_tag_relations')
-          .insert(relations);
-      }
-
-    } catch (error) {
-      console.error('❌ Error syncing service tags:', error);
-      throw error;
-    }
-  }
 
   // Dev methods for multi-company support
   setCompanyId(companyId: string): void {

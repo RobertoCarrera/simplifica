@@ -52,7 +52,7 @@ export const routes: Routes = [
     { path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard] },
     { path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
-    { path: 'ticket/:id', component: TicketDetailComponent, canActivate: [AuthGuard] },
+    { path: 'tickets/:id', component: TicketDetailComponent, canActivate: [AuthGuard] },
     { path: 'productos', component: ProductsComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloMaterial' } },
     { path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
     { path: 'dispositivos', component: DevicesManagerComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },

@@ -326,71 +326,10 @@
 
                 <!-- Tags Section -->
                 <div class="form-group">
-                  <label for="tags" class="text-gray-700 dark:text-white font-medium">Tags</label>
-                  <div class="tags-container">
-                    <!-- Selected Tags Display -->
-                    <div class="selected-tags" *ngIf="selectedTags.length > 0">
-                      <span *ngFor="let tag of selectedTags" class="tag-chip">
-                        {{ tag }}
-                        <button type="button" class="tag-remove" (click)="removeTag(tag)">
-                          <i class="fas fa-times"></i>
-                        </button>
-                      </span>
-                    </div>
-
-                    <!-- Tag Input (ahora es un botón visual que abre el dropdown) -->
-                    <div class="tag-input-container">
-                      <div class="form-control tag-display" (click)="openTagDropdown()">
-                        <span class="placeholder-text">Añadir tags...</span>
-                        <i class="fas fa-chevron-down dropdown-icon"></i>
-                      </div>
-
-                      <!-- Tag Dropdown Overlay (mobile) -->
-                      <div *ngIf="showTagInput" class="dropdown-overlay" (click)="showTagInput = false"></div>
-
-                      <!-- Tag Dropdown -->
-                      <div *ngIf="showTagInput" class="tag-dropdown">
-                        <div class="dropdown-header">
-                          <span class="dropdown-title">Seleccionar tags</span>
-                          <button type="button" class="dropdown-close" (click)="showTagInput = false">
-                            <i class="fas fa-times"></i>
-                          </button>
-                        </div>
-                        <div class="tag-search">
-                          <input #tagSearchInput type="text" class="form-control small" [(ngModel)]="tagFilterText"
-                            (ngModelChange)="onTagFilterChange()" placeholder="Buscar o crear tag..." name="tagFilter"
-                            autocomplete="off">
-                        </div>
-
-                        <div class="tag-options">
-                          <div *ngFor="let tag of filteredTags" class="tag-option"
-                            [class.selected]="selectedTags.includes(tag.name)" (click)="selectTag(tag)">
-                            <div class="tag-color" [style.background-color]="tag.color"></div>
-                            <span>{{ tag.name }}</span>
-                            <i *ngIf="selectedTags.includes(tag.name)" class="fas fa-check"></i>
-                          </div>
-
-                          <div *ngIf="tagFilterText && filteredTags.length === 0 && !hasExactTagMatch()"
-                            class="tag-option create-new" (click)="createNewTag()">
-                            <i class="fas fa-plus" style="color: #10b981;"></i>
-                            <span>Crear "{{ tagFilterText }}"</span>
-                          </div>
-
-                          <div *ngIf="tagFilterText && filteredTags.length === 0 && hasExactTagMatch()"
-                            class="tag-option existing-match">
-                            <i class="fas fa-check" style="color: #3b82f6;"></i>
-                            <span>Tag "{{ tagFilterText }}" ya existe</span>
-                          </div>
-                        </div>
-
-                        <div class="tag-actions">
-                          <button type="button" class="btn btn-sm btn-secondary" (click)="showTagInput = false">
-                            Cerrar
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <label class="text-gray-700 dark:text-white font-medium mb-2 block">Tags</label>
+                  <app-tag-manager [entityType]="'services'" [entityId]="editingService?.id || null"
+                    (pendingTagsChange)="pendingTags = $event">
+                  </app-tag-manager>
                 </div>
               </div><!-- Close form-grid -->
 

@@ -2,17 +2,18 @@ import { Component, Input, OnInit, inject, signal, Output, EventEmitter } from '
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
+import { AppModalComponent } from '../../ui/app-modal/app-modal.component';
 
 @Component({
     selector: 'app-tag-manager',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, AppModalComponent],
     templateUrl: './tag-manager.component.html',
     styleUrls: ['./tag-manager.component.scss']
 })
 export class TagManagerComponent implements OnInit {
     @Input() entityId?: string | null;
-    @Input({ required: true }) entityType!: 'clients' | 'tickets';
+    @Input({ required: true }) entityType!: 'clients' | 'tickets' | 'services';
     @Output() pendingTagsChange = new EventEmitter<GlobalTag[]>();
 
     private tagsService = inject(GlobalTagsService);
@@ -26,7 +27,11 @@ export class TagManagerComponent implements OnInit {
     isAdding = signal(false);
     searchTerm = signal('');
 
-    // Computed
+    // Create Modal State
+    showCreateModal = signal(false);
+    newTag = signal<Partial<GlobalTag>>({ name: '', color: '#3B82F6', scope: [] });
+    savingNewTag = signal(false);
+
     // Computed
     get showRecommendations() {
         // Show recommendations only if search is empty AND we have enough total tags
@@ -119,36 +124,67 @@ export class TagManagerComponent implements OnInit {
         }
     }
 
-    createAndAddTag() {
+    openCreateModal() {
         const name = this.searchTerm().trim();
         if (!name) return;
 
-        // Check if it already exists in available tags but filtered out
+        // Check if exists
         const existing = this.availableTags().find(t => t.name.toLowerCase() === name.toLowerCase());
         if (existing) {
             this.addTag(existing);
             return;
         }
 
-        // Create new tag
-        const newTag: Partial<GlobalTag> = {
+        // Prepare new tag
+        this.newTag.set({
             name: name,
-            scope: [this.entityType], // Default to current scope
-            color: this.generateRandomColor()
-        };
+            color: this.generateRandomColor(),
+            scope: [this.entityType]
+        });
 
-        this.tagsService.createTag(newTag).subscribe({
+        // Open modal
+        this.showCreateModal.set(true);
+        // We do NOT close the dropdown properly here because if we do, the modal might look weird appearing while dropdown closes?
+        // Actually, better close the dropdown.
+        this.isAdding.set(false);
+    }
+
+    closeCreateModal() {
+        this.showCreateModal.set(false);
+        this.searchTerm.set('');
+        this.savingNewTag.set(false);
+    }
+
+    saveNewTag() {
+        const tagData = this.newTag();
+        if (!tagData.name || !tagData.color) return;
+
+        this.savingNewTag.set(true);
+
+        this.tagsService.createTag(tagData).subscribe({
             next: (createdTag) => {
                 this.availableTags.update(tags => [...tags, createdTag]);
-                this.addTag(createdTag);
+                this.addTag(createdTag); // This assigns it too
+                this.closeCreateModal();
             },
-            error: (err) => console.error('Error creating tag:', err)
+            error: (err) => {
+                console.error('Error creating tag:', err);
+                this.savingNewTag.set(false);
+            }
         });
     }
 
     private generateRandomColor(): string {
         const colors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899'];
         return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    updateTagName(name: string) {
+        this.newTag.update(t => ({ ...t, name }));
+    }
+
+    updateTagColor(color: string) {
+        this.newTag.update(t => ({ ...t, color }));
     }
 
     onSearchInput(event: Event) {

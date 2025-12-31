@@ -7,8 +7,10 @@ export interface GlobalTag {
     name: string;
     color: string;
     category: string | null;
+    category_color?: string | null;
     scope: string[] | null;
     description: string | null;
+    company_id?: string;
     created_at?: string;
 }
 
@@ -22,7 +24,7 @@ export class GlobalTagsService {
      * Fetch all global tags, optionally filtered by scope (e.g. 'clients', 'tickets').
      * If scope is null, returns all tags.
      */
-    getTags(scope?: 'clients' | 'tickets'): Observable<GlobalTag[]> {
+    getTags(scope?: 'clients' | 'tickets' | 'services'): Observable<GlobalTag[]> {
         return from(
             (async () => {
                 let query = this.supabaseClient.instance
@@ -98,11 +100,20 @@ export class GlobalTagsService {
     /**
      * Get tags assigned to a specific entity (client or ticket).
      */
-    getEntityTags(entityType: 'clients' | 'tickets', entityId: string): Observable<GlobalTag[]> {
+    /**
+     * Get tags assigned to a specific entity (client, ticket, or service).
+     */
+    getEntityTags(entityType: 'clients' | 'tickets' | 'services', entityId: string): Observable<GlobalTag[]> {
         return from(
             (async () => {
-                const tableName = entityType === 'clients' ? 'clients_tags' : 'ticket_tag_relations';
-                const foreignKey = entityType === 'clients' ? 'client_id' : 'ticket_id';
+                let tableName = '';
+                let foreignKey = '';
+
+                switch (entityType) {
+                    case 'clients': tableName = 'clients_tags'; foreignKey = 'client_id'; break;
+                    case 'tickets': tableName = 'tickets_tags'; foreignKey = 'ticket_id'; break;
+                    case 'services': tableName = 'services_tags'; foreignKey = 'service_id'; break;
+                }
 
                 const { data, error } = await this.supabaseClient.instance
                     .from(tableName)
@@ -115,7 +126,6 @@ export class GlobalTagsService {
                 if (error) throw error;
 
                 // Map the result to return just the GlobalTag objects
-                // The query returns { tag_id: ..., global_tags: { ... } }
                 return data?.map((item: any) => item.global_tags) as GlobalTag[] || [];
             })()
         );
@@ -124,11 +134,17 @@ export class GlobalTagsService {
     /**
      * Assign a tag to an entity.
      */
-    assignTag(entityType: 'clients' | 'tickets', entityId: string, tagId: string): Observable<void> {
+    assignTag(entityType: 'clients' | 'tickets' | 'services', entityId: string, tagId: string): Observable<void> {
         return from(
             (async () => {
-                const tableName = entityType === 'clients' ? 'clients_tags' : 'ticket_tag_relations';
-                const foreignKey = entityType === 'clients' ? 'client_id' : 'ticket_id';
+                let tableName = '';
+                let foreignKey = '';
+
+                switch (entityType) {
+                    case 'clients': tableName = 'clients_tags'; foreignKey = 'client_id'; break;
+                    case 'tickets': tableName = 'tickets_tags'; foreignKey = 'ticket_id'; break;
+                    case 'services': tableName = 'services_tags'; foreignKey = 'service_id'; break;
+                }
 
                 const { error } = await this.supabaseClient.instance
                     .from(tableName)
@@ -142,11 +158,17 @@ export class GlobalTagsService {
     /**
      * Remove a tag from an entity.
      */
-    removeTag(entityType: 'clients' | 'tickets', entityId: string, tagId: string): Observable<void> {
+    removeTag(entityType: 'clients' | 'tickets' | 'services', entityId: string, tagId: string): Observable<void> {
         return from(
             (async () => {
-                const tableName = entityType === 'clients' ? 'clients_tags' : 'ticket_tag_relations';
-                const foreignKey = entityType === 'clients' ? 'client_id' : 'ticket_id';
+                let tableName = '';
+                let foreignKey = '';
+
+                switch (entityType) {
+                    case 'clients': tableName = 'clients_tags'; foreignKey = 'client_id'; break;
+                    case 'tickets': tableName = 'tickets_tags'; foreignKey = 'ticket_id'; break;
+                    case 'services': tableName = 'services_tags'; foreignKey = 'service_id'; break;
+                }
 
                 const { error } = await this.supabaseClient.instance
                     .from(tableName)
@@ -158,13 +180,20 @@ export class GlobalTagsService {
             })()
         );
     }
-    assignMultipleTags(entityType: 'clients' | 'tickets', entityId: string, tagIds: string[]): Observable<void> {
+
+    assignMultipleTags(entityType: 'clients' | 'tickets' | 'services', entityId: string, tagIds: string[]): Observable<void> {
         if (!tagIds.length) return new Observable(observer => { observer.next(); observer.complete(); });
 
         return from(
             (async () => {
-                const tableName = entityType === 'clients' ? 'clients_tags' : 'ticket_tag_relations';
-                const foreignKey = entityType === 'clients' ? 'client_id' : 'ticket_id';
+                let tableName = '';
+                let foreignKey = '';
+
+                switch (entityType) {
+                    case 'clients': tableName = 'clients_tags'; foreignKey = 'client_id'; break;
+                    case 'tickets': tableName = 'tickets_tags'; foreignKey = 'ticket_id'; break;
+                    case 'services': tableName = 'services_tags'; foreignKey = 'service_id'; break;
+                }
 
                 const rows = tagIds.map(tagId => ({ [foreignKey]: entityId, tag_id: tagId }));
 
@@ -177,7 +206,7 @@ export class GlobalTagsService {
         );
     }
 
-    getTopTags(scope: 'clients' | 'tickets', limit = 5): Observable<GlobalTag[]> {
+    getTopTags(scope: 'clients' | 'tickets' | 'services', limit = 5): Observable<GlobalTag[]> {
         return from(
             (async () => {
                 const { data, error } = await this.supabaseClient.instance
@@ -185,6 +214,20 @@ export class GlobalTagsService {
 
                 if (error) throw error;
                 return data as GlobalTag[];
+            })()
+        );
+    }
+
+    getScopes(): Observable<{ id: string, label: string, color?: string }[]> {
+        return from(
+            (async () => {
+                const { data, error } = await this.supabaseClient.instance
+                    .from('tag_scopes')
+                    .select('id, label, color')
+                    .order('label');
+
+                if (error) throw error;
+                return data;
             })()
         );
     }

@@ -65,18 +65,16 @@ export class SupabaseModulesService {
   }
 
   private async executeAdminSetUserModule(targetUserId: string, moduleKey: string, status: 'activado' | 'desactivado'): Promise<{ success: boolean }> {
-    const token = await this.requireAccessToken();
-    const res = await fetch(`${this.fnBase}/admin-set-user-module`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'apikey': this.rc.get().supabase.anonKey,
-      },
-      body: JSON.stringify({ target_user_id: targetUserId, module_key: moduleKey, status })
+    const { data, error } = await this.supabaseClient.instance.rpc('admin_set_user_module', {
+      p_target_user_id: targetUserId,
+      p_module_key: moduleKey,
+      p_status: status
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || 'No se pudo actualizar el módulo del usuario');
+
+    if (error) {
+      console.error('Error setting user module via RPC:', error);
+      throw new Error(error.message || 'No se pudo actualizar el módulo del usuario via RPC');
+    }
     return { success: true };
   }
 
@@ -86,19 +84,17 @@ export class SupabaseModulesService {
   }
 
   private async executeAdminListUserModules(ownerId?: string): Promise<{ users: any[]; modules: any[]; assignments: any[] }> {
-    const token = await this.requireAccessToken();
-    const url = new URL(`${this.fnBase}/admin-list-user-modules`);
-    if (ownerId) url.searchParams.set('owner_id', ownerId);
-    const res = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'apikey': this.rc.get().supabase.anonKey,
-      }
+    const { data, error } = await this.supabaseClient.instance.rpc('admin_list_user_modules', {
+      p_owner_id: ownerId || null
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || 'No se pudo obtener la matriz de módulos por usuario');
-    return { users: json?.users || [], modules: json?.modules || [], assignments: json?.assignments || [] };
+
+    if (error) {
+      console.error('Error listing user modules via RPC:', error);
+      throw new Error(error.message || 'No se pudo obtener la matriz de módulos via RPC');
+    }
+
+    // RPC returns { users: [...], modules: [...], assignments: [...] } directly
+    return data as { users: any[]; modules: any[]; assignments: any[] };
   }
 
   // List all owners (platform-level admin use)

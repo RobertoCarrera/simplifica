@@ -889,11 +889,11 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
             </div>
             <!-- Tags Section (moved from header) -->
             <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6 mt-4">
-              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Tags</h3>
-              <div *ngIf="!ticketTags || ticketTags.length === 0" class="text-sm text-gray-500 dark:text-gray-400">No hay tags asignadas</div>
-              <div *ngIf="ticketTags && ticketTags.length > 0" class="flex flex-wrap gap-2">
-                <span *ngFor="let tag of ticketTags" [style.background-color]="getTagColor(tag)" class="px-2 py-1 rounded text-xs font-medium text-white">{{ tag }}</span>
-              </div>
+              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Etiquetas</h3>
+              <app-tag-manager *ngIf="ticketId" 
+                  [entityType]="'tickets'" 
+                  [entityId]="ticketId">
+              </app-tag-manager>
             </div>
           </div>
         </div>
@@ -1425,8 +1425,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   companyDevices: Device[] = [];
   // Set of linked device ids (from ticket_devices)
   linkedDeviceIds: Set<string> = new Set();
-  ticketTags: string[] = [];
-  availableTags: any[] = [];
+
   allStages: ConfigStage[] = [];
   private stagesSvc = inject(SupabaseTicketStagesService);
   recentActivity: any[] = [];
@@ -2215,31 +2214,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
   }
 
-  async loadTicketTags() {
-    try {
-      const { data: tagRelations, error } = await this.supabase.getClient()
-        .from('ticket_tag_relations')
-        .select(`
-          tag_id,
-          tag:ticket_tags(id, name, color)
-        `)
-        .eq('ticket_id', this.ticketId);
 
-      if (error) {
-        console.warn('Error cargando tags del ticket:', error);
-        this.ticketTags = [];
-        this.availableTags = [];
-        return;
-      }
-
-      this.ticketTags = (tagRelations || []).map((rel: any) => rel.tag?.name).filter(Boolean);
-      this.availableTags = (tagRelations || []).map((rel: any) => rel.tag).filter(Boolean);
-    } catch (error) {
-      console.error('Error en loadTicketTags:', error);
-      this.ticketTags = [];
-      this.availableTags = [];
-    }
-  }
 
   async loadTicketDevices() {
     try {
@@ -2896,7 +2871,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       await Promise.all([
         this.loadTicketServices(),
         this.loadTicketProducts(),
-        this.loadTicketTags(),
+
         this.loadTicketDevices(),
         this.loadComments()
       ]);
@@ -3592,10 +3567,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     return this.ticketStatusConfig[key]?.icon || this.ticketStatusConfig['open'].icon;
   }
 
-  getTagColor(tagName: string): string {
-    const found = (this.availableTags || []).find((t: any) => t?.name === tagName);
-    return found?.color || '#6366F1';
-  }
+
 
   getVisibleStages(): ConfigStage[] {
     return this.allStages || [];

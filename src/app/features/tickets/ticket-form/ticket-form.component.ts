@@ -266,7 +266,7 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
     async loadTagsForTicket(ticketId: string): Promise<string[]> {
         const client = this.simpleSupabase.getClient();
         const { data } = await (client as any)
-            .from('ticket_tag_relations')
+            .from('tickets_tags')
             .select('tag:global_tags(name)')
             .eq('ticket_id', ticketId);
 
@@ -779,7 +779,7 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
 
         // Load Devices
         const { data: relations } = await (this.simpleSupabase.getClient() as any)
-            .from('ticket_device_relations')
+            .from('ticket_devices')
             .select(`device:devices(*)`)
             .eq('ticket_id', ticketId);
 
@@ -881,7 +881,7 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
     async syncTicketDevices(ticketId: string, devices: Device[]) {
         const client = this.simpleSupabase.getClient();
         // Get current relations
-        const { data: currentRels } = await (client as any).from('ticket_device_relations').select('device_id').eq('ticket_id', ticketId);
+        const { data: currentRels } = await (client as any).from('ticket_devices').select('device_id').eq('ticket_id', ticketId);
         const currentIds = (currentRels || []).map((r: any) => r.device_id);
         const newIds = devices.map(d => d.id);
 
@@ -894,7 +894,7 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
         // To Remove
         const toRemove = currentIds.filter((id: string) => !newIds.includes(id));
         for (const id of toRemove) {
-            await (client as any).from('ticket_device_relations').delete().match({ ticket_id: ticketId, device_id: id });
+            await (client as any).from('ticket_devices').delete().match({ ticket_id: ticketId, device_id: id });
         }
     }
 
@@ -916,20 +916,20 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
         const tagIds = tags.map(t => tagMap.get(t)).filter(Boolean);
 
         // 3. Sync Relations
-        const { data: current } = await (client as any).from('ticket_tag_relations').select('tag_id').eq('ticket_id', ticketId);
+        const { data: current } = await (client as any).from('tickets_tags').select('tag_id').eq('ticket_id', ticketId);
         const currentTagIds = (current || []).map((r: any) => r.tag_id);
 
         // Add
         for (const id of tagIds) {
             if (!currentTagIds.includes(id)) {
-                await (client as any).from('ticket_tag_relations').insert({ ticket_id: ticketId, tag_id: id });
+                await (client as any).from('tickets_tags').insert({ ticket_id: ticketId, tag_id: id });
             }
         }
 
         // Remove
         for (const id of currentTagIds) {
             if (!tagIds.includes(id)) {
-                await (client as any).from('ticket_tag_relations').delete().match({ ticket_id: ticketId, tag_id: id });
+                await (client as any).from('tickets_tags').delete().match({ ticket_id: ticketId, tag_id: id });
             }
         }
     }

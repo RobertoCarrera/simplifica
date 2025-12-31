@@ -112,8 +112,12 @@
                                 <div>
                                     <h3 class="font-semibold text-gray-900 dark:text-white leading-tight">{{ tag.name }}
                                     </h3>
-                                    <p *ngIf="tag.category" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{
-                                        tag.category }}</p>
+                                    <p *ngIf="tag.category"
+                                        class="text-xs mt-0.5 px-2 py-0.5 rounded-full inline-block font-medium"
+                                        [style.backgroundColor]="(tag.category_color || '#6B7280') + '20'"
+                                        [style.color]="tag.category_color || '#6B7280'">
+                                        {{ tag.category }}
+                                    </p>
                                 </div>
                             </div>
                             <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -134,15 +138,13 @@
 
                         <div
                             class="flex items-center gap-2 mt-auto pt-2 border-t border-gray-50 dark:border-gray-700/50">
-                            <span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Scope:</span>
+                            <span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Ámbito:</span>
                             <div class="flex gap-1">
-                                <span *ngIf="tag.scope?.includes('clients')"
-                                    class="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs rounded-full border border-blue-100 dark:border-blue-800/30">
-                                    Clientes
-                                </span>
-                                <span *ngIf="tag.scope?.includes('tickets')"
-                                    class="px-2 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 text-xs rounded-full border border-purple-100 dark:border-purple-800/30">
-                                    Tickets
+                                <span *ngFor="let scopeId of tag.scope"
+                                    class="px-2 py-0.5 text-xs rounded-full border border-opacity-30"
+                                    [style.backgroundColor]="getScopeColor(scopeId) + '20'"
+                                    [style.color]="getScopeColor(scopeId)" [style.borderColor]="getScopeColor(scopeId)">
+                                    {{ getScopeLabel(scopeId) }}
                                 </span>
                                 <span *ngIf="!tag.scope || tag.scope.length === 0"
                                     class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs rounded-full">
@@ -160,7 +162,7 @@
 </div>
 
 <!-- Modal -->
-<app-modal [visible]="showModal" (close)="closeModal()">
+<app-modal [visible]="showModal" [dismissible]="false" (close)="closeModal()">
     <div class="p-6">
         <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
             <span class="w-2 h-8 rounded-full bg-indigo-500 block"></span>
@@ -206,25 +208,31 @@
             <!-- Category -->
             <div>
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Categoría</label>
-                <div class="relative">
-                    <input type="text" formControlName="category" placeholder="Ej. Finanzas, Estado, Prioridad..."
-                        (focus)="onCategoryFocus()" (blur)="hideCategorySuggestions()"
-                        (input)="updateCategorySuggestions()"
-                        class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white pl-10">
-                    <i class="fas fa-layer-group absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <div class="flex gap-2">
+                    <div class="relative flex-1">
+                        <input type="text" formControlName="category" placeholder="Ej. Finanzas, Estado, Prioridad..."
+                            (focus)="onCategoryFocus()" (blur)="hideCategorySuggestions()"
+                            (input)="updateCategorySuggestions()"
+                            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white pl-10">
+                        <i class="fas fa-layer-group absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
 
-                    <!-- Autocomplete Dropdown -->
-                    <div *ngIf="showCategorySuggestions && categorySuggestions.length > 0"
-                        class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto">
-                        <button type="button" *ngFor="let cat of categorySuggestions"
-                            (click)="selectCategorySuggestion(cat)"
-                            class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                            {{ cat }}
-                        </button>
+                        <!-- Autocomplete Dropdown -->
+                        <div *ngIf="showCategorySuggestions && categorySuggestions.length > 0"
+                            class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto">
+                            <button type="button" *ngFor="let cat of categorySuggestions"
+                                (click)="selectCategorySuggestion(cat)"
+                                class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                {{ cat }}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="relative w-12 flex-shrink-0">
+                        <input type="color" formControlName="category_color"
+                            class="h-full w-full cursor-pointer rounded-xl border border-gray-200 dark:border-gray-600 p-1 bg-white dark:bg-gray-700"
+                            title="Color de categoría">
                     </div>
                 </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Agrupa tus etiquetas para organizarlas mejor.
-                </p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Agrupa tus etiquetas y asigna un color.</p>
             </div>
 
             <!-- Description -->
@@ -238,27 +246,18 @@
             <!-- Scope -->
             <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
                 <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Disponible en:</label>
-                <div class="flex gap-6">
-                    <label class="flex items-center gap-2 cursor-pointer group">
+                <div class="flex flex-wrap gap-6">
+                    <label *ngFor="let scope of availableScopes" class="flex items-center gap-2 cursor-pointer group">
                         <div class="relative flex items-center">
-                            <input type="checkbox" formControlName="scope_clients"
+                            <input type="checkbox" [checked]="tagForm.get('scopes')?.value?.includes(scope.id)"
+                                (change)="toggleScope(scope.id)"
                                 class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 dark:border-gray-600 transition-all checked:border-indigo-500 checked:bg-indigo-500 hover:border-indigo-400">
                             <i
                                 class="fas fa-check absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-xs opacity-0 peer-checked:opacity-100 pointer-events-none"></i>
                         </div>
                         <span
-                            class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Clientes</span>
-                    </label>
-
-                    <label class="flex items-center gap-2 cursor-pointer group">
-                        <div class="relative flex items-center">
-                            <input type="checkbox" formControlName="scope_tickets"
-                                class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 dark:border-gray-600 transition-all checked:border-purple-500 checked:bg-purple-500 hover:border-purple-400">
-                            <i
-                                class="fas fa-check absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-xs opacity-0 peer-checked:opacity-100 pointer-events-none"></i>
-                        </div>
-                        <span
-                            class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Tickets</span>
+                            class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{{
+                            scope.label }}</span>
                     </label>
                 </div>
             </div>

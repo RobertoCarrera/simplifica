@@ -10,6 +10,7 @@ import { CommonModule } from '@angular/common';
 })
 export class AppModalComponent implements OnChanges, OnDestroy {
   @Input() visible: boolean = false;
+  @Input() dismissible: boolean = true;
   @Output() close = new EventEmitter<void>();
 
   ngOnChanges(changes: SimpleChanges) {
@@ -27,6 +28,8 @@ export class AppModalComponent implements OnChanges, OnDestroy {
   }
 
   backdropClick() {
-    this.close.emit();
+    if (this.dismissible) {
+      this.close.emit();
+    }
   }
 }

@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } 
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 import { AppModalComponent } from '../../../shared/ui/app-modal/app-modal.component';
 import { ToastService } from '../../../services/toast.service';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
     selector: 'app-tags-management',
@@ -31,6 +32,7 @@ export class TagsManagementComponent implements OnInit {
     tagForm: FormGroup;
     editingTagId: string | null = null;
     saving = false;
+    availableScopes: { id: string, label: string, color?: string }[] = [];
 
     // Predefined colors for UI picker
     presetColors = [
@@ -49,20 +51,31 @@ export class TagsManagementComponent implements OnInit {
     constructor(
         @Inject(GlobalTagsService) private tagsService: GlobalTagsService,
         private fb: FormBuilder,
-        private toast: ToastService
+        private toast: ToastService,
+        private authService: AuthService
     ) {
         this.tagForm = this.fb.group({
             name: ['', [Validators.required, Validators.minLength(2)]],
             color: ['#3B82F6', Validators.required],
             category: [''],
+            category_color: ['#6B7280'], // Default Gray
             description: [''],
-            scope_clients: [false],
-            scope_tickets: [false]
+            scopes: [[]] // Array of selected scope IDs
         });
     }
 
     ngOnInit() {
         this.loadTags();
+        this.loadScopes();
+    }
+
+    loadScopes() {
+        this.tagsService.getScopes().subscribe({
+            next: (scopes) => {
+                this.availableScopes = scopes;
+            },
+            error: (err) => console.error('Error loading scopes', err)
+        });
     }
 
     loadTags() {
@@ -114,11 +127,11 @@ export class TagsManagementComponent implements OnInit {
         this.editingTagId = null;
         this.tagForm.reset({
             name: '',
-            color: this.presetColors[Math.floor(Math.random() * this.presetColors.length)], // Random default color
+            color: this.presetColors[Math.floor(Math.random() * this.presetColors.length)],
             category: '',
+            category_color: '#6B7280',
             description: '',
-            scope_clients: true,
-            scope_tickets: true
+            scopes: ['clients', 'tickets'] // Default to common scopes
         });
         this.showModal = true;
     }
@@ -127,19 +140,30 @@ export class TagsManagementComponent implements OnInit {
         this.isEditing = true;
         this.editingTagId = tag.id;
 
-        // Parse scope array to checkboxes
-        const hasClientScope = tag.scope?.includes('clients') ?? false;
-        const hasTicketScope = tag.scope?.includes('tickets') ?? false;
-
         this.tagForm.patchValue({
             name: tag.name,
             color: tag.color,
             category: tag.category,
+            category_color: tag.category_color || '#6B7280',
             description: tag.description,
-            scope_clients: hasClientScope,
-            scope_tickets: hasTicketScope
+            scopes: tag.scope || []
         });
         this.showModal = true;
+    }
+
+    toggleScope(scopeId: string) {
+        const currentScopes: string[] = this.tagForm.get('scopes')?.value || [];
+        const index = currentScopes.indexOf(scopeId);
+
+        let newScopes;
+        if (index > -1) {
+            newScopes = currentScopes.filter(s => s !== scopeId);
+        } else {
+            newScopes = [...currentScopes, scopeId];
+        }
+
+        this.tagForm.patchValue({ scopes: newScopes });
+        this.tagForm.markAsDirty();
     }
 
     closeModal() {
@@ -165,7 +189,6 @@ export class TagsManagementComponent implements OnInit {
     }
 
     hideCategorySuggestions() {
-        // Small delay to allow click event on suggestion to fire
         setTimeout(() => {
             this.showCategorySuggestions = false;
         }, 200);
@@ -181,18 +204,16 @@ export class TagsManagementComponent implements OnInit {
 
         this.saving = true;
         const formVal = this.tagForm.value;
-
-        // Construct scope array
-        const scope: string[] = [];
-        if (formVal.scope_clients) scope.push('clients');
-        if (formVal.scope_tickets) scope.push('tickets');
+        const companyId = this.authService.companyId();
 
         const tagData: Partial<GlobalTag> = {
             name: formVal.name,
             color: formVal.color,
             category: formVal.category || null,
+            category_color: formVal.category_color || null,
             description: formVal.description || null,
-            scope: scope.length > 0 ? scope : null // null means universal/all if backend logic supports it, or maybe empty array? Interface says string[] | null
+            scope: formVal.scopes && formVal.scopes.length > 0 ? formVal.scopes : null,
+            company_id: companyId
         };
 
         if (this.isEditing && this.editingTagId) {
@@ -224,6 +245,17 @@ export class TagsManagementComponent implements OnInit {
                 }
             });
         }
+    }
+
+    // Helper to get scope color
+    getScopeColor(scopeId: string): string {
+        const scope = this.availableScopes.find(s => s.id === scopeId);
+        return scope?.color || '#6B7280'; // Default gray if not found
+    }
+
+    getScopeLabel(scopeId: string): string {
+        const scope = this.availableScopes.find(s => s.id === scopeId);
+        return scope?.label || scopeId;
     }
 
     deleteTag(tag: GlobalTag) {

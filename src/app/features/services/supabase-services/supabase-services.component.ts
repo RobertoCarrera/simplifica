@@ -1,9 +1,11 @@
 import { Component, OnInit, inject, HostListener, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SupabaseServicesService, Service, ServiceCategory, ServiceTag, ServiceVariant } from '../../../services/supabase-services.service';
+import { SupabaseServicesService, Service, ServiceCategory, ServiceVariant } from '../../../services/supabase-services.service';
 import { SimpleSupabaseService, SimpleCompany } from '../../../services/simple-supabase.service';
 import { DevRoleService } from '../../../services/dev-role.service';
+import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
+import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
 import { CsvHeaderMapperComponent, CsvMappingResult } from '../../../shared/ui/csv-header-mapper/csv-header-mapper.component';
 import { ToastService } from '../../../services/toast.service';
 import { SupabaseUnitsService, UnitOfMeasure } from '../../../services/supabase-units.service';
@@ -13,7 +15,7 @@ import { ServiceVariantsComponent } from '../service-variants/service-variants.c
 @Component({
   selector: 'app-supabase-services',
   standalone: true,
-  imports: [CommonModule, FormsModule, CsvHeaderMapperComponent, SkeletonComponent, ServiceVariantsComponent],
+  imports: [CommonModule, FormsModule, CsvHeaderMapperComponent, SkeletonComponent, ServiceVariantsComponent, TagManagerComponent],
   templateUrl: './supabase-services.component.html',
   styleUrl: './supabase-services.component.scss'
 })
@@ -31,7 +33,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   services: Service[] = [];
   filteredServices: Service[] = [];
   serviceCategories: ServiceCategory[] = [];
-  serviceTags: ServiceTag[] = [];
+  // serviceTags removed, replaced by TagsManagementComponent
   loading = false;
   error: string | null = null;
   devRoleService = inject(DevRoleService);
@@ -59,10 +61,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   filteredCategories: ServiceCategory[] = [];
 
   // Tag form management
-  showTagInput = false;
-  tagFilterText = '';
-  filteredTags: ServiceTag[] = [];
-  selectedTags: string[] = [];
+  pendingTags: GlobalTag[] = []; // Used when creating a new service
 
   // Custom dropdown management for Unit, Difficulty, Priority
   showUnitDropdown = false;
@@ -107,6 +106,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   private simpleSupabase = inject(SimpleSupabaseService);
   private toastService = inject(ToastService);
   private unitsService = inject(SupabaseUnitsService);
+  private globalTagsService = inject(GlobalTagsService);
   @ViewChild(CsvHeaderMapperComponent) private csvMapperCmp?: CsvHeaderMapperComponent;
 
   // CSV Mapper state for services
@@ -144,7 +144,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.loadCompanies().then(() => {
       this.loadServices();
       this.loadServiceCategories();
-      this.loadServiceTags();
     });
     this.loadUnits();
   }
@@ -210,16 +209,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     }
   }
 
-  async loadServiceTags() {
-    if (!this.selectedCompanyId) return;
 
-    try {
-      this.serviceTags = await this.servicesService.getServiceTags(this.selectedCompanyId);
-      this.updateTagFilter();
-    } catch (error: any) {
-      console.error('Error loading service tags:', error);
-    }
-  }
 
   async loadUnits() {
     try {
@@ -243,16 +233,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     }
   }
 
-  updateTagFilter() {
-    if (!this.tagFilterText) {
-      this.filteredTags = this.serviceTags;
-    } else {
-      const searchTerm = this.normalizeText(this.tagFilterText);
-      this.filteredTags = this.serviceTags.filter(tag =>
-        this.normalizeText(tag.name).includes(searchTerm)
-      );
-    }
-  }
+
 
   // Normalizar texto para búsqueda insensible a mayúsculas y acentos
   private normalizeText(text: string): string {
@@ -341,77 +322,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Métodos de gestión de tags
-  selectTag(tag: ServiceTag) {
-    if (!this.selectedTags.includes(tag.name)) {
-      this.selectedTags.push(tag.name);
-    }
-    this.showTagInput = false;
-    this.tagFilterText = '';
-  }
 
-  hasExactTagMatch(): boolean {
-    const normalizedSearch = this.normalizeText(this.tagFilterText);
-    return this.serviceTags.some(tag =>
-      this.normalizeText(tag.name) === normalizedSearch
-    );
-  }
-
-  async createNewTag() {
-    if (!this.tagFilterText.trim()) return;
-
-    try {
-      // Verificar si ya existe una tag similar
-      const normalizedSearch = this.normalizeText(this.tagFilterText);
-      const existingTag = this.serviceTags.find(tag =>
-        this.normalizeText(tag.name) === normalizedSearch
-      );
-
-      if (existingTag) {
-        // Si existe, seleccionarla en lugar de crear una nueva
-        if (!this.selectedTags.includes(existingTag.name)) {
-          this.selectedTags.push(existingTag.name);
-        }
-        this.showTagInput = false;
-        this.tagFilterText = '';
-        return;
-      }
-
-      const newTag = await this.servicesService.createServiceTag({
-        name: this.tagFilterText.trim(),
-        company_id: this.selectedCompanyId,
-        color: '#3B82F6', // Color por defecto
-        description: '',
-        is_active: true
-      });
-
-      this.serviceTags.push(newTag);
-      this.selectedTags.push(newTag.name);
-      this.showTagInput = false;
-      this.tagFilterText = '';
-
-    } catch (error: any) {
-      console.error('Error creating tag:', error);
-    }
-  }
-
-  onTagFilterChange() {
-    this.filteredTags = this.serviceTags.filter(tag =>
-      tag.name.toLowerCase().includes(this.tagFilterText.toLowerCase())
-    );
-    // Auto-focus en el input de búsqueda cuando se abre
-    if (this.showTagInput && this.tagSearchInput) {
-      setTimeout(() => this.tagSearchInput?.nativeElement.focus(), 0);
-    }
-  }
-
-  // Método auxiliar para abrir dropdown de tags y hacer focus
-  openTagDropdown() {
-    this.showTagInput = true;
-    this.tagFilterText = '';
-    this.updateTagFilter(); // Mostrar todos los tags al abrir
-    setTimeout(() => this.tagSearchInput?.nativeElement.focus(), 100);
-  }
 
   // Métodos para dropdown de Unidad de Medida
   openUnitDropdown() {
@@ -461,17 +372,11 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     return option ? option.label : '';
   }
 
-  removeTag(tag: string) {
-    const index = this.selectedTags.indexOf(tag);
-    if (index > -1) {
-      this.selectedTags.splice(index, 1);
-    }
-  }
+
 
   onCompanyChange() {
     this.loadServices();
     this.loadServiceCategories();
-    this.loadServiceTags();
   }
 
   async loadServices() {
@@ -565,8 +470,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       has_variants: false
     };
 
-    // Inicializar tags seleccionados
-    this.selectedTags = service?.tags ? [...service.tags] : [];
+    // Inicializar tags seleccionados (pendingTags used for new services)
+    this.pendingTags = [];
+    // If editing, TagsManagementComponent will load tags by entityId.
+    // If creating, we start with empty pendingTags.
 
     // Load variants if service has them
     if (service?.has_variants && service.id) {
@@ -584,7 +491,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
     this.formErrors = {};
     this.loadServiceCategories();
-    this.loadServiceTags();
+    // this.loadServiceTags(); // Removed
     this.loadUnits();
 
     // Añadir entrada al historial para que el botón "atrás" cierre el modal
@@ -615,9 +522,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.formErrors = {};
     this.showCategoryInput = false;
     this.categoryFilterText = '';
-    this.showTagInput = false;
-    this.tagFilterText = '';
-    this.selectedTags = [];
+
+    // Reset tags
+    this.pendingTags = [];
+
     this.serviceVariants = [];
     this.pendingVariants = []; // Limpiar variantes pendientes
 
@@ -713,8 +621,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       // Add company_id and tags to form data
       const dataWithCompany = {
         ...this.formData,
-        company_id: this.selectedCompanyId,
-        tags: this.selectedTags
+        company_id: this.selectedCompanyId
       };
 
       let savedServiceId: string;
@@ -722,9 +629,21 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       if (this.editingService) {
         await this.servicesService.updateService(this.editingService.id, dataWithCompany);
         savedServiceId = this.editingService.id;
+        // Tags are handled by app-tag-manager automatically in edit mode
       } else {
         const newService = await this.servicesService.createService(dataWithCompany);
         savedServiceId = newService.id;
+
+        // Save pending tags for new service
+        if (this.pendingTags.length > 0) {
+          try {
+            const tagIds = this.pendingTags.map(t => t.id);
+            await this.globalTagsService.assignMultipleTags('services', savedServiceId, tagIds).toPromise();
+          } catch (tagErr) {
+            console.error('Error assigning tags:', tagErr);
+            this.toastService.error('Error al guardar tags', 'El servicio se guardó pero hubo un error con los tags');
+          }
+        }
 
         // If user enabled variants but didn't add any yet, reopen the created service so they can add variants
         const wantsVariantsButNone = !!this.formData.has_variants && this.pendingVariants.length === 0;

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+
 import { environment } from '../../environments/environment';
 
 export interface RuntimeConfig {
@@ -14,19 +14,20 @@ export interface RuntimeConfig {
   };
 }
 
+
+
 @Injectable({ providedIn: 'root' })
 export class RuntimeConfigService {
   private config: RuntimeConfig | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor() { }
 
   async load(): Promise<void> {
     try {
       // Add a cache-buster to avoid CDN caching old keys after rotations/deploys
       const cacheBuster = `ts=${Date.now()}`;
-      const cfg = await this.http
-        .get<RuntimeConfig>(`/assets/runtime-config.json?${cacheBuster}`, { withCredentials: false })
-        .toPromise();
+      const response = await fetch(`/assets/runtime-config.json?${cacheBuster}`);
+      const cfg = await response.json() as RuntimeConfig;
       // Defaults from compile-time environment for local/dev, or as fallback
       const defaults: RuntimeConfig = {
         supabase: {

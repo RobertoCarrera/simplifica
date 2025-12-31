@@ -13427,38 +13427,10 @@ INSERT INTO "public"."service_categories" ("id", "name", "color", "icon", "descr
 -- Data for Name: service_tags; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO "public"."service_tags" ("id", "name", "color", "description", "is_active", "created_at", "updated_at", "company_id") VALUES
-	('318a1d66-8f5f-44d1-a713-fc104a2f94a6', 'prueba', '#3B82F6', '', true, '2025-11-29 13:43:57.622249+01', '2025-11-29 13:43:57.622249+01', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('68d5cf66-bac6-4f7d-8f06-37daa23fc364', 'horas', '#6b7280', '', true, '2025-11-09 23:08:43.285521+01', '2025-11-09 23:08:43.285521+01', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('a9fe88c2-c4e0-43ee-91cb-302bf2b087a3', 'webs', '#6b7280', '', true, '2025-09-21 18:35:20.707086+02', '2025-09-21 18:35:20.707086+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('acb0f67d-6ed5-4b68-bb8e-f09208b7ff17', 'dominio', '#6b7280', '', true, '2025-09-21 18:30:32.437076+02', '2025-09-21 18:30:32.437076+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('25392a73-e7d2-4770-b7db-7c564929e069', 'web app', '#6b7280', '', true, '2025-09-21 17:30:22.923249+02', '2025-09-21 17:30:22.923249+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('ff6cbad8-003c-4f15-ae85-764675196a6f', 'posicionamiento seo', '#6b7280', '', true, '2025-11-09 23:44:24.377102+01', '2025-11-09 23:44:24.377102+01', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('b080f022-9d00-442d-a4f6-d6fc24cc53e4', 'configuraciones', '#6b7280', '', true, '2025-09-21 17:08:34.045058+02', '2025-09-21 17:08:34.045058+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('ee0c0fc4-9e1c-40ef-9cb5-dcdad588cb1f', 'hosting', '#6b7280', '', true, '2025-09-21 17:29:53.692715+02', '2025-09-21 17:29:53.692715+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('ae9e1ab3-5ec1-45ea-adab-3555c17c480b', 'wordpress', '#6b7280', '', true, '2025-09-21 18:35:16.424272+02', '2025-09-21 18:35:16.424272+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('222c94c4-9d07-4002-931f-3871f80b00e8', 'app web', '#6b7280', '', true, '2025-09-16 08:26:37.401179+02', '2025-09-16 08:26:37.401179+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('3e5d23c1-83fc-4750-852b-f455567de3ac', 'mantenimiento web', '#6b7280', '', true, '2025-09-11 22:50:35.43035+02', '2025-09-11 22:50:35.43035+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5');
 
 
---
--- Data for Name: service_tag_relations; Type: TABLE DATA; Schema: public; Owner: postgres
---
 
-INSERT INTO "public"."service_tag_relations" ("service_id", "tag_id", "created_at") VALUES
-	('d22f5fba-2058-4ac4-a5e6-36b026fbfd35', '222c94c4-9d07-4002-931f-3871f80b00e8', '2025-11-11 19:11:54.243125+01'),
-	('d22f5fba-2058-4ac4-a5e6-36b026fbfd35', '3e5d23c1-83fc-4750-852b-f455567de3ac', '2025-11-11 19:11:54.243125+01'),
-	('6e73b5c1-2c7d-43ae-a9e7-86d0155ccb9e', 'a9fe88c2-c4e0-43ee-91cb-302bf2b087a3', '2025-11-18 19:23:29.380605+01'),
-	('6e73b5c1-2c7d-43ae-a9e7-86d0155ccb9e', 'ae9e1ab3-5ec1-45ea-adab-3555c17c480b', '2025-11-18 19:23:29.380605+01'),
-	('0436b4ec-bb9e-4795-b534-007724667674', 'a9fe88c2-c4e0-43ee-91cb-302bf2b087a3', '2025-12-13 21:58:49.159386+01'),
-	('0436b4ec-bb9e-4795-b534-007724667674', 'ae9e1ab3-5ec1-45ea-adab-3555c17c480b', '2025-12-13 21:58:49.159386+01'),
-	('cba0767c-aeff-439e-b36b-ed86e7c797c1', 'ff6cbad8-003c-4f15-ae85-764675196a6f', '2025-12-13 23:05:50.281935+01'),
-	('89cd32cd-b071-4550-8732-4ac1a7991353', '68d5cf66-bac6-4f7d-8f06-37daa23fc364', '2025-11-09 23:11:26.371574+01'),
-	('76def0c9-e22a-4c78-84cd-64912484e180', 'acb0f67d-6ed5-4b68-bb8e-f09208b7ff17', '2025-11-09 23:19:34.620039+01'),
-	('4a1b68aa-cdfe-4a92-816e-f64faa261cd5', 'ee0c0fc4-9e1c-40ef-9cb5-dcdad588cb1f', '2025-11-09 23:41:28.552587+01'),
-	('65f24593-b836-4b5f-91bd-79028c1420d0', '3e5d23c1-83fc-4750-852b-f455567de3ac', '2025-12-15 13:32:44.590414+01'),
-	('65f24593-b836-4b5f-91bd-79028c1420d0', 'ae9e1ab3-5ec1-45ea-adab-3555c17c480b', '2025-12-15 13:32:44.590414+01'),
-	('b90c64c5-1d34-4b33-8266-1e72d26cf12d', '3e5d23c1-83fc-4750-852b-f455567de3ac', '2025-12-23 15:45:55.228273+01');
+
 
 
 --
@@ -13528,35 +13500,7 @@ INSERT INTO "public"."ticket_services" ("id", "ticket_id", "service_id", "quanti
 -- Data for Name: ticket_tags; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO "public"."ticket_tags" ("id", "name", "color", "description", "created_at", "updated_at", "company_id") VALUES
-	('7e63328f-fe9c-4587-a092-e664808eae77', 'Urgente', '#ef4444', 'Tickets que requieren atención inmediata', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('573f49f6-f648-4927-b0d3-28b5eeabdc20', 'Hardware', '#3b82f6', 'Problemas relacionados con componentes físicos', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('b4295c67-37c5-4906-bca7-83757809b317', 'Software', '#10b981', 'Problemas de sistema operativo o aplicaciones', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('c51818b4-9190-42e2-9a10-08950e7c3a06', 'Garantía', '#8b5cf6', 'Reparaciones cubiertas por garantía', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('26a188a8-8fe5-4c4d-ad3d-b660b2f0681c', 'Fuera de Garantía', '#f59e0b', 'Reparaciones no cubiertas por garantía', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('c171c474-19af-4cef-bb5a-c30438c98d22', 'Datos', '#06b6d4', 'Recuperación o migración de datos', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('f76f10c8-d7fa-4d74-bf82-dd3a83eea483', 'Limpieza', '#84cc16', 'Mantenimiento preventivo', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('dae6d18c-03b2-4107-a102-10e20dcc835b', 'Diagnóstico', '#f97316', 'Análisis del problema', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('d0199a64-1606-4955-9866-a63579ae37df', 'Pantalla', '#ec4899', 'Problemas con displays', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('f6740bda-2fd6-4483-9a15-41bdc7ef707f', 'Batería', '#eab308', 'Problemas de alimentación', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('63f2bc75-94e6-4fd5-bdfa-9b7a8625cd07', 'Teclado', '#6366f1', 'Problemas de entrada', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('992b429d-171e-4151-825b-c91cdaac9ff3', 'Red', '#14b8a6', 'Conectividad y redes', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('797b10d9-e523-4b0b-a44d-90bf1d51e050', 'Virus', '#dc2626', 'Seguridad y malware', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('77dba85c-1622-42bf-a932-5d9d6f43b2e3', 'Gaming', '#7c3aed', 'Equipos especializados en gaming', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('e27ef204-de8f-4993-9bd7-12394e16e1da', 'Empresarial', '#059669', 'Equipos de empresa', '2025-09-08 22:51:53.441341+02', '2025-09-08 22:51:53.441341+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('b3b065ad-e9d2-4e42-8a79-683449308d37', 'Reparación', '#f59e0b', NULL, '2025-09-09 00:00:07.747736+02', '2025-09-09 00:00:07.747736+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('627d126b-eb7c-4fec-9635-01111d2fce69', 'Mantenimiento', '#06b6d4', NULL, '2025-09-09 00:00:07.747736+02', '2025-09-09 00:00:07.747736+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('275f2799-8d92-471f-8d78-85fc3c0dbed7', 'Instalación', '#84cc16', NULL, '2025-09-09 00:00:07.747736+02', '2025-09-09 00:00:07.747736+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('e32bb8d5-f787-4e92-ba72-a1af9a0cc867', 'Configuración', '#f97316', NULL, '2025-09-09 00:00:07.747736+02', '2025-09-09 00:00:07.747736+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('68d5cf66-bac6-4f7d-8f06-37daa23fc364', 'horas', '#6b7280', NULL, '2025-11-09 23:57:48.032708+01', '2025-11-09 23:57:48.032708+01', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('222c94c4-9d07-4002-931f-3871f80b00e8', 'app web', '#6b7280', NULL, '2025-10-06 16:42:32.144952+02', '2025-10-06 16:42:32.144952+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('a9fe88c2-c4e0-43ee-91cb-302bf2b087a3', 'webs', '#6b7280', NULL, '2025-12-12 09:49:45.326725+01', '2025-12-12 09:49:45.326725+01', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('ae9e1ab3-5ec1-45ea-adab-3555c17c480b', 'wordpress', '#6b7280', NULL, '2025-11-10 12:59:03.607843+01', '2025-11-10 12:59:03.607843+01', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('3e5d23c1-83fc-4750-852b-f455567de3ac', 'mantenimiento web', '#6b7280', NULL, '2025-09-20 21:33:05.163343+02', '2025-09-20 21:33:05.163343+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('ff6cbad8-003c-4f15-ae85-764675196a6f', 'posicionamiento seo', '#6b7280', NULL, '2025-12-20 22:14:53.856607+01', '2025-12-20 22:14:53.856607+01', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('b080f022-9d00-442d-a4f6-d6fc24cc53e4', 'configuraciones', '#6b7280', NULL, '2025-10-15 12:43:55.658265+02', '2025-10-15 12:43:55.658265+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('25392a73-e7d2-4770-b7db-7c564929e069', 'web app', '#6b7280', NULL, '2025-10-06 16:42:32.144952+02', '2025-10-06 16:42:32.144952+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5'),
-	('ee0c0fc4-9e1c-40ef-9cb5-dcdad588cb1f', 'hosting', '#6b7280', NULL, '2025-10-06 16:42:32.144952+02', '2025-10-06 16:42:32.144952+02', 'cd830f43-f6f0-4b78-a2a4-505e4e0976b5');
+
 
 
 --
@@ -13774,5 +13718,47 @@ SELECT pg_catalog.setval('"public"."tickets_ticket_number_seq"', 79, true);
 --
 -- PostgreSQL database dump complete
 --
+
+
+-- Module seeding
+INSERT INTO "public"."modules" ("key", "name", "description", "enabled_by_default", "is_active") VALUES
+('moduloSAT', 'Tickets y Soporte', 'Gestión de tickets y dispositivos', true, true),
+('moduloChat', 'Chat Interno', 'Sistema de mensajería', true, true),
+('moduloPresupuestos', 'Presupuestos', 'Gestión de presupuestos', true, true),
+('moduloFacturas', 'Facturación', 'Gestión de facturas', true, true),
+('moduloAnaliticas', 'Analíticas', 'Reportes y estadísticas', true, true),
+('moduloProductos', 'Productos', 'Catálogo de productos', true, true),
+('moduloServicios', 'Servicios', 'Catálogo de servicios', true, true)
+ON CONFLICT ("key") DO NOTHING;
+
+INSERT INTO "public"."modules_catalog" ("key", "label") VALUES
+('moduloSAT', 'Tickets y Soporte'),
+('moduloChat', 'Chat Interno'),
+('moduloPresupuestos', 'Presupuestos'),
+('moduloFacturas', 'Facturación'),
+('moduloAnaliticas', 'Analíticas'),
+('moduloProductos', 'Productos'),
+('moduloServicios', 'Servicios')
+ON CONFLICT ("key") DO NOTHING;
+
+INSERT INTO "public"."user_modules" ("user_id", "module_key", "status") VALUES
+('84efaa41-9734-4410-b0f2-9101e225ce0c', 'moduloSAT', 'activado'),
+('84efaa41-9734-4410-b0f2-9101e225ce0c', 'moduloChat', 'activado'),
+('84efaa41-9734-4410-b0f2-9101e225ce0c', 'moduloPresupuestos', 'activado'),
+('84efaa41-9734-4410-b0f2-9101e225ce0c', 'moduloFacturas', 'activado'),
+('84efaa41-9734-4410-b0f2-9101e225ce0c', 'moduloAnaliticas', 'activado'),
+('84efaa41-9734-4410-b0f2-9101e225ce0c', 'moduloProductos', 'activado'),
+('84efaa41-9734-4410-b0f2-9101e225ce0c', 'moduloServicios', 'activado')
+ON CONFLICT ("user_id", "module_key") DO UPDATE SET "status" = 'activado';
+
+
+INSERT INTO "public"."tag_scopes" ("id", "label", "color", "module_key") VALUES
+('clients', 'Clientes', '#3B82F6', 'core'),
+('tickets', 'Tickets', '#EF4444', 'moduloSAT'),
+('services', 'Servicios', '#10B981', 'moduloServicios')
+ON CONFLICT ("id") DO UPDATE SET 
+    "label" = EXCLUDED."label",
+    "color" = EXCLUDED."color",
+    "module_key" = EXCLUDED."module_key";
 
 RESET ALL;
