@@ -55,11 +55,12 @@ export class AutomationSettingsComponent implements OnInit {
 
   async loadCatalog() {
     try {
+      // FIX: 'modules' table does not exist. Use 'modules_catalog'.
       const { data } = await this.simpleSupabase.getClient()
-        .from('modules')
-        .select('key, name')
-        .eq('is_active', true)
-        .order('position');
+        .from('modules_catalog')
+        .select('key, name:label')
+        //.eq('is_active', true)
+        .order('key');
 
       this.agentModules = [
         { key: 'dashboard', label: 'Tablero (Dashboard)' },

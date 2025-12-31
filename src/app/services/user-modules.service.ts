@@ -21,9 +21,20 @@ export class UserModulesService {
   }
 
   async listForCurrentUser(): Promise<UserModule[]> {
-    const { data, error } = await this.sb.from('v_current_user_modules').select('*');
+    // FIX: v_current_user_modules does not exist in baseline schema.
+    // Use the RPC 'get_effective_modules' which is the source of truth for user modules.
+    const { data, error } = await this.sb.rpc('get_effective_modules');
     if (error) throw error;
-    return data as UserModule[];
+
+    // Map EffectiveModule result to UserModule structure to maintain compatibility
+    return (data || []).map((m: any) => ({
+      id: m.key, // fallback id
+      user_id: 'current', // placeholder
+      module_key: m.key,
+      status: m.enabled ? 'activado' : 'desactivado',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })) as UserModule[];
   }
 
   async upsertForUser(userId: string, moduleKey: string, status: ModuleStatus): Promise<void> {

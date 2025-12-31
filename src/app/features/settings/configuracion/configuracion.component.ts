@@ -514,11 +514,12 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
   // Carga el catálogo activo de módulos (labels dinámicos)
   private async loadModulesCatalog() {
     try {
+      // FIX: 'modules' table does not exist. Use 'modules_catalog' instead.
       const { data, error } = await this.supabase
-        .from('modules')
-        .select('key,name')
-        .eq('is_active', true)
-        .order('position', { ascending: true });
+        .from('modules_catalog')
+        .select('key,name:label') // Alias label as name to match interface
+        // .eq('is_active', true) // modules_catalog usually doesn't have is_active, assumed active if present
+        .order('key', { ascending: true }); // modules_catalog may not have 'position' column
       if (error) throw error;
       this._modulesCatalog = (data || []).map((d: any) => ({ key: d.key, name: d.name }));
     } catch (e) {
