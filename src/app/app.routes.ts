@@ -11,6 +11,7 @@ import { TicketDetailComponent } from './features/tickets/detail/ticket-detail.c
 import { ConfiguracionComponent } from './features/settings/configuracion/configuracion.component';
 import { EmergencyLoginComponent } from './features/auth/emergency-login/emergency-login.component';
 import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard } from './guards/auth.guard';
+import { StaffGuard } from './core/guards/staff.guard';
 import { ModuleGuard } from './guards/module.guard';
 import { ClientRoleGuard } from './guards/client-role.guard';
 import { AuthCallbackComponent } from './features/auth/auth-callback/auth-callback.component';
@@ -49,7 +50,8 @@ export const routes: Routes = [
     // Rutas principales con guards apropiados
     { path: '', redirectTo: '/inicio', pathMatch: 'full' },
     { path: 'inicio', loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent), canActivate: [AuthGuard] },
-    { path: 'clientes', component: SupabaseCustomersComponent, canActivate: [AuthGuard] },
+
+    { path: 'clientes', component: SupabaseCustomersComponent, canActivate: [StaffGuard] },
     { path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
     { path: 'tickets/:id', component: TicketDetailComponent, canActivate: [AuthGuard] },

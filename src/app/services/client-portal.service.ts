@@ -211,37 +211,57 @@ export class ClientPortalService {
   }
 
   async listQuotes(): Promise<{ data: ClientPortalQuote[]; error?: any }> {
-    try {
-      // Prefer edge function (does not rely on email claim presence in JWT).
-      const token = await this.requireAccessToken();
-      const { data, error } = await this.supabase.functions.invoke('client-quotes', {
-        body: undefined,
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (!error) return { data: (data?.data || []) as any, error: null };
+    const user = await firstValueFrom(this.auth.userProfile$);
+    if (!user?.client_id) return { data: [], error: 'No client context' };
 
-      // Fallback to view if available
-      const { data: viewData, error: viewErr } = await this.supabase
-        .from('client_visible_quotes')
+    try {
+      const { data, error } = await this.supabase
+        .from('quotes')
         .select('*')
+        .eq('client_id', user.client_id)
+        .neq('status', 'draft') // filter drafts if necessary
         .order('quote_date', { ascending: false });
 
-      return { data: (viewData || []) as any, error: viewErr || error };
+      if (error) throw error;
+      return { data: (data || []) as any, error: null };
     } catch (e: any) {
-      // Final fallback: empty list with error message
       return { data: [], error: { message: e?.message || 'listQuotes failed' } };
     }
   }
 
-  async listInvoices(): Promise<{ data: ClientPortalInvoice[]; error?: any }> {
+  async getQuote(id: string): Promise<{ data: any | null; error?: any }> {
     try {
-      const token = await this.requireAccessToken();
-      const { data, error } = await this.supabase.functions.invoke('client-invoices', {
-        body: undefined,
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (error) return { data: [], error };
-      return { data: (data?.data || []) as any, error: null };
+      // Direct query
+      const { data, error } = await this.supabase
+        .from('quotes')
+        .select('id, full_quote_number, title, status, quote_date, valid_until, total_amount, currency, items:quote_items(*)')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) return { data: null, error: 'Quote not found' };
+
+      return { data: data || null, error: null };
+    } catch (e: any) {
+      return { data: null, error: { message: e?.message || 'getQuote failed' } };
+    }
+  }
+
+  async listInvoices(): Promise<{ data: ClientPortalInvoice[]; error?: any }> {
+    const user = await firstValueFrom(this.auth.userProfile$);
+    if (!user?.client_id) return { data: [], error: 'No client context' };
+
+    try {
+      const { data, error } = await this.supabase
+        .from('invoices')
+        .select('*')
+        .eq('client_id', user.client_id)
+        // Ensure we only show relevant statuses if needed, though RLS handles security.
+        .neq('status', 'draft') // usually clients shouldn't see drafts
+        .order('invoice_date', { ascending: false });
+
+      if (error) throw error;
+      return { data: (data || []) as any, error: null };
     } catch (e: any) {
       return { data: [], error: { message: e?.message || 'listInvoices failed' } };
     }
@@ -249,37 +269,24 @@ export class ClientPortalService {
 
   async getInvoice(id: string): Promise<{ data: any | null; error?: any }> {
     try {
-      const token = await this.requireAccessToken();
-      const { data, error } = await this.supabase.functions.invoke('client-invoices', {
-        body: { id },
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (error) return { data: null, error };
-      return { data: data?.data || null };
+      // Direct query with RLS
+      const { data, error } = await this.supabase
+        .from('invoices')
+        .select('*, items:invoice_items(*)')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) return { data: null, error: 'Invoice not found' };
+
+      // Map strict table structure to helpful frontend shape if needed,
+      // but 'data' with 'items' usually suffices for components expecting it.
+      return { data: data, error: null };
     } catch (e: any) {
       return { data: null, error: { message: e?.message || 'getInvoice failed' } };
     }
   }
 
-  async getQuote(id: string): Promise<{ data: any | null; error?: any }> {
-    try {
-      const token = await this.requireAccessToken();
-      const { data, error } = await this.supabase.functions.invoke('client-quotes', {
-        body: { id },
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (error) return { data: null, error };
-      return { data: data?.data || null };
-    } catch (e: any) {
-      // Fallback: try direct table with RLS (may fail for client if policies are strict)
-      const { data, error } = await this.supabase
-        .from('quotes')
-        .select('id, full_quote_number, title, status, quote_date, valid_until, total_amount, items:quote_items(*)')
-        .eq('id', id)
-        .maybeSingle();
-      return { data: data || null, error };
-    }
-  }
 
   async respondToQuote(id: string, action: 'accept' | 'reject', rejectionReason?: string): Promise<{ data: any | null; error?: any }> {
     try {

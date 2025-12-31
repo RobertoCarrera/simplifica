@@ -23,7 +23,7 @@ interface PaymentInfo {
   standalone: true,
   imports: [CommonModule, RouterModule, ContractProgressDialogComponent],
   template: `
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 sm:p-6 lg:p-8">
+  <div class="bg-gray-50 dark:bg-gray-950 p-4 sm:p-6 lg:p-8">
     <div class="max-w-5xl mx-auto">
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Tus facturas</h1>
@@ -93,15 +93,18 @@ export class PortalInvoicesComponent implements OnInit {
   @ViewChild('paymentDialog') paymentDialog!: ContractProgressDialogComponent;
 
   invoices = signal<ClientPortalInvoice[]>([]);
-  dispatcherHealth = signal<{ pending: number; lastEventAt: string | null; lastAcceptedAt: string | null; lastRejectedAt: string | null; } | null>(null);
+  // dispatcherHealth removed to avoid 401
   selectedInvoice = signal<ClientPortalInvoice | null>(null);
   selectedInvoiceTitle = signal<string>('');
   loadingPaymentOptions = signal(false);
 
   async ngOnInit() {
+    this.loadInvoices();
+  }
+
+  async loadInvoices() {
     const { data } = await this.portal.listInvoices();
     this.invoices.set(data || []);
-    this.invoicesSvc.getDispatcherHealth().subscribe(h => this.dispatcherHealth.set(h));
   }
 
   downloadPdf(id: string) {
