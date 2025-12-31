@@ -1,15 +1,15 @@
 import { Component, OnInit, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
-import { AppModalComponent } from '../../../shared/ui/app-modal/app-modal.component';
 import { ToastService } from '../../../services/toast.service';
 import { AuthService } from '../../../services/auth.service';
+import { TagModalComponent } from '../../../shared/components/tag-modal/tag-modal.component';
 
 @Component({
     selector: 'app-tags-management',
     standalone: true,
-    imports: [CommonModule, FormsModule, ReactiveFormsModule, AppModalComponent],
+    imports: [CommonModule, FormsModule, ReactiveFormsModule, TagModalComponent],
     templateUrl: './tags-management.component.html',
     styleUrls: ['./tags-management.component.scss']
 })
@@ -21,48 +21,19 @@ export class TagsManagementComponent implements OnInit {
     // Search & Filter
     searchTerm = '';
     selectedCategory: string | 'ALL' = 'ALL';
+    selectedScope: string | 'ALL' = 'ALL';
 
-    // Autocomplete
-    showCategorySuggestions = false;
-    categorySuggestions: string[] = [];
-
-    // Tag Form
+    // Modal State
     showModal = false;
-    isEditing = false;
-    tagForm: FormGroup;
-    editingTagId: string | null = null;
-    saving = false;
-    availableScopes: { id: string, label: string, color?: string }[] = [];
+    tagToEdit: GlobalTag | null = null;
 
-    // Predefined colors for UI picker
-    presetColors = [
-        '#EF4444', // Red
-        '#F97316', // Orange
-        '#F59E0B', // Amber
-        '#10B981', // Emerald
-        '#06B6D4', // Cyan
-        '#3B82F6', // Blue
-        '#6366F1', // Indigo
-        '#8B5CF6', // Violet
-        '#EC4899', // Pink
-        '#6B7280', // Gray
-    ];
+    availableScopes: { id: string, label: string, color?: string }[] = [];
 
     constructor(
         @Inject(GlobalTagsService) private tagsService: GlobalTagsService,
-        private fb: FormBuilder,
         private toast: ToastService,
         private authService: AuthService
-    ) {
-        this.tagForm = this.fb.group({
-            name: ['', [Validators.required, Validators.minLength(2)]],
-            color: ['#3B82F6', Validators.required],
-            category: [''],
-            category_color: ['#6B7280'], // Default Gray
-            description: [''],
-            scopes: [[]] // Array of selected scope IDs
-        });
-    }
+    ) { }
 
     ngOnInit() {
         this.loadTags();
@@ -111,7 +82,27 @@ export class TagsManagementComponent implements OnInit {
             filtered = filtered.filter(t => t.category === this.selectedCategory);
         }
 
+        // Filter by scope
+        if (this.selectedScope !== 'ALL') {
+            filtered = filtered.filter(t => {
+                // If tag has no specific scope, it's global (available everywhere)
+                // BUT user wants to filter by "where used". 
+                // Usually global tags show up everywhere.
+                // Logic: If I select "Tickets", show tags that HAVE 'tickets' in scope OR are global (null/empty).
+                // Wait, typically "Global" means "All Scopes".
+                // If t.scope is null/empty, it usually means "Global".
+
+                if (!t.scope || t.scope.length === 0) return true;
+                return t.scope.includes(this.selectedScope);
+            });
+        }
+
         this.filteredTags = filtered;
+    }
+
+    setScope(scope: string | 'ALL') {
+        this.selectedScope = scope;
+        this.filterTags();
     }
 
     get uniqueCategories(): string[] {
@@ -123,131 +114,25 @@ export class TagsManagementComponent implements OnInit {
     }
 
     openCreateModal() {
-        this.isEditing = false;
-        this.editingTagId = null;
-        this.tagForm.reset({
-            name: '',
-            color: this.presetColors[Math.floor(Math.random() * this.presetColors.length)],
-            category: '',
-            category_color: '#6B7280',
-            description: '',
-            scopes: ['clients', 'tickets'] // Default to common scopes
-        });
+        this.tagToEdit = null;
         this.showModal = true;
     }
 
     openEditModal(tag: GlobalTag) {
-        this.isEditing = true;
-        this.editingTagId = tag.id;
-
-        this.tagForm.patchValue({
-            name: tag.name,
-            color: tag.color,
-            category: tag.category,
-            category_color: tag.category_color || '#6B7280',
-            description: tag.description,
-            scopes: tag.scope || []
-        });
+        this.tagToEdit = tag;
         this.showModal = true;
-    }
-
-    toggleScope(scopeId: string) {
-        const currentScopes: string[] = this.tagForm.get('scopes')?.value || [];
-        const index = currentScopes.indexOf(scopeId);
-
-        let newScopes;
-        if (index > -1) {
-            newScopes = currentScopes.filter(s => s !== scopeId);
-        } else {
-            newScopes = [...currentScopes, scopeId];
-        }
-
-        this.tagForm.patchValue({ scopes: newScopes });
-        this.tagForm.markAsDirty();
     }
 
     closeModal() {
         this.showModal = false;
-        this.showCategorySuggestions = false;
+        this.tagToEdit = null;
     }
 
-    // Autocomplete Logic
-    updateCategorySuggestions() {
-        const inputVal = (this.tagForm.get('category')?.value || '').toLowerCase();
-        const allCats = this.uniqueCategories;
-
-        if (!inputVal) {
-            this.categorySuggestions = allCats;
-        } else {
-            this.categorySuggestions = allCats.filter(c => c.toLowerCase().includes(inputVal));
-        }
+    onTagSaved(tag: GlobalTag) {
+        this.loadTags();
+        this.closeModal();
     }
 
-    selectCategorySuggestion(cat: string) {
-        this.tagForm.patchValue({ category: cat });
-        this.showCategorySuggestions = false;
-    }
-
-    hideCategorySuggestions() {
-        setTimeout(() => {
-            this.showCategorySuggestions = false;
-        }, 200);
-    }
-
-    onCategoryFocus() {
-        this.updateCategorySuggestions();
-        this.showCategorySuggestions = true;
-    }
-
-    async saveTag() {
-        if (this.tagForm.invalid) return;
-
-        this.saving = true;
-        const formVal = this.tagForm.value;
-        const companyId = this.authService.companyId();
-
-        const tagData: Partial<GlobalTag> = {
-            name: formVal.name,
-            color: formVal.color,
-            category: formVal.category || null,
-            category_color: formVal.category_color || null,
-            description: formVal.description || null,
-            scope: formVal.scopes && formVal.scopes.length > 0 ? formVal.scopes : null,
-            company_id: companyId
-        };
-
-        if (this.isEditing && this.editingTagId) {
-            this.tagsService.updateTag(this.editingTagId, tagData).subscribe({
-                next: (updated) => {
-                    this.toast.success('Éxito', 'Etiqueta actualizada');
-                    this.loadTags();
-                    this.closeModal();
-                    this.saving = false;
-                },
-                error: (err) => {
-                    console.error('Error updating tag', err);
-                    this.toast.error('Error', 'No se pudo actualizar la etiqueta');
-                    this.saving = false;
-                }
-            });
-        } else {
-            this.tagsService.createTag(tagData).subscribe({
-                next: (created) => {
-                    this.toast.success('Éxito', 'Etiqueta creada');
-                    this.loadTags();
-                    this.closeModal();
-                    this.saving = false;
-                },
-                error: (err) => {
-                    console.error('Error creating tag', err);
-                    this.toast.error('Error', 'No se pudo crear la etiqueta');
-                    this.saving = false;
-                }
-            });
-        }
-    }
-
-    // Helper to get scope color
     getScopeColor(scopeId: string): string {
         const scope = this.availableScopes.find(s => s.id === scopeId);
         return scope?.color || '#6B7280'; // Default gray if not found
@@ -271,10 +156,5 @@ export class TagsManagementComponent implements OnInit {
                 }
             });
         }
-    }
-
-    // Helpers
-    selectColor(color: string) {
-        this.tagForm.patchValue({ color });
     }
 }

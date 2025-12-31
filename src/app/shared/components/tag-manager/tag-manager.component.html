@@ -10,8 +10,7 @@
     </button>
   </div>
 
-  <!-- Add Button -->
-  <div class="relative">
+  <div #dropdownAnchor class="relative">
     <button type="button" *ngIf="!isAdding()" (click)="toggleAddMode()"
       class="add-btn flex items-center justify-center w-8 h-8 rounded-full border-2 border-dashed border-gray-400 text-gray-400 hover:border-gray-600 hover:text-gray-600 dark:border-gray-500 dark:text-gray-500 dark:hover:border-gray-300 dark:hover:text-gray-300 transition-colors"
       title="Add Tag">
@@ -20,7 +19,8 @@
 
     <!-- Dropdown / Input Area -->
     <div *ngIf="isAdding()"
-      class="add-dropdown absolute top-full left-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 z-50 overflow-hidden">
+      class="add-dropdown fixed bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-100 dark:border-gray-700 z-50 overflow-hidden"
+      [style.top.px]="dropdownTop()" [style.left.px]="dropdownLeft()" [style.width.px]="dropdownWidth()">
       <div class="p-2 border-b border-gray-100 dark:border-gray-700">
         <input type="text" [ngModel]="searchTerm()" (input)="onSearchInput($event)" (keydown.enter)="openCreateModal()"
           (keydown.escape)="toggleAddMode()" placeholder="Search or create tag..."
@@ -71,42 +71,11 @@
   </div>
 </div>
 
+
 <!-- Click outside overlay to close dropdown -->
 <div *ngIf="isAdding()" class="fixed inset-0 z-40 bg-transparent" (click)="toggleAddMode()"></div>
 
-<!-- Create Tag Modal -->
-<app-modal [visible]="showCreateModal()" (close)="closeCreateModal()">
-  <div class="p-6">
-    <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Nueva Etiqueta</h2>
-
-    <div class="space-y-4">
-      <div>
-        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Nombre</label>
-        <input type="text" [ngModel]="newTag().name" (ngModelChange)="updateTagName($event)"
-          class="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-      </div>
-
-      <div>
-        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Color</label>
-        <div class="flex gap-4 items-center">
-          <input type="color" [ngModel]="newTag().color" (ngModelChange)="updateTagColor($event)"
-            class="h-10 w-20 cursor-pointer rounded border border-gray-200 dark:border-gray-600 p-1 bg-white dark:bg-gray-700">
-          <span class="text-sm text-gray-500 dark:text-gray-400">{{ newTag().color }}</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="flex justify-end gap-3 mt-8">
-      <button type="button" (click)="closeCreateModal()"
-        class="px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-        Cancelar
-      </button>
-      <button type="button" (click)="saveNewTag()" [disabled]="savingNewTag() || !newTag().name"
-        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-        <span *ngIf="savingNewTag()"
-          class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-        Crear Etiqueta
-      </button>
-    </div>
-  </div>
-</app-modal>
+<!-- Global Create Tag Modal -->
+<app-tag-modal [visible]="showCreateModal" [defaultScope]="entityType" [fixedScope]="false"
+  [initialName]="prefilledName" (saved)="onTagSaved($event)" (close)="onModalClose()">
+</app-tag-modal>

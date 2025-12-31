@@ -12,6 +12,7 @@ import { ToastService } from '../../../services/toast.service';
 import { AuthService } from '../../../services/auth.service';
 import { ProductMetadataService } from '../../../services/product-metadata.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
+import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
 import { firstValueFrom } from 'rxjs';
 
 export interface TicketTag {
@@ -25,7 +26,7 @@ export interface TicketTag {
 @Component({
     selector: 'app-ticket-form',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, TagManagerComponent],
     templateUrl: './ticket-form.component.html',
     styleUrls: ['./ticket-form.component.scss']
 })
@@ -121,31 +122,13 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
 
     // Tags
     availableTags: GlobalTag[] = [];
-    selectedTags: string[] = [];
-    tagSearchText: string = '';
+    selectedTags: GlobalTag[] = [];
+    // tagSearchText: string = ''; // Removed
 
     ngOnInit() {
         this.loadInitialData();
         if (!this.editingTicket) {
             this.resetForm();
-        }
-    }
-
-    async loadInitialData() {
-        if (!this.companyId) return;
-
-        await Promise.all([
-            this.loadStages(),
-            this.loadStaff(),
-            this.loadTags(),
-            this.loadServices(),
-            this.loadProducts(),
-            this.loadCustomers() // We need customers for the search
-        ]);
-
-        if (this.editingTicket && this.editingTicket.client) {
-            // Ensure selected customer context is loaded
-            this.selectCustomer(this.editingTicket.client);
         }
     }
 
@@ -162,6 +145,29 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
     ngOnDestroy() {
         document.body.style.overflow = '';
     }
+
+    async loadInitialData() {
+        if (!this.companyId) return;
+
+        await Promise.all([
+            this.loadStages(),
+            this.loadStaff(),
+            this.loadStages(),
+            this.loadStaff(),
+            // this.loadTags(), // Handled by TagManager
+            this.loadServices(),
+            this.loadServices(),
+            this.loadProducts(),
+            this.loadCustomers() // We need customers for the search
+        ]);
+
+        if (this.editingTicket && this.editingTicket.client) {
+            // Ensure selected customer context is loaded
+            this.selectCustomer(this.editingTicket.client);
+        }
+    }
+
+
 
     async loadCustomers() {
         // Initial load of customers - maybe top 50 or recent? 
@@ -231,9 +237,9 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
         try {
             this.formData = { ...ticket, assigned_to: ticket.assigned_to };
 
-            // Load tags
-            const tagNames = await this.loadTagsForTicket(ticket.id);
-            this.selectedTags = tagNames || [];
+            // Load tags - Handled by TagManager component
+            // const tagNames = await this.loadTagsForTicket(ticket.id);
+            // this.selectedTags = tagNames || [];
 
             // Load Customer
             if (ticket.client) {
@@ -254,54 +260,8 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     // --- Tags ---
-    async loadTags() {
-        this.globalTagsService.getTags('tickets').subscribe({
-            next: (tags) => {
-                this.availableTags = tags;
-            },
-            error: (err) => console.error('Error loading tags', err)
-        });
-    }
-
-    async loadTagsForTicket(ticketId: string): Promise<string[]> {
-        const client = this.simpleSupabase.getClient();
-        const { data } = await (client as any)
-            .from('tickets_tags')
-            .select('tag:global_tags(name)')
-            .eq('ticket_id', ticketId);
-
-        return (data || []).map((r: any) => r.tag?.name).filter(Boolean);
-    }
-
-    getTagColor(tagName: string): string {
-        const tag = this.availableTags.find(t => t.name === tagName);
-        return tag?.color || '#6b7280';
-    }
-
-    getContrastColor(hexColor: string): string {
-        if (!hexColor) return '#ffffff';
-        // Handle #RRGGBB format
-        const r = parseInt(hexColor.substr(1, 2), 16);
-        const g = parseInt(hexColor.substr(3, 2), 16);
-        const b = parseInt(hexColor.substr(5, 2), 16);
-        // YIQ equation
-        const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-        return (yiq >= 128) ? '#000000' : '#ffffff';
-    }
-
-
-
-    addTagToTicket(tagName: string) { // Updated to accept name directly
-        if (!tagName) return;
-        const name = tagName.trim();
-        if (!this.selectedTags.includes(name)) {
-            this.selectedTags.push(name);
-        }
-    }
-
-    removeTagFromTicket(name: string) {
-        this.selectedTags = this.selectedTags.filter(t => t !== name);
-    }
+    // Tags are now handled by TagManagerComponent
+    // We only need to store them here for creation (pending mode)
 
     // --- Customers ---
     filterCustomers() {
@@ -863,8 +823,8 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
                 await this.syncTicketDevices(savedInfo.id, this.selectedDevices);
             }
 
-            // Sync tags
-            if (savedInfo?.id) {
+            // Sync tags - Only on creation
+            if (savedInfo?.id && !this.editingTicket) {
                 await this.syncTicketTags(savedInfo.id, this.selectedTags);
             }
 
@@ -898,39 +858,17 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
         }
     }
 
-    async syncTicketTags(ticketId: string, tags: string[]) {
+    async syncTicketTags(ticketId: string, tags: GlobalTag[]) {
+        if (!tags || tags.length === 0) return;
+
         const client = this.simpleSupabase.getClient();
+        // Since tags are already created (GlobalTag objects), we just link them
 
-        // 1. Ensure tags exist in DB
-        for (const name of tags) {
-            const { count } = await (client as any).from('ticket_tags').select('*', { count: 'exact', head: true }).eq('name', name).or(`company_id.eq.${this.companyId},company_id.is.null`);
-            if (!count) {
-                await (client as any).from('ticket_tags').insert({ name, company_id: this.companyId, color: '#6b7280' });
-            }
-        }
-
-        // 2. Get Tag IDs
-        const { data: tagRows } = await (client as any).from('ticket_tags').select('id, name').in('name', tags).or(`company_id.eq.${this.companyId},company_id.is.null`);
-        if (!tagRows) return;
-        const tagMap = new Map(tagRows.map((t: any) => [t.name, t.id]));
-        const tagIds = tags.map(t => tagMap.get(t)).filter(Boolean);
-
-        // 3. Sync Relations
-        const { data: current } = await (client as any).from('tickets_tags').select('tag_id').eq('ticket_id', ticketId);
-        const currentTagIds = (current || []).map((r: any) => r.tag_id);
-
-        // Add
-        for (const id of tagIds) {
-            if (!currentTagIds.includes(id)) {
-                await (client as any).from('tickets_tags').insert({ ticket_id: ticketId, tag_id: id });
-            }
-        }
-
-        // Remove
-        for (const id of currentTagIds) {
-            if (!tagIds.includes(id)) {
-                await (client as any).from('tickets_tags').delete().match({ ticket_id: ticketId, tag_id: id });
-            }
+        for (const tag of tags) {
+            await (client as any).from('tickets_tags').insert({
+                ticket_id: ticketId,
+                tag_id: tag.id
+            }).catch((err: any) => console.error('Error linking tag', err));
         }
     }
 

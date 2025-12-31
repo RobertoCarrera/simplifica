@@ -125,34 +125,9 @@
                 <!-- Tags Selection -->
                 <div class="form-group">
                     <label>Etiquetas</label>
-                    <div
-                        class="flex flex-wrap gap-2 mb-2 p-2 border border-gray-200 dark:border-gray-700 rounded-lg min-h-[42px]">
-                        <div *ngFor="let tag of selectedTags"
-                            class="inline-flex items-center px-2 py-1 rounded-md text-sm font-medium"
-                            [style.background-color]="getTagColor(tag)"
-                            [style.color]="getContrastColor(getTagColor(tag))">
-                            {{ tag }}
-                            <button type="button" class="ml-2 opacity-70 hover:opacity-100"
-                                (click)="removeTagFromTicket(tag)">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </div>
-                        <input type="text"
-                            class="flex-1 min-w-[120px] bg-transparent border-none focus:ring-0 text-sm p-0"
-                            placeholder="Añadir etiqueta..." [(ngModel)]="tagSearchText" name="tag_input"
-                            (keydown.enter)="$event.preventDefault(); addTagToTicket(tagSearchText); tagSearchText = ''">
-                    </div>
-
-                    <!-- Quick select common tags -->
-                    <div class="flex flex-wrap gap-2 mt-1">
-                        <button *ngFor="let tag of availableTags" type="button"
-                            class="px-2 py-1 text-xs rounded-full transition-colors font-medium border-none shadow-sm"
-                            [style.background-color]="tag.color" [style.color]="getContrastColor(tag.color)"
-                            [class.opacity-50]="selectedTags.includes(tag.name)"
-                            [disabled]="selectedTags.includes(tag.name)" (click)="addTagToTicket(tag.name)">
-                            {{ tag.name }}
-                        </button>
-                    </div>
+                    <app-tag-manager [entityId]="editingTicket?.id" entityType="tickets"
+                        (pendingTagsChange)="selectedTags = $event">
+                    </app-tag-manager>
                 </div>
 
                 <!-- Servicios Section -->

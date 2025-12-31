@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+<div class="bg-gray-50 dark:bg-gray-900 py-8 h-full">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         <!-- Header -->
@@ -14,11 +14,7 @@
                     Organiza y administra las etiquetas globales para clientes y tickets.
                 </p>
             </div>
-            <button (click)="openCreateModal()"
-                class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors shadow-sm hover:shadow-md">
-                <i class="fas fa-plus mr-2"></i>
-                Nueva Etiqueta
-            </button>
+            <!-- Old button removed -->
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -44,7 +40,7 @@
                         <i class="fas fa-layer-group text-gray-400 text-sm"></i>
                         Categorías
                     </h3>
-                    <div class="space-y-1">
+                    <div class="space-y-1 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
                         <button (click)="selectedCategory = 'ALL'; filterTags()"
                             class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group"
                             [ngClass]="{
@@ -69,10 +65,42 @@
                         </ng-container>
                     </div>
                 </div>
+
+                <!-- Scopes Filter -->
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-4">
+                    <h3 class="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                        <i class="fas fa-globe text-gray-400 text-sm"></i>
+                        Ámbitos
+                    </h3>
+                    <div class="space-y-1">
+                        <button (click)="setScope('ALL')"
+                            class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group"
+                            [ngClass]="{
+                                'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300': selectedScope === 'ALL',
+                                'text-gray-600 dark:text-gray-400': selectedScope !== 'ALL'
+                            }">
+                            <span>Todos</span>
+                        </button>
+                        <ng-container *ngFor="let scope of availableScopes">
+                            <button (click)="setScope(scope.id)"
+                                class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between group hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                                [ngClass]="{
+                                    'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300': selectedScope === scope.id,
+                                    'text-gray-600 dark:text-gray-400': selectedScope !== scope.id
+                                }">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full" [style.backgroundColor]="scope.color"></span>
+                                    <span class="truncate">{{ scope.label }}</span>
+                                </div>
+                            </button>
+                        </ng-container>
+                    </div>
+                </div>
             </div>
 
             <!-- Main Content -->
-            <div class="lg:col-span-3">
+            <div class="lg:col-span-3 pb-24"> <!-- pb-24 for FAB spacing -->
                 <!-- Loading State -->
                 <div *ngIf="loading" class="flex flex-col items-center justify-center py-12">
                     <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"></div>
@@ -139,7 +167,7 @@
                         <div
                             class="flex items-center gap-2 mt-auto pt-2 border-t border-gray-50 dark:border-gray-700/50">
                             <span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Ámbito:</span>
-                            <div class="flex gap-1">
+                            <div class="flex gap-1 flex-wrap">
                                 <span *ngFor="let scopeId of tag.scope"
                                     class="px-2 py-0.5 text-xs rounded-full border border-opacity-30"
                                     [style.backgroundColor]="getScopeColor(scopeId) + '20'"
@@ -158,124 +186,16 @@
             </div>
         </div>
 
+        <!-- FAB Button -->
+        <button (click)="openCreateModal()"
+            class="fixed bottom-24 md:bottom-8 right-6 md:right-8 z-30 flex items-center justify-center gap-2 p-0 w-14 h-14 md:w-auto md:h-auto md:px-6 md:py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-indigo-500/30">
+            <i class="fas fa-plus text-lg"></i>
+            <span class="hidden md:inline ml-2">Nueva Etiqueta</span>
+        </button>
+
     </div>
 </div>
 
 <!-- Modal -->
-<app-modal [visible]="showModal" [dismissible]="false" (close)="closeModal()">
-    <div class="p-6">
-        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-            <span class="w-2 h-8 rounded-full bg-indigo-500 block"></span>
-            {{ isEditing ? 'Editar Etiqueta' : 'Nueva Etiqueta' }}
-        </h2>
-
-        <form [formGroup]="tagForm" (ngSubmit)="saveTag()" class="space-y-6">
-
-            <!-- Name & Color Row -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Nombre *</label>
-                    <input type="text" formControlName="name" placeholder="Ej. VIP, Pendiente Pago..."
-                        class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white"
-                        [class.border-red-500]="tagForm.get('name')?.invalid && tagForm.get('name')?.touched">
-                </div>
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Color *</label>
-                    <div class="flex items-center gap-2">
-                        <input type="color" formControlName="color"
-                            class="h-11 w-full cursor-pointer rounded-lg border border-gray-200 dark:border-gray-600 p-1 bg-white dark:bg-gray-700">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Color Presets -->
-            <div>
-                <label
-                    class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Colores
-                    Sugeridos</label>
-                <div class="flex flex-wrap gap-2">
-                    <button type="button" *ngFor="let color of presetColors" (click)="selectColor(color)"
-                        class="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none"
-                        [style.backgroundColor]="color" [class.border-gray-300]="tagForm.get('color')?.value !== color"
-                        [class.dark:border-gray-600]="tagForm.get('color')?.value !== color"
-                        [class.border-gray-900]="tagForm.get('color')?.value === color"
-                        [class.dark:border-white]="tagForm.get('color')?.value === color"
-                        [class.scale-110]="tagForm.get('color')?.value === color">
-                    </button>
-                </div>
-            </div>
-
-            <!-- Category -->
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Categoría</label>
-                <div class="flex gap-2">
-                    <div class="relative flex-1">
-                        <input type="text" formControlName="category" placeholder="Ej. Finanzas, Estado, Prioridad..."
-                            (focus)="onCategoryFocus()" (blur)="hideCategorySuggestions()"
-                            (input)="updateCategorySuggestions()"
-                            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white pl-10">
-                        <i class="fas fa-layer-group absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-
-                        <!-- Autocomplete Dropdown -->
-                        <div *ngIf="showCategorySuggestions && categorySuggestions.length > 0"
-                            class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto">
-                            <button type="button" *ngFor="let cat of categorySuggestions"
-                                (click)="selectCategorySuggestion(cat)"
-                                class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                {{ cat }}
-                            </button>
-                        </div>
-                    </div>
-                    <div class="relative w-12 flex-shrink-0">
-                        <input type="color" formControlName="category_color"
-                            class="h-full w-full cursor-pointer rounded-xl border border-gray-200 dark:border-gray-600 p-1 bg-white dark:bg-gray-700"
-                            title="Color de categoría">
-                    </div>
-                </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Agrupa tus etiquetas y asigna un color.</p>
-            </div>
-
-            <!-- Description -->
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Descripción</label>
-                <textarea formControlName="description" rows="2"
-                    placeholder="Información adicional sobre esta etiqueta..."
-                    class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all dark:text-white resize-none"></textarea>
-            </div>
-
-            <!-- Scope -->
-            <div class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
-                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Disponible en:</label>
-                <div class="flex flex-wrap gap-6">
-                    <label *ngFor="let scope of availableScopes" class="flex items-center gap-2 cursor-pointer group">
-                        <div class="relative flex items-center">
-                            <input type="checkbox" [checked]="tagForm.get('scopes')?.value?.includes(scope.id)"
-                                (change)="toggleScope(scope.id)"
-                                class="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-gray-300 dark:border-gray-600 transition-all checked:border-indigo-500 checked:bg-indigo-500 hover:border-indigo-400">
-                            <i
-                                class="fas fa-check absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-xs opacity-0 peer-checked:opacity-100 pointer-events-none"></i>
-                        </div>
-                        <span
-                            class="text-sm text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{{
-                            scope.label }}</span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="flex justify-end gap-3 pt-2">
-                <button type="button" (click)="closeModal()" [disabled]="saving"
-                    class="px-5 py-2.5 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-colors">
-                    Cancelar
-                </button>
-                <button type="submit" [disabled]="saving || tagForm.invalid"
-                    class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:shadow-none transition-all flex items-center gap-2">
-                    <span *ngIf="saving"
-                        class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
-                    {{ saving ? 'Guardando...' : (isEditing ? 'Guardar Cambios' : 'Crear Etiqueta') }}
-                </button>
-            </div>
-
-        </form>
-    </div>
-</app-modal>
+<app-tag-modal [visible]="showModal" [tagToEdit]="tagToEdit" (close)="closeModal()" (saved)="onTagSaved($event)">
+</app-tag-modal>

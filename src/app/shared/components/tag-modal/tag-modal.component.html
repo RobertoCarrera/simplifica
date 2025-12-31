@@ -1,0 +1,104 @@
+<app-modal [visible]="visible" [dismissible]="false" (close)="onClose()">
+    <!-- Modal Content -->
+    <div class="p-6 bg-white dark:bg-[#0f172a]"> <!-- Darker blue-ish background -->
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-6">
+            {{ tagToEdit ? 'Editar Etiqueta' : 'Nueva Etiqueta' }}
+        </h2>
+
+        <form [formGroup]="tagForm" (ngSubmit)="saveTag()" class="space-y-5">
+
+            <!-- Name Input -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Nombre</label>
+                <input type="text" formControlName="name" placeholder="Ej. Urgente"
+                    class="w-full px-4 py-3 bg-gray-50 dark:bg-[#1e293b] border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-white placeholder-gray-400 transition-all shadow-sm">
+            </div>
+
+            <!-- Color Input -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Color</label>
+                <div
+                    class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-[#1e293b] border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <div
+                        class="relative w-10 h-10 flex-shrink-0 overflow-hidden rounded-md border border-gray-300 dark:border-gray-600">
+                        <input type="color" formControlName="color"
+                            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] p-0 border-0 cursor-pointer">
+                    </div>
+                    <span class="text-sm font-mono text-gray-600 dark:text-gray-300 uppercase">
+                        {{ tagForm.get('color')?.value }}
+                    </span>
+                </div>
+
+                <!-- Presets underneath -->
+                <div class="flex flex-wrap gap-2 mt-3">
+                    <button type="button" *ngFor="let color of presetColors" (click)="selectColor(color)"
+                        class="w-6 h-6 rounded-full border transition-transform hover:scale-110 focus:outline-none ring-2 ring-transparent focus:ring-offset-2 focus:ring-blue-500"
+                        [style.backgroundColor]="color"
+                        [class.border-transparent]="tagForm.get('color')?.value !== color"
+                        [class.border-white]="tagForm.get('color')?.value === color"
+                        [class.ring-gray-400]="tagForm.get('color')?.value === color">
+                    </button>
+                </div>
+            </div>
+
+            <!-- Category (Combobox style) -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Categoría</label>
+                <div class="relative">
+                    <input type="text" formControlName="category" placeholder="Seleccionar o escribir nueva..."
+                        (focus)="onCategoryFocus()" (blur)="hideCategorySuggestions()"
+                        (input)="updateCategorySuggestions()"
+                        class="w-full px-4 py-3 bg-gray-50 dark:bg-[#1e293b] border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:text-white placeholder-gray-400 transition-all shadow-sm pr-10">
+                    <i
+                        class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+
+                    <!-- Dropdown -->
+                    <div *ngIf="showCategorySuggestions && categorySuggestions.length > 0"
+                        class="absolute z-50 w-full mt-1 bg-white dark:bg-[#1e293b] rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto custom-scrollbar">
+                        <button type="button" *ngFor="let cat of categorySuggestions"
+                            (click)="selectCategorySuggestion(cat)"
+                            class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-blue-600/20 transition-colors">
+                            {{ cat }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scope -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Disponible en</label>
+                <div class="flex gap-4">
+                    <label *ngFor="let scope of availableScopes"
+                        class="flex items-center gap-2 cursor-pointer group select-none">
+                        <div class="relative flex items-center justify-center">
+                            <input type="checkbox" [checked]="tagForm.get('scopes')?.value?.includes(scope.id)"
+                                [disabled]="fixedScope && scope.id === defaultScope" (change)="toggleScope(scope.id)"
+                                class="peer h-5 w-5 cursor-pointer appearance-none rounded border border-gray-300 dark:border-gray-500 bg-transparent transition-all checked:bg-blue-600 checked:border-blue-600">
+                            <i
+                                class="fas fa-check absolute text-[10px] text-white opacity-0 peer-checked:opacity-100"></i>
+                        </div>
+                        <span
+                            class="text-sm text-gray-600 dark:text-gray-400 group-hover:text-blue-500 transition-colors">
+                            {{ scope.label }}
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-end gap-3 pt-4">
+                <button type="button" (click)="onClose()" [disabled]="saving"
+                    class="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
+                    Cancelar
+                </button>
+                <button type="submit" [disabled]="saving || tagForm.invalid"
+                    class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none transition-all flex items-center gap-2">
+                    <span *ngIf="saving"
+                        class="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></span>
+                    {{ saving ? 'Guardando...' : 'Crear Etiqueta' }}
+                </button>
+            </div>
+
+        </form>
+    </div>
+</app-modal>

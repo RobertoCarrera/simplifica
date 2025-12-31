@@ -2,20 +2,24 @@
     display: block;
 }
 
-/* Custom Scrollbar for sidebar */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
+/* Custom Scrollbar */
+.custom-scrollbar {
+    /* overflow-y: auto; handled by utility class */
 
-::-webkit-scrollbar-track {
-    background: transparent;
-}
+    &::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
 
-::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
-}
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
 
-::-webkit-scrollbar-thumb:hover {
-    @apply bg-gray-400 dark:bg-gray-500;
+    &::-webkit-scrollbar-thumb {
+        @apply bg-gray-200 dark:bg-gray-700 rounded-full;
+    }
+
+    &::-webkit-scrollbar-thumb:hover {
+        @apply bg-gray-300 dark:bg-gray-600;
+    }
 }
