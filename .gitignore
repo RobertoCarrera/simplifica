@@ -47,6 +47,7 @@ Thumbs.db
 .env.production
 .env.development
 .vercel
+src/assets/runtime-config.json
 
 # Logs
 *.log

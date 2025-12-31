@@ -7,6 +7,8 @@
     "import-server": "node scripts/import-server.js",
     "prestart": "node scripts/generate-runtime-config.mjs",
     "start": "ng serve",
+    "config:local": "node scripts/set-env.js local",
+    "config:prod": "node scripts/set-env.js prod",
     "prebuild": "node scripts/generate-runtime-config.mjs",
     "build": "ng build",
     "build:stats": "ng build --stats-json",

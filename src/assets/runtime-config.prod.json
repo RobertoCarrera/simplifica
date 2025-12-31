@@ -1,0 +1,7 @@
+{
+    "supabase": {
+        "url": "https://ufutyjbqfjrlzkprvyvs.supabase.co",
+        "anonKey": "sb_publishable_dNnMh..."
+    },
+    "edgeFunctionsBaseUrl": "https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1"
+}
