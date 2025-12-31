@@ -1,7 +1,30 @@
 -- Fix RPCs, Foreign Keys and RLS Policies
 -- Created on 2025-12-31
 
--- 1. Grant permissions to get_config_stages (Fixes PGRST202)
+-- 1. Redefine get_config_stages to ensure it exists (Fixes SQLSTATE 42883)
+CREATE OR REPLACE FUNCTION "public"."get_config_stages"() RETURNS TABLE("id" "uuid", "name" "text", "position" integer, "color" "text", "company_id" "uuid", "stage_category" "public"."stage_category", "workflow_category" "public"."workflow_category", "is_hidden" boolean)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_company_id uuid := public.get_user_company_id();
+BEGIN
+  RETURN QUERY
+  SELECT 
+    s.id,
+    s.name::text,
+    s.position,
+    s.color::text,
+    s.company_id,
+    s.stage_category,
+    s.workflow_category,
+    (hs.id IS NOT NULL) as is_hidden
+  FROM public.ticket_stages s
+  LEFT JOIN public.hidden_stages hs ON s.id = hs.stage_id AND hs.company_id = v_company_id
+  WHERE s.company_id = v_company_id OR s.company_id IS NULL -- System stages + Company stages
+  ORDER BY s.position;
+END;
+$$;
+
 GRANT EXECUTE ON FUNCTION "public"."get_config_stages"() TO "authenticated";
 GRANT EXECUTE ON FUNCTION "public"."get_config_stages"() TO "service_role"; -- Just in case
 
