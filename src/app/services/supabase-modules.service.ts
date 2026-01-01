@@ -103,18 +103,12 @@ export class SupabaseModulesService {
   }
 
   private async executeAdminListOwners(): Promise<{ owners: any[] }> {
-    const token = await this.requireAccessToken();
-    const url = new URL(`${this.fnBase}/admin-list-user-modules`);
-    url.searchParams.set('owners', '1');
-    const res = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'apikey': this.rc.get().supabase.anonKey,
-      }
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json?.error || 'No se pudo obtener la lista de owners');
-    return { owners: json?.owners || [] };
+    const { data, error } = await this.supabaseClient.instance.rpc('admin_list_owners');
+    if (error) {
+      console.error('Error fetching owners via RPC:', error);
+      throw new Error(error.message || 'No se pudo obtener la lista de owners via RPC');
+    }
+    // RPC returns { owners: [...] }
+    return data as { owners: any[] };
   }
 }

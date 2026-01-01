@@ -310,16 +310,18 @@ export class AuthService {
 
       // If not found in users, check clients table (portal clients)
       console.log('🔍 User not in users table, checking clients table...');
-      const { data: clientData, error: clientError } = await this.supabase
+      const { data: clientDataRaw, error: clientError } = await this.supabase
         .from('clients')
         .select(`id, auth_user_id, email, name, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
         .eq('auth_user_id', authId)
-        .maybeSingle();
+        .limit(1);
 
       if (clientError) {
         console.error('❌ Error fetching client:', clientError);
         return null;
       }
+
+      const clientData = clientDataRaw && clientDataRaw.length > 0 ? clientDataRaw[0] : null;
 
       if (clientData) {
         console.log('✅ Client fetched successfully:', clientData);
