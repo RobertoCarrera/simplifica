@@ -49,7 +49,7 @@ import { PaymentCancelledComponent } from './features/payments/cancelled/payment
 export const routes: Routes = [
     // Rutas principales con guards apropiados
     { path: '', redirectTo: '/inicio', pathMatch: 'full' },
-    { path: 'inicio', loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent), canActivate: [AuthGuard] },
+    { path: 'inicio', loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent), canActivate: [AuthGuard, StaffGuard] },
 
     { path: 'clientes', component: SupabaseCustomersComponent, canActivate: [StaffGuard] },
     { path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard, OwnerAdminGuard] },

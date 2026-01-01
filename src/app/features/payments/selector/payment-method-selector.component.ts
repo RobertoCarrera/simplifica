@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter, signal, computed } from '@angul
 import { CommonModule } from '@angular/common';
 
 export interface PaymentMethod {
-  provider: 'stripe' | 'paypal';
+  provider: 'stripe' | 'paypal' | 'cash';
   name: string;
   icon: string;
   description: string;
@@ -11,7 +11,7 @@ export interface PaymentMethod {
 }
 
 export interface PaymentSelection {
-  provider: 'stripe' | 'paypal';
+  provider: 'stripe' | 'paypal' | 'cash';
   installments?: number;
 }
 
@@ -93,6 +93,26 @@ export interface PaymentSelection {
             </div>
           </button>
 
+          <!-- Cash Option -->
+          <button *ngIf="hasCash()"
+                  (click)="selectMethod('cash')"
+                  class="w-full p-4 rounded-xl border-2 transition-all duration-200 flex items-center gap-4 group"
+                  [ngClass]="{
+                    'border-orange-500 bg-orange-50 dark:bg-orange-900/20': selectedProvider() === 'cash',
+                    'border-gray-200 dark:border-slate-600 hover:border-orange-300 dark:hover:border-orange-700': selectedProvider() !== 'cash'
+                  }">
+            <div class="w-14 h-14 rounded-xl bg-orange-500 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+              <i class="fas fa-money-bill-wave text-white text-2xl"></i>
+            </div>
+            <div class="flex-1 text-left">
+              <p class="font-semibold text-gray-900 dark:text-white">Pago en local (Efectivo)</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Paga directamente en la oficina el día que vengas</p>
+            </div>
+            <div *ngIf="selectedProvider() === 'cash'" class="text-orange-500">
+              <i class="fas fa-check-circle text-xl"></i>
+            </div>
+          </button>
+
           <!-- Installments Section (when Stripe selected and available) -->
           <div *ngIf="selectedProvider() === 'stripe' && showInstallments()" 
                class="mt-4 p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
@@ -147,6 +167,7 @@ export interface PaymentSelection {
                   [ngClass]="{
                     'bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white': selectedProvider() === 'stripe',
                     'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white': selectedProvider() === 'paypal',
+                    'bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white': selectedProvider() === 'cash',
                     'bg-gray-300 dark:bg-slate-600 text-gray-500': !selectedProvider()
                   }">
             <i class="fas fa-lock mr-1"></i>
@@ -186,7 +207,7 @@ export interface PaymentSelection {
 export class PaymentMethodSelectorComponent {
   @Input() amount = 0;
   @Input() invoiceNumber = '';
-  @Input() availableProviders: ('stripe' | 'paypal')[] = [];
+  @Input() availableProviders: ('stripe' | 'paypal' | 'cash')[] = [];
   @Input() isRecurring = false;
   @Input() billingPeriod = '';
 
@@ -194,7 +215,7 @@ export class PaymentMethodSelectorComponent {
   @Output() cancelled = new EventEmitter<void>();
 
   visible = signal(false);
-  selectedProvider = signal<'stripe' | 'paypal' | null>(null);
+  selectedProvider = signal<'stripe' | 'paypal' | 'cash' | null>(null);
   selectedInstallments = signal(1);
   _isRecurring = signal(false);
   _billingPeriod = signal('');
@@ -202,10 +223,11 @@ export class PaymentMethodSelectorComponent {
 
   hasStripe = computed(() => this.availableProviders.includes('stripe'));
   hasPayPal = computed(() => this.availableProviders.includes('paypal'));
+  hasCash = computed(() => this.availableProviders.includes('cash' as any) || (this.availableProviders as any[]).includes('cash'));
   // Don't show installments for recurring services (doesn't make sense to pay monthly service in installments)
   showInstallments = computed(() => !this._isRecurring() && this.amount >= 50);
 
-  open(amount: number, invoiceNumber: string, providers: ('stripe' | 'paypal')[], isRecurring = false, billingPeriod = '') {
+  open(amount: number, invoiceNumber: string, providers: ('stripe' | 'paypal' | 'cash')[], isRecurring = false, billingPeriod = '') {
     this.amount = amount;
     this.invoiceNumber = invoiceNumber;
     this.availableProviders = providers;
@@ -223,10 +245,10 @@ export class PaymentMethodSelectorComponent {
     this.visible.set(true);
   }
 
-  selectMethod(provider: 'stripe' | 'paypal') {
+  selectMethod(provider: 'stripe' | 'paypal' | 'cash') {
     this.selectedProvider.set(provider);
-    if (provider === 'paypal') {
-      this.selectedInstallments.set(1); // PayPal doesn't support installments through our system
+    if (provider === 'paypal' || provider === 'cash') {
+      this.selectedInstallments.set(1);
     }
   }
 

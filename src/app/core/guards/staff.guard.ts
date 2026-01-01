@@ -29,7 +29,7 @@ export class StaffGuard implements CanActivate {
 
                 // If user is authenticated but not staff (e.g. client), redirect home
                 // Typically clients have their own dashboard at root or specific paths
-                return this.router.parseUrl('/');
+                return this.router.parseUrl('/portal');
             })
         );
     }

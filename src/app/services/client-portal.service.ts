@@ -196,16 +196,44 @@ export class ClientPortalService {
 
 
   async contractService(serviceId: string, variantId?: string, preferredPaymentMethod?: string, existingInvoiceId?: string): Promise<{ data: any; error?: any }> {
-    // Call edge function to create quote, accept, invoice and pay
-    // If existingInvoiceId is provided, skip quote/invoice creation and just generate payment link
     try {
-      const token = await this.requireAccessToken();
-      const { data, error } = await this.supabase.functions.invoke('client-request-service', {
-        body: { serviceId, variantId, action: 'contract', preferredPaymentMethod, existingInvoiceId },
-        headers: { Authorization: `Bearer ${token}` }
+      // Case 1: Payment Method Selected (or existing invoice pending payment)
+      // We still use the Edge Function to generate the secure payment link
+      if (preferredPaymentMethod || existingInvoiceId) {
+        console.log('💳 Generating payment link via Edge Function...', { serviceId, variantId, preferredPaymentMethod, existingInvoiceId });
+        const token = await this.requireAccessToken();
+        const { data, error } = await this.supabase.functions.invoke('client-request-service', {
+          body: {
+            action: 'contract',
+            serviceId,
+            variantId,
+            preferredPaymentMethod,
+            existingInvoiceId
+          },
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        return { data, error };
+      }
+
+      // Case 2: Initial Contract Request (No payment method yet)
+      // Use RPC for speed and reliability, preventing 401s
+      console.log('🚀 Contracting service via RPC...', { serviceId, variantId });
+
+      const { data, error } = await this.sb.instance.rpc('contract_service_rpc', {
+        p_service_id: serviceId,
+        p_variant_id: variantId || null
       });
-      return { data, error };
+
+      if (error) throw error;
+
+      console.log('✅ RPC Contract Result:', data);
+
+      // RPC returns: { success, action, requires_payment_selection, data: { ... } }
+      // We can return the whole object as 'data' because the component expects 'data' to contain the fields.
+      return { data, error: null };
+
     } catch (e: any) {
+      console.error('❌ Error contracting service:', e);
       return { data: null, error: e };
     }
   }
@@ -219,7 +247,7 @@ export class ClientPortalService {
         .from('quotes')
         .select('*')
         .eq('client_id', user.client_id)
-        .neq('status', 'draft') // filter drafts if necessary
+        //.neq('status', 'draft') // Allow drafts so clients can see pending quotes
         .order('quote_date', { ascending: false });
 
       if (error) throw error;
@@ -257,7 +285,7 @@ export class ClientPortalService {
         .select('*')
         .eq('client_id', user.client_id)
         // Ensure we only show relevant statuses if needed, though RLS handles security.
-        .neq('status', 'draft') // usually clients shouldn't see drafts
+        //.neq('status', 'draft') // Allow drafts so clients can see pending invoices
         .order('invoice_date', { ascending: false });
 
       if (error) throw error;

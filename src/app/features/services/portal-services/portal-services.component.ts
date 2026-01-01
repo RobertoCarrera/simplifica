@@ -787,71 +787,84 @@ export class PortalServicesComponent implements OnInit {
 
       const responseData = data?.data || data;
 
-      // Check if we need payment method selection (multiple providers available)
-      // Note: requires_payment_selection is at the top level of the response, not inside data
-      if (data?.requires_payment_selection) {
-        // Close progress dialog temporarily
-        this.contractDialog.visible.set(false);
+      if (data?.success) {
+        // Check if we need payment method selection (multiple providers available)
+        // Note: requires_payment_selection is at the top level of the response, not inside data
+        if (data?.requires_payment_selection) {
+          // Close progress dialog temporarily
+          this.contractDialog.visible.set(false);
 
-        // Store service for later
-        this.pendingContractService = service;
-        this.pendingPaymentData = data;
+          // Store service for later
+          this.pendingContractService = service;
+          this.pendingPaymentData = data;
+          console.log('💳 Payment Selection Required. Data:', data);
 
-        // Open payment method selector - data is inside data.data
-        const paymentData = data?.data || {};
-        this.paymentSelector.open(
-          paymentData.total || price,
-          paymentData.invoice_number || '',
-          paymentData.available_providers || [],
-          service.isRecurring || false,
-          service.billingPeriod || ''
-        );
-        return;
-      }
+          // Open payment method selector - data is inside data.data
+          const paymentData = data?.data || {};
+          console.log('💳 Opening Selector with:', paymentData);
 
-      // Move through steps based on response
-      if (responseData?.quote) {
-        this.contractDialog.nextStep(); // Quote completed
-      }
+          if (!paymentData.available_providers || paymentData.available_providers.length === 0) {
+            console.warn('⚠️ No providers found but payment selection requested');
+          }
+          this.paymentSelector.open(
+            paymentData.total || price,
+            paymentData.invoice_number || '',
+            paymentData.available_providers || [],
+            service.isRecurring || false,
+            service.billingPeriod || ''
+          );
+          return;
+        }
 
-      // Check if invoice was created and store the ID
-      if (responseData?.invoice_id) {
-        this.lastCreatedInvoiceId = responseData.invoice_id;
-        this.contractDialog.nextStep(); // Invoice completed
-      } else if (!responseData?.fallback) {
-        this.contractDialog.nextStep(); // Invoice completed
-      }
+        // Move through steps based on response
+        if (responseData?.quote) {
+          this.contractDialog.nextStep(); // Quote completed
+        }
 
-      // Handle final result - check for multiple payment options first
-      if (responseData?.payment_options_formatted && responseData.payment_options_formatted.length > 0) {
-        // Multiple payment options available - show them all
-        this.contractDialog.completeSuccess({
-          success: true,
-          paymentOptions: responseData.payment_options_formatted,
-          message: responseData.message || '¡Todo listo! Selecciona tu método de pago preferido.'
-        });
-      } else if (responseData?.payment_url) {
-        // Single payment URL (legacy/fallback)
-        this.contractDialog.completeSuccess({
-          success: true,
-          paymentUrl: responseData.payment_url,
-          message: '¡Todo listo! Haz clic en el botón para completar el pago de forma segura.'
-        });
-      } else if (data?.fallback) {
-        // Fallback case - no payment integration or error
-        const message = responseData?.message || 'Tu solicitud ha sido procesada. Te contactaremos para completar el pago.';
-        this.contractDialog.completeFallback(message);
+        // Check if invoice was created and store the ID
+        if (responseData?.invoice_id) {
+          this.lastCreatedInvoiceId = responseData.invoice_id;
+          this.contractDialog.nextStep(); // Invoice completed
+        } else if (!responseData?.fallback) {
+          this.contractDialog.nextStep(); // Invoice completed
+        }
+
+        // Handle final result - check for multiple payment options first
+        if (responseData?.payment_options_formatted && responseData.payment_options_formatted.length > 0) {
+          // Multiple payment options available - show them all
+          this.contractDialog.completeSuccess({
+            success: true,
+            paymentOptions: responseData.payment_options_formatted,
+            message: responseData.message || '¡Todo listo! Selecciona tu método de pago preferido.'
+          });
+        } else if (responseData?.payment_url) {
+          // Single payment URL (legacy/fallback)
+          this.contractDialog.completeSuccess({
+            success: true,
+            paymentUrl: responseData.payment_url,
+            message: '¡Todo listo! Haz clic en el botón para completar el pago de forma segura.'
+          });
+        } else if (data?.fallback) {
+          // Fallback case - no payment integration or error
+          const message = responseData?.message || 'Tu solicitud ha sido procesada. Te contactaremos para completar el pago.';
+          this.contractDialog.completeFallback(message);
+        } else {
+          // Success without payment URL - Invoice created in Draft/Pending state
+          this.contractDialog.completeSuccess({
+            success: true,
+            message: 'Contratación realizada correctamente. Se ha generado una factura pendiente de pago. Por favor, accede a la sección de Facturas para finalizar el proceso.'
+          });
+        }
       } else {
-        // Success without payment URL
-        this.contractDialog.completeSuccess({
-          success: true,
-          message: 'Servicio contratado correctamente. Pronto recibirás más información.'
-        });
+        // RPC returned success: false
+        console.error('❌ Contract RPC returned failure:', responseData);
+        throw new Error(responseData?.error || 'No se pudo procesar la contratación.');
       }
     } catch (err: any) {
+      console.error('❌ Error in contractService:', err);
       this.contractDialog.completeError('quote', err?.message || 'Error desconocido', 'Ha ocurrido un error inesperado. Por favor, contacta con nosotros.');
     }
-  }
+  } // End of contractService method
 
   async onPaymentMethodSelected(selection: PaymentSelection) {
     if (!this.pendingContractService) return;
@@ -860,7 +873,12 @@ export class PortalServicesComponent implements OnInit {
     const existingInvoiceId = this.pendingPaymentData?.data?.invoice_id;
 
     // Resume contract flow with selected payment method and existing invoice
-    await this.contractService(this.pendingContractService, selection.provider, existingInvoiceId);
+    if (selection.provider === 'cash') {
+      this.lastCreatedInvoiceId = existingInvoiceId;
+      await this.onLocalPaymentSelectedForContract();
+    } else {
+      await this.contractService(this.pendingContractService, selection.provider, existingInvoiceId);
+    }
 
     // Clear pending state
     this.pendingContractService = null;
@@ -957,9 +975,9 @@ export class PortalServicesComponent implements OnInit {
         .eq('quote_id', contractedService.id);
 
       if (items && items.length > 0) {
-        const subtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
-        const taxAmount = items.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
-        const total = items.reduce((sum, item) => sum + (item.total || 0), 0);
+        const subtotal = items.reduce((sum: number, item: any) => sum + (item.subtotal || 0), 0);
+        const taxAmount = items.reduce((sum: number, item: any) => sum + (item.tax_amount || 0), 0);
+        const total = items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
 
         await supabase
           .from('quotes')
@@ -979,8 +997,9 @@ export class PortalServicesComponent implements OnInit {
       this.toastService.error('Error', 'No se pudo cambiar de plan. Por favor, contacta con soporte.');
     }
   }
-}
+} // End of PortalServicesComponent class
 
+// Interfaces
 interface ContractedService {
   id: string;
   name: string;
