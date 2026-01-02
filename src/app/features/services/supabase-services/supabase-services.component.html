@@ -382,14 +382,15 @@
 
               <div *ngIf="formData.has_variants && editingService?.id">
                 <app-service-variants #variantsComp [serviceId]="editingService!.id" [serviceName]="formData.name || ''"
-                  [variants]="serviceVariants" (variantsChange)="onVariantsChange($event)"
-                  (onSave)="onVariantSave($event)" (onDelete)="onVariantDelete($event)">
+                  [variants]="serviceVariants" [companyId]="selectedCompanyId"
+                  (variantsChange)="onVariantsChange($event)" (onSave)="onVariantSave($event)"
+                  (onDelete)="onVariantDelete($event)">
                 </app-service-variants>
               </div>
 
               <!-- Variantes para servicios nuevos (sin ID aún) -->
               <div *ngIf="formData.has_variants && !editingService">
-                <app-service-variants [serviceId]="''" [variants]="serviceVariants"
+                <app-service-variants [serviceId]="''" [variants]="serviceVariants" [companyId]="selectedCompanyId"
                   (variantsChange)="onVariantsChange($event)" (onSave)="onVariantSave($event)"
                   (onDelete)="onVariantDelete($event)">
                 </app-service-variants>

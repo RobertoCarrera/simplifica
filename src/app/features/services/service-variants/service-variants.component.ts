@@ -29,6 +29,7 @@ export class ServiceVariantsComponent implements OnInit {
 
   @Input() serviceId: string = '';
   @Input() serviceName: string = '';
+  @Input() companyId: string = '';
   @Input() variants: ServiceVariant[] = [];
   @Output() variantsChange = new EventEmitter<ServiceVariant[]>();
   @Output() onSave = new EventEmitter<ServiceVariant>();
@@ -39,6 +40,31 @@ export class ServiceVariantsComponent implements OnInit {
   showForm = false;
   editingVariant: ServiceVariant | null = null;
   formData: Partial<ServiceVariant> = {}; // Inicializar vacío, se llena en openForm
+  // ... (skip lines)
+  async loadClients() {
+    try {
+      if (!this.companyId) {
+        console.warn('⚠️ No companyId provided to ServiceVariantsComponent. Client search may be empty.');
+        this.clients = [];
+        this.filteredClients = [];
+        return;
+      }
+
+      const supabase = this.supabaseService.getClient();
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name, email, business_name')
+        .eq('company_id', this.companyId) // STRICT GDPR FILTER
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      this.clients = data || [];
+      this.filteredClients = [...this.clients];
+    } catch (error) {
+      console.error('Error loading clients:', error);
+    }
+  }
 
   // Temporary fields for feature inputs
   newIncludedFeature: string = '';
@@ -55,6 +81,7 @@ export class ServiceVariantsComponent implements OnInit {
   clients: SimpleClient[] = [];
   filteredClients: SimpleClient[] = [];
   clientSearchTerm: string = '';
+  loadingClients: boolean = false;
 
   billingPeriods = [
     { value: 'one_time', label: 'Pago único' },
@@ -79,8 +106,7 @@ export class ServiceVariantsComponent implements OnInit {
       console.error('Error loading settings in ServiceVariants:', error);
     }
 
-    // Load clients for assignment
-    await this.loadClients();
+
   }
 
   sortVariants() {
@@ -577,22 +603,7 @@ export class ServiceVariantsComponent implements OnInit {
 
   // ============= VISIBILITY & CLIENT ASSIGNMENT MANAGEMENT =============
 
-  async loadClients() {
-    try {
-      const supabase = this.supabaseService.getClient();
-      const { data, error } = await supabase
-        .from('clients')
-        .select('id, name, email, business_name')
-        .eq('is_active', true)
-        .order('name');
 
-      if (error) throw error;
-      this.clients = data || [];
-      this.filteredClients = [...this.clients];
-    } catch (error) {
-      console.error('Error loading clients:', error);
-    }
-  }
 
   async toggleHidden(variant: ServiceVariant) {
     try {
@@ -615,26 +626,63 @@ export class ServiceVariantsComponent implements OnInit {
     }
   }
 
+
+
+  // No longer load all clients on init to avoid hitting limits
+  // Instead, we search on demand.
+
+  async searchClients(term: string) {
+    if (!term || term.length < 2) {
+      this.filteredClients = [];
+      return;
+    }
+
+    try {
+      this.loadingClients = true;
+      if (!this.companyId) {
+        console.warn('⚠️ No companyId provided to ServiceVariantsComponent.');
+        return;
+      }
+
+      const supabase = this.supabaseService.getClient();
+      // Search by name, email, or business_name using ilike
+      // Syntax: or=(name.ilike.%term%,email.ilike.%term%,business_name.ilike.%term%)
+      const searchPattern = `%${term}%`;
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name, email, business_name')
+        .eq('company_id', this.companyId)
+        .or(`name.ilike.${searchPattern},email.ilike.${searchPattern},business_name.ilike.${searchPattern}`)
+        .limit(20); // Limit results for performance
+
+      if (error) throw error;
+      this.filteredClients = data || [];
+    } catch (error) {
+      console.error('Error searching clients:', error);
+    } finally {
+      this.loadingClients = false;
+    }
+  }
+
+  // Renamed from filterClients to be used in template input
+  onSearchInput() {
+    // Simple debounce could be added here if needed, but for now direct call
+    // Logic: if empty, clear. If has text, search DB.
+    this.searchClients(this.clientSearchTerm);
+  }
+
   openAssignmentModal(variant: ServiceVariant) {
     this.selectedVariantForAssignment = variant;
     this.clientSearchTerm = '';
-    this.filteredClients = [...this.clients];
+    this.filteredClients = []; // Start empty until they search
     this.showAssignmentModal = true;
+    // removing initial loadClients call
   }
 
   closeAssignmentModal() {
     this.showAssignmentModal = false;
     this.selectedVariantForAssignment = null;
     this.clientSearchTerm = '';
-  }
-
-  filterClients() {
-    const term = this.clientSearchTerm.toLowerCase();
-    this.filteredClients = this.clients.filter(c =>
-      c.name.toLowerCase().includes(term) ||
-      (c.email && c.email.toLowerCase().includes(term)) ||
-      (c.business_name && c.business_name.toLowerCase().includes(term))
-    );
   }
 
   isClientAssigned(clientId: string): boolean {

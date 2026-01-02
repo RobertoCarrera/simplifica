@@ -93,23 +93,23 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
                   </div>
                   
                   <div class="text-right min-w-[120px] flex flex-col items-end gap-2">
-                    <div>
-                      <p class="font-bold text-xl text-gray-900 dark:text-white">{{ service.price | currency:'EUR' }}</p>
-                      <p *ngIf="service.isRecurring" class="text-xs text-gray-500">/ {{ service.billingPeriod }}</p>
-                    </div>
-                    
-                    <!-- Cancel Button - Only show if paid and active -->
-                    <button *ngIf="service.status === 'accepted' && service.paymentStatus !== 'pending'" 
-                      (click)="cancelSubscription(service)"
-                      class="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 hover:underline">
-                      Dar de baja
-                    </button>
                     
                     <!-- Pay Button - Show if pending -->
                     <button *ngIf="service.paymentStatus === 'pending'" 
                         (click)="openPaymentForService(service)"
                         class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold rounded-lg shadow-sm transition-all hover:scale-105 active:scale-95 flex items-center gap-2">
                         <i class="fas fa-credit-card"></i> Pagar ahora
+                    </button>
+                    <div>
+                      <p class="font-bold text-xl text-gray-900 dark:text-white">{{ service.price | currency:'EUR' }}</p>
+                      <p *ngIf="service.isRecurring" class="text-xs text-gray-500">/ {{ service.billingPeriod }}</p>
+                    </div>
+                    
+                    <!-- Cancel Button - Show if active (paid or pending) -->
+                    <button *ngIf="service.status === 'accepted'" 
+                      (click)="cancelSubscription(service)"
+                      class="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 hover:underline">
+                      {{ service.paymentStatus === 'pending' ? 'Cancelar' : 'Dar de baja' }}
                     </button>
                   </div>
                 </div>
@@ -401,9 +401,27 @@ export class PortalServicesComponent implements OnInit {
         base_price: service.base_price
       });
 
+      const currentClientId = this.authService.userProfile?.client_id;
+      console.log('👤 Current Client ID for filtering:', currentClientId);
+
       // Map variants to expected structure
       const mappedVariants = (service.variants || [])
-        .filter((v: any) => v.is_active !== false)
+        .filter((v: any) => {
+          if (v.is_active === false) return false;
+
+          // VISIBILITY CHECK:
+          // If variant has specific assignments, it is ONLY visible to those clients.
+          const assignments = v.client_assignments || [];
+          if (assignments.length > 0) {
+            const isAssignedToMe = assignments.some((a: any) => a.client_id === currentClientId);
+            if (!isAssignedToMe) {
+              console.log(`  🚫 Hiding private variant "${v.variant_name}" (Assigned to others)`);
+              return false;
+            }
+            console.log(`  🔓 Showing private variant "${v.variant_name}" (Assigned to you)`);
+          }
+          return true;
+        })
         .map((v: any) => {
           console.log(`  🏷️ Variant "${v.variant_name}":`, {
             base_price: v.base_price,
@@ -751,40 +769,58 @@ export class PortalServicesComponent implements OnInit {
   }
 
   async cancelSubscription(service: ContractedService): Promise<void> {
+    const isPending = service.paymentStatus === 'pending';
+
+    const sideMessage = isPending
+      ? `¿Deseas cancelar la solicitud del servicio "${service.name}"? Se anulará la factura pendiente.`
+      : `¿Estás seguro de que deseas dar de baja el servicio "${service.name}"? Esta acción cancelará tu suscripción.`;
+
     const confirmed = await this.confirmModal.open({
-      title: 'Dar de baja servicio',
-      message: `¿Estás seguro de que deseas dar de baja el servicio "${service.name}"? Se mantendrá activo hasta el final del periodo actual.`,
-      icon: 'fas fa-exclamation-triangle',
+      title: isPending ? 'Cancelar Solicitud' : 'Dar de baja servicio',
+      message: sideMessage,
+      icon: isPending ? 'fas fa-ban' : 'fas fa-exclamation-triangle',
       iconColor: 'red',
-      confirmText: 'Sí, dar de baja',
-      cancelText: 'Cancelar'
+      confirmText: isPending ? 'Sí, cancelar solicitud' : 'Sí, dar de baja',
+      cancelText: 'Atrás'
     });
 
     if (!confirmed) {
       return;
     }
 
+    let reason: string | null = null;
+
+    // Only ask for reason if ACTIVE (not pending)
+    if (!isPending) {
+      reason = await this.promptModal.open({
+        title: 'Motivo de la baja',
+        message: 'Por favor, indícanos brevemente el motivo de la baja (opcional):',
+        inputLabel: 'Motivo',
+        inputPlaceholder: 'Escribe aquí el motivo...',
+        multiline: true,
+        confirmText: 'Confirmar Baja',
+        cancelText: 'Cancelar'
+      });
+
+      if (reason === null) return; // User cancelled at reason step
+    }
+
     try {
-      const supabase = this.supabaseClient.instance;
-      // Mark as paused. The backend/cron should handle not generating new invoices.
-      // We assume 'paused' means "cancelled but maybe active until end of period".
-      // Ideally we should set recurrence_end_date to next_run_at.
+      this.toastService.info('Procesando...', 'Gestionando la baja del servicio.');
 
-      const updates: any = { status: 'paused' };
-      if (service.nextBillingDate) {
-        updates.recurrence_end_date = service.nextBillingDate;
+      const result = await this.portalService.cancelService(service.id, reason || undefined);
+
+      if (result.success) {
+        if (result.action === 'service_cancelled_invoice_voided') {
+          this.toastService.success('Baja completada', 'El servicio y la factura pendiente han sido cancelados.');
+        } else {
+          this.toastService.success('Baja procesada', 'El servicio ha sido dado de baja. Se mantendrá activo hasta final del periodo facturado.');
+        }
+        await this.loadContractedServices();
+      } else {
+        this.toastService.error('Error', result.error || 'No se pudo cancelar el servicio.');
       }
-
-      const { error } = await supabase
-        .from('quotes')
-        .update(updates)
-        .eq('id', service.id);
-
-      if (error) throw error;
-
-      this.toastService.success('Baja procesada', 'El servicio ha sido dado de baja correctamente.');
-      await this.loadContractedServices();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error canceling subscription:', error);
       this.toastService.error('Error', 'No se pudo cancelar el servicio. Por favor, contacta con soporte.');
     }

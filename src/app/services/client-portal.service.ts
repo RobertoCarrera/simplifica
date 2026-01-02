@@ -129,7 +129,7 @@ export class ClientPortalService {
     const serviceIds = services.map(s => s.id);
     const { data: variants, error: variantsError } = await client
       .from('service_variants')
-      .select('*')
+      .select('*, client_assignments:client_variant_assignments(*)')
       .in('service_id', serviceIds)
       .eq('is_active', true)
       .order('sort_order');
@@ -261,7 +261,7 @@ export class ClientPortalService {
         .from('quotes')
         .select('*')
         .eq('client_id', user.client_id)
-        //.neq('status', 'draft') // Allow drafts so clients can see pending quotes
+        .neq('status', 'cancelled') // Hide cancelled quotes as requested by user ("clean view")
         .order('quote_date', { ascending: false });
 
       if (error) throw error;
@@ -298,8 +298,8 @@ export class ClientPortalService {
         .from('invoices')
         .select('*')
         .eq('client_id', user.client_id)
-        // Ensure we only show relevant statuses if needed, though RLS handles security.
-        //.neq('status', 'draft') // Allow drafts so clients can see pending invoices
+        .neq('status', 'void') // Hide voided invoices
+        .neq('status', 'cancelled') // Hide cancelled invoices if any
         .order('invoice_date', { ascending: false });
 
       if (error) throw error;
@@ -564,6 +564,34 @@ export class ClientPortalService {
     } catch (e: any) {
       console.error('Error marking local payment:', e);
       throw e;
+    }
+  }
+
+  /**
+   * Cancel a contracted service (quote) and handle associated invoice.
+   * Calls 'cancel_contracted_service' RPC.
+   */
+  async cancelService(quoteId: string, reason?: string): Promise<{ success: boolean; message?: string; action?: string; error?: string }> {
+    try {
+      console.log('🚫 Cancelling service (quote):', quoteId);
+      const { data, error } = await this.sb.instance.rpc('cancel_contracted_service', {
+        p_quote_id: quoteId,
+        p_reason: reason || null
+      });
+
+      if (error) throw error;
+
+      console.log('✅ Service cancellation result:', data);
+
+      if (data && data.success) {
+        return { success: true, message: data.message, action: data.action };
+      } else {
+        return { success: false, error: data?.error || 'No se pudo cancelar el servicio' };
+      }
+
+    } catch (e: any) {
+      console.error('❌ Error cancelling service:', e);
+      return { success: false, error: e.message || 'Error inesperado al cancelar servicio' };
     }
   }
 }

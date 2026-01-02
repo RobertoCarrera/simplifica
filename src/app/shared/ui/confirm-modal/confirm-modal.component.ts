@@ -1,4 +1,4 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 export interface ConfirmModalOptions {
@@ -95,7 +95,7 @@ export interface ConfirmModalOptions {
     }
   `]
 })
-export class ConfirmModalComponent {
+export class ConfirmModalComponent implements OnDestroy {
   visible = signal(false);
   options = signal<ConfirmModalOptions>({
     title: 'Confirmar',
@@ -114,9 +114,24 @@ export class ConfirmModalComponent {
     purple: 'linear-gradient(to right, #a855f7, #8b5cf6)'
   };
 
+  ngOnDestroy(): void {
+    this.toggleBodyScroll(false);
+  }
+
   getButtonGradient(): string {
     const color = this.options().iconColor || 'blue';
     return this.gradients[color] || this.gradients['blue'];
+  }
+
+  /**
+   * Toggle body scroll to prevent background scrolling when modal is open
+   */
+  private toggleBodyScroll(disable: boolean) {
+    if (disable) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
   }
 
   /**
@@ -128,6 +143,7 @@ export class ConfirmModalComponent {
       iconColor: options.iconColor || 'blue'
     });
     this.visible.set(true);
+    this.toggleBodyScroll(true);
 
     return new Promise<boolean>((resolve) => {
       this.resolvePromise = resolve;
@@ -136,6 +152,7 @@ export class ConfirmModalComponent {
 
   confirm(): void {
     this.visible.set(false);
+    this.toggleBodyScroll(false);
     if (this.resolvePromise) {
       this.resolvePromise(true);
       this.resolvePromise = null;
@@ -144,6 +161,7 @@ export class ConfirmModalComponent {
 
   cancel(): void {
     this.visible.set(false);
+    this.toggleBodyScroll(false);
     if (this.resolvePromise) {
       this.resolvePromise(false);
       this.resolvePromise = null;

@@ -8,8 +8,7 @@
   <!-- Variants List -->
   <div class="variants-list" *ngIf="variants.length > 0">
     <div class="variant-card" *ngFor="let variant of variants; let i = index"
-         [style.border-left-color]="getVariantBadgeColor(variant)"
-         [class.variant-hidden]="variant.is_hidden">
+      [style.border-left-color]="getVariantBadgeColor(variant)" [class.variant-hidden]="variant.is_hidden">
       <div class="variant-header">
         <div class="variant-title">
           <h4>
@@ -17,16 +16,16 @@
             <span class="hidden-badge" *ngIf="variant.is_hidden" title="Esta variante está oculta">
               <i class="fas fa-eye-slash"></i>
             </span>
-            <span class="assigned-badge" *ngIf="variant.client_assignments && variant.client_assignments.length > 0" 
-                  title="Asignada a clientes específicos">
+            <span class="assigned-badge" *ngIf="variant.client_assignments && variant.client_assignments.length > 0"
+              title="Asignada a clientes específicos">
               <i class="fas fa-user-lock"></i> {{ variant.client_assignments.length }}
             </span>
           </h4>
           <!-- Pills de precios -->
           <div class="pricing-pills" *ngIf="variant.pricing && variant.pricing.length > 0">
             <span class="pricing-pill" *ngFor="let price of variant.pricing"
-                  [class.has-discount]="price.discount_percentage && price.discount_percentage > 0">
-              <span class="period">{{ getPeriodLabel(price.billing_period) }}</span>: 
+              [class.has-discount]="price.discount_percentage && price.discount_percentage > 0">
+              <span class="period">{{ getPeriodLabel(price.billing_period) }}</span>:
               <span class="price">{{ calculateDiscountedPrice(price) | number:'1.2-2' }}€</span>
               <span class="discount" *ngIf="price.discount_percentage && price.discount_percentage > 0">
                 (-{{ price.discount_percentage }}%)
@@ -34,30 +33,26 @@
             </span>
           </div>
           <span class="variant-badge" *ngIf="variant.display_config?.badge"
-                [style.background-color]="getVariantBadgeColor(variant)">
+            [style.background-color]="getVariantBadgeColor(variant)">
             {{ variant.display_config?.badge }}
           </span>
         </div>
         <div class="variant-actions">
           <!-- Toggle Hidden -->
-          <button type="button" class="btn-icon" 
-                  (click)="toggleHidden(variant)" 
-                  [title]="variant.is_hidden ? 'Mostrar en catálogo' : 'Ocultar del catálogo'"
-                  [class.active]="variant.is_hidden">
+          <button type="button" class="btn-icon" (click)="toggleHidden(variant)"
+            [title]="variant.is_hidden ? 'Mostrar en catálogo' : 'Ocultar del catálogo'"
+            [class.active]="variant.is_hidden">
             <i class="fas" [class.fa-eye]="!variant.is_hidden" [class.fa-eye-slash]="variant.is_hidden"></i>
           </button>
           <!-- Assign to Client -->
-          <button type="button" class="btn-icon" 
-                  (click)="openAssignmentModal(variant)" 
-                  title="Asignar a cliente">
+          <button type="button" class="btn-icon" (click)="openAssignmentModal(variant)" title="Asignar a cliente">
             <i class="fas fa-user-plus"></i>
           </button>
-          <button type="button" class="btn-icon" (click)="moveVariantUp(i)" 
-                  [disabled]="i === 0" title="Subir">
+          <button type="button" class="btn-icon" (click)="moveVariantUp(i)" [disabled]="i === 0" title="Subir">
             <i class="fas fa-arrow-up"></i>
           </button>
-          <button type="button" class="btn-icon" (click)="moveVariantDown(i)" 
-                  [disabled]="i === variants.length - 1" title="Bajar">
+          <button type="button" class="btn-icon" (click)="moveVariantDown(i)" [disabled]="i === variants.length - 1"
+            title="Bajar">
             <i class="fas fa-arrow-down"></i>
           </button>
           <button type="button" class="btn-icon" (click)="openForm(variant)" title="Editar">
@@ -75,24 +70,22 @@
         <div class="assignment-chips">
           <span class="assignment-chip" *ngFor="let assignment of variant.client_assignments">
             <i class="fas fa-user"></i> {{ assignment.client?.name || 'Cliente' }}
-            <button type="button" class="chip-remove" (click)="removeAssignment(assignment.id, variant)" title="Quitar asignación">
+            <button type="button" class="chip-remove" (click)="removeAssignment(assignment.id, variant)"
+              title="Quitar asignación">
               <i class="fas fa-times"></i>
             </button>
           </span>
         </div>
       </div>
 
-      <div class="variant-features" *ngIf="variant.features && ((variant.features?.included?.length ?? 0) > 0 || (variant.features?.excluded?.length ?? 0) > 0)">
+      <div class="variant-features"
+        *ngIf="variant.features && ((variant.features?.included?.length ?? 0) > 0 || (variant.features?.excluded?.length ?? 0) > 0)">
         <h5>CARACTERÍSTICAS INCLUIDAS:</h5>
         <ul class="features-list">
-          <li *ngFor="let item of getAllOrderedFeaturesWithState(variant)" 
-              [class.feature-included]="item.state === 'included'"
-              [class.feature-excluded]="item.state === 'excluded'">
-            <i class="fas" 
-               [class.fa-check]="item.state === 'included'"
-               [class.fa-times]="item.state === 'excluded'"
-               [class.text-success]="item.state === 'included'"
-               [class.text-danger]="item.state === 'excluded'"></i>
+          <li *ngFor="let item of getAllOrderedFeaturesWithState(variant)"
+            [class.feature-included]="item.state === 'included'" [class.feature-excluded]="item.state === 'excluded'">
+            <i class="fas" [class.fa-check]="item.state === 'included'" [class.fa-times]="item.state === 'excluded'"
+              [class.text-success]="item.state === 'included'" [class.text-danger]="item.state === 'excluded'"></i>
             <span [class.text-line-through]="item.state === 'excluded'">{{ item.name }}</span>
           </li>
         </ul>
@@ -114,7 +107,8 @@
       <div class="modal-header">
         <div class="modal-title-group">
           <h3>{{ editingVariant ? 'Editar Variante' : 'Nueva Variante' }}</h3>
-          <p class="modal-subtitle">{{ editingVariant ? 'Modifica los datos de la variante' : 'Crea una nueva variante del servicio' }}</p>
+          <p class="modal-subtitle">{{ editingVariant ? 'Modifica los datos de la variante' : 'Crea una nueva variante
+            del servicio' }}</p>
         </div>
         <button class="btn-close" type="button" (click)="closeForm()">
           <i class="fas fa-times"></i>
@@ -126,14 +120,8 @@
           <div class="form-row">
             <div class="form-group full-width">
               <label>Nombre de la Variante *</label>
-              <input 
-                type="text" 
-                [(ngModel)]="formData.variant_name" 
-                name="variant_name" 
-                class="form-control" 
-                required
-                placeholder="Ej: Plan Básico, Paquete Premium, etc."
-                maxlength="100">
+              <input type="text" [(ngModel)]="formData.variant_name" name="variant_name" class="form-control" required
+                placeholder="Ej: Plan Básico, Paquete Premium, etc." maxlength="100">
               <small class="form-hint">Escribe el nombre que identifique esta variante de servicio</small>
             </div>
           </div>
@@ -148,12 +136,14 @@
             </div>
 
             <div class="pricing-entries" *ngIf="formData.pricing && formData.pricing.length > 0">
-              <div class="pricing-entry card mb-3 shadow-sm border" *ngFor="let price of formData.pricing; let idx = index">
+              <div class="pricing-entry card mb-3 shadow-sm border"
+                *ngFor="let price of formData.pricing; let idx = index">
                 <div class="card-header d-flex justify-content-between align-items-center border-bottom py-2 px-3">
                   <h5 class="mb-0 font-weight-bold" style="font-size: 0.95rem;">
                     <i class="fas fa-tag mr-2 text-primary"></i> Opción de Precio #{{ idx + 1 }}
                   </h5>
-                  <button type="button" class="btn btn-sm text-danger" (click)="removePricingEntry(idx)" title="Eliminar precio">
+                  <button type="button" class="btn btn-sm text-danger" (click)="removePricingEntry(idx)"
+                    title="Eliminar precio">
                     <i class="fas fa-trash"></i>
                   </button>
                 </div>
@@ -162,11 +152,9 @@
                   <div class="form-row">
                     <div class="form-group">
                       <label class="small font-weight-bold">Periodicidad *</label>
-                      <select [(ngModel)]="price.billing_period" 
-                              [name]="'billing_period_' + idx" 
-                              class="form-control form-control-sm">
-                        <option *ngFor="let period of getAvailablePeriods(price.billing_period)" 
-                                [value]="period.value">
+                      <select [(ngModel)]="price.billing_period" [name]="'billing_period_' + idx"
+                        class="form-control form-control-sm">
+                        <option *ngFor="let period of getAvailablePeriods(price.billing_period)" [value]="period.value">
                           {{ period.label }}
                         </option>
                       </select>
@@ -175,13 +163,8 @@
                     <div class="form-group">
                       <label class="small font-weight-bold">Precio Base (€) *</label>
                       <div class="input-group input-group-sm">
-                        <input type="number" 
-                               [(ngModel)]="price.base_price" 
-                               [name]="'base_price_' + idx" 
-                               class="form-control" 
-                               step="0.01" 
-                               min="0" 
-                               required>
+                        <input type="number" [(ngModel)]="price.base_price" [name]="'base_price_' + idx"
+                          class="form-control" step="0.01" min="0" required>
                         <div class="input-group-append">
                           <span class="input-group-text">€</span>
                         </div>
@@ -192,35 +175,22 @@
                   <div class="form-row">
                     <div class="form-group">
                       <label class="small font-weight-bold">Horas Estimadas</label>
-                      <input type="number" 
-                             [(ngModel)]="price.estimated_hours" 
-                             [name]="'estimated_hours_' + idx" 
-                             class="form-control form-control-sm" 
-                             step="0.5" 
-                             min="0">
+                      <input type="number" [(ngModel)]="price.estimated_hours" [name]="'estimated_hours_' + idx"
+                        class="form-control form-control-sm" step="0.5" min="0">
                     </div>
 
                     <div class="form-group">
                       <label class="small font-weight-bold">Precio de Coste (€)</label>
-                      <input type="number" 
-                             [(ngModel)]="price.cost_price" 
-                             [name]="'cost_price_' + idx" 
-                             class="form-control form-control-sm" 
-                             step="0.01" 
-                             min="0">
+                      <input type="number" [(ngModel)]="price.cost_price" [name]="'cost_price_' + idx"
+                        class="form-control form-control-sm" step="0.01" min="0">
                     </div>
                   </div>
 
                   <div class="form-row">
                     <div class="form-group">
                       <label class="small font-weight-bold">Margen (%)</label>
-                      <input type="number" 
-                             [(ngModel)]="price.profit_margin" 
-                             [name]="'profit_margin_' + idx" 
-                             class="form-control form-control-sm" 
-                             step="1" 
-                             min="0" 
-                             max="100">
+                      <input type="number" [(ngModel)]="price.profit_margin" [name]="'profit_margin_' + idx"
+                        class="form-control form-control-sm" step="1" min="0" max="100">
                       <small class="form-text text-muted" *ngIf="price.cost_price">
                         Calculado: {{ calculateProfitMargin(price) }}%
                       </small>
@@ -228,14 +198,10 @@
 
                     <div class="form-group">
                       <label class="small font-weight-bold text-muted">Descuento (%)</label>
-                      <input type="number" 
-                             [(ngModel)]="price.discount_percentage" 
-                             [name]="'discount_percentage_' + idx" 
-                             class="form-control form-control-sm" 
-                             step="1" 
-                             min="0" 
-                             max="100">
-                      <small class="form-text text-success font-weight-bold" *ngIf="price.discount_percentage && price.discount_percentage > 0">
+                      <input type="number" [(ngModel)]="price.discount_percentage" [name]="'discount_percentage_' + idx"
+                        class="form-control form-control-sm" step="1" min="0" max="100">
+                      <small class="form-text text-success font-weight-bold"
+                        *ngIf="price.discount_percentage && price.discount_percentage > 0">
                         Final: {{ calculateDiscountedPrice(price) | number:'1.2-2' }}€
                       </small>
                     </div>
@@ -256,8 +222,8 @@
           <div class="form-row">
             <div class="form-group">
               <label>Orden de Visualización</label>
-              <input type="number" [(ngModel)]="formData.sort_order" name="sort_order" 
-                     class="form-control" step="1" min="0">
+              <input type="number" [(ngModel)]="formData.sort_order" name="sort_order" class="form-control" step="1"
+                min="0">
             </div>
           </div>
 
@@ -270,11 +236,8 @@
 
             <!-- Add new global feature -->
             <div class="input-group ml-3 flex align-items-center justify-content-center">
-              <input type="text" class="form-control" 
-                     [(ngModel)]="newGlobalFeature" 
-                     name="newGlobalFeature" 
-                     placeholder="Añadir nueva característica..."
-                     (keyup.enter)="addGlobalFeature()">
+              <input type="text" class="form-control" [(ngModel)]="newGlobalFeature" name="newGlobalFeature"
+                placeholder="Añadir nueva característica..." (keyup.enter)="addGlobalFeature()">
               <div class="input-group-append flex align-items-center justify-content-center">
                 <button class="btn btn-primary" type="button" (click)="addGlobalFeature()">
                   <i class="fas fa-plus"></i>
@@ -291,13 +254,10 @@
                   <div class="text-center font-weight-bold small text-uppercase" style="width: 40px;"></div>
                 </div>
               </div>
-              <div class="global-features-list" 
-                   cdkDropList 
-                   (cdkDropListDropped)="dropFeature($event)"
-                   style="max-height: 400px; overflow-y: auto;">
-                <div *ngFor="let feature of allFeatures; let i = index" 
-                     cdkDrag
-                     class="feature-row d-flex align-items-center justify-content-between p-3 border-bottom">
+              <div class="global-features-list" cdkDropList (cdkDropListDropped)="dropFeature($event)"
+                style="max-height: 400px; overflow-y: auto;">
+                <div *ngFor="let feature of allFeatures; let i = index" cdkDrag
+                  class="feature-row d-flex align-items-center justify-content-between p-3 border-bottom">
                   <!-- Drag handle + Feature name -->
                   <div class="d-flex align-items-center flex-grow-1">
                     <div class="drag-handle" cdkDragHandle>
@@ -305,43 +265,33 @@
                       <span class="font-weight-medium ml-3" style="font-size: 0.95rem;">{{ feature }}</span>
                     </div>
                   </div>
-                  
+
                   <!-- Action buttons -->
                   <div class="d-flex align-items-center">
                     <div class="btn-group btn-group-sm shadow-sm mr-2">
-                      <button type="button" 
-                              class="btn px-3" 
-                              [class.btn-success]="isFeatureIncluded(feature)"
-                              [class.btn-outline-secondary]="!isFeatureIncluded(feature)"
-                              (click)="toggleFeature(feature, 'included')"
-                              title="Incluir">
+                      <button type="button" class="btn px-3" [class.btn-success]="isFeatureIncluded(feature)"
+                        [class.btn-outline-secondary]="!isFeatureIncluded(feature)"
+                        (click)="toggleFeature(feature, 'included')" title="Incluir">
                         <i class="fas fa-check"></i>
                       </button>
-                      <button type="button" 
-                              class="btn px-3" 
-                              [class.btn-danger]="isFeatureExcluded(feature)"
-                              [class.btn-outline-secondary]="!isFeatureExcluded(feature)"
-                              (click)="toggleFeature(feature, 'excluded')"
-                              title="Excluir">
+                      <button type="button" class="btn px-3" [class.btn-danger]="isFeatureExcluded(feature)"
+                        [class.btn-outline-secondary]="!isFeatureExcluded(feature)"
+                        (click)="toggleFeature(feature, 'excluded')" title="Excluir">
                         <i class="fas fa-times"></i>
                       </button>
-                      <button type="button" 
-                              class="btn px-3" 
-                              [class.btn-secondary]="!isFeatureIncluded(feature) && !isFeatureExcluded(feature)"
-                              [class.btn-outline-secondary]="isFeatureIncluded(feature) || isFeatureExcluded(feature)"
-                              (click)="toggleFeature(feature, 'none')"
-                              title="No mostrar">
+                      <button type="button" class="btn px-3"
+                        [class.btn-secondary]="!isFeatureIncluded(feature) && !isFeatureExcluded(feature)"
+                        [class.btn-outline-secondary]="isFeatureIncluded(feature) || isFeatureExcluded(feature)"
+                        (click)="toggleFeature(feature, 'none')" title="No mostrar">
                         <i class="fas fa-minus"></i>
                       </button>
-                    <button type="button" 
-                            class="btn btn-sm btn-outline-danger"
-                            (click)="removeGlobalFeature(feature)"
-                            title="Eliminar característica">
-                      <i class="fas fa-trash-alt"></i>
-                    </button>
+                      <button type="button" class="btn btn-sm btn-outline-danger" (click)="removeGlobalFeature(feature)"
+                        title="Eliminar característica">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
                     </div>
                   </div>
-                  
+
                   <!-- Drag placeholder -->
                   <div class="feature-drag-placeholder" *cdkDragPlaceholder></div>
                 </div>
@@ -356,18 +306,15 @@
 
           <div class="features-section" *ngIf="!copyFeaturesMode">
             <h4>Características</h4>
-            
+
             <div class="feature-group">
               <div class="feature-header">
                 <label>Incluidas</label>
               </div>
-              
+
               <div class="input-group mb-2">
-                <input type="text" class="form-control" 
-                       [(ngModel)]="newIncludedFeature" 
-                       name="newIncludedFeature" 
-                       placeholder="Escribe una característica..."
-                       (keyup.enter)="addFeature('included')">
+                <input type="text" class="form-control" [(ngModel)]="newIncludedFeature" name="newIncludedFeature"
+                  placeholder="Escribe una característica..." (keyup.enter)="addFeature('included')">
                 <div class="input-group-append">
                   <button class="btn btn-primary" type="button" (click)="addFeature('included')">
                     <i class="fas fa-plus"></i>
@@ -375,7 +322,8 @@
                 </div>
               </div>
 
-              <ul class="feature-list" *ngIf="formData.features && formData.features.included && formData.features.included.length > 0">
+              <ul class="feature-list"
+                *ngIf="formData.features && formData.features.included && formData.features.included.length > 0">
                 <li *ngFor="let feature of formData.features.included; let i = index">
                   {{ feature }}
                   <button type="button" class="btn-icon-sm btn-danger" (click)="removeFeature('included', i)">
@@ -391,11 +339,8 @@
               </div>
 
               <div class="input-group mb-2">
-                <input type="text" class="form-control" 
-                       [(ngModel)]="newExcludedFeature" 
-                       name="newExcludedFeature" 
-                       placeholder="Escribe una característica excluida..."
-                       (keyup.enter)="addFeature('excluded')">
+                <input type="text" class="form-control" [(ngModel)]="newExcludedFeature" name="newExcludedFeature"
+                  placeholder="Escribe una característica excluida..." (keyup.enter)="addFeature('excluded')">
                 <div class="input-group-append">
                   <button class="btn btn-secondary" type="button" (click)="addFeature('excluded')">
                     <i class="fas fa-plus"></i>
@@ -403,7 +348,8 @@
                 </div>
               </div>
 
-              <ul class="feature-list" *ngIf="formData.features && formData.features.excluded && formData.features.excluded.length > 0">
+              <ul class="feature-list"
+                *ngIf="formData.features && formData.features.excluded && formData.features.excluded.length > 0">
                 <li *ngFor="let feature of formData.features.excluded; let i = index">
                   {{ feature }}
                   <button type="button" class="btn-icon-sm btn-danger" (click)="removeFeature('excluded', i)">
@@ -417,7 +363,7 @@
           <!-- Display Config -->
           <div class="display-config-section">
             <h4>Configuración de Visualización</h4>
-            
+
             <div class="form-group">
               <label>
                 <input type="checkbox" [(ngModel)]="formData.display_config!.highlight" name="highlight">
@@ -428,14 +374,14 @@
             <div class="form-row">
               <div class="form-group">
                 <label>Etiqueta (Badge)</label>
-                <input type="text" [(ngModel)]="formData.display_config!.badge" name="badge" 
-                       class="form-control" placeholder="Ej: Más Popular">
+                <input type="text" [(ngModel)]="formData.display_config!.badge" name="badge" class="form-control"
+                  placeholder="Ej: Más Popular">
               </div>
 
               <div class="form-group">
                 <label>Color</label>
-                <input type="color" [(ngModel)]="formData.display_config!.color" name="color" 
-                       class="form-control color-input">
+                <input type="color" [(ngModel)]="formData.display_config!.color" name="color"
+                  class="form-control color-input">
               </div>
             </div>
           </div>
@@ -465,24 +411,26 @@
       <div class="modal-body">
         <div class="assignment-info alert alert-info">
           <i class="fas fa-info-circle"></i>
-          <span>Si asignas esta variante a un cliente, ese cliente <strong>solo verá esta variante</strong> del servicio (precio personalizado).</span>
+          <span>Si asignas esta variante a un cliente, ese cliente <strong>solo verá esta variante</strong> del servicio
+            (precio personalizado).</span>
         </div>
 
         <div class="form-group">
           <label>Seleccionar Cliente</label>
           <div class="client-search">
-            <input type="text" 
-                   class="form-control" 
-                   [(ngModel)]="clientSearchTerm"
-                   (ngModelChange)="filterClients()"
-                   placeholder="Buscar cliente por nombre...">
+            <input type="text" class="form-control" [(ngModel)]="clientSearchTerm" (input)="onSearchInput()"
+              placeholder="Buscar cliente por nombre (min 2 letras)...">
           </div>
-          
-          <div class="client-list" *ngIf="filteredClients.length > 0">
-            <div class="client-item" 
-                 *ngFor="let client of filteredClients"
-                 (click)="assignToClient(client)"
-                 [class.already-assigned]="isClientAssigned(client.id)">
+
+          <div class="client-list" *ngIf="loadingClients">
+            <div class="text-center p-3 text-muted">
+              <i class="fas fa-spinner fa-spin"></i> Buscando...
+            </div>
+          </div>
+
+          <div class="client-list" *ngIf="!loadingClients && filteredClients.length > 0">
+            <div class="client-item" *ngFor="let client of filteredClients" (click)="assignToClient(client)"
+              [class.already-assigned]="isClientAssigned(client.id)">
               <i class="fas fa-user"></i>
               <div class="client-info">
                 <span class="client-name">{{ client.name }}</span>
@@ -491,9 +439,14 @@
               <i class="fas fa-check" *ngIf="isClientAssigned(client.id)"></i>
             </div>
           </div>
-          
-          <div class="empty-clients" *ngIf="filteredClients.length === 0 && clientSearchTerm">
+
+          <div class="empty-clients"
+            *ngIf="!loadingClients && filteredClients.length === 0 && clientSearchTerm.length >= 2">
             <p>No se encontraron clientes</p>
+          </div>
+          <div class="empty-clients"
+            *ngIf="!loadingClients && filteredClients.length === 0 && clientSearchTerm.length < 2 && clientSearchTerm.length > 0">
+            <p>Escribe al menos 2 caracteres...</p>
           </div>
         </div>
 
@@ -503,9 +456,8 @@
           <div class="assignment-chips">
             <span class="assignment-chip" *ngFor="let assignment of selectedVariantForAssignment?.client_assignments">
               <i class="fas fa-user"></i> {{ assignment.client?.name || 'Cliente' }}
-              <button type="button" class="chip-remove" 
-                      (click)="removeAssignment(assignment.id, selectedVariantForAssignment!)" 
-                      title="Quitar asignación">
+              <button type="button" class="chip-remove"
+                (click)="removeAssignment(assignment.id, selectedVariantForAssignment!)" title="Quitar asignación">
                 <i class="fas fa-times"></i>
               </button>
             </span>
