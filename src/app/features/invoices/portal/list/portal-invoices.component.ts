@@ -212,7 +212,7 @@ export class PortalInvoicesComponent implements OnInit {
       if (selection.provider === 'paypal') url = inv.paypal_payment_url || '';
 
       if (url) {
-        window.location.href = url;
+        window.open(url, '_blank');
       } else {
         // Identify if we need to generate a link?
         // Usually invoices listed here already have links generated.

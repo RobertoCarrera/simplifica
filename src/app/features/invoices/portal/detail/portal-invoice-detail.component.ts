@@ -61,10 +61,13 @@ import { ToastService } from '../../../../services/toast.service';
         <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
-        <div class="flex flex-col">
+        <div class="flex flex-col flex-1">
            <span class="text-blue-700 dark:text-blue-300 font-bold">Pago local solicitado</span>
            <span class="text-blue-600 dark:text-blue-400 text-sm">Has indicado que pagarás en efectivo o localmente. Pónte en contacto con la administración.</span>
         </div>
+        <button (click)="openPaymentSelector(inv)" class="ml-auto text-sm px-4 py-2 bg-white text-blue-600 border border-blue-200 rounded hover:bg-blue-50 transition-colors">
+          Pagar Online
+        </button>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -234,7 +237,7 @@ export class PortalInvoiceDetailComponent implements OnInit {
       // Online payment (Stripe/PayPal)
       try {
         // Use contractService to generate payment link for EXISTING invoice
-        const { data, error } = await this.portal.contractService(
+        const { data: responseData, error } = await this.portal.contractService(
           null as any, // serviceId not needed
           null as any, // variantId not needed
           selection.provider,
@@ -243,18 +246,29 @@ export class PortalInvoiceDetailComponent implements OnInit {
 
         if (error) throw error;
 
-        // client-request-service returns { approvalUrl } for PayPal or { url } for Stripe
-        // contractService wrapper returns { data: { payment_url: ... } } or similar structure?
-        // Let's check ClientPortalService.contractService implementation again
-        // It returns { data, error } from invoke.
-        // The Edge Function returns { url } for Stripe and { approvalUrl } for PayPal.
+        // Robust URL extraction (same as PortalServicesComponent)
+        const resultData = responseData?.data || responseData;
 
-        const res = data?.data || data; // handle unwrapping if needed
-        const url = res?.payment_url || res?.url || res?.approvalUrl;
+        let url = '';
+        if (resultData?.payment_provider === selection.provider && resultData?.payment_url) {
+          url = resultData.payment_url;
+        }
+
+        if (!url && resultData?.payment_options) {
+          const option = resultData.payment_options.find((o: any) => o.provider === selection.provider);
+          if (option) url = option.url;
+        }
+
+        if (!url) {
+          // Fallback
+          if (selection.provider === 'stripe') url = resultData?.stripe_payment_url || resultData?.url;
+          if (selection.provider === 'paypal') url = resultData?.paypal_payment_url || resultData?.url;
+        }
 
         if (url) {
-          window.location.href = url; // or window.open
+          window.open(url, '_blank');
         } else {
+          console.error('❌ URL not found in response:', resultData);
           this.toast.error('Error', 'No se recibió la URL de pago.');
         }
 

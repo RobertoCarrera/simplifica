@@ -1012,20 +1012,36 @@ export class PortalServicesComponent implements OnInit {
 
         if (error) throw error;
 
+        console.log('🔍 [DEBUG] Payment Link Generation Response:', responseData);
+
+        // The Edge Function returns format: { success: true, data: { payment_url: '...', payment_options: [...] } }
+        // We need to handle both potential flat return (if changed) and nested 'data' property.
+        const resultData = responseData.data || responseData;
+
         // The backend should return the specific URL for this provider
         let url = '';
-        if (selection.provider === 'stripe') url = responseData?.stripe_payment_url || responseData?.url; // Fallback to generic url field
-        if (selection.provider === 'paypal') url = responseData?.paypal_payment_url || responseData?.url;
 
-        // If backend returns a generic 'payment_options' array, find the right one
-        if (!url && responseData?.payment_options) {
-          const option = responseData.payment_options.find((o: any) => o.provider === selection.provider);
+        // 1. Direct payment_url if checking for the requested provider (preferredPaymentMethod strategy)
+        if (resultData.payment_provider === selection.provider && resultData.payment_url) {
+          url = resultData.payment_url;
+        }
+
+        // 2. Look in payment_options array if available
+        if (!url && resultData.payment_options) {
+          const option = resultData.payment_options.find((o: any) => o.provider === selection.provider);
           if (option) url = option.url;
         }
 
+        // 3. Fallback to old property names just in case
+        if (!url) {
+          if (selection.provider === 'stripe') url = resultData.stripe_payment_url || resultData.url;
+          if (selection.provider === 'paypal') url = resultData.paypal_payment_url || resultData.url;
+        }
+
         if (url) {
-          window.location.href = url;
+          window.open(url, '_blank');
         } else {
+          console.error('❌ URL not found in response:', resultData);
           throw new Error('No se recibió la URL de pago');
         }
 
