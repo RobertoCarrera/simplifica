@@ -185,11 +185,25 @@ export class ClientPortalService {
     const client = this.sb.instance;
     const { data, error } = await client
       .from('company_settings')
-      .select('allow_direct_contracting, auto_send_quote_email')
+      .select('allow_direct_contracting, auto_send_quote_email, payment_integrations')
       .eq('company_id', user.company_id)
       .maybeSingle();
 
     return { data, error };
+  }
+
+  async getPaymentIntegrations(): Promise<{ data: any[]; error?: any }> {
+    const user = await firstValueFrom(this.auth.userProfile$);
+    if (!user?.company_id) return { data: [], error: 'No company context' };
+
+    const client = this.sb.instance;
+    const { data, error } = await client
+      .from('payment_integrations')
+      .select('*')
+      .eq('company_id', user.company_id)
+      .eq('is_active', true);
+
+    return { data: data || [], error };
   }
 
   // Old requestService removed

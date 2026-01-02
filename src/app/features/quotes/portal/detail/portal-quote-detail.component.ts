@@ -11,7 +11,7 @@ import { ToastService } from '../../../../services/toast.service';
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule],
   template: `
-    <div class="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 sm:p-6 lg:p-8">
+    <div class="h-full bg-gray-50 dark:bg-gray-950 p-4 sm:p-6 lg:p-8">
       <div class="max-w-5xl mx-auto">
         <!-- Header -->
         <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

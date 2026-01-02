@@ -10,11 +10,12 @@ import { ContractProgressDialogComponent } from '../../../shared/components/cont
 import { PaymentMethodSelectorComponent, PaymentSelection } from '../../../features/payments/selector/payment-method-selector.component';
 import { ConfirmModalComponent } from '../../../shared/ui/confirm-modal/confirm-modal.component';
 import { PromptModalComponent } from '../../../shared/ui/prompt-modal/prompt-modal.component';
+import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 
 @Component({
   selector: 'app-portal-services',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ContractProgressDialogComponent, PaymentMethodSelectorComponent, ConfirmModalComponent, PromptModalComponent],
+  imports: [CommonModule, RouterModule, FormsModule, ContractProgressDialogComponent, PaymentMethodSelectorComponent, ConfirmModalComponent, PromptModalComponent, SkeletonComponent],
   template: `
     <!-- Confirm Modal -->
     <app-confirm-modal #confirmModal></app-confirm-modal>
@@ -43,8 +44,10 @@ import { PromptModalComponent } from '../../../shared/ui/prompt-modal/prompt-mod
         </div>
 
         <!-- Loading State -->
-        <div *ngIf="loading()" class="flex justify-center py-12">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+        <!-- Loading State -->
+        <div *ngIf="loading()" class="grid grid-cols-1 gap-4 mb-8">
+          <app-skeleton type="card" height="200px" width="100%"></app-skeleton>
+          <app-skeleton type="card" height="200px" width="100%"></app-skeleton>
         </div>
 
         <!-- Contracted Services -->
@@ -67,6 +70,10 @@ import { PromptModalComponent } from '../../../shared/ui/prompt-modal/prompt-mod
                   <div class="flex-1">
                     <div class="flex items-center gap-2 mb-1">
                       <h3 class="font-bold text-lg text-gray-900 dark:text-white">{{ service.name }}</h3>
+                      <!-- Pending Payment Badge -->
+                      <span *ngIf="service.paymentStatus === 'pending'" class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                         <i class="fas fa-exclamation-circle"></i> Pendiente de Pago
+                      </span>
                       <span *ngIf="service.status === 'paused'" class="px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
                         Cancelado
                       </span>
@@ -76,7 +83,7 @@ import { PromptModalComponent } from '../../../shared/ui/prompt-modal/prompt-mod
                     </div>
                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ service.description }}</p>
                     
-                    <div class="mt-3 flex flex-wrap gap-3 text-sm">
+                    <div class="mt-3 flex flex-wrap gap-3 text-sm" *ngIf="service.paymentStatus !== 'pending'">
                       <div *ngIf="service.nextBillingDate" class="flex items-center text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded">
                         <i class="far fa-calendar-alt mr-1.5 text-orange-500"></i>
                         <span *ngIf="service.status === 'accepted'">Próxima factura: {{ service.nextBillingDate | date:'dd/MM/yyyy' }}</span>
@@ -85,27 +92,37 @@ import { PromptModalComponent } from '../../../shared/ui/prompt-modal/prompt-mod
                     </div>
                   </div>
                   
-                  <div class="text-right min-w-[120px]">
-                    <p class="font-bold text-xl text-gray-900 dark:text-white">{{ service.price | currency:'EUR' }}</p>
-                    <p *ngIf="service.isRecurring" class="text-xs text-gray-500 mb-2">/ {{ service.billingPeriod }}</p>
+                  <div class="text-right min-w-[120px] flex flex-col items-end gap-2">
+                    <div>
+                      <p class="font-bold text-xl text-gray-900 dark:text-white">{{ service.price | currency:'EUR' }}</p>
+                      <p *ngIf="service.isRecurring" class="text-xs text-gray-500">/ {{ service.billingPeriod }}</p>
+                    </div>
                     
-                    <button *ngIf="service.status === 'accepted'" 
+                    <!-- Cancel Button - Only show if paid and active -->
+                    <button *ngIf="service.status === 'accepted' && service.paymentStatus !== 'pending'" 
                       (click)="cancelSubscription(service)"
                       class="text-xs font-medium text-red-600 hover:text-red-700 dark:text-red-400 hover:underline">
                       Dar de baja
+                    </button>
+                    
+                    <!-- Pay Button - Show if pending -->
+                    <button *ngIf="service.paymentStatus === 'pending'" 
+                        (click)="openPaymentForService(service)"
+                        class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold rounded-lg shadow-sm transition-all hover:scale-105 active:scale-95 flex items-center gap-2">
+                        <i class="fas fa-credit-card"></i> Pagar ahora
                     </button>
                   </div>
                 </div>
 
                 <!-- Contracted Service Features -->
-                <div *ngIf="service.selectedVariant?.features && ((service.selectedVariant.features.included?.length ?? 0) > 0 || (service.selectedVariant.features.excluded?.length ?? 0) > 0)" 
+                <div *ngIf="hasServiceFeatures(service)" 
                      class="bg-gray-50 dark:bg-slate-700/30 rounded-lg p-4 border border-gray-100 dark:border-slate-600">
                   <p class="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3 flex items-center">
                     <i class="fas fa-list-check text-green-500 mr-2"></i>
                     Tu plan incluye:
                   </p>
                   <ul class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <li *ngFor="let feat of getAllOrderedFeaturesWithState(service.selectedVariant.features)" 
+                    <li *ngFor="let feat of getAllOrderedFeaturesWithState(getServiceFeatures(service))" 
                         class="flex items-center text-sm"
                         [ngClass]="{ 'opacity-60': feat.state === 'excluded' }">
                       <i class="fas mr-2 text-xs"
@@ -121,8 +138,8 @@ import { PromptModalComponent } from '../../../shared/ui/prompt-modal/prompt-mod
                   </ul>
                 </div>
 
-                <!-- Variants Comparison -->
-                <div *ngIf="service.variants && service.variants.length > 1" class="border-t border-gray-200 dark:border-slate-700 pt-4">
+                <!-- Variants Comparison - Hide if pending payment -->
+                <div *ngIf="service.variants && service.variants.length > 1 && service.paymentStatus !== 'pending'" class="border-t border-gray-200 dark:border-slate-700 pt-4">
                   <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center">
                     <i class="fas fa-exchange-alt mr-2 text-blue-500"></i>
                     Comparar y cambiar de plan
@@ -550,6 +567,18 @@ export class PortalServicesComponent implements OnInit {
     return result;
   }
 
+  hasServiceFeatures(service: ContractedService): boolean {
+    const features = service.selectedVariant?.features;
+    if (!features) return false;
+    const included = features.included?.length ?? 0;
+    const excluded = features.excluded?.length ?? 0;
+    return included > 0 || excluded > 0;
+  }
+
+  getServiceFeatures(service: ContractedService): any {
+    return service.selectedVariant?.features || {};
+  }
+
   private async loadContractedServices(): Promise<void> {
     try {
       const profile = this.authService.userProfile;
@@ -557,7 +586,7 @@ export class PortalServicesComponent implements OnInit {
 
       const supabase = this.supabaseClient.instance;
 
-      // 1. Load quotes with their items
+      // 1. Load quotes with their items AND latest invoice status
       const { data, error } = await supabase
         .from('quotes')
         .select(`
@@ -567,6 +596,9 @@ export class PortalServicesComponent implements OnInit {
                     created_at,
                     items:quote_items(
                         service_id, variant_id, billing_period
+                    ),
+                    invoices!invoices_source_quote_id_fkey(
+                        id, status, payment_status, created_at, invoice_number, invoice_series, full_invoice_number
                     )
                 `)
         .eq('client_id', profile.client_id)
@@ -635,12 +667,38 @@ export class PortalServicesComponent implements OnInit {
           selectedVariant = variants.find(v => v.id === variantId) || null;
         }
 
+        // Determine payment status from latest invoice
+        // We look for any invoice that is pending payment
+        let paymentStatus: 'pending' | 'paid' | undefined = undefined;
+        let lastInvoiceId: string | undefined = undefined;
+        let lastInvoiceNumber: string | undefined = undefined;
+        let lastInvoiceTotal: number | undefined = undefined;
+
+        if (quote.invoices && quote.invoices.length > 0) {
+          // Sort invoices by date desc
+          const invoices = quote.invoices.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          const latestInvoice = invoices[0];
+          lastInvoiceId = latestInvoice.id;
+
+          // If latest invoice is pending payment (or pending local)
+          if (latestInvoice.payment_status === 'pending' || latestInvoice.payment_status === 'pending_local' || latestInvoice.status === 'draft') {
+            paymentStatus = 'pending';
+            // Construct formatted number
+            const rawNum = latestInvoice.full_invoice_number || (latestInvoice.invoice_series && latestInvoice.invoice_number ? `${latestInvoice.invoice_series}-${latestInvoice.invoice_number}` : latestInvoice.invoice_number);
+            lastInvoiceNumber = rawNum;
+            lastInvoiceTotal = latestInvoice.total;
+          } else if (latestInvoice.payment_status === 'paid') {
+            paymentStatus = 'paid';
+          }
+        }
+
         return {
           id: quote.id,
           name: quote.title || 'Servicio sin título',
           description: this.getRecurrenceDescription(quote.recurrence_type, quote.recurrence_interval),
           price: quote.total_amount || 0,
           isRecurring: true,
+          recurrenceType: quote.recurrence_type as 'monthly' | 'yearly',
           billingPeriod: this.getBillingPeriodLabel(quote.recurrence_type, quote.recurrence_interval),
           status: quote.status,
           startDate: quote.created_at,
@@ -648,7 +706,11 @@ export class PortalServicesComponent implements OnInit {
           nextBillingDate: quote.next_run_at,
           serviceId: serviceId,
           variants: variants,
-          selectedVariant: selectedVariant
+          selectedVariant: selectedVariant,
+          paymentStatus: paymentStatus || 'none', // Add this field
+          lastInvoiceId: lastInvoiceId,  // Add this field for direct payment link
+          lastInvoiceNumber: lastInvoiceNumber,
+          lastInvoiceTotal: lastInvoiceTotal
         };
       });
 
@@ -689,7 +751,16 @@ export class PortalServicesComponent implements OnInit {
   }
 
   async cancelSubscription(service: ContractedService): Promise<void> {
-    if (!confirm(`¿Estás seguro de que deseas dar de baja el servicio "${service.name}"? Se mantendrá activo hasta el final del periodo actual.`)) {
+    const confirmed = await this.confirmModal.open({
+      title: 'Dar de baja servicio',
+      message: `¿Estás seguro de que deseas dar de baja el servicio "${service.name}"? Se mantendrá activo hasta el final del periodo actual.`,
+      icon: 'fas fa-exclamation-triangle',
+      iconColor: 'red',
+      confirmText: 'Sí, dar de baja',
+      cancelText: 'Cancelar'
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -831,12 +902,65 @@ export class PortalServicesComponent implements OnInit {
 
         // Handle final result - check for multiple payment options first
         if (responseData?.payment_options_formatted && responseData.payment_options_formatted.length > 0) {
-          // Multiple payment options available - show them all
-          this.contractDialog.completeSuccess({
-            success: true,
-            paymentOptions: responseData.payment_options_formatted,
-            message: responseData.message || '¡Todo listo! Selecciona tu método de pago preferido.'
-          });
+          // Close progress dialog
+          this.contractDialog.close();
+
+          // Store pending state for the selector callback
+          this.pendingContractService = service;
+          this.pendingPaymentData = responseData;
+
+          // Open the unified Payment/Success Modal ("¡Listo!")
+          const invNum = responseData.invoice_number;
+          const invSeries = responseData.invoice_series;
+          const fullInvNum = responseData.full_invoice_number;
+
+          let invoiceNumber = fullInvNum || (invSeries && invNum ? `${invSeries}-${invNum}` : (invNum || ''));
+          // If still empty/raw, and we have a fallback? No, just use what we have.
+
+          const total = responseData.total || (service.displayPrice || service.price || 0);
+
+          // Map providers to simple strings
+          const rpcProviders = responseData.payment_options_formatted.map((p: any) => p.provider);
+
+          // MERGE with Company Settings to ensure we show all enabled methods
+          // The RPC might return only "cash" if it didn't generate links, but we want to allow Stripe/PayPal if enabled.
+          const settings = this.settings();
+          const storedIntegrations = settings?.payment_integrations || [];
+          const enabledProviders = new Set<string>();
+
+          // Add from settings first (Source of Truth for "What is allowed")
+          if (Array.isArray(storedIntegrations)) {
+            storedIntegrations.forEach((p: any) => {
+              const provider = typeof p === 'string' ? p : p.provider;
+              enabledProviders.add(provider);
+            });
+          }
+
+          // Add from RPC (Source of Truth for "What is ready")
+          rpcProviders.forEach((p: string) => enabledProviders.add(p));
+
+          // Always ensure Cash is there if not explicitly removed by settings (safe default)
+          // But actually, relies on settings is better. 
+          // If RPC said CASH, we keep CASH.
+
+          let finalProviders = Array.from(enabledProviders) as ('stripe' | 'paypal' | 'cash')[];
+
+          // If empty (shouldn't happen if settings loaded), fallback to RPC result
+          if (finalProviders.length === 0) finalProviders = rpcProviders;
+
+          // Determine recurrence info
+          // Check if variant has billing period or if service is recurring
+          const variant = service.selectedVariant;
+          const billingPeriod = variant?.billingPeriod || service.billingPeriod || '';
+          const isRecurring = !!billingPeriod && billingPeriod !== 'one-time';
+
+          this.paymentSelector.open(
+            total,
+            invoiceNumber,
+            finalProviders,
+            isRecurring,
+            this.getBillingLabel(billingPeriod)
+          );
         } else if (responseData?.payment_url) {
           // Single payment URL (legacy/fallback)
           this.contractDialog.completeSuccess({
@@ -869,20 +993,98 @@ export class PortalServicesComponent implements OnInit {
   async onPaymentMethodSelected(selection: PaymentSelection) {
     if (!this.pendingContractService) return;
 
-    // Get the existing invoice_id from the pending data to avoid duplicate creation
-    const existingInvoiceId = this.pendingPaymentData?.data?.invoice_id;
+    const existingInvoiceId = this.pendingContractService.lastInvoiceId;
 
-    // Resume contract flow with selected payment method and existing invoice
     if (selection.provider === 'cash') {
       this.lastCreatedInvoiceId = existingInvoiceId;
       await this.onLocalPaymentSelectedForContract();
     } else {
-      await this.contractService(this.pendingContractService, selection.provider, existingInvoiceId);
+      // New Flow: Generate link on demand
+      try {
+        this.toastService.info('Procesando', `Generando enlace de pago para ${selection.provider}...`);
+
+        const { data: responseData, error } = await this.portalService.contractService(
+          this.pendingContractService.id,
+          this.pendingContractService.selectedVariant?.id,
+          selection.provider, // Pass specific provider
+          existingInvoiceId
+        );
+
+        if (error) throw error;
+
+        // The backend should return the specific URL for this provider
+        let url = '';
+        if (selection.provider === 'stripe') url = responseData?.stripe_payment_url || responseData?.url; // Fallback to generic url field
+        if (selection.provider === 'paypal') url = responseData?.paypal_payment_url || responseData?.url;
+
+        // If backend returns a generic 'payment_options' array, find the right one
+        if (!url && responseData?.payment_options) {
+          const option = responseData.payment_options.find((o: any) => o.provider === selection.provider);
+          if (option) url = option.url;
+        }
+
+        if (url) {
+          window.location.href = url;
+        } else {
+          throw new Error('No se recibió la URL de pago');
+        }
+
+      } catch (err: any) {
+        console.error('Error generating payment link:', err);
+        this.toastService.error('Error', 'No se pudo generar el enlace de pago. Inténtalo de nuevo.');
+      }
     }
 
-    // Clear pending state
-    this.pendingContractService = null;
-    this.pendingPaymentData = null;
+    // Clear pending state is handled by component lifecycle or navigation usually, 
+    // but here we might want to keep it if it failed? 
+    // Let's clear on success redirect (browser will reload anyway) or handled by error toast.
+  }
+
+  async openPaymentForService(service: ContractedService) {
+    if (!service.lastInvoiceId) {
+      this.toastService.error('Error', 'No se encontró la factura pendiente. Por favor, ve a la sección de Facturas.');
+      return;
+    }
+
+    try {
+      // 1. Prepare data for selector immediately
+      this.pendingContractService = service;
+      this.pendingPaymentData = null; // No pre-fetched data anymore
+
+      // Use local service data for display
+      const invoiceNumber = service.lastInvoiceNumber || `Servicio: ${service.name}`;
+      const total = service.lastInvoiceTotal || service.price;
+
+      // 2. Get active integrations (Fast DB query)
+      const { data: integrations } = await this.portalService.getPaymentIntegrations();
+
+      const enabledProviders = new Set<string>();
+
+      if (Array.isArray(integrations)) {
+        integrations.forEach((p: any) => {
+          if (p.provider && p.is_active) enabledProviders.add(p.provider);
+        });
+      }
+
+      let providers = Array.from(enabledProviders) as ('stripe' | 'paypal' | 'cash')[];
+
+      // Fallback
+      if (providers.length === 0) providers = ['stripe']; // Default if nothing found, though query should work now
+
+      // Always ensure Cash is an option unless we specifically wanted to exclude it
+      if (!providers.includes('cash')) providers.push('cash');
+
+      this.paymentSelector.open(
+        total,
+        invoiceNumber,
+        providers,
+        service.isRecurring,
+        service.billingPeriod
+      );
+    } catch (err: any) {
+      console.error('Error opening payment for service:', err);
+      this.toastService.error('Error', 'No se pudo abrir la ventana de pago.');
+    }
   }
 
   onPaymentSelectionCancelled() {
@@ -948,7 +1150,16 @@ export class PortalServicesComponent implements OnInit {
     const priceDiff = newPrice - contractedService.price;
     const diffText = priceDiff > 0 ? `+${priceDiff.toFixed(2)}€` : `${priceDiff.toFixed(2)}€`;
 
-    if (!confirm(`¿Cambiar de "${currentVariantName}" a "${newVariant.name}"?\n\nNuevo precio: ${newPrice}€ (${diffText})\n\nEl cambio se aplicará en la próxima facturación.`)) {
+    const confirmed = await this.confirmModal.open({
+      title: 'Cambiar de plan',
+      message: `¿Cambiar de "${currentVariantName}" a "${newVariant.name}"?\n\nNuevo precio: ${newPrice}€ (${diffText})\n\nEl cambio se aplicará en la próxima facturación.`,
+      icon: 'fas fa-exchange-alt',
+      iconColor: 'blue',
+      confirmText: 'Sí, cambiar plan',
+      cancelText: 'Cancelar'
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -1000,18 +1211,31 @@ export class PortalServicesComponent implements OnInit {
 } // End of PortalServicesComponent class
 
 // Interfaces
-interface ContractedService {
+export interface ContractedService {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   price: number;
-  isRecurring: boolean;
-  billingPeriod?: string;
-  status: string;
-  startDate: string;
-  endDate?: string;
+  status: 'accepted' | 'paused' | 'cancelled'; // 'accepted' is active
+  paymentStatus: 'pending' | 'paid' | 'overdue' | 'none'; // derived from invoices
+  recurrenceType: 'monthly' | 'yearly';
   nextBillingDate?: string;
-  serviceId?: string;
-  variants?: any[];
-  selectedVariant?: any;
+  recurrenceEndDate?: string;
+  billingPeriod?: string;
+  isRecurring: boolean;
+  variants?: ServiceVariant[];
+  selectedVariant?: ServiceVariant;
+  lastInvoiceId?: string;
+  lastInvoiceNumber?: string;
+  lastInvoiceTotal?: number;
+  displayPrice?: number; // Calculated total including tax
+}
+
+interface ServiceVariant {
+  id: string;
+  name: string;
+  price: number;
+  description?: string;
+  features?: any;
+  billingPeriod?: string; // 'monthly' | 'yearly' | 'one-time'
 }

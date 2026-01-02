@@ -418,13 +418,13 @@ serve(async (req) => {
     const { serviceId, variantId, action, preferredPaymentMethod, existingInvoiceId, comment } = await req.json()
 
     // If existingInvoiceId is provided, skip quote/invoice creation and just generate payment link
-    if (existingInvoiceId && preferredPaymentMethod) {
+    if (existingInvoiceId) {
       console.log('[client-request-service] Using existing invoice:', existingInvoiceId, 'with payment method:', preferredPaymentMethod)
 
       // Get the existing invoice
       const { data: invoice, error: invoiceError } = await supabase
         .from('invoices')
-        .select('id, invoice_number, invoice_series, total, company_id, status, series_id, client_id')
+        .select('id, invoice_number, invoice_series, total, company_id, status, series_id, client_id, source_quote_id, client:clients(email)')
         .eq('id', existingInvoiceId)
         .single()
 
@@ -437,39 +437,46 @@ serve(async (req) => {
       }
 
       // Get company for payment integrations
-      const { data: paymentIntegrations } = await supabase
+      // START: Pre-generation Logic
+      // If we have a preferred method, we just do that (legacy/direct behavior).
+      // If NOT (or maybe ALWAYS), we want to generate options for the modal.
+      // User requested: "Antes de que el modal de la imagen 4 aparezca, genera enlaces de pago para todas las plataformas disponibles."
+      // So we should try to generate for ALL enabled providers.
+
+      const { data: allIntegrations } = await supabase
         .from('payment_integrations')
         .select('*')
         .eq('company_id', invoice.company_id)
         .eq('is_active', true)
 
-      const stripeIntegration = paymentIntegrations?.find((p: any) => p.provider === 'stripe')
-      const paypalIntegration = paymentIntegrations?.find((p: any) => p.provider === 'paypal')
+      const stripeIntegration = allIntegrations?.find((p: any) => p.provider === 'stripe')
+      const paypalIntegration = allIntegrations?.find((p: any) => p.provider === 'paypal')
 
-      let paymentUrl: string | null = null
-      let paymentProvider: string | null = null
+      // Use ONE token for this "session" of payment attempts
       const paymentToken = generateToken()
+      const paymentOptionsFormatted: { provider: string, url: string }[] = []
 
-      // Get service info for recurring check
-      const { data: quoteItems } = await supabase
-        .from('quote_items')
-        .select('service_id, variant_id')
-        .eq('quote_id', invoice.source_quote_id || '')
-        .limit(1)
-
+      // Recurring check logic
       let isRecurring = false
       let billingPeriod = 'one-time'
+      if (invoice.source_quote_id) {
+        const { data: quoteItems } = await supabase
+          .from('quote_items')
+          .select('service_id, variant_id')
+          .eq('quote_id', invoice.source_quote_id)
+          .limit(1)
 
-      if (quoteItems && quoteItems.length > 0) {
-        const { data: variant } = await supabase
-          .from('service_variants')
-          .select('pricing, billing_period')
-          .eq('id', quoteItems[0].variant_id || '')
-          .single()
+        if (quoteItems && quoteItems.length > 0) {
+          const { data: variant } = await supabase
+            .from('service_variants')
+            .select('*') // Changed from specific columns to avoid 400 if one is missing
+            .eq('id', quoteItems[0].variant_id || '')
+            .single()
 
-        if (variant) {
-          billingPeriod = variant.pricing?.[0]?.billing_period || variant.billing_period || 'one-time'
-          isRecurring = billingPeriod !== 'one-time'
+          if (variant) {
+            billingPeriod = variant.pricing?.[0]?.billing_period || variant.billing_period || 'one-time'
+            isRecurring = billingPeriod !== 'one-time'
+          }
         }
       }
 
@@ -477,45 +484,67 @@ serve(async (req) => {
         id: invoice.id,
         invoice_number: invoice.invoice_number,
         total: invoice.total,
-        description: `Factura ${invoice.invoice_number}`
+        description: `Factura ${invoice.invoice_number}`,
+        client_email: invoice.client?.email
       }
 
-      // Try selected provider
-      if (preferredPaymentMethod === 'stripe' && stripeIntegration) {
-        try {
-          const credentials = JSON.parse(await decrypt(stripeIntegration.credentials_encrypted))
-          const result = await createStripeCheckout(credentials, invoiceData, paymentToken, isRecurring, billingPeriod)
-          if ('checkoutUrl' in result) {
-            paymentUrl = result.checkoutUrl
-            paymentProvider = 'stripe'
+      // ... (payment link generation code) ...
+
+      // Parallelize generation
+      const promises = []
+
+      // Stripe
+      if (stripeIntegration) {
+        promises.push((async () => {
+          try {
+            const decrypted = await decrypt(stripeIntegration.credentials_encrypted)
+            if (decrypted) {
+              const credentials = JSON.parse(decrypted)
+              const result = await createStripeCheckout(credentials, invoiceData, paymentToken, isRecurring, billingPeriod)
+              if ('checkoutUrl' in result) {
+                paymentOptionsFormatted.push({ provider: 'stripe', url: result.checkoutUrl })
+              }
+            }
+          } catch (e) {
+            console.error('Error generating Stripe link:', e)
           }
-        } catch (e: any) {
-          console.error('[client-request-service] Stripe error:', e)
-        }
+        })())
       }
 
-      if (preferredPaymentMethod === 'paypal' && paypalIntegration) {
-        try {
-          const credentials = JSON.parse(await decrypt(paypalIntegration.credentials_encrypted))
-          const result = await createPayPalOrder(credentials, paypalIntegration.is_sandbox, invoiceData, paymentToken, isRecurring, billingPeriod)
-          if ('approvalUrl' in result) {
-            paymentUrl = result.approvalUrl
-            paymentProvider = 'paypal'
+      // PayPal
+      if (paypalIntegration) {
+        promises.push((async () => {
+          try {
+            const decrypted = await decrypt(paypalIntegration.credentials_encrypted)
+            if (decrypted) {
+              const credentials = JSON.parse(decrypted)
+              const result = await createPayPalOrder(credentials, paypalIntegration.is_sandbox, invoiceData, paymentToken, isRecurring, billingPeriod)
+              if ('approvalUrl' in result) {
+                paymentOptionsFormatted.push({ provider: 'paypal', url: result.approvalUrl })
+              }
+            }
+          } catch (e) {
+            console.error('Error generating PayPal link:', e)
           }
-        } catch (e: any) {
-          console.error('[client-request-service] PayPal error:', e)
-        }
+        })())
       }
 
-      if (paymentUrl) {
+      await Promise.all(promises)
+
+      // Update invoice if we generated at least one
+      if (paymentOptionsFormatted.length > 0) {
         const expiresAt = new Date()
         expiresAt.setDate(expiresAt.getDate() + 7)
 
-        await supabase.from('invoices').update({
-          payment_link_token: paymentToken,
-          payment_link_expires_at: expiresAt.toISOString(),
-          payment_link_provider: paymentProvider,
-        }).eq('id', invoice.id)
+        try {
+          await supabase.from('invoices').update({
+            payment_link_token: paymentToken,
+            payment_link_expires_at: expiresAt.toISOString(),
+            payment_link_provider: paymentOptionsFormatted.length === 1 ? paymentOptionsFormatted[0].provider : 'multiple',
+          }).eq('id', invoice.id)
+        } catch (updateError) {
+          console.warn('[client-request-service] Failed to update invoice with payment token (non-critical):', updateError)
+        }
 
         return new Response(
           JSON.stringify({
@@ -524,23 +553,32 @@ serve(async (req) => {
             data: {
               invoice_id: invoice.id,
               invoice_number: invoice.invoice_number,
-              payment_url: paymentUrl,
-              payment_provider: paymentProvider,
-              message: 'Redirigiendo al pago...'
+              payment_options: paymentOptionsFormatted, // NEW ARRAY
+              // Backwards compatibility for single preferred
+              payment_url: paymentOptionsFormatted.find(p => p.provider === preferredPaymentMethod)?.url || paymentOptionsFormatted[0]?.url,
+              payment_provider: preferredPaymentMethod || paymentOptionsFormatted[0]?.provider,
+              message: 'Selecciona tu método de pago.'
+            }
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      } else {
+        // Fallback if no payment methods available
+        return new Response(
+          JSON.stringify({
+            success: true,
+            action: 'contract',
+            data: {
+              invoice_id: invoice.id,
+              invoice_number: invoice.invoice_number,
+              payment_options: [],
+              message: 'No hay métodos de pago online disponibles.'
             }
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'No se pudo generar el enlace de pago',
-          message: 'Error al conectar con la pasarela de pago. Por favor, inténtalo de nuevo o contacta con soporte.'
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
     }
 
     if (!serviceId || !['request', 'contract'].includes(action)) {

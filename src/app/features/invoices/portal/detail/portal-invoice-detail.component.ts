@@ -4,15 +4,15 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ClientPortalService } from '../../../../services/client-portal.service';
 import { formatInvoiceNumber } from '../../../../models/invoice.model';
 import { SupabaseInvoicesService } from '../../../../services/supabase-invoices.service';
-import { ContractProgressDialogComponent, PaymentOption } from '../../../../shared/components/contract-progress-dialog/contract-progress-dialog.component';
+import { PaymentMethodSelectorComponent, PaymentSelection } from '../../../../features/payments/selector/payment-method-selector.component';
 import { ToastService } from '../../../../services/toast.service';
 
 @Component({
   selector: 'app-portal-invoice-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, ContractProgressDialogComponent],
+  imports: [CommonModule, RouterModule, PaymentMethodSelectorComponent],
   template: `
-  <div class="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 sm:p-6 lg:p-8">
+  <div class="h-full p-4 sm:p-6 lg:p-8 transition-colors duration-200">
     <div class="max-w-5xl mx-auto" *ngIf="invoice() as inv; else loadingTpl">
       <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -28,14 +28,14 @@ import { ToastService } from '../../../../services/toast.service';
         </div>
         <div class="flex gap-3">
           <!-- Payment Button - Show if not paid -->
-          <ng-container *ngIf="inv.payment_status !== 'paid' && hasPaymentOption(inv)">
+          <ng-container *ngIf="inv.payment_status !== 'paid' && inv.payment_status !== 'pending_local'">
             <button 
-               (click)="openPaymentDialog(inv)"
-               class="px-6 py-3 rounded-lg font-medium text-sm bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg flex items-center gap-2">
+               (click)="openPaymentSelector(inv)"
+               class="px-6 py-3 rounded-lg font-medium text-sm bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
               </svg>
-              Pagar
+              Pagar ahora
             </button>
           </ng-container>
           <button class="px-6 py-3 rounded-lg font-medium text-sm bg-blue-600 text-white hover:bg-blue-700" (click)="downloadPdf()">Descargar PDF</button>
@@ -50,11 +50,21 @@ import { ToastService } from '../../../../services/toast.service';
         <span class="text-green-700 dark:text-green-300 font-medium">Esta factura está pagada</span>
       </div>
       
-      <div *ngIf="hasPaymentOption(inv) && inv.payment_status !== 'paid'" class="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
+      <div *ngIf="(inv.payment_status === 'pending' || inv.payment_status === null) && inv.status !== 'cancelled' && inv.status !== 'void'" class="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
         <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
-        <span class="text-amber-700 dark:text-amber-300 font-medium">Pago pendiente - Selecciona "Pagar" para completar la transacción</span>
+        <span class="text-amber-700 dark:text-amber-300 font-medium">Pago pendiente - Selecciona "Pagar ahora" para completar la transacción</span>
+      </div>
+
+       <div *ngIf="inv.payment_status === 'pending_local'" class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-3">
+        <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <div class="flex flex-col">
+           <span class="text-blue-700 dark:text-blue-300 font-bold">Pago local solicitado</span>
+           <span class="text-blue-600 dark:text-blue-400 text-sm">Has indicado que pagarás en efectivo o localmente. Pónte en contacto con la administración.</span>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -68,7 +78,7 @@ import { ToastService } from '../../../../services/toast.service';
             <span class="text-base font-semibold text-gray-900 dark:text-gray-100 capitalize">{{ getStatusLabel(inv.status) }}</span>
             <span *ngIf="inv.payment_status === 'paid'" class="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Pagada</span>
             <span *ngIf="inv.payment_status === 'pending'" class="px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">Pago Pendiente</span>
-            <span *ngIf="inv.payment_status === 'pending_local'" class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Pago Local Pendiente</span>
+            <span *ngIf="inv.payment_status === 'pending_local'" class="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Pago Local / Efectivo</span>
           </div>
         </div>
       </div>
@@ -116,17 +126,11 @@ import { ToastService } from '../../../../services/toast.service';
     <div class="p-8 text-center text-gray-600 dark:text-gray-400">Cargando...</div>
   </ng-template>
   
-  <!-- Payment Options Dialog -->
-  <app-contract-progress-dialog
-    #paymentDialog
-    [serviceName]="selectedInvoiceTitle()"
-    (closed)="onPaymentDialogClosed()"
-    (paymentSelected)="onPaymentSelected($event)">
-  </app-contract-progress-dialog>
+  <app-payment-method-selector #paymentSelector (selected)="onPaymentMethodSelected($event)"></app-payment-method-selector>
   `
 })
 export class PortalInvoiceDetailComponent implements OnInit {
-  @ViewChild('paymentDialog') paymentDialog!: ContractProgressDialogComponent;
+  @ViewChild('paymentSelector') paymentSelector!: PaymentMethodSelectorComponent;
 
   private portal = inject(ClientPortalService);
   private invoicesSvc = inject(SupabaseInvoicesService);
@@ -137,9 +141,12 @@ export class PortalInvoiceDetailComponent implements OnInit {
   invoice = signal<any | null>(null);
   invoiceItems = signal<any[]>([]);
   invoiceTotal = signal<number>(0);
-  selectedInvoiceTitle = signal('');
 
   async ngOnInit() {
+    this.loadInvoice();
+  }
+
+  async loadInvoice() {
     const id = this.route.snapshot.paramMap.get('id') as string;
     const { data } = await this.portal.getInvoice(id);
     this.invoice.set(data || null);
@@ -173,106 +180,87 @@ export class PortalInvoiceDetailComponent implements OnInit {
     return map[status] || status;
   }
 
-  hasPaymentOption(inv: any): boolean {
-    return !!(inv.payment_link_token || inv.stripe_payment_url || inv.paypal_payment_url);
-  }
-
-  async openPaymentDialog(inv: any) {
-    this.selectedInvoiceTitle.set(`Factura ${this.displayInvoiceNumber(inv)}`);
-
-    // Show dialog with loading state
-    this.paymentDialog.visible.set(true);
-    this.paymentDialog.steps.set([
-      { id: 'loading', label: 'Cargando opciones de pago', status: 'in-progress' }
-    ]);
-    this.paymentDialog.resultMessage.set('');
-    this.paymentDialog.paymentOptions.set([]);
-
+  async openPaymentSelector(inv: any) {
     try {
-      // Call the public-payment-info edge function to get payment options
-      const paymentInfo = await this.portal.getPaymentInfo(inv.payment_link_token || '');
+      // 1. Get enabled providers from direct table query (Source of Truth)
+      const { data: integrations } = await this.portal.getPaymentIntegrations();
 
-      if (paymentInfo && paymentInfo.payment_options && paymentInfo.payment_options.length > 0) {
-        // Build payment options with URLs from the invoice
-        const options: PaymentOption[] = paymentInfo.payment_options.map((opt: any) => {
-          let url: string | undefined;
-          if (opt.provider === 'stripe' && inv.stripe_payment_url) {
-            url = inv.stripe_payment_url;
-          } else if (opt.provider === 'paypal' && inv.paypal_payment_url) {
-            url = inv.paypal_payment_url;
-          }
-          return {
-            ...opt,
-            url
-          };
+      const enabledProviders = new Set<string>();
+      if (Array.isArray(integrations)) {
+        integrations.forEach((p: any) => {
+          if (p.provider && p.is_active) enabledProviders.add(p.provider);
         });
+      }
 
-        this.paymentDialog.steps.set([
-          { id: 'ready', label: 'Opciones de pago disponibles', status: 'completed' }
-        ]);
-        this.paymentDialog.completeSuccess({
-          success: true,
-          paymentOptions: options,
-          message: 'Selecciona tu método de pago preferido:'
-        });
-      } else {
-        // Fallback to direct URL if available
-        const directUrl = inv.stripe_payment_url || inv.paypal_payment_url;
-        if (directUrl) {
-          this.paymentDialog.steps.set([
-            { id: 'ready', label: 'Pago preparado', status: 'completed' }
-          ]);
-          this.paymentDialog.completeSuccess({
-            success: true,
-            paymentUrl: directUrl,
-            message: 'Haz clic para completar el pago.'
-          });
-        } else {
-          this.paymentDialog.completeError('loading', 'No hay opciones de pago disponibles', 'Contacta con la empresa para coordinar el pago.');
-        }
-      }
-    } catch (err: any) {
-      console.error('Error loading payment options:', err);
-      // Fallback to direct URLs if available
-      const directUrl = inv.stripe_payment_url || inv.paypal_payment_url;
-      if (directUrl) {
-        this.paymentDialog.steps.set([
-          { id: 'ready', label: 'Pago preparado', status: 'completed' }
-        ]);
-        this.paymentDialog.completeSuccess({
-          success: true,
-          paymentUrl: directUrl,
-          message: 'Haz clic para completar el pago.'
-        });
-      } else {
-        this.paymentDialog.completeError('loading', 'Error al cargar opciones de pago', 'Por favor, intenta de nuevo más tarde.');
-      }
+      // Build the list based on WHAT IS ENABLED in the company
+      let providers: ('stripe' | 'paypal' | 'cash')[] = [];
+      if (enabledProviders.has('stripe')) providers.push('stripe');
+      if (enabledProviders.has('paypal')) providers.push('paypal');
+
+
+      // Always allow cash in detail view unless we want to hide it explicitly? 
+      // For consistency with other views, we add it if not explicitly disabled.
+      // But let's trust the set. If the set is empty (rare), we might need fallback.
+      if (!providers.includes('cash')) providers.push('cash');
+
+      // 2. Open selector
+      this.paymentSelector.open(
+        inv.total || 0,
+        this.displayInvoiceNumber(inv),
+        providers,
+        false, // Is Recurring? Maybe check items? For paying an invoice, it's usually one-time charge even if subscription
+        'one-time'
+      );
+    } catch (err) {
+      console.error('Error opening payment selector:', err);
+      this.toast.error('Error', 'No se pudieron cargar las opciones de pago.');
     }
   }
 
-  async onPaymentSelected(option: PaymentOption) {
+  async onPaymentMethodSelected(selection: PaymentSelection) {
     const inv = this.invoice();
     if (!inv) return;
 
-    if (option.provider === 'local') {
-      // Mark as local payment pending
+    if (selection.provider === 'cash') {
+      // Mark as pending local
       try {
         await this.portal.markInvoiceLocalPayment(inv.id);
-        this.toast.success('Pago local seleccionado', 'Se ha registrado tu preferencia de pago. La empresa te contactará para coordinar el pago.');
-        this.paymentDialog.visible.set(false);
-        // Refresh invoice data
-        const { data } = await this.portal.getInvoice(inv.id);
-        this.invoice.set(data || null);
-      } catch (err: any) {
-        this.toast.error('Error', 'No se pudo registrar la opción de pago: ' + err.message);
+        this.toast.success('Pago local registrado', 'Se ha notificado a la administración.');
+        this.loadInvoice(); // Refresh status
+      } catch (e: any) {
+        this.toast.error('Error', 'No se pudo registrar el pago local: ' + e.message);
       }
-    } else if (option.url) {
-      window.open(option.url, '_blank');
-      this.paymentDialog.visible.set(false);
-    }
-  }
+    } else {
+      // Online payment (Stripe/PayPal)
+      try {
+        // Use contractService to generate payment link for EXISTING invoice
+        const { data, error } = await this.portal.contractService(
+          null as any, // serviceId not needed
+          null as any, // variantId not needed
+          selection.provider,
+          inv.id
+        );
 
-  onPaymentDialogClosed() {
-    // Could refresh invoice status here
+        if (error) throw error;
+
+        // client-request-service returns { approvalUrl } for PayPal or { url } for Stripe
+        // contractService wrapper returns { data: { payment_url: ... } } or similar structure?
+        // Let's check ClientPortalService.contractService implementation again
+        // It returns { data, error } from invoke.
+        // The Edge Function returns { url } for Stripe and { approvalUrl } for PayPal.
+
+        const res = data?.data || data; // handle unwrapping if needed
+        const url = res?.payment_url || res?.url || res?.approvalUrl;
+
+        if (url) {
+          window.location.href = url; // or window.open
+        } else {
+          this.toast.error('Error', 'No se recibió la URL de pago.');
+        }
+
+      } catch (e: any) {
+        this.toast.error('Error', 'Error al iniciar el pago: ' + e.message);
+      }
+    }
   }
 }

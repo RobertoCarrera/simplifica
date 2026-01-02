@@ -4,7 +4,7 @@ import { Router, RouterModule } from '@angular/router';
 import { ClientPortalService, ClientPortalInvoice } from '../../../../services/client-portal.service';
 import { formatInvoiceNumber } from '../../../../models/invoice.model';
 import { SupabaseInvoicesService } from '../../../../services/supabase-invoices.service';
-import { ContractProgressDialogComponent, PaymentOption } from '../../../../shared/components/contract-progress-dialog/contract-progress-dialog.component';
+import { PaymentMethodSelectorComponent, PaymentSelection } from '../../../../features/payments/selector/payment-method-selector.component';
 import { ToastService } from '../../../../services/toast.service';
 
 interface PaymentInfo {
@@ -15,13 +15,13 @@ interface PaymentInfo {
   currency: string;
   due_date: string;
   company_name: string;
-  payment_options: PaymentOption[];
+  payment_options: any[];
 }
 
 @Component({
   selector: 'app-portal-invoices',
   standalone: true,
-  imports: [CommonModule, RouterModule, ContractProgressDialogComponent],
+  imports: [CommonModule, RouterModule, PaymentMethodSelectorComponent],
   template: `
   <div class="p-4 sm:p-6 lg:p-8">
     <div class="max-w-5xl mx-auto">
@@ -55,7 +55,7 @@ interface PaymentInfo {
                 <td class="px-6 py-3 text-right flex items-center justify-end gap-2">
                   <!-- Payment button: show if status is pending -->
                   <ng-container *ngIf="inv.payment_status !== 'paid' && inv.payment_status !== 'pending_local'">
-                    <button *ngIf="hasPaymentOption(inv)" 
+                    <button 
                        (click)="openPaymentOptions(inv)"
                        class="text-sm px-3 py-1.5 rounded bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 font-medium">
                       Pagar
@@ -75,13 +75,12 @@ interface PaymentInfo {
     </div>
   </div>
   
-  <!-- Payment Options Dialog (reusing contract progress dialog) -->
-  <app-contract-progress-dialog
-    #paymentDialog
-    [serviceName]="selectedInvoiceTitle()"
-    (localPaymentSelected)="onLocalPaymentSelected()"
-    (closed)="onPaymentDialogClosed()">
-  </app-contract-progress-dialog>
+  <!-- Payment Method Selector -->
+  <app-payment-method-selector
+    #paymentSelector
+    (selected)="onPaymentMethodSelected($event)"
+    (cancelled)="onPaymentSelectionCancelled()">
+  </app-payment-method-selector>
   `
 })
 export class PortalInvoicesComponent implements OnInit {
@@ -90,7 +89,7 @@ export class PortalInvoicesComponent implements OnInit {
   private router = inject(Router);
   private toastService = inject(ToastService);
 
-  @ViewChild('paymentDialog') paymentDialog!: ContractProgressDialogComponent;
+  @ViewChild('paymentSelector') paymentSelector!: PaymentMethodSelectorComponent;
 
   invoices = signal<ClientPortalInvoice[]>([]);
   // dispatcherHealth removed to avoid 401
@@ -118,82 +117,115 @@ export class PortalInvoicesComponent implements OnInit {
   }
 
   hasPaymentOption(inv: ClientPortalInvoice): boolean {
-    // Show pay button if there's a payment token or payment URLs
-    return !!(inv.payment_link_token || inv.stripe_payment_url || inv.paypal_payment_url);
+    // Show pay button if status is pending/issued/overdue OR if there are explicit options.
+    // We want to allow clicking "Pay" to open the modal which will then show options (or Cash).
+    const isPending = ['issued', 'overdue', 'pending', 'partial'].includes(inv.status);
+    return isPending || !!(inv.payment_link_token || inv.stripe_payment_url || inv.paypal_payment_url);
   }
 
   async openPaymentOptions(inv: ClientPortalInvoice) {
     this.selectedInvoice.set(inv);
-    this.selectedInvoiceTitle.set(`Factura ${this.displayInvoiceNumber(inv)}`);
-
-    // Show dialog with loading state
-    this.paymentDialog.visible.set(true);
-    this.paymentDialog.steps.set([
-      { id: 'loading', label: 'Cargando opciones de pago', status: 'in-progress' }
-    ]);
-    this.paymentDialog.resultMessage.set('');
-    this.paymentDialog.paymentOptions.set([]);
+    this.loadingPaymentOptions.set(true);
 
     try {
-      // Call the public-payment-info edge function to get payment options
-      const paymentInfo = await this.portal.getPaymentInfo(inv.payment_link_token || '');
+      let providers: ('stripe' | 'paypal' | 'cash')[] = [];
 
-      if (paymentInfo && paymentInfo.payment_options && paymentInfo.payment_options.length > 0) {
-        // Build payment options with URLs from the invoice
-        const options: PaymentOption[] = paymentInfo.payment_options.map((opt: any) => {
-          let url: string | undefined;
-          if (opt.provider === 'stripe' && inv.stripe_payment_url) {
-            url = inv.stripe_payment_url;
-          } else if (opt.provider === 'paypal' && inv.paypal_payment_url) {
-            url = inv.paypal_payment_url;
+      // 1. Get enabled providers from direct table query (Source of Truth)
+      const { data: integrations } = await this.portal.getPaymentIntegrations();
+
+      const enabledProviders = new Set<string>();
+      if (Array.isArray(integrations)) {
+        integrations.forEach((p: any) => {
+          if (p.provider && p.is_active) enabledProviders.add(p.provider);
+        });
+      }
+
+      // 2. Fetch specific payment info/urls from edge function if we have a token
+      // This helps us get the specific URLs, but we shouldn't rely solely on it for *visibility* 
+      // if we want to show the option and generate the link on demand.
+      if (inv.payment_link_token) {
+        try {
+          const paymentInfo = await this.portal.getPaymentInfo(inv.payment_link_token);
+          if (paymentInfo && paymentInfo.payment_options) {
+            // We can use this to confirm availability or get URLs
           }
-          return {
-            ...opt,
-            url
-          };
-        });
-
-        this.paymentDialog.steps.set([
-          { id: 'ready', label: 'Opciones de pago disponibles', status: 'completed' }
-        ]);
-        this.paymentDialog.completeSuccess({
-          success: true,
-          paymentOptions: options,
-          message: 'Selecciona tu método de pago preferido:'
-        });
-      } else {
-        // Fallback to direct URL if available
-        const directUrl = inv.stripe_payment_url || inv.paypal_payment_url;
-        if (directUrl) {
-          this.paymentDialog.steps.set([
-            { id: 'ready', label: 'Pago preparado', status: 'completed' }
-          ]);
-          this.paymentDialog.completeSuccess({
-            success: true,
-            paymentUrl: directUrl,
-            message: 'Haz clic para completar el pago.'
-          });
-        } else {
-          this.paymentDialog.completeError('loading', 'No hay opciones de pago disponibles', 'Contacta con la empresa para coordinar el pago.');
+        } catch (e) {
+          console.warn('Could not fetch payment info from token', e);
         }
       }
+
+      // 3. Build the list based on WHAT IS ENABLED in the company
+      // If the company has Stripe enabled, we show Stripe. 
+      // The logic in onPaymentMethodSelected will handle generating the link if needed.
+      if (enabledProviders.has('stripe')) providers.push('stripe');
+      if (enabledProviders.has('paypal')) providers.push('paypal');
+
+      // 4. Fallback/Legacy checks (if settings failed or empty, check invoice props)
+      if (providers.length === 0) {
+        if (inv.stripe_payment_url) providers.push('stripe');
+        if (inv.paypal_payment_url) providers.push('paypal');
+      }
+
+      // Always allow cash if not explicitly forbidden (or logic based on invoice status)
+      // The previous logic allowed it if status != paid/pending_local.
+      // We are here implies status check passed in template.
+      if (!providers.includes('cash')) providers.push('cash');
+
+      // Open the selector
+      this.paymentSelector.open(
+        inv.total,
+        this.displayInvoiceNumber(inv),
+        providers,
+        false, // Not recurring (invoices are one-time payments usually)
+        ''
+      );
+
     } catch (err: any) {
       console.error('Error loading payment options:', err);
-      // Fallback to direct URLs if available
-      const directUrl = inv.stripe_payment_url || inv.paypal_payment_url;
-      if (directUrl) {
-        this.paymentDialog.steps.set([
-          { id: 'ready', label: 'Pago preparado', status: 'completed' }
-        ]);
-        this.paymentDialog.completeSuccess({
-          success: true,
-          paymentUrl: directUrl,
-          message: 'Haz clic para completar el pago.'
-        });
+      this.toastService.error('Error', 'No se pudieron cargar las opciones de pago.');
+    } finally {
+      this.loadingPaymentOptions.set(false);
+    }
+  }
+
+  async onPaymentMethodSelected(selection: PaymentSelection) {
+    const inv = this.selectedInvoice();
+    if (!inv) return;
+
+    if (selection.provider === 'cash') {
+      await this.onLocalPaymentSelected();
+    } else {
+      // For Stripe/PayPal, we need to redirect to their URL.
+      // We might need to ask the backend for the specific URL again OR use the ones we have in the invoice if we trust them.
+      // best is to use the URLs from the invoice or fetch fresh ones if needed.
+      // But we just fetched paymentInfo in openPaymentOptions... we didn't save it.
+
+      // Let's redirect based on provider.
+      // We can assume the invoice has the URLs or we re-fetch/construct.
+      // Actually, for Stripe/PayPal, the backend (client-request-service) returns URLs.
+      // The `public-payment-info` also returns URLs.
+
+      // Simplest: Use the URLs from the invoice object if available, finding the right one.
+
+      let url = '';
+      if (selection.provider === 'stripe') url = inv.stripe_payment_url || '';
+      if (selection.provider === 'paypal') url = inv.paypal_payment_url || '';
+
+      if (url) {
+        window.location.href = url;
       } else {
-        this.paymentDialog.completeError('loading', 'Error al cargar opciones de pago', 'Por favor, intenta de nuevo más tarde.');
+        // Identify if we need to generate a link?
+        // Usually invoices listed here already have links generated.
+        this.toastService.error('Error', 'No hay enlace de pago disponible para este método.');
       }
     }
+
+    // Close implicit by logic? No, selector stays open? No, selector closes on confirm.
+    this.selectedInvoice.set(null);
+  }
+
+  onPaymentSelectionCancelled() {
+    this.selectedInvoice.set(null);
   }
 
   async onLocalPaymentSelected() {
@@ -215,7 +247,5 @@ export class PortalInvoicesComponent implements OnInit {
     }
   }
 
-  onPaymentDialogClosed() {
-    this.selectedInvoice.set(null);
-  }
+
 }

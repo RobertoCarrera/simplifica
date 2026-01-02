@@ -45,11 +45,26 @@ export class PaymentIntegrationsService {
    * Get all payment integrations for a company (credentials are masked)
    */
   async getIntegrations(companyId: string): Promise<PaymentIntegration[]> {
+    // Direct query to the table instead of missing RPC
     const { data, error } = await this.supabaseClient.instance
-      .rpc('get_payment_integrations', { p_company_id: companyId });
+      .from('payment_integrations')
+      .select('*')
+      .eq('company_id', companyId);
 
     if (error) throw new Error(error.message || 'Error al obtener integraciones');
-    return (data as any[]) || [];
+
+    // Mask credentials before returning (best practice, though RLS should handle it ideally)
+    // Assuming the table returns everything, we mask it here.
+    return (data as any[]).map(integration => ({
+      ...integration,
+      // Mask credentials to match previous RPC intent
+      credentials_masked: {
+        clientId: integration.credentials_encrypted ? '******' : undefined,
+        publishableKey: integration.credentials_encrypted ? '******' : undefined
+      },
+      // Remove raw encrypted data from frontend model if not needed
+      credentials_encrypted: undefined
+    })) as PaymentIntegration[];
   }
 
   /**
