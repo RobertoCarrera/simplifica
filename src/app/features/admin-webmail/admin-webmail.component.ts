@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, Renderer2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -31,8 +31,12 @@ export class AdminWebmailComponent implements OnInit {
 
     // Accounts (System wide view)
     allAccounts = signal<any[]>([]);
+    users = signal<any[]>([]);
+    selectedUserId = signal<string | null>(null);
 
-    constructor() {
+    constructor(
+        private renderer: Renderer2
+    ) {
         // this.supabase = createClient(environment.supabase.url, environment.supabase.anonKey);
     }
 
@@ -42,6 +46,10 @@ export class AdminWebmailComponent implements OnInit {
     async ngOnInit() {
         await this.loadDomains();
         await this.loadAllAccounts();
+        await this.loadUsers();
+
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (user) this.selectedUserId.set(user.id);
     }
 
     async loadDomains() {
@@ -60,6 +68,14 @@ export class AdminWebmailComponent implements OnInit {
             .order('created_at', { ascending: false });
 
         if (data) this.allAccounts.set(data);
+    }
+
+    async loadUsers() {
+        const { data } = await this.supabase
+            .from('users')
+            .select('id, email, name, role, auth_user_id')
+            .order('email');
+        if (data) this.users.set(data);
     }
 
     async addDomain() {
@@ -99,9 +115,21 @@ export class AdminWebmailComponent implements OnInit {
     isLoadingAws = false;
     showAwsModal = false;
 
-    async loadAwsDomains() {
-        this.isLoadingAws = true;
+    openAwsModal() {
         this.showAwsModal = true;
+        this.renderer.addClass(document.body, 'modal-open');
+        this.loadAwsDomains();
+    }
+
+    closeAwsModal() {
+        this.showAwsModal = false;
+        this.renderer.removeClass(document.body, 'modal-open');
+        this.awsDomains.set([]);
+    }
+
+    async loadAwsDomains() {
+        // Method triggered by openAwsModal now
+        this.isLoadingAws = true;
         try {
             const { data, error } = await this.supabase.functions.invoke('aws-domains');
             if (error) throw error; // This error object might contain the response body
@@ -135,32 +163,56 @@ export class AdminWebmailComponent implements OnInit {
 
     async importAwsDomain(domainName: string) {
         const cleanName = domainName.replace(/\.$/, '');
+        const targetPublicId = this.selectedUserId();
 
-        // Double check
+        if (!targetPublicId) {
+            alert('Por favor, selecciona un usuario para asignar el dominio.');
+            return;
+        }
+
+        // Find user object to get the real AUTH ID
+        const targetUser = this.users().find(u => u.id === targetPublicId);
+
+        if (!targetUser) {
+            alert('Error: Usuario no encontrado en la lista local.');
+            return;
+        }
+
+        // CRITICAL FIX: Use auth_user_id for the FK, not public ID
+        const targetAuthId = targetUser.auth_user_id;
+
+        if (!targetAuthId) {
+            alert(`Error de Datos: El usuario "${targetUser.email}" no tiene un ID de autenticación vinculado (auth_user_id es null).\n\nEste usuario parece ser un registro antiguo o corrupto. Por favor selecciona otro usuario o contacta soporte.`);
+            return;
+        }
+
+        const userLabel = targetUser.email || 'usuario seleccionado';
+
         if (this.isDomainImported(cleanName)) return;
 
-        if (!confirm(`¿Vincular el dominio ${cleanName} al sistema?`)) return;
-
-        // Assign to current Admin User for now
-        const userId = this.authService.userProfile?.id;
+        if (!confirm(`¿Vincular ${cleanName} a ${userLabel}?`)) return;
 
         const { error } = await this.supabase
             .from('mail_domains')
             .insert({
                 domain: cleanName,
-                assigned_to_user: userId,
+                assigned_to_user: targetAuthId, // Correct UUID for auth.users FK
                 is_verified: true
             });
 
         if (error) {
-            console.error(error);
-            alert('Error al importar dominio.');
+            console.error('Error importing domain:', error);
+            if (error.code === '23503') {
+                alert(`Error de integridad (FK): El usuario seleccionado no tiene una cuenta de autenticación válida en Supabase.\n\nDetalle: ${error.message}`);
+            } else if (error.code === '42501') {
+                alert('Error de permisos (RLS): No tienes permisos para asignar dominios. Por favor ejecuta el script SQL proporcionado.');
+            } else {
+                alert('Error al importar dominio: ' + error.message);
+            }
         } else {
-            // alert('Dominio importado correctamente.'); // Remove alert for smoother UX? Or keep distinct toast?
-            // User feedback
-            this.loadDomains(); // Reload DB list
-            // We do NOT close the modal so they can import more.
-            // effectively, the UI will update to "Linkado" due to isDomainImported check
+            this.loadDomains();
+            // Optional: Close modal or show success toast
+            this.loadAwsDomains(); // Refresh list to show "Linked" status
         }
     }
 }

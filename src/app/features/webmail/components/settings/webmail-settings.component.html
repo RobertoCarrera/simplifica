@@ -90,12 +90,8 @@
                 </div>
             </div>
 
-            <div class="flex gap-2 mt-4"
-                *ngIf="authService.userProfile?.role === 'owner' || authService.userProfile?.role === 'admin'">
-                <button class="btn btn-secondary w-full" (click)="loadAwsDomains()">
-                    <i class="fab fa-aws"></i> Importar de AWS
-                </button>
-            </div>
+            <!-- AWS Button REMOVED -->
+            <!-- <div class="flex gap-2 mt-4" ...> REMOVED </div> -->
         </div>
     </div>
 </div>

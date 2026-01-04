@@ -1,12 +1,12 @@
-// --- Modal Styles ---
+// --- Modal Styles - Structure & Default (Light) ---
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.6); // Slightly darker backdrop
-    backdrop-filter: blur(4px); // Premium glass effect
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
     z-index: 1000;
     display: flex;
     align-items: center;
@@ -14,12 +14,12 @@
     animation: fadeIn 0.2s ease-out;
 
     .modal-content {
-        background: var(--bg-surface, #ffffff);
+        background: #ffffff; // Default White
         width: 100%;
-        max-width: 500px; // Wider for better readability
-        border-radius: 12px; // Softer corners
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        border: 1px solid var(--border-color, #e2e8f0);
+        max-width: 500px;
+        border-radius: 12px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        border: 1px solid #e2e8f0;
         overflow: hidden;
         display: flex;
         flex-direction: column;
@@ -28,17 +28,17 @@
 
         .modal-header {
             padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid var(--border-color, #e2e8f0);
+            border-bottom: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: var(--bg-surface, #ffffff);
+            background: #ffffff;
 
             h4 {
                 margin: 0;
                 font-size: 1.125rem;
                 font-weight: 600;
-                color: var(--text-primary, #0f172a);
+                color: #0f172a; // Slate-900
                 display: flex;
                 align-items: center;
                 gap: 0.5rem;
@@ -46,14 +46,12 @@
                 i {
                     color: #FF9900;
                 }
-
-                // AWS Orange Icon
             }
 
             .btn-close {
                 background: transparent;
                 border: none;
-                color: var(--text-secondary, #64748b);
+                color: #64748b;
                 cursor: pointer;
                 border-radius: 50%;
                 width: 32px;
@@ -64,14 +62,14 @@
                 transition: all 0.2s;
 
                 &:hover {
-                    background: var(--bg-hover, #f1f5f9);
-                    color: var(--text-primary, #0f172a);
+                    background: #f1f5f9;
+                    color: #0f172a;
                 }
             }
         }
 
         .modal-body {
-            padding: 0; // Removing padding for edge-to-edge list
+            padding: 0;
             overflow-y: auto;
             flex: 1;
 
@@ -79,12 +77,41 @@
             .loading-state {
                 padding: 3rem;
                 text-align: center;
-                color: var(--text-secondary, #64748b);
+                color: #64748b;
 
                 i {
                     font-size: 2rem;
                     margin-bottom: 1rem;
                     opacity: 0.5;
+                }
+            }
+
+            .user-selector-container {
+                padding: 1rem 1.5rem;
+                background: #f8fafc; // Slate-50
+                border-bottom: 1px solid #e2e8f0;
+
+                label {
+                    display: block;
+                    font-size: 0.85rem;
+                    color: #64748b; // Slate-500
+                    margin-bottom: 0.5rem;
+                    font-weight: 500;
+                }
+
+                .user-select {
+                    width: 100%;
+                    padding: 0.5rem;
+                    border-radius: 6px;
+                    border: 1px solid #cbd5e1;
+                    background: #ffffff;
+                    color: #0f172a;
+                    font-size: 0.95rem;
+
+                    &:focus {
+                        outline: none;
+                        border-color: #2563eb;
+                    }
                 }
             }
 
@@ -94,11 +121,11 @@
                     justify-content: space-between;
                     align-items: center;
                     padding: 1rem 1.5rem;
-                    border-bottom: 1px solid var(--border-color, #e2e8f0);
+                    border-bottom: 1px solid #e2e8f0;
                     transition: background 0.15s;
 
                     &:hover {
-                        background: var(--bg-hover, #f8fafc);
+                        background: #f8fafc;
                     }
 
                     &:last-child {
@@ -112,27 +139,13 @@
 
                         .d-name {
                             font-weight: 500;
-                            // Ensure visible color in both modes
-                            color: var(--text-primary, #1e293b);
+                            color: #1e293b;
                             font-size: 0.95rem;
-
-                            // Force white in dark mode via contextual selector if variable fails
-                            @media (prefers-color-scheme: dark) {
-                                color: #f8fafc;
-                            }
-
-                            :host-context(.dark) & {
-                                color: #f8fafc !important;
-                            }
                         }
 
                         .d-status {
                             font-size: 0.75rem;
-                            color: var(--text-secondary, #64748b);
-
-                            :host-context(.dark) & {
-                                color: #cbd5e1 !important;
-                            }
+                            color: #64748b;
                         }
                     }
 
@@ -147,20 +160,122 @@
                             border: 1px solid transparent;
 
                             &.primary {
-                                background: var(--color-primary-600, #2563eb);
+                                background: #2563eb;
                                 color: white;
 
                                 &:hover {
-                                    background: var(--color-primary-700, #1d4ed8);
+                                    background: #1d4ed8;
                                 }
                             }
 
                             &.disabled {
                                 background: transparent;
-                                color: var(--text-muted, #94a3b8);
-                                border-color: var(--border-color, #e2e8f0);
+                                color: #94a3b8;
+                                border-color: #e2e8f0;
                                 cursor: default;
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// --- DARK MODE OVERRIDES (Nuclear Option) ---
+// Using ::ng-deep with html.dark to force overrides regardless of specificity or encapsulation
+::ng-deep html.dark {
+    .modal-overlay {
+        .modal-content {
+            background: #1e293b !important; // Slate-800
+            border-color: #334155 !important; // Slate-700
+
+            .modal-header {
+                background: #1e293b !important;
+                border-color: #334155 !important;
+
+                h4 {
+                    color: #ffffff !important;
+                }
+
+                // Pure White
+
+                .btn-close {
+                    color: #94a3b8 !important;
+
+                    &:hover {
+                        background: #334155 !important;
+                        color: #ffffff !important;
+                    }
+                }
+            }
+
+            .modal-body {
+                background: #1e293b !important; // Ensure body matches content
+
+                .empty-state,
+                .loading-state {
+                    color: #94a3b8 !important;
+                }
+
+                .user-selector-container {
+                    background: #0f172a !important; // Slate-900 (Darker than list)
+                    border-color: #334155 !important;
+
+                    label {
+                        color: #e2e8f0 !important;
+                    }
+
+                    // Slate-200
+
+                    .user-select {
+                        background: #334155 !important; // Slate-700 (Input bg)
+                        border-color: #475569 !important;
+                        color: #ffffff !important;
+
+                        option {
+                            background: #1e293b;
+                            color: #ffffff;
+                        }
+                    }
+                }
+
+                .domain-list {
+                    .domain-item {
+                        border-color: #334155 !important;
+                        background: #1e293b !important;
+
+                        &:hover {
+                            background: #334155 !important;
+                        }
+
+                        // Slightly lighter hover? Or same
+
+                        .domain-info {
+                            .d-name {
+                                color: #ffffff !important;
+                            }
+
+                            .d-status {
+                                color: #cbd5e1 !important;
+                            }
+
+                            // Slate-300
+                        }
+
+                        .actions .btn-import.primary {
+                            background: #ea580c !important; // Orange-600
+                            border-color: #ea580c !important;
+                            color: white !important;
+
+                            &:hover {
+                                background: #c2410c !important;
+                            }
+                        }
+
+                        .actions .btn-import.disabled {
+                            color: #64748b !important;
+                            border-color: #334155 !important;
                         }
                     }
                 }
@@ -192,7 +307,7 @@
     }
 }
 
-// --- Layout & Admin Container ---
+// --- Layout & Admin Container (Unchanged) ---
 .admin-container {
     padding: 2rem;
     height: 100%;
@@ -267,7 +382,6 @@
             }
         }
 
-        // Data List Styling
         .data-list {
             background: var(--bg-surface, #ffffff);
             border: 1px solid var(--border-color, #e2e8f0);
@@ -300,7 +414,7 @@
     }
 }
 
-// Utilities & Components
+// Utilities
 .badge {
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
@@ -374,19 +488,37 @@
     }
 }
 
-// --- Dark Mode ---
+// --- Dark Mode for Admin Container ---
 :host-context(.dark) {
-    --bg-surface: #1e293b;
-    --bg-secondary: #0f172a;
-    --bg-tertiary: #334155;
-    --bg-hover: #334155;
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #94a3b8;
-    --border-color: #334155;
+    .admin-container {
+        background: #0f172a;
+        color: #f8fafc;
 
-    .modal-overlay {
-        background: rgba(0, 0, 0, 0.8);
+        .admin-header .subtitle {
+            color: #cbd5e1;
+        }
+
+        .tabs .tab-btn {
+            color: #94a3b8;
+
+            &:hover {
+                color: #f8fafc;
+            }
+        }
+
+        .data-list {
+            background: #1e293b;
+            border-color: #334155;
+
+            .data-item {
+                border-color: #334155;
+
+                &.header {
+                    background: #334155;
+                    color: #cbd5e1;
+                }
+            }
+        }
     }
 
     .btn.btn-secondary {
@@ -396,23 +528,6 @@
 
         &:hover {
             background: #334155;
-        }
-    }
-
-    .badge {
-        &.success {
-            background: rgba(22, 163, 74, 0.2);
-            color: #4ade80;
-        }
-
-        &.warning {
-            background: rgba(234, 179, 8, 0.2);
-            color: #facc15;
-        }
-
-        &.gray {
-            background: #334155;
-            color: #cbd5e1;
         }
     }
 }

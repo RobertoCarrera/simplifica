@@ -19,7 +19,7 @@
             <button class="btn btn-primary btn-sm" (click)="isAddingDomain = !isAddingDomain" *ngIf="!isAddingDomain">
                 <i class="fas fa-plus"></i> Añadir Dominio
             </button>
-            <button class="btn btn-secondary btn-sm ml-2" (click)="loadAwsDomains()">
+            <button class="btn btn-secondary btn-sm ml-2" (click)="openAwsModal()">
                 <i class="fab fa-aws"></i> Importar de AWS
             </button>
         </div>
@@ -87,17 +87,30 @@
 </div>
 
 <!-- AWS MODAL OVERLAY -->
-<div class="modal-overlay" *ngIf="showAwsModal" (click)="showAwsModal = false">
+<div class="modal-overlay" *ngIf="showAwsModal">
     <div class="modal-content" (click)="$event.stopPropagation()">
         <div class="modal-header">
             <h4>Dominios en AWS Route53</h4>
-            <button class="btn-icon" (click)="showAwsModal = false"><i class="fas fa-times"></i></button>
+            <button class="btn-icon" (click)="closeAwsModal()"><i class="fas fa-times"></i></button>
         </div>
 
         <div class="modal-body">
             <div *ngIf="isLoadingAws" class="loading-state">
                 <i class="fas fa-circle-notch fa-spin"></i>
                 <p>Cargando dominios desde AWS...</p>
+            </div>
+
+            <div class="user-selector-container" *ngIf="!isLoadingAws && users().length > 0">
+                <label>Asignar dominios importados a:</label>
+                <div class="selector-wrapper">
+                    <select [ngModel]="selectedUserId()" (ngModelChange)="selectedUserId.set($event)"
+                        class="form-control user-select">
+                        <option [ngValue]="null" disabled>Seleccionar Usuario</option>
+                        <option *ngFor="let u of users()" [value]="u.id">
+                            {{ u.email }} ({{ u.name || 'Sin nombre' }})
+                        </option>
+                    </select>
+                </div>
             </div>
 
             <div *ngIf="!isLoadingAws && awsDomains().length === 0" class="empty-state">

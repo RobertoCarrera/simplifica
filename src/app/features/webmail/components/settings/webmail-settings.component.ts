@@ -44,17 +44,14 @@ export class WebmailSettingsComponent implements OnInit {
     }
 
     async loadMyDomains() {
-        const userId = this.authService.userProfile?.id || (await this.supabase.auth.getUser()).data.user?.id;
-
-        if (!userId) {
-            console.warn('Could not load domains: No user ID found');
-            return;
-        }
+        // We don't need to pass the user ID explicitly anymore because we rely on RLS.
+        // RLS policy "Users can view assigned mail domains" (auth.uid() = assigned_to_user)
+        // ensures the user only sees their own domains.
 
         const { data, error } = await this.supabase
             .from('mail_domains')
             .select('*')
-            .eq('assigned_to_user', userId)
+            //.eq('assigned_to_user', userId) <--- REMOVED: Caused mismatch between public ID and Auth ID
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -82,7 +79,14 @@ export class WebmailSettingsComponent implements OnInit {
         const fullEmail = `${this.newAccount.prefix}@${this.newAccount.domain}`;
 
         try {
+            const userProfile = this.authService.userProfile;
+            if (!userProfile) {
+                alert('No se pudo identificar al usuario. Recarga la página.');
+                return;
+            }
+
             await this.accountService.createAccount({
+                user_id: userProfile.id, // REQUIRED for RLS and FK
                 email: fullEmail,
                 sender_name: this.newAccount.name || this.newAccount.prefix,
                 settings: {
