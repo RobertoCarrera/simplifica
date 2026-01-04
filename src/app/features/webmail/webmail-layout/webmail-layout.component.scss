@@ -1,40 +1,70 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+$transition-speed: 0.2s;
+$radius: 12px;
+
 .webmail-container {
   display: flex;
-  height: 100vh;
+  height: 100%;
   background-color: var(--bg-secondary);
+  overflow: hidden;
 
+  // --- SIDEBAR ---
   .sidebar {
-    width: 260px;
+    width: 280px; // Slightly wider for better breathing room
     background: var(--bg-primary);
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
+    z-index: 20;
+    transition: width 0.3s ease;
 
     .sidebar-header {
-      padding: 1rem;
+      padding: 1.25rem 1rem; // Match settings header
+      border-bottom: 1px solid transparent; // Placeholder for alignment
 
-      .flex {
+      .header-content {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1rem;
       }
 
-      h2 {
+      .app-title {
         margin: 0;
+        font-size: 1.25rem;
+        font-weight: 700;
         color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        letter-spacing: -0.02em;
+
+        i {
+          color: var(--color-primary-600);
+        }
       }
 
-      .btn-icon {
-        background: none;
+      .settings-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
         border: none;
         color: var(--text-secondary);
         cursor: pointer;
-        font-size: 1.1rem;
-        padding: 0.25rem;
+        font-size: 1rem;
+        transition: all $transition-speed;
 
         &:hover {
+          background: var(--bg-tertiary);
           color: var(--text-primary);
+          transform: rotate(45deg); // Playful interaction
         }
       }
     }
@@ -42,14 +72,137 @@
     .sidebar-content {
       flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
+
+      // Custom Scrollbar
+      &::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: transparent;
+        border-radius: 2px;
+      }
+
+      &:hover::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+      }
     }
   }
 
+  // --- MAIN CONTENT ---
   .main-content {
     flex: 1;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     background: var(--bg-secondary);
+    position: relative; // Context for FAB
+  }
+
+  // --- FAB (Floating Action Button) ---
+  .fab-compose {
+    position: absolute;
+    bottom: 2rem;
+    right: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--color-primary-600);
+    color: white;
+    border: none;
+    border-radius: 3rem; // Pill shape
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(var(--color-primary-rgb), 0.4);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 50;
+
+    .icon {
+      font-size: 1.2rem;
+    }
+
+    .label {
+      font-size: 0.95rem;
+    }
+
+    &:hover {
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 8px 25px rgba(var(--color-primary-rgb), 0.5);
+      background: var(--color-primary-500); // Slightly lighter on hover
+    }
+
+    &:active {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(var(--color-primary-rgb), 0.3);
+    }
+  }
+}
+
+// Animations
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.slide-in {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+// Dark Mode Support
+:host-context(.dark) {
+  .webmail-container {
+    background: #0f172a;
+
+    .sidebar {
+      background: #1e293b;
+      border-color: #334155;
+
+      .sidebar-header {
+        .app-title {
+          color: #f8fafc;
+        }
+
+        .settings-btn {
+          color: #94a3b8;
+
+          &:hover {
+            color: #f8fafc;
+            background: #334155;
+          }
+        }
+      }
+    }
+
+    .fab-compose {
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+
+      &:hover {
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6);
+      }
+    }
   }
 }

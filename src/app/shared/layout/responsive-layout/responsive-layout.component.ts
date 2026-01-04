@@ -18,15 +18,15 @@ import { AuthService } from '../../../services/auth.service';
       </div>
     } @else {
       <!-- Layout normal con sidebar para usuarios autenticados -->
-      <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div class="h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
 
         <!-- Sidebar -->
         <app-responsive-sidebar></app-responsive-sidebar>
 
         <!-- Main content area -->
-        <div class="main-content-area flex flex-col min-h-screen overflow-hidden" [class]="mainAreaClasses()">
+        <div class="main-content-area flex flex-col h-full overflow-hidden" [class]="mainAreaClasses()">
           <!-- Page content -->
-          <main class="flex-1 overflow-auto" [class]="getMainContentPadding()">
+          <main class="flex-1" [class]="getMainContentPadding() + ' ' + getOverflowClass()">
             <div [class]="getContentWrapperClasses()">
               <router-outlet></router-outlet>
             </div>
@@ -108,7 +108,18 @@ export class ResponsiveLayoutComponent {
       // En móvil, añadir padding bottom para el menú inferior
       return 'p-4 pb-20';
     }
+    // Webmail needs full control of space (no padding)
+    if (this.router.url.includes('/webmail')) {
+      return 'p-0';
+    }
     return 'p-6';
+  }
+
+  getOverflowClass(): string {
+    if (this.router.url.includes('/webmail')) {
+      return 'overflow-hidden';
+    }
+    return 'overflow-auto';
   }
 
   getContentWidth(): string {
@@ -117,7 +128,7 @@ export class ResponsiveLayoutComponent {
 
   getContentWrapperClasses(): string {
     // Prioritize full width in all cases to maximize usable space
-    return 'w-full';
+    return 'w-full h-full';
   }
 
   openSidebar(): void {

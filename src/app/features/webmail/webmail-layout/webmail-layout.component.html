@@ -2,27 +2,33 @@
     <aside class="sidebar">
         <!-- HEADER -->
         <div class="sidebar-header" *ngIf="!showSettings()">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold text-primary">Webmail</h2>
-                <button class="btn-icon" (click)="toggleSettings()" title="Configuración">
+            <div class="header-content">
+                <h2 class="app-title">
+                    <i class="fas fa-inbox"></i> Webmail
+                </h2>
+                <button class="btn-icon settings-btn" (click)="toggleSettings()" title="Configuración">
                     <i class="fas fa-cog"></i>
                 </button>
             </div>
-            <button class="btn btn-primary w-full" routerLink="composer">
-                <i class="fas fa-pen"></i> Redactar
-            </button>
         </div>
 
         <div class="sidebar-content">
             <!-- Normal View -->
-            <app-folder-tree *ngIf="!showSettings()"></app-folder-tree>
+            <app-folder-tree *ngIf="!showSettings()" class="fade-in"></app-folder-tree>
 
             <!-- Settings View -->
-            <app-webmail-settings *ngIf="showSettings()" (close)="showSettings.set(false)"></app-webmail-settings>
+            <app-webmail-settings *ngIf="showSettings()" (close)="showSettings.set(false)"
+                class="slide-in"></app-webmail-settings>
         </div>
     </aside>
 
     <main class="main-content">
         <router-outlet></router-outlet>
+
+        <!-- FAB COMPOSER -->
+        <button class="fab-compose" routerLink="composer" title="Redactar nuevo correo">
+            <span class="icon"><i class="fas fa-plus"></i></span>
+            <span class="label">Redactar</span>
+        </button>
     </main>
 </div>

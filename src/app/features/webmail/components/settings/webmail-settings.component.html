@@ -1,4 +1,4 @@
-<div class="settings-sidebar">
+<div class="settings-container">
     <div class="settings-header">
         <button class="btn-icon back-btn" (click)="close.emit()" title="Volver">
             <i class="fas fa-arrow-left"></i>
@@ -6,92 +6,131 @@
         <h3>Configuración</h3>
     </div>
 
-    <!-- TABS -->
-    <div class="settings-tabs">
-        <button class="tab-btn" [class.active]="activeTab === 'accounts'" (click)="activeTab = 'accounts'">
-            Cuentas
-        </button>
-        <button class="tab-btn" [class.active]="activeTab === 'domains'" (click)="activeTab = 'domains'">
-            Dominios
-        </button>
+    <!-- SEGMENTED TABS -->
+    <div class="tabs-wrapper">
+        <div class="segmented-control">
+            <button class="segment" [class.active]="activeTab === 'accounts'" (click)="activeTab = 'accounts'">
+                Cuentas
+            </button>
+            <button class="segment" [class.active]="activeTab === 'domains'" (click)="activeTab = 'domains'">
+                Dominios
+            </button>
+        </div>
     </div>
 
-    <div class="settings-content">
-        <!-- TAB: CUENTAS -->
-        <div class="tab-pane" *ngIf="activeTab === 'accounts'">
-            <!-- List -->
-            <div class="account-list">
-                <div *ngFor="let acc of accounts()" class="account-item">
-                    <div class="acc-info">
-                        <div class="email">{{ acc.email }}</div>
-                        <div class="name">{{ acc.sender_name }}</div>
+    <div class="scrollable-content">
+        <!-- TAB: ACCOUNTS -->
+        <div class="tab-pane fade-in" *ngIf="activeTab === 'accounts'">
+
+            <!-- List Mode -->
+            <ng-container *ngIf="!isAdding">
+                <div class="section-title">
+                    <span>Mis Cuentas</span>
+                    <span class="count" *ngIf="accounts().length > 0">{{ accounts().length }}</span>
+                </div>
+
+                <div class="card-list">
+                    <div *ngFor="let acc of accounts()" class="setting-card">
+                        <div class="card-icon account">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="card-info">
+                            <div class="primary-text">{{ acc.email }}</div>
+                            <div class="secondary-text">{{ acc.sender_name }}</div>
+                        </div>
+                        <button class="btn-icon danger delete-btn" (click)="deleteAccount(acc.id!)"
+                            title="Eliminar cuenta">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
                     </div>
-                    <button class="btn-icon danger" (click)="deleteAccount(acc.id!)">
-                        <i class="fas fa-trash"></i>
+
+                    <div *ngIf="accounts().length === 0" class="empty-state">
+                        <div class="empty-icon"><i class="fas fa-inbox"></i></div>
+                        <p>No tienes cuentas configuradas.</p>
+                        <small>Añade una cuenta para empezar a enviar correos.</small>
+                    </div>
+                </div>
+
+                <div class="sticky-fab-container">
+                    <button class="btn btn-primary fab-extended" (click)="toggleAdd()">
+                        <i class="fas fa-plus"></i> Añadir Cuenta
                     </button>
                 </div>
-                <div *ngIf="accounts().length === 0 && !isAdding" class="empty-state">
-                    No hay cuentas configuradas.
+            </ng-container>
+
+            <!-- Add Mode -->
+            <div class="add-form-wrapper scale-in" *ngIf="isAdding">
+                <div class="form-header">
+                    <h4>Nueva Cuenta</h4>
+                    <button class="btn-icon close-form" (click)="toggleAdd()"><i class="fas fa-times"></i></button>
                 </div>
-            </div>
 
-            <!-- Action -->
-            <button class="btn btn-primary w-full mt-4" (click)="toggleAdd()" *ngIf="!isAdding">
-                <i class="fas fa-plus"></i> Añadir Cuenta
-            </button>
-
-            <!-- Add Form -->
-            <div class="add-form" *ngIf="isAdding">
-                <h4>Nueva Cuenta</h4>
-
-                <div class="form-group">
-                    <label>Email</label>
-                    <div class="input-group">
-                        <input type="text" [(ngModel)]="newAccount.prefix" placeholder="nombre" class="form-control">
-                        <span class="at text-muted">&#64;</span>
+                <div class="form-body">
+                    <div class="form-section">
+                        <label>Dirección de Correo</label>
+                        <div class="email-input-group">
+                            <input type="text" [(ngModel)]="newAccount.prefix" placeholder="usuario"
+                                class="form-input prefix">
+                            <span class="separator">&#64;</span>
+                            <select [(ngModel)]="newAccount.domain" class="form-select domain">
+                                <option value="" disabled selected>Seleccionar dominio</option>
+                                <option *ngFor="let d of myDomains()" [value]="d.domain">{{ d.domain }}</option>
+                            </select>
+                        </div>
+                        <small class="hint">Elige un prefijo y uno de tus dominios asignados.</small>
                     </div>
-                    <select [(ngModel)]="newAccount.domain" class="form-control mt-1">
-                        <option value="">Selecciona dominio...</option>
-                        <option *ngFor="let d of myDomains()" [value]="d.domain">{{ d.domain }}</option>
-                    </select>
+
+                    <div class="form-section">
+                        <label>Nombre del Remitente</label>
+                        <input type="text" [(ngModel)]="newAccount.name" placeholder="Ej: Juan Pérez"
+                            class="form-input">
+                    </div>
+
+                    <div class="form-section">
+                        <label>Firma (Opcional)</label>
+                        <textarea [(ngModel)]="newAccount.signature" class="form-textarea" rows="3"
+                            placeholder="Saludos cordiales..."></textarea>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Nombre</label>
-                    <input type="text" [(ngModel)]="newAccount.name" placeholder="Tu Nombre" class="form-control">
-                </div>
-
-                <div class="form-group">
-                    <label>Firma</label>
-                    <textarea [(ngModel)]="newAccount.signature" class="form-control" rows="2"></textarea>
-                </div>
-
-                <div class="form-actions">
-                    <button class="btn btn-primary btn-sm" (click)="addAccount()">Guardar</button>
-                    <button class="btn btn-text btn-sm" (click)="toggleAdd()">Cancelar</button>
+                <div class="form-footer">
+                    <button class="btn btn-secondary" (click)="toggleAdd()">Cancelar</button>
+                    <button class="btn btn-primary" (click)="addAccount()"
+                        [disabled]="!newAccount.prefix || !newAccount.domain">
+                        Guardar Cuenta
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- TAB: DOMINIOS -->
-        <div class="tab-pane" *ngIf="activeTab === 'domains'">
-            <div class="info-text mb-4">
-                Dominios asignados a tu usuario.
+        <!-- TAB: DOMAINS -->
+        <div class="tab-pane fade-in" *ngIf="activeTab === 'domains'">
+            <div class="section-title">
+                <span>Mis Dominios</span>
             </div>
+            <p class="section-subtitle">Dominios verificados disponibles para crear cuentas.</p>
 
-            <div class="domain-list">
-                <div *ngFor="let d of myDomains()" class="domain-item">
-                    <div class="d-name">{{ d.domain }}</div>
-                    <span class="badge" [class.verified]="d.is_verified">{{ d.is_verified ? 'Verificado' : 'Pendiente'
-                        }}</span>
+            <div class="card-list">
+                <div *ngFor="let d of myDomains()" class="setting-card">
+                    <div class="card-icon domain">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <div class="card-info">
+                        <div class="primary-text">{{ d.domain }}</div>
+                        <div class="status-badge" [class.verified]="d.is_verified">
+                            <i class="fas" [class.fa-check-circle]="d.is_verified"
+                                [class.fa-clock]="!d.is_verified"></i>
+                            {{ d.is_verified ? 'Verificado' : 'Pendiente' }}
+                        </div>
+                    </div>
                 </div>
+
                 <div *ngIf="myDomains().length === 0" class="empty-state">
-                    No tienes dominios.
+                    <div class="empty-icon"><i class="fas fa-globe-americas"></i></div>
+                    <p>No hay dominios asignados.</p>
+                    <small>Contacta con un administrador para solicitar un dominio.</small>
                 </div>
             </div>
-
-            <!-- AWS Button REMOVED -->
-            <!-- <div class="flex gap-2 mt-4" ...> REMOVED </div> -->
         </div>
     </div>
 </div>
