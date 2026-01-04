@@ -52,10 +52,44 @@ export class MailOperationService {
   }
 
   // Placeholder for sending
-  async sendMessage(message: Partial<MailMessage>) {
-    // This would call an Edge Function 'send-email'
-    console.log('Sending message via SES...', message);
-    // const { error } = await this.supabase.functions.invoke('send-email', { body: message });
-    // if (error) throw error;
+  // Placeholder for sending
+  async sendMessage(message: Partial<MailMessage>, account?: any) {
+    if (!account) throw new Error('Account required to send email');
+
+    const payload = {
+      accountId: account.id,
+      fromName: account.sender_name,
+      fromEmail: account.email,
+      to: message.to,
+      subject: message.subject,
+      body: message.body_text,
+      html_body: message.body_html
+    };
+
+    console.log('📧 Sending email payload:', payload);
+
+    const { data, error } = await this.supabase.functions.invoke('send-email', {
+      body: payload
+    });
+
+    if (error) {
+      console.error('📧 Error invoking send-email:', error);
+      try {
+        // Try to parse the error response body if available
+        if (error instanceof Error && 'context' in error) {
+          const context = (error as any).context;
+          if (context && typeof context.json === 'function') {
+            const errorBody = await context.json();
+            if (errorBody && errorBody.error) {
+              throw new Error(errorBody.error);
+            }
+          }
+        }
+      } catch (parseError) {
+        // Ignore parsing error, throw original
+      }
+      throw error;
+    }
+    return data;
   }
 }
