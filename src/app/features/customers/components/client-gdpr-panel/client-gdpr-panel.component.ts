@@ -1,4 +1,5 @@
 import { Component, Input, OnInit, inject } from '@angular/core';
+import { environment } from '../../../../../environments/environment';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../../../services/gdpr-compliance.service';
@@ -16,7 +17,7 @@ import { firstValueFrom } from 'rxjs';
     <div class="gdpr-panel bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 space-y-8">
       
       <!-- Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-700 pb-6">
+      <div *ngIf="showHeader" class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-gray-700 pb-6">
         <div class="flex items-center gap-4">
           <div class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
             <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,6 +168,19 @@ import { firstValueFrom } from 'rxjs';
                   </div>
                   <svg class="w-4 h-4 text-red-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 </button>
+
+                <!-- Limitar (Restored) -->
+                <button 
+                  (click)="createRequest('restriction')"
+                  class="w-full flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:border-purple-500 hover:text-purple-600 transition-all group">
+                  <div class="flex items-center gap-3">
+                    <div class="p-2 bg-purple-50 dark:bg-purple-900/20 rounded text-purple-600">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                    </div>
+                    <span class="font-medium">Limitar Tratamiento</span>
+                  </div>
+                  <svg class="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </button>
               </ng-container>
 
             </div>
@@ -217,6 +231,7 @@ export class ClientGdprPanelComponent implements OnInit {
   @Input() clientName!: string;
   @Input() readOnly: boolean = false;
   @Input() isClientView: boolean = false;
+  @Input() showHeader: boolean = true;
 
   // Estado de consentimientos
   marketingConsent: boolean = false;
@@ -237,7 +252,7 @@ export class ClientGdprPanelComponent implements OnInit {
   successMessage: string = '';
 
   // Configuración
-  dpoEmail = 'dpo@simplificacrm.es'; // Debería venir de config
+  dpoEmail = environment.gdpr.dpoEmail;
 
   private gdprService = inject(GdprComplianceService);
 
