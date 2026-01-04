@@ -1,0 +1,26 @@
+<ul class="folder-list">
+    <li *ngFor="let folder of folders()">
+        <a [routerLink]="[folder.path]" routerLinkActive="active" class="folder-item">
+            <i class="fas" [ngClass]="{
+        'fa-inbox': folder.system_role === 'inbox',
+        'fa-paper-plane': folder.system_role === 'sent',
+        'fa-file': folder.system_role === 'drafts',
+        'fa-trash': folder.system_role === 'trash',
+        'fa-exclamation-circle': folder.system_role === 'spam',
+        'fa-folder': !folder.system_role
+      }"></i>
+            <span class="folder-name">{{ folder.name }}</span>
+            <span class="badge" *ngIf="folder.unread_count">{{ folder.unread_count }}</span>
+        </a>
+
+        <!-- Simple recursion for now, ideally separate component or ng-template -->
+        <ul *ngIf="folder.children?.length" class="sub-folders">
+            <li *ngFor="let sub of folder.children">
+                <a [routerLink]="[sub.path]" routerLinkActive="active" class="folder-item sub">
+                    <i class="fas fa-folder"></i>
+                    <span>{{ sub.name }}</span>
+                </a>
+            </li>
+        </ul>
+    </li>
+</ul>

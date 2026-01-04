@@ -1,0 +1,128 @@
+<div class="settings-sidebar">
+    <div class="settings-header">
+        <button class="btn-icon back-btn" (click)="close.emit()" title="Volver">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h3>Configuración</h3>
+    </div>
+
+    <!-- TABS -->
+    <div class="settings-tabs">
+        <button class="tab-btn" [class.active]="activeTab === 'accounts'" (click)="activeTab = 'accounts'">
+            Cuentas
+        </button>
+        <button class="tab-btn" [class.active]="activeTab === 'domains'" (click)="activeTab = 'domains'">
+            Dominios
+        </button>
+    </div>
+
+    <div class="settings-content">
+        <!-- TAB: CUENTAS -->
+        <div class="tab-pane" *ngIf="activeTab === 'accounts'">
+            <!-- List -->
+            <div class="account-list">
+                <div *ngFor="let acc of accounts()" class="account-item">
+                    <div class="acc-info">
+                        <div class="email">{{ acc.email }}</div>
+                        <div class="name">{{ acc.sender_name }}</div>
+                    </div>
+                    <button class="btn-icon danger" (click)="deleteAccount(acc.id!)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div *ngIf="accounts().length === 0 && !isAdding" class="empty-state">
+                    No hay cuentas configuradas.
+                </div>
+            </div>
+
+            <!-- Action -->
+            <button class="btn btn-primary w-full mt-4" (click)="toggleAdd()" *ngIf="!isAdding">
+                <i class="fas fa-plus"></i> Añadir Cuenta
+            </button>
+
+            <!-- Add Form -->
+            <div class="add-form" *ngIf="isAdding">
+                <h4>Nueva Cuenta</h4>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <div class="input-group">
+                        <input type="text" [(ngModel)]="newAccount.prefix" placeholder="nombre" class="form-control">
+                        <span class="at text-muted">&#64;</span>
+                    </div>
+                    <select [(ngModel)]="newAccount.domain" class="form-control mt-1">
+                        <option value="">Selecciona dominio...</option>
+                        <option *ngFor="let d of myDomains()" [value]="d.domain">{{ d.domain }}</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" [(ngModel)]="newAccount.name" placeholder="Tu Nombre" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label>Firma</label>
+                    <textarea [(ngModel)]="newAccount.signature" class="form-control" rows="2"></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button class="btn btn-primary btn-sm" (click)="addAccount()">Guardar</button>
+                    <button class="btn btn-text btn-sm" (click)="toggleAdd()">Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: DOMINIOS -->
+        <div class="tab-pane" *ngIf="activeTab === 'domains'">
+            <div class="info-text mb-4">
+                Dominios asignados a tu usuario.
+            </div>
+
+            <div class="domain-list">
+                <div *ngFor="let d of myDomains()" class="domain-item">
+                    <div class="d-name">{{ d.domain }}</div>
+                    <span class="badge" [class.verified]="d.is_verified">{{ d.is_verified ? 'Verificado' : 'Pendiente'
+                        }}</span>
+                </div>
+                <div *ngIf="myDomains().length === 0" class="empty-state">
+                    No tienes dominios.
+                </div>
+            </div>
+
+            <div class="flex gap-2 mt-4"
+                *ngIf="authService.userProfile?.role === 'owner' || authService.userProfile?.role === 'admin'">
+                <button class="btn btn-secondary w-full" (click)="loadAwsDomains()">
+                    <i class="fab fa-aws"></i> Importar de AWS
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AWS MODAL OVERLAY -->
+<div class="modal-overlay" *ngIf="showAwsModal" (click)="showAwsModal = false">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h4>Dominios en AWS Route53</h4>
+            <button class="btn-icon" (click)="showAwsModal = false"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="modal-body">
+            <div *ngIf="isLoadingAws" class="loading-spinner">Cargando desde AWS...</div>
+
+            <div *ngIf="!isLoadingAws && awsDomains().length === 0" class="empty-state">
+                No se encontraron dominios o faltan credenciales.
+            </div>
+
+            <div class="domain-list">
+                <div *ngFor="let d of awsDomains()" class="domain-getItem">
+                    <span class="d-name">{{ d.DomainName }}</span>
+                    <button class="btn btn-primary btn-sm" (click)="importAwsDomain(d.DomainName)">
+                        Añadir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

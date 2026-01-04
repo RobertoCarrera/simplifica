@@ -1,0 +1,130 @@
+<div class="admin-container">
+    <div class="admin-header">
+        <h2>Administración de Webmail</h2>
+        <p class="subtitle">Gestiona dominios globales y cuentas de usuarios.</p>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn" [class.active]="activeTab === 'domains'" (click)="activeTab = 'domains'">
+            <i class="fas fa-globe"></i> Dominios
+        </button>
+        <button class="tab-btn" [class.active]="activeTab === 'accounts'" (click)="activeTab = 'accounts'">
+            <i class="fas fa-users"></i> Cuentas
+        </button>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'domains'">
+        <div class="toolbar">
+            <h3>Dominios Verificados</h3>
+            <button class="btn btn-primary btn-sm" (click)="isAddingDomain = !isAddingDomain" *ngIf="!isAddingDomain">
+                <i class="fas fa-plus"></i> Añadir Dominio
+            </button>
+            <button class="btn btn-secondary btn-sm ml-2" (click)="loadAwsDomains()">
+                <i class="fab fa-aws"></i> Importar de AWS
+            </button>
+        </div>
+
+        <div class="add-form" *ngIf="isAddingDomain">
+            <div class="form-group">
+                <label>Dominio (ej: miempresa.com)</label>
+                <div class="flex gap-2">
+                    <input type="text" [(ngModel)]="newDomainName" class="form-control" placeholder="dominio.com">
+                    <button class="btn btn-primary" (click)="addDomain()">Verificar</button>
+                    <button class="btn btn-text" (click)="isAddingDomain = false">Cancelar</button>
+                </div>
+                <p class="hint">Al añadirlo, simularemos la verificación DNS de SES.</p>
+            </div>
+        </div>
+
+        <div class="data-list">
+            <div class="data-item header">
+                <div>Dominio</div>
+                <div>Estado</div>
+                <div>Fecha</div>
+                <div>Acciones</div>
+            </div>
+            <div class="data-item" *ngFor="let d of domains()">
+                <div class="font-medium">{{ d.domain }}</div>
+                <div>
+                    <span class="badge" [class.success]="d.is_verified" [class.warning]="!d.is_verified">
+                        {{ d.is_verified ? 'Verificado' : 'Pendiente' }}
+                    </span>
+                </div>
+                <div class="text-sm text-muted">{{ d.created_at | date:'shortDate' }}</div>
+                <div>
+                    <button class="btn-icon danger" (click)="deleteDomain(d.id)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="empty-state" *ngIf="domains().length === 0 && !isAddingDomain">
+                No hay dominios configurados.
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-content" *ngIf="activeTab === 'accounts'">
+        <div class="toolbar">
+            <h3>Todas las Cuentas</h3>
+        </div>
+        <div class="data-list">
+            <div class="data-item header">
+                <div>Email</div>
+                <div>Usuario (Owner)</div>
+                <div>Proveedor</div>
+                <div>Activo</div>
+            </div>
+            <div class="data-item" *ngFor="let a of allAccounts()">
+                <div class="font-medium">{{ a.email }}</div>
+                <div class="text-secondary text-sm">{{ a.users?.email || 'N/A' }}</div>
+                <div><span class="badge gray">{{ a.provider }}</span></div>
+                <div>
+                    <span class="status-dot" [class.active]="a.is_active"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AWS MODAL OVERLAY -->
+<div class="modal-overlay" *ngIf="showAwsModal" (click)="showAwsModal = false">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h4>Dominios en AWS Route53</h4>
+            <button class="btn-icon" (click)="showAwsModal = false"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="modal-body">
+            <div *ngIf="isLoadingAws" class="loading-state">
+                <i class="fas fa-circle-notch fa-spin"></i>
+                <p>Cargando dominios desde AWS...</p>
+            </div>
+
+            <div *ngIf="!isLoadingAws && awsDomains().length === 0" class="empty-state">
+                <i class="fas fa-search"></i>
+                <p>No se encontraron dominios en Route53 (us-east-1).</p>
+            </div>
+
+            <div class="domain-list" *ngIf="!isLoadingAws && awsDomains().length > 0">
+                <div *ngFor="let d of awsDomains()" class="domain-item">
+                    <div class="domain-info">
+                        <span class="d-name">{{ d.DomainName }}</span>
+                        <span class="d-status" *ngIf="isDomainImported(d.DomainName)">
+                            <i class="fas fa-check-circle text-success"></i> Ya importado
+                        </span>
+                        <span class="d-status" *ngIf="!isDomainImported(d.DomainName)">
+                            Sin vincular
+                        </span>
+                    </div>
+                    <div class="actions">
+                        <button class="btn-import" [class.primary]="!isDomainImported(d.DomainName)"
+                            [class.disabled]="isDomainImported(d.DomainName)"
+                            [disabled]="isDomainImported(d.DomainName)" (click)="importAwsDomain(d.DomainName)">
+                            {{ isDomainImported(d.DomainName) ? 'Vinculado' : 'Importar' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

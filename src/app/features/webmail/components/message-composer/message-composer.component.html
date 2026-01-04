@@ -1,0 +1,25 @@
+<div class="composer-container">
+    <div class="composer-header">
+        <h2>Conversación nueva</h2>
+    </div>
+
+    <div class="composer-form">
+        <div class="form-group">
+            <input type="text" [(ngModel)]="to" placeholder="Destinatarios" class="form-control">
+        </div>
+
+        <div class="form-group">
+            <input type="text" [(ngModel)]="subject" placeholder="Asunto" class="form-control">
+        </div>
+
+        <div class="form-group editor">
+            <textarea [(ngModel)]="body" placeholder="Escribe tu mensaje aquí..."
+                class="form-control body-input"></textarea>
+        </div>
+
+        <div class="composer-actions">
+            <button class="btn btn-primary" (click)="send()">Enviar</button>
+            <button class="btn btn-text" (click)="cancel()">Descartar draft</button>
+        </div>
+    </div>
+</div>

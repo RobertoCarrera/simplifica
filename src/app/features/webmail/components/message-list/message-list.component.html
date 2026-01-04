@@ -1,0 +1,45 @@
+<div class="message-list-container">
+    <div class="toolbar">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" placeholder="Buscar correos...">
+        </div>
+        <div class="actions">
+            <button class="btn-icon"><i class="fas fa-sync"></i></button>
+            <button class="btn-icon"><i class="fas fa-filter"></i></button>
+        </div>
+    </div>
+
+    <div class="list-content">
+        <div *ngIf="loading()" class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i> Cargando...
+        </div>
+
+        <div *ngIf="!loading() && messages().length === 0" class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>No hay mensajes en esta carpeta</p>
+        </div>
+
+        <div *ngIf="!loading() && messages().length > 0" class="messages">
+            <div *ngFor="let msg of messages()" class="message-item" [class.unread]="!msg.is_read"
+                [routerLink]="['../thread', msg.thread_id || msg.id]">
+                <div class="checkbox">
+                    <input type="checkbox">
+                </div>
+                <div class="star" [class.active]="msg.is_starred">
+                    <i class="far fa-star"></i>
+                </div>
+                <div class="sender">
+                    {{ msg.from.name || msg.from.email }}
+                </div>
+                <div class="subject-snippet">
+                    <span class="subject">{{ msg.subject }}</span>
+                    <span class="snippet">- {{ msg.snippet }}</span>
+                </div>
+                <div class="date">
+                    {{ msg.received_at | date:'shortDate' }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

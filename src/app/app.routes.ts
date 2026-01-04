@@ -59,6 +59,16 @@ export const routes: Routes = [
         canActivate: [StaffGuard]
     },
     {
+        path: 'webmail-admin',
+        loadComponent: () => import('./features/admin-webmail/admin-webmail.component').then(m => m.AdminWebmailComponent),
+        data: { title: 'Admin Webmail' }
+    },
+    {
+        path: 'webmail',
+        loadChildren: () => import('./features/webmail/webmail.routes').then(m => m.WEBMAIL_ROUTES),
+        canActivate: [StaffGuard]
+    },
+    {
         path: 'clientes-gdpr',
         loadComponent: () => import('./features/customers/gdpr-customer-manager/gdpr-customer-manager.component').then(m => m.GdprCustomerManagerComponent),
         canActivate: [AuthGuard, OwnerAdminGuard]

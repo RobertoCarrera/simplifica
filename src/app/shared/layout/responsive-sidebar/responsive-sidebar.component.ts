@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell } from 'lucide-angular';
+import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield } from 'lucide-angular';
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
 import { DevRoleService } from '../../../services/dev-role.service';
@@ -20,9 +20,9 @@ interface MenuItem {
   badge?: number;
   children?: MenuItem[];
   module?: string; // 'core' | 'production' | 'development'
-  moduleKey?: string; // Optional key to check in modules_catalog (e.g., 'moduloTickets')
+  moduleKey?: string; // Optional key to check in modules_catalog
   // roleOnly can be used to restrict visibility to specific roles
-  roleOnly?: 'ownerAdmin' | 'adminOnly';
+  roleOnly?: 'ownerAdmin' | 'adminOnly' | 'adminEmployeeClient' | 'adminOnlyWebmail';
 }
 
 @Component({
@@ -38,7 +38,7 @@ interface MenuItem {
   providers: [
     {
       provide: LUCIDE_ICONS,
-      useValue: new LucideIconProvider({ Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell })
+      useValue: new LucideIconProvider({ Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield })
     }
   ],
   templateUrl: './responsive-sidebar.component.html',
@@ -97,7 +97,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   readonly icons = {
     Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp,
     Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft,
-    ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell
+    ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield
   };
 
   private allMenuItems: MenuItem[] = [
@@ -187,11 +187,27 @@ export class ResponsiveSidebarComponent implements OnInit {
       moduleKey: 'moduloServicios'
     },
     {
+      id: 95,
+      label: 'Webmail',
+      icon: 'mail',
+      route: '/webmail',
+      module: 'core'
+    },
+    {
       id: 98,
       label: 'Configuración',
       icon: 'settings',
       route: '/configuracion',
-      module: 'core'
+      module: 'core',
+      roleOnly: 'adminEmployeeClient' // Adjusted role visibility
+    },
+    {
+      id: 97, // New ID for Admin Webmail
+      label: 'Admin Webmail',
+      icon: 'shield', // Using 'shield' icon
+      route: '/webmail-admin',
+      module: 'core',
+      roleOnly: 'adminOnlyWebmail' // Specific role for admin webmail
     },
     {
       id: 99,
@@ -252,6 +268,9 @@ export class ResponsiveSidebarComponent implements OnInit {
         if (item.roleOnly === 'adminOnly') {
           return userRole === 'admin';
         }
+        if (item.roleOnly === 'adminOnlyWebmail') {
+          return userRole === 'admin';
+        }
         return true;
       }
 
@@ -278,10 +297,8 @@ export class ResponsiveSidebarComponent implements OnInit {
         if (item.id === 1) return perms.includes('dashboard'); // Inicio
         if (item.id === 2) return perms.includes('clients');   // Clientes
 
-        // Settings (98) is usually restricted. Implicitly hidden if not 'settings' (or whatever key we assign).
-        // Since we are using Dynamic Catalog which likely doesn't have 'settings', it's hidden.
-        // Unless we decide to allow it via specific 'settings' key. User wanted it hidden.
-        if (item.id === 98) return false;
+        // Check for Webmail or Settings visibility for members if needed
+        if (item.id === 95 && !perms.includes('webmail')) return false;
 
         return true;
       }
