@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ClientGdprPanelComponent } from '../../../features/clients/components/client-gdpr-panel.component';
+import { ClientGdprPanelComponent } from '../components/client-gdpr-panel/client-gdpr-panel.component';
 
 /**
  * Modal para gestionar GDPR de un cliente específico
@@ -42,7 +42,8 @@ import { ClientGdprPanelComponent } from '../../../features/clients/components/c
           <app-client-gdpr-panel
             [clientId]="clientId"
             [clientEmail]="clientEmail"
-            [clientName]="clientName">
+            [clientName]="clientName"
+            [readOnly]="true">
           </app-client-gdpr-panel>
         </div>
 

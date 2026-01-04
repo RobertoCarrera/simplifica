@@ -8,11 +8,11 @@ export const environment = {
   siteUrl: 'https://simplifica.digitalizamostupyme.es',
   useEdgeCreateLocality: true,
   edgeFunctionsBaseUrl: 'https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1',
-  
+
   // GDPR Configuration - Production
   gdpr: {
     enabled: process.env['ENABLE_GDPR'] === 'true' || true, // Activar GDPR en producción
-    dpoEmail: process.env['GDPR_DPO_EMAIL'] || 'dpo@digitalizamostupyme.com',
+    dpoEmail: process.env['GDPR_DPO_EMAIL'] || 'dpo@simplificacrm.es',
     retentionYears: parseInt(process.env['GDPR_RETENTION_YEARS'] || '7'),
     autoDeleteAfterDays: parseInt(process.env['GDPR_AUTO_DELETE_AFTER_DAYS'] || '2555'),
     breachNotificationHours: parseInt(process.env['GDPR_BREACH_NOTIFICATION_HOURS'] || '72'),

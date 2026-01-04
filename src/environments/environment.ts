@@ -12,7 +12,7 @@ export const environment = {
   // GDPR Configuration
   gdpr: {
     enabled: true, // Activar funcionalidad GDPR
-    dpoEmail: 'dpo@digitalizamostupyme.com', // Email del DPO
+    dpoEmail: 'dpo@simplificacrm.es', // Email del DPO
     retentionYears: 7, // Años de retención (normativa española)
     autoDeleteAfterDays: 2555, // 7 años en días
     breachNotificationHours: 72, // Horas para notificar brechas (Art. 33)

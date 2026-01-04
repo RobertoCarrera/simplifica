@@ -82,7 +82,7 @@ export class GdprComplianceService {
   createAccessRequest(request: GdprAccessRequest): Observable<GdprAccessRequest> {
     const companyId = this.authService.companyId();
     const currentUser = this.authService.currentUser;
-    
+
     if (!companyId || !currentUser) {
       return throwError(() => new Error('User not authenticated or no company assigned'));
     }
@@ -124,7 +124,7 @@ export class GdprComplianceService {
    */
   getAccessRequests(): Observable<GdprAccessRequest[]> {
     const companyId = this.authService.companyId();
-    
+
     if (!companyId) {
       return throwError(() => new Error('No company assigned'));
     }
@@ -151,22 +151,22 @@ export class GdprComplianceService {
    * Update access request status
    */
   updateAccessRequestStatus(
-    requestId: string, 
+    requestId: string,
     status: 'verified' | 'rejected' | 'in_progress' | 'completed',
     responseData?: any
   ): Observable<GdprAccessRequest> {
     const updates: any = {};
-    
+
     if (status === 'verified' || status === 'rejected') {
       updates.verification_status = status;
     } else {
       updates.processing_status = status;
     }
-    
+
     if (responseData) {
       updates.response_data = responseData;
     }
-    
+
     if (status === 'completed') {
       updates.completed_at = new Date().toISOString();
     }
@@ -196,7 +196,7 @@ export class GdprComplianceService {
    */
   exportClientData(clientEmail: string): Observable<any> {
     const currentUser = this.authService.currentUser;
-    
+
     if (!currentUser) {
       return throwError(() => new Error('User not authenticated'));
     }
@@ -219,11 +219,63 @@ export class GdprComplianceService {
   }
 
   /**
+   * Download client data as JSON file
+   */
+  downloadClientData(clientEmail: string, clientName: string): Observable<boolean> {
+    // We need to fetch the email first or change export logic. 
+    // The old service used 'rpc export_client_gdpr_data' with p_client_id. 
+    // The NEW service uses 'rpc gdpr_export_client_data' with client_email.
+    // Let's assume we can fetch the email or use the new RPC if p_client_id is supported.
+    // Checking the Code View of GdprComplianceService... it uses client_email.
+    // I should probably fetch the client email if not provided, OR try to use the clientId if the RPC supports it.
+    // To match the Component's expectation (which passes clientId), I will adapt.
+
+    // BUT wait, GdprComplianceService.exportClientData takes `clientEmail`.
+    // The component `ClientGdprPanelComponent` has `clientEmail` as @Input.
+    // So I can just call exportClientData with this.clientEmail.
+
+    // Let's update `downloadClientData` to take `clientEmail` instead of (or in addition to) clientId? 
+    // The legacy component passes (clientId, clientName).
+    // I will update the COMPONENT to pass email later.
+    // For now, let's add `downloadClientData(clientEmail: string, clientName: string)` here.
+
+    return this.exportClientData(clientEmail).pipe(
+      map(data => {
+        if (!data) return false;
+
+        const dataStr = JSON.stringify(data, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+
+        const url = window.URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `gdpr-export-${this.sanitizeFilename(clientName)}-${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+
+        window.URL.revokeObjectURL(url);
+        return true;
+      }),
+      catchError(error => {
+        console.error('Error downloading data:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  private sanitizeFilename(filename: string): string {
+    return filename
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .substring(0, 50);
+  }
+
+  /**
    * Anonymize client data (GDPR Article 17 - Right to Erasure)
    */
   anonymizeClientData(clientId: string, reason: string = 'gdpr_erasure_request'): Observable<any> {
     const currentUser = this.authService.currentUser;
-    
+
     if (!currentUser) {
       return throwError(() => new Error('User not authenticated'));
     }
@@ -256,7 +308,7 @@ export class GdprComplianceService {
   recordConsent(consent: GdprConsentRecord): Observable<GdprConsentRecord> {
     const companyId = this.authService.companyId();
     const currentUser = this.authService.currentUser;
-    
+
     if (!companyId || !currentUser) {
       return throwError(() => new Error('User not authenticated or no company assigned'));
     }
@@ -331,7 +383,7 @@ export class GdprComplianceService {
    */
   getConsentRecords(subjectEmail?: string): Observable<GdprConsentRecord[]> {
     const companyId = this.authService.companyId();
-    
+
     if (!companyId) {
       return throwError(() => new Error('No company assigned'));
     }
@@ -367,7 +419,7 @@ export class GdprComplianceService {
   reportBreachIncident(incident: GdprBreachIncident): Observable<GdprBreachIncident> {
     const companyId = this.authService.companyId();
     const currentUser = this.authService.currentUser;
-    
+
     if (!companyId || !currentUser) {
       return throwError(() => new Error('User not authenticated or no company assigned'));
     }
@@ -408,7 +460,7 @@ export class GdprComplianceService {
    */
   getBreachIncidents(): Observable<GdprBreachIncident[]> {
     const companyId = this.authService.companyId();
-    
+
     if (!companyId) {
       return throwError(() => new Error('No company assigned'));
     }
@@ -449,7 +501,7 @@ export class GdprComplianceService {
   ): void {
     const currentUser = this.authService.currentUser;
     const companyId = this.authService.companyId();
-    
+
     if (!currentUser) return;
 
     this.supabase.rpc('gdpr_log_access', {
@@ -475,8 +527,7 @@ export class GdprComplianceService {
   /**
    * Create a tokenized consent request for a client and return a shareable URL path
    */
-  createConsentRequest(clientId: string | null, email: string, consentTypes: string[] = ['data_processing','marketing','analytics'], purpose?: string): Observable<{ path: string; token: string; }>
-  {
+  createConsentRequest(clientId: string | null, email: string, consentTypes: string[] = ['data_processing', 'marketing', 'analytics'], purpose?: string): Observable<{ path: string; token: string; }> {
     const sb = this.supabase;
     return from(sb.rpc('gdpr_create_consent_request', {
       p_client_id: clientId,
@@ -524,7 +575,7 @@ export class GdprComplianceService {
     }
 
     query = query.order('created_at', { ascending: false });
-    
+
     if (filters?.limit) {
       query = query.limit(filters.limit);
     }
@@ -546,7 +597,7 @@ export class GdprComplianceService {
    */
   getComplianceDashboard(): Observable<any> {
     const companyId = this.authService.companyId();
-    
+
     if (!companyId) {
       return throwError(() => new Error('No company assigned'));
     }
@@ -565,7 +616,7 @@ export class GdprComplianceService {
           breachIncidentsCount: breaches.count || 0,
           auditLogsLastMonth: auditLogs.count || 0,
           pendingAccessRequests: accessRequests.data?.filter(r => r.processing_status === 'received').length || 0,
-          overdueAccessRequests: accessRequests.data?.filter(r => 
+          overdueAccessRequests: accessRequests.data?.filter(r =>
             new Date(r.deadline_date) < new Date() && r.processing_status !== 'completed'
           ).length || 0
         };
@@ -586,7 +637,7 @@ export class GdprComplianceService {
    */
   validateGdprPermissions(operation: string): Observable<boolean> {
     const currentUser = this.authService.currentUser;
-    
+
     if (!currentUser) {
       return throwError(() => new Error('User not authenticated'));
     }
@@ -600,10 +651,10 @@ export class GdprComplianceService {
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
-        
+
         // DPO can perform all operations
         if (data.is_dpo) return true;
-        
+
         // Check access level for specific operations
         const requiredLevel = this.getRequiredAccessLevel(operation);
         return this.hasAccessLevel(data.data_access_level, requiredLevel);

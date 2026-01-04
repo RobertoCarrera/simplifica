@@ -12,9 +12,14 @@ import { PortalTicketWizardComponent } from '../ticket-wizard/portal-ticket-wiza
   <div class="max-w-6xl mx-auto p-4">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold">Portal del Cliente</h1>
-      <button (click)="showWizard = true" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
-        <i class="fas fa-plus"></i> Nuevo Ticket
-      </button>
+      <div class="flex items-center gap-3">
+        <a routerLink="/configuracion" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2" title="Configuración">
+          <i class="fas fa-cog"></i>
+        </a>
+        <button (click)="showWizard = true" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+          <i class="fas fa-plus"></i> Nuevo Ticket
+        </button>
+      </div>
     </div>
 
     <app-portal-ticket-wizard *ngIf="showWizard" 

@@ -97,10 +97,10 @@ serve(async (req: Request) => {
     }
 
     // Create invitation via RPC (try new signature with named params). Fallback to legacy signature.
-  let invitationId: string | null = null;
-  let inviteToken: string | null = null; // declare early to avoid TDZ when assigning in fallbacks
-  let inviteJson: any = null;
-  let inviteFirstErr: any = null;
+    let invitationId: string | null = null;
+    let inviteToken: string | null = null; // declare early to avoid TDZ when assigning in fallbacks
+    let inviteJson: any = null;
+    let inviteFirstErr: any = null;
     {
       const { data: inviteRes, error: inviteErr } = await supabaseAdmin.rpc("invite_user_to_company", {
         p_company_id: currentUser.company_id,
@@ -306,9 +306,10 @@ serve(async (req: Request) => {
     // SIEMPRE usar signInWithOtp (magic link) porque funciona tanto para usuarios nuevos como existentes
     const { data: otpData, error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
       email,
-      options: { 
+      options: {
         emailRedirectTo: `${redirectBase}/invite?token=${encodeURIComponent(inviteToken)}`,
-        shouldCreateUser: true  // Crear usuario si no existe
+        shouldCreateUser: true,  // Crear usuario si no existe
+        data: { message: message }
       },
     });
 

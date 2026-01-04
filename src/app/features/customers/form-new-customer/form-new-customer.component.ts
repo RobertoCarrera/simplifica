@@ -12,6 +12,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
 import { AuthService } from '../../../services/auth.service';
 import { AddressesService } from '../../../services/addresses.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
+import { GdprComplianceService } from '../../../services/gdpr-compliance.service';
 
 @Component({
   selector: 'app-form-new-customer',
@@ -38,6 +39,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   private auth = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
   private tagsService = inject(GlobalTagsService);
+  private gdprService = inject(GdprComplianceService);
 
   // States
   pendingTags: GlobalTag[] = [];
@@ -71,8 +73,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     addressNombre: '',
     addressNumero: '',
     addressLocalidadId: '',
+
     // Honeypot field (hidden from users, bots will fill it)
-    honeypot: ''
+    honeypot: '',
+    privacyPolicyAccepted: true,
+    marketingConsent: true
   };
 
   // Honeypot tracking
@@ -174,7 +179,9 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       addressNombre: customer.direccion?.nombre || '',
       addressNumero: customer.direccion?.numero || '',
       addressLocalidadId: customer.direccion?.localidad_id || '',
-      honeypot: ''
+      honeypot: '',
+      privacyPolicyAccepted: false,
+      marketingConsent: false
     };
 
     this.checkAddressLocality();
@@ -198,7 +205,9 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       addressNombre: '',
       addressNumero: '',
       addressLocalidadId: '',
-      honeypot: ''
+      honeypot: '',
+      privacyPolicyAccepted: false,
+      marketingConsent: false
     };
     this.addressLocalityName = '';
   }
@@ -492,9 +501,39 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
       this.customersService.createCustomer(customerData).subscribe({
         next: (res: any) => {
+          const newId = res.id || res.ID || res.Id;
+
+          // GDPR Consents Saving
+          if (newId) {
+            const email = this.formData.email;
+            // 1. Privacy Policy (Data Processing)
+            if (this.formData.privacyPolicyAccepted) {
+              this.gdprService.recordConsent({
+                subject_email: email,
+                subject_id: newId,
+                consent_type: 'data_processing',
+                consent_given: true,
+                consent_method: 'form',
+                purpose: 'Aceptación Política Privacidad en Alta',
+                data_processing_purposes: ['service_delivery', 'contractual']
+              }).subscribe();
+            }
+            // 2. Marketing Consent
+            if (this.formData.marketingConsent) {
+              this.gdprService.recordConsent({
+                subject_email: email,
+                subject_id: newId,
+                consent_type: 'marketing',
+                consent_given: true,
+                consent_method: 'form',
+                purpose: 'Aceptación Comunicaciones Comerciales en Alta',
+                data_processing_purposes: ['marketing']
+              }).subscribe();
+            }
+          }
+
           // If we have pending tags, save them now
-          if (this.pendingTags.length > 0 && res && (res.id || res.ID || res.Id)) {
-            const newId = res.id || res.ID || res.Id;
+          if (this.pendingTags.length > 0 && newId) {
             this.tagsService.assignMultipleTags('clients', newId, this.pendingTags.map(t => t.id)).subscribe({
               next: () => {
                 this.toastService.success('Cliente creado correctamente', 'Éxito');

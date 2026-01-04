@@ -13,6 +13,16 @@
         <span class="hidden sm:inline">Mi Perfil</span>
       </button>
 
+      <!-- Tab: Privacidad (GDPR) -->
+      <button (click)="activeTab='privacidad'" role="tab" [attr.aria-selected]="activeTab === 'privacidad'"
+        class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+        [class]="activeTab === 'privacidad' 
+          ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30' 
+          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
+        <i class="fas fa-user-shield text-sm"></i>
+        <span class="hidden sm:inline">Privacidad</span>
+      </button>
+
       <!-- Tab: Empresa (hidden for clients) -->
       <button *ngIf="!isClient" (click)="activeTab='empresa'" role="tab" [attr.aria-selected]="activeTab === 'empresa'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
@@ -356,6 +366,14 @@
         </button>
       </div>
     </div>
+  </div>
+
+  <!-- Contenido: Privacidad (GDPR) -->
+  <div *ngIf="activeTab==='privacidad'" class="w-full">
+    <app-client-gdpr-panel *ngIf="userProfile" [clientId]="$any(userProfile).client_id || userProfile.id"
+      [clientEmail]="userProfile.email" [clientName]="userProfile.full_name || ''" [readOnly]="false"
+      [isClientView]="isClient">
+    </app-client-gdpr-panel>
   </div>
 
   <!-- Perfil de usuario (desactivado: contenido movido al grid) -->

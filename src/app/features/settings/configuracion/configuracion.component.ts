@@ -19,16 +19,18 @@ import { SupabaseInvoicesService } from '../../../services/supabase-invoices.ser
 import { InvoiceSeries } from '../../../models/invoice.model';
 import { firstValueFrom } from 'rxjs';
 
+import { ClientGdprPanelComponent } from '../../customers/components/client-gdpr-panel/client-gdpr-panel.component';
+
 @Component({
   selector: 'app-configuracion',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent],
   templateUrl: './configuracion.component.html',
   styleUrls: ['./configuracion.component.scss']
 })
 export class ConfiguracionComponent implements OnInit, OnDestroy {
   // UI tabs
-  activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' = 'perfil';
+  activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' = 'perfil';
   userProfile: AppUser | null = null;
   profileForm: FormGroup;
   passwordForm: FormGroup;

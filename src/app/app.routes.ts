@@ -128,6 +128,7 @@ export const routes: Routes = [
     // Client portal devices
     { path: 'portal/dispositivos', loadComponent: () => import('./features/devices/portal-devices/portal-devices.component').then(m => m.PortalDevicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
 
+
     // Public payment pages (NO AUTH REQUIRED)
     { path: 'pago/:token', component: PublicPaymentComponent },
     { path: 'pago/:token/completado', component: PaymentSuccessComponent },

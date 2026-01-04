@@ -489,7 +489,10 @@ export class ClientPortalService {
           email,
           company_id: companyId,
           role,
-          force_email: true  // SIEMPRE enviar email, nunca fallar silenciosamente
+          force_email: true,  // SIEMPRE enviar email, nunca fallar silenciosamente
+          message: role === 'client'
+            ? "Se te han activado los consentimientos de Privacidad y Marketing. Puedes gestionarlos desde tu Panel de Cliente en la sección Configuración."
+            : undefined
         }
       });
 
