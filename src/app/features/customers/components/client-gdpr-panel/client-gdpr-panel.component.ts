@@ -388,7 +388,14 @@ export class ClientGdprPanelComponent implements OnInit {
     this.gdprService.anonymizeClientData(this.clientId, reason).subscribe({
       next: () => {
         this.successMessage = 'Cliente anonimizado correctamente.';
-        setTimeout(() => window.location.reload(), 2000);
+        this.successMessage = 'Cliente anonimizado correctamente.';
+        // Refresh state instead of reloading
+        this.gdprService.getComplianceDashboard().subscribe();
+        setTimeout(() => {
+          // Close panel or navigate if needed, but do not reload.
+          // If this component is inside a modal, maybe emit a close event?
+          // For now, just removing the reload is safer.
+        }, 2000);
       },
       error: (err) => {
         this.error = 'Error al anonimizar: ' + err.message;

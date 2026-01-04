@@ -19,7 +19,6 @@ export class AuthGuard implements CanActivate {
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Observable<boolean> | Promise<boolean> | boolean {
-    console.log('🔐 AuthGuard: Checking access to:', state.url);
 
     return combineLatest([
       this.authService.currentUser$,
@@ -30,9 +29,7 @@ export class AuthGuard implements CanActivate {
       take(1),
       timeout(15000),
       switchMap(([user]) => {
-        console.log('🔐 AuthGuard: User state:', user ? 'authenticated' : 'not authenticated');
         if (!user) {
-          console.log('🔐 AuthGuard: Redirecting to login');
           // Use navigation state to pass the original destination so the URL stays clean
           // (avoids ugly encoded `?returnUrl=...` query strings). The Login component
           // will read history.state.returnTo and fall back to the legacy query param.

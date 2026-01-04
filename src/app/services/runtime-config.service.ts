@@ -27,7 +27,11 @@ export class RuntimeConfigService {
       // Add a cache-buster to avoid CDN caching old keys after rotations/deploys
       const cacheBuster = `ts=${Date.now()}`;
       const response = await fetch(`/assets/runtime-config.json?${cacheBuster}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const cfg = await response.json() as RuntimeConfig;
+
       // Defaults from compile-time environment for local/dev, or as fallback
       const defaults: RuntimeConfig = {
         supabase: {
@@ -58,7 +62,7 @@ export class RuntimeConfigService {
 
       this.config = merged;
     } catch (e) {
-      console.warn('Runtime config not found, using empty defaults. Create /assets/runtime-config.json at build time.');
+      console.warn('⚠️ RuntimeConfigService: Config load failed, using defaults.', e);
       // Fallback entirely to environment if runtime config cannot be loaded
       this.config = {
         supabase: {

@@ -22,7 +22,7 @@ export class SupabaseClientService {
         : '(empty)';
       console.info('[SupabaseClientService] Using Supabase URL:', rc.supabase.url);
       console.info('[SupabaseClientService] Using Supabase anon/publishable key (redacted):', preview);
-      ;(globalThis as any).__SUPABASE_CFG__ = { url: rc.supabase.url, anonKeyPreview: preview };
+      ; (globalThis as any).__SUPABASE_CFG__ = { url: rc.supabase.url, anonKeyPreview: preview };
     } catch { /* noop */ }
     const projectRef = (() => {
       try {
@@ -95,8 +95,15 @@ export class SupabaseClientService {
           // Provide custom storage to avoid navigator.lock coordination
           storage: noLockStorage,
           // Persist sessions in localStorage and auto-refresh so reloads don't sign out immediately
+          // Persist sessions in localStorage and auto-refresh so reloads don't sign out immediately
           persistSession: true,
-          autoRefreshToken: true
+          autoRefreshToken: true,
+          // CRITICAL FIX: Bypass navigator.locks entirely to prevent NavigatorLockAcquireTimeoutError
+          // This forces the client to run without exclusive locks, which is safe for this app's architecture
+          lock: async (name: string, acquireTimeout: number, acquireFn: (lock: any) => Promise<any>) => {
+            // Immediately execute the callback without real locking
+            return await acquireFn({ name });
+          }
         },
         realtime: {
           params: {

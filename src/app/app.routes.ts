@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 
 import { ProductsComponent } from './features/products/products/products.component';
-import { SupabaseCustomersComponent } from './features/customers/supabase-customers/supabase-customers.component';
 import { HelpComponent } from './features/help/help.component';
 import { SupabaseServicesComponent } from './features/services/supabase-services/supabase-services.component';
 import { LoginComponent } from './features/auth/login/login.component';
@@ -20,7 +19,6 @@ import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-
 import { EmailConfirmationComponent } from './features/auth/email-confirmation/email-confirmation.component';
 import { CompanyAdminComponent } from './features/admin/company/company-admin.component';
 import { ConsentPortalComponent } from './features/portal/consent/consent-portal.component';
-import { GdprCustomerManagerComponent } from './features/customers/gdpr-customer-manager/gdpr-customer-manager.component';
 import { AnychatComponent } from './features/chat/anychat/anychat.component';
 import { StagesManagementComponent } from './features/settings/stages-management/stages-management.component';
 import { UnitsManagementComponent } from './features/settings/units-management/units-management.component';
@@ -33,7 +31,6 @@ import { PortalInvoiceDetailComponent } from './features/invoices/portal/detail/
 import { PortalQuotesComponent } from './features/quotes/portal/list/portal-quotes.component';
 import { PortalQuoteDetailComponent } from './features/quotes/portal/detail/portal-quote-detail.component';
 import { ModulesAdminComponent } from './features/admin/modules/modules-admin.component';
-import { MigrateClientsComponent } from './features/customers/migrate-clients/migrate-clients.component';
 import { VerifactuSettingsComponent } from './features/invoices/verifactu-settings/verifactu-settings.component';
 import { InvoiceSeriesSettingsComponent } from './features/invoices/invoice-series-settings/invoice-series-settings.component';
 import { QuotesSettingsComponent } from './features/settings/quotes-settings/quotes-settings.component';
@@ -49,10 +46,23 @@ import { PaymentCancelledComponent } from './features/payments/cancelled/payment
 export const routes: Routes = [
     // Rutas principales con guards apropiados
     { path: '', redirectTo: '/inicio', pathMatch: 'full' },
-    { path: 'inicio', loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent), canActivate: [AuthGuard, StaffGuard] },
+    {
+        path: 'inicio',
+        loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
+        canActivate: [StaffGuard]
+    },
 
-    { path: 'clientes', component: SupabaseCustomersComponent, canActivate: [StaffGuard] },
-    { path: 'clientes-gdpr', component: GdprCustomerManagerComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    // Clientes (Lazy Load)
+    {
+        path: 'clientes',
+        loadComponent: () => import('./features/customers/supabase-customers/supabase-customers.component').then(m => m.SupabaseCustomersComponent),
+        canActivate: [StaffGuard]
+    },
+    {
+        path: 'clientes-gdpr',
+        loadComponent: () => import('./features/customers/gdpr-customer-manager/gdpr-customer-manager.component').then(m => m.GdprCustomerManagerComponent),
+        canActivate: [AuthGuard, OwnerAdminGuard]
+    },
     { path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
     { path: 'tickets/:id', component: TicketDetailComponent, canActivate: [AuthGuard] },
     { path: 'productos', component: ProductsComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloMaterial' } },

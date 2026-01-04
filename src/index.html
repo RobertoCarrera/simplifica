@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="es">
+
 <head>
   <meta charset="utf-8">
   <title>Simplifica CRM - Premium Experience</title>
@@ -16,13 +17,14 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="apple-touch-icon" href="favicon.ico">
 
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" 
-        integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" 
-        crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
   <meta name="theme-color" content="#6366f1">
@@ -38,16 +40,17 @@
   <meta property="og:url" content="/">
   <meta property="og:image" content="/favicon.ico">
 </head>
+
 <body>
   <script>
     // Early console proxy: suppress log/info/debug while preserving warn/error
-    (function(){
+    (function () {
       try {
-        var origConsole = (typeof console !== 'undefined') ? console : { };
+        var origConsole = (typeof console !== 'undefined') ? console : {};
         var handler = {
           get(target, prop) {
             if (prop === 'log' || prop === 'info' || prop === 'debug') {
-              return function(){}; // no-op for noisy methods
+              return function () { }; // no-op for noisy methods
             }
             // bind methods to original console to preserve context
             var v = target[prop];
@@ -60,24 +63,25 @@
           window.console = new Proxy(origConsole, handler);
         } catch (e) {
           // Some environments disallow replacing console; try to patch methods directly
-          try { window.console.log = function(){}; } catch(e){}
-          try { window.console.info = function(){}; } catch(e){}
-          try { window.console.debug = function(){}; } catch(e){}
+          try { window.console.log = function () { }; } catch (e) { }
+          try { window.console.info = function () { }; } catch (e) { }
+          try { window.console.debug = function () { }; } catch (e) { }
         }
+
 
         // Wrap navigator.locks.request to avoid failures when locks cannot be acquired
         if (typeof navigator !== 'undefined' && navigator.locks && typeof navigator.locks.request === 'function') {
           try {
             const origRequest = navigator.locks.request.bind(navigator.locks);
-            navigator.locks.request = function(name, options, callback) {
+            navigator.locks.request = function (name, options, callback) {
               try {
                 const maybeCallback = (typeof options === 'function') ? options : callback;
-                return origRequest(name, options, callback).catch(function(err){
+                return origRequest(name, options, callback).catch(function (err) {
                   // If lock acquisition fails, fall back to executing the callback without the lock
-                  try { return Promise.resolve(maybeCallback()); } catch(e) { return Promise.reject(e); }
+                  try { return Promise.resolve(maybeCallback()); } catch (e) { return Promise.reject(e); }
                 });
               } catch (e) {
-                try { const cb = (typeof options === 'function') ? options : callback; return Promise.resolve(cb()); } catch(err) { return Promise.reject(err); }
+                try { const cb = (typeof options === 'function') ? options : callback; return Promise.resolve(cb()); } catch (err) { return Promise.reject(err); }
               }
             };
           } catch (e) {
@@ -87,40 +91,41 @@
       } catch (e) {
         // ignore shim errors
       }
-      })();
-      // Dynamic viewport height fix for iOS Safari & modern browsers
-      (function viewportHeightFix(){
-        function setVH(){
-          try {
-            var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-            document.documentElement.style.setProperty('--dvh', vh + 'px');
-          } catch(e) { /* ignore */ }
-        }
-        setVH();
-        window.addEventListener('resize', setVH);
-        if (window.visualViewport) {
-          window.visualViewport.addEventListener('resize', setVH);
-        }
-      })();
-      
-      // Detect iOS and add class for specific styling
-      (function detectIOS(){
+    })();
+    // Dynamic viewport height fix for iOS Safari & modern browsers
+    (function viewportHeightFix() {
+      function setVH() {
         try {
-          var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-          var isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                             window.navigator.standalone === true;
-          
-          if (isIOS) {
-            document.body.classList.add('ios-device');
-            if (isStandalone) {
-              document.body.classList.add('ios-pwa');
-            }
+          var vh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+          document.documentElement.style.setProperty('--dvh', vh + 'px');
+        } catch (e) { /* ignore */ }
+      }
+      setVH();
+      window.addEventListener('resize', setVH);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', setVH);
+      }
+    })();
+
+    // Detect iOS and add class for specific styling
+    (function detectIOS() {
+      try {
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+          window.navigator.standalone === true;
+
+        if (isIOS) {
+          document.body.classList.add('ios-device');
+          if (isStandalone) {
+            document.body.classList.add('ios-pwa');
           }
-        } catch(e) { /* ignore */ }
-      })();
+        }
+      } catch (e) { /* ignore */ }
+    })();
   </script>
-  <app-root></app-root>  <script>
+  <app-root></app-root>
+  <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
@@ -134,4 +139,5 @@
     }
   </script>
 </body>
+
 </html>

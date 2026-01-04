@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { CanActivate, Router, UrlTree } from '@angular/router';
-import { Observable, filter, map, take } from 'rxjs';
-import { AuthService } from '../../services/auth.service';
+import { Observable, combineLatest, filter, map, take } from 'rxjs';
+import { AuthService, AppUser } from '../../services/auth.service';
 
 @Injectable({
     providedIn: 'root'
@@ -11,11 +11,21 @@ export class StaffGuard implements CanActivate {
     private router = inject(Router);
 
     canActivate(): Observable<boolean | UrlTree> {
-        return this.auth.userProfile$.pipe(
-            filter(profile => !!profile || !this.auth.isLoading), // Wait for loading to finish
+
+        return combineLatest([
+            this.auth.userProfile$,
+            this.auth.loading$
+        ]).pipe(
+            filter(([_, loading]) => !loading), // Wait until loading is false
             take(1),
-            map(profile => {
+            map(([profile]) => {
                 if (!profile) {
+                    // Critical fix: If user is authenticated but has no profile (integrity issue),
+                    // forcing logout breaks the infinite loop with GuestGuard (which redirects to / if authenticated).
+                    if (this.auth.currentUser) {
+                        console.warn('StaffGuard: User authenticated but no profile found. Forcing logout to prevent redirect loop.');
+                        this.auth.logout(); // Async, but we redirect immediately
+                    }
                     return this.router.parseUrl('/login');
                 }
 

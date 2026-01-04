@@ -352,8 +352,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadData();
-    // Force refresh full list on enter
-    this.customersService.loadCustomers();
+    // Force refresh removed to avoid double-fetch flicker (Service effect handles it)
+
     this.loadGdprData();
     // Initialize portal access cache
     this.refreshPortalAccess();

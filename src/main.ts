@@ -1,7 +1,7 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { environment } from './environments/environment';
 // Load a small shim to reduce navigator.locks error noise before anything else initializes
-import './locks-shim';
+// import './locks-shim';
 // Only disable console.log in production builds to keep useful logs during development
 if (environment.production) {
   // Disable console logs in production

@@ -76,9 +76,11 @@ export class AuthService {
   userRole = signal<string>('');
   companyId = signal<string>('');
 
+  private runtimeConfig = inject(RuntimeConfigService);
+
   constructor(private sbClient: SupabaseClientService) {
     // Validar que las variables de entorno estén configuradas
-    const cfg = this.sbClient['cfg']?.get?.() ?? null;
+    const cfg = this.runtimeConfig.get();
     if (!cfg?.supabase?.url || !cfg?.supabase?.anonKey) {
       console.error('❌ SUPABASE CONFIGURATION ERROR:');
       console.error('Las variables de entorno de Supabase no están configuradas.');
@@ -208,12 +210,17 @@ export class AuthService {
       try {
         await this.supabase.auth.refreshSession();
       } catch (refreshErr) {
+        console.warn('🔐 AuthService: refresh failed', refreshErr);
         // ignore refresh errors — we'll still try to read any existing session
       }
 
       const { data: { session } } = await this.supabase.auth.getSession();
+
       if (session?.user) {
         await this.setCurrentUser(session.user);
+      } else {
+        // No session found
+        this.clearUserData();
       }
     } catch (error) {
       console.error('Error initializing auth:', error);
@@ -223,7 +230,7 @@ export class AuthService {
   }
 
   private async handleAuthStateChange(event: string, session: Session | null) {
-    if (event === 'SIGNED_IN' && session?.user) {
+    if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
       await this.setCurrentUser(session.user);
     } else if (event === 'SIGNED_OUT') {
       this.clearUserData();
