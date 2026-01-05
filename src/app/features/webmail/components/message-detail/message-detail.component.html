@@ -1,21 +1,21 @@
 <div class="message-detail-container" *ngIf="message() as msg">
     <div class="header">
         <div class="toolbar">
-            <button class="btn-icon" routerLink="../.."><i class="fas fa-arrow-left"></i></button>
+            <button class="btn-icon" (click)="goBack()" title="Volver"><i class="fas fa-arrow-left"></i></button>
             <div class="actions">
                 <button class="btn-icon" title="Responder" (click)="reply()"><i class="fas fa-reply"></i></button>
-                <button class="btn-icon" title="Eliminar"><i class="fas fa-trash"></i></button>
+                <button class="btn-icon" title="Eliminar" (click)="delete()"><i class="fas fa-trash"></i></button>
             </div>
         </div>
 
         <h2 class="subject">{{ msg.subject }}</h2>
 
         <div class="metadata">
-            <div class="avatar">{{ (msg.from.name || msg.from.email).charAt(0).toUpperCase() }}</div>
+            <div class="avatar">{{ getSenderInitial(msg.from) }}</div>
             <div class="info">
                 <div class="sender">
-                    <span class="name">{{ msg.from.name }}</span>
-                    <span class="email">&lt;{{ msg.from.email }}&gt;</span>
+                    <span class="name">{{ getSenderName(msg.from) }}</span>
+                    <span class="email">{{ msg.from.email }}</span>
                 </div>
                 <div class="date">{{ msg.received_at | date:'medium' }}</div>
             </div>
@@ -23,8 +23,18 @@
     </div>
 
     <div class="body-content">
-        <!-- Using innerHTML carefully (should be sanitized) -->
-        <div class="email-body" [innerHTML]="msg.body_html || msg.body_text"></div>
+        <!-- Main Content -->
+        <div class="email-body" [innerHTML]="bodyParts.main | safeHtml"></div>
+
+        <!-- Collapsible Quoted Text -->
+        <div *ngIf="bodyParts.quoted" class="quoted-section">
+            <button class="btn-expand" (click)="showQuotedText.set(!showQuotedText())">
+                <i class="fas" [class.fa-ellipsis-h]="!showQuotedText()" [class.fa-chevron-up]="showQuotedText()"></i>
+                <span>{{ showQuotedText() ? 'Ocultar mensaje citado' : 'Mostrar mensaje citado' }}</span>
+            </button>
+
+            <div *ngIf="showQuotedText()" class="quoted-content" [innerHTML]="bodyParts.quoted | safeHtml"></div>
+        </div>
     </div>
 
     <div *ngIf="msg.attachments?.length" class="attachments">
@@ -35,6 +45,34 @@
                 <span>{{ att.filename }}</span>
                 <span class="size">({{ att.size / 1024 | number:'1.0-0' }} KB)</span>
             </div>
+        </div>
+    </div>
+
+    <!-- Inline Reply Box -->
+    <div id="reply-box" class="reply-section" *ngIf="showReplyBox()">
+        <div class="reply-header">
+            <div class="user-info">
+                <div class="avatar-sm">{{ (store.currentAccount()?.sender_name || 'Me').charAt(0).toUpperCase() }}</div>
+                <div class="meta">
+                    <span class="reply-to">Respondiendo a <strong>{{ msg.from.name || msg.from.email }}</strong></span>
+                </div>
+            </div>
+            <button class="btn-icon-sm" (click)="discardReply()" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="reply-editor">
+            <textarea [(ngModel)]="replyContent" placeholder="Escribe tu respuesta aquí..." rows="6"
+                [disabled]="isSending()">
+            </textarea>
+        </div>
+
+        <div class="reply-actions">
+            <button class="btn-primary" (click)="sendReply()" [disabled]="isSending() || !replyContent.trim()">
+                <ng-container *ngIf="!isSending()">Enviar</ng-container>
+                <ng-container *ngIf="isSending()"><i class="fas fa-spinner fa-spin"></i> Enviando...</ng-container>
+            </button>
+            <button class="btn-icon" (click)="discardReply()" title="Descartar borrador"><i
+                    class="fas fa-trash-alt"></i></button>
         </div>
     </div>
 </div>

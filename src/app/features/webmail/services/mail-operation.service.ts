@@ -22,15 +22,53 @@ export class MailOperationService {
   }
 
   async deleteMessages(messageIds: string[]) {
-    // Soft delete: Move to trash? Or hard delete?
-    // Usually move to trash first. Assuming 'trash' logic is handled by UI calling moveMessages to Trash folder.
-    // Here implies hard delete or specific flag.
-    const { error } = await this.supabase
-      .from('mail_messages')
-      .delete()
-      .in('id', messageIds);
+    if (!messageIds.length) return;
 
-    if (error) throw error;
+    // 1. Get info about the first message to determine context (Account/Folder)
+    const { data: messages, error: msgError } = await this.supabase
+      .from('mail_messages')
+      .select('account_id, folder_id')
+      .in('id', messageIds)
+      .limit(1);
+
+    if (msgError) throw msgError;
+    if (!messages || messages.length === 0) return;
+
+    const accountId = messages[0].account_id;
+    const currentFolderId = messages[0].folder_id;
+
+    // 2. Find Trash folder for this account
+    const { data: trashFolder, error: trashError } = await this.supabase
+      .from('mail_folders')
+      .select('id')
+      .eq('account_id', accountId)
+      .eq('system_role', 'trash')
+      .single();
+
+    if (trashError) {
+      // If no trash folder found (rare), fall back to hard delete
+      console.warn('Trash folder not found, performing hard delete.');
+      const { error } = await this.supabase.from('mail_messages').delete().in('id', messageIds);
+      if (error) throw error;
+      return;
+    }
+
+    // 3. Logic: If already in trash, Hard Delete. Else, Move to Trash.
+    if (currentFolderId === trashFolder.id) {
+      // Hard Delete
+      const { error } = await this.supabase
+        .from('mail_messages')
+        .delete()
+        .in('id', messageIds);
+      if (error) throw error;
+    } else {
+      // Soft Delete (Move to Trash)
+      const { error } = await this.supabase
+        .from('mail_messages')
+        .update({ folder_id: trashFolder.id })
+        .in('id', messageIds);
+      if (error) throw error;
+    }
   }
 
   async markAsRead(messageIds: string[], isRead: boolean = true) {

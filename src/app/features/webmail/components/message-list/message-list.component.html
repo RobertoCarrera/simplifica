@@ -22,10 +22,11 @@
 
         <div *ngIf="!loading() && messages().length > 0" class="messages">
             <div *ngFor="let msg of messages()" class="message-item" [class.unread]="!msg.is_read"
-                [routerLink]="['../thread', msg.thread_id || msg.id]">
-                <div class="checkbox">
+                [routerLink]="['../thread', msg.id]">
+                <!-- Checkbox removed by user request -->
+                <!-- <div class="checkbox">
                     <input type="checkbox">
-                </div>
+                </div> -->
                 <div class="star" [class.active]="msg.is_starred">
                     <i class="far fa-star"></i>
                 </div>

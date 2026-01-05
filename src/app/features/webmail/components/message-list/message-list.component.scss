@@ -142,18 +142,19 @@
             }
         }
 
-        .checkbox {
+        // Checkbox removed
+        /* .checkbox {
             margin-right: 1rem;
             display: flex;
             align-items: center;
-
+            
             input[type="checkbox"] {
                 accent-color: var(--color-primary-600);
                 width: 16px;
                 height: 16px;
                 cursor: pointer;
             }
-        }
+        } */
 
         .star {
             margin-right: 1rem;

@@ -69,6 +69,39 @@ $radius: 12px;
       }
     }
 
+    .sidebar-actions {
+      padding: 0.5rem 1rem 1rem 1rem; // More top breathing room
+
+      .btn-compose {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        background: var(--bg-tertiary); // Use tertiary or secondary
+        color: var(--text-primary); // Text color
+        border: none; // NO BORDER
+        padding: 1rem 1.5rem; // Generous padding
+        border-radius: 1rem; // Rounded corners (16px) - Modern boxy pill
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all $transition-speed;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); // Subtle shadow
+
+        i {
+          color: var(--color-primary-600);
+          font-size: 1.1rem;
+        }
+
+        &:hover {
+          background: var(--bg-secondary);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); // Lift effect
+          transform: translateY(-1px);
+        }
+      }
+    }
+
     .sidebar-content {
       flex: 1;
       overflow-y: auto;
@@ -100,45 +133,7 @@ $radius: 12px;
     position: relative; // Context for FAB
   }
 
-  // --- FAB (Floating Action Button) ---
-  .fab-compose {
-    position: absolute;
-    bottom: 2rem;
-    right: 2rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    background: var(--color-primary-600);
-    color: white;
-    border: none;
-    border-radius: 3rem; // Pill shape
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(var(--color-primary-rgb), 0.4);
-    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 50;
 
-    .icon {
-      font-size: 1.2rem;
-    }
-
-    .label {
-      font-size: 0.95rem;
-    }
-
-    &:hover {
-      transform: translateY(-4px) scale(1.02);
-      box-shadow: 0 8px 25px rgba(var(--color-primary-rgb), 0.5);
-      background: var(--color-primary-500); // Slightly lighter on hover
-    }
-
-    &:active {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 10px rgba(var(--color-primary-rgb), 0.3);
-    }
-  }
 }
 
 // Animations

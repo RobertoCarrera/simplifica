@@ -1,7 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { MailStoreService } from '../../services/mail-store.service';
 
@@ -12,14 +12,23 @@ import { MailStoreService } from '../../services/mail-store.service';
   templateUrl: './message-composer.component.html',
   styleUrl: './message-composer.component.scss'
 })
-export class MessageComposerComponent {
+export class MessageComposerComponent implements OnInit {
   to = '';
   subject = '';
   body = '';
 
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private operations = inject(MailOperationService);
   private store = inject(MailStoreService);
+
+  ngOnInit() {
+    this.route.queryParams.subscribe(params => {
+      if (params['to']) this.to = params['to'];
+      if (params['subject']) this.subject = params['subject'];
+      // if (params['replyTo']) ... handle threading context if needed
+    });
+  }
 
   async send() {
     if (!this.to || !this.subject) return;
