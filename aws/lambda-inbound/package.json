@@ -1,0 +1,9 @@
+{
+    "name": "lambda-inbound-email",
+    "version": "1.0.0",
+    "description": "AWS Lambda to process SES inbound emails and forward to Supabase",
+    "main": "index.mjs",
+    "dependencies": {
+        "mailparser": "^3.6.4"
+    }
+}
