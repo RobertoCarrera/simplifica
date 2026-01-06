@@ -380,7 +380,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     if (!customer) return;
     this.inviteTarget.set(customer);
     this.inviteEmail = (customer.email || '').trim();
-    this.inviteMessage = '';
+    this.inviteMessage = 'Hola, te invito a acceder a tu portal de cliente para ver tus tickets y presupuestos.';
     this.showInviteModal.set(true);
   }
 
