@@ -421,7 +421,216 @@ $radius-sm: 8px;
 }
 
 
-// Modal Styles
+// --- ADD DOMAIN TRIGGER ---
+.add-domain-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+
+    .section-hint {
+        margin-top: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+}
+
+// --- STRICT DOMAIN MODAL ---
+.domain-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.7); // Darker backdrop
+    backdrop-filter: blur(4px);
+    z-index: 9999; // EXTREMELY HIGH to cover Sidebar (usually ~1000)
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.domain-modal-content {
+    width: 90%;
+    max-width: 700px; // Increased from 600px
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+
+    .modal-header {
+        padding: 1.25rem 1.5rem;
+        background: var(--bg-primary);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+    }
+
+    .modal-body {
+        padding: 2.5rem; // Increased padding
+
+        .search-hero {
+            text-align: center;
+            margin-bottom: 2rem;
+
+            .hero-icon {
+                font-size: 3rem;
+                color: var(--color-primary-500);
+                margin-bottom: 1rem;
+                opacity: 0.9;
+            }
+
+            p {
+                color: var(--text-secondary);
+                margin-bottom: 1.5rem;
+                font-size: 0.95rem; // Slightly smaller
+            }
+
+            .search-box-large {
+                display: flex;
+                gap: 0.8rem;
+                max-width: 500px; // Limit width for better aesthetic
+                margin: 0 auto; // Center it
+
+                .form-input.large {
+                    flex: 1;
+                    padding: 1rem 1.25rem;
+                    font-size: 1.05rem; // Slightly smaller
+                    background: var(--bg-primary);
+                    border: 2px solid var(--border-color);
+                    border-radius: 12px;
+
+                    &:focus {
+                        border-color: var(--color-primary-500);
+                        box-shadow: 0 0 0 4px rgba(var(--color-primary-rgb), 0.1);
+                    }
+                }
+
+                .btn.large {
+                    padding: 0 1.5rem;
+                    font-size: 1.1rem; // Slightly smaller
+                    border-radius: 12px;
+                }
+            }
+        }
+
+        .search-result {
+            animation: fadeIn 0.4s ease;
+
+            .result-card {
+                padding: 1.5rem 2rem; // More horizontal padding
+                border-radius: 12px;
+                background: var(--bg-primary);
+                border: 1px solid var(--border-color);
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 1.5rem; // Add gap between info and action
+
+                &.available {
+                    border-color: #22c55e;
+                    background: linear-gradient(to right, rgba(34, 197, 94, 0.05), transparent);
+                }
+
+                &.unavailable {
+                    border-color: var(--border-color);
+                    background: var(--bg-tertiary);
+                    opacity: 0.8;
+                }
+
+                .domain-lockup {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    margin-bottom: 0.5rem;
+
+                    .name {
+                        font-size: 1.25rem; // Reduced from 1.35rem
+                        font-weight: 700;
+                        color: var(--text-primary);
+                    }
+
+                    .badge {
+                        padding: 0.25rem 0.75rem;
+                        border-radius: 20px;
+                        font-size: 0.75rem;
+                        font-weight: 600;
+                        text-transform: uppercase;
+                        white-space: nowrap; // Prevent wrap
+
+                        &.success {
+                            background: #d1fae5;
+                            color: #047857;
+                        }
+
+                        &.danger {
+                            background: #f3f4f6;
+                            color: #6b7280;
+                        }
+                    }
+                }
+
+                .description {
+                    font-size: 0.85rem; // Reduced from 0.9rem
+                    color: var(--text-secondary);
+                    margin: 0;
+                    line-height: 1.4;
+                }
+
+                .action-area {
+                    text-align: right;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-end;
+                    min-width: 160px; // Ensure enough width
+
+                    .amount {
+                        display: block;
+                        font-size: 1.15rem; // Reduced from 1.25rem
+                        font-weight: 800;
+                        color: var(--text-primary);
+                        margin-bottom: 0.75rem;
+                    }
+
+                    .btn-success {
+                        background-color: #22c55e; // Green 500
+                        color: white;
+                        border: none;
+                        padding: 0.6rem 1.25rem;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        font-size: 0.95rem;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.3);
+
+                        &:hover {
+                            background-color: #16a34a; // Green 600
+                            transform: translateY(-1px);
+                            box-shadow: 0 6px 10px -1px rgba(34, 197, 94, 0.4);
+                        }
+
+                        &:active {
+                            transform: translateY(0);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Modal Styles (Legacy / AWS)
 .modal-overlay {
     position: fixed;
     top: 0;

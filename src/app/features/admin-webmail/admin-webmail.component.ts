@@ -78,23 +78,70 @@ export class AdminWebmailComponent implements OnInit {
         if (data) this.users.set(data);
     }
 
-    async addDomain() {
+    // Domain Search State
+    isChecking = false;
+    checkResult = signal<{ domain: string, available: boolean, price?: string } | null>(null);
+
+    async checkAvailability() {
         if (!this.newDomainName) return;
+
+        this.isChecking = true;
+        this.checkResult.set(null);
+
+        try {
+            const { data, error } = await this.supabase.functions.invoke('aws-manager', {
+                body: {
+                    action: 'check-availability',
+                    payload: { domain: this.newDomainName }
+                }
+            });
+
+            if (error) throw error;
+
+            // AWS Response: { Availability: 'AVAILABLE' | 'UNAVAILABLE' | ... }
+            const isAvailable = data.Availability === 'AVAILABLE';
+
+            this.checkResult.set({
+                domain: this.newDomainName,
+                available: isAvailable,
+                price: isAvailable ? '12.00 USD/año' : undefined // Mock price until we query pricing API
+            });
+
+        } catch (e: any) {
+            console.error('Error checking availability:', e);
+            alert('Error al comprobar dominio: ' + e.message);
+        } finally {
+            this.isChecking = false;
+        }
+    }
+
+    async registerDomain() {
+        const result = this.checkResult();
+        if (!result || !result.available) return;
+
+        // Logic to proceed to purchase (Phase 3)
+        // For now, we simulate the "Buy" -> "Add to DB" flow
+        if (!confirm(`¿Comprar y registrar ${result.domain} por ${result.price}?`)) return;
 
         // Simulate SES verification process
         const { error } = await this.supabase
             .from('mail_domains')
             .insert({
-                domain: this.newDomainName,
-                is_verified: true // Auto-verify for demo/prototype
+                domain: result.domain,
+                // In a real flow, assigned_to_user would come from context or current admin
+                // For admin panel, maybe ask "Assign to whom?" or default to self/admin
+                is_verified: false, // Starts unverified until automation kicks in
+                // status: 'registering' (if we had that column)
             });
 
         if (error) {
             console.error(error);
-            alert('Error al añadir dominio');
+            alert('Error al registrar dominio en BD');
         } else {
+            alert('Dominio registrado (Simulación). El proceso de aprovisionamiento comenzaría ahora.');
             this.newDomainName = '';
             this.isAddingDomain = false;
+            this.checkResult.set(null);
             this.loadDomains();
         }
     }

@@ -25,14 +25,46 @@
         </div>
 
         <div class="add-form" *ngIf="isAddingDomain">
-            <div class="form-group">
-                <label>Dominio (ej: miempresa.com)</label>
-                <div class="flex gap-2">
-                    <input type="text" [(ngModel)]="newDomainName" class="form-control" placeholder="dominio.com">
-                    <button class="btn btn-primary" (click)="addDomain()">Verificar</button>
+            <div class="search-box">
+                <label>Comprobar Disponibilidad</label>
+                <div class="input-group">
+                    <input type="text" [(ngModel)]="newDomainName" (keyup.enter)="checkAvailability()"
+                        class="form-control" placeholder="miempresa.com" [disabled]="isChecking">
+                    <button class="btn btn-primary" (click)="checkAvailability()"
+                        [disabled]="isChecking || !newDomainName">
+                        <i class="fas" [class.fa-search]="!isChecking" [class.fa-spinner]="isChecking"
+                            [class.fa-spin]="isChecking"></i>
+                        {{ isChecking ? 'Comprobando...' : 'Buscar' }}
+                    </button>
                     <button class="btn btn-text" (click)="isAddingDomain = false">Cancelar</button>
                 </div>
-                <p class="hint">Al añadirlo, simularemos la verificación DNS de SES.</p>
+            </div>
+
+            <!-- Search Result -->
+            <div class="search-result" *ngIf="checkResult() as res">
+                <div class="result-card" [class.available]="res.available" [class.unavailable]="!res.available">
+                    <div class="info">
+                        <div class="domain-main">
+                            <i class="fas" [class.fa-check-circle]="res.available"
+                                [class.fa-times-circle]="!res.available"></i>
+                            <span class="name">{{ res.domain }}</span>
+                        </div>
+                        <div class="status-text">
+                            {{ res.available ? 'Disponible para registrar' : 'No disponible' }}
+                        </div>
+                    </div>
+
+                    <div class="action-area" *ngIf="res.available">
+                        <div class="price-tag">{{ res.price }}</div>
+                        <button class="btn btn-success" (click)="registerDomain()">
+                            Comprar y Registrar
+                        </button>
+                    </div>
+                </div>
+
+                <p class="hint mt-2" *ngIf="res.available">
+                    <i class="fas fa-info-circle"></i> Al comprar, configuraremos automáticamente los DNS y el correo.
+                </p>
             </div>
         </div>
 

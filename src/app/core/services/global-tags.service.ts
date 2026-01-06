@@ -98,9 +98,6 @@ export class GlobalTagsService {
     }
 
     /**
-     * Get tags assigned to a specific entity (client or ticket).
-     */
-    /**
      * Get tags assigned to a specific entity (client, ticket, or service).
      */
     getEntityTags(entityType: 'clients' | 'tickets' | 'services', entityId: string): Observable<GlobalTag[]> {

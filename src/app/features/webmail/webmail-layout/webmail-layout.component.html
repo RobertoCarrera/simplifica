@@ -24,8 +24,8 @@
             <app-folder-tree *ngIf="!showSettings()" class="fade-in"></app-folder-tree>
 
             <!-- Settings View -->
-            <app-webmail-settings *ngIf="showSettings()" (close)="showSettings.set(false)"
-                class="slide-in"></app-webmail-settings>
+            <app-webmail-settings *ngIf="showSettings()" (close)="showSettings.set(false)">
+            </app-webmail-settings>
         </div>
     </aside>
 
