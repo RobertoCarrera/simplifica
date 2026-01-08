@@ -651,7 +651,7 @@ export class CompanyAdminComponent implements OnInit {
     { key: 'moduloFacturas', name: 'Facturación' },
     { key: 'moduloPresupuestos', name: 'Presupuestos' },
     { key: 'moduloServicios', name: 'Servicios' },
-    { key: 'moduloMaterial', name: 'Material' },
+    { key: 'moduloProductos', name: 'Productos y Material' },
     { key: 'moduloSAT', name: 'Tickets' },
     { key: 'moduloAnaliticas', name: 'Analíticas' },
     { key: 'moduloChat', name: 'Chat Interno' }

@@ -475,7 +475,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       case '/servicios':
         return 'moduloServicios';
       case '/productos':
-        return 'moduloMaterial';
+        return 'moduloProductos';
       case '/facturacion':
       case '/portal/facturas':
         return 'moduloFacturas';
