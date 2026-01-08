@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { UserModulesService } from '../../../services/user-modules.service';
 import { take } from 'rxjs/operators';
+
 
 @Component({
   selector: 'app-company-admin',
@@ -22,14 +24,15 @@ import { take } from 'rxjs/operators';
           <div class="flex items-center gap-3 mt-1 text-emerald-100">
             <span class="flex items-center gap-1">
               <i class="fas fa-user-tag text-sm"></i>
-              {{ getRoleLabel((auth.userProfile$ | async)?.role) }}
+              {{ getRoleLabel((auth.userProfile$ | async)?.role) }} 
+              <span *ngIf="(auth.userProfile$ | async)?.is_super_admin" class="ml-1 text-xs bg-purple-500 text-white px-1.5 py-0.5 rounded-full">Super Admin</span>
             </span>
           </div>
         </div>
       </div>
     </div>
 
-    <ng-container *ngIf="(auth.userProfile$ | async)?.role === 'owner' || (auth.userProfile$ | async)?.role === 'admin'; else noAccess">
+    <ng-container *ngIf="(auth.userProfile$ | async)?.role === 'owner' || (auth.userProfile$ | async)?.role === 'admin' || (auth.userProfile$ | async)?.is_super_admin; else noAccess">
       <!-- Sub-tabs Navigation -->
       <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 p-1">
         <nav class="flex gap-1">
@@ -151,6 +154,15 @@ import { take } from 'rxjs/operators';
                     : 'text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20'"
                   [title]="getToggleActiveTooltip(u)">
                   <i class="fas" [class]="u.active ? 'fa-user-slash' : 'fa-user-check'"></i>
+                </button>
+
+                <!-- Manage Modules Button (New) -->
+                <button 
+                  (click)="openModuleModal(u)"
+                  [disabled]="busy"
+                  class="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                  title="Gestionar Módulos">
+                  <i class="fas fa-cubes"></i>
                 </button>
               </div>
             </div>
@@ -324,6 +336,46 @@ import { take } from 'rxjs/operators';
         </div>
       </div>
     </ng-template>
+
+    <!-- MODULES MODAL -->
+    <div *ngIf="showModuleModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" (click)="closeModuleModal()"></div>
+      <div class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg p-6 animate-fade-in">
+        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <i class="fas fa-cubes text-purple-500"></i>
+          Gestionar Módulos
+        </h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Asigna o revoca el acceso a módulos para <strong>{{ selectedUserForModules?.name }}</strong>.
+        </p>
+
+        <div class="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+          <div *ngFor="let mod of availableModules" class="flex items-center justify-between p-3 rounded-lg border border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded bg-gray-100 dark:bg-slate-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                <i class="fas fa-box"></i>
+              </div>
+              <span class="font-medium text-gray-700 dark:text-gray-300">{{ mod.name }}</span>
+            </div>
+            
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox"
+                [checked]="isModuleEnabled(mod.key)"
+                (change)="toggleModule(mod.key, $event)"
+                class="sr-only peer">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-6 flex justify-end">
+          <button (click)="closeModuleModal()" class="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+
   </div>
   `
 })
@@ -584,6 +636,86 @@ export class CompanyAdminComponent implements OnInit {
       this.toast.error('Error', e.message || 'Error al copiar enlace');
     } finally {
       this.busy = false;
+    }
+  }
+
+  // ==========================================
+  // MODULE MANAGEMENT
+  // ==========================================
+  showModuleModal = false;
+  selectedUserModules: any[] = [];
+  selectedUserForModules: any = null;
+
+  // Catalogo de modulos (hardcoded for UI consistency)
+  availableModules = [
+    { key: 'moduloFacturas', name: 'Facturación' },
+    { key: 'moduloPresupuestos', name: 'Presupuestos' },
+    { key: 'moduloServicios', name: 'Servicios' },
+    { key: 'moduloMaterial', name: 'Material' },
+    { key: 'moduloSAT', name: 'Tickets' },
+    { key: 'moduloAnaliticas', name: 'Analíticas' },
+    { key: 'moduloChat', name: 'Chat Interno' }
+  ];
+
+  userModulesService = inject(UserModulesService);
+
+  async openModuleModal(user: any) {
+    this.selectedUserForModules = user;
+    this.showModuleModal = true;
+    this.selectedUserModules = [];
+
+    // Fetch directly from DB as we don't have listOtherUserModules yet
+    try {
+      const { data, error } = await this.auth.client
+        .from('user_modules')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (!error && data) {
+        this.selectedUserModules = data;
+      }
+    } catch (e) {
+      console.warn('Could not fetch user modules', e);
+    }
+  }
+
+  closeModuleModal() {
+    this.showModuleModal = false;
+    this.selectedUserForModules = null;
+  }
+
+  isModuleEnabled(key: string): boolean {
+    const mod = this.selectedUserModules.find(m => m.module_key === key);
+    // If owner/admin, default to TRUE if strictly not disabled? 
+    // Wait, the new logic says DEFAULT TRUE for Owners.
+    // So if no record exists, it should be enabled?
+    // Let's mirror the get_effective_modules logic approximately for UI display.
+    if (!mod) {
+      // If owner/admin and no record, default to true
+      if (this.selectedUserForModules?.role === 'owner' || this.selectedUserForModules?.role === 'admin') return true;
+      return false;
+    }
+    return (mod.status === 'activado' || mod.status === 'active' || mod.status === 'enabled');
+  }
+
+  async toggleModule(key: string, event: any) {
+    if (!this.selectedUserForModules) return;
+
+    const isChecked = event.target.checked;
+    const status = isChecked ? 'activado' : 'desactivado';
+
+    // Optimistic Update
+    const idx = this.selectedUserModules.findIndex(m => m.module_key === key);
+    if (idx >= 0) {
+      this.selectedUserModules[idx].status = status;
+    } else {
+      this.selectedUserModules.push({ module_key: key, status });
+    }
+
+    try {
+      await this.userModulesService.upsertForUser(this.selectedUserForModules.id, key, status);
+    } catch (e) {
+      this.toast.error('Error', 'No se pudo actualizar el permiso');
     }
   }
 }

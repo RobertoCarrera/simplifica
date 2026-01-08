@@ -22,6 +22,7 @@ export interface AppUser {
   company?: Company | null;
   // Client portal specific
   client_id?: string | null; // Only set for portal clients - the id from clients table
+  is_super_admin?: boolean; // Global admin flag from public.users.role
 }
 
 
@@ -282,8 +283,8 @@ export class AuthService {
       this.userProfileSubject.next(appUser);
       this.userRole.set(appUser.role);
       if (appUser.company_id) this.companyId.set(appUser.company_id);
-      // Sólo admin es considerado admin; owner es rol de negocio sin privilegios dev
-      this.isAdmin.set(appUser.role === 'admin');
+      // Admin global (user.role === 'admin') o rol de compañía 'admin'
+      this.isAdmin.set(appUser.role === 'admin' || !!appUser.is_super_admin);
     }
     // Finalizar carga
     this.loadingSubject.next(false);
@@ -307,7 +308,7 @@ export class AuthService {
       const [userRes, clientRes] = await Promise.all([
         this.supabase
           .from('users')
-          .select(`id, auth_user_id, email, name, surname, permissions, active, is_dpo`)
+          .select(`id, auth_user_id, email, name, surname, permissions, active, is_dpo, role`)
           .eq('auth_user_id', authId)
           .limit(1)
           .maybeSingle(),
@@ -411,7 +412,8 @@ export class AuthService {
           permissions: {},
           full_name: clientRecord.name,
           company: activeMembership.company || null,
-          client_id: clientRecord.id
+          client_id: clientRecord.id,
+          is_super_admin: userRes.data?.role === 'admin'
         };
         console.log('✅ Active Context: CLIENT', appUser.company?.name);
 
@@ -433,7 +435,8 @@ export class AuthService {
           role: activeMembership.role, // owner/admin/member
           company_id: activeMembership.company_id,
           company: activeMembership.company || null,
-          full_name: userRes.data.name || userRes.data.email
+          full_name: userRes.data.name || userRes.data.email,
+          is_super_admin: userRes.data.role === 'admin'
         };
         console.log('✅ Active Context: STAFF', appUser.role, appUser.company?.name);
       }

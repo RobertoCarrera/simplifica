@@ -121,7 +121,10 @@ serve(async (req: Request) => {
   const p_company_id = String(body.p_company_id);
 
   try {
-    // Verify user membership via public.users
+    let isStaff = false;
+    let clientId: string | null = null;
+
+    // 1. Check if User is Staff (public.users)
     const { data: userRow, error: userErr } = await supabaseAdmin
       .from('users')
       .select('id')
@@ -129,17 +132,41 @@ serve(async (req: Request) => {
       .eq('company_id', p_company_id)
       .eq('active', true)
       .maybeSingle();
-    if (userErr || !userRow) {
-      if (userErr) console.warn(`[${FUNCTION_NAME}] users check error`, userErr);
+
+    if (!userErr && userRow) {
+      isStaff = true;
+    } else {
+      // 2. If not Staff, check if User is Client (public.clients)
+      const { data: clientRow, error: clientErr } = await supabaseAdmin
+        .from('clients')
+        .select('id')
+        .eq('auth_user_id', authUserId)
+        .eq('company_id', p_company_id)
+        .eq('is_active', true) // Assuming 'is_active' exists, or remove if not sure. Checked schema: 'is_active' exists.
+        .maybeSingle();
+
+      if (!clientErr && clientRow) {
+        clientId = clientRow.id;
+      }
+    }
+
+    if (!isStaff && !clientId) {
       return jsonResponse(403, { error: 'User not allowed for this company', code: 'not_company_member' }, origin);
     }
 
-    // Fetch devices for the company, latest first
-    const { data: devices, error: devErr } = await supabaseAdmin
+    // Prepare Query
+    let query = supabaseAdmin
       .from('devices')
       .select('*')
-      .eq('company_id', p_company_id)
-      .order('received_at', { ascending: false });
+      .eq('company_id', p_company_id);
+
+    // Filter for Clients
+    if (!isStaff && clientId) {
+      query = query.eq('client_id', clientId);
+    }
+
+    // Execute Query
+    const { data: devices, error: devErr } = await query.order('received_at', { ascending: false });
 
     if (devErr) {
       console.error(`[${FUNCTION_NAME}] devices select error`, devErr);

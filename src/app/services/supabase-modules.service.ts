@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { from, Observable } from 'rxjs';
 import { SupabaseClientService } from './supabase-client.service';
 import { RuntimeConfigService } from './runtime-config.service';
+import { AuthService } from './auth.service';
 
 export interface EffectiveModule {
   key: string;
@@ -48,13 +49,19 @@ export class SupabaseModulesService {
   }
 
   private async executeFetchEffectiveModules(): Promise<EffectiveModule[]> {
+    // Get current active company context (using localStorage to avoid circular deps/injection context issues)
+    const companyId = localStorage.getItem('last_active_company_id');
+
     // Now using RPC for better local/prod compatibility and performance
-    const { data, error } = await this.supabaseClient.instance.rpc('get_effective_modules');
+    const { data, error } = await this.supabaseClient.instance.rpc('get_effective_modules', {
+      p_input_company_id: companyId || null
+    });
+
     if (error) {
       console.error('Error fetching effective modules via RPC:', error);
       throw new Error(error.message || 'No se pudieron obtener los módulos');
     }
-    console.log('🔍 ModulesService: RPC get_effective_modules result:', data);
+    console.log('🔍 ModulesService: RPC get_effective_modules result (Context: ' + companyId + '):', data);
     const list = (data || []) as EffectiveModule[];
     this._modules.set(list);
     return list;

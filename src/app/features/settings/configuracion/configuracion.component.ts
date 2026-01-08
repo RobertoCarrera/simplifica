@@ -487,10 +487,14 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
   }
 
   getRoleDisplayName(role: string): string {
+    // Check for Super Admin
+    if (this.userProfile?.is_super_admin) return 'Super Admin';
+
     switch (role) {
       case 'owner': return 'Propietario';
       case 'admin': return 'Administrador';
-      case 'member': return 'Miembro';
+      case 'member': return 'Equipo';
+      case 'client': return 'Cliente';
       default: return role;
     }
   }
