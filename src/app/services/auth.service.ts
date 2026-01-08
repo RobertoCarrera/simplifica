@@ -12,6 +12,7 @@ export interface AppUser {
   auth_user_id: string;    // id de auth.users
   email: string;
   name?: string | null;
+  surname?: string | null; // Added surname
   role: 'owner' | 'admin' | 'member' | 'client' | 'none';
   active: boolean;
   company_id?: string | null;
@@ -21,6 +22,18 @@ export interface AppUser {
   company?: Company | null;
   // Client portal specific
   client_id?: string | null; // Only set for portal clients - the id from clients table
+}
+
+
+// Joined data from company_members view or fetch
+export interface CompanyMembership {
+  id: string; // company_members.id
+  user_id: string;
+  company_id: string;
+  role: 'owner' | 'admin' | 'member' | 'client';
+  status: string;
+  created_at: string;
+  company?: Company;
 }
 
 export interface Company {
@@ -75,6 +88,10 @@ export class AuthService {
   isAdmin = signal<boolean>(false);
   userRole = signal<string>('');
   companyId = signal<string>('');
+
+  // Multi-Tenancy State
+  companyMemberships = signal<CompanyMembership[]>([]);
+  currentCompanyId = signal<string | null>(null);
 
   private runtimeConfig = inject(RuntimeConfigService);
 
@@ -281,80 +298,183 @@ export class AuthService {
     this.companyId.set('');
   }
 
-  // Obtiene la fila de public.users + compañía, o de public.clients para clientes del portal
+  // Obtiene datos del usuario y sus membresías (Unified Owner + Client)
   private async fetchAppUserByAuthId(authId: string): Promise<AppUser | null> {
     try {
-      console.log('🔍 Fetching app user for auth ID:', authId);
+      console.log('🔄 Fetching app user & memberships for auth ID:', authId);
 
-      // First, try to find in users table (staff/admin)
-      const { data, error } = await this.supabase
-        .from('users')
-        .select(`id, auth_user_id, email, name, role, active, company_id, permissions, company:companies(id, name, slug, nif, is_active, settings)`)
-        .eq('auth_user_id', authId)
-        .maybeSingle();
+      // --- PARALLEL FETCH: Internal User & Client User ---
+      const [userRes, clientRes] = await Promise.all([
+        this.supabase
+          .from('users')
+          .select(`id, auth_user_id, email, name, surname, permissions, active, is_dpo`)
+          .eq('auth_user_id', authId)
+          .limit(1)
+          .maybeSingle(),
+        this.supabase
+          .from('clients')
+          .select(`id, auth_user_id, email, name, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
+          .eq('auth_user_id', authId)
+      ]);
 
-      if (error) {
-        console.error('❌ Error fetching app user:', error);
+      console.log('👤 [DEBUG] Internal User fetch:', userRes);
+      console.log('👤 [DEBUG] Client User fetch:', clientRes);
+
+      let allMemberships: CompanyMembership[] = [];
+
+      // 1. Process Internal User Memberships
+      if (userRes.data) {
+        const membersRes = await this.supabase
+          .from('company_members')
+          .select(`id, user_id, company_id, role, status, created_at, company:companies(*)`)
+          .eq('user_id', userRes.data.id)
+          .eq('status', 'active'); // Only active memberships
+
+        const internalMemberships = (membersRes.data || []) as any[];
+        const typedInternal: CompanyMembership[] = internalMemberships.map(m => ({
+          id: m.id,
+          user_id: m.user_id,
+          company_id: m.company_id,
+          role: m.role,
+          status: m.status,
+          created_at: m.created_at,
+          company: Array.isArray(m.company) ? m.company[0] : m.company
+        }));
+        allMemberships = [...allMemberships, ...typedInternal];
       }
 
-      if (data) {
-        console.log('✅ App user fetched successfully:', data);
-        const company = Array.isArray((data as any).company) ? (data as any).company[0] : (data as any).company;
-        const appUser: AppUser = {
-          id: (data as any).id,
-          auth_user_id: (data as any).auth_user_id,
-          email: (data as any).email,
-          name: (data as any).name,
-          role: (data as any).role,
-          active: (data as any).active,
-          company_id: (data as any).company_id,
-          permissions: (data as any).permissions,
-          full_name: (data as any).name || (data as any).email,
-          company: company || null
-        };
-        return appUser;
+      // 2. Process Client Memberships
+      if (clientRes.data && clientRes.data.length > 0) {
+        const clientMemberships: CompanyMembership[] = clientRes.data.map((c: any) => {
+          const company = Array.isArray(c.company) ? c.company[0] : c.company;
+          return {
+            id: c.id, // using client.id as membership id shim
+            user_id: c.id, // shim: client id acts as user_id in this context
+            company_id: c.company_id,
+            role: 'client', // Always client role
+            status: c.is_active ? 'active' : 'inactive',
+            created_at: new Date().toISOString(), // unknown
+            company: company
+          };
+        });
+        allMemberships = [...allMemberships, ...clientMemberships.filter(m => m.status === 'active')];
       }
 
-      // If not found in users, check clients table (portal clients)
-      console.log('🔍 User not in users table, checking clients table...');
-      const { data: clientDataRaw, error: clientError } = await this.supabase
-        .from('clients')
-        .select(`id, auth_user_id, email, name, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
-        .eq('auth_user_id', authId)
-        .limit(1);
+      this.companyMemberships.set(allMemberships);
+      console.log('🏢 [DEBUG] Unified Memberships:', allMemberships);
 
-      if (clientError) {
-        console.error('❌ Error fetching client:', clientError);
-        return null;
+      if (allMemberships.length === 0) {
+        console.warn('⚠️ User has no active memberships (Internal or Client).');
+        return null; // Or return a "guest" AppUser if needed
       }
 
-      const clientData = clientDataRaw && clientDataRaw.length > 0 ? clientDataRaw[0] : null;
+      // 3. Determine Active Context
+      let activeMembership: CompanyMembership | undefined;
+      const storedCid = localStorage.getItem('last_active_company_id');
 
-      if (clientData) {
-        console.log('✅ Client fetched successfully:', clientData);
-        const company = Array.isArray((clientData as any).company) ? (clientData as any).company[0] : (clientData as any).company;
-        const appUser: AppUser = {
-          id: (clientData as any).id,
-          auth_user_id: (clientData as any).auth_user_id,
-          email: (clientData as any).email,
-          name: (clientData as any).name,
-          role: 'client', // Clients always have 'client' role
-          active: (clientData as any).is_active ?? true,
-          company_id: (clientData as any).company_id,
+      if (storedCid) {
+        activeMembership = allMemberships.find(m => m.company_id === storedCid);
+      }
+
+      // Fallback: Default to Owner/Admin role if available, otherwise first one
+      if (!activeMembership) {
+        // Prefer non-client roles first
+        activeMembership = allMemberships.find(m => m.role !== 'client');
+        if (!activeMembership) {
+          activeMembership = allMemberships[0];
+        }
+      }
+
+      // 4. Construct AppUser based on Active Context
+      let appUser: AppUser;
+
+      const activeContextIsClient = activeMembership.role === 'client';
+
+      if (activeContextIsClient) {
+        // --- CONTEXT: CLIENT ---
+        // Find the specific client record for this company
+        const clientRecord = clientRes.data?.find((c: any) => c.company_id === activeMembership!.company_id);
+
+        if (!clientRecord) {
+          console.error('❌ Critical Logic Error: Client record not found for active membership');
+          return null;
+        }
+
+        appUser = {
+          id: clientRecord.id, // Client ID
+          auth_user_id: clientRecord.auth_user_id,
+          email: clientRecord.email,
+          name: clientRecord.name,
+          role: 'client',
+          active: clientRecord.is_active,
+          company_id: clientRecord.company_id,
           permissions: {},
-          full_name: (clientData as any).name || (clientData as any).email,
-          company: company || null,
-          client_id: (clientData as any).id // Store client_id for filtering
+          full_name: clientRecord.name,
+          company: activeMembership.company || null,
+          client_id: clientRecord.id
         };
-        return appUser;
+        console.log('✅ Active Context: CLIENT', appUser.company?.name);
+
+      } else {
+        // --- CONTEXT: INTERNAL USER ---
+        if (!userRes.data) {
+          console.error('❌ Critical Logic Error: Internal user data missing for non-client role');
+          return null;
+        }
+
+        appUser = {
+          id: userRes.data.id, // User ID
+          auth_user_id: userRes.data.auth_user_id,
+          email: userRes.data.email,
+          name: userRes.data.name,
+          surname: userRes.data.surname,
+          permissions: userRes.data.permissions,
+          active: userRes.data.active,
+          role: activeMembership.role, // owner/admin/member
+          company_id: activeMembership.company_id,
+          company: activeMembership.company || null,
+          full_name: userRes.data.name || userRes.data.email
+        };
+        console.log('✅ Active Context: STAFF', appUser.role, appUser.company?.name);
       }
 
-      console.warn('⚠️ No app user or client found for auth ID:', authId);
-      return null;
+      // Update State Signals
+      this.currentCompanyId.set(appUser.company_id || null);
+      this.companyId.set(appUser.company_id || '');
+      localStorage.setItem('last_active_company_id', appUser.company_id || '');
+
+      return appUser;
+
     } catch (e) {
       console.error('❌ Exception in fetchAppUserByAuthId:', e);
       return null;
     }
+  }
+
+  // SWITCH COMPANY CONTEXT
+  async switchCompany(targetCompanyId: string): Promise<boolean> {
+    const memberships = this.companyMemberships();
+    const target = memberships.find(m => m.company_id === targetCompanyId);
+
+    if (!target) {
+      console.error('❌ Cannot switch to company: Membership not found', targetCompanyId);
+      return false;
+    }
+
+    // Update Local Storage
+    localStorage.setItem('last_active_company_id', targetCompanyId);
+
+    // Reload User Profile (which triggers the Shim Logic in fetchAppUserByAuthId)
+    const currentUser = this.currentUserSubject.value;
+    if (currentUser) {
+      await this.setCurrentUser(currentUser);
+      // Refresh page to ensure all components/guards re-evaluate with new role/permissions?
+      // Or just rely on reactive updates.
+      // Creating a full reload is safer for a major context switch.
+      window.location.reload();
+      return true;
+    }
+    return false;
   }
 
   // Asegura que existe fila en public.users y enlaza auth_user_id
@@ -409,7 +529,7 @@ export class AuthService {
           if (confirmErr) {
             console.error('❌ Error in confirm_user_registration:', confirmErr);
           } else if (confirmData?.requires_invitation_approval) {
-            console.log('� Invitation approval required. Not creating user/company client-side.');
+            console.log(' Invitation approval required. Not creating user/company client-side.');
             return; // Esperar aprobación del owner
           } else if (confirmData?.success) {
             console.log('✅ Registration completed via RPC');
@@ -450,7 +570,19 @@ export class AuthService {
                 company_id: companyId,
                 auth_user_id: authUser.id,
                 permissions: {}
-              });
+              })
+                .select('id')
+                .single();
+
+              if (insertResult.data) {
+                await this.supabase.from('company_members').insert({
+                  user_id: insertResult.data.id,
+                  company_id: companyId,
+                  role: 'member',
+                  status: 'active'
+                });
+              }
+
               if (insertResult.error) throw insertResult.error;
               return insertResult;
             });
@@ -498,7 +630,19 @@ export class AuthService {
               company_id: companyId,
               auth_user_id: authUser.id,
               permissions: {}
-            });
+            })
+              .select('id')
+              .single();
+
+            if (insertResult.data) {
+              await this.supabase.from('company_members').insert({
+                user_id: insertResult.data.id,
+                company_id: companyId,
+                role: 'owner',
+                status: 'active'
+              });
+            }
+
             if (insertResult.error) throw insertResult.error;
             return insertResult;
           });
@@ -1099,6 +1243,12 @@ export class AuthService {
   }
 
   /**
+   * Recargar perfil de usuario forzando petición a red
+   */
+
+
+
+  /**
    * Obtener invitaciones pendientes para la empresa actual
    */
   async getCompanyInvitations(): Promise<{
@@ -1108,14 +1258,29 @@ export class AuthService {
   }> {
     try {
       const userProfile = this.userProfile;
-      if (!userProfile?.company_id) {
+      if (!userProfile) {
+        return { success: false, error: 'Usuario no autenticado' };
+      }
+
+      // Allow if company_id exists OR if user is admin/owner (Super Admin case)
+      if (!userProfile.company_id && !['admin', 'owner'].includes(userProfile.role || '')) {
         return { success: false, error: 'Usuario sin empresa asignada' };
       }
 
-      const { data, error } = await this.supabase
-        .from('admin_company_invitations')
-        .select('*')
-        .eq('company_id', userProfile.company_id)
+      let query = this.supabase
+        .from('company_invitations')
+        .select('*');
+
+      if (userProfile?.company_id) {
+        query = query.eq('company_id', userProfile.company_id);
+      } else {
+        // Super Admin case: fetch invites sent by me (or all with null company_id?)
+        // Let's matching against invited_by_user_id to be safe and consistent with RLS
+        query = query.eq('invited_by_user_id', userProfile.id);
+      }
+
+      const { data, error } = await query
+        .neq('status', 'accepted')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -1198,5 +1363,50 @@ export class AuthService {
     } catch (e: any) {
       return { success: false, error: e.message };
     }
+  }
+  /**
+   * Actualizar perfil de usuario (nombre, apellido)
+   */
+  async updateProfile(userId: string, data: { name?: string; surname?: string }): Promise<{ success: boolean; error?: string }> {
+    try {
+      const updateData: any = {};
+      if (data.name !== undefined) updateData.name = data.name;
+      if (data.surname !== undefined) updateData.surname = data.surname;
+
+      if (Object.keys(updateData).length === 0) return { success: true };
+
+      const { error } = await this.supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      // Actualizar estado local si es el usuario actual
+      const current = this.userProfileSubject.value;
+      if (current && current.id === userId) {
+        this.userProfileSubject.next({ ...current, ...updateData });
+      }
+
+      return { success: true };
+    } catch (e: any) {
+      console.error('❌ Error updating profile:', e);
+      return { success: false, error: e?.message || String(e) };
+    }
+  }
+
+  /**
+   * Recargar perfil de usuario forzando petición a red
+   */
+  async reloadProfile(): Promise<AppUser | null> {
+    const currentUser = this.currentUserSubject.value;
+    if (!currentUser) return null;
+
+    // Invalidar caché (si existiera) y forzar petición
+    const profile = await this.fetchAppUserByAuthId(currentUser.id);
+    if (profile) {
+      this.userProfileSubject.next(profile);
+    }
+    return profile;
   }
 }

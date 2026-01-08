@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-company-admin',
@@ -179,9 +180,9 @@ import { ToastService } from '../../../services/toast.service';
             <select 
               [(ngModel)]="inviteForm.role" 
               name="role"
-              class="px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+              class="px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-60 disabled:cursor-not-allowed">
               <option value="member">Agente</option>
-              <option value="owner" *ngIf="currentUserRole === 'owner'">Owner</option>
+              <option value="owner">Owner</option>
             </select>
             <input 
               type="text"
@@ -198,13 +199,12 @@ import { ToastService } from '../../../services/toast.service';
             </button>
           </form>
           
-          <!-- Help text about roles -->
-          <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-            <i class="fas fa-info-circle mr-1"></i>
-            <span *ngIf="currentUserRole === 'owner'">Como owner, puedes invitar usuarios con rol Member u Owner.</span>
-            <span *ngIf="currentUserRole === 'admin'">Como admin, solo puedes invitar usuarios con rol Member.</span>
-          </p>
-        </div>
+            <!-- Help text about roles -->
+            <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              <i class="fas fa-info-circle mr-1"></i>
+              <span *ngIf="currentUserRole === 'owner' || currentUserRole === 'admin'">Como {{ currentUserRole === 'owner' ? 'propietario' : 'administrador' }}, puedes invitar usuarios con rol Member u Owner.</span>
+            </p>
+          </div>
         
         <!-- Invitations List Card -->
         <div class="bg-white dark:bg-slate-800 rounded-xl shadow-md border border-gray-100 dark:border-slate-700 overflow-hidden">
@@ -238,94 +238,71 @@ import { ToastService } from '../../../services/toast.service';
               <p class="text-gray-500 dark:text-gray-400">No hay invitaciones.</p>
             </div>
             
-            <!-- Invitations List -->
-            <div *ngIf="!loadingInvitations && invitations.length > 0" class="space-y-3">
-              <div *ngFor="let inv of invitations" 
-                class="flex flex-col gap-4 p-4 rounded-xl border"
-                [ngClass]="{
-                  'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800': getInvitationStatus(inv) === 'accepted',
-                  'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800': getInvitationStatus(inv) === 'rejected',
-                  'bg-gray-50 dark:bg-slate-700/50 border-gray-100 dark:border-slate-600': getInvitationStatus(inv) === 'pending'
-                }">
-                <div class="flex items-start justify-between">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full flex items-center justify-center"
-                      [ngClass]="{
-                        'bg-green-100 dark:bg-green-900/40': getInvitationStatus(inv) === 'accepted',
-                        'bg-red-100 dark:bg-red-900/40': getInvitationStatus(inv) === 'rejected',
-                        'bg-amber-100 dark:bg-amber-900/40': getInvitationStatus(inv) === 'pending'
-                      }">
-                      <i class="fas"
-                        [ngClass]="{
-                          'fa-check text-green-600 dark:text-green-400': getInvitationStatus(inv) === 'accepted',
-                          'fa-times text-red-600 dark:text-red-400': getInvitationStatus(inv) === 'rejected',
-                          'fa-envelope text-amber-600 dark:text-amber-400': getInvitationStatus(inv) === 'pending'
-                        }"></i>
-                    </div>
-                    <div>
-                      <p class="font-medium text-gray-900 dark:text-white">{{ inv.email }}</p>
-                      <div class="flex items-center gap-2 mt-1">
-                        <span class="px-2 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 rounded">
-                          {{ getRoleLabel(inv.role) }}
-                        </span>
-                        <span class="text-xs text-gray-500 dark:text-gray-400">
-                          {{ inv.created_at | date:'dd/MM/yyyy HH:mm' }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <span 
-                    class="px-2.5 py-1 text-xs font-medium rounded-full"
-                    [ngClass]="{
-                      'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400': getInvitationStatus(inv) === 'pending',
-                      'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400': getInvitationStatus(inv) === 'accepted',
-                      'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400': getInvitationStatus(inv) === 'rejected'
-                    }">
-                    {{ getStatusLabel(getInvitationStatus(inv)) }}
-                  </span>
+            <!-- Invitations Table -->
+            <div *ngIf="!loadingInvitations && invitations.length > 0" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left text-sm text-gray-600 dark:text-gray-400">
+                    <thead class="bg-gray-50 dark:bg-slate-700/50 text-xs uppercase font-medium text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                      <tr>
+                        <th class="px-4 py-3">Email</th>
+                        <th class="px-4 py-3">Rol</th>
+                        <th class="px-4 py-3">Estado</th>
+                        <th class="px-4 py-3">Creada</th>
+                        <th class="px-4 py-3 text-right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                      <tr *ngFor="let inv of invitations" class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                        <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                          {{ inv.email }}
+                        </td>
+                        <td class="px-4 py-3">
+                          <span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-slate-600">
+                            {{ getRoleLabel(inv.role) }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-3">
+                           <span class="px-2 py-0.5 rounded-full text-xs font-medium border"
+                            [ngClass]="{
+                              'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800/50': getInvitationStatus(inv) === 'pending',
+                              'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800/50': getInvitationStatus(inv) === 'accepted',
+                              'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50': getInvitationStatus(inv) === 'rejected'
+                            }">
+                            {{ getStatusLabel(getInvitationStatus(inv)) }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-3">
+                          {{ inv.created_at | date:'shortDate' }} <span class="text-xs text-gray-400">{{ inv.created_at | date:'shortTime' }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right space-x-2">
+                          <ng-container *ngIf="getInvitationStatus(inv) === 'pending'">
+                            <button 
+                              (click)="resend(inv)" 
+                              [disabled]="busy"
+                              title="Reenviar invitación"
+                              class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+                              <i class="fas fa-redo"></i>
+                            </button>
+                            <button 
+                              (click)="copyLink(inv)" 
+                              [disabled]="busy"
+                              title="Copiar enlace"
+                              class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                              <i class="fas fa-link"></i>
+                            </button>
+                            <button 
+                              (click)="cancelInvitation(inv.id)" 
+                              [disabled]="busy"
+                              title="Cancelar invitación"
+                              class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                              <i class="fas fa-trash-alt"></i>
+                            </button>
+                          </ng-container>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
-                
-                <!-- Actions - only show for pending invitations -->
-                <div *ngIf="getInvitationStatus(inv) === 'pending'" class="flex flex-wrap gap-2 pt-2 border-t border-gray-200 dark:border-slate-600">
-                  <button 
-                    (click)="resend(inv)" 
-                    [disabled]="busy"
-                    class="flex-1 sm:flex-none px-3 py-1.5 text-sm bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
-                    <i class="fas fa-redo text-xs"></i>
-                    <span>Reenviar</span>
-                  </button>
-                  <button 
-                    (click)="copyLink(inv)" 
-                    [disabled]="busy"
-                    class="flex-1 sm:flex-none px-3 py-1.5 text-sm bg-gray-100 dark:bg-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-500 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
-                    <i class="fas fa-link text-xs"></i>
-                    <span>Copiar enlace</span>
-                  </button>
-                  <button 
-                    (click)="approve(inv.id)" 
-                    [disabled]="busy"
-                    class="flex-1 sm:flex-none px-3 py-1.5 text-sm bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
-                    <i class="fas fa-check text-xs"></i>
-                    <span>Aprobar</span>
-                  </button>
-                  <button 
-                    (click)="reject(inv.id)" 
-                    [disabled]="busy"
-                    class="flex-1 sm:flex-none px-3 py-1.5 text-sm bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5">
-                    <i class="fas fa-times text-xs"></i>
-                    <span>Cancelar</span>
-                  </button>
-                </div>
-                
-                <!-- Info for accepted/rejected -->
-                <div *ngIf="getInvitationStatus(inv) !== 'pending'" class="pt-2 border-t border-gray-200 dark:border-slate-600">
-                  <p class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                    <i class="fas fa-info-circle"></i>
-                    <span *ngIf="getInvitationStatus(inv) === 'accepted'">Esta invitación ya fue aceptada. El usuario ya forma parte de la empresa.</span>
-                    <span *ngIf="getInvitationStatus(inv) === 'rejected'">Esta invitación fue rechazada o cancelada.</span>
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -378,9 +355,15 @@ export class CompanyAdminComponent implements OnInit {
 
   async ngOnInit() {
     // Get current user info
-    const profile = await this.auth.userProfile$.toPromise();
+    const profile = await this.auth.userProfile$.pipe(take(1)).toPromise();
     this.currentUserId = profile?.id || null;
     this.currentUserRole = profile?.role as any || null;
+
+    // Admin default role and message
+    if (this.currentUserRole === 'admin') {
+      this.inviteForm.role = 'owner';
+      this.inviteForm.message = 'Hola! Te invito a registrar tu propia empresa en Simplifica. Haz clic en el enlace para crear tu cuenta de propietario.';
+    }
 
     await Promise.all([this.loadUsers(), this.loadInvitations()]);
   }
@@ -421,15 +404,8 @@ export class CompanyAdminComponent implements OnInit {
   // ==========================================
 
   canAssignRole(role: string): boolean {
-    // Admin can only assign admin role
-    // Owner can assign member or owner, but NOT admin
-    if (role === 'admin') {
-      return this.currentUserRole === 'admin';
-    }
-    if (role === 'owner') {
-      return this.currentUserRole === 'owner';
-    }
-    return true; // member can be assigned by both
+    // Both Owner and Admin can assign any role
+    return true;
   }
 
   canChangeRole(user: any): boolean {
@@ -541,26 +517,21 @@ export class CompanyAdminComponent implements OnInit {
   // INVITATION ACTIONS
   // ==========================================
 
-  async approve(id: string) {
-    this.busy = true;
-    try {
-      const { data, error } = await this.auth.client.rpc('approve_company_invitation', { p_invitation_id: id });
-      if (error) throw error;
-      this.toast.success('Éxito', 'Invitación aprobada');
-      await this.loadInvitations();
-    } catch (e: any) {
-      this.toast.error('Error', e.message || 'Error al aprobar invitación');
-    } finally {
-      this.busy = false;
+  async cancelInvitation(id: string) {
+    if (!confirm('¿Estás seguro de que quieres cancelar esta invitación? El enlace dejará de funcionar.')) {
+      return;
     }
-  }
 
-  async reject(id: string) {
     this.busy = true;
     try {
-      const { data, error } = await this.auth.client.rpc('reject_company_invitation', { p_invitation_id: id });
+      const { error } = await this.auth.client
+        .from('company_invitations')
+        .delete()
+        .eq('id', id);
+
       if (error) throw error;
-      this.toast.success('Éxito', 'Invitación cancelada');
+
+      this.toast.success('Éxito', 'Invitación cancelada correctamente');
       await this.loadInvitations();
     } catch (e: any) {
       this.toast.error('Error', e.message || 'Error al cancelar invitación');

@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield } from 'lucide-angular';
+import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building } from 'lucide-angular';
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
 import { DevRoleService } from '../../../services/dev-role.service';
@@ -38,7 +38,7 @@ interface MenuItem {
   providers: [
     {
       provide: LUCIDE_ICONS,
-      useValue: new LucideIconProvider({ Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield })
+      useValue: new LucideIconProvider({ Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building })
     }
   ],
   templateUrl: './responsive-sidebar.component.html',
@@ -88,6 +88,34 @@ export class ResponsiveSidebarComponent implements OnInit {
   // Local state
   private _activeItem = signal(1);
   readonly activeItem = this._activeItem.asReadonly();
+
+  // Company Switcher State
+  isSwitcherOpen = signal(false);
+
+  availableCompanies = computed(() => {
+    return this.authService.companyMemberships().map(m => ({
+      id: m.company_id,
+      name: m.company?.name || 'Empresa Sin Nombre',
+      role: m.role,
+      isCurrent: m.company_id === this.authService.currentCompanyId()
+    }));
+  });
+
+  currentCompanyName = computed(() => {
+    const currentId = this.authService.currentCompanyId();
+    const mem = this.authService.companyMemberships().find(m => m.company_id === currentId);
+    return mem?.company?.name || 'Mi Empresa';
+  });
+
+  toggleSwitcher() {
+    this.isSwitcherOpen.update(v => !v);
+  }
+
+  selectCompany(companyId: string) {
+    this.authService.switchCompany(companyId);
+    this.isSwitcherOpen.set(false);
+  }
+
 
   // Computed values from service
   readonly isOpen = this.sidebarState.isOpen;

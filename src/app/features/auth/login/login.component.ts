@@ -65,7 +65,7 @@ import { ToastService } from '../../../services/toast.service';
             <button class="btn-primary w-100 mb-3" type="submit" [disabled]="loginForm.invalid || loading()">
               @if (loading()) { <span class="spinner-border spinner-border-sm me-2"></span> Entrando... } @else { Iniciar Sesión }
             </button>
-            <div class="text-center small text-muted">¿No tienes cuenta? <a routerLink="/register">Crear una gratis</a></div>
+            <!-- <div class="text-center small text-muted">¿No tienes cuenta? <a routerLink="/register">Crear una gratis</a></div> -->
           </form>
         </div>
       </div>

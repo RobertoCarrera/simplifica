@@ -129,9 +129,48 @@
           class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
           <span class="text-white font-medium text-sm">{{ getUserInitial() }}</span>
         </div>
-        <div class="ml-3">
-          <p class="text-sm font-medium text-gray-900 dark:text-white">{{ getUserDisplayName() }}</p>
-          <p class="text-xs text-gray-500 dark:text-gray-400">{{ getUserRoleDisplay() }}</p>
+        <div class="ml-3 relative group">
+          <!-- Company Selector Trigger -->
+          <div (click)="toggleSwitcher()" class="cursor-pointer flex items-center hover:opacity-80 transition-opacity">
+            <p class="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[140px]"
+              [title]="currentCompanyName()">
+              {{ currentCompanyName() }}
+            </p>
+            <lucide-icon name="chevron-down" [size]="14" class="ml-1 text-gray-400"></lucide-icon>
+          </div>
+
+          <!-- User Subtext -->
+          <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[140px]">{{ getUserDisplayName() }} • {{
+            getUserRoleDisplay() }}</p>
+
+          <!-- Company Switcher Dropdown -->
+          @if (isSwitcherOpen()) {
+          <div
+            class="absolute bottom-full left-0 mb-3 w-60 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden z-50">
+            <div class="px-3 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+              <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Cambiar Empresa</span>
+            </div>
+            <div class="max-h-60 overflow-y-auto">
+              @for (company of availableCompanies(); track company.id) {
+              <button (click)="selectCompany(company.id)"
+                class="w-full text-left px-3 py-2.5 text-sm flex items-center hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0"
+                [ngClass]="{'bg-blue-50 dark:bg-blue-900/10': company.isCurrent}">
+                <div class="flex-1">
+                  <div class="font-medium" [ngClass]="{'text-blue-600 dark:text-blue-400': company.isCurrent}">{{
+                    company.name }}</div>
+                  <div class="text-xs text-gray-500">{{ getRoleDisplayName(company.role) }}</div>
+                </div>
+                @if (company.isCurrent) {
+                <lucide-icon name="check" [size]="16" class="text-blue-500"></lucide-icon>
+                }
+              </button>
+              }
+            </div>
+          </div>
+
+          <!-- Backdrop to close -->
+          <div class="fixed inset-0 z-40" (click)="toggleSwitcher()"></div>
+          }
         </div>
       </div>
       <!-- Logout button -->

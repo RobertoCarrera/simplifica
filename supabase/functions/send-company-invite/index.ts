@@ -58,7 +58,8 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ success: false, error: "missing_env", message: "Missing env: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     // Allow missing APP_URL by falling back to request origin
-    const redirectBase = APP_URL || origin || '';
+    // Prioritize origin to support local development/staging environments if allowed
+    const redirectBase = origin || APP_URL || '';
 
     const authHeader = req.headers.get("Authorization") || req.headers.get("authorization") || "";
     if (!authHeader.startsWith("Bearer ")) {
@@ -86,243 +87,185 @@ serve(async (req: Request) => {
     }
 
     const authUserId = userFromToken.user.id;
-    const { data: currentUser, error: userErr } = await supabaseAdmin
+
+    // FETCH USER AND ACTIVE MEMBERSHIP
+    // Since users.company_id is deprecated, we must fetch from company_members.
+    // We assume the user is "active" (status='active') in at least one company with role 'owner' or 'admin'.
+    // If multiple, we might need to know WHICH company context they are in.
+    // For now, we take the first "owner"/"admin" active membership.
+    // Ideally, the client should pass the `company_id` context, but to stay secure we verify membership.
+
+    // 1. Get User ID
+    const { data: userData, error: userErr } = await supabaseAdmin
       .from("users")
-      .select("id, company_id, role, active")
+      .select("id, active")
       .eq("auth_user_id", authUserId)
       .single();
 
-    if (userErr || !currentUser?.active || !["owner", "admin"].includes(currentUser.role)) {
-      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "Not authorized" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (userErr || !userData?.active) {
+      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "User not found or inactive" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Create invitation via RPC (try new signature with named params). Fallback to legacy signature.
+    // 2. Get Active Membership (Owner/Admin)
+    // We prioritize the company_id passed in the body if available (to support multi-company switching context)
+    // Otherwise fallback to any owner/admin membership.
+    const requestedCompanyId = body?.company_id;
+
+    let membershipQuery = supabaseAdmin
+      .from("company_members")
+      .select("company_id, role")
+      .eq("user_id", userData.id)
+      .eq("status", "active")
+      .in("role", ["owner", "admin"]);
+
+    if (requestedCompanyId) {
+      membershipQuery = membershipQuery.eq("company_id", requestedCompanyId);
+    }
+
+    const { data: memberships, error: memberErr } = await membershipQuery;
+
+    if (memberErr || !memberships || memberships.length === 0) {
+      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "User is not an admin/owner of any active company (or the requested one)" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Use the first valid membership found
+    const activeMembership = memberships[0];
+
+    const currentUser = {
+      id: userData.id,
+      company_id: activeMembership.company_id,
+      role: activeMembership.role
+    };
+
+    // Create invitation directly
     let invitationId: string | null = null;
-    let inviteToken: string | null = null; // declare early to avoid TDZ when assigning in fallbacks
-    let inviteJson: any = null;
-    let inviteFirstErr: any = null;
-    {
-      const { data: inviteRes, error: inviteErr } = await supabaseAdmin.rpc("invite_user_to_company", {
-        p_company_id: currentUser.company_id,
-        p_email: email,
-        p_role: role,
-        p_message: message,
-      });
-      if (!inviteErr && inviteRes?.success) {
-        inviteJson = inviteRes;
-        invitationId = (inviteRes as any).invitation_id ?? null;
-      } else {
-        inviteFirstErr = inviteErr?.message || inviteRes?.error || "Invite RPC failed";
-      }
-    }
+    let inviteToken: string | null = null;
 
-    if (!invitationId && !inviteJson) {
-      // Fallback to legacy signature public.invite_user_to_company(user_email, user_name, user_role)
-      const guessedName = email.split("@")[0];
-      const { data: fallbackRes, error: fallbackErr } = await supabaseAdmin.rpc("invite_user_to_company", {
-        user_email: email,
-        user_name: guessedName,
-        user_role: role,
-      });
-      if (!fallbackErr && fallbackRes) {
-        inviteJson = fallbackRes;
-      } else {
-        // As a final fallback (to allow custom roles like 'client'), create the invitation row directly
-        const generatedToken = (globalThis as any).crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
-        const { data: created, error: createErr } = await supabaseAdmin
-          .from("company_invitations")
-          .insert({
-            company_id: currentUser.company_id,
-            email,
-            role, // can be 'client'
-            status: "pending",
-            token: generatedToken,
-            expires_at: expiresAt,
-            invited_by_user_id: currentUser.id,
-          })
-          .select("id, token")
-          .single();
-        if (createErr) {
-          // Unique violation when re-inviting same email: try to reuse/update latest invitation
-          if ((createErr as any).code === '23505') {
-            const { data: existing, error: existingErr } = await supabaseAdmin
-              .from("company_invitations")
-              .select("id, token, status")
-              .eq("company_id", currentUser.company_id)
-              .eq("email", email)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            if (!existingErr && existing?.id) {
-              const { data: updated, error: updErr } = await supabaseAdmin
-                .from("company_invitations")
-                .update({ status: "pending", token: generatedToken, expires_at: expiresAt, invited_by_user_id: currentUser.id })
-                .eq("id", existing.id)
-                .select("id, token")
-                .single();
-              if (!updErr && updated) {
-                invitationId = updated.id;
-                inviteToken = updated.token || generatedToken;
-              } else {
-                console.error("send-company-invite: failed to update existing invitation after unique violation", updErr);
-                return new Response(JSON.stringify({ success: false, error: "invite_conflict_update_failed", message: "Failed to update existing invitation" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-              }
-            } else {
-              console.error("send-company-invite: unique violation but could not fetch existing invitation", existingErr);
-              return new Response(JSON.stringify({ success: false, error: "invite_conflict_no_existing", message: "Invite creation conflict and no existing invitation found" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-            }
-          } else {
-            console.error("send-company-invite: invite RPCs failed and direct creation failed", { inviteFirstErr, fallbackErr: fallbackErr?.message, createErr });
-            return new Response(JSON.stringify({ success: false, error: "invite_creation_failed", message: inviteFirstErr || fallbackErr?.message || createErr.message || "Invite creation failed" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-          }
-        } else {
-          invitationId = created?.id || null;
-          inviteToken = created?.token || generatedToken;
-        }
-      }
-    }
+    // Generate token
+    const generatedToken = (globalThis as any).crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    // Set expiration (7 days)
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
 
-    // Obtain token for redirect; try company_invitations first, then legacy invitations table
-    if (invitationId) {
-      const { data: tokenRow, error: tokErr } = await supabaseAdmin.rpc("get_company_invitation_token", { p_invitation_id: invitationId });
-      if (!tokErr && tokenRow) inviteToken = tokenRow as string;
-    }
-    if (!inviteToken) {
-      // Query latest company_invitations row
-      const { data: ci, error: ciErr } = await supabaseAdmin
-        .from("company_invitations")
-        .select("token")
-        .eq("company_id", currentUser.company_id)
-        .eq("email", email)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!ciErr && ci?.token) inviteToken = ci.token as string;
-    }
-    if (!inviteToken) {
-      // Fallback to legacy invitations table
-      const { data: legacy, error: legErr } = await supabaseAdmin
-        .from("invitations")
-        .select("token")
-        .eq("company_id", currentUser.company_id)
-        .eq("email", email)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!legErr && legacy?.token) inviteToken = legacy.token as string;
-    }
-    if (!inviteToken) {
-      // As a last resort (legacy invite path didn't create company_invitations), upsert now
-      try {
-        const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(); // 7 days
-        const generatedToken = (globalThis as any).crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        const { data: upserted, error: upErr } = await supabaseAdmin
+    const { data: created, error: createErr } = await supabaseAdmin
+      .from("company_invitations")
+      .insert({
+        company_id: currentUser.company_id,
+        email,
+        role,
+        status: "pending",
+        token: generatedToken,
+        expires_at: expiresAt,
+        invited_by_user_id: currentUser.id,
+        message: message // Include message!
+      })
+      .select("id, token")
+      .single();
+
+    if (createErr) {
+      // Handle unique violation (resend)
+      if ((createErr as any).code === '23505') {
+        const { data: existing } = await supabaseAdmin
           .from("company_invitations")
-          .upsert({
-            company_id: currentUser.company_id,
-            email,
-            role,
-            status: "pending",
-            token: generatedToken,
-            expires_at: expiresAt,
-            invited_by_user_id: currentUser.id,
-          }, { onConflict: 'company_id,email' })
           .select("id, token")
+          .eq("company_id", currentUser.company_id)
+          .eq("email", email)
           .maybeSingle();
 
-        if (upErr) {
-          console.warn("send-company-invite: upsert fallback failed, trying select", upErr);
-        } else if (upserted) {
-          invitationId = upserted.id || invitationId;
-          inviteToken = upserted.token || generatedToken;
-        }
-
-        if (!inviteToken) {
-          const { data: ci2, error: ci2Err } = await supabaseAdmin
+        if (existing) {
+          // Update existing
+          const { data: updated, error: updErr } = await supabaseAdmin
             .from("company_invitations")
+            .update({
+              status: "pending",
+              token: generatedToken,
+              expires_at: expiresAt,
+              invited_by_user_id: currentUser.id,
+              message: message
+            })
+            .eq("id", existing.id)
             .select("id, token")
-            .eq("company_id", currentUser.company_id)
-            .eq("email", email)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (!ci2Err && ci2?.token) {
-            invitationId = ci2.id || invitationId;
-            inviteToken = ci2.token as string;
+            .single();
+
+          if (!updErr && updated) {
+            invitationId = updated.id;
+            inviteToken = updated.token;
+          } else {
+            return new Response(JSON.stringify({ success: false, error: "update_failed", message: updErr?.message }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
         }
-
-        if (!inviteToken) {
-          // As a final safeguard, reuse the generated token (client can still use the link)
-          inviteToken = generatedToken;
-        }
-      } catch (e) {
-        console.error("send-company-invite: could not upsert or fetch invitation token", { email, company_id: currentUser.company_id, error: e });
-        // Still avoid hard failure: provide a client-usable token
-        const fallbackToken = (globalThis as any).crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        inviteToken = fallbackToken;
-      }
-    }
-
-    // Ensure the invitation row exists in company_invitations with the exact token we'll email
-    // This guarantees admin views and /invite can always find it, even if RPC/legacy paths were used above
-    try {
-      const ensuredExpiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(); // 7 days
-      const ensuredToken = inviteToken || ((globalThis as any).crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
-      const { data: ensured, error: ensureErr } = await supabaseAdmin
-        .from("company_invitations")
-        .upsert({
-          company_id: currentUser.company_id,
-          email,
-          role,
-          status: "pending",
-          token: ensuredToken,
-          expires_at: ensuredExpiresAt,
-          invited_by_user_id: currentUser.id,
-        }, { onConflict: 'company_id,email' })
-        .select("id, token")
-        .maybeSingle();
-
-      if (ensureErr) {
-        console.warn("send-company-invite: ensure company_invitations upsert failed; proceeding anyway", ensureErr);
-        // Keep using ensuredToken regardless to maintain a consistent email link
-        inviteToken = ensuredToken;
-      } else if (ensured) {
-        invitationId = ensured.id || invitationId;
-        inviteToken = ensured.token || ensuredToken;
       } else {
-        // No row returned, but proceed with the ensuredToken
-        inviteToken = ensuredToken;
+        console.error("send-company-invite: create failed", createErr);
+        return new Response(JSON.stringify({ success: false, error: "create_failed", message: createErr.message }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-    } catch (e) {
-      console.warn("send-company-invite: exception during ensure upsert; proceeding with token fallback", e);
-      if (!inviteToken) {
-        inviteToken = (globalThis as any).crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      }
+    } else {
+      invitationId = created.id;
+      inviteToken = created.token;
     }
+
+    // Simplified logic: We already created/updated the invitation at the start.
+    // If that failed, we returned early.
+    // So invitationId and inviteToken SHOULD be set.
+
+    if (!invitationId || !inviteToken) {
+      // This should technically be unreachable if the initial insert/update succeeded,
+      // but as a fallback, generate one last token.
+      inviteToken = (globalThis as any).crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      console.warn("send-company-invite: invitationId/token missing after initial ops, using generated token without DB persistence (risky)", { email });
+    }
+
+    // We do NOT need to upsert again. The initial block handles uniqueness on (company_id, email)
+    // Note: For Super Admins (company_id is null), uniqueness on (company_id, email) might fail in Postgres (multiple nulls allowed).
+    // We should handle that by ensuring we cleaning up previous pending invites for this email/role if needed, 
+    // or just accept that multiple might exist but we use the latest token.
+    // Ideally we should have a unique index on email where company_id is null? 
+    // For now, removing the redundant block avoids creating a *second* row in the same execution.
 
     // Send invite email using Supabase Auth
-    // SIEMPRE usar signInWithOtp (magic link) porque funciona tanto para usuarios nuevos como existentes
-    const { data: otpData, error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${redirectBase}/invite?token=${encodeURIComponent(inviteToken)}`,
-        shouldCreateUser: true,  // Crear usuario si no existe
-        data: { message: message }
-      },
-    });
+    // Try inviteUserByEmail first (triggers "Invite User" template)
+    let emailSent = false;
+    let emailError = null;
 
-    if (otpErr) {
-      console.error("send-company-invite: signInWithOtp failed", otpErr);
+    try {
+      const { data: inviteData, error: inviteErr } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        redirectTo: `${redirectBase}/invite?token=${encodeURIComponent(inviteToken)}`,
+        data: { message: message }
+      });
+
+      if (inviteErr) {
+        // Check if error is "email_exists" (or similar 422)
+        if (inviteErr.status === 422 || inviteErr.message?.includes('registered') || inviteErr.code === 'email_exists') {
+          console.log("send-company-invite: User exists, falling back to Magic Link");
+          // Fallback to Magic Link
+          const { error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
+            email,
+            options: {
+              emailRedirectTo: `${redirectBase}/invite?token=${encodeURIComponent(inviteToken)}`,
+              shouldCreateUser: false, // User already exists
+              data: { message: message }
+            }
+          });
+          if (otpErr) throw otpErr;
+          emailSent = true;
+        } else {
+          throw inviteErr;
+        }
+      } else {
+        emailSent = true;
+      }
+    } catch (err) {
+      console.error("send-company-invite: invite/otp failed", err);
+      emailError = err;
+    }
+
+    if (!emailSent) {
       if (forceEmail) {
         return new Response(
-          JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email de invitación", token: inviteToken }),
+          JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email: " + emailError?.message, token: inviteToken }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       return new Response(
-        JSON.stringify({ success: true, invitation_id: invitationId || null, info: "email_send_failed_token_only", token: inviteToken }),
+        JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email (pero la invitación se creó): " + emailError?.message }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

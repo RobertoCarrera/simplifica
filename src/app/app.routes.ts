@@ -4,7 +4,7 @@ import { ProductsComponent } from './features/products/products/products.compone
 import { HelpComponent } from './features/help/help.component';
 import { SupabaseServicesComponent } from './features/services/supabase-services/supabase-services.component';
 import { LoginComponent } from './features/auth/login/login.component';
-import { RegisterComponent } from './features/auth/register/register.component';
+
 import { SupabaseTicketsComponent } from './features/tickets/list/supabase-tickets.component';
 import { TicketDetailComponent } from './features/tickets/detail/ticket-detail.component';
 import { ConfiguracionComponent } from './features/settings/configuracion/configuracion.component';
@@ -124,7 +124,7 @@ export const routes: Routes = [
 
     // Rutas de autenticación (sin guards)
     { path: 'login', component: LoginComponent, canActivate: [GuestGuard] },
-    { path: 'register', component: RegisterComponent, canActivate: [GuestGuard] },
+    { path: 'register', redirectTo: 'login', pathMatch: 'full' },
     { path: 'auth/callback', component: AuthCallbackComponent }, // Callback de Supabase
     { path: 'auth/confirm', component: EmailConfirmationComponent }, // Confirmación de email
     { path: 'reset-password', component: ResetPasswordComponent }, // Recuperación de contraseña
@@ -158,4 +158,5 @@ export const routes: Routes = [
     // Eliminado: advanced-features, workflows, export-import (consolidados en módulos/producto)
     // Eliminado: notification-demo (usamos solo sistema de toasts)
     // Eliminado: search y centro de notificaciones personalizados
+    { path: '**', redirectTo: '/inicio' }
 ];

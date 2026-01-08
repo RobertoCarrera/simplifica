@@ -32,14 +32,25 @@ export class StaffGuard implements CanActivate {
                 // Check for specific staff roles
                 // 'owner', 'admin', 'member' are staff.
                 // 'client' and 'none' are NOT staff.
+                // Check for specific staff roles
                 const allowedRoles = ['owner', 'admin', 'member'];
                 if (allowedRoles.includes(profile.role)) {
                     return true;
                 }
 
-                // If user is authenticated but not staff (e.g. client), redirect home
-                // Typically clients have their own dashboard at root or specific paths
-                return this.router.parseUrl('/portal');
+                // If user has 'none' role (orphan), force logout/login to avoid loop
+                if (profile.role === 'none') {
+                    console.warn('StaffGuard: User has role "none". Redirecting to login.');
+                    return this.router.parseUrl('/login');
+                }
+
+                // If user is authenticated as client, allow portal access
+                if (profile.role === 'client') {
+                    return this.router.parseUrl('/portal');
+                }
+
+                // Default fallback
+                return this.router.parseUrl('/login');
             })
         );
     }
