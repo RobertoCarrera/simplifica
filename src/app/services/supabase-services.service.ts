@@ -1147,7 +1147,7 @@ export class SupabaseServicesService {
 
   async mapAndUploadServicesCsv(
     file: File,
-    mappings: Array<{ csvHeader: string; targetField: string | null }>,
+    mappings: Record<string, string>,
     companyId?: string | null
   ): Promise<number> {
     // 1) Parse file to get headers and rows
@@ -1161,10 +1161,10 @@ export class SupabaseServicesService {
 
     // 3) Build a lookup from target field to header index (only mapped ones)
     const fieldToIndex: Record<string, number> = {};
-    mappings.forEach(m => {
-      if (m.targetField && typeof m.csvHeader === 'string') {
-        const idx = headerIndex[m.csvHeader];
-        if (idx !== undefined) fieldToIndex[m.targetField] = idx;
+    Object.entries(mappings).forEach(([csvHeader, targetField]) => {
+      const idx = headerIndex[csvHeader];
+      if (idx !== undefined && targetField) {
+        fieldToIndex[targetField] = idx;
       }
     });
 

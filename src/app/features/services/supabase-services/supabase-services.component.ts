@@ -6,16 +6,15 @@ import { SimpleSupabaseService, SimpleCompany } from '../../../services/simple-s
 import { DevRoleService } from '../../../services/dev-role.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
-import { CsvHeaderMapperComponent, CsvMappingResult } from '../../../shared/ui/csv-header-mapper/csv-header-mapper.component';
-import { ToastService } from '../../../services/toast.service';
-import { SupabaseUnitsService, UnitOfMeasure } from '../../../services/supabase-units.service';
-import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { ServiceVariantsComponent } from '../service-variants/service-variants.component';
+import { SupabaseUnitsService, UnitOfMeasure } from '../../../services/supabase-units.service';
+import { ToastService } from '../../../services/toast.service';
+import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 
 @Component({
   selector: 'app-supabase-services',
   standalone: true,
-  imports: [CommonModule, FormsModule, CsvHeaderMapperComponent, SkeletonComponent, ServiceVariantsComponent, TagManagerComponent],
+  imports: [CommonModule, FormsModule, SkeletonComponent, ServiceVariantsComponent, TagManagerComponent],
   templateUrl: './supabase-services.component.html',
   styleUrl: './supabase-services.component.scss'
 })
@@ -107,31 +106,6 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   private toastService = inject(ToastService);
   private unitsService = inject(SupabaseUnitsService);
   private globalTagsService = inject(GlobalTagsService);
-  @ViewChild(CsvHeaderMapperComponent) private csvMapperCmp?: CsvHeaderMapperComponent;
-
-  // CSV Mapper state for services
-  showCsvMapper = false;
-  csvHeaders: string[] = [];
-  csvData: string[][] = [];
-  pendingCsvFile: File | null = null;
-  // Services-specific mapper config
-  mapperFieldOptions = [
-    { value: 'name', label: 'Nombre *', required: true },
-    { value: 'description', label: 'Descripción' },
-    { value: 'base_price', label: 'Precio base (€)' },
-    { value: 'estimated_hours', label: 'Horas estimadas' },
-    { value: 'category', label: 'Categoría' },
-    { value: 'tags', label: 'Tags (separados por |)' }
-  ];
-  mapperRequiredFields = ['name'];
-  mapperAliasMap: Record<string, string[]> = {
-    name: ['name', 'nombre', 'service', 'servicio'],
-    description: ['description', 'descripcion', 'descripción', 'detalle', 'notes'],
-    base_price: ['base_price', 'precio', 'price', 'importe'],
-    estimated_hours: ['estimated_hours', 'horas', 'duracion', 'duración', 'tiempo'],
-    category: ['category', 'categoria', 'categoría'],
-    tags: ['tags', 'etiquetas']
-  };
 
   // Units of measure for dynamic select
   units: UnitOfMeasure[] = [];
@@ -148,16 +122,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.loadUnits();
   }
 
-  showServicesImportInfo(event: Event) {
-    event.stopPropagation();
-    const infoMessage = `Formato: Nombre, Descripción, Precio base, Horas estimadas, Categoría, Tags.`;
 
-    // Try to use a toastService if available, otherwise console
-    // The component doesn't inject a toastService; fallback to console.log
-    // If your app uses a global toast service available via window, you may adapt here.
-    (window as any)?.toastService?.info?.('CSV requerido', infoMessage, 6000);
-
-  }
 
   ngOnDestroy() {
     // Asegurar que el scroll se restaure si el componente se destruye con modal abierto
@@ -986,72 +951,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Simple CSV import: direct call to SupabaseServicesService.importFromCSV
-  async onServicesCsvSelected(event: Event) {
-    const input = event.target as HTMLInputElement | null;
-    if (!input?.files || input.files.length === 0) {
-      this.error = 'Por favor selecciona un archivo CSV válido.';
-      return;
-    }
-    const file = input.files[0];
-    // Option A: Direct import (fast path)
-    // Option B: Show mapper first — enable this block to use the mapper UI
-    // We'll show the mapper by default now that it exists, to let you confirm columnas
-    this.pendingCsvFile = file;
-    try {
-      const { headers, data } = await this.servicesService.parseCSVFileForServices(file);
-      this.csvHeaders = headers;
-      this.csvData = data.slice(0, 11); // header + 10 rows preview
-      this.showCsvMapper = true;
-    } catch (e: any) {
-      // Fallback to direct import if parsing for mapper fails
-      console.warn('Mapper parse failed, falling back to direct import:', e);
-      this.loading = true;
-      this.error = null;
-      try {
-        if (this.selectedCompanyId) this.servicesService.setCompanyId(this.selectedCompanyId);
-        const imported = await this.servicesService.importFromCSV(file);
-        await this.loadServices();
-        console.log(`✅ Importación directa de servicios: ${imported.length} filas`);
-      } catch (err: any) {
-        const msg = err?.message || String(err);
-        console.error('❌ Error importando servicios (fallback):', err);
-        this.error = `Error importando servicios: ${msg}`;
-      } finally {
-        this.loading = false;
-      }
-    } finally {
-      try { (event.target as HTMLInputElement).value = ''; } catch { }
-    }
-  }
 
-  // Handler from mapper modal
-  onServicesCsvMappingConfirmed(result: CsvMappingResult) {
-    this.showCsvMapper = false;
-    if (!this.pendingCsvFile) return;
-    this.loading = true;
-    this.error = null;
-    this.servicesService
-      .mapAndUploadServicesCsv(this.pendingCsvFile, result.mappings, this.selectedCompanyId)
-      .then(async (count) => {
-        await this.loadServices();
-        console.log(`✅ Importación con mapeo completada: ${count} filas`);
-      })
-      .catch((e) => {
-        const msg = e?.message || String(e);
-        console.error('❌ Error importando con mapeo:', e);
-        this.error = `Error importando con mapeo: ${msg}`;
-      })
-      .finally(() => {
-        this.loading = false;
-        this.pendingCsvFile = null;
-      });
-  }
-
-  onServicesCsvMappingCancelled() {
-    this.showCsvMapper = false;
-    this.pendingCsvFile = null;
-  }
 
   // ---------------------------
   // Control dinámico del scrollbar

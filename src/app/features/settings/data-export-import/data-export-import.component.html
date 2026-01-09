@@ -1,0 +1,170 @@
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <!-- Header -->
+    <div class="px-6 py-5 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-t-xl">
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-3">
+            <div class="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
+                <i class="fas fa-database text-lg"></i>
+            </div>
+            Importar y Exportar Datos
+        </h2>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 pl-[3.25rem]">
+            Gestiona masivamente los datos de tu empresa mediante archivos CSV.
+        </p>
+    </div>
+
+    <!-- Main Content -->
+    <div class="p-6">
+
+        <!-- Toggle Switch (Export / Import) -->
+        <div class="flex justify-center mb-8">
+            <div class="bg-gray-100 dark:bg-gray-700 p-1 rounded-xl inline-flex shadow-inner">
+                <button (click)="activeSection.set('export')"
+                    class="px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2"
+                    [class.bg-white]="activeSection() === 'export'"
+                    [class.text-indigo-600]="activeSection() === 'export'"
+                    [class.shadow-sm]="activeSection() === 'export'"
+                    [class.dark:bg-gray-600]="activeSection() === 'export'"
+                    [class.dark:text-white]="activeSection() === 'export'"
+                    [class.text-gray-500]="activeSection() !== 'export'"
+                    [class.dark:text-gray-400]="activeSection() !== 'export'">
+                    <i class="fas fa-download"></i>
+                    Exportar
+                </button>
+                <button (click)="activeSection.set('import')"
+                    class="px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2"
+                    [class.bg-white]="activeSection() === 'import'"
+                    [class.text-emerald-600]="activeSection() === 'import'"
+                    [class.shadow-sm]="activeSection() === 'import'"
+                    [class.dark:bg-gray-600]="activeSection() === 'import'"
+                    [class.dark:text-white]="activeSection() === 'import'"
+                    [class.text-gray-500]="activeSection() !== 'import'"
+                    [class.dark:text-gray-400]="activeSection() !== 'import'">
+                    <i class="fas fa-file-import"></i>
+                    Importar
+                </button>
+            </div>
+        </div>
+
+        <!-- EXPORT SECTION -->
+        <div *ngIf="activeSection() === 'export'" class="max-w-2xl mx-auto animate-fadeIn">
+            <div
+                class="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800 rounded-xl p-6 mb-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <i class="fas fa-file-export text-indigo-500"></i>
+                    Exportar Datos a CSV
+                </h3>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            ¿Qué quieres exportar?
+                        </label>
+                        <select [(ngModel)]="selectedDataType"
+                            class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white shadow-sm transition-all">
+                            <option value="customers">Clientes (Listado completo)</option>
+                            <option value="services" disabled>Servicios (Próximamente)</option>
+                        </select>
+                    </div>
+
+                    <div class="pt-2">
+                        <button (click)="exportData()" [disabled]="loading()"
+                            class="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-colors shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                            <span *ngIf="loading()"
+                                class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+                            <i *ngIf="!loading()" class="fas fa-download"></i>
+                            {{ loading() ? 'Exportando...' : 'Descargar Archivo CSV' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
+                <i class="fas fa-info-circle mr-1"></i>
+                Se exportarán todos los registros activos del tipo seleccionado.
+            </p>
+        </div>
+
+        <!-- IMPORT SECTION -->
+        <div *ngIf="activeSection() === 'import'" class="max-w-2xl mx-auto animate-fadeIn">
+            <div
+                class="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800 rounded-xl p-6 mb-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <i class="fas fa-file-csv text-emerald-500"></i>
+                    Importar desde CSV
+                </h3>
+
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            ¿Qué vas a importar?
+                        </label>
+                        <select [(ngModel)]="selectedDataType"
+                            class="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 dark:text-white shadow-sm transition-all">
+                            <option value="customers">Clientes (Individuos o Empresas)</option>
+                            <option value="services">Servicios (Catálogo)</option>
+                        </select>
+                    </div>
+
+                    <div
+                        class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center hover:border-emerald-400 dark:hover:border-emerald-500 transition-colors bg-white dark:bg-gray-800/50 relative group">
+                        <input type="file" #fileInput accept=".csv" (change)="onFileSelected($event)"
+                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+
+                        <div class="space-y-2 pointer-events-none">
+                            <div
+                                class="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-200">
+                                <i class="fas fa-cloud-upload-alt text-2xl text-emerald-600 dark:text-emerald-400"></i>
+                            </div>
+                            <h4 class="text-base font-semibold text-gray-900 dark:text-white">
+                                Haz clic o arrastra tu archivo aquí
+                            </h4>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">
+                                Soporta archivos .csv hasta 5MB
+                            </p>
+                        </div>
+                    </div>
+
+                    <div *ngIf="loading()" class="text-center py-2">
+                        <span
+                            class="inline-flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium animate-pulse">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            Analizando archivo...
+                        </span>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Format Help Info -->
+            <div
+                class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 text-sm border border-gray-100 dark:border-gray-700">
+                <h4 class="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                    <i class="fas fa-question-circle text-gray-400"></i>
+                    Formato Requerido
+                </h4>
+                <ul class="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400 ml-1">
+                    <li *ngIf="selectedDataType() === 'customers'">
+                        Se intentará detectar automáticamente columnas como:
+                        <code class="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">email</code>,
+                        <code class="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">nombre</code>,
+                        <code class="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">teléfono</code>,
+                        <code class="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">cif</code>.
+                    </li>
+                    <li *ngIf="selectedDataType() === 'services'">
+                        Columnas sugeridas:
+                        <code class="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">nombre</code> (obligatorio),
+                        <code class="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">precio</code>,
+                        <code class="bg-gray-200 dark:bg-gray-700 px-1 rounded text-xs">categoría</code>.
+                    </li>
+                    <li>Utiliza codificación <strong>UTF-8</strong> para evitar problemas con tildes.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSV MAPPER MODAL -->
+<app-csv-header-mapper [visible]="showCsvMapper()" [csvHeaders]="csvHeaders()" [csvData]="csvData()"
+    [fieldOptions]="currentFieldOptions" [requiredFields]="currentRequiredFields" [aliasMap]="currentAliasMap"
+    (mappingConfirmed)="onMappingConfirmed($event)" (cancelled)="onMappingCancelled()">
+</app-csv-header-mapper>

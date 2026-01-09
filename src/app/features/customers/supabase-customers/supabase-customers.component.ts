@@ -6,7 +6,6 @@ import { TemplatePortal } from '@angular/cdk/portal';
 
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { AnimationService } from '../../../services/animation.service';
-import { CsvHeaderMapperComponent, CsvMappingResult } from '../../../shared/ui/csv-header-mapper/csv-header-mapper.component';
 import { Customer, CreateCustomerDev } from '../../../models/customer';
 import { AddressesService } from '../../../services/addresses.service';
 import { LocalitiesService } from '../../../services/localities.service';
@@ -34,7 +33,6 @@ import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer
         CommonModule,
         FormsModule,
         SkeletonComponent,
-        CsvHeaderMapperComponent,
         // ClientGdprModalComponent, // Removed as it is unused and causes build warning
         OverlayModule,
         FormNewCustomerComponent
@@ -67,8 +65,9 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     @ViewChild('modalTemplate') modalTemplate!: TemplateRef<any>;
     private overlayRef?: OverlayRef;
 
-    // Toast de importación (único y actualizable)
-    private importToastId: string | null = null;
+
+
+    // Audio State
 
     // Audio State
     isRecording = signal(false);
@@ -115,129 +114,19 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     sortBy = signal<'name' | 'apellidos' | 'created_at'>('name'); // Default to name
     sortOrder = signal<'asc' | 'desc'>('asc'); // Default to asc for alphabetical
 
-    // CSV Mapper signals
-    showCsvMapper = signal(false);
-    csvHeaders = signal<string[]>([]);
-    // csvData: sólo para PREVIEW (limitada)
-    csvData = signal<string[][]>([]);
-    // fullCsvData: dataset completo para importación
-    fullCsvData = signal<string[][]>([]);
-    pendingCsvFile: File | null = null;
+
+
     // UI filter toggle for incomplete imports (Removed from UI, logic deprecated)
     onlyIncomplete: boolean = false;
 
-    // Customers CSV mapper config (unified model: individual + business)
-    customerFieldOptions = [
-        // Campos comunes (opcionales pero recomendados)
-        { value: 'email', label: 'Email', required: false },
-        { value: 'phone', label: 'Teléfono', required: false },
-
-        // Campos de Persona Física
-        { value: 'name', label: 'Nombre (persona física)', required: false },
-        { value: 'surname', label: 'Apellidos (persona física)', required: false },
-        { value: 'dni', label: 'DNI (persona física)', required: false },
-
-        // Campos de Empresa/Persona Jurídica
-        { value: 'client_type', label: 'Tipo de Cliente (individual/business)', required: false },
-        { value: 'business_name', label: 'Razón Social (empresa)', required: false },
-        { value: 'cif_nif', label: 'CIF/NIF (empresa)', required: false },
-        { value: 'trade_name', label: 'Nombre Comercial (empresa)', required: false },
-        { value: 'legal_representative_name', label: 'Representante Legal - Nombre', required: false },
-        { value: 'legal_representative_dni', label: 'Representante Legal - DNI', required: false },
-        { value: 'mercantile_registry_data', label: 'Datos Registro Mercantil', required: false },
-
-        // Dirección
-        { value: 'address', label: 'Dirección Completa', required: false },
-        { value: 'addressTipoVia', label: 'Tipo Vía', required: false },
-        { value: 'addressNombre', label: 'Nombre Vía', required: false },
-        { value: 'addressNumero', label: 'Número', required: false },
-
-        // Otros
-        { value: 'notes', label: 'Notas', required: false },
-        { value: 'metadata', label: 'Metadata (otros datos)', required: false }
-    ];
-    // Ahora no hay campos estrictamente obligatorios para permitir importación mínima
-    customerRequiredFields = [];
-    customerAliasMap: Record<string, string[]> = {
-        // Campos comunes
-        email: ['email', 'correo', 'e-mail', 'mail', 'bill_to:email', 'bill to email', 'billto:email', 'ship_to:email', 'ship to email', 'shipto:email'],
-        phone: ['phone', 'telefono', 'teléfono', 'tel', 'mobile', 'movil', 'móvil', 'bill_to:phone', 'bill to phone', 'billto:phone', 'ship_to:phone', 'ship to phone', 'shipto:phone'],
-
-        // Persona física
-        name: ['name', 'nombre', 'first_name', 'firstname', 'first name', 'bill_to:first_name', 'bill to first name', 'billto:first_name', 'ship_to:first_name', 'ship to first name', 'shipto:first_name'],
-        surname: ['surname', 'last_name', 'lastname', 'last name', 'apellidos', 'bill_to:last_name', 'bill to last name', 'billto:last_name', 'ship_to:last_name', 'ship to last name', 'shipto:last_name'],
-        dni: ['dni', 'nif', 'documento', 'id', 'legal', 'bill_to:legal', 'bill to legal', 'billto:legal', 'ship_to:legal', 'ship to legal', 'shipto:legal'],
-
-        // Empresa
-        client_type: ['client_type', 'tipo_cliente', 'tipo cliente', 'type', 'customer_type', 'customer type'],
-        business_name: ['business_name', 'razon_social', 'razón social', 'razon social', 'company_name', 'company name', 'empresa', 'bill_to:company', 'bill to company', 'billto:company'],
-        cif_nif: ['cif_nif', 'cif', 'nif empresa', 'tax_id', 'taxid', 'vat', 'fiscal_id', 'id_fiscal'],
-        trade_name: ['trade_name', 'nombre_comercial', 'nombre comercial', 'trading_name', 'trading name'],
-        legal_representative_name: ['legal_representative_name', 'representante_legal', 'representante legal', 'representative', 'rep_name'],
-        legal_representative_dni: ['legal_representative_dni', 'representante_dni', 'dni representante', 'dni_rep', 'rep_dni'],
-        mercantile_registry_data: ['mercantile_registry_data', 'registro_mercantil', 'registro mercantil', 'registry', 'mercantile_data'],
-
-        // Dirección
-        address: ['address', 'direccion', 'dirección', 'domicilio', 'bill_to:address', 'bill to address', 'billto:address', 'ship_to:address', 'ship to address', 'shipto:address'],
-        addressTipoVia: ['addressTipoVia', 'tipo_via', 'tipo vía', 'tipo via', 'street_type', 'via'],
-        addressNombre: ['addressNombre', 'nombre_via', 'nombre vía', 'nombre via', 'street_name', 'calle'],
-        addressNumero: ['addressNumero', 'numero', 'número', 'number', 'num'],
-
-        // Otros
-        notes: ['notes', 'notas', 'observaciones', 'comments', 'comentarios'],
-        metadata: ['metadata', 'metadatos', 'otros', 'additional', 'extra']
-    };
+    // Form data
 
     // Form data
     // Form data - Refactored to child component
 
-    onFileInputChange(event: Event): void {
-        const input = event.target as HTMLInputElement | null;
-        if (!input?.files || input.files.length === 0) {
-            this.toastService.error('Por favor selecciona un archivo CSV válido.', 'Error');
-            return;
-        }
-        const file = input.files[0];
-
-        this.customersService.importFromCSV(file).subscribe({
-            next: (importedCustomers) => {
-                this.toastService.success(`${importedCustomers.length} clientes importados correctamente.`, 'Éxito');
-                // Aquí puedes poner lógica extra para actualizar la UI si es necesario
-                // Por ejemplo, recargar la lista de clientes si no se actualiza automáticamente
-            },
-            error: (error) => {
-                this.toastService.error(`Error importando clientes: ${error.message || error} `, 'Error');
-            }
-        });
-    }
-
     // Método manejador de selección de archivo CSV
-    onCsvFileSelected(event: Event): void {
-        const input = event.target as HTMLInputElement | null;
-        if (!input?.files || input.files.length === 0) {
-            this.toastService.error('Por favor selecciona un archivo CSV válido.', 'Error');
-            return;
-        }
+    // Removed legacy CSV handlers
 
-        const file = input.files[0];
-        this.pendingCsvFile = file;
-
-        this.customersService.parseCSVForMapping(file).subscribe({
-            next: ({ headers, data }) => {
-                // Guardamos cabeceras
-                this.csvHeaders.set(headers);
-                // Guardamos dataset completo para importación posterior
-                this.fullCsvData.set(data);
-                // Para preview limitamos (cabecera + primeras 9 filas de datos => total 10)
-                const preview = data.slice(0, Math.min(10, data.length));
-                this.csvData.set(preview);
-                this.showCsvMapper.set(true); // muestra el modal
-            },
-            error: (err) => {
-                this.toastService.error('Error leyendo CSV: ' + (err.message || err), 'Error');
-            }
-        });
-    }
 
 
     hasDevices(customer: Customer): boolean {
@@ -260,31 +149,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
 
     // Método que se llama cuando el usuario confirma el mapeo de columnas en el modal
-    onMappingConfirmed(result: CsvMappingResult): void {
-        this.showCsvMapper.set(false);
-        const mappings = result.mappings;
-
-        if (!this.pendingCsvFile) {
-            this.toastService.error('No hay archivo CSV pendiente para importar.', 'Error');
-            return;
-        }
-
-        // Llamar a función del servicio que importa con mapeos y en lotes
-        this.customersService.importFromCSVWithMapping(this.pendingCsvFile, mappings).subscribe({
-            next: (importedCustomers) => {
-                this.toastService.success(`${importedCustomers.length} clientes importados correctamente.`, 'Éxito');
-                this.customersService.customers$.subscribe(customers => {
-                    this.customers.set(customers);
-                });
-            },
-            error: (error) => {
-                this.toastService.error('Error importando CSV: ' + (error.message || error), 'Error');
-            }
-        });
-
-        // Limpiar archivo pendiente
-        this.pendingCsvFile = null;
-    }
+    // Removed legacy CSV mapping handlers
 
 
     // Computed
@@ -661,175 +526,9 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         });
     }
 
-    // Export/Import
-    exportCustomers() {
-        const filters: CustomerFilters = {
-            search: this.searchTerm(),
-            sortBy: this.sortBy(),
-            sortOrder: this.sortOrder()
-        };
 
-        this.customersService.exportToCSV(filters).subscribe({
-            next: (blob) => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `clientes - ${new Date().toISOString().split('T')[0]}.csv`;
-                a.click();
-                window.URL.revokeObjectURL(url);
-                this.toastService.success('¡Éxito!', 'Clientes exportados correctamente');
-            },
-            error: (error) => {
-                console.error('Error exporting customers:', error);
-            }
-        });
-    }
 
-    importCustomers(event: any) {
-        const file = event.target.files[0];
-        if (!file) return;
 
-        if (!file.name.toLowerCase().endsWith('.csv')) {
-            this.toastService.error('Error', 'Por favor selecciona un archivo CSV válido');
-            return;
-        }
-
-        console.log('CSV import selected, starting parse for mapping...');
-        this.toastService.info('Procesando...', 'Analizando estructura del CSV');
-        this.pendingCsvFile = file;
-
-        // Parse CSV to show mapping interface
-        this.customersService.parseCSVForMapping(file).subscribe({
-            next: ({ headers, data }) => {
-                console.log('CSV parsed for mapping:', { headers, previewRows: data.slice(0, 3) });
-                this.csvHeaders.set(headers);
-                this.csvData.set(data);
-                this.showCsvMapper.set(true);
-                // Limpiar el input
-                event.target.value = '';
-            },
-            error: (error) => {
-                console.error('Error parsing CSV for mapping:', error);
-                const errorMessage = error instanceof Error ? error.message : 'Error al analizar el archivo CSV';
-                this.toastService.error('Error al Procesar CSV', errorMessage);
-                // Limpiar el input
-                event.target.value = '';
-            }
-        });
-    }
-
-    onCsvMappingConfirmed(result: CsvMappingResult) {
-        console.log('CSV mapping confirmed by user:', result);
-        if (!this.pendingCsvFile) {
-            this.toastService.error('Error', 'No hay archivo CSV pendiente');
-            return;
-        }
-
-        this.showCsvMapper.set(false);
-        // Toast persistente de progreso (se cerrará al terminar o error)
-        // Crear un único toast persistente que iremos actualizando
-        this.importToastId = this.toastService.info('Importación iniciada', 'Importando clientes con el mapeo configurado', 8000, true, 'customers-import');
-
-        // Construir array de clientes a partir del mapeo
-        const mappedCustomers = this.customersService.buildPayloadRowsFromMapping(
-            this.csvHeaders(),
-            // Usar el dataset COMPLETO (fullCsvData) y no sólo el preview.
-            // fullCsvData incluye cabecera en posición 0 → slice(1) para omitirla.
-            this.fullCsvData().slice(1),
-            result.mappings as any
-        );
-
-        if (!mappedCustomers.length) {
-            this.toastService.error('Error', 'No se encontraron filas válidas en el CSV');
-            this.pendingCsvFile = null;
-            return;
-        }
-
-        const total = mappedCustomers.length;
-        console.log('[CSV-MAP] Mapped customers ready to import:', total);
-        if (this.importToastId) {
-            this.toastService.updateToast(this.importToastId, { title: 'Importación iniciada', message: `Se importarán ${total} filas` });
-        }
-        const batchSize = 5;
-        let importedCount = 0;
-
-        this.customersService.importCustomersInBatches(mappedCustomers, batchSize).subscribe({
-            next: (p) => {
-                const msg = `Importados ${p.importedCount}/${p.totalCount} (lote ${p.batchNumber}, tamaño ${p.batchSize})`;
-                console.log('[Import progreso]', p);
-                // Actualiza mostrando progreso (persistente)
-                if (this.importToastId) {
-                    const progress = p.totalCount > 0 ? p.importedCount / p.totalCount : 0;
-                    this.toastService.updateToast(this.importToastId, { title: 'Progreso importación', message: msg, progress });
-                }
-                importedCount = p.importedCount;
-            },
-            complete: () => {
-                if (this.importToastId) {
-                    this.toastService.updateToast(this.importToastId, { type: 'success', title: '¡Éxito!', message: `Importación completada (${importedCount}/${total} clientes)`, duration: 6000 });
-                    this.importToastId = null;
-                } else {
-                    this.toastService.success('¡Éxito!', `Importación completada (${importedCount}/${total} clientes)`, 6000);
-                }
-                // refrescar lista para ver los nuevos clientes inmediatamente
-                this.customersService.loadCustomers();
-                this.pendingCsvFile = null;
-                this.fullCsvData.set([]);
-                // refrescar datos visibles
-                this.customersService.getCustomers({ sortBy: this.sortBy(), sortOrder: this.sortOrder() }).subscribe();
-            },
-            error: (err) => {
-                console.error('Error importando por lotes:', err);
-                if (this.importToastId) {
-                    this.toastService.updateToast(this.importToastId, { type: 'error', title: 'Error de Importación', message: String(err?.message || err), duration: 8000 });
-                    this.importToastId = null;
-                } else {
-                    this.toastService.error('Error de Importación', String(err?.message || err), 8000);
-                }
-                this.pendingCsvFile = null;
-                this.fullCsvData.set([]);
-            }
-        });
-    }
-
-    onCsvMappingCancelled() {
-        console.log('CSV mapping cancelled by user');
-        this.showCsvMapper.set(false);
-        this.pendingCsvFile = null;
-        this.fullCsvData.set([]);
-        this.toastService.info('Cancelado', 'Importación CSV cancelada');
-    }
-
-    async testImportEndpoints() {
-        if (!this.devRoleService.canSeeDevTools()) {
-            this.toastService.error('No autorizado', 'Herramientas de desarrollador no disponibles');
-            return;
-        }
-
-        this.toastService.info('Probando endpoints', 'Llamando a proxy y al function directo...');
-        try {
-            const res = await this.customersService.testImportEndpoints();
-            console.log('Test import endpoints result:', res);
-
-            const messages: string[] = [];
-            if (res.proxy) messages.push(`Proxy: ${res.proxy.status} ${res.proxy.text}`);
-            if (res.direct) messages.push(`Direct: ${res.direct.status} ${res.direct.text}`);
-            if (res.errors && res.errors.length) messages.push(`Errors: ${JSON.stringify(res.errors)}`);
-
-            this.toastService.success('Test completado', messages.slice(0, 2).join(' | '));
-        } catch (err) {
-            console.error('Error testing import endpoints:', err);
-            this.toastService.error('Test fallido', String(err));
-        }
-    }
-
-    showImportInfo(event: Event) {
-        event.stopPropagation(); // Evitar que se abra el selector de archivos
-
-        const infoMessage = `Formato: Nombre, Apellidos, Email, DNI, Teléfono - Máximo 500 clientes.`;
-
-        this.toastService.info('CSV requerido', infoMessage, 6000);
-    }
 
     clearFilters() {
         this.searchTerm.set('');
