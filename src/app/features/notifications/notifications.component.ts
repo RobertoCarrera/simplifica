@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, LucideIconProvider, LUCIDE_ICONS, Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle } from 'lucide-angular';
+import { LucideAngularModule, LucideIconProvider, LUCIDE_ICONS, Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle, Filter, Inbox, ClipboardList } from 'lucide-angular';
 import { SupabaseNotificationsService, AppNotification } from '../../services/supabase-notifications.service';
 import { TicketDetailComponent } from '../../features/tickets/detail/ticket-detail.component';
 import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdpr-request-detail.component';
@@ -10,7 +10,7 @@ import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdp
     selector: 'app-notifications',
     standalone: true,
     imports: [CommonModule, LucideAngularModule, TicketDetailComponent, GdprRequestDetailComponent],
-    providers: [{ provide: LUCIDE_ICONS, useValue: new LucideIconProvider({ Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle }) }],
+    providers: [{ provide: LUCIDE_ICONS, useValue: new LucideIconProvider({ Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle, Filter, Inbox, ClipboardList }) }],
     templateUrl: './notifications.component.html',
     styles: [`
     :host {
@@ -28,8 +28,48 @@ export class NotificationsComponent {
     selectedGdprRequestId = signal<string | null>(null);
 
     // Grouped notifications
-    groupedNotifications = computed(() => {
+    // Filter state
+    filterStatus = signal<'all' | 'unread' | 'read'>('all');
+    filterType = signal<string>('all');
+
+    // Available types for sidebar
+    availableTypes = computed(() => {
         const list = this.service.notifications();
+        const types = new Set<string>();
+        const typeCounts = new Map<string, number>();
+
+        list.forEach(n => {
+            const t = n.type;
+            types.add(t);
+            typeCounts.set(t, (typeCounts.get(t) || 0) + 1);
+        });
+
+        return Array.from(types).map(type => ({
+            type,
+            label: this.formatTypeLabel(type),
+            count: typeCounts.get(type) || 0,
+            icon: this.getIconForType(type)
+        })).sort((a, b) => b.count - a.count);
+    });
+
+    // Grouped notifications with filtering
+    groupedNotifications = computed(() => {
+        let list = this.service.notifications();
+
+        // Apply Status Filter
+        const status = this.filterStatus();
+        if (status === 'unread') {
+            list = list.filter(n => !n.is_read);
+        } else if (status === 'read') {
+            list = list.filter(n => n.is_read);
+        }
+
+        // Apply Type Filter
+        const type = this.filterType();
+        if (type !== 'all') {
+            list = list.filter(n => n.type === type);
+        }
+
         const today: AppNotification[] = [];
         const yesterday: AppNotification[] = [];
         const older: AppNotification[] = [];
@@ -70,7 +110,10 @@ export class NotificationsComponent {
         X: 'x',
         Tag: 'tag',
         MessageCircle: 'message-circle',
-        AlertCircle: 'alert-circle'
+        AlertCircle: 'alert-circle',
+        Filter: 'filter',
+        Inbox: 'inbox',
+        ClipboardList: 'clipboard-list'
     };
 
     openNotification(notification: AppNotification) {
@@ -91,6 +134,14 @@ export class NotificationsComponent {
     closeModal() {
         this.selectedTicketId.set(null);
         this.selectedGdprRequestId.set(null);
+    }
+
+    formatTypeLabel(type: string): string {
+        if (type === 'ticket_created') return 'Nuevos Tickets';
+        if (type === 'ticket_comment') return 'Respuestas Tickets';
+        if (type === 'ticket_assigned') return 'Tickets Asignados';
+        if (type === 'gdpr_request') return 'Solicitudes RGPD';
+        return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
     }
 
     getIconForType(type: string): string {
