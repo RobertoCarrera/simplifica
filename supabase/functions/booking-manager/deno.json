@@ -1,0 +1,8 @@
+{
+    "tasks": {
+        "test": "deno test --allow-all"
+    },
+    "imports": {
+        "std/": "https://deno.land/std@0.168.0/"
+    }
+}

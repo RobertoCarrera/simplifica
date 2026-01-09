@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building } from 'lucide-angular';
+import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building, Calendar } from 'lucide-angular';
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
 import { DevRoleService } from '../../../services/dev-role.service';
@@ -38,7 +38,7 @@ interface MenuItem {
   providers: [
     {
       provide: LUCIDE_ICONS,
-      useValue: new LucideIconProvider({ Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building })
+      useValue: new LucideIconProvider({ Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building, Calendar })
     }
   ],
   templateUrl: './responsive-sidebar.component.html',
@@ -125,7 +125,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   readonly icons = {
     Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp,
     Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft,
-    ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield
+    ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, Calendar
   };
 
   private allMenuItems: MenuItem[] = [
@@ -213,6 +213,14 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/servicios',
       module: 'production',
       moduleKey: 'moduloServicios'
+    },
+    {
+      id: 11,
+      label: 'Reservas',
+      icon: 'calendar', // Lucide icon
+      route: '/reservas',
+      module: 'production',
+      moduleKey: 'moduloReservas'
     },
     {
       id: 95,

@@ -99,11 +99,6 @@
                             <!-- Actions Menu Top Right -->
                             <div class="absolute top-4 right-4 z-10">
                                 <div class="relative gdpr-actions-menu">
-                                    <button (click)="toggleGdprMenu($event, customer.id)"
-                                        class="action-btn gdpr text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                                        title="Opciones">
-                                        <i class="fas fa-ellipsis-v"></i>
-                                    </button>
 
                                     <!-- Dropdown Menu -->
                                     <div [id]="'gdpr-menu-' + customer.id"

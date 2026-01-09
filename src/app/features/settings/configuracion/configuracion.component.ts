@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService, AppUser } from '../../../services/auth.service';
 import { DevRoleService } from '../../../services/dev-role.service';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { environment } from '../../../../environments/environment';
@@ -23,17 +23,18 @@ import { ClientGdprPanelComponent } from '../../customers/components/client-gdpr
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { DataExportImportComponent } from '../data-export-import/data-export-import.component';
 import { DomainsComponent } from '../domains/domains.component';
+import { IntegrationsComponent } from '../integrations/integrations.component';
 
 @Component({
     selector: 'app-configuracion',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, DataExportImportComponent, DomainsComponent],
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent],
     templateUrl: './configuracion.component.html',
     styleUrls: ['./configuracion.component.scss']
 })
 export class ConfiguracionComponent implements OnInit, OnDestroy {
     // UI tabs
-    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' = 'perfil';
+    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' = 'perfil';
     userProfile: AppUser | null = null;
     profileForm: FormGroup;
     passwordForm: FormGroup;
@@ -101,6 +102,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         private sbClient: SupabaseClientService,
         private unitsService: SupabaseUnitsService,
         private toast: ToastService,
+        private route: ActivatedRoute,
         @Inject(UserModulesService) private userModulesService: UserModulesService,
         @Inject(SupabaseSettingsService) private settingsService: SupabaseSettingsService,
         @Inject(SupabaseModulesService) private modulesService: SupabaseModulesService,
@@ -165,6 +167,14 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         this.loadModulesDiagnostics();
         this.loadSettings();
         this.loadInvoiceSeries();
+
+        // Check for integrations callback or tab request
+        const params = this.route.snapshot.queryParams;
+        if (params && params['code']) {
+            this.activeTab = 'integrations';
+        } else if (params && params['tab'] && ['perfil', 'empresa', 'ayuda', 'ajustes', 'privacidad', 'import-export', 'domains', 'integrations'].includes(params['tab'])) {
+            this.activeTab = params['tab'];
+        }
     }
 
     ngOnDestroy() {

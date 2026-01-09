@@ -1,0 +1,86 @@
+<div class="py-6 space-y-8">
+
+    <!-- Intro -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Horario Semanal</h2>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Define tu disponibilidad habitual. Las reservas solo se
+                permitirán dentro de estas franjas.</p>
+        </div>
+        <button (click)="save()" [disabled]="saving()"
+            class="hidden md:flex items-center px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+            <span *ngIf="saving()"
+                class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></span>
+            <i class="fas fa-save mr-2" *ngIf="!saving()"></i>
+            {{ saving() ? 'Guardando...' : 'Guardar Cambios' }}
+        </button>
+    </div>
+
+    <!-- Schedule List -->
+    <div
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+        <div *ngFor="let day of days()" class="p-4 sm:p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-750">
+            <div class="flex flex-col sm:flex-row gap-4 sm:items-start">
+
+                <!-- Day Toggle -->
+                <div class="w-32 flex-shrink-0 pt-2">
+                    <label class="inline-flex items-center cursor-pointer">
+                        <div class="relative">
+                            <input type="checkbox" [(ngModel)]="day.isActive" class="sr-only peer">
+                            <div
+                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600">
+                            </div>
+                        </div>
+                        <span class="ml-3 font-medium text-gray-900 dark:text-white select-none">{{ day.name }}</span>
+                    </label>
+                </div>
+
+                <!-- Slots -->
+                <div class="flex-grow">
+                    <div *ngIf="!day.isActive" class="pt-2 text-gray-400 text-sm italic">
+                        No disponible
+                    </div>
+
+                    <div *ngIf="day.isActive" class="space-y-3">
+                        <div *ngFor="let slot of day.slots; let i = index" class="flex items-center gap-3">
+                            <input type="time" [(ngModel)]="slot.start"
+                                class="rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white px-2 py-1.5">
+                            <span class="text-gray-400">-</span>
+                            <input type="time" [(ngModel)]="slot.end"
+                                class="rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-700 dark:text-white px-2 py-1.5">
+
+                            <button (click)="removeSlot(day, i)"
+                                class="text-gray-400 hover:text-red-500 transition-colors p-1" title="Eliminar franja">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+
+                        <div class="flex items-center gap-4 pt-1">
+                            <button (click)="addSlot(day)"
+                                class="text-sm font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                                <i class="fas fa-plus"></i> Añadir intervalo
+                            </button>
+
+                            <!-- Copy to all weekdays (Only show on Monday) -->
+                            <button *ngIf="day.dayOfWeek === 1" (click)="copyToAll(day)"
+                                class="text-sm font-medium text-gray-500 hover:text-indigo-600 flex items-center gap-1 ml-4"
+                                title="Copiar a todos los días laborables">
+                                <i class="fas fa-copy"></i> Copiar a L-V
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Save Button -->
+    <div class="fixed bottom-4 right-4 md:hidden z-20">
+        <button (click)="save()" [disabled]="saving()"
+            class="h-14 w-14 rounded-full bg-indigo-600 text-white shadow-lg flex items-center justify-center hover:bg-indigo-700 transition-colors disabled:opacity-75">
+            <i class="fas fa-save text-xl" *ngIf="!saving()"></i>
+            <span *ngIf="saving()"
+                class="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"></span>
+        </button>
+    </div>
+</div>

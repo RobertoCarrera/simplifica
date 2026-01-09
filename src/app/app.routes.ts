@@ -91,6 +91,7 @@ export const routes: Routes = [
     { path: 'configuracion/facturacion', component: BillingSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/automatizaciones', component: AutomationSettingsComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/etiquetas', loadComponent: () => import('./features/settings/tags-management/tags-management.component').then(m => m.TagsManagementComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'configuracion/booking-types', loadComponent: () => import('./features/settings/booking/booking-settings.component').then(m => m.BookingSettingsComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     // Admin modules management (solo admin)
     { path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard] },
@@ -105,6 +106,11 @@ export const routes: Routes = [
         canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloPresupuestos' }
     },
     // Módulo de facturación (lazy loading)
+    {
+        path: 'reservas',
+        loadComponent: () => import('./features/settings/booking/booking-settings.component').then(m => m.BookingSettingsComponent),
+        canActivate: [AuthGuard]
+    },
     {
         path: 'facturacion',
         loadChildren: () => import('./features/invoices/invoices.module').then(m => m.InvoicesModule),
