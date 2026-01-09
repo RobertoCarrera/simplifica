@@ -6,17 +6,7 @@
         <h3>Configuración</h3>
     </div>
 
-    <!-- SEGMENTED TABS -->
-    <div class="tabs-wrapper">
-        <div class="segmented-control">
-            <button class="segment" [class.active]="activeTab() === 'accounts'" (click)="activeTab.set('accounts')">
-                Cuentas
-            </button>
-            <button class="segment" [class.active]="activeTab() === 'domains'" (click)="activeTab.set('domains')">
-                Dominios
-            </button>
-        </div>
-    </div>
+
 
     <div class="scrollable-content">
         <!-- TAB: ACCOUNTS -->
@@ -74,7 +64,8 @@
                             <span class="separator">&#64;</span>
                             <select [(ngModel)]="newAccount.domain" class="form-select domain">
                                 <option value="" disabled selected>Seleccionar dominio</option>
-                                <option *ngFor="let d of myDomains()" [value]="d.domain">{{ d.domain }}</option>
+                                <option *ngFor="let d of myDomains()" [value]="d.domain">{{ d.domain }}
+                                </option>
                             </select>
                         </div>
                         <small class="hint">Elige un prefijo y uno de tus dominios asignados.</small>
@@ -103,130 +94,6 @@
             </div>
         </div>
 
-        <!-- DOMAINS TAB -->
-        <div *ngIf="activeTab() === 'domains'" class="tab-pane fade-in">
-            <!-- MIS DOMINIOS HEADER -->
-            <div class="section-header">
-                <h4 class="section-title">MIS DOMINIOS</h4>
-                <p class="section-desc">Dominios verificados disponibles para crear cuentas.</p>
-            </div>
 
-            <div class="card-list">
-                <div *ngFor="let d of myDomains()" class="setting-card">
-                    <div class="card-icon domain">
-                        <i class="fas fa-globe"></i>
-                    </div>
-                    <div class="card-info">
-                        <div class="primary-text">{{ d.domain }}</div>
-                        <div class="status-badge" [class.verified]="d.is_verified">
-                            <i class="fas" [class.fa-check-circle]="d.is_verified"
-                                [class.fa-clock]="!d.is_verified"></i>
-                            {{ d.is_verified ? 'Verificado' : 'Pendiente' }}
-                        </div>
-                    </div>
-                </div>
-
-                <div *ngIf="myDomains().length === 0 && !isAddingDomain" class="empty-state">
-                    <div class="empty-icon"><i class="fas fa-globe-americas"></i></div>
-                    <p>No hay dominios asignados.</p>
-                </div>
-
-                <!-- ADD DOMAIN TRIGGER -->
-                <div class="add-domain-section">
-                    <button class="btn btn-outline full-width" (click)="openAddDomainModal()">
-                        <i class="fas fa-plus"></i> Registrar Nuevo Dominio
-                    </button>
-                    <p class="section-hint">Busca y registra tu dominio profesional en segundos.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- DOMAIN PURCHASE MODAL (Strict: No scroll, no outside close) -->
-<div class="domain-modal-overlay fade-in" *ngIf="isAddingDomain">
-    <div class="domain-modal-content scale-in">
-        <div class="modal-header">
-            <h4>Registrar Dominio</h4>
-            <!-- Only close button allows exit -->
-            <button class="btn-icon close-btn" (click)="closeAddDomainModal()" [disabled]="isChecking">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-
-        <div class="modal-body">
-            <div class="search-hero">
-                <i class="fas fa-globe-americas hero-icon"></i>
-                <p>Encuentra tu identidad en internet</p>
-
-                <div class="search-box-large">
-                    <input type="text" [(ngModel)]="newDomainSearch" (keyup.enter)="searchDomain()"
-                        class="form-input large" placeholder="ejemplo.com" [disabled]="isChecking">
-                    <button class="btn btn-primary large" (click)="searchDomain()"
-                        [disabled]="isChecking || !newDomainSearch">
-                        <i class="fas" [class.fa-search]="!isChecking" [class.fa-spinner]="isChecking"
-                            [class.fa-spin]="isChecking"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- RESULT CARD INSIDE MODAL -->
-            <div class="search-result" *ngIf="checkResult() as res">
-                <div class="result-card" [class.available]="res.available" [class.unavailable]="!res.available">
-                    <div class="info">
-                        <div class="domain-lockup">
-                            <span class="name">{{ res.domain }}</span>
-                            <span class="badge" [class.success]="res.available" [class.danger]="!res.available">
-                                {{ res.available ? 'Disponible' : 'Ocupado' }}
-                            </span>
-                        </div>
-                        <p class="description" *ngIf="res.available">
-                            Incluye configuración DNS automática y verificación de email inmediata.
-                        </p>
-                        <p class="description" *ngIf="!res.available">
-                            Este dominio ya tiene dueño. Prueba con otra extensión o nombre.
-                        </p>
-                    </div>
-
-                    <div class="action-area" *ngIf="res.available">
-                        <div class="price-display">
-                            <span class="amount">{{ res.price }}</span>
-                        </div>
-                        <button class="btn btn-success btn-lg" (click)="registerDomain()">
-                            Comprar Ahora
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- DOMAIN MODAL -->
-<app-contract-progress-dialog #contractDialog></app-contract-progress-dialog>
-
-<div class="domain-modal-overlay" *ngIf="showDomainModal" (click)="closeDomainModal()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-            <h4>Dominios en AWS Route53</h4>
-            <button class="btn-icon" (click)="showAwsModal = false"><i class="fas fa-times"></i></button>
-        </div>
-
-        <div class="modal-body">
-            <div *ngIf="isLoadingAws" class="loading-spinner">Cargando desde AWS...</div>
-
-            <div *ngIf="!isLoadingAws && awsDomains().length === 0" class="empty-state">
-                No se encontraron dominios o faltan credenciales.
-            </div>
-
-            <div class="domain-list">
-                <div *ngFor="let d of awsDomains()" class="domain-getItem">
-                    <span class="d-name">{{ d.DomainName }}</span>
-                    <button class="btn btn-primary btn-sm" (click)="importAwsDomain(d.DomainName)">
-                        Añadir
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
 </div>

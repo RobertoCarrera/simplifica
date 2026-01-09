@@ -1,0 +1,165 @@
+<div
+    class="h-full flex flex-col bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <!-- HEADER -->
+    <div
+        class="p-6 border-b border-gray-100 dark:border-gray-700/50 flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/50">
+        <div>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Mis Dominios</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Dominios verificados disponibles para crear cuentas de correo y servicios.
+            </p>
+        </div>
+        <div>
+            <button
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-sm shadow-blue-600/20"
+                (click)="openAddDomainModal()">
+                <i class="fas fa-plus"></i> Registrar Dominio
+            </button>
+            <!-- AWS Import hidden trigger if needed for debug: -->
+            <button *ngIf="false" (click)="openAwsModal()" class="ml-2 px-3 py-2 text-xs text-gray-400">AWS</button>
+        </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="flex-1 overflow-y-auto p-6">
+
+        <!-- CARD LIST -->
+        <div class="grid gap-4">
+            <div *ngFor="let d of myDomains()"
+                class="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 transition-all group">
+
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-medium text-gray-900 dark:text-white">{{ d.domain }}</h3>
+                        <p class="text-xs text-gray-500">Proveedor: {{ d.provider | uppercase }}</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium"
+                        [class]="d.is_verified ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'">
+                        <i class="fas" [class.fa-check-circle]="d.is_verified" [class.fa-clock]="!d.is_verified"></i>
+                        {{ d.is_verified ? 'Verificado' : 'Pendiente' }}
+                    </div>
+
+                    <!-- Actions could go here (Delete) -->
+                </div>
+            </div>
+
+            <!-- EMPTY STATE -->
+            <div *ngIf="myDomains().length === 0 && !isAddingDomain" class="text-center py-12">
+                <div
+                    class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+                    <i class="fas fa-globe-americas text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">No tienes dominios</h3>
+                <p class="text-gray-500 max-w-sm mx-auto mt-2 mb-6">
+                    Registra tu dominio profesional para empezar a usar correos corporativos y otros servicios.
+                </p>
+                <button
+                    class="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    (click)="openAddDomainModal()">
+                    Buscar Dominio
+                </button>
+            </div>
+        </div>
+
+        <!-- AWS IMPORT SECTION (conditionally shown if logic allows) -->
+        <div *ngIf="awsDomains().length > 0 && isAdmin()"
+            class="mt-8 pt-8 border-t border-gray-100 dark:border-gray-700">
+            <h4 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Descubiertos en AWS</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div *ngFor="let d of awsDomains()"
+                    class="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg flex justify-between items-center border border-gray-200 dark:border-gray-700/50 dashed">
+                    <span class="text-sm font-mono text-gray-600 dark:text-gray-300">{{ d.DomainName }}</span>
+                    <button class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                        (click)="importAwsDomain(d.DomainName)">
+                        Importar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- DOMAIN PURCHASE MODAL -->
+<div class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 fade-in"
+    *ngIf="isAddingDomain">
+    <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden scale-in">
+        <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+            <h4 class="font-semibold text-gray-900 dark:text-white">Registrar Dominio</h4>
+            <button
+                class="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center justify-center transition-colors"
+                (click)="closeAddDomainModal()" [disabled]="isChecking">
+                <i class="fas fa-times text-gray-500"></i>
+            </button>
+        </div>
+
+        <div class="p-6">
+            <!-- SEARCH INPUT -->
+            <div class="relative mb-6">
+                <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-gray-400"></i>
+                </div>
+                <input type="text" [(ngModel)]="newDomainSearch" (keyup.enter)="searchDomain()"
+                    class="w-full pl-10 pr-24 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-white"
+                    placeholder="ejemplo.com" [disabled]="isChecking">
+                <button
+                    class="absolute right-2 top-2 bottom-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    (click)="searchDomain()" [disabled]="isChecking || !newDomainSearch">
+                    <span *ngIf="!isChecking">Buscar</span>
+                    <i *ngIf="isChecking" class="fas fa-spinner fa-spin"></i>
+                </button>
+            </div>
+
+            <!-- RESULTS -->
+            <div *ngIf="checkResult() as res" class="animate-fade-in-up">
+                <div class="p-4 rounded-xl border flex flex-col gap-4 text-center" [ngClass]="{
+                        'border-green-200 bg-green-50 dark:bg-green-900/10 dark:border-green-800': res.available,
+                        'border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800': !res.available
+                    }">
+
+                    <div>
+                        <h5 class="text-lg font-bold" [ngClass]="{
+                                'text-green-700 dark:text-green-400': res.available,
+                                'text-red-700 dark:text-red-400': !res.available
+                            }">
+                            {{ res.domain }}
+                        </h5>
+                        <p class="text-sm font-medium mt-1" [ngClass]="{
+                                'text-green-600 dark:text-green-300': res.available,
+                                'text-red-600 dark:text-red-300': !res.available
+                            }">
+                            {{ res.available ? '¡Está disponible!' : 'Ya está registrado' }}
+                        </p>
+                    </div>
+
+                    <div *ngIf="res.available"
+                        class="pt-4 border-t border-green-200/50 dark:border-green-800/50 flex flex-col gap-3">
+                        <div class="text-2xl font-bold text-gray-900 dark:text-white">
+                            {{ res.price | currency : res.currency }}
+                            <span class="text-xs font-normal text-gray-500">/ año</span>
+                        </div>
+                        <button
+                            class="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-lg shadow-green-600/20 transition-all hover:scale-[1.02]"
+                            (click)="registerDomain()">
+                            Comprar Ahora
+                        </button>
+                    </div>
+
+                    <div *ngIf="!res.available" class="text-sm text-gray-500">
+                        Intenta con otra extensión (.net, .org) o cambia el nombre.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<app-contract-progress-dialog #contractDialog></app-contract-progress-dialog>

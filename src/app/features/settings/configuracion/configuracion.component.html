@@ -54,6 +54,16 @@
         <span class="hidden sm:inline">Ajustes</span>
       </button>
 
+      <!-- Tab: Domains (hidden for clients) -->
+      <button *ngIf="!isClient" (click)="activeTab='domains'" role="tab" [attr.aria-selected]="activeTab === 'domains'"
+        class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+        [class]="activeTab === 'domains' 
+          ? 'bg-gradient-to-r from-blue-700 to-indigo-800 text-white shadow-md shadow-blue-900/30' 
+          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
+        <i class="fas fa-globe text-sm"></i>
+        <span class="hidden sm:inline">Dominios</span>
+      </button>
+
       <!-- Tab: Import/Export (hidden for clients) -->
       <button *ngIf="!isClient" (click)="activeTab='import-export'" role="tab"
         [attr.aria-selected]="activeTab === 'import-export'"
@@ -475,6 +485,10 @@
       [clientAddress]="clientDetails?.direccion ? (clientDetails.direccion.street + ', ' + clientDetails.direccion.locality) : ''"
       [readOnly]="false" [isClientView]="isClient">
     </app-client-gdpr-panel>
+  </div>
+
+  <div [class.hidden-panel]="activeTab!=='domains'" class="w-full h-full">
+    <app-domains *ngIf="activeTab==='domains'"></app-domains>
   </div>
 
   <!-- Perfil de usuario (desactivado: contenido movido al grid) -->
