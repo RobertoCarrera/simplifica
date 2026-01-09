@@ -234,53 +234,7 @@
                     <!-- create-locality modal moved below the form to avoid nested form/ngModel issues -->
                 </div>
 
-                <div class="form-row mt-6">
-                    <div class="w-full" style="grid-column: 1 / -1;">
-                        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                            <i class="fas fa-shield-alt text-blue-500"></i>
-                            Privacidad y Consentimiento
-                        </h3>
 
-                        <div
-                            class="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg border border-blue-100 dark:border-blue-800">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- Privacy Policy (Required - Auto-checked) -->
-                                <div class="flex items-start gap-3">
-                                    <div class="flex items-center h-5">
-                                        <input id="privacyPolicy" name="privacyPolicy" type="checkbox" [ngModel]="true"
-                                            disabled
-                                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 opacity-50 cursor-not-allowed">
-                                    </div>
-                                    <div class="ml-1 text-sm">
-                                        <label for="privacyPolicy"
-                                            class="font-medium text-gray-700 dark:text-gray-300 opacity-75">
-                                            He informado al cliente sobre la política de privacidad y el tratamiento de
-                                            sus datos personales. *
-                                        </label>
-                                        <p class="text-xs text-gray-500 mt-1">Marcado automáticamente (Declaración
-                                            responsable).</p>
-                                    </div>
-                                </div>
-
-                                <!-- Marketing Consent (Auto-checked default) -->
-                                <div class="flex items-start gap-3">
-                                    <div class="flex items-center h-5">
-                                        <input id="marketingConsent" name="marketingConsent" type="checkbox"
-                                            [ngModel]="true" disabled
-                                            class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 opacity-50 cursor-not-allowed">
-                                    </div>
-                                    <div class="ml-1 text-sm">
-                                        <label for="marketingConsent"
-                                            class="font-medium text-gray-700 dark:text-gray-300 opacity-75">
-                                            El cliente consiente recibir comunicaciones comerciales.
-                                        </label>
-                                        <p class="text-xs text-gray-500 mt-1">Marcado automáticamente.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
             </form>
 
@@ -367,7 +321,7 @@
                 <span>Cancelar</span>
             </button>
             <button type="button" (click)="saveCustomer()" class="btn-save"
-                [disabled]="isLoading() || (formData.client_type === 'business' ? !(formData.business_name && formData.cif_nif && formData.email) : !(formData.name && formData.email)) || (!customer && !formData.privacyPolicyAccepted)"
+                [disabled]="isLoading() || (formData.client_type === 'business' ? !(formData.business_name && formData.cif_nif && formData.email) : !(formData.name && formData.email))"
                 [title]="customer ? 'Actualizar' : 'Crear'">
                 <i class="fas fa-check"></i>
                 <span>{{ customer ? 'Actualizar' : 'Guardar Cliente' }}</span>

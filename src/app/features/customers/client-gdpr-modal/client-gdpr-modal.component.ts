@@ -44,7 +44,9 @@ import { ClientGdprPanelComponent } from '../components/client-gdpr-panel/client
             [clientEmail]="clientEmail"
             [clientName]="clientName"
             [readOnly]="true"
-            [showHeader]="false">
+            [showHeader]="false"
+            (dataChanged)="dataModified.emit()"
+            (closeModal)="close()">
           </app-client-gdpr-panel>
         </div>
 
@@ -80,6 +82,7 @@ export class ClientGdprModalComponent implements OnInit {
   @Input() clientName!: string;
 
   @Output() closeModal = new EventEmitter<void>();
+  @Output() dataModified = new EventEmitter<void>();
 
   ngOnInit(): void {
     // Prevent body scroll when modal is open

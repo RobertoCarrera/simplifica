@@ -154,6 +154,12 @@ export const routes: Routes = [
     { path: 'pago/:token/completado', component: PaymentSuccessComponent },
     { path: 'pago/:token/cancelado', component: PaymentCancelledComponent },
 
+    // Public Privacy Policy
+    {
+        path: 'privacy-policy',
+        loadComponent: () => import('./features/public/privacy-policy/privacy-policy.component').then(m => m.PrivacyPolicyComponent)
+    },
+
     // Rutas de desarrollo (requieren autenticación y permisos dev)
     // Eliminado: advanced-features, workflows, export-import (consolidados en módulos/producto)
     // Eliminado: notification-demo (usamos solo sistema de toasts)

@@ -14,7 +14,8 @@
       </button>
 
       <!-- Tab: Privacidad (GDPR) -->
-      <button (click)="activeTab='privacidad'" role="tab" [attr.aria-selected]="activeTab === 'privacidad'"
+      <button *ngIf="isClient" (click)="activeTab='privacidad'" role="tab"
+        [attr.aria-selected]="activeTab === 'privacidad'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
         [class]="activeTab === 'privacidad' 
           ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30' 

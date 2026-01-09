@@ -53,6 +53,11 @@
               <i class="fas fa-upload text-sm"></i>
               <span class="ml-1">Importar CSV</span>
             </button>
+            <button (click)="goToGdpr()" class="btn btn-secondary btn-header text-sm font-medium ml-2"
+              title="Panel de cumplimiento RGPD">
+              <i class="fas fa-shield-alt text-sm"></i>
+              <span class="ml-1">Gestión GDPR</span>
+            </button>
           </div>
         </div>
       </div>
@@ -147,32 +152,12 @@
         }
       </div>
       }
-      <!-- Loading State (Skeletons for header + list) -->
+      <!-- Loading State (Skeletons for Grid) -->
       @if (isLoading() && !customers().length) {
-      <div class="space-y-4">
-        <div
-          class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
-          <!-- Header skeleton: icon + two lines + actions -->
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <app-skeleton type="avatar"></app-skeleton>
-              <div class="space-y-2">
-                <app-skeleton type="text" width="160px"></app-skeleton>
-                <app-skeleton type="text" width="220px"></app-skeleton>
-              </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <app-skeleton type="button" width="80px"></app-skeleton>
-              <app-skeleton type="button" width="100px"></app-skeleton>
-              <app-skeleton type="button" width="90px"></app-skeleton>
-            </div>
-          </div>
-          <app-skeleton type="rect" height="40px" width="100%"></app-skeleton>
-        </div>
-        <div
-          class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
-          <app-skeleton type="list" [count]="6"></app-skeleton>
-        </div>
+      <div class="customers-grid">
+        @for (item of [1,2,3,4,5,6]; track $index) {
+        <app-skeleton type="card" width="100%"></app-skeleton>
+        }
       </div>
       }
 
@@ -394,12 +379,7 @@
 
 
 
-              <button (click)="openGdprModal(customer)"
-                class="w-8 h-8 flex items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
-                [class.opacity-0]="customer?.metadata?.inactive_on_import"
-                [disabled]="customer?.metadata?.inactive_on_import" title="Acciones RGPD">
-                <i class="fas fa-shield-alt text-sm"></i>
-              </button>
+
               <button (click)="deleteCustomer(customer)"
                 class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                 title="Eliminar cliente">
@@ -443,12 +423,7 @@
       </div>
       }
 
-      <!-- Loading Overlay -->
-      @if (isLoading() && customers().length) {
-      <div class="loading-overlay">
-        <app-loading type="spinner" size="lg" text="Actualizando clientes..." [overlay]="true"></app-loading>
-      </div>
-      }
+      <!-- Loading Overlay Removed per user feedback to improve UX on return navigation -->
     </div>
 
   </div>
@@ -498,7 +473,7 @@
               Mensaje (opcional)
             </label>
             <textarea id="inviteMessage" name="inviteMessage" [(ngModel)]="inviteMessage" class="form-textarea" rows="3"
-              placeholder="Hola, te invito a acceder a tu portal de cliente para ver tus tickets y presupuestos."></textarea>
+              placeholder="Hola, te invito a acceder a tu portal de cliente."></textarea>
           </div>
         </div>
 
@@ -529,7 +504,7 @@
 @if (gdprModalClient()) {
 <app-client-gdpr-modal [isOpen]="showGdprModal()" [clientId]="gdprModalClient()!.id"
   [clientEmail]="gdprModalClient()!.email"
-  [clientName]="gdprModalClient()!.name + ' ' + (gdprModalClient()!.apellidos || '')"
+  [clientName]="gdprModalClient()!.name + ' ' + (gdprModalClient()!.apellidos || '')" (dataModified)="loadCustomers()"
   (closeModal)="showGdprModal.set(false); gdprModalClient.set(null)">
 </app-client-gdpr-modal>
 }

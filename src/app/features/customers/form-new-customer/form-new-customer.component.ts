@@ -75,9 +75,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     addressLocalidadId: '',
 
     // Honeypot field (hidden from users, bots will fill it)
-    honeypot: '',
-    privacyPolicyAccepted: true,
-    marketingConsent: true
+    honeypot: ''
   };
 
   // Honeypot tracking
@@ -179,9 +177,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       addressNombre: customer.direccion?.nombre || '',
       addressNumero: customer.direccion?.numero || '',
       addressLocalidadId: customer.direccion?.localidad_id || '',
-      honeypot: '',
-      privacyPolicyAccepted: false,
-      marketingConsent: false
+      honeypot: ''
     };
 
     this.checkAddressLocality();
@@ -205,9 +201,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       addressNombre: '',
       addressNumero: '',
       addressLocalidadId: '',
-      honeypot: '',
-      privacyPolicyAccepted: false,
-      marketingConsent: false
+      honeypot: ''
     };
     this.addressLocalityName = '';
   }
@@ -438,7 +432,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       trade_name: this.formData.trade_name,
       legal_representative_name: this.formData.legal_representative_name,
       legal_representative_dni: this.formData.legal_representative_dni,
-      mercantile_registry_data: this.formData.mercantile_registry_data,
+      mercantile_registry_data: this.formData.mercantile_registry_data
       // Metadata fields can be passed if needed
     };
 
@@ -504,33 +498,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
           const newId = res.id || res.ID || res.Id;
 
           // GDPR Consents Saving
-          if (newId) {
-            const email = this.formData.email;
-            // 1. Privacy Policy (Data Processing)
-            if (this.formData.privacyPolicyAccepted) {
-              this.gdprService.recordConsent({
-                subject_email: email,
-                subject_id: newId,
-                consent_type: 'data_processing',
-                consent_given: true,
-                consent_method: 'form',
-                purpose: 'Aceptación Política Privacidad en Alta',
-                data_processing_purposes: ['service_delivery', 'contractual']
-              }).subscribe();
-            }
-            // 2. Marketing Consent
-            if (this.formData.marketingConsent) {
-              this.gdprService.recordConsent({
-                subject_email: email,
-                subject_id: newId,
-                consent_type: 'marketing',
-                consent_given: true,
-                consent_method: 'form',
-                purpose: 'Aceptación Comunicaciones Comerciales en Alta',
-                data_processing_purposes: ['marketing']
-              }).subscribe();
-            }
-          }
+
 
           // If we have pending tags, save them now
           if (this.pendingTags.length > 0 && newId) {

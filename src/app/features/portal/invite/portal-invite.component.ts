@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
+import { GdprComplianceService } from '../../../services/gdpr-compliance.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -114,13 +115,40 @@ import { environment } from '../../../../environments/environment';
           />
         </div>
 
+        <!-- GDPR Consent -->
+        <div class="space-y-3 pt-2">
+            <div class="flex items-start gap-3">
+                <div class="flex items-center h-5">
+                    <input id="privacy" type="checkbox" [(ngModel)]="privacyAccepted" name="privacy" required
+                        class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
+                </div>
+                <div class="ml-1 text-sm">
+                    <label for="privacy" class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                        He leído y acepto la <a href="/privacy-policy" target="_blank" class="text-indigo-600 hover:text-indigo-500 underline">política de privacidad</a> *
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+                <div class="flex items-center h-5">
+                    <input id="marketing" type="checkbox" [(ngModel)]="marketingAccepted" name="marketing"
+                        class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
+                </div>
+                <div class="ml-1 text-sm">
+                    <label for="marketing" class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                        Acepto recibir comunicaciones comerciales
+                    </label>
+                </div>
+            </div>
+        </div>
+
         <div *ngIf="passwordError" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
           <p class="text-sm text-red-800 dark:text-red-200">{{ passwordError }}</p>
         </div>
 
         <button 
           (click)="submitPassword()"
-          [disabled]="submitting || !password || !passwordConfirm || !name || !surname"
+          [disabled]="submitting || !password || !passwordConfirm || !name || !surname || !privacyAccepted"
           class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
         >
           {{ submitting ? 'Creando cuenta...' : 'Crear cuenta' }}
@@ -138,6 +166,7 @@ export class PortalInviteComponent {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private auth = inject(AuthService);
+  private gdprService = inject(GdprComplianceService);
 
   // Form data
   password = '';
@@ -147,6 +176,10 @@ export class PortalInviteComponent {
   // New fields for Owner invites (New Company)
   companyName = '';
   companyNif = '';
+
+  // GDPR Consent
+  privacyAccepted = false;
+  marketingAccepted = false;
 
   // UI state
   loading = true;
@@ -320,6 +353,11 @@ export class PortalInviteComponent {
       }
     }
 
+    if (!this.privacyAccepted) {
+      this.passwordError = 'Debes aceptar la política de privacidad para continuar';
+      return;
+    }
+
     this.submitting = true;
 
     try {
@@ -413,6 +451,12 @@ export class PortalInviteComponent {
       throw new Error((rpcData as any).error || 'Error lógico al registrar la empresa');
     }
 
+    // Verify we have a user ID (should be in rpcData or we use the one we created/logged in with)
+    // authUserId is valid here.
+    if (authUserId) {
+      this.saveConsents(authUserId, this.userEmail);
+    }
+
     this.finishSuccess();
   }
 
@@ -473,7 +517,69 @@ export class PortalInviteComponent {
       }
     }
 
+    // Save GDPR Consent (Async, don't block success)
+    if (currentUser) {
+      this.saveConsents(currentUser.id, this.userEmail);
+    }
+
     this.finishSuccess();
+  }
+
+  private async saveConsents(authUserId: string, email: string) {
+    if (this.privacyAccepted) {
+      this.gdprService.recordConsent({
+        subject_id: authUserId,
+        subject_email: email,
+        consent_type: 'data_processing',
+        consent_given: true,
+        consent_method: 'form',
+        purpose: 'Aceptación Política Privacidad en Invitación',
+        data_processing_purposes: ['service_delivery', 'contractual']
+      }).subscribe();
+    }
+
+    if (this.marketingAccepted) {
+      this.gdprService.recordConsent({
+        subject_id: authUserId,
+        subject_email: email,
+        consent_type: 'marketing',
+        consent_given: true,
+        consent_method: 'form',
+        purpose: 'Aceptación Comunicaciones Comerciales en Invitación',
+        data_processing_purposes: ['marketing']
+      }).subscribe();
+
+      // Attempt to sync with Clients table if applicable
+      // We try to find a client with this email in the linked company
+      const companyId = this.invitationData?.company_id;
+      if (companyId) {
+        // We use the auth client directly to avoid circular dependency or service complex setup
+        const { data: clientData } = await this.auth.client
+          .from('clients')
+          .select('id')
+          .eq('email', email)
+          .eq('company_id', companyId)
+          .maybeSingle();
+
+        if (clientData) {
+          await this.auth.client
+            .from('clients')
+            .update({ marketing_consent: true, privacy_policy_accepted: true })
+            .eq('id', clientData.id);
+
+          // Also log consent for the Client ID specifically to be clean (double record but safer)
+          this.gdprService.recordConsent({
+            subject_id: clientData.id,
+            subject_email: email,
+            consent_type: 'marketing',
+            consent_given: true,
+            consent_method: 'form',
+            purpose: 'Sincronización GDPR Cliente (Invitación)',
+            data_processing_purposes: ['marketing']
+          }).subscribe();
+        }
+      }
+    }
   }
 
   private async finishSuccess() {

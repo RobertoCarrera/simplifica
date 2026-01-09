@@ -17,6 +17,9 @@ export interface GdprAccessRequest {
   processing_status?: 'received' | 'in_progress' | 'completed' | 'rejected';
   deadline_date?: string;
   created_at?: string;
+  response_data?: any;
+  completed_at?: string;
+  // Updated for verification details
 }
 
 export interface GdprConsentRecord {
@@ -506,6 +509,7 @@ export class GdprComplianceService {
 
     this.supabase.rpc('gdpr_log_access', {
       user_id: currentUser.id,
+      company_id: companyId, // Pass company_id for RLS visibility
       action_type: actionType,
       table_name: tableName,
       record_id: recordId,
@@ -604,20 +608,32 @@ export class GdprComplianceService {
 
     // Aggregate multiple queries for dashboard overview
     return from(Promise.all([
+      // 1. Access Requests
       this.supabase.from('gdpr_access_requests').select('*', { count: 'exact' }).eq('company_id', companyId),
+      // 2. Active Consents
       this.supabase.from('gdpr_consent_records').select('*', { count: 'exact' }).eq('company_id', companyId).eq('is_active', true),
-      this.supabase.from('gdpr_breach_incidents').select('*', { count: 'exact' }).eq('company_id', companyId),
-      this.supabase.from('gdpr_audit_log').select('*', { count: 'exact' }).gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      // 3. Data Exports (Audit Log)
+      this.supabase.from('gdpr_audit_log')
+        .select('*', { count: 'exact' })
+        .eq('company_id', companyId)
+        .eq('action_type', 'export'),
+      // 4. Anonymizations (Audit Log)
+      this.supabase.from('gdpr_audit_log')
+        .select('*', { count: 'exact' })
+        .eq('company_id', companyId)
+        .eq('action_type', 'anonymization')
     ])).pipe(
-      map(([accessRequests, consents, breaches, auditLogs]) => {
+      map(([accessRequests, consents, exports, anonymizations]) => {
         return {
-          accessRequestsCount: accessRequests.count || 0,
-          activeConsentsCount: consents.count || 0,
-          breachIncidentsCount: breaches.count || 0,
-          auditLogsLastMonth: auditLogs.count || 0,
+          accessRequests: accessRequests.count || 0,
+          activeConsents: consents.count || 0,
+          dataExports: exports.count || 0,
+          anonymizations: anonymizations.count || 0,
+
+          // Additional derived stats if needed
           pendingAccessRequests: accessRequests.data?.filter(r => r.processing_status === 'received').length || 0,
           overdueAccessRequests: accessRequests.data?.filter(r =>
-            new Date(r.deadline_date) < new Date() && r.processing_status !== 'completed'
+            new Date(r.deadline_date) > new Date() && r.processing_status !== 'completed'
           ).length || 0
         };
       }),
@@ -683,5 +699,23 @@ export class GdprComplianceService {
     const userIndex = levels.indexOf(userLevel);
     const requiredIndex = levels.indexOf(requiredLevel);
     return userIndex >= requiredIndex;
+  }
+
+  /**
+   * Fetch GDPR Audit Logs from the database
+   */
+  getAuditLogs(limit: number = 50): Observable<GdprAuditEntry[]> {
+    return from(
+      this.supabase
+        .from('gdpr_audit_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit)
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return data as GdprAuditEntry[];
+      })
+    );
   }
 }

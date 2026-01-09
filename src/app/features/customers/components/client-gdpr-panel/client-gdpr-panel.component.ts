@@ -1,8 +1,11 @@
-import { Component, Input, OnInit, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../../../services/gdpr-compliance.service';
+import { ToastService } from '../../../../services/toast.service';
+import { SupabaseCustomersService } from '../../../../services/supabase-customers.service';
 import { firstValueFrom } from 'rxjs';
 
 /**
@@ -140,12 +143,11 @@ import { firstValueFrom } from 'rxjs';
                 <svg class="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
               </button>
 
-              <!-- Admin Rights Actions (HIDDEN for Clients) -->
-              <ng-container *ngIf="!isClientView">
+              <!-- Admin Rights Actions (Available to ALL now) -->
                 
                 <!-- Rectificar -->
                 <button 
-                  (click)="createRequest('rectification')"
+                  (click)="openRequestModal('rectification')"
                   class="w-full flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:border-amber-500 hover:text-amber-600 transition-all group">
                   <div class="flex items-center gap-3">
                     <div class="p-2 bg-amber-50 dark:bg-amber-900/20 rounded text-amber-600">
@@ -158,7 +160,7 @@ import { firstValueFrom } from 'rxjs';
 
                 <!-- Olvido / Borrar -->
                 <button 
-                  (click)="requestDeletion()"
+                  (click)="openAnonymizeModal()"
                   class="w-full flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-red-100 rounded-lg text-sm text-red-600 hover:bg-red-50 hover:border-red-200 transition-all group">
                   <div class="flex items-center gap-3">
                     <div class="p-2 bg-red-50 rounded text-red-500">
@@ -169,9 +171,9 @@ import { firstValueFrom } from 'rxjs';
                   <svg class="w-4 h-4 text-red-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 </button>
 
-                <!-- Limitar (Restored) -->
+                <!-- Limitar -->
                 <button 
-                  (click)="createRequest('restriction')"
+                  (click)="openRequestModal('restriction')"
                   class="w-full flex items-center justify-between p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-200 hover:border-purple-500 hover:text-purple-600 transition-all group">
                   <div class="flex items-center gap-3">
                     <div class="p-2 bg-purple-50 dark:bg-purple-900/20 rounded text-purple-600">
@@ -181,12 +183,11 @@ import { firstValueFrom } from 'rxjs';
                   </div>
                   <svg class="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                 </button>
-              </ng-container>
 
             </div>
             
             <p *ngIf="isClientView" class="text-xs text-gray-500 mt-4 text-center">
-              Para ejercer otros derechos (rectificación, supresión, limitación), por favor contacte con nuestro delegado.
+              Para ejercer otros derechos, puede iniciar una solicitud arriba o contactar al DPO.
             </p>
           </div>
 
@@ -201,12 +202,115 @@ import { firstValueFrom } from 'rxjs';
         </div>
       </div>
 
-      <!-- Success Toast/Message (Overlay) -->
-      <div *ngIf="successMessage" class="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up z-50">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-        <span>{{ successMessage }}</span>
-      </div>
+    <!-- GDPR Request Custom Modal -->
+    <div *ngIf="showRequestModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-[10000] flex items-center justify-center modal-backdrop" (click)="closeRequestModal()">
+      <div class="relative p-6 border w-11/12 md:w-1/2 lg:w-1/3 rounded-xl bg-white dark:bg-slate-800 dark:border-slate-600 modal-content-box" (click)="$event.stopPropagation()">
+        
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white">{{ requestModalConfig.title }}</h3>
+            <button (click)="closeRequestModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
 
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
+            {{ requestModalConfig.description }}
+        </p>
+
+        <!-- Info Alerts for Client -->
+        <div *ngIf="requestModalConfig.type === 'rectification'" class="mb-6 p-3 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 rounded-r text-sm text-blue-800 dark:text-blue-300">
+           <p class="font-bold mb-1">Sobre la Rectificación:</p>
+           Debes indicarnos qué datos son erróneos. Nosotros los corregiremos y te avisaremos.
+        </div>
+        
+        <div *ngIf="requestModalConfig.type === 'restriction'" class="mb-6 p-3 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-500 rounded-r text-sm text-orange-800 dark:text-orange-300">
+           <p class="font-bold mb-1">¡Advertencia!</p>
+           Limitar el tratamiento bloqueará tu acceso a la plataforma. No podremos procesar tus datos para prestarte el servicio, aunque los conservaremos bloqueados por imperativo legal.
+        </div>
+        
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Motivo / Detalles de la solicitud <span class="text-red-500">*</span>
+            </label>
+            <textarea 
+                [(ngModel)]="requestModalConfig.reason"
+                rows="4" 
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400"
+                placeholder="Por favor, explique brevemente su solicitud..."></textarea>
+        </div>
+
+        <div class="flex justify-end gap-3">
+            <button 
+                (click)="closeRequestModal()" 
+                class="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 font-medium transition-colors">
+                Cancelar
+            </button>
+            <button 
+                (click)="submitRequest()"
+                [disabled]="creatingRequest || !requestModalConfig.reason.trim()"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm transition-colors flex items-center gap-2">
+                <span *ngIf="creatingRequest" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                Enviar Solicitud
+            </button>
+        </div>
+      </div>
+    </div>
+      
+    <!-- Anonymize Confirmation Modal -->
+    <div *ngIf="showAnonymizeModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-[10000] flex items-center justify-center modal-backdrop" (click)="closeAnonymizeModal()">
+      <div class="relative p-5 border w-11/12 md:w-1/3 rounded-lg bg-white dark:bg-slate-800 dark:border-slate-600 modal-content-box" (click)="$event.stopPropagation()">
+        <div class="mt-3 text-center">
+          <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+            <svg class="w-6 h-6 text-red-600 dark:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">¿Estás absolutamente seguro?</h3>
+          
+          <div class="mt-2 px-4 py-2 bg-red-50 dark:bg-red-900/10 rounded text-left border border-red-100 dark:border-red-800">
+            <p class="text-sm text-red-800 dark:text-red-300">
+              Estás a punto de anonimizar los datos de <span class="font-bold">{{ clientName }}</span>.
+            </p>
+            <ul class="list-disc list-inside text-xs text-red-700 dark:text-red-400 mt-2 space-y-1">
+              <li>Esta acción es <strong>IRREVERSIBLE</strong>.</li>
+              <li>Se eliminarán nombre, email, teléfono y dirección.</li>
+              <li>Se conservarán los registros fiscales (facturas) pero anonimizados.</li>
+              <li>El usuario perderá acceso al portal de cliente.</li>
+            </ul>
+          </div>
+          
+          <div class="mt-6">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 text-left">
+              Para confirmar, escribe <strong>BORRAR</strong> abajo:
+            </label>
+            <input
+              type="text"
+              [(ngModel)]="anonymizeConfirmationInput"
+              placeholder="BORRAR"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 uppercase font-mono tracking-wider text-center bg-white dark:bg-slate-700 dark:text-white"
+              (keyup.enter)="processAnonymization()">
+            
+            <p *ngIf="anonymizeError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ anonymizeError }}</p>
+          </div>
+          
+          <div class="mt-6 flex justify-end gap-3">
+            <button
+              (click)="closeAnonymizeModal()"
+              class="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors font-medium">
+              Cancelar
+            </button>
+            
+            <button
+              (click)="processAnonymization()"
+              [disabled]="anonymizeConfirmationInput !== 'BORRAR'"
+              [class.opacity-50]="anonymizeConfirmationInput !== 'BORRAR'"
+              [class.cursor-not-allowed]="anonymizeConfirmationInput !== 'BORRAR'"
+              class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-bold shadow-sm">
+              Confirmar Anonimización
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
     </div>
   `,
   styles: [`
@@ -223,6 +327,18 @@ import { firstValueFrom } from 'rxjs';
     .animate-slide-up {
         animation: slide-up 0.3s ease-out forwards;
     }
+    /* Fix for shadow visibility in dark mode and clipping */
+    .modal-backdrop {
+        background-color: rgba(0, 0, 0, 0.7); /* Darker backdrop for better contrast */
+        padding: 2rem; /* Ensure space for shadow */
+    }
+    .modal-content-box {
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); /* Stronger shadow */
+        margin: auto; /* Center if using flex */
+        max-height: 90vh; /* Prevent overflowing viewport height */
+        display: flex;
+        flex-direction: column;
+    }
   `]
 })
 export class ClientGdprPanelComponent implements OnInit {
@@ -233,28 +349,43 @@ export class ClientGdprPanelComponent implements OnInit {
   @Input() isClientView: boolean = false;
   @Input() showHeader: boolean = true;
 
+  @Output() dataChanged = new EventEmitter<void>();
+  @Output() closeModal = new EventEmitter<void>(); // Emit to close parent modal
+
   // Estado de consentimientos
   marketingConsent: boolean = false;
   dataProcessingConsent: boolean = false;
   lastConsentUpdate: string = '';
   retentionPeriodYears: number = 7; // Default by strict fiscal laws
 
-
-  // Estado
+  // Estado general
   loading: boolean = true;
   updatingConsent: boolean = false;
   exporting: boolean = false;
   creatingRequest: boolean = false;
   requestingDeletion: boolean = false;
-
-  // Mensajes
   error: string = '';
-  successMessage: string = '';
+
+  // Anonymization Modal State
+  showAnonymizeModal: boolean = false;
+  anonymizeConfirmationInput: string = '';
+  anonymizeError: string = '';
+
+  // Request Modal State
+  showRequestModal: boolean = false;
+  requestModalConfig = {
+    type: 'rectification' as 'rectification' | 'restriction' | 'portability' | 'access' | 'erasure' | 'objection',
+    title: '',
+    description: '',
+    reason: ''
+  };
 
   // Configuración
   dpoEmail = environment.gdpr.dpoEmail;
 
   private gdprService = inject(GdprComplianceService);
+  private toastService = inject(ToastService);
+  private customersService = inject(SupabaseCustomersService);
 
   async ngOnInit() {
     if (!this.clientEmail) {
@@ -262,10 +393,6 @@ export class ClientGdprPanelComponent implements OnInit {
       this.loading = false;
       return;
     }
-
-    // Try to get dynamic DPO email if available in storage or assume default
-    // Ideally this comes from a CompanyConfig service, for now hardcoded fallback is safer
-
     await this.loadConsentStatus();
   }
 
@@ -278,7 +405,6 @@ export class ClientGdprPanelComponent implements OnInit {
 
     this.gdprService.getConsentRecords(this.clientEmail).subscribe({
       next: (records) => {
-        // Records are already sorted by created_at desc
         const marketing = records.find(r => r.consent_type === 'marketing');
         const processing = records.find(r => r.consent_type === 'data_processing');
 
@@ -288,7 +414,6 @@ export class ClientGdprPanelComponent implements OnInit {
         }
         if (processing) {
           this.dataProcessingConsent = processing.consent_given;
-          // Update date if newer
           if (processing.created_at && (!marketing?.created_at || processing.created_at > marketing.created_at)) {
             this.lastConsentUpdate = this.formatDate(processing.created_at);
           }
@@ -314,27 +439,35 @@ export class ClientGdprPanelComponent implements OnInit {
 
   private recordConsent(type: 'marketing' | 'data_processing', given: boolean) {
     this.updatingConsent = true;
-    this.successMessage = '';
 
     const record: GdprConsentRecord = {
       subject_email: this.clientEmail,
-      subject_id: this.clientId, // Optional but good for linking
+      subject_id: this.clientId,
       consent_type: type,
       consent_given: given,
-      consent_method: 'form', // Since it's from the panel
+      consent_method: 'form',
       purpose: type === 'marketing' ? 'Comunicaciones comerciales' : 'Gestión de servicios',
       data_processing_purposes: type === 'data_processing' ? ['service_delivery', 'legal_compliance'] : ['marketing']
     };
 
     this.gdprService.recordConsent(record).subscribe({
       next: () => {
-        this.successMessage = 'Consentimiento actualizado correctamente';
-        setTimeout(() => this.successMessage = '', 3000);
+        // SYNC WITH CUSTOMERS TABLE FOR STATS
+        const updatePayload: any = {};
+        if (type === 'marketing') updatePayload.marketing_consent = given;
+        if (type === 'data_processing') updatePayload.data_processing_consent = given;
+
+        this.customersService.updateCustomer(this.clientId, updatePayload).subscribe({
+          error: (e) => console.error('Error syncing consent stats', e)
+        });
+
+        this.toastService.success('Consentimiento actualizado correctamente', 'Éxito');
         this.updatingConsent = false;
-        this.loadConsentStatus(); // Refresh to confirm timestamp
+        this.loadConsentStatus();
       },
       error: (err) => {
         this.error = 'Error al guardar consentimiento: ' + err.message;
+        this.toastService.error(this.error, 'Error');
         // Revert UI
         if (type === 'marketing') this.marketingConsent = !given;
         else this.dataProcessingConsent = !given;
@@ -347,85 +480,131 @@ export class ClientGdprPanelComponent implements OnInit {
     this.exporting = true;
     this.error = '';
 
-    // Uses the new download method (using email)
     this.gdprService.downloadClientData(this.clientEmail, this.clientName).subscribe({
       next: (success) => {
         if (success) {
-          this.successMessage = 'Datos exportados correctamente.';
-          setTimeout(() => this.successMessage = '', 3000);
+          this.toastService.success('Datos exportados correctamente.', 'Éxito');
         } else {
           this.error = 'No se pudieron descargar los datos.';
+          this.toastService.error(this.error, 'Error');
         }
         this.exporting = false;
       },
       error: (err) => {
         this.error = 'Error exportando datos: ' + err.message;
+        this.toastService.error(this.error, 'Error');
         this.exporting = false;
       }
     });
   }
 
-  requestDeletion() {
-    const confirmed = confirm(
-      `¿Está seguro de solicitar la eliminación de los datos de ${this.clientName}?\n\n` +
-      'Esta acción anonimizará todos los datos personales.\n' +
-      'Para confirmar, por favor escriba "BORRAR" (Mayúsculas).'
-    );
+  // --- Anonymization Modal Methods ---
 
-    if (!confirmed) return;
+  openAnonymizeModal() {
+    this.anonymizeConfirmationInput = '';
+    this.anonymizeError = '';
+    this.showAnonymizeModal = true;
+  }
 
-    const doubleCheck = prompt('Escriba "BORRAR" para confirmar la eliminación irreversible:');
-    if (doubleCheck !== 'BORRAR') {
-      alert('Confirmación incorrecta. Operación cancelada.');
+  closeAnonymizeModal() {
+    this.showAnonymizeModal = false;
+    this.anonymizeConfirmationInput = '';
+    this.anonymizeError = '';
+  }
+
+  processAnonymization() {
+    if (this.anonymizeConfirmationInput !== 'BORRAR') {
+      this.anonymizeError = 'Debes escribir "BORRAR" para confirmar.';
       return;
     }
 
-    const reason = prompt('Indique el motivo de la eliminación:');
-    if (!reason) return;
-
     this.requestingDeletion = true;
+    this.anonymizeError = '';
+
+    const reason = 'Solicitud Web Derecho al Olvido (Modal Premium)';
 
     this.gdprService.anonymizeClientData(this.clientId, reason).subscribe({
       next: () => {
-        this.successMessage = 'Cliente anonimizado correctamente.';
-        this.successMessage = 'Cliente anonimizado correctamente.';
-        // Refresh state instead of reloading
+        this.toastService.success('Cliente anonimizado correctamente.', 'Éxito');
+        this.closeAnonymizeModal();
+        this.requestingDeletion = false;
         this.gdprService.getComplianceDashboard().subscribe();
-        setTimeout(() => {
-          // Close panel or navigate if needed, but do not reload.
-          // If this component is inside a modal, maybe emit a close event?
-          // For now, just removing the reload is safer.
-        }, 2000);
+        this.dataChanged.emit();
+        setTimeout(() => this.closeModal.emit(), 300);
       },
       error: (err) => {
-        this.error = 'Error al anonimizar: ' + err.message;
+        this.anonymizeError = 'Error al anonimizar: ' + err.message;
+        this.toastService.error(this.anonymizeError, 'Error');
         this.requestingDeletion = false;
       }
     });
   }
 
-  createRequest(type: 'rectification' | 'restriction' | 'portability' | 'access' | 'erasure' | 'objection') {
-    const details = prompt(`Detalles de la solicitud de ${type}:`);
-    if (!details) return;
+  // --- GDPR Request Modal Methods ---
+
+  openRequestModal(type: 'rectification' | 'restriction' | 'objection') {
+    let title = '';
+    let description = '';
+
+    switch (type) {
+      case 'rectification':
+        title = 'Solicitar Rectificación de Datos';
+        description = 'Indica qué datos son incorrectos y cuáles son los valores correctos.';
+        break;
+      case 'restriction':
+        title = 'Limitar Tratamiento de Datos';
+        description = 'Indica qué tratamiento deseas limitar y por qué motivo.';
+        break;
+      case 'objection':
+        title = 'Oponerse al Tratamiento';
+        description = 'Explica los motivos relacionados con tu situación particular.';
+        break;
+    }
+
+    this.requestModalConfig = {
+      type,
+      title,
+      description,
+      reason: ''
+    };
+    this.showRequestModal = true;
+  }
+
+  closeRequestModal() {
+    this.showRequestModal = false;
+    this.requestModalConfig.reason = '';
+  }
+
+  submitRequest() {
+    if (!this.requestModalConfig.reason.trim()) {
+      this.toastService.error('Por favor, indica un motivo o detalle.', 'Campo requerido');
+      return;
+    }
+
+    if (this.requestModalConfig.reason.length < 20) {
+      this.toastService.error('Por favor, detalla más tu solicitud (mínimo 20 caracteres).', 'Descripción muy corta');
+      return;
+    }
 
     this.creatingRequest = true;
 
     const request: GdprAccessRequest = {
-      request_type: type,
+      request_type: this.requestModalConfig.type,
       subject_email: this.clientEmail,
-      subject_name: this.clientName,
+      subject_name: this.clientName || this.clientEmail.split('@')[0],
       subject_identifier: this.clientId,
-      request_details: { description: details }
+      request_details: { description: this.requestModalConfig.reason }
     };
 
     this.gdprService.createAccessRequest(request).subscribe({
       next: () => {
-        this.successMessage = 'Solicitud creada correctamente.';
-        setTimeout(() => this.successMessage = '', 3000);
+        this.toastService.success('Solicitud enviada correctamente. El responsable ha sido notificado.', 'Éxito');
         this.creatingRequest = false;
+        this.closeRequestModal();
       },
       error: (err) => {
         this.error = 'Error creando solicitud: ' + err.message;
+        this.toastService.error(this.error, 'Error');
         this.creatingRequest = false;
       }
     });

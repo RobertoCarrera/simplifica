@@ -6,13 +6,17 @@ import { SupabaseCustomersService, CustomerFilters, CustomerStats } from '../../
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../../services/gdpr-compliance.service';
 import { ToastService } from '../../../services/toast.service';
 import { DevRoleService } from '../../../services/dev-role.service';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AddressesService } from '../../../services/addresses.service';
+import { GdprAuditListComponent } from '../gdpr-audit-list/gdpr-audit-list.component';
+import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
+import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
+import { AuthService } from '../../../services/auth.service';
 
 @Component({
   selector: 'app-gdpr-customer-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, GdprAuditListComponent, SkeletonLoaderComponent, FormNewCustomerComponent],
   templateUrl: './gdpr-customer-manager.component.html',
   styleUrls: ['./gdpr-customer-manager.component.scss']
 })
@@ -24,6 +28,11 @@ export class GdprCustomerManagerComponent implements OnInit {
   private fb = inject(FormBuilder);
   private devRoleService = inject(DevRoleService);
   private addressesService = inject(AddressesService);
+  public auth = inject(AuthService);
+
+  // Utilities for template
+  protected Math = Math;
+
 
   // State signals
   customers = signal<Customer[]>([]);
@@ -33,25 +42,36 @@ export class GdprCustomerManagerComponent implements OnInit {
   isLoading = signal(false);
   selectedCustomer = signal<Customer | null>(null);
   searchTerm = signal('');
+  showDeleted = signal(false);
+  selectedRequest = signal<GdprAccessRequest | null>(null);
+  showRequestDetailModal = false;
 
   // Form properties
   showCustomerForm = false;
+  selectedCustomerForEdit = signal<Customer | null>(null);
+
   showAccessRequestForm = false;
   accessRequestForm: FormGroup;
-  customerForm = {
-    name: '',
-    apellidos: '',
-    email: '',
-    phone: '',
-    dni: '',
-    address: ''
-  };
+
+  // Anonymization Modal State
+  showAnonymizeModal = false;
+  anonymizeTarget = signal<Customer | null>(null);
+  anonymizeConfirmationInput = '';
+  anonymizeError = '';
+
+  // Bulk Anonymization State
+  showBulkAnonymizeModal = false;
+  bulkAnonymizeConfirmationInput = '';
+  bulkAnonymizeError = '';
+  isBulkProcessing = false;
+  bulkProgress = { current: 0, total: 0, failed: 0 };
 
   // Computed properties
   filteredCustomers = computed(() => {
     const customers = this.customers();
     const search = this.searchTerm().toLowerCase();
 
+    // With showDeleted, metadata for deleted users might differ, but filter logic remains name/email
     if (!search) return customers;
 
     return customers.filter(customer =>
@@ -77,6 +97,30 @@ export class GdprCustomerManagerComponent implements OnInit {
     return total > 0 ? Math.round((withConsent / total) * 100) : 0;
   });
 
+  inactiveCustomers = computed(() => {
+    const twoYearsAgo = new Date();
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+
+    return this.customers().filter(customer => {
+      // 1. Must be created at least 6 months ago to be considered (grace period)
+      if (!customer.created_at) return false;
+      const createdAt = new Date(customer.created_at);
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      if (createdAt > sixMonthsAgo) return false;
+
+      // 2. If valid candidate, check access
+      // If customer has never accessed
+      if (!customer.last_accessed_at) {
+        return true;
+      }
+
+      const lastAccess = new Date(customer.last_accessed_at);
+      return lastAccess < twoYearsAgo;
+    });
+  });
+
   constructor() {
     this.accessRequestForm = this.fb.group({
       subjectEmail: ['', [Validators.required, Validators.email]],
@@ -87,8 +131,23 @@ export class GdprCustomerManagerComponent implements OnInit {
     });
   }
 
-  // Router injection for navigation back to customers list
+  // Pagination State
+  currentPage = signal(1);
+  pageSize = signal(5);
+
+  totalPages = computed(() => {
+    return Math.ceil(this.filteredCustomers().length / this.pageSize());
+  });
+
+  paginatedCustomers = computed(() => {
+    const start = (this.currentPage() - 1) * this.pageSize();
+    const end = start + this.pageSize();
+    return this.filteredCustomers().slice(start, end);
+  });
+
+  // Services
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   backToCustomers() {
     try {
@@ -98,10 +157,47 @@ export class GdprCustomerManagerComponent implements OnInit {
     }
   }
 
+  // Pagination Methods
+  changePage(page: number) {
+    if (page >= 1 && page <= this.totalPages()) {
+      this.currentPage.set(page);
+    }
+  }
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
+  }
+
+
+  accessRequests = signal<GdprAccessRequest[]>([]);
+
   ngOnInit() {
     this.loadCustomers();
     this.loadComplianceStats();
     this.loadAuditEntries();
+    this.loadAccessRequests();
+
+    // Listen for query params to open request detail
+    this.route.queryParams.subscribe(params => {
+      const requestId = params['requestId'];
+      if (requestId && this.accessRequests().length > 0) {
+        const req = this.accessRequests().find(r => r.id === requestId);
+        if (req) this.viewRequestDetail(req);
+      }
+    });
+  }
+
+  toggleShowDeleted() {
+    this.showDeleted.set(!this.showDeleted());
+    this.loadCustomers();
   }
 
   private loadCustomers() {
@@ -113,7 +209,7 @@ export class GdprCustomerManagerComponent implements OnInit {
       error: (error) => console.error('Error loading stats:', error)
     });
 
-    this.customersService.getCustomers().subscribe({
+    this.customersService.getCustomers({ showDeleted: this.showDeleted() }).subscribe({
       next: (customers) => {
         this.customers.set(customers);
         this.isLoading.set(false);
@@ -140,184 +236,27 @@ export class GdprCustomerManagerComponent implements OnInit {
     });
   }
 
+  private loadAccessRequests() {
+    this.gdprService.getAccessRequests().subscribe({
+      next: (requests: GdprAccessRequest[]) => {
+        this.accessRequests.set(requests);
+        // Check for deep link
+        const requestId = this.route.snapshot.queryParams['requestId'];
+        if (requestId) {
+          const req = requests.find(r => r.id === requestId);
+          if (req) this.viewRequestDetail(req);
+        }
+      },
+      error: (error: any) => console.error('Error loading access requests:', error)
+    });
+  }
+
   clearSearch() {
     this.searchTerm.set('');
     this.loadCustomers();
   }
 
-  editCustomer(customer: Customer) {
-    this.selectedCustomer.set(customer);
-    this.populateForm(customer);
-    this.showCustomerForm = true;
-  }
 
-  private resetForm() {
-    this.customerForm = {
-      name: '',
-      apellidos: '',
-      email: '',
-      phone: '',
-      dni: '',
-      address: ''
-    };
-  }
-
-  private populateForm(customer: Customer) {
-    // Extend shape dynamically without changing local interface typing
-    const base: any = {
-      name: customer.name || '',
-      apellidos: customer.apellidos || '',
-      email: customer.email || '',
-      phone: customer.phone || '',
-      dni: customer.dni || '',
-      address: (customer.direccion && (customer.direccion as any).nombre) ? (customer.direccion as any).nombre : (customer.address || '')
-    };
-    base.client_type = (customer as any).client_type || 'individual';
-    base.business_name = (customer as any).business_name || '';
-    base.cif_nif = (customer as any).cif_nif || '';
-    this.customerForm = base;
-  }
-
-  saveCustomer() {
-    if (!this.isFormValid()) {
-      this.toastService.error('Error', 'Por favor completa todos los campos obligatorios');
-      return;
-    }
-
-    this.isLoading.set(true);
-
-    if (this.selectedCustomer()) {
-      // Update existing customer
-      this.updateCustomer();
-    } else {
-      // Create new customer
-      this.createCustomer();
-    }
-  }
-
-  private isFormValid(): boolean {
-    return !!(this.customerForm.name && this.customerForm.apellidos && this.customerForm.email);
-  }
-
-  private createCustomer() {
-    const createWithDireccion = (direccion_id?: string) => {
-      const customerData: CreateCustomerDev = {
-        name: this.customerForm.name,
-        apellidos: this.customerForm.apellidos,
-        email: this.customerForm.email,
-        phone: this.customerForm.phone,
-        dni: this.customerForm.dni,
-        client_type: (this.customerForm as any).client_type || 'individual',
-        business_name: (this.customerForm as any).business_name || undefined,
-        cif_nif: (this.customerForm as any).cif_nif || ((this.customerForm as any).client_type === 'business' ? 'B99999999' : undefined),
-        direccion_id: direccion_id,
-        activo: true,
-        usuario_id: ''
-      };
-
-      this.customersService.createCustomer(customerData).subscribe({
-        next: (customer) => {
-          this.toastService.success('Éxito', 'Cliente creado correctamente');
-          this.closeForm();
-          this.loadCustomers();
-        },
-        error: (error: any) => {
-          console.error('Error creating customer:', error);
-          this.toastService.error('Error', 'No se pudo crear el cliente');
-        },
-        complete: () => {
-          this.isLoading.set(false);
-        }
-      });
-    };
-
-    if (this.customerForm.address && this.customerForm.address.trim()) {
-      const newAddress: any = {
-        _id: '',
-        created_at: new Date(),
-        tipo_via: '',
-        nombre: this.customerForm.address,
-        numero: '',
-        localidad_id: ''
-      };
-      this.addressesService.createAddress(newAddress).subscribe({
-        next: (addr: any) => createWithDireccion(addr._id || ''),
-        error: (err: any) => {
-          console.error('Error creando dirección:', err);
-          this.toastService.error('Error', 'No se pudo crear la dirección');
-        }
-      });
-    } else {
-      createWithDireccion(undefined);
-    }
-  }
-
-  private updateCustomer() {
-    const selectedCustomer = this.selectedCustomer();
-    if (!selectedCustomer) return;
-    const applyUpdate = (direccion_id?: string) => {
-      const updates: any = {
-        name: this.customerForm.name,
-        apellidos: this.customerForm.apellidos,
-        email: this.customerForm.email,
-        phone: this.customerForm.phone,
-        dni: this.customerForm.dni
-      };
-      if (direccion_id !== undefined) updates.direccion_id = direccion_id;
-
-      this.customersService.updateCustomer(selectedCustomer.id, updates).subscribe({
-        next: (customer) => {
-          this.toastService.success('Éxito', 'Cliente actualizado correctamente');
-          this.closeForm();
-          this.loadCustomers();
-        },
-        error: (error: any) => {
-          console.error('Error updating customer:', error);
-          this.toastService.error('Error', 'No se pudo actualizar el cliente');
-        },
-        complete: () => {
-          this.isLoading.set(false);
-        }
-      });
-    };
-
-    const existingDireccionId = (selectedCustomer as any).direccion_id || '';
-    if (this.customerForm.address && this.customerForm.address.trim()) {
-      if (existingDireccionId) {
-        this.addressesService.updateAddress(existingDireccionId, { nombre: this.customerForm.address }).subscribe({
-          next: () => applyUpdate(existingDireccionId),
-          error: (err: any) => {
-            console.error('Error actualizando dirección:', err);
-            this.toastService.error('Error', 'No se pudo actualizar la dirección');
-          }
-        });
-      } else {
-        const newAddress: any = {
-          _id: '',
-          created_at: new Date(),
-          tipo_via: '',
-          nombre: this.customerForm.address,
-          numero: '',
-          localidad_id: ''
-        };
-        this.addressesService.createAddress(newAddress).subscribe({
-          next: (addr: any) => applyUpdate(addr._id || ''),
-          error: (err: any) => {
-            console.error('Error creando dirección:', err);
-            this.toastService.error('Error', 'No se pudo crear la dirección');
-          }
-        });
-      }
-    } else {
-      applyUpdate(undefined);
-    }
-  }
-
-  closeForm() {
-    this.showCustomerForm = false;
-    this.selectedCustomer.set(null);
-    this.resetForm();
-  }
 
   deleteCustomer(customer: Customer) {
     const msg = `¿Proceder con la eliminación de ${customer.name} ${customer.apellidos}?\n\n` +
@@ -446,10 +385,10 @@ export class GdprCustomerManagerComponent implements OnInit {
   getGdprStatusText(customer: Customer): string {
     const status = this.getGdprComplianceStatus(customer);
     switch (status) {
-      case 'compliant': return 'Cumple RGPD';
+      case 'compliant': return 'Cumple';
       case 'partial': return 'Parcial';
-      case 'pending': return 'Pendiente consentimiento';
-      default: return 'Estado desconocido';
+      case 'pending': return 'Pendiente';
+      default: return 'Desconocido';
     }
   }
 
@@ -512,13 +451,29 @@ export class GdprCustomerManagerComponent implements OnInit {
   }
 
   confirmAnonymizeCustomer(customer: Customer) {
-    const confirmed = confirm(
-      `¿Estás seguro de que quieres anonimizar los datos de ${customer.name} ${customer.apellidos}?\n\n` +
-      'Esta acción es irreversible y cumple con el derecho al olvido del RGPD.'
-    );
+    this.anonymizeTarget.set(customer);
+    this.anonymizeConfirmationInput = '';
+    this.anonymizeError = '';
+    this.showAnonymizeModal = true;
+  }
 
-    if (confirmed) {
-      this.anonymizeCustomer(customer);
+  closeAnonymizeModal() {
+    this.showAnonymizeModal = false;
+    this.anonymizeTarget.set(null);
+    this.anonymizeConfirmationInput = '';
+    this.anonymizeError = '';
+  }
+
+  processAnonymization() {
+    if (this.anonymizeConfirmationInput !== 'BORRAR') {
+      this.anonymizeError = 'Debes escribir "BORRAR" para confirmar.';
+      return;
+    }
+
+    const target = this.anonymizeTarget();
+    if (target) {
+      this.anonymizeCustomer(target);
+      this.closeAnonymizeModal();
     }
   }
 
@@ -540,6 +495,69 @@ export class GdprCustomerManagerComponent implements OnInit {
       complete: () => {
         this.isLoading.set(false);
       }
+    });
+  }
+
+  // Bulk Anonymization Logic
+  openBulkAnonymizeModal() {
+    if (this.inactiveCustomers().length === 0) {
+      this.toastService.info('Info', 'No hay clientes inactivos para anonimizar');
+      return;
+    }
+    this.showBulkAnonymizeModal = true;
+    this.bulkAnonymizeConfirmationInput = '';
+    this.bulkAnonymizeError = '';
+  }
+
+  closeBulkAnonymizeModal() {
+    if (this.isBulkProcessing) return; // Prevent closing while processing
+    this.showBulkAnonymizeModal = false;
+    this.bulkAnonymizeConfirmationInput = '';
+    this.bulkAnonymizeError = '';
+  }
+
+  async processBulkAnonymization() {
+    if (this.bulkAnonymizeConfirmationInput !== 'ANONIMIZAR TODO') {
+      this.bulkAnonymizeError = 'Debes escribir "ANONIMIZAR TODO" para confirmar.';
+      return;
+    }
+
+    this.isBulkProcessing = true;
+    const targets = this.inactiveCustomers();
+    this.bulkProgress = { current: 0, total: targets.length, failed: 0 };
+
+    // Process sequentially to avoid overwhelming the server
+    for (const customer of targets) {
+      try {
+        await this.anonymizeCustomerPromise(customer);
+      } catch (err) {
+        console.error(`Failed to anonymize ${customer.id}`, err);
+        this.bulkProgress.failed++;
+      }
+      this.bulkProgress.current++;
+    }
+
+    this.isBulkProcessing = false;
+    this.closeBulkAnonymizeModal();
+    this.loadCustomers();
+
+    if (this.bulkProgress.failed > 0) {
+      this.toastService.warning('Proceso Completado', `Se anonimizaron ${this.bulkProgress.total - this.bulkProgress.failed} clientes. Fallaron ${this.bulkProgress.failed}.`);
+    } else {
+      this.toastService.success('Éxito', `Se anonimizaron todos los ${this.bulkProgress.total} clientes inactivos.`);
+    }
+  }
+
+  // Promise wrapper for GdprService.anonymizeClientData to use in async/await loop
+  private anonymizeCustomerPromise(customer: Customer): Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.gdprService.anonymizeClientData(customer.id, 'bulk_inactivity_cleanup').subscribe({
+        next: (res) => {
+          if (res.success) resolve(res);
+          else reject(res.error);
+        },
+        error: (err) => reject(err)
+      });
     });
   }
 
@@ -596,5 +614,76 @@ export class GdprCustomerManagerComponent implements OnInit {
       dataRetentionValid: true,
       lastAccessDate: customer.last_accessed_at
     };
+  }
+
+  viewRequestDetail(request: GdprAccessRequest) {
+    this.selectedRequest.set(request);
+    this.showRequestDetailModal = true;
+  }
+
+
+  openNewCustomerForm() {
+    this.selectedCustomerForEdit.set(null);
+    this.showCustomerForm = true;
+  }
+
+  editCustomer(customer: Customer) {
+    this.selectedCustomerForEdit.set(customer);
+    this.showCustomerForm = true;
+  }
+
+  closeCustomerForm() {
+    this.showCustomerForm = false;
+    this.selectedCustomerForEdit.set(null);
+  }
+
+  onCustomerSaved() {
+    this.closeCustomerForm();
+    this.loadCustomers();
+  }
+
+  handleRestriction(request: GdprAccessRequest) {
+    const customer = this.customers().find(c => c.email === request.subject_email);
+    if (!customer) {
+      this.toastService.error('Error', 'No se encontró el cliente.');
+      return;
+    }
+
+    if (confirm(`¿Estás seguro de RESTRINGIR (Desactivar) el tratamiento para ${customer.name}? Esto bloqueará su acceso y detendrá el procesamiento.`)) {
+      this.customersService.deleteCustomer(customer.id).subscribe({
+        next: () => {
+          this.toastService.success('Éxito', 'Tratamiento restringido (Cliente desactivado).');
+          this.closeRequestDetailModal();
+          this.loadCustomers();
+        },
+        error: (err) => this.toastService.error('Error', 'No se pudo restringir el cliente.')
+      });
+    }
+  }
+
+  handleRequestAction(request: GdprAccessRequest) {
+    if (request.request_type === 'rectification') {
+      const customer = this.customers().find(c => c.email === request.subject_email);
+      if (customer) {
+        this.closeRequestDetailModal();
+        this.editCustomer(customer);
+      } else {
+        this.toastService.error('Error', 'No se encontró un cliente con este email.');
+      }
+    } else if (request.request_type === 'restriction') {
+      this.handleRestriction(request);
+    }
+  }
+
+  closeRequestDetailModal() {
+    this.showRequestDetailModal = false;
+    this.selectedRequest.set(null);
+    // Optional: Clear query param
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { requestId: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
   }
 }

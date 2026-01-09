@@ -5,7 +5,7 @@ import { AuthService } from './auth.service';
   providedIn: 'root'
 })
 export class DatabaseMigrationService {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   async applyCheckCompanyFunction() {
     const sql = `
@@ -39,7 +39,7 @@ $$;`;
       // Usar el cliente Supabase del AuthService
       const client = this.authService.client;
       const { error } = await client.rpc('exec_sql', { sql });
-      
+
       if (error) {
         console.error('Error applying function:', error);
         return { success: false, error };
@@ -55,15 +55,15 @@ $$;`;
   async testCheckCompanyFunction() {
     try {
       const client = this.authService.client;
-      const { data, error } = await client.rpc('check_company_exists', { 
-        p_company_name: 'Digitalizamos tu PYME' 
+      const { data, error } = await client.rpc('check_company_exists', {
+        p_company_name: 'Digitalizamos tu PYME'
       });
-      
+
       if (error) {
         console.error('Error testing function:', error);
         return { success: false, error };
       }
-      
+
       console.log('Test result:', data);
       return { success: true, data };
     } catch (e) {
@@ -71,4 +71,5 @@ $$;`;
       return { success: false, error: e };
     }
   }
+
 }

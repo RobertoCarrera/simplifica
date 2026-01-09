@@ -1,4 +1,5 @@
 import { Component, inject, signal, computed } from '@angular/core';
+import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, LucideIconProvider, LUCIDE_ICONS, Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle } from 'lucide-angular';
 import { SupabaseNotificationsService, AppNotification } from '../../services/supabase-notifications.service';
@@ -19,6 +20,7 @@ import { TicketDetailComponent } from '../../features/tickets/detail/ticket-deta
 })
 export class NotificationsComponent {
     service = inject(SupabaseNotificationsService);
+    private router = inject(Router);
 
     // Modal state
     selectedTicketId = signal<string | null>(null);
@@ -77,6 +79,8 @@ export class NotificationsComponent {
         // Determine action based on type
         if (notification.type.startsWith('ticket')) {
             this.selectedTicketId.set(notification.reference_id);
+        } else if (notification.type === 'gdpr_request') {
+            this.router.navigate(['/clientes-gdpr'], { queryParams: { requestId: notification.reference_id } });
         } else {
             // Just mark as read if no specific view handler
         }

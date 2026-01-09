@@ -16,6 +16,7 @@ export interface CustomerFilters {
   sortOrder?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
+  showDeleted?: boolean; // New filter
 }
 
 export interface CustomerStats {
@@ -202,10 +203,13 @@ export class SupabaseCustomersService {
       query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
     }
 
-    // Filtrar sólo activos (deleted_at IS NULL) y ordenar
+    // Filtrar sólo activos (deleted_at IS NULL) a menos que showDeleted sea true
     // Nota: la tabla 'clients' no tiene columna is_active; usamos deleted_at para ordenar activos primero
+    if (!filters.showDeleted) {
+      query = query.is('deleted_at', null);
+    }
+
     query = query
-      .is('deleted_at', null)
       .order('deleted_at', { ascending: true, nullsFirst: true })
       .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
 
@@ -227,7 +231,7 @@ export class SupabaseCustomersService {
 
         // Schema cache may lack relation: fallback without embed
         if ((error as any)?.code === 'PGRST200') {
-          let q2 = this.supabase.from('clients').select('*, devices(id, deleted_at)'); // Try with devices even in fallback if possible, or revert to * if failing again? 
+          let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)'); // Try with devices even in fallback if possible, or revert to * if failing again? 
           // If PGRST200 happened on main query, it might be due to devices embed? 
           // But usually fallback queries are simpler. 
           // Let's stick to * but assume we might miss devices if embed fails.
@@ -235,8 +239,11 @@ export class SupabaseCustomersService {
           q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)');
           if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
           if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+
+          if (!filters.showDeleted) {
+            q2 = q2.is('deleted_at', null);
+          }
           q2 = q2
-            .is('deleted_at', null)
             .order('deleted_at', { ascending: true, nullsFirst: true })
             .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
           if (filters.limit) {
@@ -318,7 +325,7 @@ export class SupabaseCustomersService {
    * Método fallback (desarrollo) sin embed explícito
    */
   private getCustomersWithFallback(filters: CustomerFilters = {}, updateState: boolean = true): Observable<Customer[]> {
-    let query = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)');
+    let query = this.supabase.from('clients').select('*');
 
     const companyId = this.authService.companyId();
     if (this.isValidUuid(companyId)) {
@@ -332,8 +339,11 @@ export class SupabaseCustomersService {
     }
 
     // Ordenamiento consistente con estándar: activos (deleted_at NULL) primero
+    if (!filters.showDeleted) {
+      query = query.is('deleted_at', null);
+    }
+
     query = query
-      .is('deleted_at', null)
       .order('deleted_at', { ascending: true, nullsFirst: true })
       .order(filters.sortBy || 'created_at', { ascending: (filters.sortOrder || 'desc') === 'asc' });
 
@@ -662,12 +672,44 @@ export class SupabaseCustomersService {
    * Actualizar cliente usando método estándar
    * SECURITY: In production, use Edge Function for server-side validation
    */
+  /**
+   * Actualizar cliente usando método estándar (Partial Update)
+   * Replacing risky 'upsert_client' RPC call that wipes data on partial payloads.
+   */
   private updateCustomerStandard(id: string, updates: UpdateCustomer): Observable<Customer> {
-    devLog('Actualizando cliente via RPC (upsert_client)', { id });
+    devLog('Actualizando cliente via Standard Partial Update', { id, updates });
 
-    return from(this.callUpsertClientRpc({ ...updates, id } as any)).pipe(
+    // Prepare payload for partial update
+    const payload: any = { ...updates };
+
+    // Map aliases/legacy fields
+    if (payload.nombre && !payload.name) payload.name = payload.nombre;
+    if (payload.telefono && !payload.phone) payload.phone = payload.telefono;
+    if (payload.usuario_id) {
+      payload.company_id = payload.usuario_id;
+      delete payload.usuario_id;
+    }
+
+    // Clean up non-DB fields
+    delete payload.nombre;
+    delete payload.telefono;
+    delete payload.address;
+    delete payload.devices;
+    delete payload.favicon;
+
+    // Explicitly remove undefined fields so Supabase/Postgrest ignores them
+    Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
+
+    return from(this.supabase.from('clients').update(payload).eq('id', id).select().single()).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          devError('Error en Update Standard', error);
+          throw error;
+        }
+        return this.toCustomerFromClient(data);
+      }),
       tap(updatedCustomer => {
-        devSuccess('Cliente actualizado via RPC', updatedCustomer.id);
+        devSuccess('Cliente actualizado (Standard)', updatedCustomer.id);
         const currentCustomers = this.customersSubject.value;
         const updatedList = currentCustomers.map(c => c.id === id ? updatedCustomer : c);
         this.customersSubject.next(updatedList);
@@ -675,7 +717,7 @@ export class SupabaseCustomersService {
       }),
       catchError(error => {
         this.loadingSubject.next(false);
-        devError('Error al actualizar cliente via RPC', error);
+        devError('Error al actualizar cliente via Standard Update', error);
         return throwError(() => error);
       })
     );

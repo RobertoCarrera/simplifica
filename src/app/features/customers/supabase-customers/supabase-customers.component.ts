@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
-import { LoadingComponent } from '../../../shared/ui/loading/loading.component';
 import { AnimationService } from '../../../services/animation.service';
 import { CsvHeaderMapperComponent, CsvMappingResult } from '../../../shared/ui/csv-header-mapper/csv-header-mapper.component';
 import { Customer, CreateCustomerDev } from '../../../models/customer';
@@ -33,7 +32,6 @@ import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer
     CommonModule,
     FormsModule,
     SkeletonComponent,
-    LoadingComponent,
     CsvHeaderMapperComponent,
     ClientGdprModalComponent,
 
@@ -352,7 +350,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadData();
-    // Force refresh removed to avoid double-fetch flicker (Service effect handles it)
+    // Start initial load
+    this.customersService.loadCustomers();
 
     this.loadGdprData();
     // Initialize portal access cache
@@ -380,7 +379,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     if (!customer) return;
     this.inviteTarget.set(customer);
     this.inviteEmail = (customer.email || '').trim();
-    this.inviteMessage = 'Hola, te invito a acceder a tu portal de cliente para ver tus tickets y presupuestos.';
+    this.inviteMessage = 'Hola, te invito a acceder a tu portal de cliente.';
     this.showInviteModal.set(true);
   }
 
@@ -632,6 +631,11 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
   onCustomerSaved() {
     this.closeForm();
     // Refresh list if needed (service usually handles it via subscription)
+    this.customersService.loadCustomers();
+  }
+
+  // Wrapper for template access to refresh service data upon GDPR updates
+  loadCustomers() {
     this.customersService.loadCustomers();
   }
 
@@ -1074,17 +1078,17 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
   // Unified RGPD badge configuration - follows style guide semantic palette
   rgpdStatusConfig = {
     compliant: {
-      label: 'Conforme RGPD',
-      classes: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-      icon: 'fa-shield-check'
+      label: '',
+      classes: 'bg-green-400 text-green-950 dark:bg-green-500 dark:text-green-950 font-medium',
+      icon: 'fa-shield-alt'
     },
     partial: {
-      label: 'Parcial',
+      label: '',
       classes: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
       icon: 'fa-shield-alt'
     },
     nonCompliant: {
-      label: 'No conforme',
+      label: '',
       classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
       icon: 'fa-shield-exclamation'
     }
