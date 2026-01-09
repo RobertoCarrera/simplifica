@@ -12,6 +12,7 @@ import { GdprAuditListComponent } from '../gdpr-audit-list/gdpr-audit-list.compo
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
 import { AuthService } from '../../../services/auth.service';
+import { SupabaseNotificationsService } from '../../../services/supabase-notifications.service';
 
 @Component({
   selector: 'app-gdpr-customer-manager',
@@ -43,8 +44,15 @@ export class GdprCustomerManagerComponent implements OnInit {
   selectedCustomer = signal<Customer | null>(null);
   searchTerm = signal('');
   showDeleted = signal(false);
+  sortOrder = signal<'asc' | 'desc'>('asc'); // Sort order
+
   selectedRequest = signal<GdprAccessRequest | null>(null);
   showRequestDetailModal = false;
+
+  // Auto-Apply Confirmation Modal State
+  showAutoApplyModal = false;
+  autoApplyTargetRequest = signal<GdprAccessRequest | null>(null);
+  autoApplyChangesList: { field: string, newValue: string }[] = [];
 
   // Form properties
   showCustomerForm = false;
@@ -68,19 +76,38 @@ export class GdprCustomerManagerComponent implements OnInit {
 
   // Computed properties
   filteredCustomers = computed(() => {
-    const customers = this.customers();
+    let customers = this.customers();
     const search = this.searchTerm().toLowerCase();
+    // const incompleteOnly = this.showIncompleteOnly(); // Removed
 
-    // With showDeleted, metadata for deleted users might differ, but filter logic remains name/email
-    if (!search) return customers;
+    // 1. Filter by Search
+    if (search) {
+      customers = customers.filter(customer =>
+        customer.name?.toLowerCase().includes(search) ||
+        customer.apellidos?.toLowerCase().includes(search) ||
+        customer.email?.toLowerCase().includes(search) ||
+        customer.phone?.includes(search) ||
+        customer.dni?.toLowerCase().includes(search)
+      );
+    }
 
-    return customers.filter(customer =>
-      customer.name?.toLowerCase().includes(search) ||
-      customer.apellidos?.toLowerCase().includes(search) ||
-      customer.email?.toLowerCase().includes(search) ||
-      customer.phone?.includes(search) ||
-      customer.dni?.toLowerCase().includes(search)
-    );
+    // 2. Sort Logic: Incomplete First > Name Alpha
+    const order = this.sortOrder();
+    customers.sort((a, b) => {
+      // Primary: Incomplete Status (Not compliant) first
+      const aIncomplete = this.getGdprComplianceStatus(a) !== 'compliant';
+      const bIncomplete = this.getGdprComplianceStatus(b) !== 'compliant';
+
+      if (aIncomplete && !bIncomplete) return -1;
+      if (!aIncomplete && bIncomplete) return 1;
+
+      // Secondary: Name Alphabetical
+      const nameA = a.name?.toLowerCase() || '';
+      const nameB = b.name?.toLowerCase() || '';
+      return order === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+    });
+
+    return customers;
   });
 
   customersWithConsent = computed(() =>
@@ -148,6 +175,7 @@ export class GdprCustomerManagerComponent implements OnInit {
   // Services
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private notificationsService = inject(SupabaseNotificationsService);  // Injected here
 
   backToCustomers() {
     try {
@@ -276,6 +304,33 @@ export class GdprCustomerManagerComponent implements OnInit {
     });
   }
 
+  markRequestCompleted(request: GdprAccessRequest) {
+    // Native confirm removed as per user request (handled by custom modal earlier or implicit action)
+
+    this.gdprService.updateAccessRequestStatus(request.id!, 'completed').subscribe({
+      next: (updatedReq) => {
+        this.toastService.success('Éxito', 'Solicitud marcada como completada');
+
+        // Notify user if possible
+        const customer = this.customers().find(c => c.email === request.subject_email);
+        if (customer && customer.usuario_id) {
+          this.notificationsService.sendNotification(
+            customer.usuario_id,
+            'Solicitud RGPD Completada',
+            `Su solicitud de ${request.request_type} ha sido procesada y completada.`,
+            'success',
+            request.id
+          );
+        }
+
+        this.closeRequestDetailModal();
+        this.loadAccessRequests();
+        this.loadComplianceStats();
+      },
+      error: (err) => this.toastService.error('Error', 'No se pudo actualizar la solicitud')
+    });
+  }
+
   // Import/Export functionality
   exportCustomers() {
     const filters: CustomerFilters = {
@@ -363,10 +418,9 @@ export class GdprCustomerManagerComponent implements OnInit {
   }
 
   getGdprComplianceStatus(customer: Customer): string {
-    if (customer.marketing_consent && customer.data_processing_consent) {
+    // If they have the mandatory consent (data_processing), they are compliant for service provision.
+    if (customer.data_processing_consent) {
       return 'compliant';
-    } else if (customer.data_processing_consent) {
-      return 'partial';
     } else {
       return 'pending';
     }
@@ -622,10 +676,7 @@ export class GdprCustomerManagerComponent implements OnInit {
   }
 
 
-  openNewCustomerForm() {
-    this.selectedCustomerForEdit.set(null);
-    this.showCustomerForm = true;
-  }
+
 
   editCustomer(customer: Customer) {
     this.selectedCustomerForEdit.set(customer);
@@ -661,8 +712,161 @@ export class GdprCustomerManagerComponent implements OnInit {
     }
   }
 
+  parseRectificationRequests(description: string): Partial<Customer> {
+    const updates: Partial<Customer> = {};
+    const lines = description.split('\n');
+
+    lines.forEach(line => {
+      // Expected format: "- DNI / NIF: Valor actual "old" => Nuevo valor "new""
+      // Regex to capture: Field Name, Old Value (ignored), New Value
+      // Adjusted regex to match the exact format produced by GdprRequestModalComponent
+      // "- Campo: Valor actual 'X' => Nuevo valor 'Y'"
+      const match = line.match(/- (.*?): Valor actual ".*?" => Nuevo valor "(.*?)"/);
+
+      if (match && match[2]) {
+        const fieldLabel = match[1].trim();
+        const newValue = match[2].trim();
+
+        switch (fieldLabel) {
+          case 'Nombre Completo':
+            // Try to split name/surname if possible, otherwise put all in name
+            const parts = newValue.split(' ');
+            if (parts.length > 1) {
+              updates.name = parts[0];
+              updates.apellidos = parts.slice(1).join(' ');
+            } else {
+              updates.name = newValue;
+            }
+            break;
+          case 'Email':
+            updates.email = newValue;
+            break;
+          case 'Teléfono':
+            updates.phone = newValue;
+            break;
+          case 'DNI / NIF':
+            updates.dni = newValue;
+            break;
+          case 'Dirección':
+            updates.address = newValue;
+            break;
+        }
+      }
+    });
+
+    return updates;
+  }
+
+
+
+  toggleSort() {
+    this.sortOrder.update(o => o === 'asc' ? 'desc' : 'asc');
+  }
+
+  // toggleIncompleteFilter removed
+
+  // New Auto-Apply Logic with Custom Modal
+  openAutoApplyModal(request: GdprAccessRequest) {
+    if (!request.request_details?.description) {
+      this.toastService.error('Error', 'La solicitud no tiene detalles para procesar.');
+      return;
+    }
+
+    const updates = this.parseRectificationRequests(request.request_details.description);
+    if (Object.keys(updates).length === 0) {
+      this.toastService?.warning('Aviso', 'No se detectaron cambios procesables.');
+      return;
+    }
+
+    const fieldMap: Record<string, string> = {
+      'name': 'Nombre',
+      'apellidos': 'Apellidos',
+      'email': 'Email',
+      'phone': 'Teléfono',
+      'dni': 'DNI / NIF',
+      'address': 'Dirección'
+    };
+
+    this.autoApplyChangesList = Object.entries(updates).map(([k, v]) => ({
+      field: fieldMap[k] || k,
+      newValue: String(v)
+    }));
+
+    this.autoApplyTargetRequest.set(request);
+    this.showAutoApplyModal = true;
+  }
+
+  closeAutoApplyModal() {
+    this.showAutoApplyModal = false;
+    this.autoApplyTargetRequest.set(null);
+    this.autoApplyChangesList = [];
+  }
+
+  confirmAutoApply() {
+    const request = this.autoApplyTargetRequest();
+    if (!request) return;
+
+    const customer = this.customers().find(c => c.email === request.subject_email);
+    if (!customer) {
+      this.toastService.error('Error', 'No se encontró el cliente asociado.');
+      this.closeAutoApplyModal();
+      return;
+    }
+
+    const updates = this.parseRectificationRequests(request.request_details?.description || '');
+
+    this.isLoading.set(true);
+    this.customersService.updateCustomer(customer.id, updates).subscribe({
+      next: () => {
+        this.toastService.success('Éxito', 'Datos actualizados correctamente.');
+        this.markRequestCompleted(request);
+        this.closeAutoApplyModal();
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Error updating customer:', err);
+        this.toastService.error('Error', 'Fallo al actualizar los datos.');
+        this.isLoading.set(false);
+        this.closeAutoApplyModal();
+      }
+    });
+  }
+
+  // Legacy method replaced by openAutoApplyModal, sticking to name to avoid template errors initially, 
+  // but better to rename in template to openAutoApplyModal
+  applyRectification(request: GdprAccessRequest) {
+    this.openAutoApplyModal(request);
+  }
+
+  isRectificationCompleted(request: GdprAccessRequest): boolean {
+    if (request.request_type !== 'rectification') return true; // Only strict for rectification
+    if (!request.request_details?.description) return false;
+
+    const customer = this.customers().find(c => c.email === request.subject_email);
+    if (!customer) return false;
+
+    const updates = this.parseRectificationRequests(request.request_details.description);
+    if (Object.keys(updates).length === 0) return true; // Nothing to update?
+
+    // Check if ALL updates match the current customer data
+    for (const [key, value] of Object.entries(updates)) {
+      // Loose comparison for strings/numbers
+      const currentVal = (customer as any)[key];
+      // Normalize for comparison (trim strings)
+      const v1 = String(currentVal || '').trim();
+      const v2 = String(value || '').trim();
+
+      if (v1 !== v2) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   handleRequestAction(request: GdprAccessRequest) {
     if (request.request_type === 'rectification') {
+      // Manual Edit Fallback
       const customer = this.customers().find(c => c.email === request.subject_email);
       if (customer) {
         this.closeRequestDetailModal();

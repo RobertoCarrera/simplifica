@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-export type SkeletonType = 'text' | 'circle' | 'rect' | 'card' | 'list' | 'table' | 'avatar' | 'button';
+export type SkeletonType = 'text' | 'circle' | 'rect' | 'card' | 'card-grid' | 'list' | 'table' | 'avatar' | 'button';
 
 @Component({
   selector: 'app-skeleton',
@@ -9,7 +9,7 @@ export type SkeletonType = 'text' | 'circle' | 'rect' | 'card' | 'list' | 'table
   imports: [CommonModule],
   template: `
     <!-- Skeleton individual -->
-    @if (type !== 'card' && type !== 'list' && type !== 'table') {
+    @if (type !== 'card' && type !== 'card-grid' && type !== 'list' && type !== 'table') {
       <div 
         class="skeleton-item"
         [class]="getSkeletonClasses()"
@@ -36,6 +36,26 @@ export type SkeletonType = 'text' | 'circle' | 'rect' | 'card' | 'list' | 'table
             <div class="skeleton-item h-8 w-16 rounded"></div>
           </div>
         </div>
+      </div>
+    }
+
+    <!-- Skeleton Card Grid -->
+    @if (type === 'card-grid') {
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        @for (item of getArray(count); track $index) {
+          <div class="skeleton-card w-full">
+            <div class="skeleton-item h-48 w-full rounded-t-lg mb-4"></div>
+            <div class="p-4 space-y-3">
+              <div class="skeleton-item h-6 w-3/4 rounded"></div>
+              <div class="skeleton-item h-4 w-full rounded"></div>
+              <div class="skeleton-item h-4 w-5/6 rounded"></div>
+              <div class="flex justify-between items-center pt-4">
+                <div class="skeleton-item h-8 w-20 rounded"></div>
+                <div class="skeleton-item h-8 w-16 rounded"></div>
+              </div>
+            </div>
+          </div>
+        }
       </div>
     }
 
@@ -139,7 +159,7 @@ export class SkeletonComponent {
 
   getSkeletonClasses(): string {
     const baseClasses = 'skeleton-item';
-    
+
     switch (this.type) {
       case 'text':
         return `${baseClasses} h-4 rounded`;

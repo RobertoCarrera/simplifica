@@ -1,0 +1,82 @@
+
+> simplifica@0.0.0 prebuild
+> node scripts/generate-runtime-config.mjs
+
+[runtime-config] Loaded environment variables from .env.local
+[runtime-config] Wrote src/assets/runtime-config.json
+[runtime-config] Supabase URL: https://ufutyjbqfjrlzkprvyvs.supabase.co
+[runtime-config] Supabase anon key (redacted): sb_pub…vcqq
+
+> simplifica@0.0.0 build
+> ng build --configuration=development
+
+[33m❯[39m Building...
+[32m✔[39m Building...
+Application bundle generation failed. [14.747 seconds]
+
+[1m[33m[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mTS-998113: ClientGdprModalComponent is not used within the template of SupabaseCustomersComponent[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/customers/supabase-customers/supabase-customers.component.ts:36:8:
+[37m      36 │         [32mClientGdprModalComponent[37m,
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG2: Type '"card-grid"' is not assignable to type 'SkeletonType'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/customers/supabase-customers/supabase-customers.component.html:175:26:
+[37m      175 │             <app-skeleton [32mtype[37m="card-grid" [count]="6"></app-skel...
+          ╵                           [32m~~~~[0m
+
+  Error occurs in the template of component SupabaseCustomersComponent.
+
+    src/app/features/customers/supabase-customers/supabase-customers.component.ts:40:17:
+[37m      40 │     templateUrl: [32m'./supabase-customers.component.html'[37m,
+         ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG8002: Can't bind to 'headers' since it isn't a known property of 'app-csv-header-mapper'.
+1. If 'app-csv-header-mapper' is an Angular component and it has 'headers' input, then verify that it is included in the '@Component.imports' of this component.
+2. If 'app-csv-header-mapper' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@Component.schemas' of this component to suppress this message.
+3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@Component.schemas' of this component.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/customers/supabase-customers/supabase-customers.component.html:452:47:
+[37m      452 │ ...="showCsvMapper()" [32m[headers]="csvHeaders()"[37m [previewData]="csv...
+          ╵                       [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  Error occurs in the template of component SupabaseCustomersComponent.
+
+    src/app/features/customers/supabase-customers/supabase-customers.component.ts:40:17:
+[37m      40 │     templateUrl: [32m'./supabase-customers.component.html'[37m,
+         ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG8002: Can't bind to 'previewData' since it isn't a known property of 'app-csv-header-mapper'.
+1. If 'app-csv-header-mapper' is an Angular component and it has 'previewData' input, then verify that it is included in the '@Component.imports' of this component.
+2. If 'app-csv-header-mapper' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@Component.schemas' of this component to suppress this message.
+3. To allow any property add 'NO_ERRORS_SCHEMA' to the '@Component.schemas' of this component.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/customers/supabase-customers/supabase-customers.component.html:452:72:
+[37m      452 │ ...owCsvMapper()" [headers]="csvHeaders()" [32m[previewData]="csvData()"[37m
+          ╵                                            [32m~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  Error occurs in the template of component SupabaseCustomersComponent.
+
+    src/app/features/customers/supabase-customers/supabase-customers.component.ts:40:17:
+[37m      40 │     templateUrl: [32m'./supabase-customers.component.html'[37m,
+         ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG5: Argument of type 'Event' is not assignable to parameter of type 'CsvMappingResult'.
+  Type 'Event' is missing the following properties from type 'CsvMappingResult': mappings, isValid[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/customers/supabase-customers/supabase-customers.component.html:454:44:
+[37m      454 │ ...ing)="onCsvMappingConfirmed([32m$event[37m)" (cancel)="onCsvMappingCan...
+          ╵                                [32m~~~~~~[0m
+
+  Error occurs in the template of component SupabaseCustomersComponent.
+
+    src/app/features/customers/supabase-customers/supabase-customers.component.ts:40:17:
+[37m      40 │     templateUrl: [32m'./supabase-customers.component.html'[37m,
+         ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[39m[22m

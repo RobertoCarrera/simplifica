@@ -56,7 +56,7 @@ import { ToastService } from '../../../services/toast.service';
               </td>
               <td class="px-6 py-4">
                 <span [ngClass]="getActionClass(log.action_type)" class="px-2 py-1 rounded-full text-xs font-medium border dark:border-transparent">
-                  {{ log.action_type }}
+                  {{ translateAction(log.action_type) }}
                 </span>
               </td>
               <td class="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
@@ -66,7 +66,7 @@ import { ToastService } from '../../../services/toast.service';
                 </div>
               </td>
               <td class="px-6 py-4 text-gray-500 dark:text-gray-400">
-                {{ log.purpose || '-' }}
+                {{ translateReason(log.purpose || '-') }}
               </td>
               <td class="px-6 py-4">
                 <button 
@@ -139,7 +139,7 @@ import { ToastService } from '../../../services/toast.service';
 
     <!-- Details Modal -->
     <div *ngIf="showDetailsModal && selectedLog()" 
-         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm"
+         class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm"
          (click)="closeDetails()">
       <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
         <!-- Header -->
@@ -162,7 +162,7 @@ import { ToastService } from '../../../services/toast.service';
             </div>
             <div class="p-3 bg-gray-50 dark:bg-slate-700/30 rounded-lg">
               <span class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acción</span>
-              <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedLog()?.action_type }}</p>
+              <p class="font-medium text-gray-900 dark:text-gray-100">{{ translateAction(selectedLog()?.action_type || '') }}</p>
             </div>
             <div class="p-3 bg-gray-50 dark:bg-slate-700/30 rounded-lg">
               <span class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sujeto</span>
@@ -171,7 +171,7 @@ import { ToastService } from '../../../services/toast.service';
             </div>
             <div class="p-3 bg-gray-50 dark:bg-slate-700/30 rounded-lg">
               <span class="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Razón</span>
-              <p class="font-medium text-gray-900 dark:text-gray-100">{{ selectedLog()?.purpose }}</p>
+              <p class="font-medium text-gray-900 dark:text-gray-100">{{ translateReason(selectedLog()?.purpose || '') }}</p>
             </div>
           </div>
 
@@ -301,6 +301,39 @@ export class GdprAuditListComponent implements OnInit {
       }
     }
     return 'Desconocido'; // Or only email
+  }
+
+  // Traducción de Acciones
+  translateAction(action: string): string {
+    const map: Record<string, string> = {
+      'consent': 'Consentimiento',
+      'update': 'Actualización',
+      'anonymization': 'Anonimización',
+      'deletion': 'Eliminación',
+      'access_request': 'Solicitud Acceso',
+      'rectification': 'Rectificación',
+      'restriction': 'Limitación',
+      'booking_creation': 'Reserva Creada',
+      'booking_cancellation': 'Reserva Cancelada',
+      'login': 'Inicio de Sesión'
+    };
+    return map[action] || action;
+  }
+
+  // Traducción de Razones
+  translateReason(reason: string): string {
+    const map: Record<string, string> = {
+      'Consent granted for data_processing': 'Aceptó Política de Privacidad',
+      'Consent granted for marketing': 'Aceptó Marketing',
+      'client_modification': 'Modificación de Cliente',
+      'Client Record Change': 'Cambio en Ficha',
+      'Solicitud Web Derecho al Olvido (Modal Premium)': 'Solicitud Web (Olvido)',
+      'Access request status updated to completed': 'Estado de solicitud actualizado a completado',
+      'user_requested_anonymization': 'Usuario solicitó anonimización',
+      'bulk_inactivity_cleanup': 'Limpieza masiva por inactividad',
+      'Manual deletion': 'Eliminación manual'
+    };
+    return map[reason] || reason;
   }
 
   getFormattedJson(log: GdprAuditEntry): string {

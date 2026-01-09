@@ -4,11 +4,12 @@ import { CommonModule } from '@angular/common';
 import { LucideAngularModule, LucideIconProvider, LUCIDE_ICONS, Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle } from 'lucide-angular';
 import { SupabaseNotificationsService, AppNotification } from '../../services/supabase-notifications.service';
 import { TicketDetailComponent } from '../../features/tickets/detail/ticket-detail.component';
+import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdpr-request-detail.component';
 
 @Component({
     selector: 'app-notifications',
     standalone: true,
-    imports: [CommonModule, LucideAngularModule, TicketDetailComponent],
+    imports: [CommonModule, LucideAngularModule, TicketDetailComponent, GdprRequestDetailComponent],
     providers: [{ provide: LUCIDE_ICONS, useValue: new LucideIconProvider({ Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle }) }],
     templateUrl: './notifications.component.html',
     styles: [`
@@ -24,6 +25,7 @@ export class NotificationsComponent {
 
     // Modal state
     selectedTicketId = signal<string | null>(null);
+    selectedGdprRequestId = signal<string | null>(null);
 
     // Grouped notifications
     groupedNotifications = computed(() => {
@@ -80,7 +82,7 @@ export class NotificationsComponent {
         if (notification.type.startsWith('ticket')) {
             this.selectedTicketId.set(notification.reference_id);
         } else if (notification.type === 'gdpr_request') {
-            this.router.navigate(['/clientes-gdpr'], { queryParams: { requestId: notification.reference_id } });
+            this.selectedGdprRequestId.set(notification.reference_id);
         } else {
             // Just mark as read if no specific view handler
         }
@@ -88,6 +90,7 @@ export class NotificationsComponent {
 
     closeModal() {
         this.selectedTicketId.set(null);
+        this.selectedGdprRequestId.set(null);
     }
 
     getIconForType(type: string): string {

@@ -1,5 +1,6 @@
-import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, inject, ViewChild } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
+import { GdprRequestModalComponent } from '../gdpr-request-modal/gdpr-request-modal.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -15,7 +16,7 @@ import { firstValueFrom } from 'rxjs';
 @Component({
   selector: 'app-client-gdpr-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, GdprRequestModalComponent],
   template: `
     <div class="gdpr-panel bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 space-y-8">
       
@@ -202,60 +203,17 @@ import { firstValueFrom } from 'rxjs';
         </div>
       </div>
 
-    <!-- GDPR Request Custom Modal -->
-    <div *ngIf="showRequestModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-[10000] flex items-center justify-center modal-backdrop" (click)="closeRequestModal()">
-      <div class="relative p-6 border w-11/12 md:w-1/2 lg:w-1/3 rounded-xl bg-white dark:bg-slate-800 dark:border-slate-600 modal-content-box" (click)="$event.stopPropagation()">
-        
-        <!-- Header -->
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white">{{ requestModalConfig.title }}</h3>
-            <button (click)="closeRequestModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <i class="fas fa-times text-xl"></i>
-            </button>
-        </div>
-
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
-            {{ requestModalConfig.description }}
-        </p>
-
-        <!-- Info Alerts for Client -->
-        <div *ngIf="requestModalConfig.type === 'rectification'" class="mb-6 p-3 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 rounded-r text-sm text-blue-800 dark:text-blue-300">
-           <p class="font-bold mb-1">Sobre la Rectificación:</p>
-           Debes indicarnos qué datos son erróneos. Nosotros los corregiremos y te avisaremos.
-        </div>
-        
-        <div *ngIf="requestModalConfig.type === 'restriction'" class="mb-6 p-3 bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-500 rounded-r text-sm text-orange-800 dark:text-orange-300">
-           <p class="font-bold mb-1">¡Advertencia!</p>
-           Limitar el tratamiento bloqueará tu acceso a la plataforma. No podremos procesar tus datos para prestarte el servicio, aunque los conservaremos bloqueados por imperativo legal.
-        </div>
-        
-        <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Motivo / Detalles de la solicitud <span class="text-red-500">*</span>
-            </label>
-            <textarea 
-                [(ngModel)]="requestModalConfig.reason"
-                rows="4" 
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400"
-                placeholder="Por favor, explique brevemente su solicitud..."></textarea>
-        </div>
-
-        <div class="flex justify-end gap-3">
-            <button 
-                (click)="closeRequestModal()" 
-                class="px-4 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 font-medium transition-colors">
-                Cancelar
-            </button>
-            <button 
-                (click)="submitRequest()"
-                [disabled]="creatingRequest || !requestModalConfig.reason.trim()"
-                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm transition-colors flex items-center gap-2">
-                <span *ngIf="creatingRequest" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                Enviar Solicitud
-            </button>
-        </div>
-      </div>
-    </div>
+    <!-- Custom GDPR Request Modal Component -->
+    <app-gdpr-request-modal
+      #requestModal
+      [clientId]="clientId"
+      [clientEmail]="clientEmail"
+      [clientName]="clientName"
+      [clientPhone]="clientPhone"
+      [clientDni]="clientDni"
+      [clientAddress]="clientAddress"
+      (requestCreated)="onRequestCreated()">
+    </app-gdpr-request-modal>
       
     <!-- Anonymize Confirmation Modal -->
     <div *ngIf="showAnonymizeModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-[10000] flex items-center justify-center modal-backdrop" (click)="closeAnonymizeModal()">
@@ -345,12 +303,17 @@ export class ClientGdprPanelComponent implements OnInit {
   @Input() clientId!: string;
   @Input() clientEmail!: string;
   @Input() clientName!: string;
+  @Input() clientPhone?: string;
+  @Input() clientDni?: string;
+  @Input() clientAddress?: string;
   @Input() readOnly: boolean = false;
   @Input() isClientView: boolean = false;
   @Input() showHeader: boolean = true;
 
   @Output() dataChanged = new EventEmitter<void>();
   @Output() closeModal = new EventEmitter<void>(); // Emit to close parent modal
+
+  @ViewChild('requestModal') requestModal!: GdprRequestModalComponent;
 
   // Estado de consentimientos
   marketingConsent: boolean = false;
@@ -371,14 +334,7 @@ export class ClientGdprPanelComponent implements OnInit {
   anonymizeConfirmationInput: string = '';
   anonymizeError: string = '';
 
-  // Request Modal State
-  showRequestModal: boolean = false;
-  requestModalConfig = {
-    type: 'rectification' as 'rectification' | 'restriction' | 'portability' | 'access' | 'erasure' | 'objection',
-    title: '',
-    description: '',
-    reason: ''
-  };
+
 
   // Configuración
   dpoEmail = environment.gdpr.dpoEmail;
@@ -543,71 +499,12 @@ export class ClientGdprPanelComponent implements OnInit {
   // --- GDPR Request Modal Methods ---
 
   openRequestModal(type: 'rectification' | 'restriction' | 'objection') {
-    let title = '';
-    let description = '';
-
-    switch (type) {
-      case 'rectification':
-        title = 'Solicitar Rectificación de Datos';
-        description = 'Indica qué datos son incorrectos y cuáles son los valores correctos.';
-        break;
-      case 'restriction':
-        title = 'Limitar Tratamiento de Datos';
-        description = 'Indica qué tratamiento deseas limitar y por qué motivo.';
-        break;
-      case 'objection':
-        title = 'Oponerse al Tratamiento';
-        description = 'Explica los motivos relacionados con tu situación particular.';
-        break;
-    }
-
-    this.requestModalConfig = {
-      type,
-      title,
-      description,
-      reason: ''
-    };
-    this.showRequestModal = true;
+    this.requestModal.open(type);
   }
 
-  closeRequestModal() {
-    this.showRequestModal = false;
-    this.requestModalConfig.reason = '';
-  }
-
-  submitRequest() {
-    if (!this.requestModalConfig.reason.trim()) {
-      this.toastService.error('Por favor, indica un motivo o detalle.', 'Campo requerido');
-      return;
-    }
-
-    if (this.requestModalConfig.reason.length < 20) {
-      this.toastService.error('Por favor, detalla más tu solicitud (mínimo 20 caracteres).', 'Descripción muy corta');
-      return;
-    }
-
-    this.creatingRequest = true;
-
-    const request: GdprAccessRequest = {
-      request_type: this.requestModalConfig.type,
-      subject_email: this.clientEmail,
-      subject_name: this.clientName || this.clientEmail.split('@')[0],
-      subject_identifier: this.clientId,
-      request_details: { description: this.requestModalConfig.reason }
-    };
-
-    this.gdprService.createAccessRequest(request).subscribe({
-      next: () => {
-        this.toastService.success('Solicitud enviada correctamente. El responsable ha sido notificado.', 'Éxito');
-        this.creatingRequest = false;
-        this.closeRequestModal();
-      },
-      error: (err) => {
-        this.error = 'Error creando solicitud: ' + err.message;
-        this.toastService.error(this.error, 'Error');
-        this.creatingRequest = false;
-      }
-    });
+  onRequestCreated() {
+    this.toastService.success('Solicitud procesada correctamente', 'GDPR');
+    // Optional: refresh logic if needed
   }
 
   private formatDate(dateString: string): string {

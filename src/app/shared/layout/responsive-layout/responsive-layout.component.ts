@@ -24,7 +24,7 @@ import { AuthService } from '../../../services/auth.service';
         <app-responsive-sidebar></app-responsive-sidebar>
 
         <!-- Main content area -->
-        <div class="main-content-area flex flex-col h-full overflow-hidden" [class]="mainAreaClasses()">
+        <div class="main-content-area flex flex-col h-full" [class]="mainAreaClasses()">
           <!-- Page content -->
           <main class="flex-1" [class]="getMainContentPadding() + ' ' + getOverflowClass()">
             <div [class]="getContentWrapperClasses()">
@@ -40,7 +40,8 @@ import { AuthService } from '../../../services/auth.service';
   `,
   styles: [`
     .main-content-area {
-      transition: margin-left 0.3s ease;
+      position: relative;
+      z-index: 20;
     }
     
     @media (min-width: 768px) {
@@ -108,16 +109,17 @@ export class ResponsiveLayoutComponent {
       // En móvil, añadir padding bottom para el menú inferior
       return 'p-4 pb-20';
     }
-    // Webmail needs full control of space (no padding)
-    if (this.router.url.includes('/webmail')) {
+    // Webmail and Customers (Scrollbar fix) need full control of space (no global padding)
+    if (this.router.url.includes('/webmail') || this.router.url.includes('/clientes')) {
       return 'p-0';
     }
     return 'p-6';
   }
 
   getOverflowClass(): string {
-    if (this.router.url.includes('/webmail')) {
-      return 'overflow-hidden';
+    // Webmail and Customers need to handle their own scrolling (no global scroll)
+    if (this.router.url.includes('/webmail') || this.router.url.includes('/clientes')) {
+      return 'overflow-auto';
     }
     return 'overflow-auto';
   }

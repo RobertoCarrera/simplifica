@@ -153,4 +153,29 @@ export class SupabaseNotificationsService implements OnDestroy {
             return currentList;
         });
     }
+    async sendNotification(recipientId: string, title: string, content: string, type: string = 'info', referenceId: string | null = null) {
+        if (!recipientId) return;
+
+        const companyId = this.authService.companyId();
+        try {
+            const payload: any = {
+                company_id: companyId,
+                recipient_id: recipientId,
+                type,
+                title,
+                content,
+                is_read: false
+            };
+
+            if (referenceId) {
+                payload.reference_id = referenceId;
+            }
+
+            await this.supabase.getClient()
+                .from('notifications')
+                .insert(payload);
+        } catch (err) {
+            console.error('Error sending notification:', err);
+        }
+    }
 }

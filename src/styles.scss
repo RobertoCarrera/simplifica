@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import '@angular/cdk/overlay-prebuilt.css';
+
 /* Variables CSS para temas dinámicos */
 :root {
   /* Viewport height for mobile Safari */
