@@ -13,7 +13,7 @@ export interface AppUser {
   email: string;
   name?: string | null;
   surname?: string | null; // Added surname
-  role: 'owner' | 'admin' | 'member' | 'client' | 'none';
+  role: 'super_admin' | 'owner' | 'admin' | 'member' | 'client' | 'none';
   active: boolean;
   company_id?: string | null;
   permissions?: any;
@@ -22,7 +22,8 @@ export interface AppUser {
   company?: Company | null;
   // Client portal specific
   client_id?: string | null; // Only set for portal clients - the id from clients table
-  is_super_admin?: boolean; // Global admin flag from public.users.role
+  is_super_admin?: boolean; // Global admin flag from public.users.app_role
+  app_role_id?: string; // Reference to app_roles table
 }
 
 
@@ -31,7 +32,7 @@ export interface CompanyMembership {
   id: string; // company_members.id
   user_id: string;
   company_id: string;
-  role: 'owner' | 'admin' | 'member' | 'client';
+  role: 'super_admin' | 'owner' | 'admin' | 'member' | 'client';
   status: string;
   created_at: string;
   company?: Company;
@@ -308,7 +309,7 @@ export class AuthService {
       const [userRes, clientRes] = await Promise.all([
         this.supabase
           .from('users')
-          .select(`id, auth_user_id, email, name, surname, permissions, active, is_dpo, role`)
+          .select(`*, app_role:app_roles(*)`)
           .eq('auth_user_id', authId)
           .limit(1)
           .maybeSingle(),
@@ -327,7 +328,7 @@ export class AuthService {
       if (userRes.data) {
         const membersRes = await this.supabase
           .from('company_members')
-          .select(`id, user_id, company_id, role, status, created_at, company:companies(*)`)
+          .select(`id, user_id, company_id, status, created_at, company:companies(*), role_data:app_roles(name)`)
           .eq('user_id', userRes.data.id)
           .eq('status', 'active'); // Only active memberships
 
@@ -336,7 +337,7 @@ export class AuthService {
           id: m.id,
           user_id: m.user_id,
           company_id: m.company_id,
-          role: m.role,
+          role: m.role_data?.name || m.role || 'member', // Fallback to m.role if migration incomplete (though column might be deprecated)
           status: m.status,
           created_at: m.created_at,
           company: Array.isArray(m.company) ? m.company[0] : m.company
@@ -366,7 +367,13 @@ export class AuthService {
 
       if (allMemberships.length === 0) {
         console.warn('⚠️ User has no active memberships (Internal or Client).');
-        return null; // Or return a "guest" AppUser if needed
+
+        // Special case: Super Admin without explicit memberships can still proceed
+        const appRole = (userRes.data as any)?.app_role;
+        if (appRole?.name !== 'super_admin') {
+          return null; // Regular users must have a membership
+        }
+        console.log('🛡️ User is Super Admin without memberships - proceeding.');
       }
 
       // 3. Determine Active Context
@@ -413,7 +420,8 @@ export class AuthService {
           full_name: clientRecord.name,
           company: activeMembership.company || null,
           client_id: clientRecord.id,
-          is_super_admin: userRes.data?.role === 'admin'
+          is_super_admin: (userRes.data as any)?.app_role?.name === 'super_admin',
+          app_role_id: undefined
         };
         console.log('✅ Active Context: CLIENT', appUser.company?.name);
 
@@ -424,6 +432,23 @@ export class AuthService {
           return null;
         }
 
+        let rawAppRole = (userRes.data as any).app_role;
+        // Fallback: If join failed (e.g. schema cache stale) but we have the ID, fetch manual
+        if (!rawAppRole && (userRes.data as any).app_role_id) {
+          console.warn('⚠️ Join failed for app_role, fetching manually...');
+          const { data: manualRole } = await this.supabase
+            .from('app_roles')
+            .select('name')
+            .eq('id', (userRes.data as any).app_role_id)
+            .maybeSingle();
+          rawAppRole = manualRole;
+        }
+
+        const appRole = Array.isArray(rawAppRole) ? rawAppRole[0] : rawAppRole;
+        const globalRoleName = appRole?.name;
+        // If super_admin, override the company-specific role
+        const effectiveRole = globalRoleName === 'super_admin' ? 'super_admin' : (activeMembership?.role || 'member');
+
         appUser = {
           id: userRes.data.id, // User ID
           auth_user_id: userRes.data.auth_user_id,
@@ -432,11 +457,12 @@ export class AuthService {
           surname: userRes.data.surname,
           permissions: userRes.data.permissions,
           active: userRes.data.active,
-          role: activeMembership.role, // owner/admin/member
-          company_id: activeMembership.company_id,
-          company: activeMembership.company || null,
-          full_name: userRes.data.name || userRes.data.email,
-          is_super_admin: userRes.data.role === 'admin'
+          role: effectiveRole, // Prioritize global super_admin
+          company_id: activeMembership?.company_id || null,
+          company: activeMembership?.company || null,
+          full_name: `${userRes.data.name || ''} ${userRes.data.surname || ''}`.trim() || userRes.data.email,
+          is_super_admin: globalRoleName === 'super_admin',
+          app_role_id: userRes.data.app_role_id
         };
         console.log('✅ Active Context: STAFF', appUser.role, appUser.company?.name);
       }
@@ -498,7 +524,7 @@ export class AuthService {
         // 1. Buscar por auth_user_id
         const existing = await this.supabase
           .from('users')
-          .select('id, auth_user_id, email, role, company_id')
+          .select('id, auth_user_id, email, company_id')
           .eq('auth_user_id', authUser.id)
           .maybeSingle();
 
@@ -568,7 +594,6 @@ export class AuthService {
                 email: authUser.email,
                 name: (authUser.user_metadata && (authUser.user_metadata as any)['given_name']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ')[0] : null) || authUser.email?.split('@')[0] || 'Usuario',
                 surname: (authUser.user_metadata && (authUser.user_metadata as any)['surname']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ').slice(1).join(' ') : null) || null,
-                role: 'member',
                 active: true,
                 company_id: companyId,
                 auth_user_id: authUser.id,
@@ -628,7 +653,6 @@ export class AuthService {
               email: authUser.email,
               name: (authUser.user_metadata && (authUser.user_metadata as any)['given_name']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ')[0] : null) || authUser.email?.split('@')[0] || 'Usuario',
               surname: (authUser.user_metadata && (authUser.user_metadata as any)['surname']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ').slice(1).join(' ') : null) || null,
-              role: 'owner',
               active: true,
               company_id: companyId,
               auth_user_id: authUser.id,
@@ -652,6 +676,7 @@ export class AuthService {
 
           console.log('✅ App user created successfully');
           return;
+
         }
 
         // 4. Sin nombre de empresa disponible: no crear empresa por defecto para evitar duplicados erróneos
@@ -1311,7 +1336,7 @@ export class AuthService {
       if (!profile?.company_id) return { success: false, error: 'Usuario sin empresa' };
       const { data, error } = await this.supabase
         .from('users')
-        .select('id, email, name, role, active, company_id')
+        .select('id, email, name, active, company_id')
         .eq('company_id', profile.company_id)
         .order('name', { ascending: true });
       if (error) return { success: false, error: error.message };

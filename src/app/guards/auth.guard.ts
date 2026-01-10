@@ -95,7 +95,7 @@ export class AdminGuard implements CanActivate {
       take(1),
       timeout(15000),
       map(([profile]) => {
-        if (profile && profile.role === 'admin') {
+        if (profile && (profile.role === 'admin' || profile.role === 'super_admin' || profile.is_super_admin)) {
           return true;
         }
         this.router.navigate(['/']);
@@ -188,7 +188,7 @@ export class DevGuard implements CanActivate {
       take(1),
       timeout(15000),
       map(([profile]) => {
-        if (profile && profile.role === 'admin') {
+        if (profile && (profile.role === 'admin' || profile.is_super_admin)) {
           return true;
         }
         this.router.navigate(['/']);
@@ -218,7 +218,7 @@ export class OwnerAdminGuard implements CanActivate {
       take(1),
       timeout(15000),
       map(([profile]) => {
-        const allowed = !!profile && (profile.role === 'owner' || profile.role === 'admin');
+        const allowed = !!profile && (profile.role === 'owner' || profile.role === 'admin' || !!profile.is_super_admin);
         if (!allowed) {
           this.router.navigate(['/']);
         }

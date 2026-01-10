@@ -47,11 +47,18 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
 ];
 
 // All available roles
-export const AVAILABLE_ROLES = ['owner', 'admin', 'member', 'professional', 'agent'] as const;
+export const AVAILABLE_ROLES = ['super_admin', 'owner', 'admin', 'member', 'professional', 'agent'] as const;
 export type Role = typeof AVAILABLE_ROLES[number];
 
 // Default permissions per role (used when no custom permissions exist)
 export const DEFAULT_PERMISSIONS: Record<Role, Record<string, boolean>> = {
+    super_admin: {
+        'clients.view': true, 'clients.view_own': true, 'clients.edit': true, 'clients.delete': true,
+        'invoices.view': true, 'invoices.create': true,
+        'bookings.view': true, 'bookings.view_own': true, 'bookings.manage_own': true, 'bookings.manage_all': true,
+        'tickets.view': true, 'tickets.create': true,
+        'settings.manage': true, 'settings.billing': true,
+    },
     owner: {
         'clients.view': true, 'clients.edit': true, 'clients.delete': true,
         'invoices.view': true, 'invoices.create': true,
@@ -210,8 +217,8 @@ export class SupabasePermissionsService {
         const role = this.authService.userRole();
         if (!role) return false;
 
-        // Owner always has access
-        if (role === 'owner') return true;
+        // Owner and Super Admin always have access
+        if (role === 'owner' || role === 'super_admin') return true;
 
         return matrix[role]?.[permission] ?? DEFAULT_PERMISSIONS[role as Role]?.[permission] ?? false;
     }
@@ -232,8 +239,8 @@ export class SupabasePermissionsService {
         const role = this.authService.userRole();
         if (!role) return false;
 
-        // Owner always has all permissions
-        if (role === 'owner') return true;
+        // Owner and Super Admin always have all permissions
+        if (role === 'owner' || role === 'super_admin') return true;
 
         // Check custom permission first
         const { data } = await this.supabase

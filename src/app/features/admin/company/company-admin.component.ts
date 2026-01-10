@@ -440,6 +440,7 @@ export class CompanyAdminComponent implements OnInit {
 
   getRoleLabel(role: string | undefined): string {
     const labels: Record<string, string> = {
+      'super_admin': 'Super Admin',
       'owner': 'Propietario',
       'admin': 'Administrador',
       'member': 'Miembro',

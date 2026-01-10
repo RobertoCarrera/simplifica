@@ -11,6 +11,7 @@ interface CompanyUser {
   email: string;
   name: string | null;
   role: 'owner' | 'admin' | 'member' | 'client' | 'none';
+  app_role_name?: string;
   active: boolean;
 }
 

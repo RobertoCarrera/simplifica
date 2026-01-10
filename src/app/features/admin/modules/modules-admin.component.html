@@ -1,19 +1,24 @@
 <div class="p-4 space-y-6">
   <h1 class="text-2xl font-semibold flex items-center gap-2">
-    <span class="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow">
+    <span
+      class="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow">
       <i class="fas fa-cubes"></i>
     </span>
     Gestión de Módulos
   </h1>
-  <p class="text-sm text-gray-600 dark:text-gray-400">Administra qué módulos están activados o desactivados por usuario. Puedes filtrar por owner para ver sus usuarios (clients) asociados. Estados: activado, desactivado o heredado.</p>
+  <p class="text-sm text-gray-600 dark:text-gray-400">Administra qué módulos están activados o desactivados por usuario.
+    Puedes filtrar por owner para ver sus usuarios (clients) asociados. Estados: activado, desactivado o heredado.</p>
 
   <div *ngIf="owners.length > 0" class="space-y-2">
     <label class="text-xs font-medium text-gray-500 dark:text-gray-400">Owner seleccionado</label>
     <div class="flex items-center gap-2">
-      <input [(ngModel)]="ownerQuery" placeholder="Buscar owner por nombre, email o compañía" class="flex-1 px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" />
-      <select (change)="onOwnerChangeSelect($event)" [value]="selectedOwnerId || ''" class="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm min-w-64">
+      <input [(ngModel)]="ownerQuery" placeholder="Buscar owner por nombre, email o compañía"
+        class="flex-1 px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" />
+      <select (change)="onOwnerChangeSelect($event)" [value]="selectedOwnerId || ''"
+        class="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm min-w-64">
         <option value="">(Mi compañía)</option>
-        <option *ngFor="let o of filteredOwners" [value]="o.id">{{ o.name || o.email }} - {{ o.company_id | slice:0:8 }}</option>
+        <option *ngFor="let o of filteredOwners" [value]="o.id">{{ o.name || o.email }} - {{ o.company_id | slice:0:8 }}
+        </option>
       </select>
     </div>
   </div>
@@ -21,7 +26,7 @@
   <div *ngIf="loading" class="text-sm text-gray-500">Cargando usuarios…</div>
 
   <div class="space-y-4">
-  <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Matriz de módulos por usuario</h2>
+    <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Matriz de módulos por usuario</h2>
     <div class="overflow-auto border rounded-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
       <table class="min-w-full text-sm">
         <thead class="bg-gray-50 dark:bg-gray-700">
@@ -35,34 +40,40 @@
             <td class="px-3 py-2 whitespace-nowrap">
               <div class="flex items-center justify-between gap-2">
                 <span class="truncate font-medium">{{ u.email }}</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded"
-                      [ngClass]="{
-                        'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200': u.role==='owner',
-                        'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': u.role==='admin',
+                <span class="text-[10px] px-1.5 py-0.5 rounded uppercase" [ngClass]="{
+                        'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200': u.role==='owner' && !u.app_role_name,
+                        'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200': u.app_role_name==='super_admin',
+                        'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': u.role==='admin' && u.app_role_name!=='super_admin',
                         'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200': u.role==='member',
                         'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200': u.role==='client'
-                      }">{{ u.role }}</span>
+                      }">{{ u.app_role_name || u.role }}</span>
               </div>
-              <div class="text-[10px] mt-0.5" [ngClass]="u.active ? 'text-green-600' : 'text-red-600'">{{ u.active ? 'Activo' : 'Inactivo' }}</div>
+              <div class="text-[10px] mt-0.5" [ngClass]="u.active ? 'text-green-600' : 'text-red-600'">{{ u.active ?
+                'Activo' : 'Inactivo' }}</div>
             </td>
             <td class="px-3 py-2 text-center" *ngFor="let m of modules()">
               <div class="flex flex-col items-center gap-1">
-                <span class="text-[10px] px-2 py-0.5 rounded-full"
-                      [ngClass]="{
+                <span class="text-[10px] px-2 py-0.5 rounded-full" [ngClass]="{
                         'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': stateFor(u.id,m.key)==='activado',
                         'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300': stateFor(u.id,m.key)==='desactivado',
                         'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200': stateFor(u.id,m.key)==='heredado'
                       }">{{ stateFor(u.id,m.key) }}</span>
                 <div class="flex gap-1 flex-wrap justify-center">
                   <button (click)="setState(u.id,m.key,'activado')" class="px-2 py-0.5 rounded text-[10px]"
-                          [class.bg-green-600]="stateFor(u.id,m.key)==='activado'" [class.text-white]="stateFor(u.id,m.key)==='activado'"
-                          [class.bg-green-100]="stateFor(u.id,m.key)!=='activado'" [class.text-green-700]="stateFor(u.id,m.key)!=='activado'">A</button>
+                    [class.bg-green-600]="stateFor(u.id,m.key)==='activado'"
+                    [class.text-white]="stateFor(u.id,m.key)==='activado'"
+                    [class.bg-green-100]="stateFor(u.id,m.key)!=='activado'"
+                    [class.text-green-700]="stateFor(u.id,m.key)!=='activado'">A</button>
                   <button (click)="setState(u.id,m.key,'desactivado')" class="px-2 py-0.5 rounded text-[10px]"
-                          [class.bg-gray-600]="stateFor(u.id,m.key)==='desactivado'" [class.text-white]="stateFor(u.id,m.key)==='desactivado'"
-                          [class.bg-gray-100]="stateFor(u.id,m.key)!=='desactivado'" [class.text-gray-700]="stateFor(u.id,m.key)!=='desactivado'">D</button>
+                    [class.bg-gray-600]="stateFor(u.id,m.key)==='desactivado'"
+                    [class.text-white]="stateFor(u.id,m.key)==='desactivado'"
+                    [class.bg-gray-100]="stateFor(u.id,m.key)!=='desactivado'"
+                    [class.text-gray-700]="stateFor(u.id,m.key)!=='desactivado'">D</button>
                   <button (click)="setState(u.id,m.key,'heredado')" class="px-2 py-0.5 rounded text-[10px]"
-                          [class.bg-yellow-600]="stateFor(u.id,m.key)==='heredado'" [class.text-white]="stateFor(u.id,m.key)==='heredado'"
-                          [class.bg-yellow-100]="stateFor(u.id,m.key)!=='heredado'" [class.text-yellow-700]="stateFor(u.id,m.key)!=='heredado'">H</button>
+                    [class.bg-yellow-600]="stateFor(u.id,m.key)==='heredado'"
+                    [class.text-white]="stateFor(u.id,m.key)==='heredado'"
+                    [class.bg-yellow-100]="stateFor(u.id,m.key)!=='heredado'"
+                    [class.text-yellow-700]="stateFor(u.id,m.key)!=='heredado'">H</button>
                 </div>
               </div>
             </td>

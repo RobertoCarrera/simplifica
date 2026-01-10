@@ -265,7 +265,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   menuItems = computed(() => {
     const userRole = this.authService.userRole();
     const profile = this.authService.userProfile;
-    const isAdmin = userRole === 'admin';
+    const isAdmin = userRole === 'admin' || userRole === 'super_admin';
     const isClient = userRole === 'client';
     const isDev = this.devRoleService.isDev();
     const allowed = this._allowedModuleKeys();
@@ -304,7 +304,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       // Core modules always visible
       if (item.module === 'core') {
         if (item.roleOnly === 'ownerAdmin') {
-          return userRole === 'owner' || userRole === 'admin';
+          return userRole === 'owner' || userRole === 'admin' || userRole === 'super_admin';
         }
         if (item.roleOnly === 'adminOnly') {
           return userRole === 'admin';
@@ -435,7 +435,9 @@ export class ResponsiveSidebarComponent implements OnInit {
   }
 
   getRoleDisplayName(role: string): string {
+    if (this.authService.userProfile?.is_super_admin) return 'Super Admin';
     switch (role) {
+      case 'super_admin': return 'Super Admin';
       case 'owner': return 'Propietario';
       case 'admin': return 'Administrador';
       case 'member': return 'Miembro';

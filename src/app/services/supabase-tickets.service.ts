@@ -915,7 +915,6 @@ export class SupabaseTicketsService {
       .select('id, name, email')
       .eq('company_id', companyId)
       .eq('active', true)
-      .in('role', ['owner', 'admin', 'member'])
       .order('name');
 
     if (error) {

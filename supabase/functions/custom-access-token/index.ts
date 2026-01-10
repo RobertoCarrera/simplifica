@@ -23,7 +23,7 @@ serve(async (req) => {
         { headers: { 'Content-Type': 'application/json' }, status: 200 }
       )
     }
-    
+
     console.log('[custom-access-token] Processing for user:', user.id)
 
     if (!supabaseUrl || !supabaseServiceKey) {
@@ -37,21 +37,25 @@ serve(async (req) => {
     // Crear cliente Supabase con service role key
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Buscar company_id del usuario en la tabla users primero
+    // Buscar company_id y role del usuario
     let companyId: string | null = null;
+    let userRole: string | null = null;
 
     try {
+      // 1. Try Internal Users
       const { data: userData } = await supabase
         .from('users')
-        .select('company_id')
+        .select(`company_id, app_role:app_roles(name)`)
         .eq('auth_user_id', user.id)
         .maybeSingle()
 
-      if (userData?.company_id) {
+      if (userData) {
         companyId = userData.company_id;
-        console.log('[custom-access-token] Found company_id in users:', companyId)
+        // @ts-ignore
+        userRole = userData.app_role?.name || null;
+        console.log('[custom-access-token] Found user data:', { companyId, userRole })
       } else {
-        // Si no está en users, buscar en clients (portal de clientes)
+        // 2. Try Clients
         const { data: clientData } = await supabase
           .from('clients')
           .select('company_id')
@@ -60,21 +64,22 @@ serve(async (req) => {
 
         if (clientData?.company_id) {
           companyId = clientData.company_id;
-          console.log('[custom-access-token] Found company_id in clients:', companyId)
+          userRole = 'client';
+          console.log('[custom-access-token] Found client data:', { companyId })
         }
       }
     } catch (lookupError) {
-      console.error('[custom-access-token] Company lookup failed:', lookupError)
-      // Never break auth if lookup fails; just omit company_id.
-      companyId = null
+      console.error('[custom-access-token] DB lookup failed:', lookupError)
+      // Continue without extra claims on error
     }
 
-    // Retornar claims originales + company_id
+    // Retornar claims
     return new Response(
       JSON.stringify({
         claims: {
           ...incomingClaims,
-          company_id: companyId
+          company_id: companyId,
+          user_role: userRole
         }
       }),
       {
@@ -86,8 +91,8 @@ serve(async (req) => {
     console.error('[custom-access-token] Unexpected error:', error)
     // Auth hooks must always return 200, even on error
     return new Response(
-      JSON.stringify({ 
-        claims: {} 
+      JSON.stringify({
+        claims: {}
       }),
       {
         headers: { 'Content-Type': 'application/json' },

@@ -73,7 +73,7 @@ export class AdminWebmailComponent implements OnInit {
     async loadUsers() {
         const { data } = await this.supabase
             .from('users')
-            .select('id, email, name, role, auth_user_id')
+            .select('id, email, name, auth_user_id')
             .order('email');
         if (data) this.users.set(data);
     }

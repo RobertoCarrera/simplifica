@@ -387,7 +387,7 @@ export class SupabaseCustomersService {
   }
 
   // Cache de usuarios del sistema cargados dinámicamente
-  private systemUsersCache: Array<{ id: string, company_id: string, name: string, email: string, role: string }> = [];
+  private systemUsersCache: Array<{ id: string, company_id: string, name: string, email: string }> = [];
 
   // Método auxiliar para obtener usuario del sistema (ahora sincrónico usando cache)
   private getCurrentUserFromSystemUsers(userId: string) {
@@ -403,8 +403,7 @@ export class SupabaseCustomersService {
           id,
           name,
           email,
-          company_id,
-          role
+          company_id
         `)
         .eq('active', true)
         .is('deleted_at', null);
@@ -419,8 +418,7 @@ export class SupabaseCustomersService {
           id: user.id,
           name: user.name || 'Sin name',
           email: user.email,
-          company_id: user.company_id,
-          role: user.role || 'member'
+          company_id: user.company_id
         }));
         devLog('Cache de usuarios actualizado:', this.systemUsersCache.length);
       }
