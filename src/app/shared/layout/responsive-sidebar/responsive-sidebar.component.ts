@@ -9,6 +9,7 @@ import { AuthService } from '../../../services/auth.service';
 import { SupabaseModulesService, EffectiveModule } from '../../../services/supabase-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
 import { SupabaseNotificationsService } from '../../../services/supabase-notifications.service';
+import { SupabasePermissionsService } from '../../../services/supabase-permissions.service';
 import { firstValueFrom } from 'rxjs';
 
 // Menu item shape used by this component
@@ -23,6 +24,7 @@ interface MenuItem {
   moduleKey?: string; // Optional key to check in modules_catalog
   // roleOnly can be used to restrict visibility to specific roles
   roleOnly?: 'ownerAdmin' | 'adminOnly' | 'adminEmployeeClient' | 'adminOnlyWebmail';
+  requiredPermission?: string | string[]; // Permission key(s) required (OR logic)
 }
 
 @Component({
@@ -76,9 +78,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   private modulesService = inject(SupabaseModulesService);
   private settingsService = inject(SupabaseSettingsService);
   notificationsService = inject(SupabaseNotificationsService); // Public for template access if needed
-
-  // Agent permissions
-  private agentPermissions = signal<string[] | null>(null);
+  private permissionsService = inject(SupabasePermissionsService);
 
   // Server-side modules allowed for this user
   private _allowedModuleKeys = signal<Set<string> | null>(null);
@@ -164,7 +164,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'ticket',
       route: '/tickets',
       module: 'production',
-      moduleKey: 'moduloSAT'
+      moduleKey: 'moduloSAT',
+      requiredPermission: ['tickets.view', 'tickets.create']
     },
     {
       id: 5,
@@ -188,7 +189,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'receipt',
       route: '/facturacion',
       module: 'production',
-      moduleKey: 'moduloFacturas'
+      moduleKey: 'moduloFacturas',
+      requiredPermission: ['invoices.view', 'invoices.create']
     },
     {
       id: 8,
@@ -213,6 +215,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/servicios',
       module: 'production',
       moduleKey: 'moduloServicios'
+      // No specific permission needed for "viewing" services? Or maybe 'services.view' (doesn't exist yet, implied?)
+      // Assuming 'professional' user access is controlled by module only for now OR implied logic
     },
     {
       id: 11,
@@ -220,7 +224,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'calendar', // Lucide icon
       route: '/reservas',
       module: 'production',
-      moduleKey: 'moduloReservas'
+      moduleKey: 'moduloReservas',
+      requiredPermission: ['bookings.view', 'bookings.view_own', 'bookings.manage_own', 'bookings.manage_all']
     },
     {
       id: 95,
@@ -310,36 +315,37 @@ export class ResponsiveSidebarComponent implements OnInit {
         return true;
       }
 
-      // Production modules: requieren verificación de módulos; si aún no cargaron, ocultar
+      // Production modules: verify active module AND granular permissions
       if (item.module === 'production') {
-        if (!allowed) return false; // ocultar hasta tener decisión
-        return this.isMenuItemAllowedByModules(item, allowed);
+        if (!allowed || !allowed.has(item.moduleKey || '')) return false;
+
+        // Granular permission check
+        if (item.requiredPermission) {
+          const perms = Array.isArray(item.requiredPermission) ? item.requiredPermission : [item.requiredPermission];
+          const hasPerm = perms.some(p => this.permissionsService.hasPermissionSync(p));
+          if (!hasPerm) return false;
+        }
+        return true;
       }
 
       // Development modules only for admin (o señal dev explícita)
       if (item.module === 'development') return isAdmin || isDev;
 
-      // Agent (member) filtering
-      if (userRole === 'member') {
-        const perms = this.agentPermissions();
-        if (!perms) return true; // Fail safe
+      // Filter Core items that require permissions (e.g. Clients for non-admin)
+      if (item.route === '/clientes' && !isAdmin && !isClient) { // Clients (ID 2)
+        // Check if user has ANY client view permission
+        const canView = this.permissionsService.hasPermissionSync('clients.view') ||
+          this.permissionsService.hasPermissionSync('clients.view_own');
+        if (!canView) return false;
+      }
 
-        // Logic: if item has moduleKey, check if it's in perms
-        if (item.moduleKey) {
-          return perms.includes(item.moduleKey);
-        }
-
-        // Special cases for Core items lacking moduleKey
-        if (item.id === 1) return perms.includes('dashboard'); // Inicio
-        if (item.id === 2) return perms.includes('clients');   // Clientes
-
-        // Check for Webmail or Settings visibility for members if needed
-        if (item.id === 95 && !perms.includes('webmail')) return false;
-
+      // Filter Configuration (ID 98) using permission 'settings.access' for non-admins
+      if (item.id === 98 && !isAdmin && !isClient) {
+        // Access is now open to all authenticated users (filtered by content tabs)
         return true;
       }
 
-      return false;
+      return true;
     }).map(item => {
       // Inject badge for notifications
       if (item.id === 90) {
@@ -373,17 +379,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       }
     });
 
-    // Cargar permisos de agente si es member
-    if (this.authService.userRole() === 'member') {
-      this.settingsService.getCompanySettings().subscribe(settings => {
-        if (settings?.agent_module_access) {
-          this.agentPermissions.set(settings.agent_module_access);
-        } else {
-          // Default if not set (fallback)
-          this.agentPermissions.set(["dashboard", "tickets", "clients", "invoices", "services", "products"]);
-        }
-      });
-    }
+    // Load granular permissions
+    this.permissionsService.loadPermissionsMatrix();
   }
 
   @HostListener('window:resize', ['$event'])

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
 
@@ -42,8 +42,8 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     { key: 'tickets.create', label: 'Crear tickets', description: 'Puede crear tickets', category: 'Tickets' },
 
     // Settings
-    { key: 'settings.access', label: 'Acceso configuración', description: 'Puede acceder a configuración', category: 'Sistema' },
-    { key: 'settings.billing', label: 'Gestión facturación', description: 'Acceso a configuración de facturación', category: 'Sistema' },
+    { key: 'settings.manage', label: 'Gestión configuración', description: 'Acceso a ajustes avanzados del sistema', category: 'Sistema' },
+    { key: 'settings.billing', label: 'Gestión facturación', description: 'Acceso a configuración de facturación', category: 'Facturación' },
 ];
 
 // All available roles
@@ -57,35 +57,35 @@ export const DEFAULT_PERMISSIONS: Record<Role, Record<string, boolean>> = {
         'invoices.view': true, 'invoices.create': true,
         'bookings.view': true, 'bookings.manage_all': true,
         'tickets.view': true, 'tickets.create': true,
-        'settings.access': true, 'settings.billing': true,
+        'settings.manage': true, 'settings.billing': true,
     },
     admin: {
         'clients.view': true, 'clients.edit': true, 'clients.delete': false,
         'invoices.view': true, 'invoices.create': true,
         'bookings.view': true, 'bookings.manage_all': true,
         'tickets.view': true, 'tickets.create': true,
-        'settings.access': true, 'settings.billing': false,
+        'settings.manage': true, 'settings.billing': false,
     },
     member: {
         'clients.view': true, 'clients.edit': false, 'clients.delete': false,
         'invoices.view': false, 'invoices.create': false,
         'bookings.view': true, 'bookings.view_own': true, 'bookings.manage_own': false,
         'tickets.view': true, 'tickets.create': true,
-        'settings.access': false, 'settings.billing': false,
+        'settings.manage': false, 'settings.billing': false,
     },
     professional: {
         'clients.view_own': true, 'clients.view': false, 'clients.edit': false, 'clients.delete': false,
         'invoices.view': false, 'invoices.create': false,
         'bookings.view_own': true, 'bookings.manage_own': true, 'bookings.view': false,
-        'tickets.view': false, 'tickets.create': false,
-        'settings.access': false, 'settings.billing': false,
+        'tickets.view': true, 'tickets.create': true,
+        'settings.manage': false, 'settings.billing': false,
     },
     agent: {
         'clients.view': true, 'clients.edit': false, 'clients.delete': false,
         'invoices.view': false, 'invoices.create': false,
         'bookings.view': false, 'bookings.manage_own': false,
         'tickets.view': true, 'tickets.create': true,
-        'settings.access': false, 'settings.billing': false,
+        'settings.manage': false, 'settings.billing': false,
     }
 };
 
@@ -178,10 +178,53 @@ export class SupabasePermissionsService {
         if (error) throw error;
     }
 
+    // Cached matrix for synchronous checks (e.g. sidebar)
+    private _permissionMatrix = signal<Record<string, Record<string, boolean>> | null>(null);
+
+    /**
+     * Load and cache permissions matrix
+     */
+    async loadPermissionsMatrix(): Promise<void> {
+        try {
+            const matrix = await this.getPermissionMatrix();
+            this._permissionMatrix.set(matrix);
+        } catch (e) {
+            console.error('Failed to load permissions matrix:', e);
+            // On error we might want to keep null or set defaults?
+            // Let's set defaults so the UI doesn't break completely
+            const defaults: Record<string, Record<string, boolean>> = {};
+            for (const role of AVAILABLE_ROLES) {
+                defaults[role] = { ...DEFAULT_PERMISSIONS[role] };
+            }
+            this._permissionMatrix.set(defaults);
+        }
+    }
+
+    /**
+     * Check permission synchronously using cached matrix
+     */
+    hasPermissionSync(permission: string): boolean {
+        const matrix = this._permissionMatrix();
+        if (!matrix) return false; // Not loaded yet
+
+        const role = this.authService.userRole();
+        if (!role) return false;
+
+        // Owner always has access
+        if (role === 'owner') return true;
+
+        return matrix[role]?.[permission] ?? DEFAULT_PERMISSIONS[role as Role]?.[permission] ?? false;
+    }
+
     /**
      * Check if current user has a specific permission
      */
     async hasPermission(permission: string): Promise<boolean> {
+        // If we have cached matrix, use it
+        if (this._permissionMatrix()) {
+            return this.hasPermissionSync(permission);
+        }
+
         const companyId = this.companyId;
         if (!companyId) return false;
 

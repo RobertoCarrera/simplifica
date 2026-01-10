@@ -10,6 +10,7 @@ import {
     Role
 } from '../../../services/supabase-permissions.service';
 import { ToastService } from '../../../services/toast.service';
+import { SupabaseModulesService, EffectiveModule } from '../../../services/supabase-modules.service';
 
 @Component({
     selector: 'app-permissions-manager',
@@ -21,6 +22,7 @@ import { ToastService } from '../../../services/toast.service';
 export class PermissionsManagerComponent implements OnInit {
     private permissionsService = inject(SupabasePermissionsService);
     private toast = inject(ToastService);
+    private modulesService = inject(SupabaseModulesService);
 
     loading = signal(true);
     saving = signal<string | null>(null); // Currently saving permission key
@@ -28,10 +30,37 @@ export class PermissionsManagerComponent implements OnInit {
     // Permission matrix: role -> permission -> granted
     matrix = signal<Record<string, Record<string, boolean>>>({});
 
-    // Group permissions by category
+    // Map categories to module keys (if applicable)
+    private categoryModuleMap: Record<string, string> = {
+        'Tickets': 'moduloSAT',
+        'Facturación': 'moduloFacturas',
+        'Reservas': 'moduloReservas',
+        'Productos': 'moduloProductos',
+        'Servicios': 'moduloServicios',
+        // 'Clientes' is core
+        // 'Sistema' is core
+    };
+
+    // Group permissions by category, respecting active modules
     permissionsByCategory = computed(() => {
         const grouped: Record<string, PermissionDefinition[]> = {};
+        const effectiveModules = this.modulesService.modulesSignal(); // Correct signal access
+
+        // If modules not loaded yet, default to empty or allow all (safer to allow core only?)
+        // Assuming if null, we wait or show everything? Let's show everything to avoid empty screen flicker
+        const activeModuleKeys = effectiveModules
+            ? new Set(effectiveModules.filter((m: EffectiveModule) => m.enabled).map((m: EffectiveModule) => m.key))
+            : null;
+
         for (const perm of AVAILABLE_PERMISSIONS) {
+            // Check if category is bound to a module
+            const moduleKey = this.categoryModuleMap[perm.category];
+
+            // Only filter if we have loaded modules AND the category has a module key
+            if (activeModuleKeys && moduleKey && !activeModuleKeys.has(moduleKey)) {
+                continue; // Skip if module is disabled
+            }
+
             if (!grouped[perm.category]) grouped[perm.category] = [];
             grouped[perm.category].push(perm);
         }
@@ -39,7 +68,7 @@ export class PermissionsManagerComponent implements OnInit {
     });
 
     categories = computed(() => Object.keys(this.permissionsByCategory()));
-    roles = AVAILABLE_ROLES.filter((r: string) => r !== 'owner' && r !== 'admin'); // Owner always has all permissions
+    roles = AVAILABLE_ROLES.filter((r: Role) => r !== 'owner' && r !== 'admin'); // Owner always has all permissions
 
     roleLabels: Record<string, string> = {
         admin: 'Admin',

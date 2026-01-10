@@ -25,7 +25,8 @@
       </button>
 
       <!-- Tab: Empresa (hidden for clients) -->
-      <button *ngIf="!isClient" (click)="activeTab='empresa'" role="tab" [attr.aria-selected]="activeTab === 'empresa'"
+      <button *ngIf="canManageSettings" (click)="activeTab='empresa'" role="tab"
+        [attr.aria-selected]="activeTab === 'empresa'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
         [class]="activeTab === 'empresa' 
           ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-md shadow-emerald-500/30' 
@@ -34,8 +35,8 @@
         <span class="hidden sm:inline">Empresa</span>
       </button>
 
-      <!-- Tab: Ayuda (hidden for clients) -->
-      <button *ngIf="!isClient" (click)="activeTab='ayuda'" role="tab" [attr.aria-selected]="activeTab === 'ayuda'"
+      <!-- Tab: Ayuda (Visible to everyone) -->
+      <button (click)="activeTab='ayuda'" role="tab" [attr.aria-selected]="activeTab === 'ayuda'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
         [class]="activeTab === 'ayuda' 
           ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md shadow-purple-500/30' 
@@ -45,7 +46,8 @@
       </button>
 
       <!-- Tab: Ajustes (hidden for clients) -->
-      <button *ngIf="!isClient" (click)="activeTab='ajustes'" role="tab" [attr.aria-selected]="activeTab === 'ajustes'"
+      <button *ngIf="canManageSettings" (click)="activeTab='ajustes'" role="tab"
+        [attr.aria-selected]="activeTab === 'ajustes'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
         [class]="activeTab === 'ajustes' 
           ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30' 
@@ -55,7 +57,8 @@
       </button>
 
       <!-- Tab: Domains (hidden for clients) -->
-      <button *ngIf="!isClient" (click)="activeTab='domains'" role="tab" [attr.aria-selected]="activeTab === 'domains'"
+      <button *ngIf="canManageSettings" (click)="activeTab='domains'" role="tab"
+        [attr.aria-selected]="activeTab === 'domains'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
         [class]="activeTab === 'domains' 
           ? 'bg-gradient-to-r from-blue-700 to-indigo-800 text-white shadow-md shadow-blue-900/30' 
@@ -65,7 +68,7 @@
       </button>
 
       <!-- Tab: Integraciones (hidden for clients) -->
-      <button *ngIf="!isClient" (click)="activeTab='integrations'" role="tab"
+      <button *ngIf="canManageSettings" (click)="activeTab='integrations'" role="tab"
         [attr.aria-selected]="activeTab === 'integrations'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
         [class]="activeTab === 'integrations' 
@@ -76,7 +79,7 @@
       </button>
 
       <!-- Tab: Import/Export (hidden for clients) -->
-      <button *ngIf="!isClient" (click)="activeTab='import-export'" role="tab"
+      <button *ngIf="canManageSettings" (click)="activeTab='import-export'" role="tab"
         [attr.aria-selected]="activeTab === 'import-export'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
         [class]="activeTab === 'import-export' 

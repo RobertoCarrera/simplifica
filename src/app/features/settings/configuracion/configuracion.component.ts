@@ -18,6 +18,7 @@ import { SupabaseModulesService, type EffectiveModule } from '../../../services/
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
 import { InvoiceSeries } from '../../../models/invoice.model';
 import { firstValueFrom } from 'rxjs';
+import { SupabasePermissionsService } from '../../../services/supabase-permissions.service';
 
 import { ClientGdprPanelComponent } from '../../customers/components/client-gdpr-panel/client-gdpr-panel.component';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
@@ -94,6 +95,21 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
 
     @ViewChild(ClientGdprPanelComponent) gdprPanel!: ClientGdprPanelComponent;
 
+    // Permissions Getters
+    get canManageSettings(): boolean {
+        // Owner/Admin or settings.manage permission
+        const role = this.authService.userRole();
+        if (role === 'owner' || role === 'admin') return true;
+        return this.permissionsService.hasPermissionSync('settings.manage');
+    }
+
+    get canManageBilling(): boolean {
+        // Owner/Admin or settings.billing permission
+        const role = this.authService.userRole();
+        if (role === 'owner' || role === 'admin') return true;
+        return this.permissionsService.hasPermissionSync('settings.billing');
+    }
+
     constructor(
         private fb: FormBuilder,
         private authService: AuthService,
@@ -107,7 +123,8 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         @Inject(SupabaseSettingsService) private settingsService: SupabaseSettingsService,
         @Inject(SupabaseModulesService) private modulesService: SupabaseModulesService,
         private invoicesService: SupabaseInvoicesService,
-        private customersService: SupabaseCustomersService // Injected service
+        private customersService: SupabaseCustomersService,
+        private permissionsService: SupabasePermissionsService // Injected service
     ) {
         this.supabase = this.sbClient.instance;
         this.profileForm = this.fb.group({
@@ -165,7 +182,12 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         this.loadUserModules();
         this.loadModulesCatalog();
         this.loadModulesDiagnostics();
+        this.loadModulesCatalog();
+        this.loadModulesDiagnostics();
         this.loadSettings();
+
+        // Load permissions matrix synchronously for UI checks
+        this.permissionsService.loadPermissionsMatrix();
         this.loadInvoiceSeries();
 
         // Check for integrations callback or tab request
