@@ -8,8 +8,8 @@
 </div>
 <div [ngClass]="{'nuevo-servicio-modal overflow-hidden z-3': this.creating === true}" 
     class="col-5 position-absolute bottom-0 rounded p-2 ms-2 mb-3">
-    <div [ngClass]="{'nuevo-servicio-container d-flex flex-column align-items-center justify-content-between': this.creating === true}" 
-    class="row d-none">
+<div [ngClass]="{'nuevo-servicio-container d-flex flex-column align-items-center justify-content-between': this.creating === true, 'd-none': !this.creating}"
+    class="row">
         <div class="div col-12">
             <div class="row d-flex align-items-center justify-content-between pe-3">
                 <p class="w-50 m-0">{{itemType}} #{{this.totalItems+1}}</p>

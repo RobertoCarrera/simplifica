@@ -9,11 +9,12 @@
                         (input)="onSearchCustomerDNI($event)" 
                         type="text" class="form-control" id="dniSearch" 
                         [placeholder]="searchValidDNI ? 'Buscar DNI' : 'Introducir DNI'" 
-                        name="dniSearch" required>
-                        <ul *ngIf="filteredCustomersByDNI.length" class="list-group position-absolute z-2">
+                        name="dniSearch" required
+                        autocomplete="off" aria-haspopup="listbox" [attr.aria-expanded]="filteredCustomersByDNI.length > 0">
+                        <ul *ngIf="filteredCustomersByDNI.length" class="list-group position-absolute z-2" role="listbox">
                             <li *ngFor="let customer of filteredCustomersByDNI"
                             (click)="selectCustomer(customer)"
-                            class="list-group-item">
+                            class="list-group-item" role="option">
                             {{customer.dni}}
                             </li>
                         </ul>
@@ -24,11 +25,12 @@
                         (input)="onSearchCustomerTelephone($event)"  
                         type="text" class="form-control" id="telephoneSearch" 
                         [placeholder]="searchValidTelephone ? 'Buscar Teléfono' : 'Introducir Teléfono'" 
-                        name="telephoneSearch" required>
-                        <ul *ngIf="filteredCustomersByTelephone.length" class="list-group position-absolute">
+                        name="telephoneSearch" required
+                        autocomplete="off" aria-haspopup="listbox" [attr.aria-expanded]="filteredCustomersByTelephone.length > 0">
+                        <ul *ngIf="filteredCustomersByTelephone.length" class="list-group position-absolute" role="listbox">
                             <li *ngFor="let customer of filteredCustomersByTelephone"
                             (click)="selectCustomer(customer)"
-                            class="list-group-item">
+                            class="list-group-item" role="option">
                             {{customer.telefono}}
                             </li>
                         </ul>
@@ -39,11 +41,12 @@
                         (input)="onSearchCustomerName($event)" 
                         type="text" class="form-control" id="nombreSearch" 
                         [placeholder]="searchValidName ? 'Buscar Nombre o Apellidos' : 'Introducir Nombre y Apellidos'" 
-                        name="nombreSearch" required>
-                        <ul *ngIf="filteredCustomersByName.length" class="list-group position-absolute z-2">
+                        name="nombreSearch" required
+                        autocomplete="off" aria-haspopup="listbox" [attr.aria-expanded]="filteredCustomersByName.length > 0">
+                        <ul *ngIf="filteredCustomersByName.length" class="list-group position-absolute z-2" role="listbox">
                             <li *ngFor="let customer of filteredCustomersByName"
                             (click)="selectCustomer(customer)"
-                            class="list-group-item">
+                            class="list-group-item" role="option">
                             {{customer.nombre}} {{customer.apellidos}}
                             </li>
                         </ul>
@@ -53,19 +56,19 @@
         </div>
         <div *ngIf="(!this.searchValidDNI && !this.searchValidName && !this.searchValidTelephone)" class="optional-info col-12">
             <div class="row p-0 m-0">
-                <h2 class="col-10 fs-4">Información opcional</h2>
+                <h3 class="col-10 fs-4">Información opcional</h3>
                 <div class="col-12 input-group mb-3">
                     <div class="row w-100">
                         <div class="col-12 d-flex">
                             <label for="emailSearch" class="form-label w-50">Email</label>
-                            <label for="emailSearch" class="form-label w-50">Dominio</label>
+                            <label for="dominioSearch" class="form-label w-50">Dominio</label>
                         </div>
                     </div>
                     <div class="col-12">                                
                         <div class="row">
                             <div class="col-12">
                                 <div class="input-group">
-                                    <input [(ngModel)]="selectedCustomerEmail" name="email" type="text" class="form-control" placeholder="Email" aria-label="Email">
+                                    <input [(ngModel)]="selectedCustomerEmail" name="email" type="email" class="form-control" placeholder="Email" aria-label="Email" id="emailSearch" autocomplete="email">
                                     <span class="input-group-text">&#64;</span>
                                     <input [(ngModel)]="selectedCustomerDomain" 
                                     (input)="onSearchDomain($event)" 
