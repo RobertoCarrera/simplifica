@@ -62,6 +62,12 @@
                             <i
                                 class="fas fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
+                        <!-- Create New Button (View Mode Only) -->
+                        <button *ngIf="mode === 'view'" (click)="onCreateNew()"
+                            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-sm transition-all">
+                            <i class="fas fa-plus"></i>
+                            <span>Nuevo Dispositivo</span>
+                        </button>
                     </div>
 
                     <!-- Scrollable List -->

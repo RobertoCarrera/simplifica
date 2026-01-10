@@ -565,8 +565,12 @@ export class SupabaseCustomersService {
    * Replaces the old Edge Function logic.
    */
   private async callUpsertClientRpc(customer: CreateCustomerDev | UpdateCustomer): Promise<Customer> {
+    // CRITICAL: Include company_id to prevent RPC from using auth.uid() as fallback
+    const companyId = this.authService.companyId();
+
     const payload: any = {
       // Clean keys matching RPC expectation
+      company_id: companyId, // Must be included to avoid FK violation
       client_type: (customer as any).client_type || 'individual',
       name: (customer as any).name,
       apellidos: (customer as any).apellidos ?? null,

@@ -95,6 +95,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     pricing: false,
     timeQuantity: false,
     difficulty: false,
+    booking: false,       // Reservas section
     visibility: false
   };
 
@@ -432,7 +433,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       tools_required: [],
       can_be_remote: true,
       priority_level: 3,
-      has_variants: false
+      has_variants: false,
+      is_bookable: false,
+      duration_minutes: 60,
+      booking_color: '#3b82f6'
     };
 
     // Inicializar tags seleccionados (pendingTags used for new services)
@@ -501,6 +505,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       pricing: false,
       timeQuantity: false,
       difficulty: false,
+      booking: false,
       visibility: false
     };
 

@@ -1,0 +1,93 @@
+<div class="permissions-container">
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Gestor de Permisos</h2>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Configura qué puede hacer cada rol en tu empresa</p>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="loading()" class="flex justify-center py-12">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+    </div>
+
+    <!-- Permissions Grid -->
+    <div *ngIf="!loading()" class="space-y-6">
+        <!-- Role headers -->
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-gray-200 dark:border-gray-700">
+                        <th class="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400 min-w-[200px]">
+                            Permiso
+                        </th>
+                        <th *ngFor="let role of roles" class="text-center py-3 px-4 font-medium min-w-[100px]">
+                            <div class="flex flex-col items-center gap-1">
+                                <span class="text-gray-900 dark:text-white">{{ roleLabels[role] }}</span>
+                                <button (click)="resetRole(role)"
+                                    class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
+                                    Restaurar
+                                </button>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Group by category -->
+                    <ng-container *ngFor="let category of categories()">
+                        <!-- Category header -->
+                        <tr class="bg-gray-50 dark:bg-gray-800/50">
+                            <td [colSpan]="roles.length + 1"
+                                class="py-2 px-4 font-semibold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wide">
+                                <i class="fas fa-folder mr-2 text-indigo-500"></i>
+                                {{ category }}
+                            </td>
+                        </tr>
+                        <!-- Permissions in category -->
+                        <tr *ngFor="let perm of permissionsByCategory()[category]"
+                            class="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                            <td class="py-3 px-4">
+                                <div class="flex flex-col">
+                                    <span class="font-medium text-gray-900 dark:text-white text-sm">{{ perm.label
+                                        }}</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">{{ perm.description }}</span>
+                                </div>
+                            </td>
+                            <td *ngFor="let role of roles" class="text-center py-3 px-4">
+                                <button (click)="togglePermission(role, perm.key)" [disabled]="isSaving(role, perm.key)"
+                                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                                    [class.bg-indigo-600]="isGranted(role, perm.key)"
+                                    [class.bg-gray-300]="!isGranted(role, perm.key)"
+                                    [class.dark:bg-gray-600]="!isGranted(role, perm.key)"
+                                    [class.opacity-50]="isSaving(role, perm.key)">
+                                    <span class="sr-only">Toggle {{ perm.label }}</span>
+                                    <span
+                                        class="inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform"
+                                        [class.translate-x-6]="isGranted(role, perm.key)"
+                                        [class.translate-x-1]="!isGranted(role, perm.key)">
+                                    </span>
+                                    <span *ngIf="isSaving(role, perm.key)"
+                                        class="absolute inset-0 flex items-center justify-center">
+                                        <i class="fas fa-spinner fa-spin text-white text-xs"></i>
+                                    </span>
+                                </button>
+                            </td>
+                        </tr>
+                    </ng-container>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Info -->
+        <div
+            class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3">
+            <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
+            <div class="text-sm text-blue-700 dark:text-blue-300">
+                <p class="font-medium mb-1">Nota</p>
+                <p>Los propietarios (<strong>Owner</strong>) siempre tienen todos los permisos. Los cambios se guardan
+                    automáticamente.</p>
+            </div>
+        </div>
+    </div>
+</div>

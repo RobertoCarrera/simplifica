@@ -13,7 +13,9 @@ import { environment } from '../../../../environments/environment';
   template: `
   <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
     <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
-      <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Portal de Clientes</h1>
+      <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+        {{ isStaff ? 'Configura tu Cuenta' : 'Portal de Clientes' }}
+      </h1>
       
       <div *ngIf="loading" class="text-center py-8">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
@@ -115,8 +117,8 @@ import { environment } from '../../../../environments/environment';
           />
         </div>
 
-        <!-- GDPR Consent -->
-        <div class="space-y-3 pt-2">
+        <!-- GDPR Consent (Only for Clients and Owners) -->
+        <div class="space-y-3 pt-2" *ngIf="!isStaff">
             <div class="flex items-start gap-3">
                 <div class="flex items-center h-5">
                     <input id="privacy" type="checkbox" [(ngModel)]="privacyAccepted" name="privacy" required
@@ -148,7 +150,7 @@ import { environment } from '../../../../environments/environment';
 
         <button 
           (click)="submitPassword()"
-          [disabled]="submitting || !password || !passwordConfirm || !name || !surname || !privacyAccepted"
+          [disabled]="submitting || !password || !passwordConfirm || !name || !surname || (!privacyAccepted && !isStaff)"
           class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
         >
           {{ submitting ? 'Creando cuenta...' : 'Crear cuenta' }}
@@ -194,13 +196,26 @@ export class PortalInviteComponent {
   invitationData: any = null;
 
   getRoleLabel(role: string): string {
+
     const roles: Record<string, string> = {
       'owner': 'Propietario',
       'admin': 'Administrador',
       'member': 'Miembro',
-      'client': 'Cliente'
+      'client': 'Cliente',
+      'professional': 'Profesional',
+      'agent': 'Agente'
     };
     return roles[role] || role;
+  }
+
+  get isStaff(): boolean {
+    const role = this.invitationData?.role;
+    // Staff roles: professional, agent, member, admin. 
+    // Owner also usually needs consents (contracts), but user asked specifically about these roles.
+    // Assuming Owner behaves like 'Client' in terms of needing to accept legal terms initially?
+    // Actually, Owner creates the company. They MUST accept terms.
+    // Staff are invited by Owner, so they are covered by employment/contract.
+    return ['professional', 'agent', 'member', 'admin'].includes(role);
   }
 
   constructor() {
@@ -353,7 +368,7 @@ export class PortalInviteComponent {
       }
     }
 
-    if (!this.privacyAccepted) {
+    if (!this.privacyAccepted && !this.isStaff) {
       this.passwordError = 'Debes aceptar la política de privacidad para continuar';
       return;
     }
@@ -502,7 +517,8 @@ export class PortalInviteComponent {
     // Aceptar la invitación
     const res = await this.auth.acceptInvitation(this.invitationToken);
     if (!res.success) {
-      console.warn('Invitation acceptance warning:', res.error);
+      console.error('Invitation acceptance failed:', res.error);
+      throw new Error(res.error || 'No se pudo aceptar la invitación. Contacta con soporte.');
     }
 
     // Update User Profile with Name and Surname

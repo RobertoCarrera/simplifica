@@ -33,7 +33,7 @@ export class StaffGuard implements CanActivate {
                 // 'owner', 'admin', 'member' are staff.
                 // 'client' and 'none' are NOT staff.
                 // Check for specific staff roles
-                const allowedRoles = ['owner', 'admin', 'member'];
+                const allowedRoles = ['owner', 'admin', 'member', 'professional', 'developer'];
                 if (allowedRoles.includes(profile.role)) {
                     return true;
                 }

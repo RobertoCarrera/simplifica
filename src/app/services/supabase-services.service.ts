@@ -104,6 +104,12 @@ export interface Service {
   base_features?: Record<string, any>;
   variants?: ServiceVariant[];
 
+  // Campos para sistema de reservas
+  is_bookable?: boolean;
+  duration_minutes?: number;
+  buffer_minutes?: number;
+  booking_color?: string;
+
   // Campos calculados (server-side) para display
   display_price?: number;        // Precio representativo (desde variantes o base_price)
   display_price_label?: string;  // "Precio Base", "Desde", "Precio"
@@ -360,6 +366,11 @@ export class SupabaseServicesService {
       can_be_remote: !!service.can_be_remote,
       priority_level: service.priority_level !== undefined && service.priority_level !== null ? Number(service.priority_level) : undefined,
       has_variants: !!service.has_variants, // Campo de variantes
+      // Booking fields
+      is_bookable: !!service.is_bookable,
+      duration_minutes: service.duration_minutes ?? 60,
+      buffer_minutes: service.buffer_minutes ?? 0,
+      booking_color: service.booking_color || undefined,
       // Public fields
       is_public: !!service.is_public,
       allow_direct_contracting: !!service.allow_direct_contracting,
@@ -580,6 +591,11 @@ export class SupabaseServicesService {
     if (serviceData.can_be_remote !== undefined) serviceDataForDB.can_be_remote = serviceData.can_be_remote;
     if (serviceData.priority_level !== undefined) serviceDataForDB.priority_level = serviceData.priority_level;
     if (serviceData.has_variants !== undefined) serviceDataForDB.has_variants = serviceData.has_variants;
+    // Booking fields
+    if (serviceData.is_bookable !== undefined) serviceDataForDB.is_bookable = serviceData.is_bookable;
+    if (serviceData.duration_minutes !== undefined) serviceDataForDB.duration_minutes = serviceData.duration_minutes;
+    if (serviceData.buffer_minutes !== undefined) serviceDataForDB.buffer_minutes = serviceData.buffer_minutes;
+    if (serviceData.booking_color !== undefined) serviceDataForDB.booking_color = serviceData.booking_color;
     // Public fields
     if (serviceData.is_public !== undefined) serviceDataForDB.is_public = serviceData.is_public;
     if (serviceData.allow_direct_contracting !== undefined) serviceDataForDB.allow_direct_contracting = serviceData.allow_direct_contracting;
@@ -652,6 +668,11 @@ export class SupabaseServicesService {
     if (updates.can_be_remote !== undefined) serviceData.can_be_remote = updates.can_be_remote;
     if (updates.priority_level !== undefined) serviceData.priority_level = updates.priority_level;
     if (updates.has_variants !== undefined) serviceData.has_variants = updates.has_variants;
+    // Booking fields
+    if (updates.is_bookable !== undefined) serviceData.is_bookable = updates.is_bookable;
+    if (updates.duration_minutes !== undefined) serviceData.duration_minutes = updates.duration_minutes;
+    if (updates.buffer_minutes !== undefined) serviceData.buffer_minutes = updates.buffer_minutes;
+    if (updates.booking_color !== undefined) serviceData.booking_color = updates.booking_color;
     // Public fields
     if (updates.is_public !== undefined) serviceData.is_public = updates.is_public;
     if (updates.allow_direct_contracting !== undefined) serviceData.allow_direct_contracting = updates.allow_direct_contracting;

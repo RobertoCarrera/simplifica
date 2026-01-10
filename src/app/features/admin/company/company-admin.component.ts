@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
@@ -131,9 +131,11 @@ import { take } from 'rxjs/operators';
                   [disabled]="busy || isCurrentUser(u) || !canChangeRole(u)"
                   class="px-3 py-1.5 text-sm bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
                   [title]="getRoleChangeTooltip(u)">
-                  <option value="owner" [disabled]="!canAssignRole('owner')">Owner</option>
-                  <option value="admin" [disabled]="!canAssignRole('admin')">Admin</option>
-                  <option value="member">Agente</option>
+                  <option value="owner" [disabled]="!canAssignRole('owner')">Propietario</option>
+                  <option value="admin" [disabled]="!canAssignRole('admin')">Administrador</option>
+                  <option value="member">Miembro</option>
+                  <option value="professional">Profesional</option>
+                  <option value="agent">Agente</option>
                 </select>
                 
                 <span 
@@ -193,8 +195,11 @@ import { take } from 'rxjs/operators';
               [(ngModel)]="inviteForm.role" 
               name="role"
               class="px-4 py-2.5 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent disabled:opacity-60 disabled:cursor-not-allowed">
-              <option value="member">Agente</option>
-              <option value="owner">Owner</option>
+              <option value="member">Miembro</option>
+              <option value="professional">Profesional</option>
+              <option value="agent">Agente</option>
+              <option value="admin">Administrador</option>
+              <option value="owner">Propietario</option>
             </select>
             <input 
               type="text"
@@ -382,6 +387,7 @@ import { take } from 'rxjs/operators';
 export class CompanyAdminComponent implements OnInit {
   auth = inject(AuthService);
   private toast = inject(ToastService);
+  private cdr = inject(ChangeDetectorRef);
 
   // Tabs
   tab: 'users' | 'invites' = 'users';
@@ -436,7 +442,9 @@ export class CompanyAdminComponent implements OnInit {
     const labels: Record<string, string> = {
       'owner': 'Propietario',
       'admin': 'Administrador',
-      'member': 'Agente'
+      'member': 'Miembro',
+      'professional': 'Profesional',
+      'agent': 'Agente'
     };
     return labels[role || ''] || role || 'Sin rol';
   }
@@ -514,6 +522,12 @@ export class CompanyAdminComponent implements OnInit {
       const res = await this.auth.getCompanyInvitations();
       if (res.success) {
         this.invitations = res.invitations || [];
+      } else {
+        console.error('Error loading invitations:', res.error);
+        // Only show error if it's not a "no company" expected error
+        if (res.error !== 'Usuario sin empresa asignada') {
+          this.toast.error('Error', 'Error cargando invitaciones: ' + res.error);
+        }
       }
     } finally {
       this.loadingInvitations = false;
