@@ -81,7 +81,7 @@ export class PermissionsManagerComponent implements OnInit {
     // The previous code said "roles !== owner && roles !== admin" - wait.
     // Let's filter out 'owner' and 'super_admin' as they are god roles.
     displayRoles = computed(() => {
-        return this.availableRoles().filter(r => r.name !== 'owner' && r.name !== 'super_admin' && r.name !== 'client');
+        return this.availableRoles().filter(r => r.name !== 'owner' && r.name !== 'super_admin' && r.name !== 'client' && r.name !== 'admin');
     });
 
     async ngOnInit() {

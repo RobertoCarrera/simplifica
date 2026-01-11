@@ -8,6 +8,7 @@ import { AnimationService } from '../../services/animation.service';
 import { SidebarStateService } from '../../services/sidebar-state.service';
 import { ToastService } from '../../services/toast.service';
 import { SupabaseModulesService } from '../../services/supabase-modules.service';
+import { SupabasePermissionsService } from '../../services/supabase-permissions.service';
 import { AiSavingsWidgetComponent } from './ai-savings-widget/ai-savings-widget.component';
 
 export type ChartOptions = {
@@ -117,10 +118,12 @@ export type ChartOptions = {
 
           <!-- Content -->
           @if (!isLoading()) {
-            <!-- AI Savings Widget -->
-             <div class="mb-6">
-                <app-ai-savings-widget></app-ai-savings-widget>
-             </div>
+            <!-- AI Savings Widget - GUARDED -->
+             @if (permissionsService.hasPermissionSync('analytics.ai')) {
+                <div class="mb-6">
+                    <app-ai-savings-widget></app-ai-savings-widget>
+                </div>
+             }
 
             <!-- ========== SECCIÓN 1: INGRESOS REALES (Facturas) ========== -->
             <div class="rounded-xl border-2 border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-4">
@@ -291,6 +294,7 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   private animationService = inject(AnimationService);
   private toastService = inject(ToastService);
   private modulesService = inject(SupabaseModulesService);
+  public permissionsService = inject(SupabasePermissionsService);
   sidebarService = inject(SidebarStateService);
 
   // Computed signals from service - Separados por tipo
