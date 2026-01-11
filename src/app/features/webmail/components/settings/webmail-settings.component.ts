@@ -147,10 +147,18 @@ export class WebmailSettingsComponent implements OnInit {
 
     async loadDomains() {
         // Updated to use 'domains' table as per migration
-        const { data, error } = await this.supabase.instance
+        const cid = this.authService.currentCompanyId();
+
+        let query = this.supabase.instance
             .from('domains')
             .select('*')
             .order('created_at', { ascending: false });
+
+        if (cid) {
+            query = query.eq('company_id', cid);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             console.error('Error loading domains:', error);
