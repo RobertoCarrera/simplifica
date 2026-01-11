@@ -2,7 +2,7 @@
     <div class="row h-100 p-2">
         <div class="col-12 h-100 p-0 d-flex flex-column overflow-hidden">
             <div class="input-group mb-3" id="inputCustomersTable">
-                <input [(ngModel)]="searchCustomer" type="text" id="buscadorCustomers" class="form-control" placeholder="Realiza tus búsquedas aquí">
+                <input [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" type="text" id="buscadorCustomers" class="form-control" placeholder="Realiza tus búsquedas aquí">
             </div>
             <table id="headersTable" class="table">
                 <thead>
@@ -20,12 +20,12 @@
             <div class="table-responsive rounded" id="containerCustomersTable">
                 <table id="tablaCustomers" class="table table-striped mb-1 rounded">
                     <tbody id="customersBodyTable" class="h-100">
-                        <tr *ngFor="let customer of filterCustomers()" class="customer" (click)="openCustomerModal(customer)">
+                        <tr *ngFor="let customer of filteredCustomers(); trackBy: trackByCustomer" class="customer" (click)="openCustomerModal(customer)">
                             <td class="align-content-center" #nombre>{{customer.nombre}}</td>
                             <td class="align-content-center" #apellidos>{{customer.apellidos}}</td>
                             <td class="align-content-center" #dni>{{customer.dni}}</td>
-                            <td class="align-content-center" #direccion>{{customer.direccion.tipo_via}} {{customer.direccion.nombre}} {{customer.direccion.numero}}</td>
-                            <td class="align-content-center" #localidad>{{customer.direccion.localidad.nombre}}, {{customer.direccion.localidad.CP}}</td>
+                            <td class="align-content-center" #direccion>{{customer.direccion?.tipo_via}} {{customer.direccion?.nombre}} {{customer.direccion?.numero}}</td>
+                            <td class="align-content-center" #localidad>{{customer.direccion?.localidad?.nombre}}, {{customer.direccion?.localidad?.CP}}</td>
                             <td class="align-content-center" #telefono>
                                 <a href="tel:{{customer.telefono}}" (click)="$event.stopPropagation()">{{customer.telefono}}
 
@@ -38,7 +38,7 @@
             </div>
             <app-btn-new 
                 itemType="Nuevo Cliente"
-                [totalItems] = this.customers.length
+                [totalItems] = this.customers().length
                 [maxSteps] = 2>
             </app-btn-new>
             <app-modal-customer
