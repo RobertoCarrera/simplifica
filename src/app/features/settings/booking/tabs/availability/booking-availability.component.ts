@@ -17,10 +17,12 @@ interface DaySchedule {
     slots: TimeSlot[];
 }
 
+import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
+
 @Component({
     selector: 'app-booking-availability',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, SkeletonComponent],
     templateUrl: './booking-availability.component.html',
     styleUrls: ['./booking-availability.component.scss']
 })

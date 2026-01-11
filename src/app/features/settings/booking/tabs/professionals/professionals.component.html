@@ -15,8 +15,8 @@
     </div>
 
     <!-- Loading State -->
-    <div *ngIf="loading()" class="flex justify-center py-12">
-        <div class="animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent"></div>
+    <div *ngIf="loading()" class="py-6">
+        <app-skeleton type="card-grid" [count]="3"></app-skeleton>
     </div>
 
     <!-- Empty State -->

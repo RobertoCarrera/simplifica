@@ -5,10 +5,12 @@ import { SupabaseProfessionalsService, Professional } from '../../../../../servi
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
 
+import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
+
 @Component({
     selector: 'app-professionals',
     standalone: true,
-    imports: [CommonModule, FormsModule, ReactiveFormsModule],
+    imports: [CommonModule, FormsModule, ReactiveFormsModule, SkeletonComponent],
     templateUrl: './professionals.component.html',
     styleUrls: ['./professionals.component.scss']
 })

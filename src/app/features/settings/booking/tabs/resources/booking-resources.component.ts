@@ -5,10 +5,12 @@ import { SupabaseBookingsService, Resource } from '../../../../../services/supab
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
 
+import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
+
 @Component({
     selector: 'app-booking-resources',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule],
+    imports: [CommonModule, ReactiveFormsModule, SkeletonComponent],
     templateUrl: './booking-resources.component.html',
     styleUrls: ['./booking-resources.component.scss']
 })
