@@ -41,7 +41,7 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     { key: 'invoices.create', label: 'Crear facturas', description: 'Puede crear facturas', category: 'Facturación' },
 
     // Bookings
-    { key: 'bookings.view', label: 'Ver reservas', description: 'Puede ver todas las reservas', category: 'Reservas' },
+    { key: 'bookings.view', label: 'Ver calendario', description: 'Puede ver todas las reservas y el calendario', category: 'Reservas' },
     { key: 'bookings.view_own', label: 'Ver propias', description: 'Solo ve sus propias reservas', category: 'Reservas' },
     { key: 'bookings.manage_own', label: 'Gestionar propias', description: 'Puede gestionar sus reservas', category: 'Reservas' },
     { key: 'bookings.manage_all', label: 'Gestionar todas', description: 'Puede gestionar cualquier reserva', category: 'Reservas' },

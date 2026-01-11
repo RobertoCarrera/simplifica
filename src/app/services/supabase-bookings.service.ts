@@ -177,5 +177,62 @@ export class SupabaseBookingsService {
 
         if (insertError) throw insertError;
     }
+
+    // --- Bookings ---
+
+    getBookings(companyId: string, fromDate: Date, toDate: Date): Observable<any[]> {
+        const fromStr = fromDate.toISOString();
+        const toStr = toDate.toISOString();
+
+        return from(
+            this.supabase
+                .from('bookings')
+                .select(`
+                    *,
+                    booking_type:booking_types(name),
+                    resource:resources(name),
+                    professional:professionals!professional_id(
+                        user:users(name)
+                    )
+                `)
+                .eq('company_id', companyId)
+                .gte('start_time', fromStr)
+                .lte('end_time', toStr)
+        ).pipe(
+            map(({ data, error }) => {
+                if (error) throw error;
+                return data;
+            })
+        );
+    }
+
+    async createBooking(booking: any) {
+        const { data, error } = await this.supabase
+            .from('bookings')
+            .insert(booking)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateBooking(id: string, updates: any) {
+        const { data, error } = await this.supabase
+            .from('bookings')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteBooking(id: string) {
+        const { error } = await this.supabase
+            .from('bookings')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
+    }
 }
 

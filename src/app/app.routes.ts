@@ -50,6 +50,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
         canActivate: [StaffGuard]
     },
+    {
+        path: 'calendario',
+        loadComponent: () => import('./features/calendar/page/calendar-page.component').then(m => m.CalendarPageComponent),
+        canActivate: [StaffGuard]
+    },
 
     // Clientes (Lazy Load)
     {

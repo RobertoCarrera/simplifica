@@ -1208,6 +1208,23 @@ export class AuthService {
         return { success: false, error: result.error };
       }
 
+      // 📧 Send Invitation Email
+      const { error: fnError } = await this.supabase.functions.invoke('send-invitation', {
+        body: {
+          invitationId: result.invitation_id,
+          toEmail: data.email,
+          companyName: result.company_name, // Returned by RPC now
+          role: data.role || 'member',
+          message: data.message,
+          invitedBy: result.company_name // or user name if we had it, fallback to Company Name context
+        }
+      });
+
+      if (fnError) {
+        console.error('⚠️ Invitation created but email failed:', fnError);
+        // We don't return false because the invitation IS in the DB.
+      }
+
       return {
         success: true,
         invitationId: result.invitation_id
