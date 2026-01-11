@@ -19,6 +19,8 @@ export class StaffGuard implements CanActivate {
             filter(([_, loading]) => !loading), // Wait until loading is false
             take(1),
             map(([profile]) => {
+                console.log('🛡️ [StaffGuard] Evaluating profile:', profile);
+
                 if (!profile) {
                     // Critical fix: If user is authenticated but has no profile (integrity issue),
                     // forcing logout breaks the infinite loop with GuestGuard (which redirects to / if authenticated).
@@ -30,10 +32,11 @@ export class StaffGuard implements CanActivate {
                 }
 
                 // Check for specific staff roles
-                // 'owner', 'admin', 'member' are staff.
+                // 'super_admin', 'owner', 'admin', 'member', 'professional', 'agent', 'developer' are staff.
                 // 'client' and 'none' are NOT staff.
-                // Check for specific staff roles
-                const allowedRoles = ['owner', 'admin', 'member', 'professional', 'developer'];
+                const allowedRoles = ['super_admin', 'owner', 'admin', 'member', 'professional', 'agent', 'developer'];
+                console.log('🛡️ [StaffGuard] Profile role:', profile.role, 'Allowed:', allowedRoles.includes(profile.role));
+
                 if (allowedRoles.includes(profile.role)) {
                     return true;
                 }

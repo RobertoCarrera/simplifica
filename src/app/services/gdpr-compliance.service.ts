@@ -308,18 +308,18 @@ export class GdprComplianceService {
   /**
    * Record consent for a data subject
    */
-  recordConsent(consent: GdprConsentRecord): Observable<GdprConsentRecord> {
-    const companyId = this.authService.companyId();
-    const currentUser = this.authService.currentUser;
+  recordConsent(consent: GdprConsentRecord, overrides?: { companyId?: string, userId?: string }): Observable<GdprConsentRecord> {
+    const companyId = overrides?.companyId || this.authService.companyId();
+    const currentUserId = overrides?.userId || this.authService.currentUser?.id;
 
-    if (!companyId || !currentUser) {
+    if (!companyId || !currentUserId) {
       return throwError(() => new Error('User not authenticated or no company assigned'));
     }
 
     const consentData = {
       ...consent,
       company_id: companyId,
-      processed_by: currentUser.id,
+      processed_by: currentUserId,
       consent_evidence: {
         ...consent.consent_evidence,
         ip_address: 'client_ip', // Should be captured from frontend

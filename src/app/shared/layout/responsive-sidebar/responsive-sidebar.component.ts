@@ -280,6 +280,15 @@ export class ResponsiveSidebarComponent implements OnInit {
       ];
     }
 
+    // Super Admin sees EVERYTHING (bypass module checks)
+    const isSuperAdmin = userRole === 'super_admin';
+    if (isSuperAdmin) {
+      return this.allMenuItems.map(item => {
+        if (item.id === 90) return { ...item, badge: this.notificationsService.unreadCount() };
+        return item;
+      });
+    }
+
     // Client role: show full portal menu with conditional modules
     if (isClient) {
       let clientMenu: MenuItem[] = [
@@ -307,10 +316,10 @@ export class ResponsiveSidebarComponent implements OnInit {
           return userRole === 'owner' || userRole === 'admin' || userRole === 'super_admin';
         }
         if (item.roleOnly === 'adminOnly') {
-          return userRole === 'admin';
+          return isAdmin;
         }
         if (item.roleOnly === 'adminOnlyWebmail') {
-          return userRole === 'admin';
+          return isAdmin;
         }
         return true;
       }

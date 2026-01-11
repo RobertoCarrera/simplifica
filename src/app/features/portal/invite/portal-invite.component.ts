@@ -356,6 +356,11 @@ export class PortalInviteComponent {
       return;
     }
 
+    if (this.password.length < 6) {
+      this.passwordError = 'La contraseña debe tener al menos 6 caracteres';
+      return;
+    }
+
     // Validation for New Company
     if (this.invitationData?.role === 'owner') {
       if (!this.companyName.trim()) {
@@ -469,7 +474,8 @@ export class PortalInviteComponent {
     // Verify we have a user ID (should be in rpcData or we use the one we created/logged in with)
     // authUserId is valid here.
     if (authUserId) {
-      this.saveConsents(authUserId, this.userEmail);
+      const newCompanyId = (rpcData as any)?.company_id;
+      this.saveConsents(authUserId, this.userEmail, newCompanyId);
     }
 
     this.finishSuccess();
@@ -541,7 +547,7 @@ export class PortalInviteComponent {
     this.finishSuccess();
   }
 
-  private async saveConsents(authUserId: string, email: string) {
+  private async saveConsents(authUserId: string, email: string, companyId?: string) {
     if (this.privacyAccepted) {
       this.gdprService.recordConsent({
         subject_id: authUserId,
@@ -551,7 +557,7 @@ export class PortalInviteComponent {
         consent_method: 'form',
         purpose: 'Aceptación Política Privacidad en Invitación',
         data_processing_purposes: ['service_delivery', 'contractual']
-      }).subscribe();
+      }, { userId: authUserId, companyId }).subscribe();
     }
 
     if (this.marketingAccepted) {
@@ -563,18 +569,18 @@ export class PortalInviteComponent {
         consent_method: 'form',
         purpose: 'Aceptación Comunicaciones Comerciales en Invitación',
         data_processing_purposes: ['marketing']
-      }).subscribe();
+      }, { userId: authUserId, companyId }).subscribe();
 
       // Attempt to sync with Clients table if applicable
       // We try to find a client with this email in the linked company
-      const companyId = this.invitationData?.company_id;
-      if (companyId) {
+      const linkedCompanyId = this.invitationData?.company_id;
+      if (linkedCompanyId) {
         // We use the auth client directly to avoid circular dependency or service complex setup
         const { data: clientData } = await this.auth.client
           .from('clients')
           .select('id')
           .eq('email', email)
-          .eq('company_id', companyId)
+          .eq('company_id', linkedCompanyId)
           .maybeSingle();
 
         if (clientData) {

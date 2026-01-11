@@ -280,15 +280,26 @@ export class AuthService {
 
     // Cargar datos finales
     const appUser = existingAppUser || await this.fetchAppUserByAuthId(user.id);
+    console.log('📋 [DEBUG] Final appUser result:', appUser);
+    console.log('📋 [DEBUG] appUser null?', appUser === null);
+
     if (appUser) {
       this.userProfileSubject.next(appUser);
       this.userRole.set(appUser.role);
       if (appUser.company_id) this.companyId.set(appUser.company_id);
       // Admin global (user.role === 'admin') o rol de compañía 'admin'
       this.isAdmin.set(appUser.role === 'admin' || !!appUser.is_super_admin);
+      console.log('✅ [DEBUG] userProfileSubject updated with appUser');
+    } else {
+      if (onInviteFlow) {
+        console.log('ℹ️ [DEBUG] appUser is null during invite flow - expected until acceptance.');
+      } else {
+        console.error('❌ [DEBUG] appUser is null - userProfileSubject NOT updated!');
+      }
     }
     // Finalizar carga
     this.loadingSubject.next(false);
+    console.log('🏁 [DEBUG] Loading finished: loadingSubject.next(false)');
   }
 
   private clearUserData() {
@@ -328,20 +339,27 @@ export class AuthService {
       if (userRes.data) {
         const membersRes = await this.supabase
           .from('company_members')
-          .select(`id, user_id, company_id, status, created_at, company:companies(*), role_data:app_roles(name)`)
+          .select(`id, user_id, company_id, role_id, role, status, created_at, company:companies(*), role_data:app_roles(name)`)
           .eq('user_id', userRes.data.id)
           .eq('status', 'active'); // Only active memberships
 
+        console.log('👥 [DEBUG] Company members fetch:', membersRes);
+
         const internalMemberships = (membersRes.data || []) as any[];
-        const typedInternal: CompanyMembership[] = internalMemberships.map(m => ({
-          id: m.id,
-          user_id: m.user_id,
-          company_id: m.company_id,
-          role: m.role_data?.name || m.role || 'member', // Fallback to m.role if migration incomplete (though column might be deprecated)
-          status: m.status,
-          created_at: m.created_at,
-          company: Array.isArray(m.company) ? m.company[0] : m.company
-        }));
+        const typedInternal: CompanyMembership[] = internalMemberships.map(m => {
+          // Resolve role with multiple fallbacks
+          const resolvedRole = m.role_data?.name || m.role || 'member';
+          console.log(`🎭 [DEBUG] Membership ${m.id}: role_data=${JSON.stringify(m.role_data)}, role_id=${m.role_id}, role=${m.role} -> resolved: ${resolvedRole}`);
+          return {
+            id: m.id,
+            user_id: m.user_id,
+            company_id: m.company_id,
+            role: resolvedRole,
+            status: m.status,
+            created_at: m.created_at,
+            company: Array.isArray(m.company) ? m.company[0] : m.company
+          };
+        });
         allMemberships = [...allMemberships, ...typedInternal];
       }
 
@@ -366,7 +384,12 @@ export class AuthService {
       console.log('🏢 [DEBUG] Unified Memberships:', allMemberships);
 
       if (allMemberships.length === 0) {
-        console.warn('⚠️ User has no active memberships (Internal or Client).');
+        const onInviteFlow = typeof window !== 'undefined' && window.location.pathname.startsWith('/invite');
+        if (onInviteFlow) {
+          console.log('ℹ️ User has no active memberships yet (Invite Flow) - normal state.');
+        } else {
+          console.warn('⚠️ User has no active memberships (Internal or Client).');
+        }
 
         // Special case: Super Admin without explicit memberships can still proceed
         const appRole = (userRes.data as any)?.app_role;
