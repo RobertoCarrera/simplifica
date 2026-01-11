@@ -56,8 +56,16 @@
     <!-- Content -->
     <div class="container mx-auto px-4 py-6">
         <!-- Calendar Tab -->
-        <div *ngIf="activeTab === 'calendar'" class="animate-fadeIn h-[calc(100vh-200px)]">
-            <app-calendar-page [isEmbedded]="true"></app-calendar-page>
+        <div *ngIf="activeTab === 'calendar'" class="animate-fadeIn h-[calc(100vh-200px)] flex flex-col">
+            <div class="flex justify-between items-center mb-4 px-1">
+                <a [routerLink]="['/configuracion']" [queryParams]="{tab: 'integrations'}"
+                    class="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
+                    <i class="fas fa-cog mr-1"></i> Configurar integración
+                </a>
+            </div>
+            <div class="flex-1 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
+                <app-calendar-page [isEmbedded]="true"></app-calendar-page>
+            </div>
         </div>
 
         <!-- Services Tab: Read-only list of bookable services with link to /servicios -->

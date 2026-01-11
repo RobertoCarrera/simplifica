@@ -1502,4 +1502,53 @@ export class AuthService {
     }
     return profile;
   }
+
+  // --- Google Calendar Integration ---
+
+  async connectGoogleCalendar() {
+    const user = this.currentUserSubject.value;
+    if (user) {
+      // Link identity to current user
+      const { data, error } = await this.supabase.auth.linkIdentity({
+        provider: 'google',
+        options: {
+          scopes: 'https://www.googleapis.com/auth/calendar',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          },
+          redirectTo: window.location.origin + '/reservas'
+        }
+      });
+      if (error) throw error;
+      return data;
+    } else {
+      // Fallback or login (should not happen in this context)
+      const { data, error } = await this.supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          scopes: 'https://www.googleapis.com/auth/calendar',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          },
+          redirectTo: window.location.origin + '/reservas'
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    }
+  }
+
+  async checkGoogleConnection(): Promise<boolean> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user?.identities) return false;
+
+    // Check if there is an identity with provider 'google'
+    // Note: This only checks if they have signed in with Google. 
+    // It doesn't strictly guarantee we have the calendar scope unless we enforce it on login.
+    // But for now it's a good proxy.
+    return user.identities.some(id => id.provider === 'google');
+  }
 }

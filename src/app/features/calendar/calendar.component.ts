@@ -228,10 +228,6 @@ import { AnimationService } from '../../services/animation.service';
   `,
   styles: [`
     
-    .week-view .grid {
-      min-height: 800px;
-    }
-    
     .day-view {
       max-height: 800px;
       overflow-y: auto;

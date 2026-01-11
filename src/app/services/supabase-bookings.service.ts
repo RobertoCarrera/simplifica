@@ -14,6 +14,7 @@ export interface BookingType {
     currency: string;
     is_active: boolean;
     created_at?: string;
+    google_event_id?: string | null;
 }
 
 export interface Resource {
@@ -34,6 +35,29 @@ export interface AvailabilitySchedule {
     start_time: string;
     end_time: string;
     is_unavailable: boolean;
+}
+
+export interface Booking {
+    id: string;
+    company_id: string;
+    booking_type_id: string;
+    resource_id?: string | null;
+    customer_name: string;
+    customer_email: string;
+    customer_phone?: string;
+    start_time: string;
+    end_time: string;
+    status: 'confirmed' | 'pending' | 'cancelled';
+    professional_id: string;
+    notes?: string;
+    created_at?: string;
+    updated_at?: string;
+    google_event_id?: string | null;
+
+    // Joined fields
+    booking_type?: { name: string; color?: string };
+    resource?: { name: string };
+    professional?: { user: { name: string } };
 }
 
 @Injectable({
@@ -180,7 +204,7 @@ export class SupabaseBookingsService {
 
     // --- Bookings ---
 
-    getBookings(companyId: string, fromDate: Date, toDate: Date): Observable<any[]> {
+    getBookings(companyId: string, fromDate: Date, toDate: Date): Observable<Booking[]> {
         const fromStr = fromDate.toISOString();
         const toStr = toDate.toISOString();
 

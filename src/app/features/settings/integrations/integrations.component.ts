@@ -93,22 +93,39 @@ export class IntegrationsComponent implements OnInit {
     async connectGoogle() {
         this.loading.set(true);
         try {
-            const redirectUri = window.location.origin + window.location.pathname; // Current page (Settings)
-
-            const { data, error } = await this.supabase.instance.functions.invoke('google-auth', {
-                body: {
-                    action: 'get-auth-url',
-                    redirect_uri: redirectUri
+            // Using logic from AuthService to link identity directly
+            const { data, error } = await this.supabase.instance.auth.linkIdentity({
+                provider: 'google',
+                options: {
+                    scopes: 'https://www.googleapis.com/auth/calendar',
+                    queryParams: {
+                        access_type: 'offline',
+                        prompt: 'consent'
+                    },
+                    redirectTo: window.location.origin + '/configuracion'
                 }
             });
 
             if (error) throw error;
-            if (data?.url) {
-                window.location.href = data.url;
-            }
+            // The redirection will handle the rest
         } catch (e: any) {
-            this.toast.error('Error', 'No se pudo iniciar la conexión con Google');
-            console.error(e);
+            // Fallback if linkIdentity fails (e.g. user not logged in? shouldn't happen here)
+            console.log('Link identity failed, trying signInWithOAuth', e);
+            const { data, error } = await this.supabase.instance.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    scopes: 'https://www.googleapis.com/auth/calendar',
+                    queryParams: {
+                        access_type: 'offline',
+                        prompt: 'consent'
+                    },
+                    redirectTo: window.location.origin + '/configuracion'
+                }
+            });
+            if (error) {
+                this.toast.error('Error', 'No se pudo iniciar la conexión con Google');
+                console.error(error);
+            }
         } finally {
             this.loading.set(false);
         }
