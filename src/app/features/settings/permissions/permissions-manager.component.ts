@@ -44,6 +44,7 @@ export class PermissionsManagerComponent implements OnInit {
         'Presupuestos': 'moduloPresupuestos',
         'Chat': 'moduloChat',
         'Analíticas': 'moduloAnaliticas',
+        'Inteligencia Artificial': 'moduloIA',
         // 'Clientes' is core
         // 'Sistema' is core
     };

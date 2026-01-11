@@ -4,6 +4,22 @@ import { FormsModule } from '@angular/forms';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
+import { ToastService } from '../../../services/toast.service';
+import {
+  LucideAngularModule,
+  LUCIDE_ICONS,
+  LucideIconProvider,
+  Smartphone,
+  Package,
+  Wrench,
+  MessageCircle,
+  TrendingUp,
+  FileText,
+  Receipt,
+  Calendar,
+  Sparkles,
+  Box
+} from 'lucide-angular';
 
 interface CompanyModule {
   key: string;
@@ -14,13 +30,31 @@ interface CompanyModule {
 @Component({
   selector: 'app-modules-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LucideAngularModule],
+  providers: [
+    {
+      provide: LUCIDE_ICONS,
+      useValue: new LucideIconProvider({
+        Smartphone,
+        Package,
+        Wrench,
+        MessageCircle,
+        TrendingUp,
+        FileText,
+        Receipt,
+        Calendar,
+        Sparkles,
+        Box
+      })
+    }
+  ],
   templateUrl: './modules-admin.component.html',
   styleUrls: ['./modules-admin.component.scss']
 })
 export class ModulesAdminComponent implements OnInit {
   private auth = inject(AuthService);
   private modulesService = inject(SupabaseModulesService);
+  private toastService = inject(ToastService);
 
   loading = false;
 
@@ -78,9 +112,32 @@ export class ModulesAdminComponent implements OnInit {
     this.onCompanyChange();
   }
 
+
+
+  // ... (existing code)
+
   async toggleModule(modKey: string, currentStatus: string) {
     if (!this.selectedCompanyId) return;
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    const currentModules = this.companyModules();
+
+    // VALIDATION: moduloReservas requires moduloServicios
+    if (modKey === 'moduloReservas' && newStatus === 'active') {
+      const servicesActive = currentModules.find(m => m.key === 'moduloServicios')?.status === 'active';
+      if (!servicesActive) {
+        this.toastService.warning('Dependencia requerida', 'Para activar el módulo de Reservas, primero debes activar el módulo de Servicios.');
+        return;
+      }
+    }
+
+    // VALIDATION: Cannot disable moduloServicios if moduloReservas is active
+    if (modKey === 'moduloServicios' && newStatus === 'inactive') {
+      const bookingsActive = currentModules.find(m => m.key === 'moduloReservas')?.status === 'active';
+      if (bookingsActive) {
+        this.toastService.warning('Dependencia activa', 'No puedes desactivar Servicios mientras el módulo de Reservas esté activo. Desactiva Reservas primero.');
+        return;
+      }
+    }
 
     // Optimistic update
     this.companyModules.update(list =>
@@ -100,10 +157,27 @@ export class ModulesAdminComponent implements OnInit {
       );
       this.saveStatus = 'error';
       setTimeout(() => this.saveStatus = null, 2000);
+      this.toastService.error('Error', 'No se pudo actualizar el módulo.');
     }
   }
 
-  // Filtered companies for search box
+  // ... (existing code)
+
+  getModuleIcon(key: string): string {
+    const map: Record<string, string> = {
+      'moduloSAT': 'smartphone',
+      'moduloProductos': 'package',
+      'moduloServicios': 'wrench',
+      'moduloChat': 'message-circle',
+      'moduloAnaliticas': 'trending-up',
+      'moduloPresupuestos': 'file-text',
+      'moduloFacturas': 'receipt',
+      'moduloReservas': 'calendar',
+      'moduloIA': 'sparkles'
+    };
+    return map[key] || 'box';
+  }
+
   get filteredCompanies() {
     const q = (this.companyQuery || '').toLowerCase().trim();
     if (!q) return this.companies;

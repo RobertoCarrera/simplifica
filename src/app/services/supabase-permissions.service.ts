@@ -49,14 +49,14 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     // Tickets
     { key: 'tickets.view', label: 'Ver tickets', description: 'Puede ver tickets', category: 'Tickets' },
     { key: 'tickets.create', label: 'Crear tickets', description: 'Puede crear tickets', category: 'Tickets' },
-    { key: 'tickets.ai', label: 'Uso de IA', description: 'Puede usar IA para generar/resumir tickets', category: 'Tickets' },
+    { key: 'tickets.ai', label: 'Uso de IA (Tickets)', description: 'Puede usar IA para generar/resumir tickets', category: 'Inteligencia Artificial' },
 
     // Products
     { key: 'products.view', label: 'Ver productos', description: 'Puede ver el catálogo de productos', category: 'Productos' },
     { key: 'products.create', label: 'Crear productos', description: 'Puede crear productos', category: 'Productos' },
     { key: 'products.edit', label: 'Editar productos', description: 'Puede editar productos', category: 'Productos' },
     { key: 'products.delete', label: 'Eliminar productos', description: 'Puede eliminar productos', category: 'Productos' },
-    { key: 'products.ai', label: 'Uso de IA', description: 'Generar descripciones con IA', category: 'Productos' },
+    { key: 'products.ai', label: 'Uso de IA (Productos)', description: 'Generar descripciones con IA', category: 'Inteligencia Artificial' },
 
     // Quotes
     { key: 'quotes.view', label: 'Ver presupuestos', description: 'Puede ver presupuestos', category: 'Presupuestos' },
@@ -66,7 +66,7 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
 
     // Chat
     { key: 'chat.access', label: 'Acceso Chat', description: 'Puede usar el chat interno', category: 'Chat' },
-    { key: 'chat.ai', label: 'Asistente IA', description: 'Puede consultar al asistente IA', category: 'Chat' },
+    { key: 'chat.ai', label: 'Asistente IA (Chat)', description: 'Puede consultar al asistente IA', category: 'Inteligencia Artificial' },
 
     // Services
     { key: 'services.view', label: 'Ver servicios', description: 'Puede ver catálogo de servicios', category: 'Servicios' },
@@ -76,7 +76,7 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     // Analytics
     { key: 'analytics.view', label: 'Ver analíticas', description: 'Puede ver el dashboard', category: 'Analíticas' },
     { key: 'analytics.export', label: 'Exportar datos', description: 'Puede exportar reportes', category: 'Analíticas' },
-    { key: 'analytics.ai', label: 'Insights IA', description: 'Ver recomendaciones de IA', category: 'Analíticas' },
+    { key: 'analytics.ai', label: 'Insights IA (Analíticas)', description: 'Ver recomendaciones de IA', category: 'Inteligencia Artificial' },
 
     // Settings
     { key: 'settings.manage', label: 'Gestión configuración', description: 'Acceso a ajustes avanzados del sistema', category: 'Sistema' },
