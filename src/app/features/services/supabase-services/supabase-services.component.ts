@@ -814,6 +814,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       // For new services, just clear variants if disabled
       if (!newValue) {
         this.serviceVariants = [];
+      } else {
+        // If enabling for new service, auto-open the section
+        this.openOnlySection('variants');
       }
       return;
     }
@@ -829,6 +832,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         };
         await this.servicesService.enableServiceVariants(this.editingService.id, baseFeatures);
         await this.loadServiceVariants(this.editingService.id);
+
+        // Auto-open variants section and close others
+        this.openOnlySection('variants');
       } else {
         // Disable variants
         await this.servicesService.updateService(this.editingService.id, { has_variants: false });
@@ -850,8 +856,24 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Helper to open only one section
+  private openOnlySection(section: keyof typeof this.accordionState) {
+    Object.keys(this.accordionState).forEach(key => {
+      this.accordionState[key as keyof typeof this.accordionState] = false;
+    });
+    this.accordionState[section] = true;
+  }
+
   toggleAccordion(section: keyof typeof this.accordionState) {
-    this.accordionState[section] = !this.accordionState[section];
+    const wasActive = this.accordionState[section];
+
+    // Close all sections
+    Object.keys(this.accordionState).forEach(key => {
+      this.accordionState[key as keyof typeof this.accordionState] = false;
+    });
+
+    // Toggle the clicked section (if it was active, it stays closed; if not, it opens)
+    this.accordionState[section] = !wasActive;
   }
 
   formatCurrency(amount: number): string {
