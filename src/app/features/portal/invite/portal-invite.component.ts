@@ -586,7 +586,7 @@ export class PortalInviteComponent {
         if (clientData) {
           await this.auth.client
             .from('clients')
-            .update({ marketing_consent: true, privacy_policy_accepted: true })
+            .update({ marketing_consent: true })
             .eq('id', clientData.id);
 
           // Also log consent for the Client ID specifically to be clean (double record but safer)

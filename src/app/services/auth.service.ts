@@ -317,7 +317,7 @@ export class AuthService {
       console.log('🔄 Fetching app user & memberships for auth ID:', authId);
 
       // --- PARALLEL FETCH: Internal User & Client User ---
-      const [userRes, clientRes] = await Promise.all([
+      let [userRes, clientRes] = await Promise.all([
         this.supabase
           .from('users')
           .select(`*, app_role:app_roles(*)`)
@@ -329,6 +329,22 @@ export class AuthService {
           .select(`id, auth_user_id, email, name, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
           .eq('auth_user_id', authId)
       ]);
+
+      // --- SELF-HEALING: If no clients found, try to sync ---
+      if ((!clientRes.data || clientRes.data.length === 0)) {
+        console.warn('⚠️ No client records found. Attempting to sync client profile from users table...');
+        const syncRes = await this.supabase.rpc('sync_client_profile');
+        if (syncRes.data && syncRes.data.success && syncRes.data.updated_count > 0) {
+          console.log(`✅ Synced ${syncRes.data.updated_count} client records. Re-fetching...`);
+          // Re-fetch clients
+          clientRes = await this.supabase
+            .from('clients')
+            .select(`id, auth_user_id, email, name, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
+            .eq('auth_user_id', authId);
+        } else {
+          console.log('ℹ️ Sync attempt returned no updates.');
+        }
+      }
 
       console.log('👤 [DEBUG] Internal User fetch:', userRes);
       console.log('👤 [DEBUG] Client User fetch:', clientRes);
@@ -377,7 +393,13 @@ export class AuthService {
             company: company
           };
         });
-        allMemberships = [...allMemberships, ...clientMemberships.filter(m => m.status === 'active')];
+        // Deduplicate: Filter out client memberships if the user already has a membership for that company
+        // (This happens because accept_company_invitation creates BOTH a company_member entry AND links the client record)
+        const uniqueClientMemberships = clientMemberships.filter(cm =>
+          !allMemberships.some(im => im.company_id === cm.company_id)
+        );
+
+        allMemberships = [...allMemberships, ...uniqueClientMemberships.filter(m => m.status === 'active')];
       }
 
       this.companyMemberships.set(allMemberships);
@@ -519,11 +541,14 @@ export class AuthService {
     // Reload User Profile (which triggers the Shim Logic in fetchAppUserByAuthId)
     const currentUser = this.currentUserSubject.value;
     if (currentUser) {
+      // Force reload of user profile with new company context
       await this.setCurrentUser(currentUser);
-      // Refresh page to ensure all components/guards re-evaluate with new role/permissions?
-      // Or just rely on reactive updates.
-      // Creating a full reload is safer for a major context switch.
-      window.location.reload();
+
+      // Notify navigation to ensure current route re-checks permissions if needed
+      // Currently, reactive signals (companyId, userRole, permissions) should update UI automatically.
+      // If specific routes need reload, we can use Router.navigate([], { onSameUrlNavigation: 'reload' })
+      // but usually avoiding full page reload is better.
+
       return true;
     }
     return false;

@@ -442,8 +442,7 @@ export class ClientPortalService {
           .from('client_portal_users')
           .upsert({ company_id: cid, client_id: clientId, email: email.toLowerCase(), is_active: true }, { onConflict: 'company_id,client_id,email' });
         if (error) return { success: false, error: error.message };
-        // Align role with access grant
-        await this.setUserRoleForEmail(email, 'client').catch(() => ({ success: false }));
+        // Legacy: await this.setUserRoleForEmail(email, 'client').catch(() => ({ success: false }));
       } else {
         const { error } = await client
           .from('client_portal_users')
@@ -452,8 +451,7 @@ export class ClientPortalService {
           .eq('client_id', clientId)
           .eq('email', email.toLowerCase());
         if (error) return { success: false, error: error.message };
-        // Downgrade role when access is revoked
-        await this.setUserRoleForEmail(email, 'none').catch(() => ({ success: false }));
+        // Legacy: await this.setUserRoleForEmail(email, 'none').catch(() => ({ success: false }));
       }
       return { success: true };
     } catch (e: any) {

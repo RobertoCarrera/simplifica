@@ -162,8 +162,8 @@ export class DomainsComponent implements OnInit {
             await this.supabase.instance.from('domains').insert({
                 domain: domain.name,
                 assigned_to_user: userId,
-                status: 'pending_verification',
-                provider: 'aws',
+                // status: 'pending_verification',
+                // provider: 'aws',
                 is_verified: false
             });
 
@@ -224,7 +224,7 @@ export class DomainsComponent implements OnInit {
                 domain: domainName,
                 assigned_to_user: userId,
                 is_verified: true, // If it's already in AWS under our account, we assume verified for now or let AWS confirm
-                provider: 'aws'
+                // provider: 'aws' matches nothing in DB
             });
 
         if (error) this.toast.error('Error', 'Error: ' + error.message);

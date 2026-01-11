@@ -2,14 +2,23 @@ import { Injectable, inject, signal } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
 
+export interface AppRole {
+    id: string;
+    name: string; // 'owner', 'admin', 'member', etc.
+    label: string;
+    description?: string;
+}
+
 export interface RolePermission {
     id: string;
     company_id: string;
-    role: string;
+    role: string; // Deprecated: legacy text role
+    role_id?: string; // New: foreign key to app_roles
     permission: string;
     granted: boolean;
     created_at: string;
     updated_at: string;
+    app_roles?: AppRole; // Joined data
 }
 
 export interface PermissionDefinition {
@@ -46,12 +55,11 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     { key: 'settings.billing', label: 'Gestión facturación', description: 'Acceso a configuración de facturación', category: 'Facturación' },
 ];
 
-// All available roles
 export const AVAILABLE_ROLES = ['super_admin', 'owner', 'admin', 'member', 'professional', 'agent'] as const;
 export type Role = typeof AVAILABLE_ROLES[number];
 
-// Default permissions per role (used when no custom permissions exist)
-export const DEFAULT_PERMISSIONS: Record<Role, Record<string, boolean>> = {
+// Default permissions per role (fallback and initial values)
+export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
     super_admin: {
         'clients.view': true, 'clients.view_own': true, 'clients.edit': true, 'clients.delete': true,
         'invoices.view': true, 'invoices.create': true,
@@ -108,7 +116,21 @@ export class SupabasePermissionsService {
     }
 
     /**
+     * Get all defined system roles
+     */
+    async getRoles(): Promise<AppRole[]> {
+        const { data, error } = await this.supabase
+            .from('app_roles')
+            .select('*')
+            .order('name'); // Or order by some 'rank' column if it existed
+
+        if (error) throw error;
+        return data || [];
+    }
+
+    /**
      * Get all permissions for current company
+     * Now fetching app_roles relation to get the role names
      */
     async getCompanyPermissions(): Promise<RolePermission[]> {
         const companyId = this.companyId;
@@ -116,31 +138,42 @@ export class SupabasePermissionsService {
 
         const { data, error } = await this.supabase
             .from('role_permissions')
-            .select('*')
-            .eq('company_id', companyId)
-            .order('role')
-            .order('permission');
+            .select('*, app_roles(name, label)')
+            .eq('company_id', companyId);
 
         if (error) throw error;
         return data || [];
     }
 
     /**
-     * Get permission matrix (role -> permission -> granted)
+     * Get permission matrix (role.name -> permission -> granted)
+     * Now dynamic based on available AppRoles
      */
     async getPermissionMatrix(): Promise<Record<string, Record<string, boolean>>> {
-        const permissions = await this.getCompanyPermissions();
+        const [permissions, roles] = await Promise.all([
+            this.getCompanyPermissions(),
+            this.getRoles()
+        ]);
 
-        // Start with defaults
+        // Start with defaults matching the roles found in DB
         const matrix: Record<string, Record<string, boolean>> = {};
-        for (const role of AVAILABLE_ROLES) {
-            matrix[role] = { ...DEFAULT_PERMISSIONS[role] };
+
+        for (const role of roles) {
+            // Initialize with default values if they exist in our code constant, else false
+            matrix[role.name] = { ...(DEFAULT_PERMISSIONS[role.name] || {}) };
         }
 
-        // Override with custom permissions
+        // Override with company custom permissions
         for (const p of permissions) {
-            if (!matrix[p.role]) matrix[p.role] = {};
-            matrix[p.role][p.permission] = p.granted;
+            // p.app_roles might be null if the link is broken, but p.role (text) might assume legacy
+            // We prefer p.app_roles.name if available, else fallback to p.role
+            const roleName = p.app_roles?.name || p.role;
+
+            // Only process if this role is relevant (exists in matrix or we want to show it)
+            if (roleName) {
+                if (!matrix[roleName]) matrix[roleName] = {};
+                matrix[roleName][p.permission] = p.granted;
+            }
         }
 
         return matrix;
@@ -148,21 +181,33 @@ export class SupabasePermissionsService {
 
     /**
      * Set a permission for a role
+     * Uses role_id lookup
      */
-    async setPermission(role: string, permission: string, granted: boolean): Promise<void> {
+    async setPermission(roleName: string, permission: string, granted: boolean): Promise<void> {
         const companyId = this.companyId;
         if (!companyId) throw new Error('No company selected');
+
+        // We need the role_id for this roleName
+        // Optimization: We could cache roles, but for now a quick lookup is safer
+        const { data: roleData, error: roleError } = await this.supabase
+            .from('app_roles')
+            .select('id')
+            .eq('name', roleName)
+            .single();
+
+        if (roleError || !roleData) throw new Error(`Role ${roleName} not found`);
 
         const { error } = await this.supabase
             .from('role_permissions')
             .upsert({
                 company_id: companyId,
-                role,
+                role: roleName, // Keep populating legacy text column for now if needed by other RLS
+                role_id: roleData.id,
                 permission,
                 granted,
                 updated_at: new Date().toISOString()
             }, {
-                onConflict: 'company_id,role,permission'
+                onConflict: 'company_id,role,permission' // The unique constraint usually involves these
             });
 
         if (error) throw error;
@@ -171,16 +216,18 @@ export class SupabasePermissionsService {
     /**
      * Reset a role to default permissions
      */
-    async resetRoleToDefaults(role: string): Promise<void> {
+    async resetRoleToDefaults(roleName: string): Promise<void> {
         const companyId = this.companyId;
         if (!companyId) throw new Error('No company selected');
 
         // Delete all custom permissions for this role
+        // We delete by role string name to be safe with current RLS/constraints, 
+        // or we could find the ID. The 'role' column is likely still part of the PK/Unique index in DB.
         const { error } = await this.supabase
             .from('role_permissions')
             .delete()
             .eq('company_id', companyId)
-            .eq('role', role);
+            .eq('role', roleName);
 
         if (error) throw error;
     }
@@ -197,13 +244,8 @@ export class SupabasePermissionsService {
             this._permissionMatrix.set(matrix);
         } catch (e) {
             console.error('Failed to load permissions matrix:', e);
-            // On error we might want to keep null or set defaults?
-            // Let's set defaults so the UI doesn't break completely
-            const defaults: Record<string, Record<string, boolean>> = {};
-            for (const role of AVAILABLE_ROLES) {
-                defaults[role] = { ...DEFAULT_PERMISSIONS[role] };
-            }
-            this._permissionMatrix.set(defaults);
+            // Fallback to static defaults
+            this._permissionMatrix.set(JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS)));
         }
     }
 
@@ -214,13 +256,13 @@ export class SupabasePermissionsService {
         const matrix = this._permissionMatrix();
         if (!matrix) return false; // Not loaded yet
 
-        const role = this.authService.userRole();
+        const role = this.authService.userRole(); // This returns string name likely
         if (!role) return false;
 
         // Owner and Super Admin always have access
         if (role === 'owner' || role === 'super_admin') return true;
 
-        return matrix[role]?.[permission] ?? DEFAULT_PERMISSIONS[role as Role]?.[permission] ?? false;
+        return matrix[role]?.[permission] ?? DEFAULT_PERMISSIONS[role]?.[permission] ?? false;
     }
 
     /**
@@ -249,11 +291,11 @@ export class SupabasePermissionsService {
             .eq('company_id', companyId)
             .eq('role', role)
             .eq('permission', permission)
-            .single();
+            .maybeSingle();
 
         if (data) return data.granted;
 
         // Fall back to default
-        return DEFAULT_PERMISSIONS[role as Role]?.[permission] ?? false;
+        return DEFAULT_PERMISSIONS[role]?.[permission] ?? false;
     }
 }
