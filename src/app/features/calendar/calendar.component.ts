@@ -83,48 +83,56 @@ import { AnimationService } from '../../services/animation.service';
               </div>
               
               <!-- Month grid -->
-              <div class="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+              <div class="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
                 @for (day of monthDays(); track day.date.getTime()) {
                   <div 
-                    class="bg-white dark:bg-gray-800 min-h-[120px] p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    class="bg-white dark:bg-gray-800 min-h-[100px] p-2 flex flex-col relative transition-all hover:bg-gray-50 dark:hover:bg-gray-700"
                     [ngClass]="{
-                      'opacity-50': !day.isCurrentMonth,
-                      'ring-2 ring-indigo-500': day.isSelected,
-                      'bg-indigo-50 dark:bg-indigo-900': day.isToday
+                      'bg-gray-50/50 dark:bg-gray-800/50': !day.isCurrentMonth,
+                      'ring-2 ring-inset ring-indigo-500 z-10': day.isSelected
                     }"
                     (click)="onDateClick(day.date, true, $event)">
                     
-                    <div class="flex items-center justify-between mb-1">
-                      <span class="text-sm font-medium"
+                    <!-- Today Highlight Background -->
+                     <div *ngIf="day.isToday" class="absolute inset-0 bg-indigo-50 dark:bg-indigo-900/30 pointer-events-none"></div>
+
+                    <div class="flex items-center justify-between mb-2 relative z-0">
+                      <span class="text-sm font-semibold w-7 h-7 flex items-center justify-center rounded-full"
                             [ngClass]="{
-                              'text-indigo-600 dark:text-indigo-400': day.isToday,
+                              'bg-indigo-600 text-white': day.isToday,
                               'text-gray-900 dark:text-white': day.isCurrentMonth && !day.isToday,
-                              'text-gray-400 dark:text-gray-600': !day.isCurrentMonth
+                              'text-gray-400 dark:text-gray-500': !day.isCurrentMonth
                             }">
                         {{ day.date.getDate() }}
                       </span>
                       @if (day.events.length > 0) {
-                        <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-medium text-white bg-indigo-500 rounded-full">
+                        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">
                           {{ day.events.length }}
                         </span>
                       }
                     </div>
                     
                     <!-- Events preview -->
-                    <div class="space-y-1">
-                      @for (event of day.events.slice(0, 3); track event.id) {
+                    <div class="space-y-1 relative z-0 flex-1">
+                      @for (event of day.events.slice(0, 4); track event.id) {
                         <div 
-                          class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity"
-                          [style.background-color]="event.color || '#6366f1'"
-                          [style.color]="getTextColor(event.color || '#6366f1')"
+                          class="px-2 py-1 text-xs rounded-md truncate cursor-pointer hover:opacity-80 transition-opacity border-l-2"
+                          [style.background-color]="(event.color || '#6366f1') + '20'"
+                          [style.border-left-color]="event.color || '#6366f1'"
+                          [style.color]="'inherit'"
                           (click)="onEventClick(event, $event)"
                           [title]="event.title + (event.description ? ' - ' + event.description : '')">
-                          {{ event.title }}
+                          <span class="font-medium" [style.color]="event.color || '#6366f1'">
+                            {{ event.start | date:'HH:mm' }}
+                          </span>
+                          <span class="text-gray-700 dark:text-gray-300 ml-1">
+                            {{ event.title }}
+                          </span>
                         </div>
                       }
-                      @if (day.events.length > 3) {
-                        <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                          +{{ day.events.length - 3 }} más
+                      @if (day.events.length > 4) {
+                        <div class="text-xs text-gray-500 dark:text-gray-400 pl-1 hover:text-indigo-600 cursor-pointer">
+                          +{{ day.events.length - 4 }} más
                         </div>
                       }
                     </div>
@@ -219,13 +227,6 @@ import { AnimationService } from '../../services/animation.service';
     </div>
   `,
   styles: [`
-    :host {
-      display: block;
-    }
-    
-    .month-view .grid {
-      min-height: 600px;
-    }
     
     .week-view .grid {
       min-height: 800px;
@@ -241,7 +242,7 @@ export class CalendarComponent implements OnInit {
   @Input() events: CalendarEvent[] = [];
   @Input() editable = true;
   @Input() selectable = true;
-  
+
   @Output() eventClick = new EventEmitter<CalendarEventClick>();
   @Output() dateClick = new EventEmitter<CalendarDateClick>();
   @Output() addEvent = new EventEmitter<void>();
@@ -261,24 +262,24 @@ export class CalendarComponent implements OnInit {
     const view = this.currentView();
     const year = view.date.getFullYear();
     const month = view.date.getMonth();
-    
+
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
-    
+
     const days: CalendarDay[] = [];
     const today = new Date();
     const selected = this.selectedDate();
-    
+
     for (let i = 0; i < 42; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
-      
-      const dayEvents = this.events.filter(event => 
+
+      const dayEvents = this.events.filter(event =>
         this.isSameDay(event.start, date)
       );
-      
+
       days.push({
         date,
         isCurrentMonth: date.getMonth() === month,
@@ -287,7 +288,7 @@ export class CalendarComponent implements OnInit {
         events: dayEvents
       });
     }
-    
+
     return days;
   });
 
@@ -298,32 +299,32 @@ export class CalendarComponent implements OnInit {
   formatHeaderDate(): string {
     const view = this.currentView();
     const date = view.date;
-    
+
     switch (view.type) {
       case 'month':
-        return date.toLocaleDateString('es-CL', { 
-          year: 'numeric', 
-          month: 'long' 
+        return date.toLocaleDateString('es-CL', {
+          year: 'numeric',
+          month: 'long'
         });
       case 'week':
         const weekStart = this.getWeekStart(date);
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekEnd.getDate() + 6);
-        
-        return `${weekStart.toLocaleDateString('es-CL', { 
-          day: 'numeric', 
-          month: 'short' 
-        })} - ${weekEnd.toLocaleDateString('es-CL', { 
-          day: 'numeric', 
+
+        return `${weekStart.toLocaleDateString('es-CL', {
+          day: 'numeric',
+          month: 'short'
+        })} - ${weekEnd.toLocaleDateString('es-CL', {
+          day: 'numeric',
           month: 'short',
           year: 'numeric'
         })}`;
       case 'day':
-        return date.toLocaleDateString('es-CL', { 
+        return date.toLocaleDateString('es-CL', {
           weekday: 'long',
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
         });
       default:
         return '';
@@ -357,7 +358,7 @@ export class CalendarComponent implements OnInit {
   previousPeriod() {
     const view = this.currentView();
     const newDate = new Date(view.date);
-    
+
     switch (view.type) {
       case 'month':
         newDate.setMonth(newDate.getMonth() - 1);
@@ -369,7 +370,7 @@ export class CalendarComponent implements OnInit {
         newDate.setDate(newDate.getDate() - 1);
         break;
     }
-    
+
     this.currentView.update(v => ({ ...v, date: newDate }));
     this.viewChange.emit(this.currentView());
   }
@@ -377,7 +378,7 @@ export class CalendarComponent implements OnInit {
   nextPeriod() {
     const view = this.currentView();
     const newDate = new Date(view.date);
-    
+
     switch (view.type) {
       case 'month':
         newDate.setMonth(newDate.getMonth() + 1);
@@ -389,7 +390,7 @@ export class CalendarComponent implements OnInit {
         newDate.setDate(newDate.getDate() + 1);
         break;
     }
-    
+
     this.currentView.update(v => ({ ...v, date: newDate }));
     this.viewChange.emit(this.currentView());
   }
@@ -407,9 +408,9 @@ export class CalendarComponent implements OnInit {
 
   onEventClick(calendarEvent: CalendarEvent, event: MouseEvent) {
     event.stopPropagation();
-    this.eventClick.emit({ 
-      event: calendarEvent, 
-      nativeEvent: event 
+    this.eventClick.emit({
+      event: calendarEvent,
+      nativeEvent: event
     });
   }
 
