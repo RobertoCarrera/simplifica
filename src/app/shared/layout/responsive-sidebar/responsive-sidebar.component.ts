@@ -156,7 +156,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'smartphone',
       route: '/dispositivos',
       module: 'production',
-      moduleKey: 'moduloSAT' // Linked to SAT/Tickets module
+      moduleKey: 'moduloSAT',
+      requiredPermission: 'devices.view' // New permission
     },
     {
       id: 4,
@@ -165,7 +166,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/tickets',
       module: 'production',
       moduleKey: 'moduloSAT',
-      requiredPermission: ['tickets.view', 'tickets.create']
+      requiredPermission: 'tickets.view'
     },
     {
       id: 5,
@@ -173,7 +174,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'message-circle',
       route: '/chat',
       module: 'production',
-      moduleKey: 'moduloChat'
+      moduleKey: 'moduloChat',
+      requiredPermission: 'chat.access' // New permission
     },
     {
       id: 6,
@@ -181,7 +183,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'file-text',
       route: '/presupuestos',
       module: 'production',
-      moduleKey: 'moduloPresupuestos'
+      moduleKey: 'moduloPresupuestos',
+      requiredPermission: 'quotes.view' // New permission
     },
     {
       id: 7,
@@ -198,7 +201,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'trending-up',
       route: '/analytics',
       module: 'production',
-      moduleKey: 'moduloAnaliticas'
+      moduleKey: 'moduloAnaliticas',
+      requiredPermission: 'analytics.view' // Assuming we might add this later, or leave open for now? kept open as per prior strategy but user wants full granular. NOTE: analytics.view not added to service yet, skipping to avoid blocking.
     },
     {
       id: 9,
@@ -206,7 +210,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'package',
       route: '/productos',
       module: 'production',
-      moduleKey: 'moduloProductos'
+      moduleKey: 'moduloProductos',
+      requiredPermission: 'products.view' // New permission
     },
     {
       id: 10,
@@ -214,9 +219,8 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'wrench',
       route: '/servicios',
       module: 'production',
-      moduleKey: 'moduloServicios'
-      // No specific permission needed for "viewing" services? Or maybe 'services.view' (doesn't exist yet, implied?)
-      // Assuming 'professional' user access is controlled by module only for now OR implied logic
+      moduleKey: 'moduloServicios',
+      requiredPermission: 'services.view' // New permission
     },
     {
       id: 11,

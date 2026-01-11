@@ -50,6 +50,30 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     { key: 'tickets.view', label: 'Ver tickets', description: 'Puede ver tickets', category: 'Tickets' },
     { key: 'tickets.create', label: 'Crear tickets', description: 'Puede crear tickets', category: 'Tickets' },
 
+    // Products
+    { key: 'products.view', label: 'Ver productos', description: 'Puede ver el catálogo de productos', category: 'Productos' },
+    { key: 'products.create', label: 'Crear productos', description: 'Puede crear productos', category: 'Productos' },
+    { key: 'products.edit', label: 'Editar productos', description: 'Puede editar productos', category: 'Productos' },
+    { key: 'products.delete', label: 'Eliminar productos', description: 'Puede eliminar productos', category: 'Productos' },
+
+    // Quotes
+    { key: 'quotes.view', label: 'Ver presupuestos', description: 'Puede ver presupuestos', category: 'Presupuestos' },
+    { key: 'quotes.create', label: 'Crear presupuestos', description: 'Puede crear presupuestos', category: 'Presupuestos' },
+    { key: 'quotes.edit', label: 'Editar presupuestos', description: 'Puede editar presupuestos', category: 'Presupuestos' },
+    { key: 'quotes.approve', label: 'Aprobar/Rechazar', description: 'Puede cambiar estado manualmente', category: 'Presupuestos' },
+
+    // Chat
+    { key: 'chat.access', label: 'Acceso Chat', description: 'Puede usar el chat interno', category: 'Chat' },
+
+    // Services
+    { key: 'services.view', label: 'Ver servicios', description: 'Puede ver catálogo de servicios', category: 'Servicios' },
+    { key: 'services.create', label: 'Crear servicios', description: 'Puede crear servicios', category: 'Servicios' },
+    { key: 'services.edit', label: 'Editar servicios', description: 'Puede editar servicios', category: 'Servicios' },
+
+    // Analytics
+    { key: 'analytics.view', label: 'Ver analíticas', description: 'Puede ver dashboards y reportes', category: 'Analíticas' },
+    { key: 'analytics.export', label: 'Exportar datos', description: 'Puede exportar reportes', category: 'Analíticas' },
+
     // Settings
     { key: 'settings.manage', label: 'Gestión configuración', description: 'Acceso a ajustes avanzados del sistema', category: 'Sistema' },
     { key: 'settings.billing', label: 'Gestión facturación', description: 'Acceso a configuración de facturación', category: 'Facturación' },
@@ -66,6 +90,10 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'bookings.view': true, 'bookings.view_own': true, 'bookings.manage_own': true, 'bookings.manage_all': true,
         'tickets.view': true, 'tickets.create': true,
         'settings.manage': true, 'settings.billing': true,
+        'products.view': true, 'products.create': true, 'products.edit': true, 'products.delete': true,
+        'quotes.view': true, 'quotes.create': true, 'quotes.edit': true, 'quotes.approve': true,
+        'chat.access': true, 'services.view': true, 'services.create': true, 'services.edit': true,
+        'analytics.view': true, 'analytics.export': true
     },
     owner: {
         'clients.view': true, 'clients.edit': true, 'clients.delete': true,
@@ -73,6 +101,10 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'bookings.view': true, 'bookings.manage_all': true,
         'tickets.view': true, 'tickets.create': true,
         'settings.manage': true, 'settings.billing': true,
+        'products.view': true, 'products.create': true, 'products.edit': true, 'products.delete': true,
+        'quotes.view': true, 'quotes.create': true, 'quotes.edit': true, 'quotes.approve': true,
+        'chat.access': true, 'services.view': true, 'services.create': true, 'services.edit': true,
+        'analytics.view': true, 'analytics.export': true
     },
     admin: {
         'clients.view': true, 'clients.edit': true, 'clients.delete': false,
@@ -80,6 +112,10 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'bookings.view': true, 'bookings.manage_all': true,
         'tickets.view': true, 'tickets.create': true,
         'settings.manage': true, 'settings.billing': false,
+        'products.view': true, 'products.create': true, 'products.edit': true, 'products.delete': false,
+        'quotes.view': true, 'quotes.create': true, 'quotes.edit': true, 'quotes.approve': false,
+        'chat.access': true, 'services.view': true, 'services.create': true, 'services.edit': true,
+        'analytics.view': true, 'analytics.export': false
     },
     member: {
         'clients.view': true, 'clients.edit': false, 'clients.delete': false,
@@ -87,6 +123,9 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'bookings.view': true, 'bookings.view_own': true, 'bookings.manage_own': false,
         'tickets.view': true, 'tickets.create': true,
         'settings.manage': false, 'settings.billing': false,
+        'products.view': true, 'products.create': false, 'products.edit': false, 'products.delete': false,
+        'quotes.view': true, 'quotes.create': false, 'quotes.edit': false, 'quotes.approve': false,
+        'chat.access': true, 'services.view': true, 'services.create': false, 'services.edit': false
     },
     professional: {
         'clients.view_own': true, 'clients.view': false, 'clients.edit': false, 'clients.delete': false,
@@ -94,6 +133,9 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'bookings.view_own': true, 'bookings.manage_own': true, 'bookings.view': false,
         'tickets.view': true, 'tickets.create': true,
         'settings.manage': false, 'settings.billing': false,
+        'products.view': true, 'products.create': false, 'products.edit': false, 'products.delete': false,
+        'quotes.view': false, 'quotes.create': false, 'quotes.edit': false, 'quotes.approve': false,
+        'chat.access': true, 'services.view': true, 'services.create': false, 'services.edit': false
     },
     agent: {
         'clients.view': true, 'clients.edit': false, 'clients.delete': false,
@@ -101,6 +143,9 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'bookings.view': false, 'bookings.manage_own': false,
         'tickets.view': true, 'tickets.create': true,
         'settings.manage': false, 'settings.billing': false,
+        'products.view': false, 'products.create': false, 'products.edit': false, 'products.delete': false,
+        'quotes.view': false, 'quotes.create': false, 'quotes.edit': false, 'quotes.approve': false,
+        'chat.access': true, 'services.view': false, 'services.create': false, 'services.edit': false
     }
 };
 
