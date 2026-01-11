@@ -20,7 +20,7 @@
             <div class="table-responsive rounded" id="containerCustomersTable">
                 <table id="tablaCustomers" class="table table-striped mb-1 rounded">
                     <tbody id="customersBodyTable" class="h-100">
-                        <tr *ngFor="let customer of filterCustomers()" class="customer" (click)="openCustomerModal(customer)">
+                        <tr *ngFor="let customer of filteredCustomers; trackBy: trackByCustomer" class="customer" (click)="openCustomerModal(customer)">
                             <td class="align-content-center" #nombre>{{customer.nombre}}</td>
                             <td class="align-content-center" #apellidos>{{customer.apellidos}}</td>
                             <td class="align-content-center" #dni>{{customer.dni}}</td>

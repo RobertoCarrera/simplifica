@@ -16,7 +16,20 @@ import { BtnNewComponent } from "../btn-new/btn-new.component";
 export class DashboardCustomersComponent implements OnInit{
 
   customers: Customer[] = [];
-  searchCustomer: string = '';
+  // Optimization: Store filtered results to avoid recalculating on every change detection cycle
+  filteredCustomers: Customer[] = [];
+  _searchCustomer: string = '';
+
+  get searchCustomer(): string {
+    return this._searchCustomer;
+  }
+
+  // Optimization: Update filtered list only when search term changes
+  set searchCustomer(value: string) {
+    this._searchCustomer = value;
+    this.updateFilteredCustomers();
+  }
+
   isShrink = false;
   modalCustomer = false;
   selectedCustomer: Customer | null = null;
@@ -32,18 +45,20 @@ export class DashboardCustomersComponent implements OnInit{
   ngOnInit(): void {
       this.customerService.getCustomers('672275dacb317c137fb1dd1f').subscribe(customers => {
         this.customers = customers;
+        this.updateFilteredCustomers();
       });
   };
 
-  filterCustomers(): Customer[]{
+  updateFilteredCustomers(): void {
     if(!this.searchCustomer.trim()){
-      return this.customers;
+      this.filteredCustomers = this.customers;
+      return;
     }
 
     const searchTerm = this.searchCustomer.toLowerCase().trim();
     const normalize = (text: string) => this.removeAccents(text.toLowerCase());
 
-    const filtered = this.customers.filter(customer => {
+    this.filteredCustomers = this.customers.filter(customer => {
       return (
         normalize(customer.nombre.toLowerCase()).startsWith(searchTerm) ||
         normalize(customer.apellidos.toLowerCase()).includes(searchTerm) ||
@@ -56,8 +71,7 @@ export class DashboardCustomersComponent implements OnInit{
         customer.email.toLowerCase().startsWith(searchTerm)
       );
     });
-    return filtered;
-  } 
+  }
 
   // Función para eliminar tildes
   removeAccents(text: string): string {
@@ -87,5 +101,10 @@ export class DashboardCustomersComponent implements OnInit{
 
   closeCustomerModal(): void{
     this.selectedCustomer = null;
+  }
+
+  // Optimization: Use trackBy to prevent unnecessary DOM re-renders when list reference changes but items are same
+  trackByCustomer(index: number, customer: Customer): string {
+    return customer._id;
   }
 }
