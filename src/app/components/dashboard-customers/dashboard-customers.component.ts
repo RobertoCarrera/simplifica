@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, HostListener, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostListener, OnInit, signal, computed, WritableSignal } from '@angular/core';
 import { CustomersService } from '../../services/customers.service';
 import { Customer } from '../../models/customer';
 import { CommonModule } from '@angular/common';
@@ -11,12 +11,14 @@ import { BtnNewComponent } from "../btn-new/btn-new.component";
   standalone: true,
   imports: [CommonModule, FormsModule, BtnNewComponent, ModalCustomerComponent],
   templateUrl: './dashboard-customers.component.html',
-  styleUrl: './dashboard-customers.component.scss'
+  styleUrl: './dashboard-customers.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DashboardCustomersComponent implements OnInit{
 
-  customers: Customer[] = [];
-  searchCustomer: string = '';
+  customers: WritableSignal<Customer[]> = signal([]);
+  searchQuery: WritableSignal<string> = signal('');
+
   isShrink = false;
   modalCustomer = false;
   selectedCustomer: Customer | null = null;
@@ -31,33 +33,47 @@ export class DashboardCustomersComponent implements OnInit{
   
   ngOnInit(): void {
       this.customerService.getCustomers('672275dacb317c137fb1dd1f').subscribe(customers => {
-        this.customers = customers;
+        this.customers.set(customers);
       });
   };
 
-  filterCustomers(): Customer[]{
-    if(!this.searchCustomer.trim()){
-      return this.customers;
+  filteredCustomers = computed(() => {
+    const customers = this.customers();
+    const query = this.searchQuery().trim().toLowerCase();
+
+    if (!query) {
+      return customers;
     }
 
-    const searchTerm = this.searchCustomer.toLowerCase().trim();
     const normalize = (text: string) => this.removeAccents(text.toLowerCase());
 
-    const filtered = this.customers.filter(customer => {
+    return customers.filter(customer => {
+      // Safety check for properties that might be undefined/null
+      const nombre = customer.nombre || '';
+      const apellidos = customer.apellidos || '';
+      const dni = customer.dni || '';
+      const direccion = customer.direccion || {};
+      const tipo_via = direccion.tipo_via || '';
+      const dirNombre = direccion.nombre || '';
+      const localidad = direccion.localidad || {};
+      const locNombre = localidad.nombre || '';
+      const locCP = localidad.CP ? localidad.CP.toString() : '';
+      const telefono = customer.telefono || '';
+      const email = customer.email || '';
+
       return (
-        normalize(customer.nombre.toLowerCase()).startsWith(searchTerm) ||
-        normalize(customer.apellidos.toLowerCase()).includes(searchTerm) ||
-        customer.dni.toLowerCase().startsWith(searchTerm) ||
-        normalize(customer.direccion.tipo_via.toLowerCase()).startsWith(searchTerm) ||
-        normalize(customer.direccion.nombre.toLowerCase()).includes(searchTerm) ||
-        normalize(customer.direccion.localidad.nombre.toLowerCase()).startsWith(searchTerm) ||
-        customer.direccion.localidad.CP.toString().toLowerCase().startsWith(searchTerm) ||
-        customer.telefono.startsWith(searchTerm) ||
-        customer.email.toLowerCase().startsWith(searchTerm)
+        normalize(nombre).startsWith(query) ||
+        normalize(apellidos).includes(query) ||
+        dni.toLowerCase().startsWith(query) ||
+        normalize(tipo_via.toLowerCase()).startsWith(query) ||
+        normalize(dirNombre.toLowerCase()).includes(query) ||
+        normalize(locNombre.toLowerCase()).startsWith(query) ||
+        locCP.toLowerCase().startsWith(query) ||
+        telefono.startsWith(query) ||
+        email.toLowerCase().startsWith(query)
       );
     });
-    return filtered;
-  } 
+  });
 
   // Función para eliminar tildes
   removeAccents(text: string): string {
@@ -87,5 +103,9 @@ export class DashboardCustomersComponent implements OnInit{
 
   closeCustomerModal(): void{
     this.selectedCustomer = null;
+  }
+
+  trackByCustomer(index: number, customer: Customer): string {
+    return customer._id;
   }
 }
