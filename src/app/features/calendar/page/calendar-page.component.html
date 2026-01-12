@@ -18,8 +18,13 @@
         </div>
     </div>
 
+    <!-- Filters -->
+    <app-calendar-filter [services]="availableServices()" [professionals]="resources()"
+        (filterChange)="handleFilterChange($event)">
+    </app-calendar-filter>
+
     <div class="flex-1 min-h-0 relative">
-        <app-calendar [events]="events()" [startHour]="config().calendar_start_hour ?? 8"
+        <app-calendar [events]="filteredEvents()" [startHour]="config().calendar_start_hour ?? 8"
             [endHour]="config().calendar_end_hour ?? 22" [resources]="resources()" [showAddButton]="true"
             [showBlockButton]="true" [colorMode]="colorMode()" (viewChange)="onViewChange($event)"
             (addEvent)="onAddEvent()" (blockTime)="onBlockTime()" (eventClick)="onEventClick($event)"

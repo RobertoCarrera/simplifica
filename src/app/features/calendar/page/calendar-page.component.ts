@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, Input, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, Input, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SupabaseBookingsService, Booking } from '../../../services/supabase-bookings.service';
 import { AuthService } from '../../../services/auth.service';
@@ -6,6 +6,7 @@ import { ToastService } from '../../../services/toast.service';
 import { CalendarComponent } from '../calendar.component';
 import { CalendarEvent, CalendarView } from '../calendar.interface';
 import { CalendarActionModalComponent } from '../modal/calendar-action-modal/calendar-action-modal.component';
+import { CalendarFilterComponent, CalendarFilterState } from '../components/calendar-filter/calendar-filter.component';
 
 import { SupabaseServicesService } from '../../../services/supabase-services.service';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
@@ -16,7 +17,7 @@ import { CalendarResource } from '../calendar.interface';
 @Component({
     selector: 'app-calendar-page',
     standalone: true,
-    imports: [CommonModule, CalendarComponent, CalendarActionModalComponent],
+    imports: [CommonModule, CalendarComponent, CalendarActionModalComponent, CalendarFilterComponent],
     templateUrl: './calendar-page.component.html',
     styleUrls: ['./calendar-page.component.scss']
 })
@@ -44,8 +45,54 @@ export class CalendarPageComponent implements OnInit {
     availableClients = signal<any[]>([]);
     resources = signal<CalendarResource[]>([]);
 
+    // Default Booking Type ID
+    defaultBookingTypeId: string | null = null;
+
     // View Options
     colorMode = signal<'status' | 'service' | 'professional' | 'static'>('status');
+
+    // Filtering
+    filters = signal<CalendarFilterState>({
+        searchQuery: '',
+        selectedServiceIds: [],
+        selectedProfessionalIds: []
+    });
+
+    filteredEvents = computed(() => {
+        const allEvents = this.events();
+        const { searchQuery, selectedServiceIds, selectedProfessionalIds } = this.filters();
+
+        return allEvents.filter(event => {
+            // 1. Text Search (Title, Description, or Client Name from Meta)
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                const titleMatch = event.title.toLowerCase().includes(query);
+                const descMatch = event.description?.toLowerCase().includes(query) ?? false;
+                const clientMatch = event.meta?.original?.customers?.full_name?.toLowerCase().includes(query) ?? false;
+
+                if (!titleMatch && !descMatch && !clientMatch) return false;
+            }
+
+            // 2. Service Filter
+            if (selectedServiceIds.length > 0) {
+                // Assuming event.meta.original.service_id exists
+                const serviceId = event.meta?.original?.service_id;
+                if (!serviceId || !selectedServiceIds.includes(serviceId)) return false;
+            }
+
+            // 3. Professional Filter
+            if (selectedProfessionalIds.length > 0) {
+                // If filter is active, event MUST belong to one of selected pros
+                if (!event.resourceId || !selectedProfessionalIds.includes(event.resourceId)) return false;
+            }
+
+            return true;
+        });
+    });
+
+    handleFilterChange(newFilters: CalendarFilterState) {
+        this.filters.set(newFilters);
+    }
 
     async onDateClick(event: any) {
         this.selectedDate.set(event.date);
@@ -92,6 +139,15 @@ export class CalendarPageComponent implements OnInit {
                 color: '#6366f1' // Default indigo, maybe vary later
             }));
             this.resources.set(resources);
+        });
+
+        // Load Booking Types (to get default ID)
+        this.bookingsService.getBookingTypes(companyId).subscribe(types => {
+            if (types && types.length > 0) {
+                // Prefer 'Cita Estándar' or just take the first one
+                const standard = types.find(t => t.slug === 'cita-estandar') || types[0];
+                this.defaultBookingTypeId = standard.id;
+            }
         });
     }
 
@@ -278,7 +334,8 @@ export class CalendarPageComponent implements OnInit {
                     start_time: data.startTime.toISOString(),
                     end_time: data.endTime.toISOString(),
                     status: 'confirmed',
-                    notes: 'Creada desde Calendario'
+                    notes: 'Creada desde Calendario',
+                    booking_type_id: this.defaultBookingTypeId // Fix: Include booking_type_id
                 });
 
                 this.toastService.success('Guardado', 'Cita creada correctamente.');

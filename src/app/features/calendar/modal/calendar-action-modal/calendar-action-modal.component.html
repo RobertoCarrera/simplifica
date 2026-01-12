@@ -39,17 +39,13 @@
         <div class="p-6 space-y-4">
 
             <!-- Common Date & Time (Only for Booking, Block uses its own logic below) -->
-            <div *ngIf="activeTab() === 'booking'" class="grid grid-cols-2 gap-4">
+            <div *ngIf="activeTab() === 'booking'" class="grid grid-cols-1 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha Inicio</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha y Hora</label>
                     <input type="datetime-local" [ngModel]="startTimeStr()" (ngModelChange)="updateStartTime($event)"
                         class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha Fin</label>
-                    <input type="datetime-local" [ngModel]="endTimeStr()" (ngModelChange)="endTimeStr.set($event)"
-                        class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
-                </div>
+                <!-- End Date hidden because it is calculated by Service Duration -->
             </div>
 
             <!-- Booking Fields -->
@@ -70,7 +66,7 @@
                     <!-- Service Selection -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Servicio</label>
-                        <select [(ngModel)]="serviceId"
+                        <select [(ngModel)]="serviceId" (ngModelChange)="updateEndTimeBasedOnService()"
                             class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
                             <option [ngValue]="null">Seleccionar servicio...</option>
                             <option *ngFor="let service of services()" [value]="service.id">

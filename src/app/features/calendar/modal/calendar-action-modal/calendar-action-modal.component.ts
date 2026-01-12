@@ -40,7 +40,9 @@ export class CalendarActionModalComponent {
 
   // Form Data
   startTimeStr = signal<string>('');
-  endTimeStr = signal<string>('');
+  // Form Data
+
+  endTimeStr = signal<string>(''); // Used internally for calculation or for block mode
 
   // Block Specific
   blockReason = '';
@@ -132,13 +134,36 @@ export class CalendarActionModalComponent {
 
   updateStartTime(val: string) {
     this.startTimeStr.set(val);
-    if (val > this.endTimeStr()) {
-      const start = new Date(val);
-      const end = new Date(start);
-      end.setHours(start.getHours() + 1);
-      this.endTimeStr.set(this.toDateTimeLocal(end));
+    if (this.activeTab() === 'booking') {
+      this.updateEndTimeBasedOnService();
+    } else {
+      // Block logic: auto-push end time if start > end
+      if (val > this.endTimeStr()) {
+        const start = new Date(val);
+        const end = new Date(start);
+        end.setHours(start.getHours() + 1);
+        this.endTimeStr.set(this.toDateTimeLocal(end));
+      }
     }
   }
+
+  updateEndTimeBasedOnService() {
+    if (this.activeTab() !== 'booking') return;
+
+    const start = new Date(this.startTimeStr());
+    let durationMinutes = 60; // Default
+
+    if (this.serviceId) {
+      const service = this.services().find(s => s.id === this.serviceId);
+      if (service) {
+        durationMinutes = service.duration_minutes || 60;
+      }
+    }
+
+    const end = new Date(start.getTime() + durationMinutes * 60000);
+    this.endTimeStr.set(this.toDateTimeLocal(end));
+  }
+
 
   close() {
     this.closeModal.emit();
