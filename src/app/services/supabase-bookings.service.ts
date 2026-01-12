@@ -326,6 +326,52 @@ export class SupabaseBookingsService {
         return data;
     }
 
+    async createBookingsBatch(bookings: any[]) {
+        if (!bookings.length) return [];
+
+        // 1. Batch Insert
+        const { data, error } = await this.supabase
+            .from('bookings')
+            .insert(bookings)
+            .select(`
+                *,
+                service:services(name, duration_minutes)
+            `);
+
+        if (error) throw error;
+
+        // 2. Sync to Google Calendar (Best effort, individual for now)
+        const promises = (data || []).map(async (booking) => {
+            try {
+                const bookingWithService = {
+                    ...booking,
+                    service_name: booking.service?.name,
+                };
+
+                const { data: googleData, error: googleError } = await this.supabase.functions.invoke('google-calendar', {
+                    body: {
+                        action: 'create_event',
+                        companyId: booking.company_id,
+                        booking: bookingWithService
+                    }
+                });
+
+                if (googleData?.google_event_id) {
+                    await this.supabase
+                        .from('bookings')
+                        .update({ google_event_id: googleData.google_event_id })
+                        .eq('id', booking.id);
+                }
+            } catch (e) {
+                console.error('Google Sync failed for recurring booking', e);
+            }
+        });
+
+        await Promise.all(promises);
+
+        return data;
+    }
+
     async updateBooking(id: string, updates: any) {
         const { data, error } = await this.supabase
             .from('bookings')

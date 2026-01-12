@@ -309,7 +309,6 @@ export class CalendarPageComponent implements OnInit {
                 const service = data.serviceId ? this.availableServices().find(s => s.id === data.serviceId) : null;
 
                 let resourceId = null;
-                // Auto-assign resource if service requires it
                 if (service?.required_resource_type) {
                     resourceId = await this.bookingsService.findAvailableResource(
                         companyId,
@@ -317,28 +316,56 @@ export class CalendarPageComponent implements OnInit {
                         data.startTime,
                         data.endTime
                     );
-
                     if (!resourceId) {
                         this.toastService.warning('Atención', 'No se encontró recurso disponible. Se reservará sin recurso.');
                     }
                 }
 
-                await this.bookingsService.createBooking({
-                    company_id: companyId,
-                    customer_name: client?.full_name || client?.name || 'Cliente',
-                    customer_email: client?.email || 'sin@email.com',
-                    customer_phone: client?.phone,
-                    client_id: client?.id,
-                    service_id: service?.id,
-                    resource_id: resourceId,
-                    start_time: data.startTime.toISOString(),
-                    end_time: data.endTime.toISOString(),
-                    status: 'confirmed',
-                    notes: 'Creada desde Calendario',
-                    booking_type_id: this.defaultBookingTypeId // Fix: Include booking_type_id
-                });
+                // Recurring Logic
+                if (data.recurrence && data.recurrence.type !== 'none' && data.recurrence.endDate) {
+                    const bookingsToCheck = this.generateRecurringDates(data.startTime, data.endTime, data.recurrence.type, data.recurrence.endDate);
 
-                this.toastService.success('Guardado', 'Cita creada correctamente.');
+                    if (bookingsToCheck.length > 50) {
+                        this.toastService.error('Error', 'Demasiadas repeticiones. Máximo 50.');
+                        return;
+                    }
+
+                    const bookingsPayload = bookingsToCheck.map((slot: { start: Date; end: Date }) => ({
+                        company_id: companyId,
+                        customer_name: client?.full_name || client?.name || 'Cliente',
+                        customer_email: client?.email || 'sin@email.com',
+                        customer_phone: client?.phone,
+                        client_id: client?.id,
+                        service_id: service?.id,
+                        resource_id: resourceId,
+                        start_time: slot.start.toISOString(),
+                        end_time: slot.end.toISOString(),
+                        status: 'confirmed' as const,
+                        notes: 'Creada desde Calendario (Serie)',
+                        booking_type_id: this.defaultBookingTypeId
+                    }));
+
+                    await this.bookingsService.createBookingsBatch(bookingsPayload);
+                    this.toastService.success('Guardado', `Serie de ${bookingsPayload.length} citas creada.`);
+
+                } else {
+                    // Single Booking
+                    await this.bookingsService.createBooking({
+                        company_id: companyId,
+                        customer_name: client?.full_name || client?.name || 'Cliente',
+                        customer_email: client?.email || 'sin@email.com',
+                        customer_phone: client?.phone,
+                        client_id: client?.id,
+                        service_id: service?.id,
+                        resource_id: resourceId,
+                        start_time: data.startTime.toISOString(),
+                        end_time: data.endTime.toISOString(),
+                        status: 'confirmed',
+                        notes: 'Creada desde Calendario',
+                        booking_type_id: this.defaultBookingTypeId
+                    });
+                    this.toastService.success('Guardado', 'Cita creada correctamente.');
+                }
             }
 
             this.loadBookings();
@@ -543,5 +570,34 @@ export class CalendarPageComponent implements OnInit {
             this.toastService.warning('Acción no permitida', 'No se pueden modificar eventos externos.');
             this.loadBookings(); // revert visual change
         }
+    }
+
+    private generateRecurringDates(start: Date, end: Date, type: 'daily' | 'weekly' | 'monthly', recurEnd: Date): { start: Date, end: Date }[] {
+        const dates: { start: Date, end: Date }[] = [];
+        const duration = end.getTime() - start.getTime();
+
+        // Start date is the first instance
+        let current = new Date(start);
+
+        // Important: set recurEnd to end of day to include the last day
+        const actualRecurEnd = new Date(recurEnd);
+        actualRecurEnd.setHours(23, 59, 59, 999);
+
+        while (current <= actualRecurEnd) {
+            dates.push({
+                start: new Date(current),
+                end: new Date(current.getTime() + duration)
+            });
+
+            if (type === 'daily') {
+                current.setDate(current.getDate() + 1);
+            } else if (type === 'weekly') {
+                current.setDate(current.getDate() + 7);
+            } else if (type === 'monthly') {
+                current.setMonth(current.getMonth() + 1);
+            }
+        }
+
+        return dates;
     }
 }

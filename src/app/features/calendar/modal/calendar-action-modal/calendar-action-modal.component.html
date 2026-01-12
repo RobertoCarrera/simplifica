@@ -76,6 +76,27 @@
                         </select>
                     </div>
                 </div>
+
+                <!-- Recurrence Options -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100 dark:border-slate-700">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Repetir</label>
+                        <select [ngModel]="recurrenceType()" (ngModelChange)="recurrenceType.set($event)"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+                            <option value="none">No repetir</option>
+                            <option value="daily">Todos los días</option>
+                            <option value="weekly">Cada semana</option>
+                            <option value="monthly">Cada mes</option>
+                        </select>
+                    </div>
+                    <div *ngIf="recurrenceType() !== 'none'" class="animate-fade-in">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Termina
+                            el</label>
+                        <input type="date" [ngModel]="recurrenceEndDateStr()"
+                            (ngModelChange)="recurrenceEndDateStr.set($event)"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+                    </div>
+                </div>
             </div>
 
             <!-- Block Fields -->

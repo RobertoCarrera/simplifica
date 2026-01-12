@@ -13,6 +13,10 @@ export interface CalendarActionData {
   serviceId?: string;
   clientId?: string;
   id?: string;
+  recurrence?: {
+    type: 'daily' | 'weekly' | 'monthly';
+    endDate: Date;
+  };
 }
 
 @Component({
@@ -51,6 +55,10 @@ export class CalendarActionModalComponent {
   blockStartDateStr = signal<string>('');
   blockEndDateStr = signal<string>('');
 
+  // Recurrence
+  recurrenceType = signal<'none' | 'daily' | 'weekly' | 'monthly'>('none');
+  recurrenceEndDateStr = signal<string>('');
+
   clientId: string | null = null;
   serviceId: string | null = null;
 
@@ -76,6 +84,8 @@ export class CalendarActionModalComponent {
     this.blockReason = '';
     this.blockType.set('time'); // Default to time range
     this.serviceId = null;
+    this.recurrenceType.set('none');
+    this.recurrenceEndDateStr.set('');
     this.clientId = null;
   }
 
@@ -205,7 +215,11 @@ export class CalendarActionModalComponent {
       blockType: this.activeTab() === 'block' ? this.blockType() : undefined,
       serviceId: this.activeTab() === 'booking' ? (this.serviceId || undefined) : undefined,
       clientId: this.activeTab() === 'booking' ? (this.clientId || undefined) : undefined,
-      id: this.existingId() || undefined
+      id: this.existingId() || undefined,
+      recurrence: (this.activeTab() === 'booking' && this.recurrenceType() !== 'none') ? {
+        type: this.recurrenceType() as 'daily' | 'weekly' | 'monthly',
+        endDate: new Date(this.recurrenceEndDateStr())
+      } : undefined
     });
 
     this.close();
