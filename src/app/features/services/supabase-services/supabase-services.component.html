@@ -458,6 +458,20 @@
                   <small class="text-gray-500 dark:text-slate-400 text-xs mt-1">Color identificativo en el calendario de
                     citas</small>
                 </div>
+
+                <div class="form-group">
+                  <label for="required_resource_type" class="text-gray-700 dark:text-white font-medium">Recurso
+                    Requerido</label>
+                  <select id="required_resource_type"
+                    class="form-control bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none appearance-none"
+                    [(ngModel)]="formData.required_resource_type" name="required_resource_type">
+                    <option [ngValue]="undefined">Ninguno</option>
+                    <option value="room">Sala / Cabina</option>
+                    <option value="equipment">Máquina / Equipo</option>
+                  </select>
+                  <small class="text-gray-500 dark:text-slate-400 text-xs mt-1">Si se selecciona, el sistema buscará
+                    disponibilidad de este tipo de recurso</small>
+                </div>
               </div>
             </div><!-- Close accordion-content -->
           </div><!-- Close Reservas section -->

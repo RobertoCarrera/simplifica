@@ -1,17 +1,18 @@
 import { Component, Input, Output, EventEmitter, computed, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { CalendarEvent, CalendarView, CalendarDay, CalendarEventClick, CalendarDateClick } from './calendar.interface';
 import { AnimationService } from '../../services/animation.service';
 
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DragDropModule],
   animations: [AnimationService.fadeInUp, AnimationService.slideIn],
   template: `
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden" @fadeInUp>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden h-full flex flex-col" @fadeInUp>
       <!-- Header -->
-      <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4">
+      <div class="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-4 flex-shrink-0">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-4">
             <h2 class="text-xl font-semibold text-white">
@@ -82,12 +83,12 @@ import { AnimationService } from '../../services/animation.service';
       </div>
 
       <!-- Calendar content -->
-      <div class="p-6">
+      <div class="flex-1 overflow-hidden relative" cdkDropListGroup>
         @switch (currentView().type) {
           @case ('month') {
-            <div class="month-view" @slideIn>
+            <div class="h-full flex flex-col p-4 overflow-y-auto pb-0" @slideIn>
               <!-- Month header with days -->
-              <div class="grid grid-cols-7 gap-px mb-2">
+              <div class="grid grid-cols-7 gap-px mb-2 flex-shrink-0">
                 @for (day of weekDays; track day) {
                   <div class="p-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
                     {{ day }}
@@ -96,7 +97,7 @@ import { AnimationService } from '../../services/animation.service';
               </div>
               
               <!-- Month grid -->
-              <div class="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+              <div class="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 flex-1">
                 @for (day of monthDays(); track day.date.getTime()) {
                   <div 
                     class="bg-white dark:bg-gray-800 min-h-[100px] p-2 flex flex-col relative transition-all hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -104,7 +105,10 @@ import { AnimationService } from '../../services/animation.service';
                       'bg-gray-50/50 dark:bg-gray-800/50': !day.isCurrentMonth,
                       'ring-2 ring-inset ring-indigo-500 z-10': day.isSelected
                     }"
-                    (click)="onDateClick(day.date, true, $event)">
+                    (click)="onDateClick(day.date, true, $event)"
+                    cdkDropList
+                    [cdkDropListData]="{ date: day.date, isAllDay: true }"
+                    (cdkDropListDropped)="onEventDrop($event)">
                     
                     <!-- Today Highlight Background -->
                      <div *ngIf="day.isToday" class="absolute inset-0 bg-indigo-50 dark:bg-indigo-900/30 pointer-events-none"></div>
@@ -134,13 +138,20 @@ import { AnimationService } from '../../services/animation.service';
                           [style.border-left-color]="event.color || '#6366f1'"
                           [style.color]="'inherit'"
                           (click)="onEventClick(event, $event)"
-                          [title]="event.title + (event.description ? ' - ' + event.description : '')">
+                          [title]="event.title + (event.description ? ' - ' + event.description : '')"
+                          cdkDrag
+                          [cdkDragData]="event"
+                          [cdkDragDisabled]="!editable">
                           <span class="font-medium" [style.color]="event.color || '#6366f1'">
                             {{ event.start | date:'HH:mm' }}
                           </span>
                           <span class="text-gray-700 dark:text-gray-300 ml-1">
                             {{ event.title }}
                           </span>
+                          <!-- Drag Preview -->
+                          <div *cdkDragPreview class="bg-white shadow-xl rounded-md p-2 w-48 opacity-90">
+                              {{ event.title }}
+                          </div>
                         </div>
                       }
                       @if (day.events.length > 4) {
@@ -156,10 +167,10 @@ import { AnimationService } from '../../services/animation.service';
           }
           
           @case ('week') {
-            <div class="week-view" @slideIn>
+            <div class="h-full flex flex-col p-4 overflow-hidden" @slideIn>
               <!-- Week header -->
-              <div class="grid grid-cols-8 gap-px mb-4">
-                <div class="p-2"></div> <!-- Time column header -->
+              <div class="grid grid-cols-[64px_repeat(7,1fr)] gap-px mb-4 flex-shrink-0 pr-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+                <div class="p-2"></div> <!-- Time column header placeholder -->
                 @for (day of weekDays; track day) {
                   <div class="p-2 text-center">
                     <div class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ day }}</div>
@@ -170,80 +181,183 @@ import { AnimationService } from '../../services/animation.service';
                 }
               </div>
               
-              <!-- Week grid -->
-              <div class="grid grid-cols-8 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
-                @for (hour of hourSlots; track hour) {
-                  <div class="bg-white dark:bg-gray-800 p-2 text-sm text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">
-                    {{ formatHour(hour) }}
-                  </div>
-                  @for (day of weekDays; track day) {
-                    <div 
-                      class="bg-white dark:bg-gray-800 min-h-[60px] p-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-r border-gray-200 dark:border-gray-700"
-                      (click)="onTimeSlotClick(day, hour, $event)">
-                      <!-- Hour events will be rendered here -->
-                      @for (event of getHourEvents(day, hour); track event.id) {
-                        <div 
-                          class="text-xs p-1 rounded mb-1 cursor-pointer hover:opacity-80 transition-opacity"
-                          [style.background-color]="event.color || '#6366f1'"
-                          [style.color]="getTextColor(event.color || '#6366f1')"
-                          (click)="onEventClick(event, $event)"
-                          [title]="event.title + (event.description ? ' - ' + event.description : '')">
-                          {{ event.title }}
-                        </div>
-                      }
+              <!-- Week grid (Scrollable) -->
+              <div class="flex-1 overflow-y-auto relative pb-20" #weekContainer>
+                  <div class="grid grid-cols-[64px_repeat(7,1fr)] gap-px bg-gray-200 dark:bg-gray-700 rounded-lg relative"
+                       [style.height.px]="totalHeight">
+                    
+                    <!-- BACKGROUND GRID (Time Slots) -->
+                    <div class="contents">
+                         <!-- Time Column -->
+                         <div class="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 relative z-10">
+                            @for (hour of hourSlots; track hour) {
+                                <div class="text-sm text-gray-500 dark:text-gray-400 text-right pr-2 sticky left-0"
+                                     [style.height.px]="hourHeight">
+                                    <span class="-translate-y-1/2 block">{{ formatHour(hour) }}</span>
+                                </div>
+                            }
+                         </div>
+
+                         <!-- Day Columns Backgrounds -->
+                         @for (day of weekDays; track day) {
+                             <div class="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 relative h-full">
+                                  @for (hour of hourSlots; track hour) {
+                                      <div class="border-b border-gray-100 dark:border-gray-700 w-full absolute box-border"
+                                           [style.top.px]="(hour - startHour) * hourHeight"
+                                           [style.height.px]="hourHeight">
+                                      </div>
+                                  }
+                             </div>
+                         }
                     </div>
-                  }
-                }
+
+                    <!-- EVENTS LAYER (Overlay) -->
+                    <!-- We iterate days again to place drop lists and absolute events -->
+                    @for (day of weekDays; track day; let i = $index) {
+                         <!-- The Day Column (Drop List) -->
+                         <div class="relative h-full w-full" 
+                              [style.grid-column]="i + 2" 
+                              [style.grid-row]="1"
+                              cdkDropList
+                              [cdkDropListData]="{ dayStr: day }"
+                              (cdkDropListDropped)="onEventDrop($event)">
+                              
+                              @for (event of getDayEvents(day); track event.id) {
+                                  <div class="absolute inset-x-1 rounded px-2 py-1 text-xs cursor-pointer hover:opacity-90 transition-opacity shadow-sm z-20 overflow-hidden border-l-4"
+                                       [style.top.px]="getEventTop(event)"
+                                       [style.height.px]="getEventHeight(event)"
+                                       [style.background-color]="(event.color || '#6366f1') + '20'"
+                                       [style.border-left-color]="event.color || '#6366f1'"
+                                       [style.color]="'inherit'"
+                                       (click)="onEventClick(event, $event)"
+                                       [title]="event.title"
+                                       cdkDrag
+                                       [cdkDragData]="event"
+                                       [cdkDragDisabled]="!editable">
+                                       
+                                       <div class="font-semibold text-gray-900 dark:text-white truncate">
+                                          {{ event.title }}
+                                       </div>
+                                       <div class="text-gray-600 dark:text-gray-300 truncate">
+                                          {{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}
+                                       </div>
+                                       
+                                       <div *cdkDragPreview class="bg-indigo-600 text-white shadow-xl rounded-md p-2 w-48 opacity-90 h-16">
+                                          {{ event.start | date:'HH:mm' }} - {{ event.title }}
+                                       </div>
+                                       
+                                       <!-- Resize Handle -->
+                                       <div class="absolute bottom-0 inset-x-0 h-2 cursor-ns-resize z-30 opacity-0 hover:opacity-100 hover:bg-indigo-400"
+                                            cdkDrag
+                                            cdkDragLockAxis="y"
+                                            (cdkDragEnded)="onResizeEnd($event, event)"
+                                            (click)="$event.stopPropagation()">
+                                       </div>
+                                  </div>
+                              }
+                         </div>
+                    }
+
+                  </div>
               </div>
             </div>
           }
           
           @case ('day') {
-            <div class="day-view" @slideIn>
-              <!-- Day header -->
-              <div class="mb-4">
+             <div class="h-full flex flex-col p-4 overflow-hidden" @slideIn>
+               <div class="mb-4 flex-shrink-0">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                   {{ formatDayHeader() }}
                 </h3>
-              </div>
-              
-              <!-- Day timeline -->
-              <div class="space-y-1">
-                @for (hour of hourSlots; track hour) {
-                  <div class="flex items-start border-b border-gray-100 dark:border-gray-700 pb-2">
-                    <div class="w-20 flex-shrink-0 text-sm text-gray-500 dark:text-gray-400 pt-2">
-                      {{ formatHour(hour) }}
-                    </div>
-                    <div 
-                      class="flex-1 min-h-[60px] p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors"
-                      (click)="onTimeSlotClick('day', hour, $event)">
-                      @for (event of getDayHourEvents(hour); track event.id) {
-                        <div 
-                          class="text-sm p-2 rounded mb-2 cursor-pointer hover:opacity-80 transition-opacity"
-                          [style.background-color]="event.color || '#6366f1'"
-                          [style.color]="getTextColor(event.color || '#6366f1')"
-                          (click)="onEventClick(event, $event)">
-                          <div class="font-medium">{{ event.title }}</div>
-                          @if (event.description) {
-                            <div class="text-xs opacity-90 mt-1">{{ event.description }}</div>
-                          }
-                        </div>
-                      }
-                    </div>
-                  </div>
-                }
-              </div>
-            </div>
+               </div>
+
+               <div class="flex-1 overflow-y-auto relative pb-0">
+                   <div class="flex relative" [style.height.px]="totalHeight">
+                       <!-- Time Labels -->
+                       <div class="w-16 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-10">
+                           @for (hour of hourSlots; track hour) {
+                                <div class="text-sm text-gray-500 dark:text-gray-400 text-right pr-2 sticky left-0"
+                                     [style.height.px]="hourHeight">
+                                     <span class="-translate-y-1/2 block">{{ formatHour(hour) }}</span>
+                                </div>
+                           }
+                       </div>
+
+                       <!-- Day Content -->
+                       <div class="flex-1 relative bg-white dark:bg-gray-800 max-w-full"
+                            cdkDropList
+                            [cdkDropListData]="{ isDayView: true }"
+                            (cdkDropListDropped)="onEventDrop($event)">
+                            
+                            <!-- Grid Lines -->
+                            @for (hour of hourSlots; track hour) {
+                                <div class="border-b border-gray-100 dark:border-gray-700 w-full absolute box-border"
+                                     [style.top.px]="(hour - startHour) * hourHeight"
+                                     [style.height.px]="hourHeight">
+                                </div>
+                            }
+
+                            <!-- Events -->
+                            @for (event of getDayViewEvents(); track event.id) {
+                                <div class="absolute left-2 right-2 rounded px-3 py-2 text-sm cursor-pointer hover:opacity-90 transition-opacity shadow-sm z-20 border-l-4 overflow-hidden"
+                                     [style.top.px]="getEventTop(event)"
+                                     [style.height.px]="getEventHeight(event)"
+                                     [style.background-color]="(event.color || '#6366f1') + '20'"
+                                     [style.border-left-color]="event.color || '#6366f1'"
+                                     (click)="onEventClick(event, $event)"
+                                     cdkDrag
+                                     [cdkDragData]="event"
+                                     [cdkDragDisabled]="!editable">
+                                     
+                                     <div class="font-bold text-gray-900 dark:text-white truncate">
+                                        {{ event.title }}
+                                     </div>
+                                     <div class="text-gray-600 dark:text-gray-300 truncate">
+                                        {{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}
+                                     </div>
+                                     
+                                     <div *cdkDragPreview class="bg-indigo-600 text-white shadow-xl rounded-md p-2 w-full opacity-90">
+                                          {{ event.start | date:'HH:mm' }} - {{ event.title }}
+                                     </div>
+
+                                     <!-- Resize Handle -->
+                                     <div class="absolute bottom-0 inset-x-0 h-2 cursor-ns-resize z-30 opacity-0 hover:opacity-100 hover:bg-indigo-400"
+                                          cdkDrag
+                                          cdkDragLockAxis="y"
+                                          (cdkDragEnded)="onResizeEnd($event, event)"
+                                          (click)="$event.stopPropagation()">
+                                     </div>
+                                </div>
+                            }
+                       </div>
+                   </div>
+               </div>
+             </div>
           }
         }
       </div>
     </div>
   `,
   styles: [`
-    
-    .day-view {
-      max-height: 800px;
-      overflow-y: auto;
+    .cdk-drag-preview {
+      box-sizing: border-box;
+      border-radius: 4px;
+      box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2),
+                  0 8px 10px 1px rgba(0, 0, 0, 0.14),
+                  0 3px 14px 2px rgba(0, 0, 0, 0.12);
+    }
+    .cdk-drag-placeholder {
+      opacity: 0;
+    }
+    .cdk-drag-animating {
+      transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+    }
+    .month-view.cdk-drop-list-dragging .month-cell:not(.cdk-drag-placeholder) {
+      transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
+    }
+    /* We don't want the list itself to animate items out of the way for absolute positioning */
+    .cdk-drop-list-dragging .cdk-drag {
+      transition: transform 250ms cubic-bezier(0, 0, 0.2, 1); 
     }
   `]
 })
@@ -261,21 +375,30 @@ export class CalendarComponent implements OnInit {
   @Output() addEvent = new EventEmitter<void>();
   @Output() blockTime = new EventEmitter<void>();
   @Output() viewChange = new EventEmitter<CalendarView>();
+  @Output() eventDrop = new EventEmitter<{ event: CalendarEvent, newStart: Date }>();
+  @Output() eventResize = new EventEmitter<{ event: CalendarEvent, newEnd: Date }>();
 
   currentView = signal<CalendarView>({
     type: 'month',
     date: new Date()
   });
 
+  // ... (Code continues) ...
+
+
+
+
   selectedDate = signal<Date | null>(null);
 
-  weekDays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   hourSlots: number[] = [];
+  hourHeight = 60;
 
   ngOnChanges() {
     this.updateHourSlots();
   }
 
+  // ... (Keep existing methods: updateHourSlots, monthDays, ngOnInit, helpers) ...
   private updateHourSlots() {
     const start = Math.max(0, Math.min(23, this.startHour));
     const end = Math.max(start, Math.min(23, this.endHour));
@@ -288,9 +411,10 @@ export class CalendarComponent implements OnInit {
     const month = view.date.getMonth();
 
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    const dayOfWeek = firstDay.getDay();
+    const diff = (dayOfWeek + 6) % 7;
+    startDate.setDate(startDate.getDate() - diff);
 
     const days: CalendarDay[] = [];
     const today = new Date();
@@ -312,64 +436,33 @@ export class CalendarComponent implements OnInit {
         events: dayEvents
       });
     }
-
     return days;
   });
 
-  ngOnInit() {
-    // Initialize calendar
-  }
+  ngOnInit() { }
 
+  // ... (Keep format methods) ...
   formatHeaderDate(): string {
     const view = this.currentView();
     const date = view.date;
-
     switch (view.type) {
-      case 'month':
-        return date.toLocaleDateString('es-CL', {
-          year: 'numeric',
-          month: 'long'
-        });
+      case 'month': return date.toLocaleDateString('es-CL', { year: 'numeric', month: 'long' });
       case 'week':
         const weekStart = this.getWeekStart(date);
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekEnd.getDate() + 6);
-
-        return `${weekStart.toLocaleDateString('es-CL', {
-          day: 'numeric',
-          month: 'short'
-        })} - ${weekEnd.toLocaleDateString('es-CL', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric'
-        })}`;
-      case 'day':
-        return date.toLocaleDateString('es-CL', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
-      default:
-        return '';
+        return `${weekStart.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })} - ${weekEnd.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+      case 'day': return date.toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      default: return '';
     }
   }
 
   formatDayHeader(): string {
-    return this.currentView().date.toLocaleDateString('es-CL', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return this.currentView().date.toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   }
 
   getViewLabel(viewType: string): string {
-    const labels = {
-      month: 'Mes',
-      week: 'Semana',
-      day: 'Día'
-    };
+    const labels = { month: 'Mes', week: 'Semana', day: 'Día' };
     return labels[viewType as keyof typeof labels] || viewType;
   }
 
@@ -382,19 +475,11 @@ export class CalendarComponent implements OnInit {
   previousPeriod() {
     const view = this.currentView();
     const newDate = new Date(view.date);
-
     switch (view.type) {
-      case 'month':
-        newDate.setMonth(newDate.getMonth() - 1);
-        break;
-      case 'week':
-        newDate.setDate(newDate.getDate() - 7);
-        break;
-      case 'day':
-        newDate.setDate(newDate.getDate() - 1);
-        break;
+      case 'month': newDate.setMonth(newDate.getMonth() - 1); break;
+      case 'week': newDate.setDate(newDate.getDate() - 7); break;
+      case 'day': newDate.setDate(newDate.getDate() - 1); break;
     }
-
     this.currentView.update(v => ({ ...v, date: newDate }));
     this.viewChange.emit(this.currentView());
   }
@@ -402,19 +487,11 @@ export class CalendarComponent implements OnInit {
   nextPeriod() {
     const view = this.currentView();
     const newDate = new Date(view.date);
-
     switch (view.type) {
-      case 'month':
-        newDate.setMonth(newDate.getMonth() + 1);
-        break;
-      case 'week':
-        newDate.setDate(newDate.getDate() + 7);
-        break;
-      case 'day':
-        newDate.setDate(newDate.getDate() + 1);
-        break;
+      case 'month': newDate.setMonth(newDate.getMonth() + 1); break;
+      case 'week': newDate.setDate(newDate.getDate() + 7); break;
+      case 'day': newDate.setDate(newDate.getDate() + 1); break;
     }
-
     this.currentView.update(v => ({ ...v, date: newDate }));
     this.viewChange.emit(this.currentView());
   }
@@ -432,40 +509,152 @@ export class CalendarComponent implements OnInit {
 
   onEventClick(calendarEvent: CalendarEvent, event: MouseEvent) {
     event.stopPropagation();
-    this.eventClick.emit({
-      event: calendarEvent,
-      nativeEvent: event
+    this.eventClick.emit({ event: calendarEvent, nativeEvent: event });
+  }
+
+  // UPDATED METHODS FOR WEEK/DAY VIEW LOGIC
+
+  getHourEvents(day: string, hour: number): CalendarEvent[] {
+    const viewDate = this.currentView().date;
+    const weekStart = this.getWeekStart(viewDate);
+    const dayIndex = this.weekDays.indexOf(day);
+
+    // Calculate the date for this specific column
+    const colDate = new Date(weekStart);
+    colDate.setDate(weekStart.getDate() + dayIndex);
+
+    return this.events.filter(event => {
+      const eventHour = event.start.getHours();
+      return this.isSameDay(event.start, colDate) && eventHour === hour;
     });
+  }
+
+  getDayHourEvents(hour: number): CalendarEvent[] {
+    const view = this.currentView();
+    return this.events.filter(event => {
+      const eventHour = event.start.getHours();
+      return this.isSameDay(event.start, view.date) && eventHour === hour;
+    });
+  }
+
+  // HELPER METHODS FOR ABSOLUTE POSITIONING
+  getEventTop(event: CalendarEvent): number {
+    const eventStart = new Date(event.start);
+    // Diff in minutes from startHour
+    const startHourDate = new Date(eventStart);
+    startHourDate.setHours(this.startHour, 0, 0, 0);
+
+    const diffMs = eventStart.getTime() - startHourDate.getTime();
+    const diffMins = diffMs / (1000 * 60);
+
+    // Pixels = (mins / 60) * hourHeight
+    return (diffMins / 60) * this.hourHeight;
+  }
+
+  getEventHeight(event: CalendarEvent): number {
+    const durationMs = event.end.getTime() - event.start.getTime();
+    const durationMins = durationMs / (1000 * 60);
+    return Math.max((durationMins / 60) * this.hourHeight, 20); // Min height 20px
+  }
+
+  getDayEvents(day: string): CalendarEvent[] {
+    // For week view: Find date for 'day' (Mon, Tue...) and filter
+    const viewDate = this.currentView().date;
+    const weekStart = this.getWeekStart(viewDate);
+    const dayIndex = this.weekDays.indexOf(day);
+    const colDate = new Date(weekStart);
+    colDate.setDate(weekStart.getDate() + dayIndex);
+
+    return this.events.filter(event => this.isSameDay(event.start, colDate));
+  }
+
+  getDayViewEvents(): CalendarEvent[] {
+    const viewDate = this.currentView().date;
+    return this.events.filter(event => this.isSameDay(event.start, viewDate));
   }
 
   onTimeSlotClick(day: string, hour: number, event: MouseEvent) {
     let slotDate = new Date();
-
     if (this.currentView().type === 'week') {
       const viewDate = this.currentView().date;
       const weekStart = this.getWeekStart(viewDate);
       const dayIndex = this.weekDays.indexOf(day);
-
       slotDate = new Date(weekStart);
       slotDate.setDate(weekStart.getDate() + dayIndex);
     } else if (this.currentView().type === 'day') {
       slotDate = new Date(this.currentView().date);
     }
-
     slotDate.setHours(hour, 0, 0, 0);
     this.onDateClick(slotDate, false, event);
   }
 
-  onAddEvent() {
-    this.addEvent.emit();
+  onAddEvent() { this.addEvent.emit(); }
+  onBlockTime() { this.blockTime.emit(); }
+
+  // DRAG AND DROP HANDLER
+  onEventDrop(event: CdkDragDrop<any>) {
+    const movedEvent: CalendarEvent = event.item.data;
+    const targetData = event.container.data;
+
+    // Calculate new start time
+    let newStart = new Date(movedEvent.start);
+
+    // 1. Determine Date (Day)
+    if (targetData.date) {
+      // Month View: Date comes from container
+      const targetDate = new Date(targetData.date);
+      newStart.setFullYear(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+      // Preserve original time
+    } else if (targetData.dayStr) {
+      // Week View: Date comes from dayStr
+      const viewDate = this.currentView().date;
+      const weekStart = this.getWeekStart(viewDate);
+      const dayIndex = this.weekDays.indexOf(targetData.dayStr);
+      newStart = new Date(weekStart);
+      newStart.setDate(weekStart.getDate() + dayIndex);
+      // Time will be adjusted by distance below
+      newStart.setHours(movedEvent.start.getHours(), movedEvent.start.getMinutes());
+    } else if (targetData.isDayView) {
+      // Day View: Date is current view date
+      newStart = new Date(this.currentView().date);
+      newStart.setHours(movedEvent.start.getHours(), movedEvent.start.getMinutes());
+    }
+
+    // 2. Determine Time (via Pixel Distance)
+    // Only for Week/Day views where we have absolute positioning and pixel movement
+    if (targetData.dayStr || targetData.isDayView) {
+      const deltaY = event.distance.y;
+      const deltaMins = Math.round((deltaY / this.hourHeight) * 60);
+      // Add delta to the base time (which we just set to original time)
+      // Wait, if we moved days, 'newStart' has the new day but OLD time. 
+      // Adding deltaMins to it shifts the time correctly relative to the visual drag.
+      // Example: Start 10:00 (Y=600). Drag to 11:00 (Y=660). DeltaY=60. DeltaMins=60. 
+      // NewStart = 10:00 + 60m = 11:00. Correct.
+      newStart.setMinutes(newStart.getMinutes() + deltaMins);
+
+      // Snap to 15 mins?
+      // const minutes = newStart.getMinutes();
+      // newStart.setMinutes(Math.round(minutes / 15) * 15);
+    }
+
+    if (newStart.getTime() !== movedEvent.start.getTime()) {
+      this.eventDrop.emit({ event: movedEvent, newStart });
+    }
   }
 
-  onBlockTime() {
-    this.blockTime.emit();
+  onResizeEnd(dragEvent: any, calendarEvent: CalendarEvent) {
+    const deltaY = dragEvent.distance.y;
+    const deltaMins = Math.round((deltaY / this.hourHeight) * 60);
+
+    const newEnd = new Date(calendarEvent.end);
+    if (deltaMins !== 0) {
+      newEnd.setMinutes(newEnd.getMinutes() + deltaMins);
+      this.eventResize.emit({ event: calendarEvent, newEnd });
+    }
+    dragEvent.source.reset();
   }
 
   getTextColor(backgroundColor: string): string {
-    // Simple contrast calculation
     const hex = backgroundColor.replace('#', '');
     const r = parseInt(hex.substr(0, 2), 16);
     const g = parseInt(hex.substr(2, 2), 16);
@@ -476,7 +665,9 @@ export class CalendarComponent implements OnInit {
 
   getWeekStart(date: Date): Date {
     const start = new Date(date);
-    start.setDate(date.getDate() - date.getDay());
+    const day = start.getDay();
+    const diff = (day + 6) % 7;
+    start.setDate(start.getDate() - diff);
     return start;
   }
 
@@ -489,23 +680,13 @@ export class CalendarComponent implements OnInit {
     return date.getDate();
   }
 
+  get totalHeight(): number {
+    return this.hourSlots.length * this.hourHeight;
+  }
+
   formatHour(hour: number): string {
     return `${hour.toString().padStart(2, '0')}:00`;
   }
-
-  getHourEvents(day: string, hour: number): CalendarEvent[] {
-    // This would filter events for specific day and hour in week view
-    return [];
-  }
-
-  getDayHourEvents(hour: number): CalendarEvent[] {
-    const view = this.currentView();
-    return this.events.filter(event => {
-      const eventHour = event.start.getHours();
-      return this.isSameDay(event.start, view.date) && eventHour === hour;
-    });
-  }
-
 
   private isSameDay(date1: Date, date2: Date): boolean {
     return (

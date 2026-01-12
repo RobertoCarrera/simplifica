@@ -9,6 +9,7 @@ export interface CalendarEvent {
   location?: string;
   attendees?: string[];
   type?: 'appointment' | 'meeting' | 'task' | 'reminder';
+  meta?: any;
 }
 
 export interface CalendarView {

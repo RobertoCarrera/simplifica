@@ -331,9 +331,35 @@ export class SupabaseBookingsService {
             .from('bookings')
             .update(updates)
             .eq('id', id)
-            .select()
+            .select(`
+                *,
+                service:services(name, duration_minutes)
+            `)
             .single();
+
         if (error) throw error;
+
+        // Sync to Google Calendar
+        if (data.google_event_id) {
+            try {
+                const bookingWithService = {
+                    ...data,
+                    service_name: data.service?.name,
+                };
+
+                await this.supabase.functions.invoke('google-calendar', {
+                    body: {
+                        action: 'update_event',
+                        companyId: data.company_id,
+                        google_event_id: data.google_event_id,
+                        booking: bookingWithService
+                    }
+                });
+            } catch (e) {
+                console.warn('Google Calendar Update Failed:', e);
+            }
+        }
+
         return data;
     }
 
@@ -413,6 +439,39 @@ export class SupabaseBookingsService {
             .eq('id', id);
 
         if (error) throw error;
+    }
+    async findAvailableResource(companyId: string, resourceType: string, startTime: Date, endTime: Date): Promise<string | null> {
+        // 1. Fetch resources of type
+        const { data: resources, error: resError } = await this.supabase
+            .from('resources')
+            .select('id')
+            .eq('company_id', companyId)
+            .eq('type', resourceType)
+            .eq('is_active', true);
+
+        if (resError || !resources || resources.length === 0) return null;
+
+        const resourceIds = resources.map(r => r.id);
+
+        // 2. Fetch overlapping bookings that use these resources
+        // Overlap: (StartA < EndB) and (EndA > StartB)
+        const { data: bookings, error: bookError } = await this.supabase
+            .from('bookings')
+            .select('resource_id')
+            .eq('company_id', companyId)
+            .in('resource_id', resourceIds)
+            .neq('status', 'cancelled')
+            .lt('start_time', endTime.toISOString()) // B.start < A.end
+            .gt('end_time', startTime.toISOString()); // B.end > A.start
+
+        if (bookError) throw bookError;
+
+        const busyResourceIds = new Set((bookings || []).map(b => b.resource_id));
+
+        // 3. Find first free resource
+        const freeResource = resources.find(r => !busyResourceIds.has(r.id));
+
+        return freeResource ? freeResource.id : null;
     }
 }
 

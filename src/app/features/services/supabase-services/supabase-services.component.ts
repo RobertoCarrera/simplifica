@@ -436,7 +436,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       has_variants: false,
       is_bookable: false,
       duration_minutes: 60,
-      booking_color: '#3b82f6'
+      booking_color: '#3b82f6',
+      required_resource_type: undefined
     };
 
     // Inicializar tags seleccionados (pendingTags used for new services)

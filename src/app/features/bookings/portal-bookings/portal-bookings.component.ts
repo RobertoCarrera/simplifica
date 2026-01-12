@@ -5,7 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { SupabaseServicesService, Service } from '../../../services/supabase-services.service';
-import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
+import { SupabaseProfessionalsService, Professional } from '../../../services/supabase-professionals.service';
+import { SupabaseBookingsService, Resource, Booking } from '../../../services/supabase-bookings.service';
 import { ToastService } from '../../../services/toast.service';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 
@@ -67,17 +68,71 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
            </div>
         </div>
 
+        <!-- Step 1.5: Professional Selection (Optional) -->
+        <!-- Only shown if service selected and professionals available for it -->
+        <div *ngIf="selectedService() && availableProfessionals().length > 0 && !selectedProfessionalConfirmed()" class="animate-fade-in">
+             <div class="flex items-center justify-between mb-6 border-b border-gray-100 dark:border-slate-700 pb-4">
+                 <button (click)="selectedService.set(null)" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-1 flex items-center">
+                    <i class="fas fa-arrow-left mr-1"></i> Volver a servicios
+                 </button>
+                 <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+                    {{ selectedService()?.name }}
+                 </h2>
+             </div>
+
+             <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">¿Prefieres a alguien en específico?</h2>
+             <p class="text-gray-600 dark:text-gray-400 mb-6">Puedes seleccionar un profesional o ver la disponibilidad de todo el equipo.</p>
+
+             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                 <!-- Any Professional Option -->
+                 <div (click)="confirmProfessional(null)"
+                      class="cursor-pointer bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-blue-500 hover:shadow-md transition-all p-5 flex items-center gap-4">
+                      <div class="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400">
+                          <i class="fas fa-users text-xl"></i>
+                      </div>
+                      <div>
+                          <h3 class="font-bold text-gray-900 dark:text-white">Cualquiera</h3>
+                          <p class="text-sm text-gray-500">Ver máxima disponibilidad</p>
+                      </div>
+                 </div>
+
+                 <!-- Specific Professionals -->
+                 <div *ngFor="let professional of availableProfessionals()" 
+                      (click)="confirmProfessional(professional)"
+                      class="cursor-pointer bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-blue-500 hover:shadow-md transition-all p-5 flex items-center gap-4">
+                      <div *ngIf="professional.avatar_url; else initialAvatar" 
+                           class="w-12 h-12 rounded-full bg-gray-200 bg-cover bg-center"
+                           [style.backgroundImage]="'url(' + professional.avatar_url + ')'">
+                      </div>
+                      <ng-template #initialAvatar>
+                          <div class="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-lg">
+                              {{ professional.display_name.charAt(0).toUpperCase() }}
+                          </div>
+                      </ng-template>
+                      <div>
+                          <h3 class="font-bold text-gray-900 dark:text-white">{{ professional.display_name }}</h3>
+                          <p class="text-sm text-gray-500">{{ professional.title || 'Profesional' }}</p>
+                      </div>
+                 </div>
+             </div>
+        </div>
+
+
         <!-- Step 2: Calendar & Time -->
-        <div *ngIf="selectedService()" class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-6 animate-fade-in-up">
+        <!-- Logic to show: Service selected AND (No specific professionals OR Professional Confirmed) -->
+        <div *ngIf="selectedService() && (availableProfessionals().length === 0 || selectedProfessionalConfirmed())" class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm p-6 animate-fade-in-up">
             <div class="flex items-center justify-between mb-6 border-b border-gray-100 dark:border-slate-700 pb-4">
                 <div>
-                   <button (click)="selectedService.set(null)" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-1 flex items-center">
-                      <i class="fas fa-arrow-left mr-1"></i> Volver a servicios
+                   <button (click)="resetProfessionalSelection()" class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-1 flex items-center">
+                      <i class="fas fa-arrow-left mr-1"></i> Volver a {{ availableProfessionals().length > 0 ? 'profesionales' : 'servicios' }}
                    </button>
                    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
                       {{ selectedService()?.name }}
                       <span class="text-base font-normal text-gray-500 ml-2">({{ selectedService()?.duration_minutes || 60 }} min)</span>
                    </h2>
+                </div>
+                <div *ngIf="selectedProfessional()" class="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-1 rounded-full text-indigo-700 dark:text-indigo-300 text-sm">
+                    <i class="fas fa-user-tie"></i> {{ selectedProfessional()?.display_name }}
                 </div>
             </div>
 
@@ -153,12 +208,19 @@ export class PortalBookingsComponent implements OnInit {
     private authService = inject(AuthService);
     private servicesService = inject(SupabaseServicesService);
     private bookingsService = inject(SupabaseBookingsService);
+    private professionalsService = inject(SupabaseProfessionalsService);
     private supabaseClient = inject(SupabaseClientService);
     private toastService = inject(ToastService);
 
     loading = signal(true);
     services = signal<Service[]>([]);
     selectedService = signal<Service | null>(null);
+
+    // Professionals
+    allProfessionals = signal<Professional[]>([]);
+    availableProfessionals = signal<Professional[]>([]); // Filtered by service
+    selectedProfessional = signal<Professional | null>(null);
+    selectedProfessionalConfirmed = signal(false); // UI state
 
     // Calendar
     selectedDateStr = signal<string>(new Date().toISOString().split('T')[0]);
@@ -170,8 +232,9 @@ export class PortalBookingsComponent implements OnInit {
     booking = signal(false);
 
     ngOnInit() {
-        this.loadBookableServices();
+        this.loadData();
     }
+
 
     onDateChange(newDate: string) {
         this.selectedDateStr.set(newDate);
@@ -181,7 +244,7 @@ export class PortalBookingsComponent implements OnInit {
     bookingPreferences = signal<any>(null); // Store fetched preferences
     bookingTypes = signal<any[]>([]);
 
-    async loadBookableServices() {
+    async loadData() {
         this.loading.set(true);
         try {
             const companyId = this.authService.currentCompanyId();
@@ -191,17 +254,22 @@ export class PortalBookingsComponent implements OnInit {
                 return;
             }
 
-            // Parallel fetch: Services + Booking Config + Booking Types
-            const [allServices, config, bTypes] = await Promise.all([
+            // Parallel fetch: Services + Booking Config + Booking Types + Professionals
+            const [allServices, config, bTypes, allProfs] = await Promise.all([
                 this.servicesService.getServices(companyId),
                 this.bookingsService.getBookingConfiguration(companyId).toPromise(),
-                this.bookingsService.getBookingTypes(companyId).toPromise()
+                this.bookingsService.getBookingTypes(companyId).toPromise(),
+                this.professionalsService.getProfessionals(companyId).toPromise().catch(err => {
+                    console.warn('Error load professionals (likely RLS), ignoring:', err);
+                    return [] as Professional[];
+                })
             ]);
 
             this.bookingPreferences.set(config || {});
             this.bookingTypes.set(bTypes || []);
             // Filter by is_bookable AND is_active
             this.services.set(allServices.filter(s => s.is_bookable && s.is_active));
+            this.allProfessionals.set(allProfs || []);
             this.loading.set(false);
 
         } catch (e) {
@@ -212,8 +280,38 @@ export class PortalBookingsComponent implements OnInit {
 
     selectService(service: Service) {
         this.selectedService.set(service);
-        // Auto-fetch slots for default selected date (today/tomorrow)
+        this.selectedProfessional.set(null);
+        this.selectedProfessionalConfirmed.set(false);
+        this.availableProfessionals.set([]);
+
+        // Filter professionals for this service
+        // A professional is available if their 'services' array contains this service
+        const profs = this.allProfessionals().filter(p =>
+            p.is_active &&
+            p.services?.some(s => s.id === service.id)
+        );
+        this.availableProfessionals.set(profs);
+
+        // If no professionals assigned (or feature disabled), standard flow
+        if (profs.length === 0) {
+            this.selectedProfessionalConfirmed.set(true); // Auto-confirm "none"
+            this.fetchSlots(this.selectedDateStr());
+        }
+    }
+
+    confirmProfessional(professional: Professional | null) {
+        this.selectedProfessional.set(professional);
+        this.selectedProfessionalConfirmed.set(true);
         this.fetchSlots(this.selectedDateStr());
+    }
+
+    resetProfessionalSelection() {
+        if (this.availableProfessionals().length > 0) {
+            this.selectedProfessionalConfirmed.set(false);
+            this.selectedProfessional.set(null);
+        } else {
+            this.selectedService.set(null);
+        }
     }
 
     async fetchSlots(dateStr: string) {
@@ -242,29 +340,64 @@ export class PortalBookingsComponent implements OnInit {
             }
 
             // Fetch company schedule (Owner's schedule) AND exceptions
-            const [schedules, exceptions] = await Promise.all([
+            // AND (Optimization) Fetch resources/bookings if service requires them
+            const needsResources = !!service.required_resource_type;
+
+            // 1. Determine whose schedule to fetch
+            const targetUserId = this.selectedProfessional()?.user_id;
+
+            // 2. Schedule Observable
+            const scheduleObs = targetUserId
+                ? this.bookingsService.getAvailabilitySchedules(targetUserId)
+                : this.bookingsService.getCompanyDefaultSchedule(companyId!);
+
+            const [schedules, exceptions, allResources, dayBookings] = await Promise.all([
                 new Promise<any[]>((resolve, reject) => {
-                    this.bookingsService.getCompanyDefaultSchedule(companyId!).subscribe({
+                    scheduleObs.subscribe({
                         next: (data) => resolve(data),
-                        error: (err) => reject(err)
+                        error: (err) => {
+                            console.error('Error fetching schedule', err);
+                            resolve([]); // Fail safe?
+                        }
                     });
                 }),
                 new Promise<any[]>((resolve, reject) => {
-                    // Fetch exceptions for the selected day (approximate range)
                     const start = new Date(dateStr);
                     start.setHours(0, 0, 0, 0);
                     const end = new Date(dateStr);
                     end.setHours(23, 59, 59, 999);
-
+                    // Exceptions: Filter by targetUser if strictly personal?
+                    // Currently `getAvailabilityExceptions` fetches by company_id. 
+                    // Ideally we should also filter by user_id if the exception is personal.
+                    // For now keeping company-wide exceptions or assuming RPC handles it? 
+                    // Let's assume exceptions are company-wide blocking for now OR we need to update that too.
                     this.bookingsService.getAvailabilityExceptions(companyId!, start, end).subscribe({
                         next: (data) => resolve(data),
-                        error: (err) => {
-                            console.error('Error fetching exceptions', err);
-                            resolve([]); // Fail safe
-                        }
+                        error: (err) => resolve([])
                     });
-                })
+                }),
+                // Fetch Resources (if needed)
+                needsResources ? this.bookingsService.getResources(companyId).toPromise().catch(() => []) : Promise.resolve([]),
+                // Fetch Bookings (if needed)
+                needsResources ? (() => {
+                    const start = new Date(dateStr);
+                    start.setHours(0, 0, 0, 0);
+                    const end = new Date(dateStr);
+                    end.setHours(23, 59, 59, 999);
+                    return this.bookingsService.getBookings(companyId, start, end).toPromise().catch(() => []);
+                })() : Promise.resolve([])
             ]);
+
+            // Filter resources by type
+            const typeResources = (allResources as Resource[] || []).filter(r =>
+                r.type === service.required_resource_type && r.is_active
+            );
+
+            if (needsResources && typeResources.length === 0) {
+                console.warn('Service requires resource but none found');
+                this.loadingSlots.set(false);
+                return;
+            }
 
             console.log('🗓️ Debug - Company ID:', companyId);
             console.log('🗓️ Debug - All Schedules fetched:', schedules);
@@ -356,13 +489,45 @@ export class PortalBookingsComponent implements OnInit {
                     });
 
                     // 2. Internal Exceptions (Blocks)
-                    const isBlocked = exceptions.some((ex: any) => { // ex is AvailabilityException
+                    let isBlocked = exceptions.some((ex: any) => { // ex is AvailabilityException
                         const exStart = new Date(ex.start_time).getTime();
                         const exEnd = new Date(ex.end_time).getTime();
                         const slotStart = currentSlot.getTime();
                         const slotEndTime = effectiveEnd.getTime();
                         return (slotStart < exEnd && slotEndTime > exStart);
                     });
+
+                    // 3. Resource Availability Check
+                    if (!isBlocked && needsResources) {
+                        const slotStart = currentSlot.getTime();
+                        const slotEndTime = effectiveEnd.getTime();
+
+                        // Find concurrent bookings for this slot using resources of the required type
+                        const concurrentBookings = (dayBookings as Booking[] || []).filter(b => {
+                            if (b.status === 'cancelled') return false;
+
+                            const bStart = new Date(b.start_time).getTime();
+                            const bEnd = new Date(b.end_time).getTime();
+                            const overlap = (slotStart < bEnd && slotEndTime > bStart);
+
+                            // Check if this booking uses one of our type resources
+                            // Note: b.resource_id matching typeResources
+                            const usesResource = b.resource_id && typeResources.some(r => r.id === b.resource_id);
+
+                            return overlap && usesResource;
+                        });
+
+                        // If number of concurrent bookings >= number of available resources, then blocked
+                        // Optimization: Check distinct resources used if one booking could use multiple (unlikely model here)
+                        const usedResourceIds = new Set(concurrentBookings.map(b => b.resource_id));
+
+                        // Available resources count
+                        const availableCount = typeResources.length - usedResourceIds.size;
+
+                        if (availableCount <= 0) {
+                            isBlocked = true;
+                        }
+                    }
 
                     if (!isBusyGoogle && !isBlocked) {
                         generatedSlots.push(new Date(currentSlot));
@@ -427,6 +592,7 @@ export class PortalBookingsComponent implements OnInit {
             const bookingData: any = {
                 company_id: companyId,
                 service_id: service.id,
+                professional_id: this.selectedProfessional()?.id, // Includes professional context
                 booking_type_id: this.bookingTypes()[0]?.id, // Default to first available type
                 customer_name: client?.full_name || client?.email || 'Cliente Portal',
                 customer_email: client?.email || 'no-email@example.com',
@@ -434,8 +600,26 @@ export class PortalBookingsComponent implements OnInit {
                 end_time: endTime.toISOString(),
                 status: 'confirmed', // Or pending if approval needed
                 notes: 'Reserva desde Portal de Cliente'
-                // professional_id, resource_id left null for now
             };
+
+            // Assign Resource if needed
+            if (service.required_resource_type) {
+                const resourceId = await this.bookingsService.findAvailableResource(
+                    companyId,
+                    service.required_resource_type,
+                    slot,
+                    endTime
+                );
+
+                if (!resourceId) {
+                    this.toastService.error('Lo sentimos', 'El recurso ya no está disponible. Por favor elige otro horario.');
+                    this.booking.set(false);
+                    this.fetchSlots(this.selectedDateStr()); // Refresh slots
+                    return;
+                }
+
+                bookingData.resource_id = resourceId;
+            }
 
             await this.bookingsService.createBooking(bookingData);
 

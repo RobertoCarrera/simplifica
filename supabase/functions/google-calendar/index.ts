@@ -167,6 +167,48 @@ serve(async (req) => {
         }
 
         // =================================================================================
+        // ACTION: UPDATE_EVENT
+        // =================================================================================
+        if (action === 'update_event') {
+            const { booking, google_event_id } = body;
+            if (!booking) throw new Error('Booking data required');
+            if (!google_event_id) throw new Error('google_event_id required');
+
+            console.log('Updating Google Event:', google_event_id);
+
+            const event = {
+                summary: `Cita: ${booking.service_name || 'Servicio'} - ${booking.customer_name}`,
+                description: `Cliente: ${booking.customer_name}\nEmail: ${booking.customer_email}\nTel: ${booking.customer_phone || 'N/A'}\nNotas: ${booking.notes || ''}`,
+                start: {
+                    dateTime: booking.start_time,
+                    timeZone: 'Europe/Madrid',
+                },
+                end: {
+                    dateTime: booking.end_time,
+                    timeZone: 'Europe/Madrid',
+                },
+                // We typically don't update attendees to avoid re-sending invites spam, unless needed.
+                // Keeping it simple.
+            };
+
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${targetCalendarId}/events/${google_event_id}`, {
+                method: 'PATCH', // PATCH to update only fields provided
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(event),
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(`Google Update Error: ${JSON.stringify(data)}`);
+
+            return new Response(JSON.stringify({ success: true, google_event_id: data.id, link: data.htmlLink }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
+        // =================================================================================
         // ACTION: DELETE_EVENT
         // =================================================================================
         if (action === 'delete_event') {

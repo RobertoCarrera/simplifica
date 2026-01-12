@@ -109,6 +109,7 @@ export interface Service {
   duration_minutes?: number;
   buffer_minutes?: number;
   booking_color?: string;
+  required_resource_type?: string;
 
   // Campos calculados (server-side) para display
   display_price?: number;        // Precio representativo (desde variantes o base_price)
@@ -371,6 +372,7 @@ export class SupabaseServicesService {
       duration_minutes: service.duration_minutes ?? 60,
       buffer_minutes: service.buffer_minutes ?? 0,
       booking_color: service.booking_color || undefined,
+      required_resource_type: service.required_resource_type || undefined,
       // Public fields
       is_public: !!service.is_public,
       allow_direct_contracting: !!service.allow_direct_contracting,
@@ -596,6 +598,12 @@ export class SupabaseServicesService {
     if (serviceData.duration_minutes !== undefined) serviceDataForDB.duration_minutes = serviceData.duration_minutes;
     if (serviceData.buffer_minutes !== undefined) serviceDataForDB.buffer_minutes = serviceData.buffer_minutes;
     if (serviceData.booking_color !== undefined) serviceDataForDB.booking_color = serviceData.booking_color;
+    // Booking fields
+    if (serviceData.is_bookable !== undefined) serviceDataForDB.is_bookable = serviceData.is_bookable;
+    if (serviceData.duration_minutes !== undefined) serviceDataForDB.duration_minutes = serviceData.duration_minutes;
+    if (serviceData.buffer_minutes !== undefined) serviceDataForDB.buffer_minutes = serviceData.buffer_minutes;
+    if (serviceData.booking_color !== undefined) serviceDataForDB.booking_color = serviceData.booking_color;
+    if (serviceData.required_resource_type !== undefined) serviceDataForDB.required_resource_type = serviceData.required_resource_type;
     // Public fields
     if (serviceData.is_public !== undefined) serviceDataForDB.is_public = serviceData.is_public;
     if (serviceData.allow_direct_contracting !== undefined) serviceDataForDB.allow_direct_contracting = serviceData.allow_direct_contracting;
@@ -673,6 +681,7 @@ export class SupabaseServicesService {
     if (updates.duration_minutes !== undefined) serviceData.duration_minutes = updates.duration_minutes;
     if (updates.buffer_minutes !== undefined) serviceData.buffer_minutes = updates.buffer_minutes;
     if (updates.booking_color !== undefined) serviceData.booking_color = updates.booking_color;
+    if (updates.required_resource_type !== undefined) serviceData.required_resource_type = updates.required_resource_type;
     // Public fields
     if (updates.is_public !== undefined) serviceData.is_public = updates.is_public;
     if (updates.allow_direct_contracting !== undefined) serviceData.allow_direct_contracting = updates.allow_direct_contracting;

@@ -75,8 +75,10 @@ BEGIN
         RETURN COALESCE(result, '[]'::jsonb);
     end if;
 
-    -- 2. LOGIC: STAFF (Owner/Admin/Employee) -> Use company_modules
-    if v_target_company_id is not null and not v_is_client then
+    -- 2. LOGIC: STAFF & CLIENTS -> Use company_modules
+    -- Both staff and clients should see modules enabled for the target company.
+    -- Frontend handles filtering which specific modules are "Client Facing".
+    if v_target_company_id is not null then
         SELECT jsonb_agg(
             jsonb_build_object(
                 'key', m.key,
@@ -95,18 +97,6 @@ BEGIN
             AND cm.company_id = v_target_company_id;
 
         RETURN COALESCE(result, '[]'::jsonb);
-    end if;
-
-    -- 3. LOGIC: CLIENT (Fixed Modules) - PRESERVED
-    -- In future this could also read from company_modules if we want to limit what clients see per company
-    -- For now preserving hardcoded list as requested
-    if v_is_client then
-        RETURN jsonb_build_array(
-            jsonb_build_object('key', 'moduloSAT', 'name', 'Soporte Técnico', 'enabled', true),
-            jsonb_build_object('key', 'moduloPresupuestos', 'name', 'Presupuestos', 'enabled', true),
-            jsonb_build_object('key', 'moduloFacturas', 'name', 'Facturación', 'enabled', true),
-            jsonb_build_object('key', 'moduloServicios', 'name', 'Servicios', 'enabled', true)
-        );
     end if;
 
     -- Default: No access

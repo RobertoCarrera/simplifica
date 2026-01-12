@@ -6,12 +6,12 @@ import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
 
 import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
-import { BookingAvailabilityComponent } from '../availability/booking-availability.component';
+import { ProfessionalScheduleModalComponent } from './modal/professional-schedule-modal/professional-schedule-modal.component';
 
 @Component({
     selector: 'app-professionals',
     standalone: true,
-    imports: [CommonModule, FormsModule, ReactiveFormsModule, SkeletonComponent, BookingAvailabilityComponent],
+    imports: [CommonModule, FormsModule, ReactiveFormsModule, SkeletonComponent, ProfessionalScheduleModalComponent],
     templateUrl: './professionals.component.html',
     styleUrls: ['./professionals.component.scss']
 })

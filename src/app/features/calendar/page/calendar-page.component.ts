@@ -123,7 +123,8 @@ export class CalendarPageComponent implements OnInit {
                 start: new Date(b.start_time),
                 end: new Date(b.end_time),
                 color: '#818cf8',
-                description: b.notes
+                description: b.notes,
+                meta: { type: 'booking', original: b }
             }));
 
             const exceptionEvents: CalendarEvent[] = exceptions.map((ex: any) => ({
@@ -132,7 +133,8 @@ export class CalendarPageComponent implements OnInit {
                 start: new Date(ex.start_time),
                 end: new Date(ex.end_time),
                 color: '#9ca3af', // Gray-400
-                description: 'Horario bloqueado'
+                description: 'Horario bloqueado',
+                meta: { type: 'block', original: ex }
             }));
 
             // Map Google Events
@@ -142,7 +144,8 @@ export class CalendarPageComponent implements OnInit {
                 start: new Date(g.start.dateTime || g.start.date), // Handle all-day
                 end: new Date(g.end.dateTime || g.end.date),
                 color: '#e24029', // Google Red or different color
-                description: g.description || 'Evento de Google Calendar'
+                description: g.description || 'Evento de Google Calendar',
+                meta: { type: 'google', original: g }
             }));
 
             this.events.set([...bookingEvents, ...exceptionEvents, ...gEvents]);
@@ -229,6 +232,21 @@ export class CalendarPageComponent implements OnInit {
                 const client = this.availableClients().find(c => c.id === data.clientId);
                 const service = data.serviceId ? this.availableServices().find(s => s.id === data.serviceId) : null;
 
+                let resourceId = null;
+                // Auto-assign resource if service requires it
+                if (service?.required_resource_type) {
+                    resourceId = await this.bookingsService.findAvailableResource(
+                        companyId,
+                        service.required_resource_type,
+                        data.startTime,
+                        data.endTime
+                    );
+
+                    if (!resourceId) {
+                        this.toastService.warning('Atención', 'No se encontró recurso disponible. Se reservará sin recurso.');
+                    }
+                }
+
                 await this.bookingsService.createBooking({
                     company_id: companyId,
                     customer_name: client?.full_name || client?.name || 'Cliente',
@@ -236,6 +254,7 @@ export class CalendarPageComponent implements OnInit {
                     customer_phone: client?.phone,
                     client_id: client?.id,
                     service_id: service?.id,
+                    resource_id: resourceId,
                     start_time: data.startTime.toISOString(),
                     end_time: data.endTime.toISOString(),
                     status: 'confirmed',
@@ -270,5 +289,98 @@ export class CalendarPageComponent implements OnInit {
         // Just alert for now for valid bookings.
         // Ideally open modal in edit mode if it's a booking.
         alert(`Editar cita: ${event.title}`);
+    }
+
+    async onEventDrop({ event, newStart }: { event: CalendarEvent, newStart: Date }) {
+        const companyId = this.authService.currentCompanyId();
+        if (!companyId) return;
+
+        if (event.meta?.type === 'booking') {
+            const originalDuration = event.end.getTime() - event.start.getTime();
+            const newEnd = new Date(newStart.getTime() + originalDuration);
+
+            // Optimistic update (optional, but let's just create loader or toast)
+            // this.toastService.info('Actualizando...', 'Moviendo cita');
+
+            try {
+                await this.bookingsService.updateBooking(event.id, {
+                    start_time: newStart.toISOString(),
+                    end_time: newEnd.toISOString()
+                });
+                this.toastService.success('Actualizado', 'La cita se ha reprogramado correctamente.');
+                this.loadBookings(); // Reload to sync state
+            } catch (error) {
+                console.error('Failed to reschedule', error);
+                this.toastService.error('Error', 'No se pudo mover la cita.');
+                this.loadBookings(); // Revert visual state
+            }
+        } else if (event.meta?.type === 'block') {
+            const originalDuration = event.end.getTime() - event.start.getTime();
+            const newEnd = new Date(newStart.getTime() + originalDuration);
+
+            try {
+                // Delete and Re-create logic (since update might not be direct/exposed yet)
+                // Or if an updateException exists? Checked: only deleteAvailabilityException and create.
+                // Let's see if we can expose update or just delete/create.
+                // "Update" for exception is essentially deleting and adding new one for now given the service methods I saw.
+                // But wait, the modal uses DELETE then CREATE. I can mimic that.
+
+                await this.bookingsService.deleteAvailabilityException(event.id);
+                await this.bookingsService.createAvailabilityException({
+                    company_id: companyId,
+                    start_time: newStart.toISOString(),
+                    end_time: newEnd.toISOString(),
+                    reason: event.title, // Keep reason
+                    type: 'block'
+                });
+                this.toastService.success('Actualizado', 'El bloqueo se ha movido.');
+                this.loadBookings();
+            } catch (error) {
+                this.toastService.error('Error', 'No se pudo mover el bloqueo.');
+                this.loadBookings();
+            }
+        } else {
+            this.toastService.warning('Acción no permitida', 'No se pueden mover eventos externos (Google) desde aquí aún.');
+            this.loadBookings(); // Revert
+        }
+    }
+
+
+    async onEventResize({ event, newEnd }: { event: CalendarEvent, newEnd: Date }) {
+        const companyId = this.authService.currentCompanyId();
+        if (!companyId) return;
+
+        if (event.meta?.type === 'booking') {
+            try {
+                await this.bookingsService.updateBooking(event.id, {
+                    end_time: newEnd.toISOString()
+                });
+                this.toastService.success('Actualizado', 'La duración ha sido modificada.');
+                this.loadBookings();
+            } catch (error) {
+                console.error('Failed to resize', error);
+                this.toastService.error('Error', 'No se pudo modificar la duración.');
+                this.loadBookings();
+            }
+        } else if (event.meta?.type === 'block') {
+            try {
+                await this.bookingsService.deleteAvailabilityException(event.id);
+                await this.bookingsService.createAvailabilityException({
+                    company_id: companyId,
+                    start_time: event.start.toISOString(),
+                    end_time: newEnd.toISOString(),
+                    reason: event.title,
+                    type: 'block'
+                });
+                this.toastService.success('Actualizado', 'La duración del bloqueo ha sido modificada.');
+                this.loadBookings();
+            } catch (error) {
+                this.toastService.error('Error', 'No se pudo modificar el bloqueo.');
+                this.loadBookings();
+            }
+        } else {
+            this.toastService.warning('Acción no permitida', 'No se pueden modificar eventos externos.');
+            this.loadBookings(); // revert visual change
+        }
     }
 }

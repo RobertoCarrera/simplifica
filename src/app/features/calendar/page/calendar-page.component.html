@@ -10,7 +10,7 @@
         <app-calendar [events]="events()" [startHour]="config().calendar_start_hour ?? 8"
             [endHour]="config().calendar_end_hour ?? 22" [showBlockButton]="true" (viewChange)="onViewChange($event)"
             (addEvent)="onAddEvent()" (blockTime)="onBlockTime()" (eventClick)="onEventClick($event)"
-            (dateClick)="onDateClick($event)">
+            (dateClick)="onDateClick($event)" (eventDrop)="onEventDrop($event)" (eventResize)="onEventResize($event)">
         </app-calendar>
 
         <app-calendar-action-modal [isOpen]="isModalOpen()" [initialStartDate]="selectedDate()"

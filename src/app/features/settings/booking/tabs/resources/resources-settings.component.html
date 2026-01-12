@@ -1,0 +1,161 @@
+<div class="space-y-6">
+    <!-- Header / Actions -->
+    <div
+        class="flex justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div>
+            <h2 class="text-lg font-bold text-gray-900 dark:text-white">Recursos Físicos</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Gestiona tus salas, cabinas y equipamiento</p>
+        </div>
+        <button (click)="openModal()"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center gap-2">
+            <i class="fas fa-plus"></i> Nuevo Recurso
+        </button>
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="loading()" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <app-skeleton *ngFor="let i of [1,2,3]" type="card" height="120px"></app-skeleton>
+    </div>
+
+    <!-- Content -->
+    <div *ngIf="!loading()" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Empty State -->
+        <div *ngIf="resources().length === 0"
+            class="col-span-full py-12 text-center bg-white dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
+            <div
+                class="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-cubes text-gray-400 text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-1">Sin recursos definidos</h3>
+            <p class="text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-6">Crea recursos como cabinas, salas o
+                máquinas para controlar su disponibilidad y evitar conflictos de reservas.</p>
+            <button (click)="openModal()" class="text-indigo-600 hover:text-indigo-800 font-medium">
+                Crear mi primer recurso
+            </button>
+        </div>
+
+        <!-- Resource Cards -->
+        <div *ngFor="let resource of resources()"
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow group relative">
+            <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                <button (click)="openModal(resource)"
+                    class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-gray-600 dark:text-gray-300 hover:text-indigo-600 flex items-center justify-center transition-colors">
+                    <i class="fas fa-edit text-xs"></i>
+                </button>
+                <button (click)="deleteResource(resource)"
+                    class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 hover:bg-red-100 dark:hover:bg-red-900/50 text-gray-600 dark:text-gray-300 hover:text-red-600 flex items-center justify-center transition-colors">
+                    <i class="fas fa-trash text-xs"></i>
+                </button>
+            </div>
+
+            <div class="flex items-start gap-4 mb-3">
+                <div class="w-12 h-12 rounded-lg flex items-center justify-center text-xl shrink-0"
+                    [ngClass]="resource.type === 'room' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300' : 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-300'">
+                    <i [class]="resource.type === 'room' ? 'fas fa-door-closed' : 'fas fa-plug'"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-gray-900 dark:text-white">{{ resource.name }}</h3>
+                    <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium mt-1"
+                        [ngClass]="resource.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'">
+                        <span class="w-1.5 h-1.5 rounded-full"
+                            [ngClass]="resource.is_active ? 'bg-green-500' : 'bg-gray-400'"></span>
+                        {{ resource.is_active ? 'Activo' : 'Inactivo' }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Tipo</p>
+                    <p class="font-medium text-gray-700 dark:text-gray-300">{{ resource.type === 'room' ? 'Sala/Cabina'
+                        : 'Equipo' }}</p>
+                </div>
+                <div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Capacidad</p>
+                    <p class="font-medium text-gray-700 dark:text-gray-300">{{ resource.capacity }} pax</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div *ngIf="showModal"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+    <div
+        class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden transform transition-all animate-scaleIn">
+        <!-- Modal Header -->
+        <div
+            class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+                {{ editingId ? 'Editar Recurso' : 'Nuevo Recurso' }}
+            </h3>
+            <button (click)="closeModal()"
+                class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <form [formGroup]="form" (ngSubmit)="submit()" class="p-6 space-y-4">
+            <!-- Name -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre del
+                    Recurso</label>
+                <input type="text" formControlName="name" placeholder="Ej: Sala 1, Cabina A, Láser..."
+                    class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow">
+                <p *ngIf="form.get('name')?.touched && form.get('name')?.invalid" class="text-xs text-red-500 mt-1">El
+                    nombre es obligatorio.</p>
+            </div>
+
+            <!-- Type -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
+                <select formControlName="type"
+                    class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow appearance-none">
+                    <option *ngFor="let type of resourceTypes" [value]="type.value">{{ type.label }}</option>
+                </select>
+            </div>
+
+            <!-- Capacity -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Capacidad
+                    (personas)</label>
+                <input type="number" formControlName="capacity" min="1"
+                    class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow">
+            </div>
+
+            <!-- Description -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción
+                    (Opcional)</label>
+                <textarea formControlName="description" rows="3"
+                    class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"></textarea>
+            </div>
+
+            <!-- Is Active -->
+            <div class="flex items-center gap-2">
+                <input type="checkbox" id="isActive" formControlName="is_active"
+                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                <label for="isActive"
+                    class="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">Activo
+                    (Disponible para reservas)</label>
+            </div>
+        </form>
+
+        <!-- Modal Footer -->
+        <div
+            class="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
+            <button type="button" (click)="closeModal()"
+                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
+                Cancelar
+            </button>
+            <button (click)="submit()" [disabled]="form.invalid || saving()"
+                class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2">
+                <span *ngIf="saving()"
+                    class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                {{ saving() ? 'Guardando...' : 'Guardar' }}
+            </button>
+        </div>
+    </div>
+</div>

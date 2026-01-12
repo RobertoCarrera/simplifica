@@ -55,6 +55,13 @@
                         class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
                         <i class="fas fa-sliders-h mr-2"></i> Configuración
                     </button>
+                    <button (click)="activeTab = 'resources'"
+                        [class]="activeTab === 'resources' 
+                                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' 
+                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
+                        <i class="fas fa-cubes mr-2"></i> Recursos
+                    </button>
                 </nav>
             </div>
         </div>
@@ -195,6 +202,11 @@
         <!-- Preferences Tab -->
         <div *ngIf="activeTab === 'preferences'" class="animate-fadeIn">
             <app-booking-preferences></app-booking-preferences>
+        </div>
+
+        <!-- Resources Tab -->
+        <div *ngIf="activeTab === 'resources'" class="animate-fadeIn">
+            <app-resources-settings></app-resources-settings>
         </div>
     </div>
 </div>

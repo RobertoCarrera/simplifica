@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, HostListener, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, HostListener, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building, Calendar } from 'lucide-angular';
@@ -387,6 +387,26 @@ export class ResponsiveSidebarComponent implements OnInit {
     });
   });
 
+  constructor() {
+    effect(() => {
+      const companyId = this.authService.currentCompanyId();
+      console.log('🔄 Sidebar: Company ID changed to:', companyId);
+
+      this.modulesService.fetchEffectiveModules().subscribe({
+        next: (mods: EffectiveModule[]) => {
+          console.log('🔍 Sidebar: Raw fetched modules (reactive):', mods);
+          const allowed = new Set<string>(mods.filter(m => m.enabled).map(m => m.key));
+          console.log('🔍 Sidebar: Allowed module keys:', allowed);
+          this._allowedModuleKeys.set(allowed);
+        },
+        error: (e) => {
+          console.warn('No se pudieron cargar los módulos efectivos:', e);
+          this._allowedModuleKeys.set(null);
+        }
+      });
+    });
+  }
+
   ngOnInit() {
     // Auto-collapse on mobile
     if (this.isMobile()) {
@@ -396,20 +416,6 @@ export class ResponsiveSidebarComponent implements OnInit {
       // Restore collapsed state from localStorage
       this.sidebarState.loadSavedState();
     }
-
-    // Cargar módulos efectivos (server-side) y construir set de claves permitidas
-    this.modulesService.fetchEffectiveModules().subscribe({
-      next: (mods: EffectiveModule[]) => {
-        console.log('🔍 Sidebar: Raw fetched modules:', mods);
-        const allowed = new Set<string>(mods.filter(m => m.enabled).map(m => m.key));
-        console.log('🔍 Sidebar: Allowed module keys:', allowed);
-        this._allowedModuleKeys.set(allowed);
-      },
-      error: (e) => {
-        console.warn('No se pudieron cargar los módulos efectivos:', e);
-        this._allowedModuleKeys.set(null);
-      }
-    });
 
     // Load granular permissions
     this.permissionsService.loadPermissionsMatrix();
