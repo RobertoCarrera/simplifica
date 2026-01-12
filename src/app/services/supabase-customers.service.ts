@@ -225,18 +225,34 @@ export class SupabaseCustomersService {
       switchMap(({ data, error }) => {
         if (!error) {
           const customers = (data || []).map((client: any) => this.toCustomerFromClient(client));
-          devSuccess('Clientes obtenidos via consulta estándar', customers.length);
-          return of(customers);
+
+          // Fetch loyalty points for these customers
+          const ids = customers.map(c => c.id);
+          if (ids.length === 0) return of(customers);
+
+          return from(this.supabase
+            .from('loyalty_points')
+            .select('customer_id, points')
+            .in('customer_id', ids)
+          ).pipe(
+            map(({ data: pointsData }) => {
+              const pointsMap = new Map<string, number>();
+              (pointsData || []).forEach((p: any) => {
+                const current = pointsMap.get(p.customer_id) || 0;
+                pointsMap.set(p.customer_id, current + (p.points || 0));
+              });
+
+              customers.forEach(c => {
+                c.loyalty_points_balance = pointsMap.get(c.id) || 0;
+              });
+              return customers;
+            })
+          );
         }
 
         // Schema cache may lack relation: fallback without embed
         if ((error as any)?.code === 'PGRST200') {
-          let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)'); // Try with devices even in fallback if possible, or revert to * if failing again? 
-          // If PGRST200 happened on main query, it might be due to devices embed? 
-          // But usually fallback queries are simpler. 
-          // Let's stick to * but assume we might miss devices if embed fails.
-          // Actually, let's try to get devices if we can.
-          q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)');
+          let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)');
           if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
           if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
 

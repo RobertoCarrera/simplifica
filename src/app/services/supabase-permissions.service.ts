@@ -353,4 +353,9 @@ export class SupabasePermissionsService {
         // Fall back to default
         return DEFAULT_PERMISSIONS[role]?.[permission] ?? false;
     }
+
+    isAdminOrOwner(): boolean {
+        const role = this.authService.userRole();
+        return role === 'owner' || role === 'super_admin' || role === 'admin';
+    }
 }

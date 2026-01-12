@@ -56,6 +56,7 @@ export interface Customer {
   last_accessed_at?: string;
   access_count?: number;
   devices?: { count?: number; id?: string; deleted_at?: string }[];
+  loyalty_points_balance?: number;
 }
 
 // Interface para crear cliente (sin ID)

@@ -38,6 +38,8 @@ export class DashboardComponent implements OnInit {
     invoiceMetrics = this.analyticsService.getInvoiceMetrics;
     ticketMetrics = this.analyticsService.getTicketMetrics;
     quoteMetrics = this.analyticsService.getQuoteMetrics;
+    bookingMetrics = this.analyticsService.getBookingMetrics;
+    topServices = this.analyticsService.getTopServices;
 
     // Local Recents Data
     recentTickets = signal<Ticket[]>([]);

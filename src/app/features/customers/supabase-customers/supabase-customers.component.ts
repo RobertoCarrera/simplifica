@@ -25,6 +25,7 @@ import { AiService } from '../../../services/ai.service';
 
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
+import { LoyaltyModalComponent } from '../loyalty-modal/loyalty-modal.component';
 
 @Component({
     selector: 'app-supabase-customers',
@@ -35,7 +36,8 @@ import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer
         SkeletonComponent,
         // ClientGdprModalComponent, // Removed as it is unused and causes build warning
         OverlayModule,
-        FormNewCustomerComponent
+        FormNewCustomerComponent,
+        LoyaltyModalComponent
     ],
     templateUrl: './supabase-customers.component.html',
     styleUrls: ['./supabase-customers.component.scss']
@@ -105,6 +107,20 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     inviteEmail: string = '';
     inviteMessage: string = '';
     inviteTarget = signal<Customer | null>(null);
+
+    // Loyalty Modal
+    showLoyaltyModal = signal(false);
+    loyaltyModalCustomer = signal<Customer | null>(null);
+
+    openLoyaltyModal(customer: Customer) {
+        this.loyaltyModalCustomer.set(customer);
+        this.showLoyaltyModal.set(true);
+    }
+
+    closeLoyaltyModal() {
+        this.showLoyaltyModal.set(false);
+        this.loyaltyModalCustomer.set(null);
+    }
 
     // Cache of client portal access to avoid per-item async calls from the template
     private portalAccessKeys = signal<Set<string>>(new Set());
