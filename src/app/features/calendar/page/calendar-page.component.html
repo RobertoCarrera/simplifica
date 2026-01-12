@@ -11,7 +11,8 @@
             [endHour]="config().calendar_end_hour ?? 22" [resources]="resources()" [showAddButton]="true"
             [showBlockButton]="true" (viewChange)="onViewChange($event)" (addEvent)="onAddEvent()"
             (blockTime)="onBlockTime()" (eventClick)="onEventClick($event)" (dateClick)="onDateClick($event)"
-            (eventDrop)="onEventDrop($event)" (eventResize)="onEventResize($event)">
+            (eventDrop)="onEventDrop($event)" (eventResize)="onEventResize($event)"
+            (eventAction)="onEventAction($event)">
         </app-calendar>
 
         <app-calendar-action-modal [isOpen]="isModalOpen()" [initialStartDate]="selectedDate()"

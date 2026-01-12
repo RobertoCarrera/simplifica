@@ -3,12 +3,13 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
 import { CalendarEvent, CalendarView, CalendarDateClick, CalendarEventClick, CalendarDay, CalendarResource } from './calendar.interface';
 import { trigger, transition, style, animate } from '@angular/animations';
+import { ContextMenuComponent, MenuAction } from '../../shared/components/context-menu/context-menu.component';
 import { AnimationService } from '../../services/animation.service';
 
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, DragDropModule],
+  imports: [CommonModule, DragDropModule, ContextMenuComponent],
   animations: [AnimationService.fadeInUp, AnimationService.slideIn],
   template: `
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden h-full flex flex-col" @fadeInUp>
@@ -139,6 +140,7 @@ import { AnimationService } from '../../services/animation.service';
                           [style.border-left-color]="event.color || '#6366f1'"
                           [style.color]="'inherit'"
                           (click)="onEventClick(event, $event)"
+                          (contextmenu)="onEventContextMenu($event, event)"
                           [title]="event.title + (event.description ? ' - ' + event.description : '')"
                           cdkDrag
                           [cdkDragData]="event"
@@ -226,6 +228,7 @@ import { AnimationService } from '../../services/animation.service';
                                            [style.border-left-color]="event.color || '#6366f1'"
                                            [style.color]="'inherit'"
                                            (click)="onEventClick(event, $event)"
+                                           (contextmenu)="onEventContextMenu($event, event)"
                                            [title]="event.title"
                                            cdkDrag
                                            [cdkDragData]="event"
@@ -303,6 +306,7 @@ import { AnimationService } from '../../services/animation.service';
                                      [style.background-color]="(event.color || '#6366f1') + '20'"
                                      [style.border-left-color]="event.color || '#6366f1'"
                                      (click)="onEventClick(event, $event)"
+                                     (contextmenu)="onEventContextMenu($event, event)"
                                      cdkDrag
                                      [cdkDragData]="event"
                                      [cdkDragDisabled]="!editable">
@@ -382,19 +386,20 @@ import { AnimationService } from '../../services/animation.service';
                                  }
                                  
                                  <!-- Events Overlay -->
-                                  @for (event of getTimelineEvents(resource.id); track event.id) {
+                                  @for (calEvent of getTimelineEvents(resource.id); track calEvent.id) {
                                       <div class="absolute top-2 bottom-2 rounded px-2 py-1 text-xs cursor-pointer hover:opacity-90 transition-opacity shadow-sm z-20 overflow-hidden border-l-4"
-                                           [style.left.%]="getUserEventLeftPercent(event)"
-                                           [style.width.%]="getUserEventWidthPercent(event)"
-                                           [style.background-color]="(event.color || '#6366f1') + '20'"
-                                           [style.border-left-color]="event.color || '#6366f1'"
-                                           (click)="onEventClick(event, $event)"
+                                           [style.left.%]="getUserEventLeftPercent(calEvent)"
+                                           [style.width.%]="getUserEventWidthPercent(calEvent)"
+                                           [style.background-color]="(calEvent.color || '#6366f1') + '20'"
+                                           [style.border-left-color]="calEvent.color || '#6366f1'"
+                                           (click)="onEventClick(calEvent, $event)"
+                                           (contextmenu)="onEventContextMenu($event, calEvent)"
                                            cdkDrag
-                                           [cdkDragData]="event"
+                                           [cdkDragData]="calEvent"
                                            [cdkDragDisabled]="!editable">
                                            
                                            <div class="font-semibold text-gray-900 dark:text-white truncate">
-                                              {{ event.title }}
+                                              {{ calEvent.title }}
                                            </div>
                                       </div>
                                   }
@@ -406,7 +411,14 @@ import { AnimationService } from '../../services/animation.service';
           }
         }
       </div>
-    </div>
+      <app-context-menu
+        *ngIf="contextMenuVisible"
+        [position]="contextMenuPosition"
+        [actions]="contextMenuActions"
+        (actionClick)="onMenuAction($event)"
+        (close)="closeContextMenu()">
+    </app-context-menu>
+  </div>
   `,
   styles: [`
     .cdk-drag-preview {
@@ -456,6 +468,20 @@ export class CalendarComponent implements OnInit {
   @Output() viewChange = new EventEmitter<CalendarView>();
   @Output() eventDrop = new EventEmitter<{ event: CalendarEvent, newStart: Date, newResource?: string }>();
   @Output() eventResize = new EventEmitter<{ event: CalendarEvent, newEnd: Date }>();
+  @Output() eventAction = new EventEmitter<{ action: string, event: CalendarEvent }>();
+
+  // Context Menu State
+  contextMenuVisible = false;
+  contextMenuPosition = { x: 0, y: 0 };
+  selectedEvent: CalendarEvent | null = null;
+  contextMenuActions: MenuAction[] = [
+    { label: 'Marcar como Llegado', action: 'status_arrived', icon: '📍', class: 'text-green-600' },
+    { label: 'Marcar como Completado', action: 'status_completed', icon: '✅', class: 'text-blue-600' },
+    { label: 'Marcar como No-Show', action: 'status_noshow', icon: '🚫', class: 'text-red-600' },
+    { divider: true, label: '', action: '' },
+    { label: 'Editar', action: 'edit', icon: '✏️' },
+    { label: 'Eliminar', action: 'delete', icon: '🗑️', class: 'text-red-500' }
+  ];
 
   currentView = signal<CalendarView>({
     type: 'month',
@@ -590,7 +616,29 @@ export class CalendarComponent implements OnInit {
 
   onEventClick(calendarEvent: CalendarEvent, event: MouseEvent) {
     event.stopPropagation();
+    // If it was a right click, it might be handled by (contextmenu) but standard click is left.
     this.eventClick.emit({ event: calendarEvent, nativeEvent: event });
+  }
+
+  onEventContextMenu(event: MouseEvent, calendarEvent: CalendarEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.selectedEvent = calendarEvent;
+    this.contextMenuPosition = { x: event.clientX, y: event.clientY };
+    this.contextMenuVisible = true;
+  }
+
+  onMenuAction(action: MenuAction) {
+    if (this.selectedEvent) {
+      this.eventAction.emit({ action: action.action, event: this.selectedEvent });
+    }
+    this.closeContextMenu();
+  }
+
+  closeContextMenu() {
+    this.contextMenuVisible = false;
+    this.selectedEvent = null;
   }
 
   // UPDATED METHODS FOR WEEK/DAY VIEW LOGIC
