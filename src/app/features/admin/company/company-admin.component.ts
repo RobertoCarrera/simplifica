@@ -623,7 +623,13 @@ export class CompanyAdminComponent implements OnInit {
         message: this.inviteForm.message || undefined,
       });
       if (!res.success) throw new Error(res.error || 'No se pudo enviar la invitación');
-      this.toast.success('Éxito', 'Invitación enviada correctamente');
+
+      if (res.mode === 'existing_user') {
+        this.toast.success('Usuario Existente', 'El usuario ya tiene cuenta. Se le ha enviado un enlace de acceso.');
+      } else {
+        this.toast.success('Éxito', 'Invitación enviada correctamente');
+      }
+
       this.inviteForm = { email: '', role: 'member', message: '' };
       await this.loadInvitations();
     } catch (e: any) {

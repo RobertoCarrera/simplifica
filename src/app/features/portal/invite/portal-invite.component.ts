@@ -515,6 +515,16 @@ export class PortalInviteComponent {
       if (!response.ok || result.error) {
         throw new Error(result.error || 'Error al crear la cuenta');
       }
+
+      // Iniciar sesión automáticamente con la contraseña recién creada
+      const { data: loginData, error: loginError } = await this.auth.client.auth.signInWithPassword({
+        email: this.userEmail,
+        password: this.password
+      });
+
+      if (loginError || !loginData.user) {
+        throw new Error('Error al iniciar sesión tras crear cuenta: ' + loginError?.message);
+      }
     }
 
     // Esperar un momento para que la sesión se establezca
@@ -541,7 +551,7 @@ export class PortalInviteComponent {
 
     // Save GDPR Consent (Async, don't block success)
     if (currentUser) {
-      this.saveConsents(currentUser.id, this.userEmail);
+      this.saveConsents(currentUser.id, this.userEmail, this.invitationData?.company_id);
     }
 
     this.finishSuccess();
