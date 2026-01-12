@@ -367,5 +367,62 @@ export class SupabaseBookingsService {
             .eq('id', id);
         if (error) throw error;
     }
+
+    // --- Availability Exceptions (Block Days) ---
+
+    getAvailabilityExceptions(companyId: string, fromDate: Date, toDate: Date, userId?: string): Observable<AvailabilityException[]> {
+        const fromStr = fromDate.toISOString();
+        const toStr = toDate.toISOString();
+
+        let query = this.supabase
+            .from('availability_exceptions')
+            .select('*')
+            .eq('company_id', companyId)
+            // Exceptions that overlap with the range:
+            // (Start <= RangeEnd) AND (End >= RangeStart)
+            .lte('start_time', toStr)
+            .gte('end_time', fromStr);
+
+        if (userId) {
+            query = query.eq('user_id', userId);
+        }
+
+        return from(query).pipe(
+            map(({ data, error }) => {
+                if (error) throw error;
+                return data as AvailabilityException[];
+            })
+        );
+    }
+
+    async createAvailabilityException(exception: any) {
+        const { data, error } = await this.supabase
+            .from('availability_exceptions')
+            .insert(exception)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteAvailabilityException(id: string) {
+        const { error } = await this.supabase
+            .from('availability_exceptions')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+    }
+}
+
+export interface AvailabilityException {
+    id: string;
+    company_id: string;
+    user_id?: string;
+    start_time: string;
+    end_time: string;
+    reason?: string;
+    type: 'block' | 'work';
 }
 

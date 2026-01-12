@@ -1,0 +1,190 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" *ngIf="isOpen()">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" (click)="close()"></div>
+
+    <!-- Modal Panel -->
+    <div
+        class="relative w-full max-w-lg transform overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-2xl transition-all animate-fade-in-up">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 p-6">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                {{ activeTab() === 'booking' ? 'Nueva Cita' : 'Bloquear Horario' }}
+            </h3>
+            <button (click)="close()" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Tabs (Hidden if forcedMode is set) -->
+        <div *ngIf="!forcedMode()"
+            class="flex border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900/50">
+            <button class="flex-1 py-3 text-sm font-medium text-center transition-colors relative"
+                [class.text-blue-600]="activeTab() === 'booking'" [class.dark:text-blue-400]="activeTab() === 'booking'"
+                [class.text-gray-500]="activeTab() !== 'booking'" (click)="activeTab.set('booking')">
+                Agendar Cita
+                <div *ngIf="activeTab() === 'booking'"
+                    class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400"></div>
+            </button>
+            <button class="flex-1 py-3 text-sm font-medium text-center transition-colors relative"
+                [class.text-red-600]="activeTab() === 'block'" [class.dark:text-red-400]="activeTab() === 'block'"
+                [class.text-gray-500]="activeTab() !== 'block'" (click)="activeTab.set('block')">
+                Bloquear Horario
+                <div *ngIf="activeTab() === 'block'"
+                    class="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600 dark:bg-red-400"></div>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 space-y-4">
+
+            <!-- Common Date & Time (Only for Booking, Block uses its own logic below) -->
+            <div *ngIf="activeTab() === 'booking'" class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha Inicio</label>
+                    <input type="datetime-local" [ngModel]="startTimeStr()" (ngModelChange)="updateStartTime($event)"
+                        class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha Fin</label>
+                    <input type="datetime-local" [ngModel]="endTimeStr()" (ngModelChange)="endTimeStr.set($event)"
+                        class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+                </div>
+            </div>
+
+            <!-- Booking Fields -->
+            <div *ngIf="activeTab() === 'booking'" class="space-y-4 animate-fade-in">
+                <!-- Grid for Client & Service -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Client Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cliente</label>
+                        <select [(ngModel)]="clientId"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+                            <option [ngValue]="null">Seleccionar cliente...</option>
+                            <option *ngFor="let client of clients()" [value]="client.id">
+                                {{ client.name }} {{ client.apellidos || '' }}
+                            </option>
+                        </select>
+                    </div>
+                    <!-- Service Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Servicio</label>
+                        <select [(ngModel)]="serviceId"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+                            <option [ngValue]="null">Seleccionar servicio...</option>
+                            <option *ngFor="let service of services()" [value]="service.id">
+                                {{ service.name }} ({{ service.duration_minutes }}m) - {{ service.display_price |
+                                currency:'EUR' }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block Fields -->
+            <div *ngIf="activeTab() === 'block'" class="space-y-4 animate-fade-in">
+
+                <!-- Block Type Selector -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de
+                        Bloqueo</label>
+                    <div class="flex space-x-2">
+                        <button class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
+                            [class.bg-red-50]="blockType() === 'time'" [class.border-red-200]="blockType() === 'time'"
+                            [class.text-red-700]="blockType() === 'time'" [class.bg-white]="blockType() !== 'time'"
+                            (click)="blockType.set('time')">
+                            Franja Horaria
+                        </button>
+                        <button class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
+                            [class.bg-red-50]="blockType() === 'day'" [class.border-red-200]="blockType() === 'day'"
+                            [class.text-red-700]="blockType() === 'day'" [class.bg-white]="blockType() !== 'day'"
+                            (click)="blockType.set('day')">
+                            Día Completo
+                        </button>
+                        <button class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
+                            [class.bg-red-50]="blockType() === 'range'" [class.border-red-200]="blockType() === 'range'"
+                            [class.text-red-700]="blockType() === 'range'" [class.bg-white]="blockType() !== 'range'"
+                            (click)="blockType.set('range')">
+                            Vacaciones (Rango)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Conditional Date Inputs for Block -->
+                <div [ngSwitch]="blockType()">
+                    <!-- Time Range -->
+                    <div *ngSwitchCase="'time'" class="grid grid-cols-2 gap-4 animate-fade-in">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Desde</label>
+                            <input type="datetime-local" [ngModel]="startTimeStr()"
+                                (ngModelChange)="updateStartTime($event)"
+                                class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hasta</label>
+                            <input type="datetime-local" [ngModel]="endTimeStr()"
+                                (ngModelChange)="endTimeStr.set($event)"
+                                class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
+                        </div>
+                    </div>
+
+                    <!-- Full Day -->
+                    <div *ngSwitchCase="'day'" class="animate-fade-in">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Día</label>
+                        <input type="date" [ngModel]="blockDateStr()" (ngModelChange)="blockDateStr.set($event)"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
+                    </div>
+
+                    <!-- Date Range -->
+                    <div *ngSwitchCase="'range'" class="grid grid-cols-2 gap-4 animate-fade-in">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Desde el
+                                día</label>
+                            <input type="date" [ngModel]="blockStartDateStr()"
+                                (ngModelChange)="blockStartDateStr.set($event)"
+                                class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hasta el
+                                día</label>
+                            <input type="date" [ngModel]="blockEndDateStr()"
+                                (ngModelChange)="blockEndDateStr.set($event)"
+                                class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Motivo del
+                        Bloqueo</label>
+                    <input type="text" [(ngModel)]="blockReason" placeholder="Ej: Vacaciones, Médico, Personal..."
+                        class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500 dark:focus:ring-red-400">
+                </div>
+                <div
+                    class="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-xs text-orange-800 dark:text-orange-200">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    Este horario no estará disponible para reservas online.
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div
+            class="bg-gray-50 dark:bg-slate-900/50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-100 dark:border-slate-700">
+            <button (click)="close()"
+                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                Cancelar
+            </button>
+            <button (click)="save()" [class.bg-blue-600]="activeTab() === 'booking'"
+                [class.hover:bg-blue-700]="activeTab() === 'booking'" [class.bg-red-600]="activeTab() === 'block'"
+                [class.hover:bg-red-700]="activeTab() === 'block'"
+                class="px-4 py-2 text-sm font-medium text-white rounded-lg shadow-sm transition-colors flex items-center">
+                <i class="fas fa-check mr-2"></i>
+                {{ activeTab() === 'booking' ? 'Confirmar Cita' : 'Crear Bloqueo' }}
+            </button>
+        </div>
+
+    </div>
+</div>

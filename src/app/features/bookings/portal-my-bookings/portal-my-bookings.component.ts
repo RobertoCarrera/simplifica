@@ -137,6 +137,8 @@ export class PortalMyBookingsComponent implements OnInit {
 
     loading = signal(true);
     bookings = signal<Booking[]>([]);
+    bookingConfig = signal<any>({}); // Store full config
+
     calendarEvents = computed(() => {
         return this.bookings().map(b => ({
             id: b.id,
@@ -153,14 +155,15 @@ export class PortalMyBookingsComponent implements OnInit {
     processingId = signal<string | null>(null);
 
     ngOnInit() {
-        this.loadBookings();
+        this.loadData();
     }
 
-    async loadBookings() {
+    async loadData() {
         try {
             const companyId = this.authService.currentCompanyId();
             if (!companyId) return;
 
+            // Load bookings AND settings
             this.bookingsService.getMyBookings(companyId).subscribe({
                 next: (data) => {
                     this.bookings.set(data);
@@ -171,6 +174,11 @@ export class PortalMyBookingsComponent implements OnInit {
                     this.loading.set(false);
                 }
             });
+
+            this.bookingsService.getBookingConfiguration(companyId).subscribe(config => {
+                this.bookingConfig.set(config || {});
+            });
+
         } catch (e) {
             console.error(e);
             this.loading.set(false);
@@ -178,11 +186,20 @@ export class PortalMyBookingsComponent implements OnInit {
     }
 
     canCancel(booking: Booking): boolean {
-        // Can cancel if status is not cancelled AND start time is in future
+        // Can cancel if status is not cancelled AND start time is within notice period
         if (booking.status === 'cancelled') return false;
+
         const now = new Date();
         const start = new Date(booking.start_time);
-        return start > now;
+
+        // 1. Check if in past
+        if (start <= now) return false;
+
+        // 2. Check notice period
+        const minHours = this.bookingConfig().min_cancel_notice_hours ?? 24; // Default 24h
+        const hoursDiff = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+        return hoursDiff >= minHours;
     }
 
     async cancelBooking(booking: Booking) {

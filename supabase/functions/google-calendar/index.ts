@@ -218,6 +218,52 @@ serve(async (req) => {
             })
         }
 
+        // =================================================================================
+        // ACTION: LIST_CALENDARS
+        // =================================================================================
+        if (action === 'list_calendars') {
+            const response = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                }
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(`Google List Calendars Error: ${JSON.stringify(data)}`);
+
+            return new Response(JSON.stringify(data), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
+        // =================================================================================
+        // ACTION: LIST_EVENTS
+        // =================================================================================
+        if (action === 'list_events') {
+            if (!timeMin || !timeMax) throw new Error('Missing parameters for list_events');
+
+            const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${targetCalendarId}/events`);
+            url.searchParams.append('timeMin', timeMin);
+            url.searchParams.append('timeMax', timeMax);
+            url.searchParams.append('singleEvents', 'true');
+            url.searchParams.append('orderBy', 'startTime');
+
+            const response = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                }
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(`Google List Events Error: ${JSON.stringify(data)}`);
+
+            return new Response(JSON.stringify(data), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
         throw new Error(`Unknown action: ${action}`);
 
     } catch (error: any) {

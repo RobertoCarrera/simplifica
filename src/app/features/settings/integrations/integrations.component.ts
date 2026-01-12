@@ -69,12 +69,19 @@ export class IntegrationsComponent implements OnInit {
 
         console.log('loadIntegrations: Profile found, loading for:', profile.id);
 
-        const { data, error } = await this.supabase.instance
+        const companyId = this.authService.companyId();
+
+        let query = this.supabase.instance
             .from('integrations')
             .select('*')
-            .eq('user_id', profile.id) // Use Public User ID
-            .eq('provider', 'google_calendar')
-            .maybeSingle();
+            .eq('user_id', profile.id)
+            .eq('provider', 'google_calendar');
+
+        if (companyId) {
+            query = query.eq('company_id', companyId);
+        }
+
+        const { data, error } = await query.maybeSingle();
 
         if (error) {
             console.error('Error loading integrations:', error);
@@ -121,7 +128,15 @@ export class IntegrationsComponent implements OnInit {
         this.loadingCalendars.set(true);
         try {
             console.log('Invoking google-calendar Edge Function...');
-            const { data, error } = await this.supabase.instance.functions.invoke('google-calendar');
+            const companyId = this.authService.companyId();
+            if (!companyId) throw new Error('No company ID available');
+
+            const { data, error } = await this.supabase.instance.functions.invoke('google-calendar', {
+                body: {
+                    action: 'list_calendars',
+                    companyId: companyId
+                }
+            });
 
             if (error) throw error;
 
@@ -261,10 +276,15 @@ export class IntegrationsComponent implements OnInit {
 
             if (providerToken && identity) {
                 console.log('Popup: Saving tokens...');
+
+                // Retrieve pending company_id
+                const companyId = localStorage.getItem('pending_integration_company_id');
+
                 const { error: insertError } = await this.supabase.instance
                     .from('integrations')
                     .upsert({
                         user_id: session.user.id,
+                        company_id: companyId, // Add company_id
                         provider: 'google_calendar',
                         access_token: providerToken,
                         refresh_token: refreshToken,
@@ -276,6 +296,15 @@ export class IntegrationsComponent implements OnInit {
                 if (insertError) {
                     console.error('DB Save error', insertError);
                     // Optional: notify opener of error?
+                } else if (companyId) {
+                    // Sync with companies table for frontend status
+                    console.log('Popup: Syncing company status...', companyId);
+                    await this.supabase.instance
+                        .from('companies')
+                        .update({
+                            google_calendar_display_config: { connected: true, updated_at: new Date().toISOString() }
+                        })
+                        .eq('id', companyId);
                 }
             } else {
                 console.warn('Popup: No provider token found in session');

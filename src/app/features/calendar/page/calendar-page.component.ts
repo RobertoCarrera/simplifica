@@ -1,53 +1,96 @@
-import { Component, inject, OnInit, signal, Input } from '@angular/core';
+import { Component, inject, OnInit, signal, Input, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
+import { SupabaseBookingsService, Booking } from '../../../services/supabase-bookings.service';
 import { AuthService } from '../../../services/auth.service';
+import { ToastService } from '../../../services/toast.service';
 import { CalendarComponent } from '../calendar.component';
 import { CalendarEvent, CalendarView } from '../calendar.interface';
+import { CalendarActionModalComponent } from '../modal/calendar-action-modal/calendar-action-modal.component';
+
+import { SupabaseServicesService } from '../../../services/supabase-services.service';
+import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
+import { GoogleCalendarService } from '../../../services/google-calendar.service';
 
 @Component({
     selector: 'app-calendar-page',
     standalone: true,
-    imports: [CommonModule, CalendarComponent],
-    styleUrls: ['./calendar-page.component.scss'],
-    template: `
-    <div class="h-full flex flex-col p-6 space-y-6">
-       <div *ngIf="!isEmbedded" class="flex justify-between items-center">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Calendario</h1>
-            <p class="text-gray-500 dark:text-gray-400">Gestiona tus citas y bloqueos</p>
-        </div>
-      </div>
-
-      <div class="flex-1 min-h-0">
-         <app-calendar 
-            [events]="events()"
-            (viewChange)="onViewChange($event)"
-            (addEvent)="onAddEvent()"
-            (eventClick)="onEventClick($event)"
-         ></app-calendar>
-      </div>
-    </div>
-  `
+    imports: [CommonModule, CalendarComponent, CalendarActionModalComponent],
+    templateUrl: './calendar-page.component.html',
+    styleUrls: ['./calendar-page.component.scss']
 })
 export class CalendarPageComponent implements OnInit {
     private bookingsService = inject(SupabaseBookingsService);
     private authService = inject(AuthService);
+    private toastService = inject(ToastService);
+    private servicesService = inject(SupabaseServicesService);
+    private customersService = inject(SupabaseCustomersService);
+    private googleCalendarService = inject(GoogleCalendarService);
 
     @Input() isEmbedded = false;
 
     events = signal<CalendarEvent[]>([]);
+    config = signal<any>({});
+
+    // Modal State
+    isModalOpen = signal(false);
+    selectedDate = signal<Date | null>(null);
+    @ViewChild(CalendarActionModalComponent) modalComponent!: CalendarActionModalComponent;
+
+    // Data Lists
+    availableServices = signal<any[]>([]);
+    availableClients = signal<any[]>([]);
+
+    async onDateClick(event: any) {
+        this.selectedDate.set(event.date);
+        this.isModalOpen.set(true);
+
+        // Slight delay to ensure modal component is available
+        setTimeout(() => {
+            if (this.modalComponent) {
+                // Force 'booking' mode
+                this.modalComponent.openForCreate(event.date, 'booking', true);
+            }
+        });
+    }
 
     // Default view state
     currentView: CalendarView = { type: 'month', date: new Date() };
 
     ngOnInit() {
         this.loadBookings();
+        this.loadConfig();
+        this.loadData();
+    }
+
+    async loadData() {
+        const companyId = this.authService.currentCompanyId();
+        if (!companyId) return;
+
+        // Load Services
+        this.servicesService.getServices(companyId).then(services => {
+            this.availableServices.set(services);
+        });
+
+        // Load Clients
+        // Using getCustomersStandard as it's the safest bet for now, or getCustomers
+        this.customersService.getCustomers().subscribe(clients => {
+            this.availableClients.set(clients);
+        });
     }
 
     onViewChange(view: CalendarView) {
         this.currentView = view;
         this.loadBookings();
+    }
+
+    loadConfig() {
+        const companyId = this.authService.currentCompanyId();
+        if (!companyId) return;
+
+        this.bookingsService.getBookingConfiguration(companyId).subscribe({
+            next: (data) => this.config.set(data || {}),
+            error: (err) => console.error('Error loading config', err)
+        });
     }
 
     loadBookings() {
@@ -57,20 +100,54 @@ export class CalendarPageComponent implements OnInit {
         // Calculate start/end dates based on current view
         const { start, end } = this.getViewRange(this.currentView);
 
-        this.bookingsService.getBookings(companyId, start, end).subscribe({
-            next: (data) => {
-                const events: CalendarEvent[] = data.map(b => ({
-                    id: b.id,
-                    title: b.customer_name + (b.booking_type ? ` - ${b.booking_type.name}` : ''),
-                    start: new Date(b.start_time),
-                    end: new Date(b.end_time),
-                    color: '#818cf8', // Default Indigo-400 for a clear, modern look
-                    description: b.notes
-                }));
-                this.events.set(events);
-            },
-            error: (err) => console.error('Error loading bookings', err)
-        });
+        // Fetch bookings, exceptions, AND Google Events
+        Promise.all([
+            new Promise<Booking[]>((resolve, reject) => {
+                this.bookingsService.getBookings(companyId, start, end).subscribe({
+                    next: resolve,
+                    error: reject
+                });
+            }),
+            new Promise<any[]>((resolve, reject) => {
+                this.bookingsService.getAvailabilityExceptions(companyId, start, end).subscribe({
+                    next: resolve,
+                    error: reject
+                });
+            }),
+            // Fetch Google Events
+            this.googleCalendarService.listEvents(companyId, start, end)
+        ]).then(([bookings, exceptions, googleEvents]) => {
+            const bookingEvents: CalendarEvent[] = bookings.map((b: Booking) => ({
+                id: b.id,
+                title: b.customer_name + (b.booking_type ? ` - ${b.booking_type.name}` : ''),
+                start: new Date(b.start_time),
+                end: new Date(b.end_time),
+                color: '#818cf8',
+                description: b.notes
+            }));
+
+            const exceptionEvents: CalendarEvent[] = exceptions.map((ex: any) => ({
+                id: ex.id,
+                title: ex.reason || 'Bloqueado',
+                start: new Date(ex.start_time),
+                end: new Date(ex.end_time),
+                color: '#9ca3af', // Gray-400
+                description: 'Horario bloqueado'
+            }));
+
+            // Map Google Events
+            const gEvents: CalendarEvent[] = googleEvents.map((g: any) => ({
+                id: g.id,
+                title: g.summary || 'Evento Externo',
+                start: new Date(g.start.dateTime || g.start.date), // Handle all-day
+                end: new Date(g.end.dateTime || g.end.date),
+                color: '#e24029', // Google Red or different color
+                description: g.description || 'Evento de Google Calendar'
+            }));
+
+            this.events.set([...bookingEvents, ...exceptionEvents, ...gEvents]);
+
+        }).catch(err => console.error('Error loading calendar data', err));
     }
 
     // Helper to calculate date range for query
@@ -86,7 +163,7 @@ export class CalendarPageComponent implements OnInit {
         } else if (view.type === 'week') {
             const day = start.getDay();
             const diff = start.getDate() - day; // adjust when day is sunday
-            start.setDate(diff);
+            start.setDate(diff); // Set to Sunday (or Monday depending on locale)
             end.setDate(diff + 6);
         } else {
             // Day view
@@ -104,12 +181,94 @@ export class CalendarPageComponent implements OnInit {
     }
 
     onAddEvent() {
-        // Open modal to create booking
-        alert('Funcionalidad de crear cita pendiente de implementación (Modal)');
+        // Force 'booking' mode
+        this.modalComponent.openForCreate(new Date(), 'booking', true);
+        this.isModalOpen.set(true);
+    }
+    onBlockTime() {
+        // Force 'block' mode
+        this.modalComponent.openForCreate(new Date(), 'block', true);
+        this.isModalOpen.set(true);
+    }
+    async handleModalDelete(id: string) {
+        try {
+            await this.bookingsService.deleteAvailabilityException(id);
+            this.loadBookings();
+            this.toastService.success('Eliminado', 'El bloqueo ha sido eliminado.');
+        } catch (e) {
+            console.error(e);
+            this.toastService.error('Error', 'No se pudo eliminar.');
+        }
     }
 
-    onEventClick(event: any) {
-        // Open modal to edit booking
-        alert(`Editar cita: ${event.event.title}`);
+    async handleModalSave(data: any) {
+        const companyId = this.authService.currentCompanyId();
+        if (!companyId) return;
+
+        try {
+            if (data.type === 'block') {
+                if (data.id) {
+                    await this.bookingsService.deleteAvailabilityException(data.id);
+                }
+
+                await this.bookingsService.createAvailabilityException({
+                    company_id: companyId,
+                    start_time: data.startTime.toISOString(),
+                    end_time: data.endTime.toISOString(),
+                    reason: data.reason || 'Bloqueado',
+                    type: 'block'
+                });
+                this.toastService.success('Guardado', 'Cierre de horario creado, tu cliente no podrá reservar en esta franja.');
+            } else {
+                // Booking Creation
+                if (!data.clientId) {
+                    this.toastService.error('Falta Cliente', 'Debes seleccionar un cliente.');
+                    return;
+                }
+
+                const client = this.availableClients().find(c => c.id === data.clientId);
+                const service = data.serviceId ? this.availableServices().find(s => s.id === data.serviceId) : null;
+
+                await this.bookingsService.createBooking({
+                    company_id: companyId,
+                    customer_name: client?.full_name || client?.name || 'Cliente',
+                    customer_email: client?.email || 'sin@email.com',
+                    customer_phone: client?.phone,
+                    client_id: client?.id,
+                    service_id: service?.id,
+                    start_time: data.startTime.toISOString(),
+                    end_time: data.endTime.toISOString(),
+                    status: 'confirmed',
+                    notes: 'Creada desde Calendario'
+                });
+
+                this.toastService.success('Guardado', 'Cita creada correctamente.');
+            }
+
+            this.loadBookings();
+
+        } catch (e) {
+            console.error(e);
+            this.toastService.error('Error', 'No se pudo guardar.');
+        }
+    }
+    async onEventClick(eventWrapper: any) {
+        const event = eventWrapper.event;
+        // Check if it's an exception (block)
+        if (event.extendedProps?.description === 'Horario bloqueado' || event.backgroundColor === '#9ca3af') {
+            this.isModalOpen.set(true);
+            setTimeout(() => this.modalComponent.openForEdit({
+                id: event.id,
+                start: event.start,
+                end: event.end,
+                title: event.title,
+                type: 'block'
+            }, 'block'));
+            return;
+        }
+
+        // Just alert for now for valid bookings.
+        // Ideally open modal in edit mode if it's a booking.
+        alert(`Editar cita: ${event.title}`);
     }
 }

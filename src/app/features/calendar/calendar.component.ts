@@ -56,15 +56,27 @@ import { AnimationService } from '../../services/animation.service';
             </div>
             
             <!-- Add event button -->
-            <button
-              *ngIf="showAddButton"
-              (click)="onAddEvent()"
-              class="inline-flex items-center px-4 py-2 bg-white text-indigo-600 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-              </svg>
-              Nuevo Evento
-            </button>
+            <div class="flex space-x-2">
+                <button
+                *ngIf="showBlockButton"
+                (click)="onBlockTime()"
+                class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                </svg>
+                Bloquear
+                </button>
+
+                <button
+                *ngIf="showAddButton"
+                (click)="onAddEvent()"
+                class="inline-flex items-center px-4 py-2 bg-white text-indigo-600 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Nuevo Evento
+                </button>
+            </div>
           </div>
         </div>
       </div>
@@ -240,10 +252,14 @@ export class CalendarComponent implements OnInit {
   @Input() editable = true;
   @Input() selectable = true;
   @Input() showAddButton = true;
+  @Input() showBlockButton = false;
+  @Input() startHour = 8;
+  @Input() endHour = 22;
 
   @Output() eventClick = new EventEmitter<CalendarEventClick>();
   @Output() dateClick = new EventEmitter<CalendarDateClick>();
   @Output() addEvent = new EventEmitter<void>();
+  @Output() blockTime = new EventEmitter<void>();
   @Output() viewChange = new EventEmitter<CalendarView>();
 
   currentView = signal<CalendarView>({
@@ -254,7 +270,17 @@ export class CalendarComponent implements OnInit {
   selectedDate = signal<Date | null>(null);
 
   weekDays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  hourSlots = Array.from({ length: 24 }, (_, i) => i);
+  hourSlots: number[] = [];
+
+  ngOnChanges() {
+    this.updateHourSlots();
+  }
+
+  private updateHourSlots() {
+    const start = Math.max(0, Math.min(23, this.startHour));
+    const end = Math.max(start, Math.min(23, this.endHour));
+    this.hourSlots = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  }
 
   monthDays = computed(() => {
     const view = this.currentView();
@@ -413,13 +439,39 @@ export class CalendarComponent implements OnInit {
   }
 
   onTimeSlotClick(day: string, hour: number, event: MouseEvent) {
-    const slotDate = new Date();
+    let slotDate = new Date();
+
+    if (this.currentView().type === 'week') {
+      const viewDate = this.currentView().date;
+      const weekStart = this.getWeekStart(viewDate);
+      const dayIndex = this.weekDays.indexOf(day);
+
+      slotDate = new Date(weekStart);
+      slotDate.setDate(weekStart.getDate() + dayIndex);
+    } else if (this.currentView().type === 'day') {
+      slotDate = new Date(this.currentView().date);
+    }
+
     slotDate.setHours(hour, 0, 0, 0);
     this.onDateClick(slotDate, false, event);
   }
 
   onAddEvent() {
     this.addEvent.emit();
+  }
+
+  onBlockTime() {
+    this.blockTime.emit();
+  }
+
+  getTextColor(backgroundColor: string): string {
+    // Simple contrast calculation
+    const hex = backgroundColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    return brightness > 128 ? '#000000' : '#ffffff';
   }
 
   getWeekStart(date: Date): Date {
@@ -454,15 +506,6 @@ export class CalendarComponent implements OnInit {
     });
   }
 
-  getTextColor(backgroundColor: string): string {
-    // Simple contrast calculation
-    const hex = backgroundColor.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    return brightness > 128 ? '#000000' : '#ffffff';
-  }
 
   private isSameDay(date1: Date, date2: Date): boolean {
     return (

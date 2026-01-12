@@ -36,7 +36,7 @@ import { AuthService } from '../../../../../services/auth.service';
                 <input type="number" [(ngModel)]="preferences.max_future_days" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white">
             </div>
 
-             <!-- Buffer Antes -->
+            <!-- Margen Antes (Comentado en original) -->
              <!-- 
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Margen Antes (minutos)</label>
@@ -48,8 +48,28 @@ import { AuthService } from '../../../../../services/auth.service';
             <!-- Buffer Después -->
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Margen Después (minutos)</label>
-                <div class="text-xs text-gray-500 mb-2">Tiempo libre bloqueado después de cada cita (para limpieza, notas...)</div>
+                <div class="text-xs text-gray-500 mb-2">Tiempo libre bloqueado después de cada cita</div>
                 <input type="number" [(ngModel)]="preferences.buffer_after_minutes" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white">
+            </div>
+
+            <!-- Cancelación Mínima -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Antelación Cancelación (horas)</label>
+                <div class="text-xs text-gray-500 mb-2">Horas mínimas de aviso para cancelar una cita</div>
+                <input type="number" [(ngModel)]="preferences.min_cancel_notice_hours" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white">
+            </div>
+
+            <!-- Horas Calendario -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Inicio Jornada Calendario (Hora)</label>
+                <div class="text-xs text-gray-500 mb-2">Hora de inicio visual del calendario (0-23)</div>
+                <input type="number" [(ngModel)]="preferences.calendar_start_hour" min="0" max="23" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fin Jornada Calendario (Hora)</label>
+                <div class="text-xs text-gray-500 mb-2">Hora de fin visual del calendario (0-23)</div>
+                <input type="number" [(ngModel)]="preferences.calendar_end_hour" min="0" max="23" class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white">
             </div>
 
         </div>
@@ -70,12 +90,15 @@ export class BookingPreferencesComponent implements OnInit {
 
     saving = signal(false);
 
-    preferences = {
+    preferences: any = {
         slot_interval_minutes: 30,
         min_advance_minutes: 60,
         max_future_days: 60,
         buffer_before_minutes: 0,
-        buffer_after_minutes: 0
+        buffer_after_minutes: 0,
+        min_cancel_notice_hours: 24, // Default 24h
+        calendar_start_hour: 8,      // Default 8 AM
+        calendar_end_hour: 22        // Default 10 PM
     };
 
     ngOnInit() {

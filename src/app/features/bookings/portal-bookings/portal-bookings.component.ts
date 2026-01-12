@@ -241,13 +241,30 @@ export class PortalBookingsComponent implements OnInit {
                 return; // Beyond authorized horizon
             }
 
-            // Fetch company schedule (Owner's schedule)
-            const schedules = await new Promise<any[]>((resolve, reject) => {
-                this.bookingsService.getCompanyDefaultSchedule(companyId!).subscribe({
-                    next: (data) => resolve(data),
-                    error: (err) => reject(err)
-                });
-            });
+            // Fetch company schedule (Owner's schedule) AND exceptions
+            const [schedules, exceptions] = await Promise.all([
+                new Promise<any[]>((resolve, reject) => {
+                    this.bookingsService.getCompanyDefaultSchedule(companyId!).subscribe({
+                        next: (data) => resolve(data),
+                        error: (err) => reject(err)
+                    });
+                }),
+                new Promise<any[]>((resolve, reject) => {
+                    // Fetch exceptions for the selected day (approximate range)
+                    const start = new Date(dateStr);
+                    start.setHours(0, 0, 0, 0);
+                    const end = new Date(dateStr);
+                    end.setHours(23, 59, 59, 999);
+
+                    this.bookingsService.getAvailabilityExceptions(companyId!, start, end).subscribe({
+                        next: (data) => resolve(data),
+                        error: (err) => {
+                            console.error('Error fetching exceptions', err);
+                            resolve([]); // Fail safe
+                        }
+                    });
+                })
+            ]);
 
             console.log('🗓️ Debug - Company ID:', companyId);
             console.log('🗓️ Debug - All Schedules fetched:', schedules);
@@ -324,20 +341,30 @@ export class PortalBookingsComponent implements OnInit {
                         continue;
                     }
 
-                    // Check overlap with Busy Intervals
+                    // Check overlap with Busy Intervals (Google) AND Exceptions (Blocks)
                     // NOTE: Does the buffer also need to be free? Usually yes.
                     // effectiveEnd = slotEnd + buffer
                     const effectiveEnd = new Date(slotEnd.getTime() + bufferAfter * 60000);
 
-                    const isBusy = busyIntervals.some(busy => {
+                    // 1. Google Busy
+                    const isBusyGoogle = busyIntervals.some(busy => {
                         const busyStart = new Date(busy.start).getTime();
                         const busyEnd = new Date(busy.end).getTime();
                         const slotStart = currentSlot.getTime();
-                        const slotEndTime = effectiveEnd.getTime(); // Check availability including buffer
+                        const slotEndTime = effectiveEnd.getTime();
                         return (slotStart < busyEnd && slotEndTime > busyStart);
                     });
 
-                    if (!isBusy) {
+                    // 2. Internal Exceptions (Blocks)
+                    const isBlocked = exceptions.some((ex: any) => { // ex is AvailabilityException
+                        const exStart = new Date(ex.start_time).getTime();
+                        const exEnd = new Date(ex.end_time).getTime();
+                        const slotStart = currentSlot.getTime();
+                        const slotEndTime = effectiveEnd.getTime();
+                        return (slotStart < exEnd && slotEndTime > exStart);
+                    });
+
+                    if (!isBusyGoogle && !isBlocked) {
                         generatedSlots.push(new Date(currentSlot));
                     }
 
