@@ -342,7 +342,10 @@ export class CalendarPageComponent implements OnInit {
                         end_time: slot.end.toISOString(),
                         status: 'confirmed' as const,
                         notes: 'Creada desde Calendario (Serie)',
-                        booking_type_id: this.defaultBookingTypeId
+                        booking_type_id: this.defaultBookingTypeId,
+                        total_price: (data as any).totalPrice,
+                        deposit_paid: (data as any).depositPaid,
+                        payment_status: (data as any).paymentStatus
                     }));
 
                     await this.bookingsService.createBookingsBatch(bookingsPayload);
@@ -362,7 +365,12 @@ export class CalendarPageComponent implements OnInit {
                         end_time: data.endTime.toISOString(),
                         status: 'confirmed',
                         notes: 'Creada desde Calendario',
-                        booking_type_id: this.defaultBookingTypeId
+                        booking_type_id: this.defaultBookingTypeId,
+                        total_price: (data as any).totalPrice,
+                        deposit_paid: (data as any).depositPaid,
+                        payment_status: (data as any).paymentStatus,
+                        coupon_id: (data as any).couponId,
+                        discount_amount: (data as any).discountAmount
                     });
                     this.toastService.success('Guardado', 'Cita creada correctamente.');
                 }

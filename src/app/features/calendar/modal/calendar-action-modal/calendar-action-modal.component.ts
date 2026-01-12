@@ -1,6 +1,7 @@
-import { Component, input, output, signal } from '@angular/core';
+import { Component, input, output, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { SupabaseCouponsService, Coupon } from '../../../../services/supabase-coupons.service';
 
 export interface CalendarActionData {
   type: 'booking' | 'block';
@@ -17,6 +18,11 @@ export interface CalendarActionData {
     type: 'daily' | 'weekly' | 'monthly';
     endDate: Date;
   };
+  totalPrice?: number;
+  depositPaid?: number;
+  paymentStatus?: 'pending' | 'partial' | 'paid' | 'refunded';
+  couponId?: string;
+  discountAmount?: number;
 }
 
 @Component({
@@ -41,6 +47,16 @@ export class CalendarActionModalComponent {
   isEditMode = signal(false);
   existingId = signal<string | null>(null);
   deleteAction = output<string>();
+
+  // Dependencies (Injected via parent/inputs traditionally, but since this is standalone, we inject)
+  private couponsService = inject(SupabaseCouponsService);
+  // We need companyId. It is not currently Input. Assumption: Parent passes client/services with context? 
+  // Wait, services have company_id. We can grab from selected service.
+
+  // Coupon Data
+  couponCode = signal('');
+  appliedCoupon = signal<Coupon | null>(null);
+  couponMessage = signal<{ text: string, type: 'success' | 'error' } | null>(null);
 
   // Form Data
   startTimeStr = signal<string>('');
@@ -87,6 +103,11 @@ export class CalendarActionModalComponent {
     this.recurrenceType.set('none');
     this.recurrenceEndDateStr.set('');
     this.clientId = null;
+
+    // Reset Coupon
+    this.couponCode.set('');
+    this.appliedCoupon.set(null);
+    this.couponMessage.set(null);
   }
 
   openForEdit(event: any, type: 'booking' | 'block') {
@@ -142,10 +163,19 @@ export class CalendarActionModalComponent {
     return local.toISOString().slice(0, 10);
   }
 
+  // Dynamic Pricing
+  computedPrice = signal<number | null>(null);
+
+  // Deposits
+  computedDeposit = signal<number | null>(null);
+  depositPaidInput = signal<number>(0);
+  hasDepositRequirement = signal<boolean>(false);
+
   updateStartTime(val: string) {
     this.startTimeStr.set(val);
     if (this.activeTab() === 'booking') {
       this.updateEndTimeBasedOnService();
+      this.recalculatePrice();
     } else {
       // Block logic: auto-push end time if start > end
       if (val > this.endTimeStr()) {
@@ -172,6 +202,128 @@ export class CalendarActionModalComponent {
 
     const end = new Date(start.getTime() + durationMinutes * 60000);
     this.endTimeStr.set(this.toDateTimeLocal(end));
+
+    // Trigger price recalc
+    this.recalculatePrice();
+  }
+
+  private recalculatePrice() {
+    if (!this.serviceId || !this.startTimeStr()) {
+      this.computedPrice.set(null);
+      return;
+    }
+
+    const service = this.services().find(s => s.id === this.serviceId);
+    if (!service) {
+      this.computedPrice.set(null);
+      return;
+    }
+
+    const start = new Date(this.startTimeStr());
+    let price = service.display_price || service.base_price || 0;
+
+    // Apply Variations
+    if (service.price_variations && Array.isArray(service.price_variations)) {
+      for (const variation of service.price_variations) {
+        let applies = false;
+
+        // Check Day of Week
+        if (variation.conditions?.days_of_week) {
+          const day = start.getDay(); // 0=Sun
+          if (variation.conditions.days_of_week.includes(day)) {
+            applies = true;
+          }
+        }
+
+        // Check Time Range (Simple text comparison approx)
+        // TODO: More robust time check if needed
+        if (variation.conditions?.time_start && variation.conditions?.time_end) {
+          const timeStr = start.toTimeString().slice(0, 5); // "HH:MM"
+          if (timeStr >= variation.conditions.time_start && timeStr <= variation.conditions.time_end) {
+            applies = true;
+          }
+        }
+
+        if (applies) {
+          if (variation.adjustment_type === 'percent') {
+            price += (price * (variation.amount / 100));
+          } else if (variation.adjustment_type === 'fixed') {
+            price += variation.amount;
+          }
+        }
+      }
+    }
+
+    // Calculate Deposit
+    this.computedDeposit.set(null); // Reset first
+
+    // Apply Coupon to Price BEFORE Deposit calculation? 
+    // Usually coupons apply to the total price.
+    // Let's apply coupon logic.
+    let finalPrice = price;
+    const coupon = this.appliedCoupon();
+
+    if (coupon) {
+      if (coupon.discount_type === 'percent') {
+        finalPrice = price - (price * (coupon.discount_value / 100));
+      } else {
+        finalPrice = price - coupon.discount_value;
+      }
+    }
+
+    if (finalPrice < 0) finalPrice = 0;
+    this.computedPrice.set(finalPrice);
+
+
+    if (service.deposit_type && service.deposit_type !== 'none') {
+      let deposit = 0;
+      // Deposit usually based on FINAL price for percent/full
+      if (service.deposit_type === 'fixed') {
+        deposit = service.deposit_amount || 0;
+      } else if (service.deposit_type === 'percent') {
+        deposit = finalPrice * ((service.deposit_amount || 0) / 100);
+      } else if (service.deposit_type === 'full') {
+        deposit = finalPrice;
+      }
+
+      this.computedDeposit.set(deposit);
+      this.hasDepositRequirement.set(true);
+      this.depositPaidInput.set(deposit);
+    } else {
+      this.computedDeposit.set(null);
+      this.hasDepositRequirement.set(false);
+      this.depositPaidInput.set(0);
+    }
+  }
+
+  async validateCoupon() {
+    const code = this.couponCode();
+    if (!code) return;
+
+    // We need companyId. Services have it.
+    const service = this.services().find(s => s.id === this.serviceId);
+    if (!service || !service.company_id) {
+      this.couponMessage.set({ text: 'Selecciona un servicio primero', type: 'error' });
+      return;
+    }
+
+    const result = await this.couponsService.validateCoupon(code, service.company_id);
+    if (result.valid && result.coupon) {
+      this.appliedCoupon.set(result.coupon);
+      this.couponMessage.set({ text: 'Cupón aplicado: ' + code, type: 'success' });
+      this.recalculatePrice();
+    } else {
+      this.appliedCoupon.set(null);
+      this.couponMessage.set({ text: result.message || 'Cupón inválido', type: 'error' });
+      this.recalculatePrice();
+    }
+  }
+
+  removeCoupon() {
+    this.appliedCoupon.set(null);
+    this.couponCode.set('');
+    this.couponMessage.set(null);
+    this.recalculatePrice();
   }
 
 
@@ -219,7 +371,12 @@ export class CalendarActionModalComponent {
       recurrence: (this.activeTab() === 'booking' && this.recurrenceType() !== 'none') ? {
         type: this.recurrenceType() as 'daily' | 'weekly' | 'monthly',
         endDate: new Date(this.recurrenceEndDateStr())
-      } : undefined
+      } : undefined,
+      totalPrice: this.activeTab() === 'booking' ? (this.computedPrice() ?? undefined) : undefined,
+      depositPaid: (this.activeTab() === 'booking' && this.hasDepositRequirement()) ? this.depositPaidInput() : undefined,
+      paymentStatus: (this.activeTab() === 'booking' && this.hasDepositRequirement())
+        ? (this.depositPaidInput() >= (this.computedDeposit() || 0) ? 'paid' : (this.depositPaidInput() > 0 ? 'partial' : 'pending'))
+        : 'pending' // Default or based on logic? If no deposit, is it paid or pending? Let's say pending if not fully paid upfront logic exists.
     });
 
     this.close();

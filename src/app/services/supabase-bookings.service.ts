@@ -54,6 +54,9 @@ export interface Booking {
     created_at?: string;
     updated_at?: string;
     google_event_id?: string | null;
+    total_price?: number;
+    payment_status?: 'pending' | 'partial' | 'paid' | 'refunded';
+    deposit_paid?: number;
 
     // Joined fields
     booking_type?: { name: string; color?: string };

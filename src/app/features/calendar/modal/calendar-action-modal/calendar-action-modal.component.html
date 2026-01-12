@@ -76,116 +76,173 @@
                         </select>
                     </div>
                 </div>
-
-                <!-- Recurrence Options -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100 dark:border-slate-700">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Repetir</label>
-                        <select [ngModel]="recurrenceType()" (ngModelChange)="recurrenceType.set($event)"
-                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
-                            <option value="none">No repetir</option>
-                            <option value="daily">Todos los días</option>
-                            <option value="weekly">Cada semana</option>
-                            <option value="monthly">Cada mes</option>
-                        </select>
+                <!-- Price Display -->
+                <!-- Price Display -->
+                <div *ngIf="computedPrice() !== null"
+                    class="col-span-1 sm:col-span-2 flex flex-col items-end space-y-2">
+                    <div class="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-lg text-right w-full sm:w-auto">
+                        <span class="text-xs text-gray-500 dark:text-gray-400 block">Total Estimado</span>
+                        <span class="text-lg font-bold text-blue-600 dark:text-blue-400">{{ computedPrice() |
+                            currency:'EUR' }}</span>
                     </div>
-                    <div *ngIf="recurrenceType() !== 'none'" class="animate-fade-in">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Termina
-                            el</label>
-                        <input type="date" [ngModel]="recurrenceEndDateStr()"
-                            (ngModelChange)="recurrenceEndDateStr.set($event)"
-                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+
+                    <!-- Deposit Section -->
+                    <div *ngIf="hasDepositRequirement()"
+                        class="bg-yellow-50 dark:bg-yellow-900/20 px-4 py-2 rounded-lg text-right w-full sm:w-auto animate-fade-in border border-yellow-100 dark:border-yellow-800">
+                        <span class="text-xs text-yellow-700 dark:text-yellow-400 block font-medium">Requiere
+                            Depósito</span>
+                        <span class="text-sm font-bold text-yellow-600 dark:text-yellow-500 mb-2 block">
+                            {{ computedDeposit() | currency:'EUR' }}
+                        </span>
+
+                        <div
+                            class="flex items-center justify-end space-x-2 mt-2 pt-2 border-t border-yellow-100 dark:border-yellow-800">
+                            <label class="text-xs text-gray-600 dark:text-gray-300">Cobrado:</label>
+                            <input type="number" [ngModel]="depositPaidInput()"
+                                (ngModelChange)="depositPaidInput.set($event)"
+                                class="w-24 text-right text-sm rounded border-gray-300 dark:border-slate-600 dark:bg-slate-700 py-1 px-2 focus:ring-yellow-500">
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Block Fields -->
-            <div *ngIf="activeTab() === 'block'" class="space-y-4 animate-fade-in">
+            <!-- Coupon Section -->
+            <div *ngIf="activeTab() === 'booking'"
+                class="pt-2 border-t border-gray-100 dark:border-slate-700 animate-fade-in">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cupón de
+                    Descuento</label>
+                <div class="flex space-x-2">
+                    <input type="text" [ngModel]="couponCode()" (ngModelChange)="couponCode.set($event)"
+                        placeholder="Ingresa tu código" [disabled]="!!appliedCoupon()" (keyup.enter)="validateCoupon()"
+                        class="flex-1 rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400 disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-slate-800">
 
-                <!-- Block Type Selector -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de
-                        Bloqueo</label>
-                    <div class="flex space-x-2">
-                        <button class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
-                            [class.bg-red-50]="blockType() === 'time'" [class.border-red-200]="blockType() === 'time'"
-                            [class.text-red-700]="blockType() === 'time'" [class.bg-white]="blockType() !== 'time'"
-                            (click)="blockType.set('time')">
-                            Franja Horaria
-                        </button>
-                        <button class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
-                            [class.bg-red-50]="blockType() === 'day'" [class.border-red-200]="blockType() === 'day'"
-                            [class.text-red-700]="blockType() === 'day'" [class.bg-white]="blockType() !== 'day'"
-                            (click)="blockType.set('day')">
-                            Día Completo
-                        </button>
-                        <button class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
-                            [class.bg-red-50]="blockType() === 'range'" [class.border-red-200]="blockType() === 'range'"
-                            [class.text-red-700]="blockType() === 'range'" [class.bg-white]="blockType() !== 'range'"
-                            (click)="blockType.set('range')">
-                            Vacaciones (Rango)
-                        </button>
-                    </div>
+                    <button *ngIf="!appliedCoupon()" (click)="validateCoupon()"
+                        class="px-3 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors text-sm font-medium">
+                        Aplicar
+                    </button>
+                    <button *ngIf="appliedCoupon()" (click)="removeCoupon()"
+                        class="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors text-sm font-medium">
+                        Quitar
+                    </button>
                 </div>
 
-                <!-- Conditional Date Inputs for Block -->
-                <div [ngSwitch]="blockType()">
-                    <!-- Time Range -->
-                    <div *ngSwitchCase="'time'" class="grid grid-cols-2 gap-4 animate-fade-in">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Desde</label>
-                            <input type="datetime-local" [ngModel]="startTimeStr()"
-                                (ngModelChange)="updateStartTime($event)"
-                                class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hasta</label>
-                            <input type="datetime-local" [ngModel]="endTimeStr()"
-                                (ngModelChange)="endTimeStr.set($event)"
-                                class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
-                        </div>
-                    </div>
+                <!-- Feedback Message -->
+                <div *ngIf="couponMessage()" class="mt-2 text-xs"
+                    [class.text-green-600]="couponMessage()?.type === 'success'"
+                    [class.dark:text-green-400]="couponMessage()?.type === 'success'"
+                    [class.text-red-600]="couponMessage()?.type === 'error'"
+                    [class.dark:text-red-400]="couponMessage()?.type === 'error'">
+                    <i class="fas mr-1" [class.fa-check-circle]="couponMessage()?.type === 'success'"
+                        [class.fa-exclamation-circle]="couponMessage()?.type === 'error'"></i>
+                    {{ couponMessage()?.text }}
+                </div>
+            </div>
 
-                    <!-- Full Day -->
-                    <div *ngSwitchCase="'day'" class="animate-fade-in">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Día</label>
-                        <input type="date" [ngModel]="blockDateStr()" (ngModelChange)="blockDateStr.set($event)"
+            <!-- Recurrence Options -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100 dark:border-slate-700">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Repetir</label>
+                    <select [ngModel]="recurrenceType()" (ngModelChange)="recurrenceType.set($event)"
+                        class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+                        <option value="none">No repetir</option>
+                        <option value="daily">Todos los días</option>
+                        <option value="weekly">Cada semana</option>
+                        <option value="monthly">Cada mes</option>
+                    </select>
+                </div>
+                <div *ngIf="recurrenceType() !== 'none'" class="animate-fade-in">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Termina
+                        el</label>
+                    <input type="date" [ngModel]="recurrenceEndDateStr()"
+                        (ngModelChange)="recurrenceEndDateStr.set($event)"
+                        class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+                </div>
+            </div>
+        </div>
+
+        <!-- Block Fields -->
+        <div *ngIf="activeTab() === 'block'" class="space-y-4 animate-fade-in">
+
+            <!-- Block Type Selector -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de
+                    Bloqueo</label>
+                <div class="flex space-x-2">
+                    <button class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
+                        [class.bg-red-50]="blockType() === 'time'" [class.border-red-200]="blockType() === 'time'"
+                        [class.text-red-700]="blockType() === 'time'" [class.bg-white]="blockType() !== 'time'"
+                        (click)="blockType.set('time')">
+                        Franja Horaria
+                    </button>
+                    <button class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
+                        [class.bg-red-50]="blockType() === 'day'" [class.border-red-200]="blockType() === 'day'"
+                        [class.text-red-700]="blockType() === 'day'" [class.bg-white]="blockType() !== 'day'"
+                        (click)="blockType.set('day')">
+                        Día Completo
+                    </button>
+                    <button class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
+                        [class.bg-red-50]="blockType() === 'range'" [class.border-red-200]="blockType() === 'range'"
+                        [class.text-red-700]="blockType() === 'range'" [class.bg-white]="blockType() !== 'range'"
+                        (click)="blockType.set('range')">
+                        Vacaciones (Rango)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Conditional Date Inputs for Block -->
+            <div [ngSwitch]="blockType()">
+                <!-- Time Range -->
+                <div *ngSwitchCase="'time'" class="grid grid-cols-2 gap-4 animate-fade-in">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Desde</label>
+                        <input type="datetime-local" [ngModel]="startTimeStr()"
+                            (ngModelChange)="updateStartTime($event)"
                             class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
                     </div>
-
-                    <!-- Date Range -->
-                    <div *ngSwitchCase="'range'" class="grid grid-cols-2 gap-4 animate-fade-in">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Desde el
-                                día</label>
-                            <input type="date" [ngModel]="blockStartDateStr()"
-                                (ngModelChange)="blockStartDateStr.set($event)"
-                                class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hasta el
-                                día</label>
-                            <input type="date" [ngModel]="blockEndDateStr()"
-                                (ngModelChange)="blockEndDateStr.set($event)"
-                                class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
-                        </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hasta</label>
+                        <input type="datetime-local" [ngModel]="endTimeStr()" (ngModelChange)="endTimeStr.set($event)"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Motivo del
-                        Bloqueo</label>
-                    <input type="text" [(ngModel)]="blockReason" placeholder="Ej: Vacaciones, Médico, Personal..."
-                        class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500 dark:focus:ring-red-400">
+                <!-- Full Day -->
+                <div *ngSwitchCase="'day'" class="animate-fade-in">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Día</label>
+                    <input type="date" [ngModel]="blockDateStr()" (ngModelChange)="blockDateStr.set($event)"
+                        class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
                 </div>
-                <div
-                    class="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-xs text-orange-800 dark:text-orange-200">
-                    <i class="fas fa-exclamation-triangle mr-1"></i>
-                    Este horario no estará disponible para reservas online.
+
+                <!-- Date Range -->
+                <div *ngSwitchCase="'range'" class="grid grid-cols-2 gap-4 animate-fade-in">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Desde el
+                            día</label>
+                        <input type="date" [ngModel]="blockStartDateStr()"
+                            (ngModelChange)="blockStartDateStr.set($event)"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hasta el
+                            día</label>
+                        <input type="date" [ngModel]="blockEndDateStr()" (ngModelChange)="blockEndDateStr.set($event)"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
+                    </div>
                 </div>
             </div>
 
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Motivo del
+                    Bloqueo</label>
+                <input type="text" [(ngModel)]="blockReason" placeholder="Ej: Vacaciones, Médico, Personal..."
+                    class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500 dark:focus:ring-red-400">
+            </div>
+            <div class="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-xs text-orange-800 dark:text-orange-200">
+                <i class="fas fa-exclamation-triangle mr-1"></i>
+                Este horario no estará disponible para reservas online.
+            </div>
         </div>
+
 
         <!-- Footer -->
         <div

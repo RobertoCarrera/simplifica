@@ -26,10 +26,12 @@ export type ChartOptions = {
   theme: ApexTheme;
 };
 
+import { AnalyticsPageComponent } from './page/analytics-page.component';
+
 @Component({
   selector: 'app-dashboard-analytics',
   standalone: true,
-  imports: [CommonModule, NgApexchartsModule, AiSavingsWidgetComponent],
+  imports: [CommonModule, NgApexchartsModule, AiSavingsWidgetComponent, AnalyticsPageComponent],
   template: `
     <div class="container-fluid h-full flex flex-col overflow-hidden pb-20 md:pb-8 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100"
       [attr.data-sidebar-collapsed]="sidebarService.isCollapsed() ? '1' : '0'">
@@ -37,8 +39,44 @@ export type ChartOptions = {
       <!-- Inner wrapper: contains header and content -->
       <div class="flex-1 flex flex-col p-2 overflow-hidden">
 
+        <!-- Tabs Header -->
+        <div class="flex items-center gap-4 mb-4 px-2 border-b border-gray-200 dark:border-gray-700">
+          <button 
+            (click)="setActiveTab('general')"
+            class="px-4 py-2 text-sm font-medium border-b-2 transition-colors duration-200"
+            [class.border-blue-600]="activeTab() === 'general'"
+            [class.text-blue-600]="activeTab() === 'general'"
+            [class.border-transparent]="activeTab() !== 'general'"
+            [class.text-gray-500]="activeTab() !== 'general'"
+            [class.hover:text-gray-700]="activeTab() !== 'general'"
+            [class.dark:text-gray-400]="activeTab() !== 'general'"
+            [class.dark:hover:text-gray-300]="activeTab() !== 'general'">
+            General (Facturación)
+          </button>
+          <button 
+            (click)="setActiveTab('bookings')"
+            class="px-4 py-2 text-sm font-medium border-b-2 transition-colors duration-200"
+            [class.border-blue-600]="activeTab() === 'bookings'"
+            [class.text-blue-600]="activeTab() === 'bookings'"
+            [class.border-transparent]="activeTab() !== 'bookings'"
+            [class.text-gray-500]="activeTab() !== 'bookings'"
+            [class.hover:text-gray-700]="activeTab() !== 'bookings'"
+            [class.dark:text-gray-400]="activeTab() !== 'bookings'"
+            [class.dark:hover:text-gray-300]="activeTab() !== 'bookings'">
+            Reservas
+          </button>
+        </div>
+
         <!-- Scrollable content area -->
-        <div class="flex-1 overflow-auto space-y-6">
+        <div class="flex-1 overflow-auto space-y-6 scrollbar-hide">
+          
+          <!-- Tab: Reservas -->
+          @if (activeTab() === 'bookings') {
+            <app-analytics-page></app-analytics-page>
+          }
+
+          <!-- Tab: General (Old Content) -->
+          @if (activeTab() === 'general') {
           <!-- Error Alert -->
           @if (error()) {
             <div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg flex items-start gap-3">
@@ -282,6 +320,7 @@ export type ChartOptions = {
               </div>
             }
           }
+          }
         </div>
       </div>
     </div>
@@ -308,6 +347,13 @@ export class DashboardAnalyticsComponent implements OnInit, OnDestroy {
   currentPipeline = this.analyticsService.getCurrentPipeline;
   isLoading = this.analyticsService.isLoading;
   error = signal<string | null>(null);
+
+  // Tabs
+  activeTab = signal<'general' | 'bookings'>('general');
+
+  setActiveTab(tab: 'general' | 'bookings') {
+    this.activeTab.set(tab);
+  }
 
   // Module gating for tickets
   private allowedModuleKeys = computed<Set<string> | null>(() => {

@@ -220,7 +220,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/analytics',
       module: 'production',
       moduleKey: 'moduloAnaliticas',
-      requiredPermission: 'analytics.view' // Assuming we might add this later, or leave open for now? kept open as per prior strategy but user wants full granular. NOTE: analytics.view not added to service yet, skipping to avoid blocking.
+      // requiredPermission: 'analytics.view' // Temporarily disabled to ensure visibility until permission is seeded
     },
     {
       id: 9,

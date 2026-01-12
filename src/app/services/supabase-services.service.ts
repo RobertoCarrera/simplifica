@@ -11,6 +11,17 @@ export interface VariantPricing {
   discount_percentage?: number;
 }
 
+export interface PriceVariation {
+  name: string;
+  adjustment_type: 'percent' | 'fixed';
+  amount: number;
+  conditions: {
+    days_of_week?: number[]; // 0=Sun, 1=Mon...
+    time_start?: string;     // "18:00"
+    time_end?: string;       // "22:00"
+  };
+}
+
 export interface ServiceVariant {
   id: string;
   service_id: string;
@@ -110,6 +121,9 @@ export interface Service {
   buffer_minutes?: number;
   booking_color?: string;
   required_resource_type?: string;
+  price_variations?: PriceVariation[];
+  deposit_type?: 'none' | 'fixed' | 'percent' | 'full';
+  deposit_amount?: number;
 
   // Campos calculados (server-side) para display
   display_price?: number;        // Precio representativo (desde variantes o base_price)
@@ -373,12 +387,15 @@ export class SupabaseServicesService {
       buffer_minutes: service.buffer_minutes ?? 0,
       booking_color: service.booking_color || undefined,
       required_resource_type: service.required_resource_type || undefined,
+      price_variations: service.price_variations || [], // Dynamic Pricing variations
       // Public fields
       is_public: !!service.is_public,
       allow_direct_contracting: !!service.allow_direct_contracting,
       features: service.features || undefined,
       // Preferir company_id almacenado en service cuando exista
       company_id: service.company_id ? service.company_id : companyId.toString(),
+      deposit_type: service.deposit_type || 'none',
+      deposit_amount: service.deposit_amount ? Number(service.deposit_amount) : 0,
       created_at: service.created_at,
       updated_at: service.updated_at || service.created_at
     }));
