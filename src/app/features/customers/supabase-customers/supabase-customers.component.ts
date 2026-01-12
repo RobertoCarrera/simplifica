@@ -152,6 +152,15 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     // Removed legacy CSV mapping handlers
 
 
+    // Cache completeness status to avoid O(N log N) re-calculations during sort
+    completenessCache = computed(() => {
+        const cache = new Map<string, boolean>();
+        this.customers().forEach(c => {
+            cache.set(c.id, this.completenessSvc.computeCompleteness(c).complete);
+        });
+        return cache;
+    });
+
     // Computed
     filteredCustomers = computed(() => {
         let filtered = this.customers();
@@ -175,10 +184,13 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         const sortBy = this.sortBy();
         const sortOrder = this.sortOrder();
 
+        // Use cached completeness for sorting
+        const completeness = this.completenessCache();
+
         filtered.sort((a, b) => {
             // Priority Sort: Incomplete users FIRST
-            const aComplete = this.isCustomerComplete(a);
-            const bComplete = this.isCustomerComplete(b);
+            const aComplete = completeness.get(a.id) ?? false;
+            const bComplete = completeness.get(b.id) ?? false;
 
             if (aComplete !== bComplete) {
                 // If one is incomplete (false) and other is complete (true), incomplete comes first
@@ -203,7 +215,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Completeness helpers for template
     isCustomerComplete(c: Customer): boolean {
-        return this.completenessSvc.computeCompleteness(c).complete;
+        return this.completenessCache().get(c.id) ?? false;
     }
 
     getCustomerMissingFields(c: Customer): string[] {
