@@ -136,8 +136,8 @@ import { AnimationService } from '../../services/animation.service';
                       @for (event of day.events.slice(0, 4); track event.id) {
                         <div 
                           class="px-2 py-1 text-xs rounded-md truncate cursor-pointer hover:opacity-80 transition-opacity border-l-2"
-                          [style.background-color]="(event.color || '#6366f1') + '20'"
-                          [style.border-left-color]="event.color || '#6366f1'"
+                          [style.background-color]="getEventColor(event) + '20'"
+                          [style.border-left-color]="getEventColor(event)"
                           [style.color]="'inherit'"
                           (click)="onEventClick(event, $event)"
                           (contextmenu)="onEventContextMenu($event, event)"
@@ -145,7 +145,7 @@ import { AnimationService } from '../../services/animation.service';
                           cdkDrag
                           [cdkDragData]="event"
                           [cdkDragDisabled]="!editable">
-                          <span class="font-medium" [style.color]="event.color || '#6366f1'">
+                          <span class="font-medium" [style.color]="getEventColor(event)">
                             {{ event.start | date:'HH:mm' }}
                           </span>
                           <span class="text-gray-700 dark:text-gray-300 ml-1">
@@ -172,7 +172,7 @@ import { AnimationService } from '../../services/animation.service';
           @case ('week') {
             <div class="h-full flex flex-col p-4 overflow-hidden" @slideIn>
               <!-- Week header (Sticky) -->
-              <div class="flex mb-4 flex-shrink-0 pr-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+              <div class="flex mb-4 flex-shrink-0 pr-4 border-b border-gray-200 dark:border-gray-700 pb-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm sticky top-0 z-20">
                 <div class="w-16 flex-shrink-0"></div> <!-- Time column header placeholder -->
                 <div class="flex-1 flex">
                   @for (day of weekDays; track day) {
@@ -221,11 +221,11 @@ import { AnimationService } from '../../services/animation.service';
 
                                   <!-- Events Overlay -->
                                   @for (event of getDayEvents(day); track event.id) {
-                                      <div class="absolute inset-x-1 rounded px-2 py-1 text-xs cursor-pointer hover:opacity-90 transition-opacity shadow-sm z-20 overflow-hidden border-l-4"
+                                      <div class="absolute inset-x-1 rounded px-2 py-1 text-xs cursor-pointer hover:shadow-md transition-all shadow-sm z-20 overflow-hidden border-l-4"
                                            [style.top.px]="getEventTop(event)"
                                            [style.height.px]="getEventHeight(event)"
-                                           [style.background-color]="(event.color || '#6366f1') + '20'"
-                                           [style.border-left-color]="event.color || '#6366f1'"
+                                           [style.background-color]="getEventColor(event) + '20'"
+                                           [style.border-left-color]="getEventColor(event)"
                                            [style.color]="'inherit'"
                                            (click)="onEventClick(event, $event)"
                                            (contextmenu)="onEventContextMenu($event, event)"
@@ -303,8 +303,8 @@ import { AnimationService } from '../../services/animation.service';
                                 <div class="absolute left-2 right-2 rounded px-3 py-2 text-sm cursor-pointer hover:opacity-90 transition-opacity shadow-sm z-20 border-l-4 overflow-hidden"
                                      [style.top.px]="getEventTop(event)"
                                      [style.height.px]="getEventHeight(event)"
-                                     [style.background-color]="(event.color || '#6366f1') + '20'"
-                                     [style.border-left-color]="event.color || '#6366f1'"
+                                     [style.background-color]="getEventColor(event) + '20'"
+                                     [style.border-left-color]="getEventColor(event)"
                                      (click)="onEventClick(event, $event)"
                                      (contextmenu)="onEventContextMenu($event, event)"
                                      cdkDrag
@@ -358,7 +358,7 @@ import { AnimationService } from '../../services/animation.service';
                    @for (resource of resources; track resource.id) {
                        <div class="flex border-b border-gray-100 dark:border-gray-700 min-h-[80px] relative hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                            <!-- Resource Header (Row Label) -->
-                           <div class="w-48 flex-shrink-0 p-3 border-r border-gray-200 dark:border-gray-700 flex items-center gap-3 sticky left-0 bg-white dark:bg-gray-800 z-30">
+                           <div class="w-48 flex-shrink-0 p-3 border-r border-gray-200 dark:border-gray-700 flex items-center gap-3 sticky left-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm z-30 shadow-sm">
                                @if (resource.avatar) {
                                    <img [src]="resource.avatar" class="w-8 h-8 rounded-full object-cover">
                                } @else {
@@ -387,11 +387,11 @@ import { AnimationService } from '../../services/animation.service';
                                  
                                  <!-- Events Overlay -->
                                   @for (calEvent of getTimelineEvents(resource.id); track calEvent.id) {
-                                      <div class="absolute top-2 bottom-2 rounded px-2 py-1 text-xs cursor-pointer hover:opacity-90 transition-opacity shadow-sm z-20 overflow-hidden border-l-4"
+                                      <div class="absolute top-2 bottom-2 rounded px-2 py-1 text-xs cursor-pointer hover:shadow-md transition-all shadow-sm z-20 overflow-hidden border-l-4"
                                            [style.left.%]="getUserEventLeftPercent(calEvent)"
                                            [style.width.%]="getUserEventWidthPercent(calEvent)"
-                                           [style.background-color]="(calEvent.color || '#6366f1') + '20'"
-                                           [style.border-left-color]="calEvent.color || '#6366f1'"
+                                           [style.background-color]="getEventColor(calEvent) + '20'"
+                                           [style.border-left-color]="getEventColor(calEvent)"
                                            (click)="onEventClick(calEvent, $event)"
                                            (contextmenu)="onEventContextMenu($event, calEvent)"
                                            cdkDrag
@@ -460,6 +460,7 @@ export class CalendarComponent implements OnInit {
   @Input() startHour = 8;
   @Input() endHour = 22;
   @Input() resources: CalendarResource[] = [];
+  @Input() colorMode: 'status' | 'service' | 'professional' | 'static' = 'status';
 
   @Output() eventClick = new EventEmitter<CalendarEventClick>();
   @Output() dateClick = new EventEmitter<CalendarDateClick>();
@@ -618,6 +619,33 @@ export class CalendarComponent implements OnInit {
     event.stopPropagation();
     // If it was a right click, it might be handled by (contextmenu) but standard click is left.
     this.eventClick.emit({ event: calendarEvent, nativeEvent: event });
+  }
+
+  getEventColor(event: CalendarEvent): string {
+    if (this.colorMode === 'static') {
+      return event.color || '#6366f1';
+    }
+
+    if (this.colorMode === 'status' && event.meta?.original?.status) {
+      switch (event.meta.original.status) {
+        case 'confirmed': return '#4f46e5'; // Indigo-600
+        case 'pending': return '#f59e0b'; // Amber-500
+        case 'cancelled': return '#ef4444'; // Red-500
+        case 'arrived': return '#10b981'; // Emerald-500
+        case 'completed': return '#3b82f6'; // Blue-500
+        case 'noshow': return '#6b7280'; // Gray-500
+        default: return event.color || '#6366f1';
+      }
+    }
+
+    if (this.colorMode === 'professional' && event.resourceId) {
+      // Find resource color? Or hash from ID?
+      const resource = this.resources.find(r => r.id === event.resourceId);
+      return resource?.color || event.color || '#6366f1';
+    }
+
+    // Fallback
+    return event.color || '#6366f1';
   }
 
   onEventContextMenu(event: MouseEvent, calendarEvent: CalendarEvent) {

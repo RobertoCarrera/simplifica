@@ -44,6 +44,9 @@ export class CalendarPageComponent implements OnInit {
     availableClients = signal<any[]>([]);
     resources = signal<CalendarResource[]>([]);
 
+    // View Options
+    colorMode = signal<'status' | 'service' | 'professional' | 'static'>('status');
+
     async onDateClick(event: any) {
         this.selectedDate.set(event.date);
         this.isModalOpen.set(true);
