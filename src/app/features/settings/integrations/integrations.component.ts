@@ -26,6 +26,12 @@ export class IntegrationsComponent implements OnInit {
     googleIntegration = signal<any>(null);
     loading = signal<boolean>(false);
     processingCode = signal<boolean>(false);
+    error: string | null = null;
+
+    calendars = signal<any[]>([]);
+    calendarConfig = signal<any>(null);
+    loadingCalendars = signal<boolean>(false);
+    savingConfig = signal<boolean>(false);
 
     ngOnInit() {
         // Subscribe to query params to handle updates reliable (especially in popups)
@@ -46,15 +52,22 @@ export class IntegrationsComponent implements OnInit {
         this.loading.set(true);
         // Get Public User Profile from AuthService to ensure we have the correct ID
         let profile = this.authService.userProfile;
-        if (!profile) {
+        let retries = 0;
+        while (!profile && retries < 10) {
+            console.warn(`loadIntegrations: User Profile not ready attempt ${retries + 1}/10...`);
             await new Promise(resolve => setTimeout(resolve, 500));
             profile = this.authService.userProfile;
+            retries++;
         }
 
         if (!profile) {
+            console.error('loadIntegrations: User Profile TIMEOUT after 5s. Aborting.');
+            this.toast.error('Error', 'No se pudo cargar el perfil de usuario. Intenta recargar la página.');
             this.loading.set(false);
             return;
         }
+
+        console.log('loadIntegrations: Profile found, loading for:', profile.id);
 
         const { data, error } = await this.supabase.instance
             .from('integrations')
@@ -88,6 +101,71 @@ export class IntegrationsComponent implements OnInit {
         }
 
         this.loading.set(false);
+
+        if (this.googleIntegration()) {
+            this.fetchCalendars();
+            this.loadCalendarConfig();
+        }
+    }
+
+    async loadCalendarConfig() {
+        const { data: { user } } = await this.supabase.instance.auth.getUser();
+        if (!user) return;
+
+        const { data } = await this.supabase.instance
+            .from('google_calendar_configs')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+    }
+
+    async fetchCalendars() {
+        this.loadingCalendars.set(true);
+        try {
+            console.log('Invoking google-calendar Edge Function...');
+            const { data, error } = await this.supabase.instance.functions.invoke('google-calendar');
+
+            if (error) throw error;
+
+            console.log('Calendars fetched:', data);
+
+            if (data.items) {
+                this.calendars.set(data.items.filter((c: any) => c.accessRole === 'owner' || c.accessRole === 'writer'));
+            }
+
+        } catch (err: any) {
+            console.error('Error fetching calendars:', err);
+            this.toast.error('Error', 'No se pudieron cargar los calendarios.');
+        } finally {
+            this.loadingCalendars.set(false);
+        }
+    }
+
+    async saveCalendarConfig(availabilityCalendarId: string, bookingCalendarId: string) {
+        this.savingConfig.set(true);
+        try {
+            const { data: { user } } = await this.supabase.instance.auth.getUser();
+            if (!user) throw new Error('No user');
+
+            const { error } = await this.supabase.instance
+                .from('google_calendar_configs')
+                .upsert({
+                    user_id: user.id,
+                    calendar_id: availabilityCalendarId,
+                    calendar_id_booking: bookingCalendarId,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id' });
+
+            if (error) throw error;
+
+            this.toast.success('Guardado', 'Configuración de calendario actualizada.');
+            await this.loadCalendarConfig();
+        } catch (e: any) {
+            console.error('Error saving config', e);
+            this.toast.error('Error', 'No se pudo guardar la configuración.');
+        } finally {
+            this.savingConfig.set(false);
+        }
     }
 
     async checkCallback(params: any = {}) {
@@ -207,62 +285,59 @@ export class IntegrationsComponent implements OnInit {
         }
     }
 
+    async securityUnlinkGoogle() {
+        const { data: { user } } = await this.supabase.instance.auth.getUser();
+        const identity = user?.identities?.find(id => id.provider === 'google');
+        if (identity) {
+            console.log('Unlinking existing identity to force fresh token...');
+            await this.supabase.instance.auth.unlinkIdentity(identity);
+        }
+    }
+
     async connectGoogle() {
         this.loading.set(true);
-        try {
-            // Setup listener for popup message
-            const handleMessage = (event: MessageEvent) => {
-                if (event.origin === window.location.origin && event.data?.type === 'GOOGLE_CONNECTED') {
-                    if (event.data.error) {
-                        this.toast.error('Error', event.data.error);
-                    } else {
-                        this.loadIntegrations();
-                        this.toast.success('Conectado', 'Calendario sincronizado.');
-                    }
-                    window.removeEventListener('message', handleMessage);
-                }
-            };
-            window.addEventListener('message', handleMessage);
+        this.error = null;
 
-            const { data, error } = await this.supabase.instance.auth.linkIdentity({
+        const companyId = this.authService.companyId();
+        if (!companyId) {
+            this.toast.error('Error', 'No hay una compañía activa seleccionada.');
+            this.loading.set(false);
+            return;
+        }
+
+        // Store company_id to bind integration on return
+        localStorage.setItem('pending_integration_company_id', companyId);
+
+        try {
+            // 1. Safety Unlink using internal helper
+            await this.securityUnlinkGoogle();
+
+            // 2. Start Link Flow
+            console.log('Linking Google identity...');
+            const { error } = await this.supabase.instance.auth.linkIdentity({
                 provider: 'google',
                 options: {
+                    redirectTo: `${window.location.origin}/auth/callback`,
                     scopes: 'https://www.googleapis.com/auth/calendar',
-                    skipBrowserRedirect: true,
                     queryParams: {
                         access_type: 'offline',
-                        prompt: 'consent'
-                    },
-                    redirectTo: window.location.origin + '/configuracion?popup_callback=true'
+                        prompt: 'consent select_account',
+                    }
                 }
             });
 
             if (error) throw error;
 
-            if (data?.url) {
-                // Open popup
-                const width = 500;
-                const height = 600;
-                const left = window.screenX + (window.outerWidth - width) / 2;
-                const top = window.screenY + (window.outerHeight - height) / 2;
-
-                window.open(
-                    data.url,
-                    'google-auth',
-                    `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
-                );
-            } else {
-                // Fallback if no URL returned (shouldn't happen with skipBrowserRedirect: true)
-                console.warn('No auth URL returned, checking standard redirect...');
-            }
-
-        } catch (e: any) {
-            console.error('Link identity failed:', e);
-            this.toast.error('Error al conectar', 'No se pudo vincular la cuenta de Google. ' + (e.message || ''));
-        } finally {
+            this.loading.set(false);
+        } catch (error: any) {
+            console.error('Error connecting Google:', error);
+            this.toast.error('Error', 'No se pudo iniciar la conexión con Google.');
             this.loading.set(false);
         }
     }
+
+
+
 
     async disconnectGoogle() {
         const confirmed = await this.confirmModal.open({

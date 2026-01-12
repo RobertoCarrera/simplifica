@@ -62,3 +62,10 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- Create the trigger
+DROP TRIGGER IF EXISTS on_google_identity_sync ON auth.identities;
+CREATE TRIGGER on_google_identity_sync
+AFTER INSERT OR UPDATE ON auth.identities
+FOR EACH ROW
+EXECUTE FUNCTION public.handle_google_identity_sync();

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
@@ -14,24 +14,14 @@ import { SupabaseClientService } from '../../../services/supabase-client.service
       <div *ngIf="error" class="error-box">
         <h3>Error de conexión</h3>
         <p>{{ error }}</p>
-        <p class="small">Cierra esta ventana e intenta de nuevo.</p>
+        <p class="small">Probablemente necesites habilitar "Store token in database" en Supabase.</p>
+        <pre class="debug-info">{{ debugInfo }}</pre>
       </div>
 
       <div *ngIf="success" class="success-box">
         <h3>¡Conectado!</h3>
-        <p>Tu cuenta de Google se ha vinculado.</p>
-        <p>Esta ventana se cerrará en breve...</p>
+        <p>Tu cuenta de Google ha sido verificada.</p>
       </div>
-
-      <div *ngIf="!loading && !success && !error" class="info-box">
-        <p>Esperando respuesta de Google...</p>
-      </div>
-      
-      <!-- Debug info hidden mostly -->
-      <details class="debug-info" *ngIf="debugInfo">
-        <summary>Detalles técnicos</summary>
-        <pre>{{ debugInfo }}</pre>
-      </details>
     </div>
   `,
   styles: [`
@@ -41,152 +31,216 @@ import { SupabaseClientService } from '../../../services/supabase-client.service
       align-items: center;
       justify-content: center;
       height: 100vh;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #f8fafc;
-      color: #334155;
-      padding: 20px;
-      text-align: center;
+      background: #f5f5f5;
+      font-family: 'Inter', sans-serif;
     }
     .spinner {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #3b82f6;
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin-bottom: 20px;
+      border-left-color: #09f;
+      animation: spin 1s ease infinite;
     }
-    .error-box { color: #dc2626; }
-    .success-box { color: #16a34a; }
-    .small { font-size: 0.8em; opacity: 0.8; }
-    .debug-info { margin-top: 20px; text-align: left; font-size: 11px; max-width: 90%; overflow: auto; background: #eee; padding: 10px; border-radius: 4px; }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    .error-box {
+      background: #fee2e2;
+      color: #991b1b;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      max-width: 90%;
     }
+    .success-box {
+      background: #dcfce7;
+      color: #166534;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .debug-info {
+        font-size: 10px;
+        text-align: left;
+        margin-top: 10px;
+        white-space: pre-wrap;
+        opacity: 0.7;
+    }
+    .small { font-size: 12px; margin-top: 5px; }
   `]
 })
 export class AuthCallbackComponent implements OnInit {
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private supabase = inject(SupabaseClientService);
-
   loading = true;
-  error = '';
   success = false;
+  error: string | null = null;
   debugInfo = '';
 
+  private supabase = inject(SupabaseClientService);
+  private router = inject(Router);
+  private ngZone = inject(NgZone);
+
   ngOnInit() {
-    this.handleCallback();
+    this.handleAuthCallback();
   }
 
-  async handleCallback() {
-    const params = this.route.snapshot.queryParams as any;
-    const hash = window.location.hash;
+  async handleAuthCallback() {
+    console.log('AuthCallback: Starting...');
 
-    this.debugInfo = JSON.stringify({ params, hashFragment: hash.substring(0, 50) + '...' }, null, 2);
+    // 2. Listen for Auth State Change (Most reliable for OAuth redirect)
+    // We do NOT check initialSession here because it usually comes from LocalStorage and lacks the provider_token.
+    // We wait for the library to process the URL and emit the event.
+    const { data: { subscription } } = this.supabase.instance.auth.onAuthStateChange(async (event, session) => {
+      console.log(`AuthCallback: Auth State Change Event: ${event}`, session?.user?.id);
 
-    if (window.opener) {
-      console.log('AuthCallback: Running in popup');
+      this.ngZone.run(async () => {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || (event === 'INITIAL_SESSION' && session)) {
+          // We only process if we haven't succeeded yet. 
+          // We ALLOW processing even if there was a previous error (retrying with new event).
+          if (!this.success) {
+            await this.processSession(session);
+          }
+        }
+      });
+    });
 
-      // 1. Check for explicit error
-      if (params['error']) {
-        this.error = params['error_description'] || params['error'];
+    // Fallback: If no event fires in 5 seconds (e.g. already signed in), force check
+    setTimeout(() => {
+      this.ngZone.run(async () => {
+        if (!this.success) {
+          console.log('AuthCallback: Timeout fallback checking...');
+          const { data } = await this.supabase.instance.auth.getSession();
+          if (data.session) {
+            await this.processSession(data.session);
+          } else {
+            if (!this.error) { // Only set error if we haven't already
+              this.error = 'No se detectó ninguna sesión activa. Intenta conectar de nuevo.';
+            }
+            this.loading = false;
+          }
+        }
+      });
+    }, 5000);
+  }
+
+  async processSession(session: any) {
+    if (this.success) return; // Already done
+
+    // Clear any previous error if we are retrying
+    this.error = null;
+    this.loading = true;
+
+    try {
+      console.log('AuthCallback: Processing session...', session);
+
+      // 1. RPC FIRST STRATEGY
+      // We assume the client might NOT have the token, so we ask the DB first.
+      console.log('AuthCallback: Attempting RPC token fetch (primary strategy)...');
+      let providerToken: string | null = null;
+      let refreshToken: string | null = null;
+
+      const { data: rpcData, error: rpcError } = await this.supabase.instance
+        .rpc('get_provider_tokens', { provider_name: 'google' });
+
+      if (rpcData && rpcData.access_token) {
+        console.log('RPC Token Fetch SUCCESS!', rpcData);
+        providerToken = rpcData.access_token;
+        if (rpcData.refresh_token) refreshToken = rpcData.refresh_token;
+      } else {
+        console.warn('RPC Token Fetch failed or returned empty:', rpcError || 'No tokens');
+      }
+
+      // 2. FALLBACK: Check Client Session/URL
+      if (!providerToken) {
+        console.log('AuthCallback: RPC failed, checking client session/URL as fallback...');
+        const urlParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+        providerToken = urlParams.get('provider_token') || hashParams.get('provider_token') || session.provider_token || session.user?.app_metadata?.['provider_token'];
+        refreshToken = urlParams.get('provider_refresh_token') || hashParams.get('provider_refresh_token') || session.provider_refresh_token || session.user?.app_metadata?.['provider_refresh_token'];
+      }
+
+      // Debug Info Update
+      this.debugInfo = JSON.stringify({
+        strategy: 'RPC-First',
+        rpcResult: rpcData ? 'FOUND' : 'MISSING',
+        clientValues: {
+          sessionToken: session.provider_token ? 'YES' : 'NO',
+          metaToken: session.user?.app_metadata?.['provider_token'] ? 'YES' : 'NO'
+        }
+      }, null, 2);
+
+      // 3. VALIDATION
+      if (!providerToken) {
+        this.error = 'No se encontraron tokens ni en la base de datos ni en la sesión. Asegúrate de que "Store tokens" esté activo en Supabase.';
         this.loading = false;
-        window.opener.postMessage({ type: 'GOOGLE_CONNECTED', error: this.error }, window.location.origin);
         return;
       }
 
-      // 2. Wait for Session
-      setTimeout(async () => {
-        try {
-          const { data: { session }, error } = await this.supabase.instance.auth.getSession();
+      if (typeof providerToken === 'string' && providerToken.startsWith('ey')) {
+        this.error = 'Error crítico: Token inválido (JWT Supabase). Revisa la configuración del proveedor.';
+        this.loading = false;
+        return;
+      }
 
-          if (error) throw error;
+      // 4. SAVE INTEGRATION
+      const identity = session.user.identities?.find((i: any) => i.provider === 'google');
+      const providerEmail = identity?.identity_data?.email || session.user.email;
+      const companyId = localStorage.getItem('pending_integration_company_id');
 
-          if (session) {
-            // Extract tokens from session
-            // Note: Supabase puts provider tokens in session.provider_token / session.provider_refresh_token
-            // OR in session.user.app_metadata.provider_token? No, usually top level session or identity.
-            // Actually, for linkIdentity, it should be in the returned session object if it's the specific session established by the link.
-            // BUT, `linkIdentity` updates the EXISTING session often.
-            // Let's check `session.provider_token`.
+      const { data: publicUser, error: userError } = await this.supabase.instance
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', session.user.id)
+        .single();
 
-            const providerToken = session.provider_token;
-            const refreshToken = session.provider_refresh_token;
-            const identity = session.user.identities?.find(i => i.provider === 'google');
+      if (userError || !publicUser) {
+        this.error = 'No se encontró tu perfil de usuario (public.users).';
+        this.loading = false;
+        return;
+      }
 
-            if (providerToken && identity) {
-              this.debugInfo += `\nTokens found. Updating integration...`;
+      const upsertData: any = {
+        user_id: publicUser.id,
+        provider: 'google_calendar',
+        access_token: providerToken,
+        refresh_token: refreshToken,
+        expires_at: new Date(Date.now() + 3600 * 1000).toISOString(),
+        metadata: identity?.identity_data || {},
+        updated_at: new Date().toISOString(),
+        provider_email: providerEmail
+      };
 
-              // Upsert integration record manually
-              const { error: insertError } = await this.supabase.instance
-                .from('integrations')
-                .upsert({
-                  user_id: session.user.id, // Assuming auth.uid() matches public user id logic or we use RPC
-                  // Wait, simple upsert might fail if RLS requires matching ID.
-                  // We are logged in as the user, so it should be fine if we have policy.
-                  // But `integrations` uses `user_id` as FK to `public.users`.
-                  // We need to be sure the current auth user has a public user.
-                  provider: 'google_calendar',
-                  access_token: providerToken,
-                  refresh_token: refreshToken,
-                  expires_at: new Date(Date.now() + 3600 * 1000).toISOString(), // Default 1h if not known
-                  metadata: identity.identity_data,
-                  updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id,provider' });
+      if (companyId) {
+        upsertData.company_id = companyId;
+      }
 
-              if (insertError) {
-                console.error('Integration Insert Error:', insertError);
-                this.error = `Error guardando en BD: ${insertError.message}`;
-                this.loading = false;
-                this.debugInfo += `\nDB Error: ${insertError.message}`;
-                return; // Stop here
-              } else {
-                this.debugInfo += `\nIntegration saved to DB.`;
-                this.success = true;
-                this.loading = false;
-                window.opener.postMessage({ type: 'GOOGLE_CONNECTED', success: true }, window.location.origin);
-                setTimeout(() => window.close(), 1500);
-              }
-            } else {
-              this.error = 'No se recibieron los tokens de acceso de Google. Revisa la consola.';
-              this.loading = false;
-              this.debugInfo += `\nERROR: No provider_token in session!`;
-              this.debugInfo += `\nSession keys: ${Object.keys(session).join(', ')}`;
-              if (session.user?.identities) {
-                this.debugInfo += `\nIdentities: ${JSON.stringify(session.user.identities.map(i => ({ provider: i.provider, has_token: !!i.identity_data })))}`;
-              }
-              // Do NOT close window so user can see error
-            }
-          } else {
-            // No session found?
-            // Check if we have tokens in hash that supabase client hasn't processed?
-            // Usually startAutoRefresh handles it.
-            if (hash && hash.includes('access_token')) {
-              this.success = true;
-              this.loading = false;
-              this.debugInfo += `\nHash has token, waiting for Client to absorb...`;
-              // Give it one more try
-              window.opener.postMessage({ type: 'GOOGLE_CONNECTED', success: true }, window.location.origin);
-              setTimeout(() => window.close(), 3000);
-            } else {
-              this.error = 'No se pudo establecer la sesión.';
-              this.loading = false;
-              this.debugInfo += '\nNo session and no token in hash.';
-            }
-          }
+      // Cleanup
+      localStorage.removeItem('pending_integration_company_id');
 
-        } catch (err: any) {
-          this.error = err.message || 'Error desconocido al obtener sesión';
-          this.loading = false;
-          this.debugInfo += `\nException: ${err.message}`;
+      const { error: insertError } = await this.supabase.instance
+        .from('integrations')
+        .upsert(upsertData, { onConflict: 'user_id,provider' });
+
+      if (insertError) {
+        this.error = `Error guardando en BD: ${insertError.message}`;
+        this.loading = false;
+      } else {
+        this.success = true;
+        this.error = null; // Ensure no error is shown
+        this.loading = false;
+
+        if (window.opener) {
+          window.opener.postMessage({ type: 'GOOGLE_CONNECTED', success: true }, window.location.origin);
+          setTimeout(() => window.close(), 1500);
+        } else {
+          setTimeout(() => {
+            this.router.navigate(['/configuracion']);
+          }, 1500);
         }
-      }, 1000);
+      }
 
-    } else {
-      // Non-popup flow
-      this.router.navigate(['/']);
+    } catch (err: any) {
+      this.error = err.message;
+      this.loading = false;
     }
   }
 }
