@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, ElementRef, ViewChild, OnDestroy, AfterViewInit, AfterViewChecked, ChangeDetectorRef, computed, Renderer2, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
+import DOMPurify from 'dompurify';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
@@ -1874,12 +1875,18 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // Helper to transform HTML content (e.g. make images clickable thumbnails)
   getProcessedContent(htmlContent: string): any {
     if (!htmlContent) return '';
+
+    // Sanitize first to prevent XSS
+    const cleanHtml = DOMPurify.sanitize(htmlContent, {
+      ADD_ATTR: ['target', 'class', 'style'], // Allow safe attributes we might use/need
+    });
+
     // simple string manipulation to add class/onclick logic or wrap in anchor
     // We want: output <a href="src" target="_blank"><img src="src" class="comment-thumbnail" /></a>
 
     // Create a temporary DOM element to parse content
     const div = document.createElement('div');
-    div.innerHTML = htmlContent;
+    div.innerHTML = cleanHtml;
 
     const images = div.querySelectorAll('img');
     images.forEach((img: HTMLImageElement) => {
