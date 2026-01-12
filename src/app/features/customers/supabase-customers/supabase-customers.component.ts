@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener, ViewChild, ElementRef, ChangeDetectorRef, TemplateRef, ViewContainerRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener, ViewChild, ElementRef, ChangeDetectorRef, TemplateRef, ViewContainerRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Overlay, OverlayModule, OverlayRef } from '@angular/cdk/overlay';
@@ -38,7 +38,8 @@ import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer
         FormNewCustomerComponent
     ],
     templateUrl: './supabase-customers.component.html',
-    styleUrls: ['./supabase-customers.component.scss']
+    styleUrls: ['./supabase-customers.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
