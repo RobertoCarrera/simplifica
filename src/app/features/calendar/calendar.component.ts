@@ -86,7 +86,7 @@ import { AnimationService } from '../../services/animation.service';
       <div class="flex-1 overflow-hidden relative" cdkDropListGroup>
         @switch (currentView().type) {
           @case ('month') {
-            <div class="h-full flex flex-col p-4 overflow-y-auto pb-0" @slideIn>
+            <div class="h-full flex flex-col overflow-y-auto pb-0" @slideIn>
               <!-- Month header with days -->
               <div class="grid grid-cols-7 gap-px mb-2 flex-shrink-0">
                 @for (day of weekDays; track day) {
@@ -168,95 +168,91 @@ import { AnimationService } from '../../services/animation.service';
           
           @case ('week') {
             <div class="h-full flex flex-col p-4 overflow-hidden" @slideIn>
-              <!-- Week header -->
-              <div class="grid grid-cols-[64px_repeat(7,1fr)] gap-px mb-4 flex-shrink-0 pr-4 border-b border-gray-200 dark:border-gray-700 pb-2">
-                <div class="p-2"></div> <!-- Time column header placeholder -->
-                @for (day of weekDays; track day) {
-                  <div class="p-2 text-center">
-                    <div class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ day }}</div>
-                    <div class="text-lg font-semibold text-gray-900 dark:text-white mt-1">
-                      {{ getWeekDayNumber(day) }}
+              <!-- Week header (Sticky) -->
+              <div class="flex mb-4 flex-shrink-0 pr-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+                <div class="w-16 flex-shrink-0"></div> <!-- Time column header placeholder -->
+                <div class="flex-1 flex">
+                  @for (day of weekDays; track day) {
+                    <div class="flex-1 text-center">
+                      <div class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ day }}</div>
+                      <div class="text-lg font-semibold text-gray-900 dark:text-white mt-1">
+                        {{ getWeekDayNumber(day) }}
+                      </div>
                     </div>
-                  </div>
-                }
+                  }
+                </div>
               </div>
               
               <!-- Week grid (Scrollable) -->
-              <div class="flex-1 overflow-y-auto relative pb-20" #weekContainer>
-                  <div class="grid grid-cols-[64px_repeat(7,1fr)] gap-px bg-gray-200 dark:bg-gray-700 rounded-lg relative"
+              <div class="flex-1 overflow-y-auto relative pt-1" #weekContainer>
+                  <div class="flex relative bg-gray-200 dark:bg-gray-700 rounded-lg"
                        [style.height.px]="totalHeight">
                     
-                    <!-- BACKGROUND GRID (Time Slots) -->
-                    <div class="contents">
-                         <!-- Time Column -->
-                         <div class="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 relative z-10">
-                            @for (hour of hourSlots; track hour) {
-                                <div class="text-sm text-gray-500 dark:text-gray-400 text-right pr-2 sticky left-0"
-                                     [style.height.px]="hourHeight">
-                                    <span class="-translate-y-1/2 block">{{ formatHour(hour) }}</span>
-                                </div>
-                            }
-                         </div>
+                    <!-- Time Column -->
+                    <div class="w-16 flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 relative z-10">
+                        @for (hour of hourSlots; track hour) {
+                            <div class="text-sm text-gray-500 dark:text-gray-400 text-right pr-2 sticky left-0"
+                                 [style.height.px]="hourHeight">
+                                <span class="-translate-y-1/2 block">{{ formatHour(hour) }}</span>
+                            </div>
+                        }
+                    </div>
 
-                         <!-- Day Columns Backgrounds -->
-                         @for (day of weekDays; track day) {
-                             <div class="bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 relative h-full">
+                    <!-- Days Columns Container -->
+                    <div class="flex-1 flex relative">
+                        <!-- Background Grid & Drop Lists -->
+                         @for (day of weekDays; track day; let i = $index) {
+                             <div class="flex-1 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 relative h-full"
+                                  cdkDropList
+                                  [cdkDropListData]="{ dayStr: day }"
+                                  (cdkDropListDropped)="onEventDrop($event)">
+                                  
+                                  <!-- Hour Slots (Clickable) -->
                                   @for (hour of hourSlots; track hour) {
-                                      <div class="border-b border-gray-100 dark:border-gray-700 w-full absolute box-border"
+                                      <div class="border-b border-gray-100 dark:border-gray-700 w-full absolute box-border hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
                                            [style.top.px]="(hour - startHour) * hourHeight"
-                                           [style.height.px]="hourHeight">
+                                           [style.height.px]="hourHeight"
+                                           (click)="onTimeSlotClick(day, hour, $event)">
+                                      </div>
+                                  }
+
+                                  <!-- Events Overlay -->
+                                  @for (event of getDayEvents(day); track event.id) {
+                                      <div class="absolute inset-x-1 rounded px-2 py-1 text-xs cursor-pointer hover:opacity-90 transition-opacity shadow-sm z-20 overflow-hidden border-l-4"
+                                           [style.top.px]="getEventTop(event)"
+                                           [style.height.px]="getEventHeight(event)"
+                                           [style.background-color]="(event.color || '#6366f1') + '20'"
+                                           [style.border-left-color]="event.color || '#6366f1'"
+                                           [style.color]="'inherit'"
+                                           (click)="onEventClick(event, $event)"
+                                           [title]="event.title"
+                                           cdkDrag
+                                           [cdkDragData]="event"
+                                           [cdkDragDisabled]="!editable">
+                                           
+                                           <div class="font-semibold text-gray-900 dark:text-white truncate">
+                                              {{ event.title }}
+                                           </div>
+                                           <div class="text-gray-600 dark:text-gray-300 truncate">
+                                              {{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}
+                                           </div>
+                                           
+                                           <div *cdkDragPreview class="bg-indigo-600 text-white shadow-xl rounded-md p-2 w-48 opacity-90 h-16">
+                                              {{ event.start | date:'HH:mm' }} - {{ event.title }}
+                                           </div>
+                                           
+                                           <!-- Resize Handle -->
+                                           <div class="absolute bottom-0 inset-x-0 h-2 cursor-ns-resize z-30 opacity-0 hover:opacity-100 hover:bg-indigo-400"
+                                                cdkDrag
+                                                cdkDragLockAxis="y"
+                                                (cdkDragEnded)="onResizeEnd($event, event)"
+                                                (click)="$event.stopPropagation()">
+                                           </div>
                                       </div>
                                   }
                              </div>
                          }
                     </div>
-
-                    <!-- EVENTS LAYER (Overlay) -->
-                    <!-- We iterate days again to place drop lists and absolute events -->
-                    @for (day of weekDays; track day; let i = $index) {
-                         <!-- The Day Column (Drop List) -->
-                         <div class="relative h-full w-full" 
-                              [style.grid-column]="i + 2" 
-                              [style.grid-row]="1"
-                              cdkDropList
-                              [cdkDropListData]="{ dayStr: day }"
-                              (cdkDropListDropped)="onEventDrop($event)">
-                              
-                              @for (event of getDayEvents(day); track event.id) {
-                                  <div class="absolute inset-x-1 rounded px-2 py-1 text-xs cursor-pointer hover:opacity-90 transition-opacity shadow-sm z-20 overflow-hidden border-l-4"
-                                       [style.top.px]="getEventTop(event)"
-                                       [style.height.px]="getEventHeight(event)"
-                                       [style.background-color]="(event.color || '#6366f1') + '20'"
-                                       [style.border-left-color]="event.color || '#6366f1'"
-                                       [style.color]="'inherit'"
-                                       (click)="onEventClick(event, $event)"
-                                       [title]="event.title"
-                                       cdkDrag
-                                       [cdkDragData]="event"
-                                       [cdkDragDisabled]="!editable">
-                                       
-                                       <div class="font-semibold text-gray-900 dark:text-white truncate">
-                                          {{ event.title }}
-                                       </div>
-                                       <div class="text-gray-600 dark:text-gray-300 truncate">
-                                          {{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}
-                                       </div>
-                                       
-                                       <div *cdkDragPreview class="bg-indigo-600 text-white shadow-xl rounded-md p-2 w-48 opacity-90 h-16">
-                                          {{ event.start | date:'HH:mm' }} - {{ event.title }}
-                                       </div>
-                                       
-                                       <!-- Resize Handle -->
-                                       <div class="absolute bottom-0 inset-x-0 h-2 cursor-ns-resize z-30 opacity-0 hover:opacity-100 hover:bg-indigo-400"
-                                            cdkDrag
-                                            cdkDragLockAxis="y"
-                                            (cdkDragEnded)="onResizeEnd($event, event)"
-                                            (click)="$event.stopPropagation()">
-                                       </div>
-                                  </div>
-                              }
-                         </div>
-                    }
 
                   </div>
               </div>
@@ -271,7 +267,7 @@ import { AnimationService } from '../../services/animation.service';
                 </h3>
                </div>
 
-               <div class="flex-1 overflow-y-auto relative pb-0">
+               <div class="flex-1 overflow-y-auto relative pb-0 pt-2">
                    <div class="flex relative" [style.height.px]="totalHeight">
                        <!-- Time Labels -->
                        <div class="w-16 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-10">
@@ -289,11 +285,12 @@ import { AnimationService } from '../../services/animation.service';
                             [cdkDropListData]="{ isDayView: true }"
                             (cdkDropListDropped)="onEventDrop($event)">
                             
-                            <!-- Grid Lines -->
+                            <!-- Grid Lines (Clickable) -->
                             @for (hour of hourSlots; track hour) {
-                                <div class="border-b border-gray-100 dark:border-gray-700 w-full absolute box-border"
+                                <div class="border-b border-gray-100 dark:border-gray-700 w-full absolute box-border hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
                                      [style.top.px]="(hour - startHour) * hourHeight"
-                                     [style.height.px]="hourHeight">
+                                     [style.height.px]="hourHeight"
+                                     (click)="onTimeSlotClick('', hour, $event)">
                                 </div>
                             }
 
