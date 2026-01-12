@@ -522,6 +522,21 @@ export class SupabaseBookingsService {
 
         return freeResource ? freeResource.id : null;
     }
+
+    async checkServiceCapacity(serviceId: string, startTime: Date, endTime: Date): Promise<number> {
+        // Count confirmed bookings for this service in this time slot
+        // Used for Group Classes (max_capacity > 1)
+        const { count, error } = await this.supabase
+            .from('bookings')
+            .select('*', { count: 'exact', head: true })
+            .eq('service_id', serviceId)
+            .neq('status', 'cancelled')
+            .lt('start_time', endTime.toISOString())
+            .gt('end_time', startTime.toISOString());
+
+        if (error) throw error;
+        return count || 0;
+    }
 }
 
 export interface AvailabilityException {

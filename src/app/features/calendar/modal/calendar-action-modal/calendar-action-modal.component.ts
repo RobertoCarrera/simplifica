@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseCouponsService, Coupon } from '../../../../services/supabase-coupons.service';
 import { Service } from '../../../../services/supabase-services.service';
+import { SupabaseBookingsService } from '../../../../services/supabase-bookings.service';
 
 export interface CalendarActionData {
   type: 'booking' | 'block';
@@ -24,6 +25,7 @@ export interface CalendarActionData {
   paymentStatus?: 'pending' | 'partial' | 'paid' | 'refunded';
   couponId?: string;
   discountAmount?: number;
+  status?: 'confirmed' | 'pending' | 'cancelled';
 }
 
 @Component({
@@ -49,10 +51,9 @@ export class CalendarActionModalComponent {
   existingId = signal<string | null>(null);
   deleteAction = output<string>();
 
-  // Dependencies (Injected via parent/inputs traditionally, but since this is standalone, we inject)
+  // Dependencies
   private couponsService = inject(SupabaseCouponsService);
-  // We need companyId. It is not currently Input. Assumption: Parent passes client/services with context? 
-  // Wait, services have company_id. We can grab from selected service.
+  private bookingsService = inject(SupabaseBookingsService);
 
   // Coupon Data
   couponCode = signal('');
@@ -61,8 +62,6 @@ export class CalendarActionModalComponent {
 
   // Form Data
   startTimeStr = signal<string>('');
-  // Form Data
-
   endTimeStr = signal<string>(''); // Used internally for calculation or for block mode
 
   // Block Specific
@@ -81,7 +80,7 @@ export class CalendarActionModalComponent {
 
   ngOnChanges() {
     if (this.isOpen()) {
-      // ...
+      // Logic handled in open methods usually, but could be reactive here
     }
   }
 
@@ -128,11 +127,15 @@ export class CalendarActionModalComponent {
     this.blockStartDateStr.set(this.toDateLocal(event.start));
     this.blockEndDateStr.set(this.toDateLocal(event.end));
 
-    // Heuristic could go here to detect if it's a full day block (00:00 - 23:59)
-    // For now we default to time range to be safe
-
     if (type === 'block') {
       this.blockReason = event.title;
+    }
+
+    // Set booking fields if available
+    if (type === 'booking') {
+      this.serviceId = event.extendedProps?.service_id || null;
+      this.clientId = event.extendedProps?.client_id || null;
+      // Restore recurrence logic if complex recurrence parsing is needed
     }
   }
 
@@ -246,7 +249,6 @@ export class CalendarActionModalComponent {
         }
 
         // Check Time Range (Simple text comparison approx)
-        // TODO: More robust time check if needed
         if (variation.conditions?.time_start && variation.conditions?.time_end) {
           const timeStr = start.toTimeString().slice(0, 5); // "HH:MM"
           if (timeStr >= variation.conditions.time_start && timeStr <= variation.conditions.time_end) {
@@ -265,11 +267,9 @@ export class CalendarActionModalComponent {
     }
 
     // Calculate Deposit
-    this.computedDeposit.set(null); // Reset first
+    this.computedDeposit.set(null);
 
-    // Apply Coupon to Price BEFORE Deposit calculation? 
-    // Usually coupons apply to the total price.
-    // Let's apply coupon logic.
+    // Apply Coupon to Price (before deposit usually)
     let finalPrice = price;
     const coupon = this.appliedCoupon();
 
@@ -287,7 +287,6 @@ export class CalendarActionModalComponent {
 
     if (service.deposit_type && service.deposit_type !== 'none') {
       let deposit = 0;
-      // Deposit usually based on FINAL price for percent/full
       if (service.deposit_type === 'fixed') {
         deposit = service.deposit_amount || 0;
       } else if (service.deposit_type === 'percent') {
@@ -310,7 +309,6 @@ export class CalendarActionModalComponent {
     const code = this.couponCode();
     if (!code) return;
 
-    // We need companyId. Services have it.
     const service = this.services().find(s => s.id === this.serviceId);
     if (!service || !service.company_id) {
       this.couponMessage.set({ text: 'Selecciona un servicio primero', type: 'error' });
@@ -341,9 +339,11 @@ export class CalendarActionModalComponent {
     this.closeModal.emit();
   }
 
-  save() {
+  async save() {
     let start: Date;
     let end: Date;
+    let bookingStatus: 'confirmed' | 'pending' | 'cancelled' = 'confirmed';
+    let service: Service | undefined;
 
     if (this.activeTab() === 'block') {
       const type = this.blockType();
@@ -368,9 +368,8 @@ export class CalendarActionModalComponent {
       start = new Date(this.startTimeStr());
       end = new Date(this.endTimeStr());
 
-      // Validation: Advanced Scheduling Rules
       if (this.serviceId) {
-        const service = this.services().find(s => s.id === this.serviceId);
+        service = this.services().find(s => s.id === this.serviceId);
         if (service) {
           const now = new Date();
           const diffMinutes = (start.getTime() - now.getTime()) / 60000;
@@ -395,16 +394,46 @@ export class CalendarActionModalComponent {
             );
             if (!confirmOverride) return;
           }
+
+          // Capacity Validation (Async)
+          if (service.max_capacity && service.max_capacity > 1) {
+            try {
+              const currentCount = await this.bookingsService.checkServiceCapacity(service.id, start, end);
+              if (currentCount >= service.max_capacity) {
+                const confirmFull = confirm(
+                  `⚠️ Cupo Completo\n\nEste servicio tiene una capacidad máxima de ${service.max_capacity}.` +
+                  `\nYa hay ${currentCount} reservas confirmadas para este horario.` +
+                  `\n\n¿Deseas sobre-agendar (Overbook)?`
+                );
+                if (!confirmFull) return;
+              }
+            } catch (err) {
+              console.error('Error checking capacity:', err);
+            }
+          }
+
+          // Approval Workflow
+          if (service.requires_confirmation) {
+            bookingStatus = 'pending';
+            const confirmPending = confirm(
+              `ℹ️ Aprobación Requerida\n\nEste servicio requiere aprobación manual.` +
+              `\nLa reserva se creará en estado 'Pendiente'.` +
+              `\n\n¿Continuar?`
+            );
+            if (!confirmPending) return;
+          }
         }
       }
     }
 
+    // Emit
     this.saveAction.emit({
       type: this.activeTab(),
       startTime: start,
       endTime: end,
       reason: this.activeTab() === 'block' ? (this.blockReason || 'Bloqueado') : undefined,
       blockType: this.activeTab() === 'block' ? this.blockType() : undefined,
+      // Booking specific
       serviceId: this.activeTab() === 'booking' ? (this.serviceId || undefined) : undefined,
       clientId: this.activeTab() === 'booking' ? (this.clientId || undefined) : undefined,
       id: this.existingId() || undefined,
@@ -413,10 +442,17 @@ export class CalendarActionModalComponent {
         endDate: new Date(this.recurrenceEndDateStr())
       } : undefined,
       totalPrice: this.activeTab() === 'booking' ? (this.computedPrice() ?? undefined) : undefined,
+
       depositPaid: (this.activeTab() === 'booking' && this.hasDepositRequirement()) ? this.depositPaidInput() : undefined,
+
       paymentStatus: (this.activeTab() === 'booking' && this.hasDepositRequirement())
         ? (this.depositPaidInput() >= (this.computedDeposit() || 0) ? 'paid' : (this.depositPaidInput() > 0 ? 'partial' : 'pending'))
-        : 'pending' // Default or based on logic? If no deposit, is it paid or pending? Let's say pending if not fully paid upfront logic exists.
+        : 'pending',
+
+      couponId: (this.activeTab() === 'booking' && this.appliedCoupon()) ? this.appliedCoupon()!.id : undefined,
+      discountAmount: (this.activeTab() === 'booking' && this.appliedCoupon()) ? this.appliedCoupon()!.discount_value : undefined,
+
+      status: bookingStatus
     });
 
     this.close();

@@ -440,7 +440,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       min_notice_minutes: 60, // 1 hora por defecto
       max_lead_days: 90,      // 3 meses por defecto
       booking_color: '#3b82f6',
-      required_resource_type: undefined
+      required_resource_type: undefined,
+      max_capacity: 1,
+      requires_confirmation: false
     };
 
     // Inicializar tags seleccionados (pendingTags used for new services)
@@ -598,6 +600,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
     if (this.formData.max_lead_days && this.formData.max_lead_days < 1) {
       this.formErrors['max_lead_days'] = 'Los días de antelación máxima deben ser al menos 1';
+    }
+
+    if (this.formData.max_capacity && this.formData.max_capacity < 1) {
+      this.formErrors['max_capacity'] = 'La capacidad debe ser al menos 1';
     }
 
     return Object.keys(this.formErrors).length === 0;

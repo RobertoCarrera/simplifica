@@ -129,6 +129,10 @@ export interface Service {
   min_notice_minutes?: number;
   max_lead_days?: number;
 
+  // Capacity & Workflow
+  max_capacity?: number;
+  requires_confirmation?: boolean;
+
   // Campos calculados (server-side) para display
   display_price?: number;        // Precio representativo (desde variantes o base_price)
   display_price_label?: string;  // "Precio Base", "Desde", "Precio"
@@ -402,6 +406,8 @@ export class SupabaseServicesService {
       deposit_amount: service.deposit_amount ? Number(service.deposit_amount) : 0,
       min_notice_minutes: service.min_notice_minutes !== undefined ? Number(service.min_notice_minutes) : 60,
       max_lead_days: service.max_lead_days !== undefined ? Number(service.max_lead_days) : 90,
+      max_capacity: service.max_capacity !== undefined ? Number(service.max_capacity) : 1,
+      requires_confirmation: !!service.requires_confirmation,
       created_at: service.created_at,
       updated_at: service.updated_at || service.created_at
     }));
@@ -631,6 +637,9 @@ export class SupabaseServicesService {
     // Advanced Scheduling
     if (serviceData.min_notice_minutes !== undefined) serviceDataForDB.min_notice_minutes = serviceData.min_notice_minutes;
     if (serviceData.max_lead_days !== undefined) serviceDataForDB.max_lead_days = serviceData.max_lead_days;
+    // Capacity & Workflow
+    if (serviceData.max_capacity !== undefined) serviceDataForDB.max_capacity = serviceData.max_capacity;
+    if (serviceData.requires_confirmation !== undefined) serviceDataForDB.requires_confirmation = serviceData.requires_confirmation;
 
     // Public fields
     if (serviceData.is_public !== undefined) serviceDataForDB.is_public = serviceData.is_public;
@@ -714,6 +723,9 @@ export class SupabaseServicesService {
     // Advanced Scheduling
     if (updates.min_notice_minutes !== undefined) serviceData.min_notice_minutes = updates.min_notice_minutes;
     if (updates.max_lead_days !== undefined) serviceData.max_lead_days = updates.max_lead_days;
+    // Capacity & Workflow
+    if (updates.max_capacity !== undefined) serviceData.max_capacity = updates.max_capacity;
+    if (updates.requires_confirmation !== undefined) serviceData.requires_confirmation = updates.requires_confirmation;
 
     // Public fields
     if (updates.is_public !== undefined) serviceData.is_public = updates.is_public;
