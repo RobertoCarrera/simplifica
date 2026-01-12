@@ -1,208 +1,192 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AuthService } from '../../../services/auth.service';
-import { ToastService } from '../../../services/toast.service';
+import { SupabaseClientService } from '../../../services/supabase-client.service';
 
 @Component({
   selector: 'app-auth-callback',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="min-h-screen flex items-center justify-center bg-gray-50">
-      <div class="max-w-md w-full space-y-8">
-        <div class="text-center">
-          <div class="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100">
-            @if (loading) {
-              <svg class="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            } @else if (error) {
-              <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            } @else {
-              <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-            }
-          </div>
-          
-          <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            @if (loading) {
-              Procesando autenticación...
-            } @else if (error) {
-              Error de autenticación
-            } @else {
-              ¡Autenticación exitosa!
-            }
-          </h2>
-          
-          <p class="mt-2 text-center text-sm text-gray-600">
-            @if (loading) {
-              Por favor espera mientras procesamos tu solicitud
-            } @else if (error) {
-              {{ errorMessage }}
-            } @else {
-              Redirigiendo al dashboard...
-            }
-          </p>
-          
-          @if (error) {
-            <div class="mt-4 space-y-2">
-              <button
-                (click)="redirectToLogin()"
-                class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Volver al login
-              </button>
-              @if (showAccountConfirmedHint) {
-                <div class="text-xs text-gray-500 text-center">
-                  Tu cuenta puede estar ya confirmada. Prueba hacer login directamente.
-                </div>
-              }
-            </div>
-          }
-        </div>
+    <div class="callback-container">
+      <div *ngIf="loading" class="spinner"></div>
+      
+      <div *ngIf="error" class="error-box">
+        <h3>Error de conexión</h3>
+        <p>{{ error }}</p>
+        <p class="small">Cierra esta ventana e intenta de nuevo.</p>
       </div>
+
+      <div *ngIf="success" class="success-box">
+        <h3>¡Conectado!</h3>
+        <p>Tu cuenta de Google se ha vinculado.</p>
+        <p>Esta ventana se cerrará en breve...</p>
+      </div>
+
+      <div *ngIf="!loading && !success && !error" class="info-box">
+        <p>Esperando respuesta de Google...</p>
+      </div>
+      
+      <!-- Debug info hidden mostly -->
+      <details class="debug-info" *ngIf="debugInfo">
+        <summary>Detalles técnicos</summary>
+        <pre>{{ debugInfo }}</pre>
+      </details>
     </div>
-  `
+  `,
+  styles: [`
+    .callback-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f8fafc;
+      color: #334155;
+      padding: 20px;
+      text-align: center;
+    }
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    .error-box { color: #dc2626; }
+    .success-box { color: #16a34a; }
+    .small { font-size: 0.8em; opacity: 0.8; }
+    .debug-info { margin-top: 20px; text-align: left; font-size: 11px; max-width: 90%; overflow: auto; background: #eee; padding: 10px; border-radius: 4px; }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  `]
 })
 export class AuthCallbackComponent implements OnInit {
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private supabase = inject(SupabaseClientService);
+
   loading = true;
-  error = false;
-  errorMessage = '';
-  showAccountConfirmedHint = false;
+  error = '';
+  success = false;
+  debugInfo = '';
 
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private authService: AuthService,
-    private toastService: ToastService
-  ) { }
+  ngOnInit() {
+    this.handleCallback();
+  }
 
-  async ngOnInit() {
-    try {
-      // PRIMERO: Verificar si el usuario ya está autenticado
-      const { data: { session } } = await this.authService.client.auth.getSession();
+  async handleCallback() {
+    const params = this.route.snapshot.queryParams as any;
+    const hash = window.location.hash;
 
-      if (session && session.user) {
-        console.log('[AUTH-CALLBACK] User already authenticated, redirecting...');
+    this.debugInfo = JSON.stringify({ params, hashFragment: hash.substring(0, 50) + '...' }, null, 2);
+
+    if (window.opener) {
+      console.log('AuthCallback: Running in popup');
+
+      // 1. Check for explicit error
+      if (params['error']) {
+        this.error = params['error_description'] || params['error'];
         this.loading = false;
-        this.error = false;
-        await this.redirectToMainApp();
+        window.opener.postMessage({ type: 'GOOGLE_CONNECTED', error: this.error }, window.location.origin);
         return;
       }
 
-      // SEGUNDO: Procesar tokens de confirmación de email
-      const rawHash = window.location.hash;
-      const fragment = rawHash.startsWith('#') ? rawHash.substring(1) : rawHash;
-      const params = new URLSearchParams(fragment);
-      const searchParams = new URLSearchParams(window.location.search);
+      // 2. Wait for Session
+      setTimeout(async () => {
+        try {
+          const { data: { session }, error } = await this.supabase.instance.auth.getSession();
 
-      let accessToken = params.get('access_token') || searchParams.get('access_token');
-      let refreshToken = params.get('refresh_token') || searchParams.get('refresh_token');
-      const type = params.get('type') || searchParams.get('type');
+          if (error) throw error;
 
-      console.log('[AUTH-CALLBACK] rawHash=', rawHash);
-      console.log('[AUTH-CALLBACK] fragment parsed=', fragment);
-      console.log('[AUTH-CALLBACK] location.search=', window.location.search);
-      console.log('[AUTH-CALLBACK] tokens presence:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+          if (session) {
+            // Extract tokens from session
+            // Note: Supabase puts provider tokens in session.provider_token / session.provider_refresh_token
+            // OR in session.user.app_metadata.provider_token? No, usually top level session or identity.
+            // Actually, for linkIdentity, it should be in the returned session object if it's the specific session established by the link.
+            // BUT, `linkIdentity` updates the EXISTING session often.
+            // Let's check `session.provider_token`.
 
-      // Fallback para extraer tokens si están mal parseados
-      if (!accessToken && fragment.includes('access_token=')) {
-        const possible = fragment.split('&').find(p => p.startsWith('access_token='));
-        if (possible) accessToken = possible.split('=')[1];
-      }
-      if (!refreshToken && fragment.includes('refresh_token=')) {
-        const possible = fragment.split('&').find(p => p.startsWith('refresh_token='));
-        if (possible) refreshToken = possible.split('=')[1];
-      }
-      console.log('[AUTH-CALLBACK] after fallback extraction:', { accessToken: !!accessToken, refreshToken: !!refreshToken });
+            const providerToken = session.provider_token;
+            const refreshToken = session.provider_refresh_token;
+            const identity = session.user.identities?.find(i => i.provider === 'google');
 
-      // Manejar errores específicos de Supabase
-      const authError = params.get('error') || searchParams.get('error');
-      const errorCode = params.get('error_code') || searchParams.get('error_code');
-      const errorDescription = params.get('error_description') || searchParams.get('error_description');
+            if (providerToken && identity) {
+              this.debugInfo += `\nTokens found. Updating integration...`;
 
-      if (authError) {
-        console.error('[AUTH-CALLBACK] Supabase error:', { authError, errorCode, errorDescription });
-        this.handleAuthError(authError, errorCode, errorDescription);
-        return;
-      }
+              // Upsert integration record manually
+              const { error: insertError } = await this.supabase.instance
+                .from('integrations')
+                .upsert({
+                  user_id: session.user.id, // Assuming auth.uid() matches public user id logic or we use RPC
+                  // Wait, simple upsert might fail if RLS requires matching ID.
+                  // We are logged in as the user, so it should be fine if we have policy.
+                  // But `integrations` uses `user_id` as FK to `public.users`.
+                  // We need to be sure the current auth user has a public user.
+                  provider: 'google_calendar',
+                  access_token: providerToken,
+                  refresh_token: refreshToken,
+                  expires_at: new Date(Date.now() + 3600 * 1000).toISOString(), // Default 1h if not known
+                  metadata: identity.identity_data,
+                  updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id,provider' });
 
-      // Si no hay tokens válidos, pero tampoco errores, puede ser una navegación directa
-      if (!accessToken || !refreshToken) {
-        console.log('[AUTH-CALLBACK] No se encontraron tokens de autenticación válidos. URL actual:', window.location.href);
-        this.handleNoTokens();
-        return;
-      }
-
-      // Establecer la sesión con los tokens
-      const { error: sessionError } = await this.authService.client.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
-      });
-
-      if (sessionError) {
-        throw sessionError;
-      }
-
-      this.loading = false;
-      await this.authService.refreshCurrentUser();
-      this.toastService.success('¡Éxito!', 'Autenticación exitosa');
-
-      // Redirigir al dashboard después de un breve delay
-      setTimeout(() => {
-        this.router.navigate(['/clientes']);
-      }, 1500);
-
-    } catch (error: any) {
-      console.error('[AUTH-CALLBACK] Error en auth callback:', error);
-      this.loading = false;
-      this.error = true;
-      this.errorMessage = 'Ocurrió un error durante la autenticación. Por favor, intenta nuevamente.';
-    }
-  }
-
-  private async redirectToMainApp() {
-    // Esperar un momento para que la UI se actualice
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    this.router.navigate(['/clientes']);
-  }
-
-  private handleAuthError(authError: string, errorCode: string | null, errorDescription: string | null) {
-    if (authError === 'server_error' && errorCode === 'unexpected_failure') {
-      // Error específico: usuario ya confirmado o problema interno
-      this.loading = false;
-      this.error = true;
-      this.showAccountConfirmedHint = true;
-      this.errorMessage = 'Error interno del servidor de autenticación. Tu cuenta puede estar ya confirmada. Intenta hacer login directamente.';
-
-      // Ofrecer redirección automática al login después de mostrar el error
-      setTimeout(() => {
-        this.router.navigate(['/login'], {
-          queryParams: {
-            message: 'account_may_be_confirmed'
+              if (insertError) {
+                console.error('Integration Insert Error:', insertError);
+                this.error = `Error guardando en BD: ${insertError.message}`;
+                this.loading = false;
+                this.debugInfo += `\nDB Error: ${insertError.message}`;
+                return; // Stop here
+              } else {
+                this.debugInfo += `\nIntegration saved to DB.`;
+                this.success = true;
+                this.loading = false;
+                window.opener.postMessage({ type: 'GOOGLE_CONNECTED', success: true }, window.location.origin);
+                setTimeout(() => window.close(), 1500);
+              }
+            } else {
+              this.error = 'No se recibieron los tokens de acceso de Google. Revisa la consola.';
+              this.loading = false;
+              this.debugInfo += `\nERROR: No provider_token in session!`;
+              this.debugInfo += `\nSession keys: ${Object.keys(session).join(', ')}`;
+              if (session.user?.identities) {
+                this.debugInfo += `\nIdentities: ${JSON.stringify(session.user.identities.map(i => ({ provider: i.provider, has_token: !!i.identity_data })))}`;
+              }
+              // Do NOT close window so user can see error
+            }
+          } else {
+            // No session found?
+            // Check if we have tokens in hash that supabase client hasn't processed?
+            // Usually startAutoRefresh handles it.
+            if (hash && hash.includes('access_token')) {
+              this.success = true;
+              this.loading = false;
+              this.debugInfo += `\nHash has token, waiting for Client to absorb...`;
+              // Give it one more try
+              window.opener.postMessage({ type: 'GOOGLE_CONNECTED', success: true }, window.location.origin);
+              setTimeout(() => window.close(), 3000);
+            } else {
+              this.error = 'No se pudo establecer la sesión.';
+              this.loading = false;
+              this.debugInfo += '\nNo session and no token in hash.';
+            }
           }
-        });
-      }, 5000);
+
+        } catch (err: any) {
+          this.error = err.message || 'Error desconocido al obtener sesión';
+          this.loading = false;
+          this.debugInfo += `\nException: ${err.message}`;
+        }
+      }, 1000);
+
     } else {
-      // Otros errores de Supabase
-      this.loading = false;
-      this.error = true;
-      this.errorMessage = `Error de autenticación: ${decodeURIComponent(errorDescription || authError)}`;
+      // Non-popup flow
+      this.router.navigate(['/']);
     }
-  }
-
-  private handleNoTokens() {
-    this.loading = false;
-    this.error = true;
-    this.errorMessage = 'No se pudieron obtener los tokens de autenticación. Por favor, intenta nuevamente.';
-  }
-
-  redirectToLogin() {
-    this.router.navigate(['/login']);
   }
 }

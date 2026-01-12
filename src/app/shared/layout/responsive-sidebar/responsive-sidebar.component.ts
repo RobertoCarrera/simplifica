@@ -93,7 +93,25 @@ export class ResponsiveSidebarComponent implements OnInit {
   isSwitcherOpen = signal(false);
 
   availableCompanies = computed(() => {
-    return this.authService.companyMemberships().map(m => ({
+    const memberships = this.authService.companyMemberships();
+
+    // Deduplicate by company_id, prioritizing non-client roles if strictly necessary
+    // (AuthService already attempts this, but let's be robust)
+    const unique = new Map<string, any>();
+
+    memberships.forEach(m => {
+      if (!unique.has(m.company_id)) {
+        unique.set(m.company_id, m);
+      } else {
+        const existing = unique.get(m.company_id);
+        // If existing is client and new is member/owner, replace
+        if (existing.role === 'client' && m.role !== 'client') {
+          unique.set(m.company_id, m);
+        }
+      }
+    });
+
+    return Array.from(unique.values()).map(m => ({
       id: m.company_id,
       name: m.company?.name || 'Empresa Sin Nombre',
       role: m.role,

@@ -157,6 +157,8 @@ export class AuthService {
   // Exponer cliente supabase directamente para componentes de callback/reset
   get client() { return this.supabase; }
 
+
+
   // Método auxiliar para operaciones que requieren sesión válida
   private async retryWithSession<T>(
     operation: () => Promise<T>,
@@ -332,7 +334,7 @@ export class AuthService {
 
       // --- SELF-HEALING: If no clients found, try to sync ---
       if ((!clientRes.data || clientRes.data.length === 0)) {
-        console.warn('⚠️ No client records found. Attempting to sync client profile from users table...');
+        console.warn(`⚠️ No client records found for auth_user_id: ${authId}. Attempting to sync client profile from users table...`);
         const syncRes = await this.supabase.rpc('sync_client_profile');
         if (syncRes.data && syncRes.data.success && syncRes.data.updated_count > 0) {
           console.log(`✅ Synced ${syncRes.data.updated_count} client records. Re-fetching...`);
@@ -342,7 +344,11 @@ export class AuthService {
             .select(`id, auth_user_id, email, name, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
             .eq('auth_user_id', authId);
         } else {
-          console.log('ℹ️ Sync attempt returned no updates.');
+          console.log('ℹ️ Sync attempt returned no updates. Auth ID might be new or not mapped to any client.');
+          // Log userRes to see if internal user exists
+          if (!userRes.data) {
+            console.error(`❌ Critical: No internal 'users' record found for auth_user_id: ${authId} either. This user appears to be completely unmapped.`);
+          }
         }
       }
 
