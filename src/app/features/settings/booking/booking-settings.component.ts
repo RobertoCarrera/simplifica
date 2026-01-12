@@ -9,11 +9,12 @@ import { SupabaseBookingsService } from '../../../services/supabase-bookings.ser
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 
 import { CalendarPageComponent } from '../../calendar/page/calendar-page.component';
+import { BookingPreferencesComponent } from './tabs/preferences/booking-preferences.component';
 
 @Component({
     selector: 'app-booking-settings',
     standalone: true,
-    imports: [CommonModule, RouterModule, BookingAvailabilityComponent, ProfessionalsComponent, SkeletonComponent, CalendarPageComponent],
+    imports: [CommonModule, RouterModule, BookingAvailabilityComponent, ProfessionalsComponent, SkeletonComponent, CalendarPageComponent, BookingPreferencesComponent],
     templateUrl: './booking-settings.component.html',
     styleUrls: ['./booking-settings.component.scss']
 })
@@ -22,7 +23,7 @@ export class BookingSettingsComponent implements OnInit {
     private authService = inject(AuthService);
     private bookingsService = inject(SupabaseBookingsService); // Added injection
 
-    activeTab: 'calendar' | 'services' | 'professionals' | 'availability' | 'schedules' = 'calendar';
+    activeTab: 'calendar' | 'services' | 'professionals' | 'availability' | 'schedules' | 'preferences' = 'calendar';
     bookableServices: Service[] = [];
     loading = true;
     error: string | null = null;

@@ -57,6 +57,7 @@ import { AnimationService } from '../../services/animation.service';
             
             <!-- Add event button -->
             <button
+              *ngIf="showAddButton"
               (click)="onAddEvent()"
               class="inline-flex items-center px-4 py-2 bg-white text-indigo-600 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors">
               <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -238,6 +239,7 @@ export class CalendarComponent implements OnInit {
   @Input() events: CalendarEvent[] = [];
   @Input() editable = true;
   @Input() selectable = true;
+  @Input() showAddButton = true;
 
   @Output() eventClick = new EventEmitter<CalendarEventClick>();
   @Output() dateClick = new EventEmitter<CalendarDateClick>();

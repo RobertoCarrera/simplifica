@@ -45,136 +45,49 @@ serve(async (req) => {
         console.log("User authenticated:", user.id)
 
         // =================================================================================
-        // ACTION: FREEBUSY (For Clients/Admin to check availability)
+        // SHARED: Resolve Integration & Refresh Token
         // =================================================================================
-        if (action === 'freebusy') {
-            if (!companyId || !timeMin || !timeMax) throw new Error('Missing parameters for freebusy')
-            console.log(`Checking freebusy for company: ${companyId}`);
 
-            // Use Admin Client to fetch integration SECURELY
-            // This allows Clients to check availability without seeing tokens
-            const supabaseAdmin = createClient(
-                Deno.env.get('SUPABASE_URL') ?? '',
-                Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-            )
+        let targetCompanyId = companyId;
 
-            // Get Integration for the Company
-            const { data: integration, error: dbError } = await supabaseAdmin
-                .from('integrations')
-                .select('*')
-                .eq('company_id', companyId)
-                .eq('provider', 'google_calendar')
-                .maybeSingle()
+        // If no companyId provided (e.g. create_event might come from user context), try to infer or require it.
+        // For 'create_event', we expect 'companyId' in body.
 
-            if (dbError || !integration) {
-                console.error("Integration not found for company (or DB Error):", dbError || 'No Row');
-                // Return empty if no integration found (means no busy times from Google)
-                return new Response(JSON.stringify({ calendars: {}, busy: {} }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-            }
-
-            // Extract Config (which calendar to check?)
-            const config = integration.metadata || {};
-            const availabilityCalendar = config.calendar_id;
-
-            if (!availabilityCalendar) {
-                return new Response(JSON.stringify({ calendars: {}, busy: {} }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-            }
-
-            // Refresh Google Token if Expired
-            let accessToken = integration.access_token
-            const expiresAt = new Date(integration.expires_at).getTime()
-            const now = Date.now()
-
-            // Buffer 5 mins
-            if (integration.refresh_token && expiresAt < (now + 5 * 60 * 1000)) {
-                console.log('Token expired, refreshing (Admin)...')
-                const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        client_id: Deno.env.get('GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID') || '',
-                        client_secret: Deno.env.get('GOTRUE_EXTERNAL_GOOGLE_SECRET') || '',
-                        refresh_token: integration.refresh_token,
-                        grant_type: 'refresh_token',
-                    }),
-                })
-
-                const tokenData = await tokenResponse.json()
-                if (!tokenResponse.ok) {
-                    console.error('Refresh failed:', tokenData);
-                    throw new Error('Failed to refresh Google Token');
-                }
-
-                accessToken = tokenData.access_token
-                const newExpiresAt = new Date(now + tokenData.expires_in * 1000).toISOString()
-
-                // Save new token using Admin client
-                await supabaseAdmin.from('integrations').update({
-                    access_token: accessToken,
-                    expires_at: newExpiresAt,
-                    updated_at: new Date().toISOString()
-                }).eq('id', integration.id)
-            }
-
-            // Call Google FreeBusy API
-            const freeBusyResponse = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    timeMin: timeMin,
-                    timeMax: timeMax,
-                    items: [{ id: availabilityCalendar }]
-                })
-            });
-
-            const freeBusyData = await freeBusyResponse.json();
-            if (!freeBusyResponse.ok) throw new Error(`Google FreeBusy Error: ${JSON.stringify(freeBusyData)}`);
-
-            return new Response(JSON.stringify(freeBusyData), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            })
+        if (!targetCompanyId && user) {
+            // Optional: lookup company for user if not provided?
+            // For now, enforce companyId in body for simplicity.
         }
 
-        // =================================================================================
-        // ACTION: LIST (Default) - For Admin to select calendars
-        // =================================================================================
+        if (!targetCompanyId) throw new Error('Company ID is required');
 
-        // 2. Resolve Public User ID
-        console.log("Public User lookup for auth_id:", user.id)
-        const { data: publicUser, error: userError } = await supabaseClient
-            .from('users')
-            .select('id')
-            .eq('auth_user_id', user.id)
-            .single()
+        // Use Admin Client to fetch integration SECURELY
+        const supabaseAdmin = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
 
-        if (userError || !publicUser) {
-            console.error("Public user lookup failed:", userError)
-            throw new Error('Public User not found')
-        }
-        console.log("Public User found:", publicUser.id)
-
-        // 3. Get Integration Tokens (User's own integration or via Company)
-        // Here we assume Admin is accessing their OWN integration or they are a company member
-        // For simplicity, we query by user_id linked to integration (as setup in auth-callback)
-        console.log("Integration lookup for user_id:", publicUser.id)
-        const { data: integration, error: dbError } = await supabaseClient
+        // Get Integration
+        const { data: integration, error: dbError } = await supabaseAdmin
             .from('integrations')
             .select('*')
-            .eq('user_id', publicUser.id)
+            .eq('company_id', targetCompanyId)
             .eq('provider', 'google_calendar')
-            .single()
+            .maybeSingle()
 
         if (dbError || !integration) {
-            console.error("Integration lookup failed:", dbError)
-            throw new Error('Integration not found')
+            console.error("Integration not found:", dbError || 'No Row');
+            // Check if we should fail or return mock for freebusy?
+            if (action === 'freebusy') {
+                return new Response(JSON.stringify({ calendars: {}, busy: {} }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+            }
+            throw new Error('Google Calendar Integration not found for this company');
         }
-        console.log("Integration found:", integration.id)
 
+        // Helper: Refresh Token
         let accessToken = integration.access_token
         const expiresAt = new Date(integration.expires_at).getTime()
         const now = Date.now()
 
-        // 3. Check Expiration & Refresh if needed
         if (integration.refresh_token && expiresAt < (now + 5 * 60 * 1000)) {
             console.log('Token expired, refreshing...')
             const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -190,38 +103,122 @@ serve(async (req) => {
 
             const tokenData = await tokenResponse.json()
             if (!tokenResponse.ok) {
-                console.error('Refresh failed:', tokenData)
-                throw new Error('Failed to refresh Google Token')
+                console.error('Refresh failed:', tokenData);
+                throw new Error('Failed to refresh Google Token');
             }
-            console.log('Refreshed token success')
 
             accessToken = tokenData.access_token
             const newExpiresAt = new Date(now + tokenData.expires_in * 1000).toISOString()
 
-            await supabaseClient
-                .from('integrations')
-                .update({
-                    access_token: accessToken,
-                    expires_at: newExpiresAt,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', integration.id)
+            // Save new token
+            await supabaseAdmin.from('integrations').update({
+                access_token: accessToken,
+                expires_at: newExpiresAt,
+                updated_at: new Date().toISOString()
+            }).eq('id', integration.id)
         }
 
-        // 4. Call Google Calendar List API
-        console.log('Calling Google API...')
-        const googleResponse = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
+        const config = integration.metadata || {};
+        const targetCalendarId = config.calendar_id || 'primary'; // Default to primary if not set
+
+        // =================================================================================
+        // ACTION: CREATE_EVENT
+        // =================================================================================
+        if (action === 'create_event') {
+            const { booking } = body;
+            if (!booking) throw new Error('Booking data required');
+
+            console.log('Creating Google Event for:', booking.customer_email);
+
+            const event = {
+                summary: `Cita: ${booking.service_name || 'Servicio'} - ${booking.customer_name}`,
+                description: `Cliente: ${booking.customer_name}\nEmail: ${booking.customer_email}\nTel: ${booking.customer_phone || 'N/A'}\nNotas: ${booking.notes || ''}`,
+                start: {
+                    dateTime: booking.start_time,
+                    timeZone: 'Europe/Madrid', // Should probably come from company settings
+                },
+                end: {
+                    dateTime: booking.end_time,
+                    timeZone: 'Europe/Madrid',
+                },
+                attendees: [
+                    { email: booking.customer_email }
+                ],
+                reminders: {
+                    useDefault: true
+                }
+            };
+
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${targetCalendarId}/events`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(event),
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(`Google Create Error: ${JSON.stringify(data)}`);
+
+            return new Response(JSON.stringify({ success: true, google_event_id: data.id, link: data.htmlLink }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
+        // =================================================================================
+        // ACTION: DELETE_EVENT
+        // =================================================================================
+        if (action === 'delete_event') {
+            const { google_event_id } = body;
+            if (!google_event_id) throw new Error('google_event_id required');
+
+            console.log('Deleting Google Event:', google_event_id);
+
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${targetCalendarId}/events/${google_event_id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                }
+            });
+
+            if (!response.ok && response.status !== 404 && response.status !== 410) {
+                // Ignore 404/410 (already deleted)
+                const data = await response.json();
+                throw new Error(`Google Delete Error: ${JSON.stringify(data)}`);
             }
-        })
 
-        const googleData = await googleResponse.json()
-        if (!googleResponse.ok) throw new Error(`Google API Error: ${googleData.error?.message || 'Unknown code'}`)
+            return new Response(JSON.stringify({ success: true }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
 
-        return new Response(JSON.stringify(googleData), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+        // =================================================================================
+        // ACTION: FREEBUSY
+        // =================================================================================
+        if (action === 'freebusy') {
+            if (!timeMin || !timeMax) throw new Error('Missing parameters for freebusy')
+
+            // Call Google FreeBusy API
+            const freeBusyResponse = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    timeMin: timeMin,
+                    timeMax: timeMax,
+                    items: [{ id: targetCalendarId }]
+                })
+            });
+
+            const freeBusyData = await freeBusyResponse.json();
+            if (!freeBusyResponse.ok) throw new Error(`Google FreeBusy Error: ${JSON.stringify(freeBusyData)}`);
+
+            return new Response(JSON.stringify(freeBusyData), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+
+        throw new Error(`Unknown action: ${action}`);
 
     } catch (error: any) {
         console.error('Function Error (Catch):', error)

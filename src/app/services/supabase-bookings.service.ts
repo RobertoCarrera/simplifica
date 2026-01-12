@@ -184,6 +184,29 @@ export class SupabaseBookingsService {
         );
     }
 
+    getCompanyDefaultSchedule(companyId: string): Observable<AvailabilitySchedule[]> {
+        return from(
+            this.supabase.rpc('get_company_schedule', { p_company_id: companyId })
+        ).pipe(
+            map(({ data, error }) => {
+                if (error) throw error;
+                // RPC returns the rows directly in 'data' when successful
+                return (data || []) as AvailabilitySchedule[];
+            })
+        );
+    }
+
+    getBookingConfiguration(companyId: string): Observable<any> {
+        return from(
+            this.supabase.rpc('get_booking_config', { p_company_id: companyId })
+        ).pipe(
+            map(({ data, error }) => {
+                if (error) throw error;
+                return data || {};
+            })
+        );
+    }
+
     async saveAvailabilitySchedules(userId: string, schedules: AvailabilitySchedule[]) {
         // 1. Delete existing default schedules for user
         const { error: deleteError } = await this.supabase
@@ -232,13 +255,74 @@ export class SupabaseBookingsService {
         );
     }
 
+    getMyBookings(companyId: string): Observable<Booking[]> {
+        return from(
+            this.supabase
+                .from('bookings')
+                .select(`
+                    *,
+                    service:services(name, duration_minutes),
+                    booking_type:booking_types(name)
+                `)
+                .eq('company_id', companyId)
+                .order('start_time', { ascending: true })
+        ).pipe(
+            map(({ data, error }) => {
+                if (error) throw error;
+                return data as Booking[];
+            })
+        );
+    }
+
     async createBooking(booking: any) {
+        // 1. Insert into DB first
         const { data, error } = await this.supabase
             .from('bookings')
             .insert(booking)
-            .select()
+            .select(`
+                *,
+                service:services(name, duration_minutes)
+            `)
             .single();
+
         if (error) throw error;
+
+        // 2. Sync to Google Calendar (Best effort)
+        try {
+            const bookingWithService = {
+                ...booking,
+                service_name: data.service?.name, // Add service name for Google Event title
+                // Ensure date format or other fields as needed
+            };
+
+            // Check if company has integration? The edge function handles checks.
+            const { data: googleData, error: googleError } = await this.supabase.functions.invoke('google-calendar', {
+                body: {
+                    action: 'create_event',
+                    companyId: booking.company_id, // Ensure this is passed
+                    booking: bookingWithService
+                }
+            });
+
+            if (googleError) {
+                console.warn('Google Calendar Sync Failed (Function Error):', googleError);
+            } else if (googleData?.google_event_id) {
+                // 3. Update DB with Google Event ID
+                await this.supabase
+                    .from('bookings')
+                    .update({ google_event_id: googleData.google_event_id })
+                    .eq('id', data.id);
+
+                data.google_event_id = googleData.google_event_id; // Update local return
+            } else {
+                console.warn('Google Calendar Sync Failed (No ID returned):', googleData);
+            }
+
+        } catch (syncError) {
+            console.error('Google Calendar Sync Exception:', syncError);
+            // We do NOT throw here, we want the booking to succeed even if sync fails
+        }
+
         return data;
     }
 
@@ -254,6 +338,29 @@ export class SupabaseBookingsService {
     }
 
     async deleteBooking(id: string) {
+        // 1. Fetch to get Google Event ID
+        const { data: booking } = await this.supabase
+            .from('bookings')
+            .select('company_id, google_event_id')
+            .eq('id', id)
+            .single();
+
+        // 2. Delete from Google Calendar if linked
+        if (booking?.google_event_id) {
+            try {
+                await this.supabase.functions.invoke('google-calendar', {
+                    body: {
+                        action: 'delete_event',
+                        companyId: booking.company_id,
+                        google_event_id: booking.google_event_id
+                    }
+                });
+            } catch (e) {
+                console.warn('Google Calendar Delete Failed:', e);
+            }
+        }
+
+        // 3. Delete from DB
         const { error } = await this.supabase
             .from('bookings')
             .delete()

@@ -48,6 +48,13 @@
                         class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
                         <i class="fas fa-clock mr-2"></i> Horarios
                     </button>
+                    <button (click)="activeTab = 'preferences'"
+                        [class]="activeTab === 'preferences' 
+                                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' 
+                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'"
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
+                        <i class="fas fa-sliders-h mr-2"></i> Configuración
+                    </button>
                 </nav>
             </div>
         </div>
@@ -183,6 +190,11 @@
         <!-- Availability Tab -->
         <div *ngIf="activeTab === 'availability'" class="animate-fadeIn">
             <app-booking-availability></app-booking-availability>
+        </div>
+
+        <!-- Preferences Tab -->
+        <div *ngIf="activeTab === 'preferences'" class="animate-fadeIn">
+            <app-booking-preferences></app-booking-preferences>
         </div>
     </div>
 </div>

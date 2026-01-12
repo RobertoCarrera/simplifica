@@ -18,9 +18,14 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
       <div class="max-w-5xl mx-auto">
         
         <!-- Header -->
-        <div class="mb-8">
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Reservar Cita</h1>
-          <p class="text-gray-600 dark:text-gray-400 mt-2">Selecciona un servicio y encuentra el mejor momento para ti.</p>
+        <div class="mb-8 flex justify-between items-start">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Reservar Cita</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-2">Selecciona un servicio y encuentra el mejor momento para ti.</p>
+          </div>
+          <button routerLink="/portal/mis-reservas" class="bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center">
+             <i class="far fa-list-alt mr-2"></i> Ver mis reservas
+          </button>
         </div>
 
         <!-- Loading -->
@@ -173,6 +178,9 @@ export class PortalBookingsComponent implements OnInit {
         this.fetchSlots(newDate);
     }
 
+    bookingPreferences = signal<any>(null); // Store fetched preferences
+    bookingTypes = signal<any[]>([]);
+
     async loadBookableServices() {
         this.loading.set(true);
         try {
@@ -183,7 +191,15 @@ export class PortalBookingsComponent implements OnInit {
                 return;
             }
 
-            const allServices = await this.servicesService.getServices(companyId);
+            // Parallel fetch: Services + Booking Config + Booking Types
+            const [allServices, config, bTypes] = await Promise.all([
+                this.servicesService.getServices(companyId),
+                this.bookingsService.getBookingConfiguration(companyId).toPromise(),
+                this.bookingsService.getBookingTypes(companyId).toPromise()
+            ]);
+
+            this.bookingPreferences.set(config || {});
+            this.bookingTypes.set(bTypes || []);
             // Filter by is_bookable AND is_active
             this.services.set(allServices.filter(s => s.is_bookable && s.is_active));
             this.loading.set(false);
@@ -210,16 +226,54 @@ export class PortalBookingsComponent implements OnInit {
 
         try {
             const companyId = this.authService.currentCompanyId();
+            if (!companyId) return;
+
+            // 0. Check Max Future Days
+            const prefs = this.bookingPreferences() || {};
+            const maxDays = prefs.max_future_days || 60;
+            const targetDate = new Date(dateStr);
+            const today = new Date();
+            const maxDate = new Date();
+            maxDate.setDate(today.getDate() + maxDays);
+
+            if (targetDate > maxDate) {
+                this.loadingSlots.set(false);
+                return; // Beyond authorized horizon
+            }
+
+            // Fetch company schedule (Owner's schedule)
+            const schedules = await new Promise<any[]>((resolve, reject) => {
+                this.bookingsService.getCompanyDefaultSchedule(companyId!).subscribe({
+                    next: (data) => resolve(data),
+                    error: (err) => reject(err)
+                });
+            });
+
+            console.log('🗓️ Debug - Company ID:', companyId);
+            console.log('🗓️ Debug - All Schedules fetched:', schedules);
+
             const startOfDay = new Date(dateStr);
             startOfDay.setHours(0, 0, 0, 0);
 
             const endOfDay = new Date(dateStr);
             endOfDay.setHours(23, 59, 59, 999);
 
+            // Javascript getDay(): 0=Sun, 1=Mon...
+            const dayOfWeek = startOfDay.getDay();
+
+            // Filter relevant schedules for this day
+            const daySchedules = schedules.filter(s => s.day_of_week === dayOfWeek && !s.is_unavailable);
+            console.log('🗓️ Debug - Schedules for day', dayOfWeek, ':', daySchedules);
+
+            if (daySchedules.length === 0) {
+                this.loadingSlots.set(false);
+                return; // No availability today
+            }
+
             // 1. Fetch Google FreeBusy
             const payload = {
                 action: 'freebusy',
-                companyId: companyId,
+                companyId: companyId, // Fixed parameter name to match backend expectation if needed, or check backend code
                 timeMin: startOfDay.toISOString(),
                 timeMax: endOfDay.toISOString()
             };
@@ -230,63 +284,81 @@ export class PortalBookingsComponent implements OnInit {
 
             let busyIntervals: { start: string, end: string }[] = [];
 
-            if (error) {
-                console.error('Available check error:', error);
-                // Optionally continue with empty busy intervals if we want to allow booking even if Google check fails
-                // But let's show an error warning maybe?
-                this.toastService.error('Aviso', 'No se pudo verificar disponibilidad externa. Mostrando horarios base.');
-            } else {
+            if (data && !error) {
                 busyIntervals = this.parseBusyIntervals(data);
+            } else if (error) {
+                console.warn('Google Calendar check unavailable:', error);
+                // We continue with just internal schedule
             }
 
-            // 2. Generate Slots
-            // Default working hours: 09:00 to 18:00
-            // TODO: Load this from availability settings if possible
-            const workingStartHour = 9;
-            const workingEndHour = 18;
+            // 2. Generate Slots based on Schedules
             const durationMinutes = service.duration_minutes || 60;
+            const slotInterval = prefs.slot_interval_minutes || 30; // Default 30 min step
+            const minAdvance = prefs.min_advance_minutes || 60; // Default 60 min advance notice
+            const bufferAfter = prefs.buffer_after_minutes || 0;
+
             const generatedSlots: Date[] = [];
+            const now = Date.now();
+            const minTime = now + (minAdvance * 60000);
 
-            let currentSlot = new Date(startOfDay);
-            currentSlot.setHours(workingStartHour, 0, 0, 0);
+            daySchedules.forEach(schedule => {
+                // Parse schedule string "HH:MM:SS"
+                const [startH, startM] = schedule.start_time.split(':').map(Number);
+                const [endH, endM] = schedule.end_time.split(':').map(Number);
 
-            const endTime = new Date(startOfDay);
-            endTime.setHours(workingEndHour, 0, 0, 0);
+                let currentSlot = new Date(startOfDay);
+                currentSlot.setHours(startH, startM, 0, 0);
 
-            while (currentSlot.getTime() + durationMinutes * 60000 <= endTime.getTime()) {
-                const slotEnd = new Date(currentSlot.getTime() + durationMinutes * 60000);
+                const segmentEnd = new Date(startOfDay);
+                segmentEnd.setHours(endH, endM, 0, 0);
 
-                // Optimization: exclude past slots if date is today
-                if (currentSlot.getTime() < Date.now()) {
-                    currentSlot = slotEnd; // Move to next
-                    continue;
+                // Iterate with slotInterval
+                // Condition: start + duration + buffer <= segmentEnd
+                while (currentSlot.getTime() + (durationMinutes + bufferAfter) * 60000 <= segmentEnd.getTime()) {
+                    const slotEnd = new Date(currentSlot.getTime() + durationMinutes * 60000);
+
+                    // Exclude past slots or slots too soon
+                    if (currentSlot.getTime() < minTime) {
+                        // Advance by interval
+                        currentSlot = new Date(currentSlot.getTime() + slotInterval * 60000);
+                        continue;
+                    }
+
+                    // Check overlap with Busy Intervals
+                    // NOTE: Does the buffer also need to be free? Usually yes.
+                    // effectiveEnd = slotEnd + buffer
+                    const effectiveEnd = new Date(slotEnd.getTime() + bufferAfter * 60000);
+
+                    const isBusy = busyIntervals.some(busy => {
+                        const busyStart = new Date(busy.start).getTime();
+                        const busyEnd = new Date(busy.end).getTime();
+                        const slotStart = currentSlot.getTime();
+                        const slotEndTime = effectiveEnd.getTime(); // Check availability including buffer
+                        return (slotStart < busyEnd && slotEndTime > busyStart);
+                    });
+
+                    if (!isBusy) {
+                        generatedSlots.push(new Date(currentSlot));
+                    }
+
+                    // Advance by interval
+                    currentSlot = new Date(currentSlot.getTime() + slotInterval * 60000);
                 }
+            });
 
-                // Check overlap
-                const isBusy = busyIntervals.some(busy => {
-                    const busyStart = new Date(busy.start).getTime();
-                    const busyEnd = new Date(busy.end).getTime();
-                    const slotStart = currentSlot.getTime();
-                    const slotEndTime = slotEnd.getTime();
+            // Sort slots (since we might have multiple blocks)
+            generatedSlots.sort((a, b) => a.getTime() - b.getTime());
 
-                    // Simple overlap check
-                    return (slotStart < busyEnd && slotEndTime > busyStart);
-                });
+            // Deduplicate (if multiple blocks overlap or weird intervals)
+            const uniqueSlots = generatedSlots.filter((date, i, self) =>
+                i === self.findIndex(d => d.getTime() === date.getTime())
+            );
 
-                if (!isBusy) {
-                    generatedSlots.push(new Date(currentSlot));
-                }
-
-                // Next slot. Step by duration? Or always on hour/half-hour marks?
-                // Usually step by duration or fixed interval (like 30 mins).
-                // Let's step by duration for now.
-                currentSlot = slotEnd;
-            }
-
-            this.slots.set(generatedSlots);
+            this.slots.set(uniqueSlots);
 
         } catch (e) {
             console.error(e);
+            this.toastService.error('Error', 'No se pudieron cargar los horarios.');
         } finally {
             this.loadingSlots.set(false);
         }
@@ -328,6 +400,7 @@ export class PortalBookingsComponent implements OnInit {
             const bookingData: any = {
                 company_id: companyId,
                 service_id: service.id,
+                booking_type_id: this.bookingTypes()[0]?.id, // Default to first available type
                 customer_name: client?.full_name || client?.email || 'Cliente Portal',
                 customer_email: client?.email || 'no-email@example.com',
                 start_time: slot.toISOString(),
