@@ -10,10 +10,18 @@ export interface CalendarEvent {
   attendees?: string[];
   type?: 'appointment' | 'meeting' | 'task' | 'reminder';
   meta?: any;
+  resourceId?: string;
+}
+
+export interface CalendarResource {
+  id: string;
+  title: string;
+  color?: string;
+  avatar?: string;
 }
 
 export interface CalendarView {
-  type: 'month' | 'week' | 'day';
+  type: 'month' | 'week' | 'day' | 'timeline';
   date: Date;
 }
 

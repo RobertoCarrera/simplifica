@@ -1,7 +1,8 @@
-import { Component, Input, Output, EventEmitter, computed, signal, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
-import { CalendarEvent, CalendarView, CalendarDay, CalendarEventClick, CalendarDateClick } from './calendar.interface';
+import { Component, Input, Output, EventEmitter, OnInit, signal, computed, ViewChild, ElementRef } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
+import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
+import { CalendarEvent, CalendarView, CalendarDateClick, CalendarEventClick, CalendarDay, CalendarResource } from './calendar.interface';
+import { trigger, transition, style, animate } from '@angular/animations';
 import { AnimationService } from '../../services/animation.service';
 
 @Component({
@@ -44,7 +45,7 @@ import { AnimationService } from '../../services/animation.service';
           <div class="flex items-center space-x-2">
             <!-- View selector -->
             <div class="flex bg-white bg-opacity-20 rounded-md p-1">
-              @for (viewType of ['month', 'week', 'day']; track viewType) {
+              @for (viewType of ['month', 'week', 'day', 'timeline']; track viewType) {
                 <button
                   (click)="setView(viewType)"
                   class="px-3 py-1 text-sm font-medium text-white rounded transition-colors"
@@ -86,7 +87,7 @@ import { AnimationService } from '../../services/animation.service';
       <div class="flex-1 overflow-hidden relative" cdkDropListGroup>
         @switch (currentView().type) {
           @case ('month') {
-            <div class="h-full flex flex-col overflow-y-auto pb-0" @slideIn>
+            <div class="h-full flex flex-col p-4 overflow-y-auto pb-0 no-scrollbar" @slideIn>
               <!-- Month header with days -->
               <div class="grid grid-cols-7 gap-px mb-2 flex-shrink-0">
                 @for (day of weekDays; track day) {
@@ -184,7 +185,7 @@ import { AnimationService } from '../../services/animation.service';
               </div>
               
               <!-- Week grid (Scrollable) -->
-              <div class="flex-1 overflow-y-auto relative pt-1" #weekContainer>
+              <div class="flex-1 overflow-y-auto relative pt-1 no-scrollbar" #weekContainer>
                   <div class="flex relative bg-gray-200 dark:bg-gray-700 rounded-lg"
                        [style.height.px]="totalHeight">
                     
@@ -267,7 +268,7 @@ import { AnimationService } from '../../services/animation.service';
                 </h3>
                </div>
 
-               <div class="flex-1 overflow-y-auto relative pb-0 pt-2">
+               <div class="flex-1 overflow-y-auto relative pb-0 pt-2 no-scrollbar">
                    <div class="flex relative" [style.height.px]="totalHeight">
                        <!-- Time Labels -->
                        <div class="w-16 flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-10">
@@ -331,6 +332,78 @@ import { AnimationService } from '../../services/animation.service';
                </div>
              </div>
           }
+          
+          @case ('timeline') {
+            <div class="h-full flex flex-col p-4 overflow-hidden" @slideIn>
+               <!-- Timeline Header -->
+               <div class="flex border-b border-gray-200 dark:border-gray-700 pb-2 mb-2">
+                   <div class="w-48 flex-shrink-0 font-semibold text-gray-500 dark:text-gray-400 pl-2">
+                       Profesionales
+                   </div>
+                   <div class="flex-1 flex overflow-hidden">
+                       @for (hour of hourSlots; track hour) {
+                           <div class="flex-1 min-w-[80px] text-center text-sm font-medium text-gray-500 dark:text-gray-400">
+                               {{ formatHour(hour) }}
+                           </div>
+                       }
+                   </div>
+               </div>
+
+               <!-- Timeline Body (Scrollable) -->
+               <div class="flex-1 overflow-y-auto no-scrollbar relative">
+                   @for (resource of resources; track resource.id) {
+                       <div class="flex border-b border-gray-100 dark:border-gray-700 min-h-[80px] relative hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                           <!-- Resource Header (Row Label) -->
+                           <div class="w-48 flex-shrink-0 p-3 border-r border-gray-200 dark:border-gray-700 flex items-center gap-3 sticky left-0 bg-white dark:bg-gray-800 z-30">
+                               @if (resource.avatar) {
+                                   <img [src]="resource.avatar" class="w-8 h-8 rounded-full object-cover">
+                               } @else {
+                                   <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-300 flex items-center justify-center font-bold text-xs">
+                                       {{ resource.title.charAt(0) }}
+                                   </div>
+                               }
+                               <div class="font-medium text-sm text-gray-900 dark:text-white truncate">
+                                   {{ resource.title }}
+                               </div>
+                           </div>
+
+                           <!-- Resource Lane (Drop Zone) -->
+                           <div class="flex-1 relative flex"
+                                cdkDropList
+                                [cdkDropListData]="{ resourceId: resource.id, isTimeline: true }"
+                                (cdkDropListDropped)="onEventDrop($event)">
+                                
+                                <!-- Background Grid -->
+                                 @for (hour of hourSlots; track hour) {
+                                     <div class="flex-1 min-w-[80px] border-r border-gray-100 dark:border-gray-700 h-full relative cursor-pointer hover:bg-gray-100/50"
+                                          (click)="onTimeSlotClick('', hour, $event)">
+                                         <!-- Maybe add click for creating event here too? Need passing resourceId -->
+                                     </div>
+                                 }
+                                 
+                                 <!-- Events Overlay -->
+                                  @for (event of getTimelineEvents(resource.id); track event.id) {
+                                      <div class="absolute top-2 bottom-2 rounded px-2 py-1 text-xs cursor-pointer hover:opacity-90 transition-opacity shadow-sm z-20 overflow-hidden border-l-4"
+                                           [style.left.%]="getUserEventLeftPercent(event)"
+                                           [style.width.%]="getUserEventWidthPercent(event)"
+                                           [style.background-color]="(event.color || '#6366f1') + '20'"
+                                           [style.border-left-color]="event.color || '#6366f1'"
+                                           (click)="onEventClick(event, $event)"
+                                           cdkDrag
+                                           [cdkDragData]="event"
+                                           [cdkDragDisabled]="!editable">
+                                           
+                                           <div class="font-semibold text-gray-900 dark:text-white truncate">
+                                              {{ event.title }}
+                                           </div>
+                                      </div>
+                                  }
+                           </div>
+                       </div>
+                   }
+               </div>
+            </div>
+          }
         }
       </div>
     </div>
@@ -356,6 +429,14 @@ import { AnimationService } from '../../services/animation.service';
     .cdk-drop-list-dragging .cdk-drag {
       transition: transform 250ms cubic-bezier(0, 0, 0.2, 1); 
     }
+    /* Hide scrollbar but allow scrolling */
+    .no-scrollbar {
+      -ms-overflow-style: none;  /* IE and Edge */
+      scrollbar-width: none;  /* Firefox */
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
   `]
 })
 export class CalendarComponent implements OnInit {
@@ -366,13 +447,14 @@ export class CalendarComponent implements OnInit {
   @Input() showBlockButton = false;
   @Input() startHour = 8;
   @Input() endHour = 22;
+  @Input() resources: CalendarResource[] = [];
 
   @Output() eventClick = new EventEmitter<CalendarEventClick>();
   @Output() dateClick = new EventEmitter<CalendarDateClick>();
   @Output() addEvent = new EventEmitter<void>();
   @Output() blockTime = new EventEmitter<void>();
   @Output() viewChange = new EventEmitter<CalendarView>();
-  @Output() eventDrop = new EventEmitter<{ event: CalendarEvent, newStart: Date }>();
+  @Output() eventDrop = new EventEmitter<{ event: CalendarEvent, newStart: Date, newResource?: string }>();
   @Output() eventResize = new EventEmitter<{ event: CalendarEvent, newEnd: Date }>();
 
   currentView = signal<CalendarView>({
@@ -459,7 +541,7 @@ export class CalendarComponent implements OnInit {
   }
 
   getViewLabel(viewType: string): string {
-    const labels = { month: 'Mes', week: 'Semana', day: 'Día' };
+    const labels = { month: 'Mes', week: 'Semana', day: 'Día', timeline: 'Timeline' };
     return labels[viewType as keyof typeof labels] || viewType;
   }
 
@@ -476,6 +558,7 @@ export class CalendarComponent implements OnInit {
       case 'month': newDate.setMonth(newDate.getMonth() - 1); break;
       case 'week': newDate.setDate(newDate.getDate() - 7); break;
       case 'day': newDate.setDate(newDate.getDate() - 1); break;
+      case 'timeline': newDate.setDate(newDate.getDate() - 1); break;
     }
     this.currentView.update(v => ({ ...v, date: newDate }));
     this.viewChange.emit(this.currentView());
@@ -488,6 +571,7 @@ export class CalendarComponent implements OnInit {
       case 'month': newDate.setMonth(newDate.getMonth() + 1); break;
       case 'week': newDate.setDate(newDate.getDate() + 7); break;
       case 'day': newDate.setDate(newDate.getDate() + 1); break;
+      case 'timeline': newDate.setDate(newDate.getDate() + 1); break;
     }
     this.currentView.update(v => ({ ...v, date: newDate }));
     this.viewChange.emit(this.currentView());
@@ -578,11 +662,19 @@ export class CalendarComponent implements OnInit {
       const dayIndex = this.weekDays.indexOf(day);
       slotDate = new Date(weekStart);
       slotDate.setDate(weekStart.getDate() + dayIndex);
-    } else if (this.currentView().type === 'day') {
+    } else if (this.currentView().type === 'day' || this.currentView().type === 'timeline') {
       slotDate = new Date(this.currentView().date);
     }
     slotDate.setHours(hour, 0, 0, 0);
     this.onDateClick(slotDate, false, event);
+  }
+
+  getTimelineEvents(resourceId: string): CalendarEvent[] {
+    const viewDate = this.currentView().date;
+    return this.events.filter(event =>
+      this.isSameDay(event.start, viewDate) &&
+      event.resourceId === resourceId
+    );
   }
 
   onAddEvent() { this.addEvent.emit(); }
@@ -593,50 +685,65 @@ export class CalendarComponent implements OnInit {
     const movedEvent: CalendarEvent = event.item.data;
     const targetData = event.container.data;
 
-    // Calculate new start time
     let newStart = new Date(movedEvent.start);
+    let newResource = movedEvent.resourceId;
 
-    // 1. Determine Date (Day)
-    if (targetData.date) {
-      // Month View: Date comes from container
+    // 1. Timeline: Resource Change
+    if (targetData.isTimeline) {
+      if (targetData.resourceId) {
+        newResource = targetData.resourceId;
+      }
+    }
+    // 2. Month View: Date Change
+    else if (targetData.date) {
       const targetDate = new Date(targetData.date);
       newStart.setFullYear(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
-      // Preserve original time
-    } else if (targetData.dayStr) {
-      // Week View: Date comes from dayStr
+    }
+    // 3. Week View: Date Change
+    else if (targetData.dayStr) {
       const viewDate = this.currentView().date;
       const weekStart = this.getWeekStart(viewDate);
       const dayIndex = this.weekDays.indexOf(targetData.dayStr);
-      newStart = new Date(weekStart);
-      newStart.setDate(weekStart.getDate() + dayIndex);
-      // Time will be adjusted by distance below
-      newStart.setHours(movedEvent.start.getHours(), movedEvent.start.getMinutes());
-    } else if (targetData.isDayView) {
-      // Day View: Date is current view date
-      newStart = new Date(this.currentView().date);
-      newStart.setHours(movedEvent.start.getHours(), movedEvent.start.getMinutes());
+      const colDate = new Date(weekStart);
+      colDate.setDate(weekStart.getDate() + dayIndex);
+
+      newStart.setFullYear(colDate.getFullYear(), colDate.getMonth(), colDate.getDate());
+    }
+    // 4. Day View: Ensure Date
+    else if (targetData.isDayView) {
+      const viewDate = this.currentView().date;
+      newStart.setFullYear(viewDate.getFullYear(), viewDate.getMonth(), viewDate.getDate());
     }
 
-    // 2. Determine Time (via Pixel Distance)
-    // Only for Week/Day views where we have absolute positioning and pixel movement
-    if (targetData.dayStr || targetData.isDayView) {
+    // 5. Vertical Time Change (Week/Day)
+    if ((this.currentView().type === 'week' || this.currentView().type === 'day') && !targetData.isTimeline) {
       const deltaY = event.distance.y;
       const deltaMins = Math.round((deltaY / this.hourHeight) * 60);
-      // Add delta to the base time (which we just set to original time)
-      // Wait, if we moved days, 'newStart' has the new day but OLD time. 
-      // Adding deltaMins to it shifts the time correctly relative to the visual drag.
-      // Example: Start 10:00 (Y=600). Drag to 11:00 (Y=660). DeltaY=60. DeltaMins=60. 
-      // NewStart = 10:00 + 60m = 11:00. Correct.
-      newStart.setMinutes(newStart.getMinutes() + deltaMins);
-
-      // Snap to 15 mins?
-      // const minutes = newStart.getMinutes();
-      // newStart.setMinutes(Math.round(minutes / 15) * 15);
+      // Apply delta to original time
+      newStart.setHours(movedEvent.start.getHours(), movedEvent.start.getMinutes() + deltaMins);
     }
 
-    if (newStart.getTime() !== movedEvent.start.getTime()) {
-      this.eventDrop.emit({ event: movedEvent, newStart });
+    // Only emit if changed
+    if (newStart.getTime() !== movedEvent.start.getTime() || newResource !== movedEvent.resourceId) {
+      this.eventDrop.emit({ event: movedEvent, newStart, newResource });
     }
+  }
+
+  getUserEventLeftPercent(event: CalendarEvent): number {
+    const startHour = this.startHour;
+    const totalHours = this.endHour - startHour + 1;
+
+    const eventStart = event.start.getHours() + event.start.getMinutes() / 60;
+    const diff = eventStart - startHour;
+
+    return (diff / totalHours) * 100;
+  }
+
+  getUserEventWidthPercent(event: CalendarEvent): number {
+    const totalHours = this.endHour - this.startHour + 1;
+    const durationHours = (event.end.getTime() - event.start.getTime()) / (1000 * 60 * 60);
+
+    return (durationHours / totalHours) * 100;
   }
 
   onResizeEnd(dragEvent: any, calendarEvent: CalendarEvent) {

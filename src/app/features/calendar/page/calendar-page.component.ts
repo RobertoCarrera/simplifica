@@ -10,6 +10,8 @@ import { CalendarActionModalComponent } from '../modal/calendar-action-modal/cal
 import { SupabaseServicesService } from '../../../services/supabase-services.service';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { GoogleCalendarService } from '../../../services/google-calendar.service';
+import { SupabaseProfessionalsService } from '../../../services/supabase-professionals.service';
+import { CalendarResource } from '../calendar.interface';
 
 @Component({
     selector: 'app-calendar-page',
@@ -25,6 +27,7 @@ export class CalendarPageComponent implements OnInit {
     private servicesService = inject(SupabaseServicesService);
     private customersService = inject(SupabaseCustomersService);
     private googleCalendarService = inject(GoogleCalendarService);
+    private professionalsService = inject(SupabaseProfessionalsService);
 
     @Input() isEmbedded = false;
 
@@ -39,6 +42,7 @@ export class CalendarPageComponent implements OnInit {
     // Data Lists
     availableServices = signal<any[]>([]);
     availableClients = signal<any[]>([]);
+    resources = signal<CalendarResource[]>([]);
 
     async onDateClick(event: any) {
         this.selectedDate.set(event.date);
@@ -72,9 +76,19 @@ export class CalendarPageComponent implements OnInit {
         });
 
         // Load Clients
-        // Using getCustomersStandard as it's the safest bet for now, or getCustomers
         this.customersService.getCustomers().subscribe(clients => {
             this.availableClients.set(clients);
+        });
+
+        // Load Professionals (as Resources for Timeline)
+        this.professionalsService.getProfessionals(companyId).subscribe(pros => {
+            const resources: CalendarResource[] = pros.map(p => ({
+                id: p.id,
+                title: p.display_name,
+                avatar: p.avatar_url,
+                color: '#6366f1' // Default indigo, maybe vary later
+            }));
+            this.resources.set(resources);
         });
     }
 
@@ -124,7 +138,8 @@ export class CalendarPageComponent implements OnInit {
                 end: new Date(b.end_time),
                 color: '#818cf8',
                 description: b.notes,
-                meta: { type: 'booking', original: b }
+                meta: { type: 'booking', original: b },
+                resourceId: b.professional_id || b.resource_id || undefined // Prioritize professional for timeline rows
             }));
 
             const exceptionEvents: CalendarEvent[] = exceptions.map((ex: any) => ({
@@ -134,7 +149,8 @@ export class CalendarPageComponent implements OnInit {
                 end: new Date(ex.end_time),
                 color: '#9ca3af', // Gray-400
                 description: 'Horario bloqueado',
-                meta: { type: 'block', original: ex }
+                meta: { type: 'block', original: ex },
+                resourceId: ex.user_id // Assuming availability exceptions are linked to a user/professional
             }));
 
             // Map Google Events
@@ -145,7 +161,8 @@ export class CalendarPageComponent implements OnInit {
                 end: new Date(g.end.dateTime || g.end.date),
                 color: '#e24029', // Google Red or different color
                 description: g.description || 'Evento de Google Calendar',
-                meta: { type: 'google', original: g }
+                meta: { type: 'google', original: g },
+                // Google events might not map to a resource unless we infer from calendar owner
             }));
 
             this.events.set([...bookingEvents, ...exceptionEvents, ...gEvents]);
@@ -291,7 +308,7 @@ export class CalendarPageComponent implements OnInit {
         alert(`Editar cita: ${event.title}`);
     }
 
-    async onEventDrop({ event, newStart }: { event: CalendarEvent, newStart: Date }) {
+    async onEventDrop({ event, newStart, newResource }: { event: CalendarEvent, newStart: Date, newResource?: string }) {
         const companyId = this.authService.currentCompanyId();
         if (!companyId) return;
 
@@ -299,14 +316,20 @@ export class CalendarPageComponent implements OnInit {
             const originalDuration = event.end.getTime() - event.start.getTime();
             const newEnd = new Date(newStart.getTime() + originalDuration);
 
-            // Optimistic update (optional, but let's just create loader or toast)
-            // this.toastService.info('Actualizando...', 'Moviendo cita');
+            // Optimistic update (optional)
 
             try {
-                await this.bookingsService.updateBooking(event.id, {
+                const updates: any = {
                     start_time: newStart.toISOString(),
                     end_time: newEnd.toISOString()
-                });
+                };
+
+                // If resource changed, update professional_id
+                if (newResource && newResource !== event.resourceId) {
+                    updates.professional_id = newResource;
+                }
+
+                await this.bookingsService.updateBooking(event.id, updates);
                 this.toastService.success('Actualizado', 'La cita se ha reprogramado correctamente.');
                 this.loadBookings(); // Reload to sync state
             } catch (error) {
@@ -317,20 +340,17 @@ export class CalendarPageComponent implements OnInit {
         } else if (event.meta?.type === 'block') {
             const originalDuration = event.end.getTime() - event.start.getTime();
             const newEnd = new Date(newStart.getTime() + originalDuration);
+            const targetResource = newResource || event.resourceId; // New or stay same
 
             try {
-                // Delete and Re-create logic (since update might not be direct/exposed yet)
-                // Or if an updateException exists? Checked: only deleteAvailabilityException and create.
-                // Let's see if we can expose update or just delete/create.
-                // "Update" for exception is essentially deleting and adding new one for now given the service methods I saw.
-                // But wait, the modal uses DELETE then CREATE. I can mimic that.
-
+                // Delete and Re-create logic 
                 await this.bookingsService.deleteAvailabilityException(event.id);
                 await this.bookingsService.createAvailabilityException({
                     company_id: companyId,
+                    user_id: targetResource, // Assign to correct professional
                     start_time: newStart.toISOString(),
                     end_time: newEnd.toISOString(),
-                    reason: event.title, // Keep reason
+                    reason: event.title,
                     type: 'block'
                 });
                 this.toastService.success('Actualizado', 'El bloqueo se ha movido.');
