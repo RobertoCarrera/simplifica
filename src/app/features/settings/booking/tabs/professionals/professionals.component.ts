@@ -6,11 +6,12 @@ import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
 
 import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
+import { BookingAvailabilityComponent } from '../availability/booking-availability.component';
 
 @Component({
     selector: 'app-professionals',
     standalone: true,
-    imports: [CommonModule, FormsModule, ReactiveFormsModule, SkeletonComponent],
+    imports: [CommonModule, FormsModule, ReactiveFormsModule, SkeletonComponent, BookingAvailabilityComponent],
     templateUrl: './professionals.component.html',
     styleUrls: ['./professionals.component.scss']
 })
@@ -28,6 +29,10 @@ export class ProfessionalsComponent implements OnInit {
     showModal = false;
     editingId: string | null = null;
     creationMode: 'existing' | 'invite' = 'existing';
+
+    // Schedule Modal
+    managingScheduleUserId: string | null = null;
+    managingScheduleName: string = '';
 
     // Form
     form: FormGroup;
@@ -252,5 +257,18 @@ export class ProfessionalsComponent implements OnInit {
         } catch (e: any) {
             this.toast.error('Error', 'No se pudo eliminar');
         }
+    }
+    openScheduleModal(professional: Professional) {
+        if (!professional.user_id) {
+            this.toast.error('Error', 'Este profesional no tiene un usuario vinculado válido.');
+            return;
+        }
+        this.managingScheduleUserId = professional.user_id;
+        this.managingScheduleName = professional.display_name;
+    }
+
+    closeScheduleModal() {
+        this.managingScheduleUserId = null;
+        this.managingScheduleName = '';
     }
 }

@@ -31,7 +31,7 @@ import { environment } from '../../../../environments/environment';
       </div>
 
       <!-- Password setup form -->
-      <div *ngIf="showPasswordForm" class="space-y-6">
+      <form *ngIf="showPasswordForm" (ngSubmit)="submitPassword()" class="space-y-6">
         <div>
           <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
             Crea tu contraseña para acceder al portal de clientes
@@ -96,7 +96,7 @@ import { environment } from '../../../../environments/environment';
           <input 
             type="password" 
             [(ngModel)]="password"
-            (keyup.enter)="submitPassword()"
+            name="password"
             class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
             placeholder="Mínimo 6 caracteres"
             [disabled]="submitting"
@@ -110,7 +110,7 @@ import { environment } from '../../../../environments/environment';
           <input 
             type="password" 
             [(ngModel)]="passwordConfirm"
-            (keyup.enter)="submitPassword()"
+            name="passwordConfirm"
             class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
             placeholder="Repite la contraseña"
             [disabled]="submitting"
@@ -149,17 +149,13 @@ import { environment } from '../../../../environments/environment';
         </div>
 
         <button 
-          (click)="submitPassword()"
+          type="submit"
           [disabled]="submitting || !password || !passwordConfirm || !name || !surname || (!privacyAccepted && !isStaff)"
           class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
         >
           {{ submitting ? 'Creando cuenta...' : 'Crear cuenta' }}
         </button>
-
-        <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-4">
-          Después de crear tu contraseña, podrás iniciar sesión en el portal
-        </p>
-      </div>
+      </form>
     </div>
   </div>
   `
