@@ -159,6 +159,9 @@ export const routes: Routes = [
     // Client portal devices
     { path: 'portal/dispositivos', loadComponent: () => import('./features/devices/portal-devices/portal-devices.component').then(m => m.PortalDevicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
 
+    // Client portal bookings
+    { path: 'portal/reservas', loadComponent: () => import('./features/bookings/portal-bookings/portal-bookings.component').then(m => m.PortalBookingsComponent), canActivate: [AuthGuard, ClientRoleGuard] },
+
 
     // Public payment pages (NO AUTH REQUIRED)
     { path: 'pago/:token', component: PublicPaymentComponent },

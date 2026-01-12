@@ -40,7 +40,8 @@ export interface AvailabilitySchedule {
 export interface Booking {
     id: string;
     company_id: string;
-    booking_type_id: string;
+    booking_type_id?: string;
+    service_id?: string;
     resource_id?: string | null;
     customer_name: string;
     customer_email: string;
@@ -48,7 +49,7 @@ export interface Booking {
     start_time: string;
     end_time: string;
     status: 'confirmed' | 'pending' | 'cancelled';
-    professional_id: string;
+    professional_id?: string;
     notes?: string;
     created_at?: string;
     updated_at?: string;
@@ -56,6 +57,7 @@ export interface Booking {
 
     // Joined fields
     booking_type?: { name: string; color?: string };
+    service?: { name: string };
     resource?: { name: string };
     professional?: { user: { name: string } };
 }

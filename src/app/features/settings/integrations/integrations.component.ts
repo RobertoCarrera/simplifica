@@ -108,15 +108,13 @@ export class IntegrationsComponent implements OnInit {
         }
     }
 
-    async loadCalendarConfig() {
-        const { data: { user } } = await this.supabase.instance.auth.getUser();
-        if (!user) return;
-
-        const { data } = await this.supabase.instance
-            .from('google_calendar_configs')
-            .select('*')
-            .eq('user_id', user.id)
-            .maybeSingle();
+    loadCalendarConfig() {
+        const integration = this.googleIntegration();
+        if (integration && integration.metadata) {
+            this.calendarConfig.set(integration.metadata);
+        } else {
+            this.calendarConfig.set(null);
+        }
     }
 
     async fetchCalendars() {
@@ -142,24 +140,30 @@ export class IntegrationsComponent implements OnInit {
     }
 
     async saveCalendarConfig(availabilityCalendarId: string, bookingCalendarId: string) {
+        const integration = this.googleIntegration();
+        if (!integration) return;
+
         this.savingConfig.set(true);
         try {
-            const { data: { user } } = await this.supabase.instance.auth.getUser();
-            if (!user) throw new Error('No user');
+            const metadata = {
+                calendar_id: availabilityCalendarId,
+                calendar_id_booking: bookingCalendarId,
+                updated_at: new Date().toISOString()
+            };
 
             const { error } = await this.supabase.instance
-                .from('google_calendar_configs')
-                .upsert({
-                    user_id: user.id,
-                    calendar_id: availabilityCalendarId,
-                    calendar_id_booking: bookingCalendarId,
-                    updated_at: new Date().toISOString()
-                }, { onConflict: 'user_id' });
+                .from('integrations')
+                .update({ metadata })
+                .eq('id', integration.id);
 
             if (error) throw error;
 
             this.toast.success('Guardado', 'Configuración de calendario actualizada.');
-            await this.loadCalendarConfig();
+
+            // Update local state
+            this.googleIntegration.update(curr => ({ ...curr, metadata }));
+            this.loadCalendarConfig();
+
         } catch (e: any) {
             console.error('Error saving config', e);
             this.toast.error('Error', 'No se pudo guardar la configuración.');
