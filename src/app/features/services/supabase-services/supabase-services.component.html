@@ -472,6 +472,52 @@
                   <small class="text-gray-500 dark:text-slate-400 text-xs mt-1">Si se selecciona, el sistema buscará
                     disponibilidad de este tipo de recurso</small>
                 </div>
+
+                <!-- Advanced Scheduling Rules -->
+                <div class="form-group">
+                  <label for="buffer_minutes" class="text-gray-700 dark:text-white font-medium">
+                    Tiempo de preparación (min)
+                  </label>
+                  <input type="number" id="buffer_minutes"
+                    class="form-control bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                    [(ngModel)]="formData.buffer_minutes" name="buffer_minutes" step="5" min="0" placeholder="0"
+                    aria-label="Tiempo de preparación o buffer">
+                  <small class="text-gray-500 dark:text-slate-400 text-xs mt-1">Tiempo extra bloquado después de la cita
+                    (limpieza, descanso)</small>
+                  <div *ngIf="formErrors['buffer_minutes']"
+                    class="error-message text-red-500 dark:text-red-400 text-sm mt-1">{{ formErrors['buffer_minutes'] }}
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="min_notice_minutes" class="text-gray-700 dark:text-white font-medium">
+                    Antelación mínima (min)
+                  </label>
+                  <input type="number" id="min_notice_minutes"
+                    class="form-control bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                    [(ngModel)]="formData.min_notice_minutes" name="min_notice_minutes" step="15" min="0"
+                    placeholder="60" aria-label="Antelación mínima para reservar">
+                  <small class="text-gray-500 dark:text-slate-400 text-xs mt-1">Tiempo mínimo antes de la cita para
+                    permitir reservar (ej. 60 min)</small>
+                  <div *ngIf="formErrors['min_notice_minutes']"
+                    class="error-message text-red-500 dark:text-red-400 text-sm mt-1">{{
+                    formErrors['min_notice_minutes'] }}</div>
+                </div>
+
+                <div class="form-group">
+                  <label for="max_lead_days" class="text-gray-700 dark:text-white font-medium">
+                    Antelación máxima (días)
+                  </label>
+                  <input type="number" id="max_lead_days"
+                    class="form-control bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
+                    [(ngModel)]="formData.max_lead_days" name="max_lead_days" step="1" min="1" placeholder="90"
+                    aria-label="Antelación máxima para reservar">
+                  <small class="text-gray-500 dark:text-slate-400 text-xs mt-1">Con cuántos días de antelación se puede
+                    agendar (ej. 90 días)</small>
+                  <div *ngIf="formErrors['max_lead_days']"
+                    class="error-message text-red-500 dark:text-red-400 text-sm mt-1">{{ formErrors['max_lead_days'] }}
+                  </div>
+                </div>
               </div>
             </div><!-- Close accordion-content -->
           </div><!-- Close Reservas section -->

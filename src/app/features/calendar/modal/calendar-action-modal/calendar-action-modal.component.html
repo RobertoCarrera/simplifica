@@ -74,6 +74,11 @@
                                 currency:'EUR' }}
                             </option>
                         </select>
+                        <div *ngIf="computedBuffer() && computedBuffer()! > 0"
+                            class="mt-1 flex items-center text-xs text-orange-600 dark:text-orange-400">
+                            <i class="fas fa-clock mr-1"></i>
+                            <span>+{{ computedBuffer() }}m de preparación (buffer)</span>
+                        </div>
                     </div>
                 </div>
                 <!-- Price Display -->

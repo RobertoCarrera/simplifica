@@ -2,6 +2,7 @@ import { Component, input, output, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseCouponsService, Coupon } from '../../../../services/supabase-coupons.service';
+import { Service } from '../../../../services/supabase-services.service';
 
 export interface CalendarActionData {
   type: 'booking' | 'block';
@@ -35,7 +36,7 @@ export interface CalendarActionData {
 export class CalendarActionModalComponent {
   isOpen = input(false);
   initialStartDate = input<Date | null>(null);
-  services = input<any[]>([]);
+  services = input<Service[]>([]);
   clients = input<any[]>([]);
   closeModal = output<void>();
   saveAction = output<CalendarActionData>();
@@ -169,7 +170,11 @@ export class CalendarActionModalComponent {
   // Deposits
   computedDeposit = signal<number | null>(null);
   depositPaidInput = signal<number>(0);
+
   hasDepositRequirement = signal<boolean>(false);
+
+  // Advanced Scheduling
+  computedBuffer = signal<number | null>(null);
 
   updateStartTime(val: string) {
     this.startTimeStr.set(val);
@@ -197,7 +202,12 @@ export class CalendarActionModalComponent {
       const service = this.services().find(s => s.id === this.serviceId);
       if (service) {
         durationMinutes = service.duration_minutes || 60;
+        this.computedBuffer.set(service.buffer_minutes || 0);
+      } else {
+        this.computedBuffer.set(null);
       }
+    } else {
+      this.computedBuffer.set(null);
     }
 
     const end = new Date(start.getTime() + durationMinutes * 60000);
@@ -357,6 +367,36 @@ export class CalendarActionModalComponent {
       // Booking
       start = new Date(this.startTimeStr());
       end = new Date(this.endTimeStr());
+
+      // Validation: Advanced Scheduling Rules
+      if (this.serviceId) {
+        const service = this.services().find(s => s.id === this.serviceId);
+        if (service) {
+          const now = new Date();
+          const diffMinutes = (start.getTime() - now.getTime()) / 60000;
+          const diffDays = diffMinutes / (60 * 24);
+
+          // Min Notice Validation
+          if (service.min_notice_minutes && diffMinutes < service.min_notice_minutes) {
+            const confirmOverride = confirm(
+              `⚠️ Aviso de Antelación Mínima\n\nEste servicio requiere ${service.min_notice_minutes} min de antelación.` +
+              `\nEstás intentando agendar con solo ${Math.floor(diffMinutes)} min.` +
+              `\n\n¿Deseas continuar de todos modos?`
+            );
+            if (!confirmOverride) return;
+          }
+
+          // Max Lead Time Validation
+          if (service.max_lead_days && diffDays > service.max_lead_days) {
+            const confirmOverride = confirm(
+              `⚠️ Aviso de Antelación Máxima\n\nEste servicio no permite reservas con más de ${service.max_lead_days} días de antelación.` +
+              `\nEstás intentando agendar para dentro de ${Math.floor(diffDays)} días.` +
+              `\n\n¿Deseas continuar de todos modos?`
+            );
+            if (!confirmOverride) return;
+          }
+        }
+      }
     }
 
     this.saveAction.emit({

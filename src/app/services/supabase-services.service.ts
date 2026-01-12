@@ -125,6 +125,10 @@ export interface Service {
   deposit_type?: 'none' | 'fixed' | 'percent' | 'full';
   deposit_amount?: number;
 
+  // Advanced Scheduling
+  min_notice_minutes?: number;
+  max_lead_days?: number;
+
   // Campos calculados (server-side) para display
   display_price?: number;        // Precio representativo (desde variantes o base_price)
   display_price_label?: string;  // "Precio Base", "Desde", "Precio"
@@ -396,6 +400,8 @@ export class SupabaseServicesService {
       company_id: service.company_id ? service.company_id : companyId.toString(),
       deposit_type: service.deposit_type || 'none',
       deposit_amount: service.deposit_amount ? Number(service.deposit_amount) : 0,
+      min_notice_minutes: service.min_notice_minutes !== undefined ? Number(service.min_notice_minutes) : 60,
+      max_lead_days: service.max_lead_days !== undefined ? Number(service.max_lead_days) : 90,
       created_at: service.created_at,
       updated_at: service.updated_at || service.created_at
     }));
@@ -621,6 +627,11 @@ export class SupabaseServicesService {
     if (serviceData.buffer_minutes !== undefined) serviceDataForDB.buffer_minutes = serviceData.buffer_minutes;
     if (serviceData.booking_color !== undefined) serviceDataForDB.booking_color = serviceData.booking_color;
     if (serviceData.required_resource_type !== undefined) serviceDataForDB.required_resource_type = serviceData.required_resource_type;
+
+    // Advanced Scheduling
+    if (serviceData.min_notice_minutes !== undefined) serviceDataForDB.min_notice_minutes = serviceData.min_notice_minutes;
+    if (serviceData.max_lead_days !== undefined) serviceDataForDB.max_lead_days = serviceData.max_lead_days;
+
     // Public fields
     if (serviceData.is_public !== undefined) serviceDataForDB.is_public = serviceData.is_public;
     if (serviceData.allow_direct_contracting !== undefined) serviceDataForDB.allow_direct_contracting = serviceData.allow_direct_contracting;
@@ -699,6 +710,11 @@ export class SupabaseServicesService {
     if (updates.buffer_minutes !== undefined) serviceData.buffer_minutes = updates.buffer_minutes;
     if (updates.booking_color !== undefined) serviceData.booking_color = updates.booking_color;
     if (updates.required_resource_type !== undefined) serviceData.required_resource_type = updates.required_resource_type;
+
+    // Advanced Scheduling
+    if (updates.min_notice_minutes !== undefined) serviceData.min_notice_minutes = updates.min_notice_minutes;
+    if (updates.max_lead_days !== undefined) serviceData.max_lead_days = updates.max_lead_days;
+
     // Public fields
     if (updates.is_public !== undefined) serviceData.is_public = updates.is_public;
     if (updates.allow_direct_contracting !== undefined) serviceData.allow_direct_contracting = updates.allow_direct_contracting;

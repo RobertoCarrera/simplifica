@@ -436,6 +436,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       has_variants: false,
       is_bookable: false,
       duration_minutes: 60,
+      buffer_minutes: 0,
+      min_notice_minutes: 60, // 1 hora por defecto
+      max_lead_days: 90,      // 3 meses por defecto
       booking_color: '#3b82f6',
       required_resource_type: undefined
     };
@@ -579,6 +582,22 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
     if (this.formData.warranty_days && this.formData.warranty_days < 0) {
       this.formErrors['warranty_days'] = 'Los días de garantía no pueden ser negativos';
+    }
+
+    if (this.formData.warranty_days && this.formData.warranty_days < 0) {
+      this.formErrors['warranty_days'] = 'Los días de garantía no pueden ser negativos';
+    }
+
+    if (this.formData.buffer_minutes && this.formData.buffer_minutes < 0) {
+      this.formErrors['buffer_minutes'] = 'El tiempo de buffer no puede ser negativo';
+    }
+
+    if (this.formData.min_notice_minutes && this.formData.min_notice_minutes < 0) {
+      this.formErrors['min_notice_minutes'] = 'El tiempo mínimo de antelación no puede ser negativo';
+    }
+
+    if (this.formData.max_lead_days && this.formData.max_lead_days < 1) {
+      this.formErrors['max_lead_days'] = 'Los días de antelación máxima deben ser al menos 1';
     }
 
     return Object.keys(this.formErrors).length === 0;
