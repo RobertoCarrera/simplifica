@@ -8,7 +8,7 @@ export interface ClientPortalBooking {
   id: string;
   start_time: string;
   end_time: string;
-  status: 'pending' | 'confirmed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'cancelled' | 'rescheduled';
   service_name: string;
   service_duration: number;
   professional_name?: string;
@@ -122,13 +122,34 @@ export class ClientPortalService {
 
   async listBookings(): Promise<{ data: ClientPortalBooking[]; error?: any }> {
     const client = this.sb.instance;
-    // Re-ordering to DESC for history view default
+    // Query main table directly, relying on RLS
     const { data: allData, error: allError } = await client
-      .from('client_visible_bookings')
-      .select('*')
+      .from('bookings')
+      .select(`
+        id,
+        start_time,
+        end_time,
+        status,
+        service:services ( name, duration_minutes )
+      `)
       .order('start_time', { ascending: false });
 
-    return { data: (allData || []) as any, error: allError };
+    if (allError) return { data: [], error: allError };
+
+    // Map to ClientPortalBooking interface
+    const mapped: ClientPortalBooking[] = (allData || []).map((b: any) => ({
+      id: b.id,
+      start_time: b.start_time,
+      end_time: b.end_time,
+      status: b.status,
+      service_name: b.service?.name,
+      service_duration: b.service?.duration_minutes,
+      professional_name: 'Asignado', // Placeholder until DB sync is confirmed
+      total_price: 0, // Placeholder
+      payment_status: 'pending' // Placeholder
+    }));
+
+    return { data: mapped, error: null };
   }
 
   async cancelBooking(bookingId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
@@ -647,6 +668,23 @@ export class ClientPortalService {
       return { data, error };
     } catch (e: any) {
       return { data: null, error: e.message };
+    }
+  }
+
+  async rescheduleBooking(bookingId: string, newStartTime: string, newEndTime: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data, error } = await this.sb.instance.rpc('client_reschedule_booking', {
+        p_booking_id: bookingId,
+        p_new_start_time: newStartTime,
+        p_new_end_time: newEndTime
+      });
+
+      if (error) return { success: false, error: error.message };
+      if (data && !data.success) return { success: false, error: data.error };
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
     }
   }
 

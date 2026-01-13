@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Output, Input, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ClientPortalService } from '../../../services/client-portal.service';
@@ -122,6 +122,7 @@ import { firstValueFrom } from 'rxjs';
   `
 })
 export class PortalBookingWizardComponent {
+    @Input() bookingToReschedule: any = null; // ClientPortalBooking
     @Output() close = new EventEmitter<void>();
     @Output() bookingCreated = new EventEmitter<void>();
 
@@ -141,8 +142,22 @@ export class PortalBookingWizardComponent {
 
     submitting = false;
 
-    constructor() {
-        this.loadServices();
+    constructor() { }
+
+    ngOnInit() {
+        if (this.bookingToReschedule) {
+            // Reschedule Mode: Skip Step 1
+            this.selectedService = {
+                name: this.bookingToReschedule.service_name,
+                duration_minutes: this.bookingToReschedule.service_duration,
+                id: 'EXISTING_SERVICE_ID_IGNORED'
+            };
+            this.step.set(2);
+            this.loadSlotsForDate(this.selectedDateStr);
+        } else {
+            // New Booking Mode
+            this.loadServices();
+        }
     }
 
     async loadServices() {
@@ -278,15 +293,23 @@ export class PortalBookingWizardComponent {
         if (!this.selectedSlot || !this.selectedService) return;
         this.submitting = true;
 
-        // Real call:
         const start = this.selectedSlot;
         const end = new Date(start.getTime() + this.selectedService.duration_minutes * 60000);
 
-        const res = await this.portal.createSelfBooking({
-            service_id: this.selectedService.id,
-            start_time: start.toISOString(),
-            end_time: end.toISOString()
-        });
+        let res;
+        if (this.bookingToReschedule) {
+            res = await this.portal.rescheduleBooking(
+                this.bookingToReschedule.id,
+                start.toISOString(),
+                end.toISOString()
+            );
+        } else {
+            res = await this.portal.createSelfBooking({
+                service_id: this.selectedService.id,
+                start_time: start.toISOString(),
+                end_time: end.toISOString()
+            });
+        }
 
         if (res.success) {
             this.bookingCreated.emit();

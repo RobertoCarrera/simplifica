@@ -48,7 +48,7 @@ export interface Booking {
     customer_phone?: string;
     start_time: string;
     end_time: string;
-    status: 'confirmed' | 'pending' | 'cancelled';
+    status: 'confirmed' | 'pending' | 'cancelled' | 'rescheduled';
     professional_id?: string;
     notes?: string;
     created_at?: string;

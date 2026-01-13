@@ -1,8 +1,10 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseBookingsService, Booking } from '../../../services/supabase-bookings.service';
+import { ClientPortalService } from '../../../services/client-portal.service';
 import { ToastService } from '../../../services/toast.service';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { CalendarComponent } from '../../calendar/calendar.component';
@@ -10,7 +12,7 @@ import { CalendarComponent } from '../../calendar/calendar.component';
 @Component({
     selector: 'app-portal-my-bookings',
     standalone: true,
-    imports: [CommonModule, RouterModule, SkeletonComponent, CalendarComponent],
+    imports: [CommonModule, RouterModule, FormsModule, SkeletonComponent, CalendarComponent],
     template: `
     <div class="min-h-screen bg-gray-50 dark:bg-slate-900 p-4">
       <div class="max-w-4xl mx-auto">
@@ -83,9 +85,10 @@ import { CalendarComponent } from '../../calendar/calendar.component';
                                  [ngClass]="{
                                    'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300': booking.status === 'confirmed',
                                    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300': booking.status === 'pending',
+                                   'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300': booking.status === 'rescheduled',
                                    'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300': booking.status === 'cancelled'
                                  }">
-                               {{ booking.status === 'confirmed' ? 'Confirmada' : (booking.status === 'pending' ? 'Pendiente' : 'Cancelada') }}
+                               {{ booking.status === 'confirmed' ? 'Confirmada' : (booking.status === 'pending' ? 'Pendiente' : (booking.status === 'rescheduled' ? 'Reprogramada' : 'Cancelada')) }}
                            </span>
                        </h3>
                        <div class="text-gray-600 dark:text-gray-400 text-sm mt-1 flex items-center gap-4">
@@ -99,13 +102,16 @@ import { CalendarComponent } from '../../calendar/calendar.component';
 
                <!-- Actions -->
                <div class="flex items-center gap-3">
-                   <button *ngIf="canCancel(booking)" 
-                           (click)="cancelBooking(booking)" 
-                           [disabled]="processingId() === booking.id"
-                           class="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium text-sm px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50">
-                       <span *ngIf="processingId() === booking.id"><i class="fas fa-spinner fa-spin mr-1"></i> Cancelando...</span>
-                       <span *ngIf="processingId() !== booking.id"><i class="far fa-trash-alt mr-1"></i> Cancelar</span>
-                   </button>
+                   <div *ngIf="canCancel(booking)" class="flex gap-2">
+                       <button (click)="rescheduleBooking(booking)"
+                               class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium text-sm px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors border border-blue-200 dark:border-blue-800">
+                           <i class="fas fa-calendar-alt mr-1"></i> Reprogramar
+                       </button>
+                       <button (click)="openCancelModal(booking)" 
+                               class="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium text-sm px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border border-red-200 dark:border-red-800">
+                           <i class="far fa-trash-alt mr-1"></i> Cancelar
+                       </button>
+                   </div>
                </div>
 
            </div>
@@ -123,6 +129,37 @@ import { CalendarComponent } from '../../calendar/calendar.component';
         </div>
 
       </div>
+
+      <!-- Cancellation Modal -->
+      <div *ngIf="showCancelModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" style="backdrop-filter: blur(2px);">
+          <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden border dark:border-slate-700 animate-fade-in-up">
+              <div class="p-6">
+                  <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Cancelar Reserva</h3>
+                  <p class="text-gray-600 dark:text-gray-400 mb-4">¿Estás seguro de que deseas cancelar esta reserva? Esta acción no se puede deshacer.</p>
+                  
+                  <div class="mb-4">
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Motivo (Opcional)</label>
+                      <textarea [(ngModel)]="cancelReason" 
+                          class="w-full border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500"
+                          rows="3" placeholder="Ej: Me ha surgido un imprevisto..."></textarea>
+                  </div>
+
+                  <div class="flex justify-end gap-3">
+                      <button (click)="closeCancelModal()" 
+                          class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg font-medium transition-colors">
+                          Volver
+                      </button>
+                      <button (click)="confirmCancellation()" 
+                          [disabled]="processingCancellation()"
+                          class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium shadow-lg shadow-red-200 dark:shadow-none transition-all flex items-center gap-2">
+                          <i *ngIf="processingCancellation()" class="fas fa-circle-notch fa-spin"></i>
+                          {{ processingCancellation() ? 'Cancelando...' : 'Confirmar Cancelación' }}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      </div>
+
     </div>
     `,
     styles: [`
@@ -133,11 +170,13 @@ import { CalendarComponent } from '../../calendar/calendar.component';
 export class PortalMyBookingsComponent implements OnInit {
     private authService = inject(AuthService);
     private bookingsService = inject(SupabaseBookingsService);
+    private portal = inject(ClientPortalService);
     private toastService = inject(ToastService);
+    private router = inject(Router);
 
     loading = signal(true);
     bookings = signal<Booking[]>([]);
-    bookingConfig = signal<any>({}); // Store full config
+    bookingConfig = signal<any>({});
 
     calendarEvents = computed(() => {
         return this.bookings().map(b => ({
@@ -146,13 +185,18 @@ export class PortalMyBookingsComponent implements OnInit {
             start: new Date(b.start_time),
             end: new Date(b.end_time),
             description: b.notes,
-            // Colors based on status
-            color: b.status === 'confirmed' ? '#22c55e' : (b.status === 'cancelled' ? '#ef4444' : '#eab308')
+            color: b.status === 'confirmed' ? '#22c55e' : (b.status === 'cancelled' ? '#ef4444' : (b.status === 'rescheduled' ? '#3b82f6' : '#eab308'))
         }));
     });
 
     viewMode = signal<'list' | 'calendar'>('list');
     processingId = signal<string | null>(null);
+
+    // Modal State
+    showCancelModal = false;
+    bookingToCancel: Booking | null = null;
+    cancelReason = '';
+    processingCancellation = signal(false);
 
     ngOnInit() {
         this.loadData();
@@ -163,7 +207,6 @@ export class PortalMyBookingsComponent implements OnInit {
             const companyId = this.authService.currentCompanyId();
             if (!companyId) return;
 
-            // Load bookings AND settings
             this.bookingsService.getMyBookings(companyId).subscribe({
                 next: (data) => {
                     this.bookings.set(data);
@@ -186,46 +229,54 @@ export class PortalMyBookingsComponent implements OnInit {
     }
 
     canCancel(booking: Booking): boolean {
-        // Can cancel if status is not cancelled AND start time is within notice period
         if (booking.status === 'cancelled') return false;
-
         const now = new Date();
         const start = new Date(booking.start_time);
-
-        // 1. Check if in past
         if (start <= now) return false;
-
-        // 2. Check notice period
-        const minHours = this.bookingConfig().min_cancel_notice_hours ?? 24; // Default 24h
+        const minHours = this.bookingConfig().min_cancel_notice_hours ?? 24;
         const hoursDiff = (start.getTime() - now.getTime()) / (1000 * 60 * 60);
-
         return hoursDiff >= minHours;
     }
 
-    async cancelBooking(booking: Booking) {
-        if (!confirm('¿Estás seguro de que quieres cancelar esta reserva?')) return;
+    openCancelModal(booking: Booking) {
+        this.bookingToCancel = booking;
+        this.cancelReason = '';
+        this.showCancelModal = true;
+    }
 
-        this.processingId.set(booking.id);
-        try {
-            await this.bookingsService.deleteBooking(booking.id);
+    closeCancelModal() {
+        this.showCancelModal = false;
+        this.bookingToCancel = null;
+        this.cancelReason = '';
+    }
+
+    async confirmCancellation() {
+        if (!this.bookingToCancel) return;
+
+        this.processingCancellation.set(true);
+
+        const res = await this.portal.cancelBooking(this.bookingToCancel.id, this.cancelReason);
+        this.processingCancellation.set(false);
+
+        if (res.success) {
+            this.closeCancelModal();
             this.toastService.success('Cancelada', 'Reserva cancelada correctamente');
-
-            // Refresh local state
-            this.bookings.update(list => list.filter(b => b.id !== booking.id));
-
-        } catch (e) {
-            console.error(e);
-            this.toastService.error('Error', 'Error al cancelar la reserva');
-        } finally {
-            this.processingId.set(null);
+            this.loadData();
+        } else {
+            this.toastService.error('Error', 'Error al cancelar: ' + (res.error || 'Desconocido'));
         }
+    }
+
+    rescheduleBooking(booking: Booking) {
+        // Navigate to dashboard with reschedule query param
+        this.router.navigate(['/portal'], { queryParams: { reschedule: booking.id } });
     }
 
     onCalendarEventClick(eventWrapper: any) {
         const eventId = eventWrapper.event.id;
         const booking = this.bookings().find(b => b.id === eventId);
         if (booking && this.canCancel(booking)) {
-            this.cancelBooking(booking);
+            this.openCancelModal(booking);
         }
     }
 }
