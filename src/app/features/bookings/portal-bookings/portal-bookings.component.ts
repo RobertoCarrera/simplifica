@@ -181,9 +181,42 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
                         </button>
                     </div>
 
+                    <!-- Intake Form Step (if applicable) -->
+                    <div *ngIf="selectedSlot() && selectedService()?.form_schema?.length" class="mt-8 pt-6 border-t border-gray-100 dark:border-slate-700 animate-fade-in">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Información Adicional</h3>
+                        <p class="text-sm text-gray-500 mb-4">Por favor responde estas preguntas para preparar tu sesión.</p>
+                        
+                        <div class="space-y-4">
+                           <div *ngFor="let q of selectedService()!.form_schema" class="form-group">
+                              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {{ q.label }} <span *ngIf="q.required" class="text-red-500">*</span>
+                              </label>
+                              
+                              <!-- Text Input -->
+                              <input *ngIf="q.type === 'text'" type="text" 
+                                     [(ngModel)]="formAnswers[q.label]" 
+                                     class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                     [required]="q.required">
+
+                              <!-- Textarea -->
+                              <textarea *ngIf="q.type === 'textarea'" 
+                                      [(ngModel)]="formAnswers[q.label]" rows="3"
+                                      class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                                      [required]="q.required"></textarea>
+
+                              <!-- Checkbox -->
+                              <div *ngIf="q.type === 'checkbox'" class="flex items-center">
+                                 <input type="checkbox" [(ngModel)]="formAnswers[q.label]" 
+                                        class="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                                 <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Sí</span>
+                              </div>
+                           </div>
+                        </div>
+                    </div>
+
                     <!-- Confirm Button -->
                     <div *ngIf="selectedSlot()" class="mt-8 pt-6 border-t border-gray-100 dark:border-slate-700 flex justify-end">
-                        <button (click)="bookSlot()" 
+                        <button (click)="checkFormAndBook()" 
                                 [disabled]="booking()"
                                 class="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 transform flex items-center gap-2">
                             <span *ngIf="booking()" class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -230,6 +263,10 @@ export class PortalBookingsComponent implements OnInit {
     selectedSlot = signal<Date | null>(null);
 
     booking = signal(false);
+
+    // Intake Form
+    formAnswers: Record<string, any> = {};
+    showIntakeForm = signal(false);
 
     ngOnInit() {
         this.loadData();
@@ -574,6 +611,25 @@ export class PortalBookingsComponent implements OnInit {
         return intervals;
     }
 
+    checkFormAndBook() {
+        const service = this.selectedService();
+        if (service?.form_schema?.length) {
+            this.showIntakeForm.set(true); // Ensure it's marked as shown
+
+            // Validate required fields
+            for (const q of service.form_schema) {
+                if (q.required) {
+                    const ans = this.formAnswers[q.label];
+                    if (!ans || (typeof ans === 'string' && !ans.trim())) {
+                        this.toastService.error('Falta información', `Por favor responde: "${q.label}"`);
+                        return;
+                    }
+                }
+            }
+        }
+        this.bookSlot();
+    }
+
     async bookSlot() {
         const slot = this.selectedSlot();
         const service = this.selectedService();
@@ -599,7 +655,8 @@ export class PortalBookingsComponent implements OnInit {
                 start_time: slot.toISOString(),
                 end_time: endTime.toISOString(),
                 status: 'confirmed', // Or pending if approval needed
-                notes: 'Reserva desde Portal de Cliente'
+                notes: 'Reserva desde Portal de Cliente',
+                form_responses: this.showIntakeForm() ? this.formAnswers : null
             };
 
             // Assign Resource if needed

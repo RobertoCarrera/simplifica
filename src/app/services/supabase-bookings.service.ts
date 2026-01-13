@@ -57,6 +57,7 @@ export interface Booking {
     total_price?: number;
     payment_status?: 'pending' | 'partial' | 'paid' | 'refunded';
     deposit_paid?: number;
+    form_responses?: Record<string, any>; // Answers to Intake Form
 
     // Joined fields
     booking_type?: { name: string; color?: string };

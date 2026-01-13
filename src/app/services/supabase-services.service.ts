@@ -133,6 +133,9 @@ export interface Service {
   max_capacity?: number;
   requires_confirmation?: boolean;
 
+  // Intake Forms
+  form_schema?: any[]; // JSON defines custom questions
+
   // Campos calculados (server-side) para display
   display_price?: number;        // Precio representativo (desde variantes o base_price)
   display_price_label?: string;  // "Precio Base", "Desde", "Precio"
@@ -400,6 +403,7 @@ export class SupabaseServicesService {
       is_public: !!service.is_public,
       allow_direct_contracting: !!service.allow_direct_contracting,
       features: service.features || undefined,
+      form_schema: service.form_schema || [],
       // Preferir company_id almacenado en service cuando exista
       company_id: service.company_id ? service.company_id : companyId.toString(),
       deposit_type: service.deposit_type || 'none',
@@ -644,7 +648,9 @@ export class SupabaseServicesService {
     // Public fields
     if (serviceData.is_public !== undefined) serviceDataForDB.is_public = serviceData.is_public;
     if (serviceData.allow_direct_contracting !== undefined) serviceDataForDB.allow_direct_contracting = serviceData.allow_direct_contracting;
+    if (serviceData.allow_direct_contracting !== undefined) serviceDataForDB.allow_direct_contracting = serviceData.allow_direct_contracting;
     if (serviceData.features !== undefined) serviceDataForDB.features = serviceData.features;
+    if (serviceData.form_schema !== undefined) serviceDataForDB.form_schema = serviceData.form_schema;
 
     // If a category is provided, try to resolve it to a category id
     if (serviceData.category) {
@@ -731,6 +737,8 @@ export class SupabaseServicesService {
     if (updates.is_public !== undefined) serviceData.is_public = updates.is_public;
     if (updates.allow_direct_contracting !== undefined) serviceData.allow_direct_contracting = updates.allow_direct_contracting;
     if (updates.features !== undefined) serviceData.features = updates.features;
+    if (updates.form_schema !== undefined) serviceData.form_schema = updates.form_schema; // Intake Form Schema
+
     // Resolve category name to id if needed
     if (updates.category) {
       try {

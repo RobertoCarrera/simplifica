@@ -16,6 +16,7 @@ export interface CalendarActionData {
   serviceId?: string;
   clientId?: string;
   id?: string;
+  resourceId?: string; // For blocks or specific professional assignments
   recurrence?: {
     type: 'daily' | 'weekly' | 'monthly';
     endDate: Date;
@@ -40,6 +41,7 @@ export class CalendarActionModalComponent {
   initialStartDate = input<Date | null>(null);
   services = input<Service[]>([]);
   clients = input<any[]>([]);
+  resources = input<{ id: string, title: string }[]>([]); // New input
   closeModal = output<void>();
   saveAction = output<CalendarActionData>();
 
@@ -81,6 +83,7 @@ export class CalendarActionModalComponent {
 
   clientId: string | null = null;
   serviceId: string | null = null;
+  resourceId: string | null = null; // New field for Block target
 
   ngOnChanges() {
     if (this.isOpen()) {
@@ -141,8 +144,11 @@ export class CalendarActionModalComponent {
     if (type === 'booking') {
       this.serviceId = event.extendedProps?.service_id || null;
       this.clientId = event.extendedProps?.client_id || null;
+      this.resourceId = event.extendedProps?.resourceId || null; // Restore for edit if available
       this.bookingStatus.set(event.extendedProps?.status || 'confirmed');
       // Restore recurrence logic if complex recurrence parsing is needed
+    } else if (type === 'block') {
+      this.resourceId = event.resourceId || null;
     }
   }
 
@@ -457,6 +463,7 @@ export class CalendarActionModalComponent {
       // Booking specific
       serviceId: this.activeTab() === 'booking' ? (this.serviceId || undefined) : undefined,
       clientId: this.activeTab() === 'booking' ? (this.clientId || undefined) : undefined,
+      resourceId: this.activeTab() === 'block' ? (this.resourceId || undefined) : undefined, // Emit resourceId
       id: this.existingId() || undefined,
       recurrence: (this.activeTab() === 'booking' && this.recurrenceType() !== 'none') ? {
         type: this.recurrenceType() as 'daily' | 'weekly' | 'monthly',

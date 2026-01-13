@@ -688,7 +688,7 @@ export class ClientPortalService {
     }
   }
 
-  async createSelfBooking(booking: { service_id: string, start_time: string, end_time: string }): Promise<{ success: boolean; error?: string }> {
+  async createSelfBooking(booking: { service_id: string, start_time: string, end_time: string, form_responses?: any }): Promise<{ success: boolean; error?: string }> {
     try {
       const user = await firstValueFrom(this.auth.userProfile$);
       if (!user?.company_id) return { success: false, error: 'No company context' };
@@ -697,7 +697,8 @@ export class ClientPortalService {
         p_company_id: user.company_id,
         p_service_id: booking.service_id,
         p_start_time: booking.start_time,
-        p_end_time: booking.end_time
+        p_end_time: booking.end_time,
+        p_form_responses: booking.form_responses || null
       });
 
       if (error) return { success: false, error: error.message };

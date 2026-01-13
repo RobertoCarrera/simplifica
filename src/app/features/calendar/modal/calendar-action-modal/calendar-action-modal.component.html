@@ -4,7 +4,7 @@
 
     <!-- Modal Panel -->
     <div
-        class="relative w-full max-w-lg transform overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-2xl transition-all animate-fade-in-up">
+        class="relative w-full max-w-lg p-2 transform overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-2xl transition-all animate-fade-in-up">
 
         <!-- Header -->
         <div class="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 p-6">
@@ -161,8 +161,9 @@
                 </div>
             </div>
 
-            <!-- Recurrence Options -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100 dark:border-slate-700">
+            <!-- Recurrence Options (Moved inside Booking Section or made conditional) -->
+            <div *ngIf="activeTab() === 'booking'"
+                class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100 dark:border-slate-700 animate-fade-in">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Repetir</label>
                     <select [ngModel]="recurrenceType()" (ngModelChange)="recurrenceType.set($event)"
@@ -174,8 +175,7 @@
                     </select>
                 </div>
                 <div *ngIf="recurrenceType() !== 'none'" class="animate-fade-in">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Termina
-                        el</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Termina el</label>
                     <input type="date" [ngModel]="recurrenceEndDateStr()"
                         (ngModelChange)="recurrenceEndDateStr.set($event)"
                         class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
@@ -186,28 +186,60 @@
         <!-- Block Fields -->
         <div *ngIf="activeTab() === 'block'" class="space-y-4 animate-fade-in">
 
+            <!-- Professional/Resource Selector -->
+            <div class="bg-gray-50 dark:bg-slate-700/50 p-4 rounded-xl border border-gray-100 dark:border-slate-600">
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                    <i class="fas fa-user-tie text-gray-400 mr-1"></i> A quién bloquear
+                </label>
+                <select [(ngModel)]="resourceId"
+                    class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:ring-indigo-500 transition-shadow shadow-sm cursor-pointer">
+                    <option [ngValue]="null">🏢 Todo el Equipo (Cierre General)</option>
+                    <option *ngFor="let res of resources()" [value]="res.id">
+                        👤 {{ res.title }}
+                    </option>
+                </select>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 ml-1">
+                    {{ !resourceId ? 'Se bloqueará el horario para toda la empresa.' : 'Solo este profesional mostrará
+                    el horario como no disponible.' }}
+                </p>
+            </div>
+
             <!-- Block Type Selector -->
             <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tipo de
-                    Bloqueo</label>
-                <div class="flex space-x-2">
-                    <button class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
-                        [class.bg-red-50]="blockType() === 'time'" [class.border-red-200]="blockType() === 'time'"
-                        [class.text-red-700]="blockType() === 'time'" [class.bg-white]="blockType() !== 'time'"
-                        (click)="blockType.set('time')">
-                        Franja Horaria
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Tipo de Bloqueo</label>
+                <div class="grid grid-cols-3 gap-3">
+                    <button
+                        class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 gap-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+                        [class.bg-indigo-50]="blockType() === 'time'" [class.border-indigo-500]="blockType() === 'time'"
+                        [class.text-indigo-700]="blockType() === 'time'" [class.bg-white]="blockType() !== 'time'"
+                        [class.dark:bg-slate-800]="blockType() !== 'time'"
+                        [class.dark:border-slate-600]="blockType() !== 'time'"
+                        [class.hover:border-indigo-300]="blockType() !== 'time'" (click)="blockType.set('time')">
+                        <i class="fas fa-clock text-lg mb-1"></i>
+                        <span class="text-xs font-medium">Horas</span>
                     </button>
-                    <button class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
-                        [class.bg-red-50]="blockType() === 'day'" [class.border-red-200]="blockType() === 'day'"
-                        [class.text-red-700]="blockType() === 'day'" [class.bg-white]="blockType() !== 'day'"
-                        (click)="blockType.set('day')">
-                        Día Completo
+
+                    <button
+                        class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 gap-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+                        [class.bg-indigo-50]="blockType() === 'day'" [class.border-indigo-500]="blockType() === 'day'"
+                        [class.text-indigo-700]="blockType() === 'day'" [class.bg-white]="blockType() !== 'day'"
+                        [class.dark:bg-slate-800]="blockType() !== 'day'"
+                        [class.dark:border-slate-600]="blockType() !== 'day'"
+                        [class.hover:border-indigo-300]="blockType() !== 'day'" (click)="blockType.set('day')">
+                        <i class="fas fa-calendar-day text-lg mb-1"></i>
+                        <span class="text-xs font-medium">Día</span>
                     </button>
-                    <button class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
-                        [class.bg-red-50]="blockType() === 'range'" [class.border-red-200]="blockType() === 'range'"
-                        [class.text-red-700]="blockType() === 'range'" [class.bg-white]="blockType() !== 'range'"
-                        (click)="blockType.set('range')">
-                        Vacaciones (Rango)
+
+                    <button
+                        class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 gap-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+                        [class.bg-indigo-50]="blockType() === 'range'"
+                        [class.border-indigo-500]="blockType() === 'range'"
+                        [class.text-indigo-700]="blockType() === 'range'" [class.bg-white]="blockType() !== 'range'"
+                        [class.dark:bg-slate-800]="blockType() !== 'range'"
+                        [class.dark:border-slate-600]="blockType() !== 'range'"
+                        [class.hover:border-indigo-300]="blockType() !== 'range'" (click)="blockType.set('range')">
+                        <i class="fas fa-plane-departure text-lg mb-1"></i>
+                        <span class="text-xs font-medium">Rango</span>
                     </button>
                 </div>
             </div>

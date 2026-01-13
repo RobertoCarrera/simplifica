@@ -33,8 +33,9 @@
         </app-calendar>
 
         <app-calendar-action-modal [isOpen]="isModalOpen()" [initialStartDate]="selectedDate()"
-            [services]="availableServices()" [clients]="availableClients()" (closeModal)="isModalOpen.set(false)"
-            (saveAction)="handleModalSave($event)" (deleteAction)="handleModalDelete($event)">
+            [services]="availableServices()" [clients]="availableClients()" [resources]="resources()"
+            (closeModal)="isModalOpen.set(false)" (saveAction)="handleModalSave($event)"
+            (deleteAction)="handleModalDelete($event)">
         </app-calendar-action-modal>
     </div>
 </div>

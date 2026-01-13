@@ -106,6 +106,37 @@ import { firstValueFrom } from 'rxjs';
                     </div>
                 </div>
 
+                <!-- Intake Form (if applicable) -->
+                <div *ngIf="selectedService?.form_schema?.length > 0" class="mb-6">
+                    <h4 class="font-semibold text-gray-800 mb-3">Información Adicional</h4>
+                    <div class="space-y-4">
+                        <div *ngFor="let q of selectedService.form_schema" class="form-group">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                {{ q.label }} <span *ngIf="q.required" class="text-red-500">*</span>
+                            </label>
+                            
+                            <!-- Text Input -->
+                            <input *ngIf="q.type === 'text'" type="text" 
+                                    [(ngModel)]="formAnswers[q.label]" 
+                                    class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-blue-500"
+                                    [required]="q.required">
+
+                            <!-- Textarea -->
+                            <textarea *ngIf="q.type === 'textarea'" 
+                                    [(ngModel)]="formAnswers[q.label]" rows="3"
+                                    class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-blue-500"
+                                    [required]="q.required"></textarea>
+
+                            <!-- Checkbox -->
+                            <div *ngIf="q.type === 'checkbox'" class="flex items-center">
+                                <input type="checkbox" [(ngModel)]="formAnswers[q.label]" 
+                                    class="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-600">Sí</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex justify-end">
                     <button (click)="confirmBooking()" 
                         [disabled]="submitting"
@@ -141,6 +172,9 @@ export class PortalBookingWizardComponent {
     selectedSlot: Date | null = null;
 
     submitting = false;
+
+    // Intake Form
+    formAnswers: Record<string, any> = {};
 
     constructor() { }
 
@@ -291,6 +325,20 @@ export class PortalBookingWizardComponent {
 
     async confirmBooking() {
         if (!this.selectedSlot || !this.selectedService) return;
+
+        // Form Validation
+        if (this.selectedService.form_schema?.length) {
+            for (const q of this.selectedService.form_schema) {
+                if (q.required) {
+                    const ans = this.formAnswers[q.label];
+                    if (!ans || (typeof ans === 'string' && !ans.trim())) {
+                        alert(`Por favor responde a la pregunta obligatoria: "${q.label}"`);
+                        return;
+                    }
+                }
+            }
+        }
+
         this.submitting = true;
 
         const start = this.selectedSlot;
@@ -307,7 +355,8 @@ export class PortalBookingWizardComponent {
             res = await this.portal.createSelfBooking({
                 service_id: this.selectedService.id,
                 start_time: start.toISOString(),
-                end_time: end.toISOString()
+                end_time: end.toISOString(),
+                form_responses: this.selectedService.form_schema?.length ? this.formAnswers : null
             });
         }
 
