@@ -558,6 +558,43 @@ export class SupabaseBookingsService {
             })
         );
     }
+
+    // --- Waitlist ---
+
+    async joinWaitlist(entry: Partial<WaitlistEntry>) {
+        const { data, error } = await this.supabase
+            .from('waitlist')
+            .insert(entry)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data as WaitlistEntry;
+    }
+
+    getWaitlist(companyId: string): Observable<WaitlistEntry[]> {
+        return from(
+            this.supabase
+                .from('waitlist')
+                .select(`
+                    *,
+                    client:client_id (
+                        email,
+                        raw_user_meta_data
+                    ),
+                    service:service_id (
+                        name
+                    )
+                `)
+                .eq('company_id', companyId)
+                .order('created_at', { ascending: false })
+        ).pipe(
+            map(({ data, error }) => {
+                if (error) throw error;
+                return data as any[];
+            })
+        );
+    }
 }
 
 export interface AvailabilityException {
@@ -583,4 +620,21 @@ export interface BookingHistory {
     // Joined
     modifier?: { name: string, email: string };
 }
+
+
+export interface WaitlistEntry {
+    id: string;
+    company_id: string;
+    client_id: string;
+    service_id: string;
+    start_time: string;
+    end_time: string;
+    status: 'pending' | 'notified' | 'prioritized' | 'expired' | 'converted';
+    notes?: string;
+    created_at: string;
+}
+
+// --- Waitlist ---
+
+
 

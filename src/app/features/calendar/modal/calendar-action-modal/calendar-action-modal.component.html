@@ -317,15 +317,15 @@
         <!-- History/Activity Log -->
         <div *ngIf="activeTab() === 'history'" class="p-6 h-96 overflow-y-auto animate-fade-in custom-scrollbar">
 
-            <div *ngIf="loadingHistory()" class="flex justify-center py-8">
+            <div *ngIf="isLoadingHistory()" class="flex justify-center py-8">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
             </div>
 
-            <div *ngIf="!loadingHistory() && history().length === 0" class="text-center py-8 text-gray-500">
+            <div *ngIf="!isLoadingHistory() && history().length === 0" class="text-center py-8 text-gray-500">
                 No hay actividad registrada.
             </div>
 
-            <div *ngIf="!loadingHistory() && history().length > 0" class="space-y-6 relative ml-3">
+            <div *ngIf="!isLoadingHistory() && history().length > 0" class="space-y-6 relative ml-3">
                 <!-- Vertical Line -->
                 <div class="absolute left-0 top-0 bottom-0 w-px bg-gray-200 dark:bg-slate-700 ml-2"></div>
 
@@ -401,13 +401,23 @@
             </button>
 
             <!-- Standard Save Buttons -->
-            <button *ngIf="activeTab() !== 'history' && (activeTab() === 'block' || bookingStatus() !== 'pending')"
+            <button
+                *ngIf="activeTab() !== 'history' && (activeTab() === 'block' || bookingStatus() !== 'pending') && !isFullCapacity()"
                 (click)="save()" [class.bg-blue-600]="activeTab() === 'booking'"
                 [class.hover:bg-blue-700]="activeTab() === 'booking'" [class.bg-red-600]="activeTab() === 'block'"
                 [class.hover:bg-red-700]="activeTab() === 'block'"
                 class="px-4 py-2 text-sm font-medium text-white rounded-lg shadow-sm transition-colors flex items-center">
                 <i class="fas fa-check mr-2"></i>
                 {{ activeTab() === 'booking' ? 'Confirmar Cita' : 'Crear Bloqueo' }}
+            </button>
+
+            <!-- Waitlist Button -->
+            <button *ngIf="activeTab() === 'booking' && isFullCapacity()" (click)="onJoinWaitlist()"
+                [disabled]="joiningWaitlist()"
+                class="px-4 py-2 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                <i *ngIf="!joiningWaitlist()" class="fas fa-clock mr-2"></i>
+                <i *ngIf="joiningWaitlist()" class="fas fa-spinner fa-spin mr-2"></i>
+                Unirse a Lista de Espera/Waitlist
             </button>
 
             <!-- Approval Actions -->

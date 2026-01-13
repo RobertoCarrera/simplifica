@@ -45,19 +45,77 @@ export class CalendarActionModalComponent {
   closeModal = output<void>();
   saveAction = output<CalendarActionData>();
 
+  // Waitlist Logic
+  isFullCapacity = signal(false);
+  joiningWaitlist = signal(false);
+
+  // Computed Check for Save Button
+  // We need to check if capacity is full when time changes
+  checkCapacity = async () => {
+    if (this.activeTab() !== 'booking' || !this.serviceId || !this.startTimeStr() || !this.endTimeStr()) return;
+
+    // Only check if creating new or changing time significantly
+    // Simplified: check every time for now if valid dates
+    try {
+      const start = new Date(this.startTimeStr());
+      const end = new Date(this.endTimeStr());
+
+      // This should assume max_capacity is fetched from service or passed in
+      // For now, we'll assume strict 1-slot capacity unless service says otherwise
+      const cap = await this.bookingsService.checkServiceCapacity(this.serviceId, start, end);
+      // Assuming capacity is 1 for now or fetching from Service input
+      // TODO: Get real max_capacity from this.services().find(...)
+      const service = this.services().find(s => s.id === this.serviceId);
+      const maxCap = service?.max_capacity || 1;
+
+      this.isFullCapacity.set(cap >= maxCap);
+    } catch (e) {
+      console.error('Error checking capacity', e);
+    }
+  }
+
+  async onJoinWaitlist() {
+    if (!this.clientId || !this.serviceId || !this.startTimeStr()) return;
+
+    this.joiningWaitlist.set(true);
+    try {
+      const service = this.services().find(s => s.id === this.serviceId);
+      if (!service) return;
+
+      await this.bookingsService.joinWaitlist({
+        company_id: service.company_id,
+        client_id: this.clientId,
+        service_id: this.serviceId,
+        start_time: this.startTimeStr(),
+        end_time: this.endTimeStr(),
+        status: 'pending'
+      });
+      this.closeModal.emit();
+      // Maybe show toast?
+    } catch (e) {
+      console.error(e);
+    } finally {
+      this.joiningWaitlist.set(false);
+    }
+  }
+
+
+
+
+
   activeTab = signal<'booking' | 'block' | 'history'>('booking');
   history = signal<BookingHistory[]>([]);
-  loadingHistory = signal(false);
+  isLoadingHistory = signal(false);
+
   // New: If set, hides the tabs and locks the mode
   forcedMode = signal<'booking' | 'block' | null>(null);
 
   isEditMode = signal(false);
   existingId = signal<string | null>(null);
-  deleteAction = output<string>();
+  deleteAction = output<{ id: string, type: 'booking' | 'block' }>();
 
   // Booking Status Tracking
   bookingStatus = signal<'confirmed' | 'pending' | 'cancelled'>('confirmed');
-
 
   // Dependencies
   private couponsService = inject(SupabaseCouponsService);
@@ -496,7 +554,8 @@ export class CalendarActionModalComponent {
 
   delete() {
     if (this.existingId()) {
-      this.deleteAction.emit(this.existingId()!);
+      const type = (this.activeTab() === 'block') ? 'block' : 'booking';
+      this.deleteAction.emit({ id: this.existingId()!, type });
       this.close();
     }
   }
@@ -509,15 +568,24 @@ export class CalendarActionModalComponent {
   }
 
   async loadHistory(bookingId: string) {
-    this.loadingHistory.set(true);
+    // Validate UUID format to prevent 400 errors
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    // Check if valid UUID and not a placeholder/garbage string
+    if (!bookingId || !uuidRegex.test(bookingId)) {
+      // limit log noise
+      if (bookingId) console.warn('Skipping history load for non-UUID id:', bookingId);
+      return;
+    }
+
+    this.isLoadingHistory.set(true);
     this.bookingsService.getBookingHistory(bookingId).subscribe({
       next: (data) => {
         this.history.set(data);
-        this.loadingHistory.set(false);
+        this.isLoadingHistory.set(false);
       },
       error: (err) => {
         console.error('Error loading history', err);
-        this.loadingHistory.set(false);
+        this.isLoadingHistory.set(false);
       }
     });
   }

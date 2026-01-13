@@ -269,11 +269,19 @@ export class CalendarPageComponent implements OnInit {
         this.modalComponent.openForCreate(new Date(), 'block', true);
         this.isModalOpen.set(true);
     }
-    async handleModalDelete(id: string) {
+    async handleModalDelete(event: { id: string, type: 'booking' | 'block' }) {
+        if (!confirm('¿Seguro que deseas eliminar?')) return;
+
         try {
-            await this.bookingsService.deleteAvailabilityException(id);
+            if (event.type === 'block') {
+                await this.bookingsService.deleteAvailabilityException(event.id);
+                this.toastService.success('Eliminado', 'El bloqueo ha sido eliminado.');
+            } else {
+                await this.bookingsService.deleteBooking(event.id);
+                this.toastService.success('Eliminado', 'Cita eliminada correctamente.');
+            }
+            this.isModalOpen.set(false);
             this.loadBookings();
-            this.toastService.success('Eliminado', 'El bloqueo ha sido eliminado.');
         } catch (e) {
             console.error(e);
             this.toastService.error('Error', 'No se pudo eliminar.');
@@ -383,6 +391,8 @@ export class CalendarPageComponent implements OnInit {
             this.toastService.error('Error', 'No se pudo guardar.');
         }
     }
+
+
     async onEventClick(eventWrapper: any) {
         if (eventWrapper.nativeEvent) {
             eventWrapper.nativeEvent.stopPropagation();
