@@ -7,6 +7,7 @@ import { TemplatePortal } from '@angular/cdk/portal';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { AnimationService } from '../../../services/animation.service';
 import { Customer, CreateCustomerDev } from '../../../models/customer';
+import { CustomerViewModel } from '../models/customer-view-model';
 import { AddressesService } from '../../../services/addresses.service';
 import { LocalitiesService } from '../../../services/localities.service';
 import { Locality } from '../../../models/locality';
@@ -66,10 +67,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     @ViewChild('modalTemplate') modalTemplate!: TemplateRef<any>;
     private overlayRef?: OverlayRef;
 
-
-
-    // Audio State
-
     // Audio State
     isRecording = signal(false);
     isProcessingAudio = signal(false);
@@ -77,12 +74,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     audioChunks: Blob[] = [];
 
     // State signals
-    customers = signal<Customer[]>([]);
+    customers = signal<CustomerViewModel[]>([]);
     isLoading = signal(false);
     showForm = signal(false);
     selectedCustomer = signal<Customer | null>(null);
-
-    // Client type dropdown - Refactored to child component
 
     // History management for modals
     private popStateListener: any = null;
@@ -115,20 +110,94 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     sortBy = signal<'name' | 'apellidos' | 'created_at'>('name'); // Default to name
     sortOrder = signal<'asc' | 'desc'>('asc'); // Default to asc for alphabetical
 
-
-
     // UI filter toggle for incomplete imports (Removed from UI, logic deprecated)
     onlyIncomplete: boolean = false;
 
-    // Form data
+    // Helper to calculate view model properties
+    private mapToViewModel(customer: Customer): CustomerViewModel {
+        // Initials
+        const initials = `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
 
-    // Form data
-    // Form data - Refactored to child component
+        // Display Name
+        let displayName = '';
+        if (customer) {
+            displayName = customer.client_type === 'business'
+                ? (customer.business_name || customer.trade_name || customer.name)
+                : [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
 
-    // Método manejador de selección de archivo CSV
-    // Removed legacy CSV handlers
+            if (!displayName || !displayName.trim()) {
+                displayName = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+            }
 
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (uuidRegex.test(displayName.trim())) {
+                displayName = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+            }
 
+            if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(displayName)) {
+                displayName = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
+            }
+        }
+
+        // Avatar Gradient
+        const nameForHash = `${customer.name}${customer.apellidos}`;
+        let hash = 0;
+        for (let i = 0; i < nameForHash.length; i++) {
+            hash = nameForHash.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue = Math.abs(hash % 360);
+        const avatarGradient = `linear-gradient(135deg, hsl(${hue}, 70%, 80%) 0%, hsl(${hue + 45}, 70%, 80%) 100%)`;
+
+        // Formatted Date
+        let formattedDate = '';
+        if (customer.created_at) {
+            const d = typeof customer.created_at === 'string' ? new Date(customer.created_at) : customer.created_at;
+            if (!isNaN(d.getTime())) {
+                formattedDate = d.toLocaleDateString('es-ES', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            }
+        }
+
+        // Search String
+        const searchString = [
+            customer.name,
+            customer.apellidos,
+            customer.email,
+            customer.dni,
+            customer.phone
+        ].filter(Boolean).join(' ').toLowerCase();
+
+        // Lowercase name and apellidos for sorting
+        const lowerName = (customer.name || '').toLowerCase();
+        const lowerApellidos = (customer.apellidos || '').toLowerCase();
+
+        // Completeness
+        const isComplete = this.completenessSvc.computeCompleteness(customer).complete;
+
+        // GDPR Badge Config
+        // Replicating getGdprComplianceStatus logic inline or calling method if it doesn't depend on VM
+        let status: 'compliant' | 'partial' | 'nonCompliant' = 'nonCompliant';
+        if (customer.data_processing_consent) {
+            status = 'compliant';
+        }
+        const gdprBadgeConfig = this.rgpdStatusConfig[status];
+
+        return {
+            ...customer,
+            displayName,
+            initials,
+            avatarGradient,
+            formattedDate,
+            searchString,
+            lowerName,
+            lowerApellidos,
+            isComplete,
+            gdprBadgeConfig
+        };
+    }
 
     hasDevices(customer: Customer): boolean {
         if (!customer?.devices) return false;
@@ -146,52 +215,30 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         return activeDevices.length > 0;
     }
 
-
-
-
-    // Método que se llama cuando el usuario confirma el mapeo de columnas en el modal
-    // Removed legacy CSV mapping handlers
-
-
-    // Cache completeness status to avoid O(N log N) re-calculations during sort
-    completenessCache = computed(() => {
-        const cache = new Map<string, boolean>();
-        this.customers().forEach(c => {
-            cache.set(c.id, this.completenessSvc.computeCompleteness(c).complete);
-        });
-        return cache;
-    });
-
     // Computed
     filteredCustomers = computed(() => {
         let filtered = this.customers();
 
         // ✅ Filtrar clientes anonimizados (ocultarlos de la lista)
+        // Optimization: Check the property directly on the view model
         filtered = filtered.filter(customer => !this.isCustomerAnonymized(customer));
 
         // Apply search filter
         const search = this.searchTerm().toLowerCase().trim();
         if (search) {
-            filtered = filtered.filter(customer =>
-                customer.name.toLowerCase().includes(search) ||
-                customer.apellidos.toLowerCase().includes(search) ||
-                customer.email.toLowerCase().includes(search) ||
-                customer.dni.toLowerCase().includes(search) ||
-                (customer.phone && customer.phone.toLowerCase().includes(search))
-            );
+            // Optimization: Use pre-calculated searchString
+            filtered = filtered.filter(customer => customer.searchString.includes(search));
         }
 
         // Apply sorting
         const sortBy = this.sortBy();
         const sortOrder = this.sortOrder();
 
-        // Use cached completeness for sorting
-        const completeness = this.completenessCache();
-
         filtered.sort((a, b) => {
             // Priority Sort: Incomplete users FIRST
-            const aComplete = completeness.get(a.id) ?? false;
-            const bComplete = completeness.get(b.id) ?? false;
+            // Optimization: Use pre-calculated isComplete
+            const aComplete = a.isComplete;
+            const bComplete = b.isComplete;
 
             if (aComplete !== bComplete) {
                 // If one is incomplete (false) and other is complete (true), incomplete comes first
@@ -199,12 +246,24 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             }
 
             // Secondary Sort: Respect selected sort
-            let aValue = a[sortBy];
-            let bValue = b[sortBy];
+            // Optimization: Use pre-calculated lowerName / lowerApellidos
+            let aValue: any;
+            let bValue: any;
 
-            if (typeof aValue === 'string') {
-                aValue = aValue.toLowerCase();
-                bValue = (bValue as string).toLowerCase();
+            if (sortBy === 'name') {
+                aValue = a.lowerName;
+                bValue = b.lowerName;
+            } else if (sortBy === 'apellidos') {
+                aValue = a.lowerApellidos;
+                bValue = b.lowerApellidos;
+            } else {
+                aValue = a[sortBy];
+                bValue = b[sortBy];
+                // Handle string dates or other strings if needed
+                if (typeof aValue === 'string') {
+                    aValue = aValue.toLowerCase();
+                    bValue = (bValue as string).toLowerCase();
+                }
             }
 
             const result = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
@@ -215,8 +274,9 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     });
 
     // Completeness helpers for template
-    isCustomerComplete(c: Customer): boolean {
-        return this.completenessCache().get(c.id) ?? false;
+    // Kept for compatibility if used elsewhere, but template should use property
+    isCustomerComplete(c: CustomerViewModel): boolean {
+        return c.isComplete;
     }
 
     getCustomerMissingFields(c: Customer): string[] {
@@ -384,12 +444,13 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     private loadData() {
         // Subscribe to customers
         this.customersService.customers$.subscribe(customers => {
-            this.customers.set(customers);
+            // Optimization: Map to ViewModel once
+            const viewModels = customers.map(c => this.mapToViewModel(c));
+            this.customers.set(viewModels);
             // Keep portal access cache in sync with customer list
             this.refreshPortalAccess();
         });
 
-        // Subscribe to loading state
         // Subscribe to loading state
         this.customersService.loading$.subscribe(loading => {
             this.isLoading.set(loading);
@@ -398,9 +459,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Via suggestions handler
     // Locality input handlers removed (moved to child component)
-
-
-
 
     // Event handlers
     onSearchChange(term: string) {
@@ -427,8 +485,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         this.showForm.set(true);
         history.pushState({ modal: 'customer-form' }, '');
     }
-
-
 
     openForm() {
         this.selectedCustomer.set(null);
@@ -539,54 +595,31 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         });
     }
 
-
-
-
-
     clearFilters() {
         this.searchTerm.set('');
         this.onSearchChange('');
     }
 
     // Utility methods
+    // DEPRECATED: Use CustomerViewModel properties instead
     getCustomerInitials(customer: Customer): string {
-        return `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
+         return (customer as any).initials || `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
     }
 
-    // Nombre amigable para mostrar en la card evitando UUIDs u otros identificadores técnicos
+    // DEPRECATED: Use CustomerViewModel properties instead
     getDisplayName(customer: Customer): string {
-        if (!customer) return '';
-        // Preferir razón social si es empresa
-        let base = customer.client_type === 'business'
-            ? (customer.business_name || customer.trade_name || customer.name)
-            : [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
-
-        if (!base || !base.trim()) {
-            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
-        }
-
-        // Detectar patrón UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(base.trim())) {
-            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
-        }
-
-        // Evitar mostrar correos como nombre si accidentalmente se mapearon
-        if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(base)) {
-            base = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
-        }
-
-        return base;
+         return (customer as any).displayName || ''; // Fallback not really needed if we always use VM
     }
 
+    // DEPRECATED: Use CustomerViewModel properties instead
     formatDate(date: string | Date | null | undefined): string {
+        // If it's a VM, it has formattedDate
+        // But this method might be called with just a date string from template?
+        // In template it is: formatDate(customer.created_at)
+        // We will update template to use customer.formattedDate
         if (!date) return '';
-
-        // Normalize to Date instance
         const d: Date = typeof date === 'string' ? new Date(date) : date;
-
         if (isNaN(d.getTime())) return '';
-
         return d.toLocaleDateString('es-ES', {
             year: 'numeric',
             month: 'short',
@@ -710,10 +743,11 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             next: (result: any) => {
                 if (result.success) {
                     // ✅ Actualizar el cliente localmente primero (para feedback inmediato)
+                    // Note: This logic needs to adapt to CustomerViewModel if we are updating signal directly
                     const currentCustomers = this.customers();
                     const updatedCustomers = currentCustomers.map(c => {
                         if (c.id === customer.id) {
-                            return {
+                            const updatedC = {
                                 ...c,
                                 name: 'ANONYMIZED_' + Math.random().toString(36).substr(2, 8),
                                 apellidos: 'ANONYMIZED_' + Math.random().toString(36).substr(2, 8),
@@ -721,7 +755,9 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
                                 phone: '',
                                 dni: '',
                                 anonymized_at: new Date().toISOString()
-                            } as Customer;
+                            };
+                            // Re-map to update VM properties
+                            return this.mapToViewModel(updatedC as unknown as Customer);
                         }
                         return c;
                     });
@@ -779,8 +815,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     // Check if customer is already anonymized
     isCustomerAnonymized(customer: Customer): boolean {
         return customer.anonymized_at != null ||
-            customer.name?.startsWith('ANONYMIZED_') ||
-            customer.email?.includes('@anonymized.local');
+            !!(customer.name && customer.name.startsWith('ANONYMIZED_')) ||
+            !!(customer.email && customer.email.includes('@anonymized.local'));
     }
 
     // Show GDPR compliance status for a customer
@@ -813,7 +849,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         }
     };
 
-    getGdprBadgeConfig(customer: Customer) {
+    getGdprBadgeConfig(customer: Customer): { label: string, classes: string, icon: string } {
+        if ('gdprBadgeConfig' in customer) {
+            return (customer as unknown as CustomerViewModel).gdprBadgeConfig;
+        }
         const status = this.getGdprComplianceStatus(customer);
         return this.rgpdStatusConfig[status];
     }
@@ -827,19 +866,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             this.complianceStats.set(stats);
         });
 
-        // Load pending rectification requests to control "Edit" button visibility
-        // Access 'accessRequests' from the dashboard stats or fetch separate if needed.
-        // Assuming getAccessRequests exists (as used in other components) or deriving from dashboard if it returns list.
-        // Based on service review, getComplianceDashboard returns counts. We need the list.
-        // Let's use getAuditLog or verify getAccessRequests Exists.
-        // Wait, step 17560 line 85 shows createAccessRequest. I didn't see getAccessRequests in the snippet.
-        // But GdprCustomerManager uses it. Let's assume it exists or use getComplianceDashboard if it includes data.
-        // Re-reading service (17570) - getComplianceDashboard returns counts and filtered lists in 'pendingAccessRequests' (count).
-        // It does not return the full list in the mapped response (just counts).
-        // I need to fetch the actual requests.
-
-        // Let's assume getAccessRequests exists as inferred from other usage, otherwise I will use supabase client directly here for speed or verify service again.
-        // Actually, looking at GdprCustomerManager (Step 17524), it uses this.gdprService.getAccessRequests().
         this.gdprService.getAccessRequests().subscribe((requests: GdprAccessRequest[]) => {
             if (requests) {
                 const rectificationEmails = new Set<string>();
@@ -860,13 +886,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Avatar gradient generator - consistent hash-based color selection
     getAvatarGradient(customer: Customer): string {
-        const name = `${customer.name}${customer.apellidos}`;
-        let hash = 0;
-        for (let i = 0; i < name.length; i++) {
-            hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const hue = Math.abs(hash % 360);
-        return `linear-gradient(135deg, hsl(${hue}, 70%, 80%) 0%, hsl(${hue + 45}, 70%, 80%) 100%)`;
+         return (customer as any).avatarGradient || '';
     }
 
 
