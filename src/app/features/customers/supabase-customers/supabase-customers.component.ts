@@ -26,6 +26,32 @@ import { AiService } from '../../../services/ai.service';
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
 
+// Constants for Regex patterns to avoid recreation on every call
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EMAIL_LIKE_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const EMAIL_VALIDATION_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Interface extending Customer with pre-calculated display properties
+interface CustomerViewModel extends Customer {
+    // Pre-calculated display properties
+    displayName: string;
+    initials: string;
+    avatarGradient: string;
+    formattedDate: string;
+
+    // Completeness status (pre-calculated)
+    isComplete: boolean;
+    missingFields: string[];
+    attentionReasons: string;
+
+    // Pre-calculated search string (lowercase concatenation of searchable fields)
+    searchString: string;
+
+    // Pre-calculated normalized values for sorting
+    normName: string;
+    normApellidos: string;
+}
+
 @Component({
     selector: 'app-supabase-customers',
     standalone: true,
@@ -162,36 +188,77 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         return cache;
     });
 
+    // ⚡ BOLT OPTIMIZATION: Computed View Models
+    // Pre-calculates all display properties and search strings to avoid expensive operations in template and filter
+    customerViewModels = computed<CustomerViewModel[]>(() => {
+        return this.customers().map(customer => {
+            // Calculate completeness
+            const completeness = this.completenessSvc.computeCompleteness(customer);
+
+            // Calculate display name (logic moved here)
+            const displayName = this.calculateDisplayName(customer);
+
+            // Calculate initials
+            const initials = `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
+
+            // Calculate avatar gradient
+            const avatarGradient = this.calculateAvatarGradient(customer.name, customer.apellidos);
+
+            // Format date
+            const formattedDate = this.calculateFormattedDate(customer.created_at);
+
+            // Attention reasons
+            const attentionReasons = this.calculateAttentionReasons(customer);
+
+            // Normalized search string
+            const searchString = [
+                customer.name,
+                customer.apellidos,
+                customer.email,
+                customer.dni,
+                customer.phone
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            return {
+                ...customer,
+                displayName,
+                initials,
+                avatarGradient,
+                formattedDate,
+                isComplete: completeness.complete,
+                missingFields: completeness.missingFields,
+                attentionReasons,
+                searchString,
+                normName: (customer.name || '').toLowerCase(),
+                normApellidos: (customer.apellidos || '').toLowerCase()
+            };
+        });
+    });
+
     // Computed
-    filteredCustomers = computed(() => {
-        let filtered = this.customers();
+    filteredCustomers = computed<CustomerViewModel[]>(() => {
+        // Start with ViewModels instead of raw Customers
+        let filtered = this.customerViewModels();
 
         // ✅ Filtrar clientes anonimizados (ocultarlos de la lista)
+        // Note: isCustomerAnonymized check is fast enough, but could be pre-calculated too if needed
         filtered = filtered.filter(customer => !this.isCustomerAnonymized(customer));
 
-        // Apply search filter
+        // Apply search filter using pre-calculated searchString
         const search = this.searchTerm().toLowerCase().trim();
         if (search) {
-            filtered = filtered.filter(customer =>
-                customer.name.toLowerCase().includes(search) ||
-                customer.apellidos.toLowerCase().includes(search) ||
-                customer.email.toLowerCase().includes(search) ||
-                customer.dni.toLowerCase().includes(search) ||
-                (customer.phone && customer.phone.toLowerCase().includes(search))
-            );
+            filtered = filtered.filter(customer => customer.searchString.includes(search));
         }
 
         // Apply sorting
         const sortBy = this.sortBy();
         const sortOrder = this.sortOrder();
 
-        // Use cached completeness for sorting
-        const completeness = this.completenessCache();
-
         filtered.sort((a, b) => {
             // Priority Sort: Incomplete users FIRST
-            const aComplete = completeness.get(a.id) ?? false;
-            const bComplete = completeness.get(b.id) ?? false;
+            // Using pre-calculated isComplete
+            const aComplete = a.isComplete;
+            const bComplete = b.isComplete;
 
             if (aComplete !== bComplete) {
                 // If one is incomplete (false) and other is complete (true), incomplete comes first
@@ -199,12 +266,26 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             }
 
             // Secondary Sort: Respect selected sort
-            let aValue = a[sortBy];
-            let bValue = b[sortBy];
+            let aValue: any;
+            let bValue: any;
 
-            if (typeof aValue === 'string') {
-                aValue = aValue.toLowerCase();
-                bValue = (bValue as string).toLowerCase();
+            // Use pre-calculated normalized values for name/apellidos
+            if (sortBy === 'name') {
+                aValue = a.normName;
+                bValue = b.normName;
+            } else if (sortBy === 'apellidos') {
+                aValue = a.normApellidos;
+                bValue = b.normApellidos;
+            } else {
+                aValue = a[sortBy];
+                bValue = b[sortBy];
+            }
+
+            // Ensure comparison works (dates are strings or objects)
+            if (typeof aValue === 'string' && sortBy !== 'name' && sortBy !== 'apellidos') {
+                 // Fallback for other string fields if added later
+                 aValue = aValue.toLowerCase();
+                 bValue = (bValue as any).toLowerCase();
             }
 
             const result = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
@@ -214,7 +295,67 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         return filtered;
     });
 
+    // Helper functions for ViewModel calculation (logic moved from methods)
+    private calculateDisplayName(customer: Customer): string {
+        if (!customer) return '';
+        // Preferir razón social si es empresa
+        let base = customer.client_type === 'business'
+            ? (customer.business_name || customer.trade_name || customer.name)
+            : [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
+
+        if (!base || !base.trim()) {
+            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+        }
+
+        // Detectar patrón UUID (using constant regex)
+        if (UUID_REGEX.test(base.trim())) {
+            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+        }
+
+        // Evitar mostrar correos como nombre (using constant regex)
+        if (EMAIL_LIKE_REGEX.test(base)) {
+            base = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
+        }
+
+        return base;
+    }
+
+    private calculateAvatarGradient(name: string, apellidos: string): string {
+        const fullname = `${name}${apellidos}`;
+        let hash = 0;
+        for (let i = 0; i < fullname.length; i++) {
+            hash = fullname.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue = Math.abs(hash % 360);
+        return `linear-gradient(135deg, hsl(${hue}, 70%, 80%) 0%, hsl(${hue + 45}, 70%, 80%) 100%)`;
+    }
+
+    private calculateFormattedDate(date: string | Date | null | undefined): string {
+        if (!date) return '';
+        const d: Date = typeof date === 'string' ? new Date(date) : date;
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+
+    private calculateAttentionReasons(c: any): string {
+        const md = (c && c.metadata) || {};
+        const reasons: string[] = Array.isArray(md.attention_reasons) ? md.attention_reasons : [];
+        if (!reasons.length) return 'Marcado para revisión';
+        const map: Record<string, string> = {
+            email_missing_or_invalid: 'Email faltante o inválido',
+            name_missing: 'Nombre faltante',
+            surname_missing: 'Apellidos faltantes',
+        };
+        return 'Revisar: ' + reasons.map(r => map[r] || r).join(', ');
+    }
+
+
     // Completeness helpers for template
+    // Kept for backward compatibility if used elsewhere, but template should now use vm.isComplete
     isCustomerComplete(c: Customer): boolean {
         return this.completenessCache().get(c.id) ?? false;
     }
@@ -229,15 +370,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     }
 
     formatAttentionReasons(c: any): string {
-        const md = (c && c.metadata) || {};
-        const reasons: string[] = Array.isArray(md.attention_reasons) ? md.attention_reasons : [];
-        if (!reasons.length) return 'Marcado para revisión';
-        const map: Record<string, string> = {
-            email_missing_or_invalid: 'Email faltante o inválido',
-            name_missing: 'Nombre faltante',
-            surname_missing: 'Apellidos faltantes',
-        };
-        return 'Revisar: ' + reasons.map(r => map[r] || r).join(', ');
+       return this.calculateAttentionReasons(c);
     }
 
     ngOnInit() {
@@ -305,8 +438,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     }
 
     private isValidEmail(email: string): boolean {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test((email || '').trim());
+        return EMAIL_VALIDATION_REGEX.test((email || '').trim());
     }
 
     async sendInvite() {
@@ -549,49 +681,18 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     }
 
     // Utility methods
+    // NOTE: These methods are now deprecated for use in loops, prefer ViewModel properties.
     getCustomerInitials(customer: Customer): string {
         return `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
     }
 
     // Nombre amigable para mostrar en la card evitando UUIDs u otros identificadores técnicos
     getDisplayName(customer: Customer): string {
-        if (!customer) return '';
-        // Preferir razón social si es empresa
-        let base = customer.client_type === 'business'
-            ? (customer.business_name || customer.trade_name || customer.name)
-            : [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
-
-        if (!base || !base.trim()) {
-            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
-        }
-
-        // Detectar patrón UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(base.trim())) {
-            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
-        }
-
-        // Evitar mostrar correos como nombre si accidentalmente se mapearon
-        if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(base)) {
-            base = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
-        }
-
-        return base;
+        return this.calculateDisplayName(customer);
     }
 
     formatDate(date: string | Date | null | undefined): string {
-        if (!date) return '';
-
-        // Normalize to Date instance
-        const d: Date = typeof date === 'string' ? new Date(date) : date;
-
-        if (isNaN(d.getTime())) return '';
-
-        return d.toLocaleDateString('es-ES', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
+        return this.calculateFormattedDate(date);
     }
 
     // ========================================
@@ -860,13 +961,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Avatar gradient generator - consistent hash-based color selection
     getAvatarGradient(customer: Customer): string {
-        const name = `${customer.name}${customer.apellidos}`;
-        let hash = 0;
-        for (let i = 0; i < name.length; i++) {
-            hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const hue = Math.abs(hash % 360);
-        return `linear-gradient(135deg, hsl(${hue}, 70%, 80%) 0%, hsl(${hue + 45}, 70%, 80%) 100%)`;
+        return this.calculateAvatarGradient(customer.name, customer.apellidos);
     }
 
 
