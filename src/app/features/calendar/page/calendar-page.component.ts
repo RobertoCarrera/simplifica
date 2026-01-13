@@ -398,9 +398,17 @@ export class CalendarPageComponent implements OnInit {
             return;
         }
 
-        // Just alert for now for valid bookings.
-        // Ideally open modal in edit mode if it's a booking.
-        alert(`Editar cita: ${event.title}`);
+        // Open modal in edit mode
+        this.isModalOpen.set(true);
+        setTimeout(() => {
+            this.modalComponent.openForEdit({
+                id: event.id,
+                start: event.start,
+                end: event.end,
+                title: event.title,
+                extendedProps: event.meta?.original || {}
+            }, 'booking');
+        });
     }
 
     async onEventDrop({ event, newStart, newResource }: { event: CalendarEvent, newStart: Date, newResource?: string }) {
