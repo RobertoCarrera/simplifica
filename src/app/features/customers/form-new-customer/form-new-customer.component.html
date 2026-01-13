@@ -9,8 +9,8 @@
                 <p class="modal-subtitle">{{ customer ? 'Modifica los datos del cliente' : 'Introduce los datos del
                     nuevo cliente' }}</p>
             </div>
-            <button (click)="closeForm()" class="modal-close">
-                <i class="fas fa-times"></i>
+            <button (click)="closeForm()" class="modal-close" aria-label="Cerrar formulario">
+                <i class="fas fa-times" aria-hidden="true"></i>
             </button>
         </div>
 
@@ -25,33 +25,37 @@
                             Tipo de cliente
                         </label>
                         <button type="button" (click)="toggleClientTypeDropdown()"
-                            class="form-input client-type-button">
+                            class="form-input client-type-button"
+                            aria-haspopup="listbox"
+                            [attr.aria-expanded]="clientTypeDropdownOpen()">
                             <span class="client-type-selected">
-                                <i [class]="getClientTypeIcon()"></i>
+                                <i [class]="getClientTypeIcon()" aria-hidden="true"></i>
                                 {{ getClientTypeLabel() }}
                             </span>
                             <i class="fas fa-chevron-down dropdown-arrow"
-                                [class.rotated]="clientTypeDropdownOpen()"></i>
+                                [class.rotated]="clientTypeDropdownOpen()" aria-hidden="true"></i>
                         </button>
 
                         @if (clientTypeDropdownOpen()) {
                         <div class="client-type-overlay" (click)="clientTypeDropdownOpen.set(false)"></div>
                         <div class="client-type-dropdown">
                             <div class="dropdown-header">
-                                <span>Seleccionar tipo de cliente</span>
+                                <span id="client-type-label">Seleccionar tipo de cliente</span>
                                 <button type="button" (click)="clientTypeDropdownOpen.set(false)"
-                                    class="dropdown-close">
-                                    <i class="fas fa-times"></i>
+                                    class="dropdown-close" aria-label="Cerrar opciones">
+                                    <i class="fas fa-times" aria-hidden="true"></i>
                                 </button>
                             </div>
-                            <div class="dropdown-options">
+                            <div class="dropdown-options" role="listbox" aria-labelledby="client-type-label">
                                 @for (option of clientTypeOptions; track option.value) {
                                 <button type="button" (click)="selectClientType(option.value)" class="dropdown-option"
-                                    [class.selected]="formData.client_type === option.value">
-                                    <i [class]="option.icon"></i>
+                                    [class.selected]="formData.client_type === option.value"
+                                    role="option"
+                                    [attr.aria-selected]="formData.client_type === option.value">
+                                    <i [class]="option.icon" aria-hidden="true"></i>
                                     <span>{{ option.label }}</span>
                                     @if (formData.client_type === option.value) {
-                                    <i class="fas fa-check check-icon"></i>
+                                    <i class="fas fa-check check-icon" aria-hidden="true"></i>
                                     }
                                 </button>
                                 }
@@ -317,13 +321,13 @@
 
         <div class="modal-actions">
             <button type="button" (click)="closeForm()" class="btn-cancel" title="Cancelar">
-                <i class="fas fa-times"></i>
+                <i class="fas fa-times" aria-hidden="true"></i>
                 <span>Cancelar</span>
             </button>
             <button type="button" (click)="saveCustomer()" class="btn-save"
                 [disabled]="isLoading() || (formData.client_type === 'business' ? !(formData.business_name && formData.cif_nif && formData.email) : !(formData.name && formData.email))"
                 [title]="customer ? 'Actualizar' : 'Crear'">
-                <i class="fas fa-check"></i>
+                <i class="fas fa-check" aria-hidden="true"></i>
                 <span>{{ customer ? 'Actualizar' : 'Guardar Cliente' }}</span>
             </button>
         </div>
