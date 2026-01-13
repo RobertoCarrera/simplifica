@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -25,7 +25,10 @@ import { FormNewCustomerComponent } from "../customers/form-new-customer/form-ne
         FormNewCustomerComponent
     ],
     templateUrl: './dashboard.component.html',
-    styleUrls: ['./dashboard.component.scss']
+    styleUrls: ['./dashboard.component.scss'],
+    // ⚡ Bolt Optimization: Use OnPush strategy to minimize unnecessary change detection cycles.
+    // This component relies on Signals for reactivity, which works perfectly with OnPush.
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DashboardComponent implements OnInit {
     private analyticsService = inject(AnalyticsService);
