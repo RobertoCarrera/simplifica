@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseCouponsService, Coupon } from '../../../../services/supabase-coupons.service';
 import { Service } from '../../../../services/supabase-services.service';
-import { SupabaseBookingsService } from '../../../../services/supabase-bookings.service';
+import { SupabaseBookingsService, BookingHistory } from '../../../../services/supabase-bookings.service';
 
 export interface CalendarActionData {
   type: 'booking' | 'block';
@@ -45,7 +45,9 @@ export class CalendarActionModalComponent {
   closeModal = output<void>();
   saveAction = output<CalendarActionData>();
 
-  activeTab = signal<'booking' | 'block'>('booking');
+  activeTab = signal<'booking' | 'block' | 'history'>('booking');
+  history = signal<BookingHistory[]>([]);
+  loadingHistory = signal(false);
   // New: If set, hides the tabs and locks the mode
   forcedMode = signal<'booking' | 'block' | null>(null);
 
@@ -149,6 +151,10 @@ export class CalendarActionModalComponent {
       // Restore recurrence logic if complex recurrence parsing is needed
     } else if (type === 'block') {
       this.resourceId = event.resourceId || null;
+    }
+
+    if (this.existingId()) {
+      this.loadHistory(this.existingId()!);
     }
   }
 
@@ -370,6 +376,8 @@ export class CalendarActionModalComponent {
     let bookingStatus: 'confirmed' | 'pending' | 'cancelled' = forceStatus || this.bookingStatus();
     let service: Service | undefined;
 
+    if (this.activeTab() === 'history') return;
+
     if (this.activeTab() === 'block') {
       const type = this.blockType();
       if (type === 'day') {
@@ -455,7 +463,7 @@ export class CalendarActionModalComponent {
 
     // Emit
     this.saveAction.emit({
-      type: this.activeTab(),
+      type: this.activeTab() as 'booking' | 'block',
       startTime: start,
       endTime: end,
       reason: this.activeTab() === 'block' ? (this.blockReason || 'Bloqueado') : undefined,
@@ -493,7 +501,24 @@ export class CalendarActionModalComponent {
     }
   }
 
-  setTab(tab: 'booking' | 'block') {
+  setTab(tab: 'booking' | 'block' | 'history') {
     this.activeTab.set(tab);
+    if (tab === 'history' && this.existingId() && this.history().length === 0) {
+      this.loadHistory(this.existingId()!);
+    }
+  }
+
+  async loadHistory(bookingId: string) {
+    this.loadingHistory.set(true);
+    this.bookingsService.getBookingHistory(bookingId).subscribe({
+      next: (data) => {
+        this.history.set(data);
+        this.loadingHistory.set(false);
+      },
+      error: (err) => {
+        console.error('Error loading history', err);
+        this.loadingHistory.set(false);
+      }
+    });
   }
 }

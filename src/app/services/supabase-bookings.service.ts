@@ -21,7 +21,7 @@ export interface Resource {
     id: string;
     company_id: string;
     name: string;
-    type: 'room' | 'equipment';
+    type: string;
     capacity: number;
     description?: string;
     is_active: boolean;
@@ -538,6 +538,26 @@ export class SupabaseBookingsService {
         if (error) throw error;
         return count || 0;
     }
+
+    // --- Audit/History ---
+
+    getBookingHistory(bookingId: string): Observable<BookingHistory[]> {
+        return from(
+            this.supabase
+                .from('booking_history')
+                .select(`
+                    *,
+                    modifier:changed_by_user_id(name, email)
+                `)
+                .eq('booking_id', bookingId)
+                .order('created_at', { ascending: false })
+        ).pipe(
+            map(({ data, error }) => {
+                if (error) throw error;
+                return data as BookingHistory[];
+            })
+        );
+    }
 }
 
 export interface AvailabilityException {
@@ -548,5 +568,19 @@ export interface AvailabilityException {
     end_time: string;
     reason?: string;
     type: 'block' | 'work';
+}
+
+export interface BookingHistory {
+    id: string;
+    booking_id: string;
+    changed_by: string;
+    changed_by_user_id?: string;
+    previous_status?: string;
+    new_status?: string;
+    change_type: 'create' | 'update' | 'cancel' | 'reschedule' | 'status_change';
+    details?: any;
+    created_at: string;
+    // Joined
+    modifier?: { name: string, email: string };
 }
 
