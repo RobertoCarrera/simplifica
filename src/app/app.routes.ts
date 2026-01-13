@@ -162,6 +162,8 @@ export const routes: Routes = [
     { path: 'portal/reservas', loadComponent: () => import('./features/bookings/portal-bookings/portal-bookings.component').then(m => m.PortalBookingsComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloReservas' } },
     { path: 'portal/mis-reservas', loadComponent: () => import('./features/bookings/portal-my-bookings/portal-my-bookings.component').then(m => m.PortalMyBookingsComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloReservas' } },
 
+    // Client portal settings
+
 
     // Public payment pages (NO AUTH REQUIRED)
     { path: 'pago/:token', component: PublicPaymentComponent },

@@ -708,4 +708,34 @@ export class ClientPortalService {
       return { success: false, error: e.message };
     }
   }
+
+  // --- Profile & Preferences ---
+
+  async updateProfile(fullName: string, phone: string, avatarUrl?: string): Promise<{ success: boolean; error: any }> {
+    const { data, error } = await this.sb.instance.rpc('client_update_profile', {
+      p_full_name: fullName,
+      p_phone: phone,
+      p_avatar_url: avatarUrl || null
+    });
+    return { success: !error, error };
+  }
+
+  async getPreferences(): Promise<{ data: any; error: any }> {
+    const { data, error } = await this.sb.instance.rpc('client_get_preferences');
+    return { data, error };
+  }
+
+  async updatePreferences(prefs: { email_notifications: boolean; sms_notifications: boolean; marketing_accepted: boolean }): Promise<{ success: boolean; error: any }> {
+    const { error } = await this.sb.instance.rpc('client_update_preferences', {
+      p_email_notifications: prefs.email_notifications,
+      p_sms_notifications: prefs.sms_notifications,
+      p_marketing_accepted: prefs.marketing_accepted
+    });
+    return { success: !error, error };
+  }
+
+  async changePassword(newPassword: string): Promise<{ success: boolean; error: any }> {
+    const { error } = await this.sb.instance.auth.updateUser({ password: newPassword });
+    return { success: !error, error };
+  }
 }

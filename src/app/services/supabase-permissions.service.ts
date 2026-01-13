@@ -358,4 +358,12 @@ export class SupabasePermissionsService {
         const role = this.authService.userRole();
         return role === 'owner' || role === 'super_admin' || role === 'admin';
     }
+
+    isClient(): boolean {
+        // Assuming client users have role 'client' or null (if public user) but standard auth flow usually sets role.
+        // If not set, we might check profile. For now, check role 'client'.
+        const role = this.authService.userRole();
+        // Also check if they are NOT staff
+        return role === 'client' || (!this.isAdminOrOwner() && role !== 'professional' && role !== 'agent' && role !== 'member');
+    }
 }
