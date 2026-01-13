@@ -51,6 +51,10 @@ export class CalendarActionModalComponent {
   existingId = signal<string | null>(null);
   deleteAction = output<string>();
 
+  // Booking Status Tracking
+  bookingStatus = signal<'confirmed' | 'pending' | 'cancelled'>('confirmed');
+
+
   // Dependencies
   private couponsService = inject(SupabaseCouponsService);
   private bookingsService = inject(SupabaseBookingsService);
@@ -108,6 +112,8 @@ export class CalendarActionModalComponent {
     this.couponCode.set('');
     this.appliedCoupon.set(null);
     this.couponMessage.set(null);
+
+    this.bookingStatus.set('confirmed'); // Default for new, will be overriden by validation if needed
   }
 
   openForEdit(event: any, type: 'booking' | 'block') {
@@ -135,6 +141,7 @@ export class CalendarActionModalComponent {
     if (type === 'booking') {
       this.serviceId = event.extendedProps?.service_id || null;
       this.clientId = event.extendedProps?.client_id || null;
+      this.bookingStatus.set(event.extendedProps?.status || 'confirmed');
       // Restore recurrence logic if complex recurrence parsing is needed
     }
   }
@@ -339,10 +346,22 @@ export class CalendarActionModalComponent {
     this.closeModal.emit();
   }
 
-  async save() {
+  approveBooking() {
+    this.save('confirmed');
+  }
+
+  rejectBooking() {
+    const confirmReject = confirm('¿Estás seguro de rechazar esta reserva? Se marcará como cancelada.');
+    if (confirmReject) {
+      this.save('cancelled');
+    }
+  }
+
+  async save(forceStatus?: 'confirmed' | 'pending' | 'cancelled') {
     let start: Date;
     let end: Date;
-    let bookingStatus: 'confirmed' | 'pending' | 'cancelled' = 'confirmed';
+    // Default to current status if editing, or confirmed if creating (unless forced)
+    let bookingStatus: 'confirmed' | 'pending' | 'cancelled' = forceStatus || this.bookingStatus();
     let service: Service | undefined;
 
     if (this.activeTab() === 'block') {
@@ -413,8 +432,10 @@ export class CalendarActionModalComponent {
           }
 
           // Approval Workflow
-          if (service.requires_confirmation) {
+          // Only apply if we are NOT forcing a status (e.g. approving).
+          if (!forceStatus && service.requires_confirmation) {
             bookingStatus = 'pending';
+
             const confirmPending = confirm(
               `ℹ️ Aprobación Requerida\n\nEste servicio requiere aprobación manual.` +
               `\nLa reserva se creará en estado 'Pendiente'.` +

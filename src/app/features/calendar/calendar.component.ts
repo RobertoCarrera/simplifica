@@ -138,6 +138,7 @@ import { AnimationService } from '../../services/animation.service';
                           class="px-2 py-1 text-xs rounded-md truncate cursor-pointer hover:opacity-80 transition-opacity border-l-2"
                           [style.background-color]="getEventColor(event) + '20'"
                           [style.border-left-color]="getEventColor(event)"
+                          [style.border-left-style]="event.meta?.original?.status === 'pending' ? 'dashed' : 'solid'"
                           [style.color]="'inherit'"
                           (click)="onEventClick(event, $event)"
                           (contextmenu)="onEventContextMenu($event, event)"
@@ -226,6 +227,7 @@ import { AnimationService } from '../../services/animation.service';
                                            [style.height.px]="getEventHeight(event)"
                                            [style.background-color]="getEventColor(event) + '20'"
                                            [style.border-left-color]="getEventColor(event)"
+                                           [style.border-left-style]="event.meta?.original?.status === 'pending' ? 'dashed' : 'solid'"
                                            [style.color]="'inherit'"
                                            (click)="onEventClick(event, $event)"
                                            (contextmenu)="onEventContextMenu($event, event)"
@@ -305,6 +307,7 @@ import { AnimationService } from '../../services/animation.service';
                                      [style.height.px]="getEventHeight(event)"
                                      [style.background-color]="getEventColor(event) + '20'"
                                      [style.border-left-color]="getEventColor(event)"
+                                     [style.border-left-style]="event.meta?.original?.status === 'pending' ? 'dashed' : 'solid'"
                                      (click)="onEventClick(event, $event)"
                                      (contextmenu)="onEventContextMenu($event, event)"
                                      cdkDrag
@@ -392,6 +395,7 @@ import { AnimationService } from '../../services/animation.service';
                                            [style.width.%]="getUserEventWidthPercent(calEvent)"
                                            [style.background-color]="getEventColor(calEvent) + '20'"
                                            [style.border-left-color]="getEventColor(calEvent)"
+                                           [style.border-left-style]="calEvent.meta?.original?.status === 'pending' ? 'dashed' : 'solid'"
                                            (click)="onEventClick(calEvent, $event)"
                                            (contextmenu)="onEventContextMenu($event, calEvent)"
                                            cdkDrag

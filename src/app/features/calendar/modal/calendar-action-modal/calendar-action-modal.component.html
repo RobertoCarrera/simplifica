@@ -38,6 +38,24 @@
         <!-- Body -->
         <div class="p-6 space-y-4">
 
+            <!-- Pending Approval Banner -->
+            <div *ngIf="activeTab() === 'booking' && bookingStatus() === 'pending'"
+                class="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4 rounded-r-lg animate-fade-in">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-clock text-yellow-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-700 dark:text-yellow-200 font-medium">
+                            Reserva Pendiente de Aprobación
+                        </p>
+                        <p class="text-xs text-yellow-600 dark:text-yellow-300 mt-1">
+                            Este servicio requiere confirmación manual.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <!-- Common Date & Time (Only for Booking, Block uses its own logic below) -->
             <div *ngIf="activeTab() === 'booking'" class="grid grid-cols-1 gap-4">
                 <div>
@@ -256,13 +274,29 @@
                 class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
                 Cancelar
             </button>
-            <button (click)="save()" [class.bg-blue-600]="activeTab() === 'booking'"
-                [class.hover:bg-blue-700]="activeTab() === 'booking'" [class.bg-red-600]="activeTab() === 'block'"
-                [class.hover:bg-red-700]="activeTab() === 'block'"
+
+            <!-- Standard Save Buttons -->
+            <button *ngIf="activeTab() === 'block' || bookingStatus() !== 'pending'" (click)="save()"
+                [class.bg-blue-600]="activeTab() === 'booking'" [class.hover:bg-blue-700]="activeTab() === 'booking'"
+                [class.bg-red-600]="activeTab() === 'block'" [class.hover:bg-red-700]="activeTab() === 'block'"
                 class="px-4 py-2 text-sm font-medium text-white rounded-lg shadow-sm transition-colors flex items-center">
                 <i class="fas fa-check mr-2"></i>
                 {{ activeTab() === 'booking' ? 'Confirmar Cita' : 'Crear Bloqueo' }}
             </button>
+
+            <!-- Approval Actions -->
+            <ng-container *ngIf="activeTab() === 'booking' && bookingStatus() === 'pending'">
+                <button (click)="rejectBooking()"
+                    class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors flex items-center">
+                    <i class="fas fa-times mr-2"></i>
+                    Rechazar
+                </button>
+                <button (click)="approveBooking()"
+                    class="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center">
+                    <i class="fas fa-check mr-2"></i>
+                    Aprobar
+                </button>
+            </ng-container>
         </div>
 
     </div>

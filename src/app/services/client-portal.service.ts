@@ -4,6 +4,19 @@ import { AuthService } from './auth.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { firstValueFrom } from 'rxjs';
 
+export interface ClientPortalBooking {
+  id: string;
+  start_time: string;
+  end_time: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  service_name: string;
+  service_duration: number;
+  professional_name?: string;
+  total_price: number;
+  payment_status: string;
+}
+
+
 export interface ClientPortalTicket {
   id: string;
   title: string;
@@ -106,6 +119,34 @@ export class ClientPortalService {
       .order('updated_at', { ascending: false });
     return { data: (data || []) as any, error };
   }
+
+  async listBookings(): Promise<{ data: ClientPortalBooking[]; error?: any }> {
+    const client = this.sb.instance;
+    // Re-ordering to DESC for history view default
+    const { data: allData, error: allError } = await client
+      .from('client_visible_bookings')
+      .select('*')
+      .order('start_time', { ascending: false });
+
+    return { data: (allData || []) as any, error: allError };
+  }
+
+  async cancelBooking(bookingId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data, error } = await this.sb.instance.rpc('client_cancel_booking', {
+        p_booking_id: bookingId,
+        p_reason: reason || null
+      });
+
+      if (error) return { success: false, error: error.message };
+      if (data && !data.success) return { success: false, error: data.error };
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
 
   async listPublicServices(): Promise<{ data: any[]; error?: any }> {
     const user = await firstValueFrom(this.auth.userProfile$);
@@ -593,6 +634,40 @@ export class ClientPortalService {
     } catch (e: any) {
       console.error('❌ Error cancelling service:', e);
       return { success: false, error: e.message || 'Error inesperado al cancelar servicio' };
+    }
+  }
+
+  async getAvailabilityData(companyId: string, startDate: Date, endDate: Date): Promise<{ data: any; error?: any }> {
+    try {
+      const { data, error } = await this.sb.instance.rpc('get_availability_data', {
+        p_company_id: companyId,
+        p_start_date: startDate.toISOString(),
+        p_end_date: endDate.toISOString()
+      });
+      return { data, error };
+    } catch (e: any) {
+      return { data: null, error: e.message };
+    }
+  }
+
+  async createSelfBooking(booking: { service_id: string, start_time: string, end_time: string }): Promise<{ success: boolean; error?: string }> {
+    try {
+      const user = await firstValueFrom(this.auth.userProfile$);
+      if (!user?.company_id) return { success: false, error: 'No company context' };
+
+      const { data, error } = await this.sb.instance.rpc('client_create_booking', {
+        p_company_id: user.company_id,
+        p_service_id: booking.service_id,
+        p_start_time: booking.start_time,
+        p_end_time: booking.end_time
+      });
+
+      if (error) return { success: false, error: error.message };
+      if (data && !data.success) return { success: false, error: data.error };
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
     }
   }
 }
