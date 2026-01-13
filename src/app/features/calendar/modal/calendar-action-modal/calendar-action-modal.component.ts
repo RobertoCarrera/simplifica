@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseCouponsService, Coupon } from '../../../../services/supabase-coupons.service';
 import { Service } from '../../../../services/supabase-services.service';
-import { SupabaseBookingsService, BookingHistory } from '../../../../services/supabase-bookings.service';
+import { SupabaseBookingsService, BookingHistory, WaitlistEntry } from '../../../../services/supabase-bookings.service';
 
 export interface CalendarActionData {
   type: 'booking' | 'block';
@@ -27,6 +27,7 @@ export interface CalendarActionData {
   couponId?: string;
   discountAmount?: number;
   status?: 'confirmed' | 'pending' | 'cancelled';
+  waitlistEntryId?: string;
 }
 
 @Component({
@@ -144,6 +145,7 @@ export class CalendarActionModalComponent {
   clientId: string | null = null;
   serviceId: string | null = null;
   resourceId: string | null = null; // New field for Block target
+  waitlistEntryId: string | null = null;
 
   ngOnChanges() {
     if (this.isOpen()) {
@@ -177,10 +179,61 @@ export class CalendarActionModalComponent {
     this.couponMessage.set(null);
 
     this.bookingStatus.set('confirmed'); // Default for new, will be overriden by validation if needed
+
+    this.waitlistEntryId = null;
+  }
+
+  openFromWaitlist(entry: WaitlistEntry) {
+    this.isEditMode.set(false);
+    this.existingId.set(null);
+    this.activeTab.set('booking');
+    this.forcedMode.set('booking');
+
+    this.waitlistEntryId = entry.id;
+    this.serviceId = entry.service_id;
+    this.clientId = entry.client_id;
+
+    // Init Dates
+    const start = new Date(entry.start_time);
+    const end = new Date(entry.end_time);
+    this.startTimeStr.set(this.toDateTimeLocal(start));
+    this.endTimeStr.set(this.toDateTimeLocal(end));
+
+    this.bookingStatus.set('confirmed');
+
+    // Recalculate price if possible
+    this.recalculatePrice();
+  }
+
+  // Form Responses
+  formResponses = signal<any>(null);
+  formSchema = signal<any[]>([]);
+
+  getQuestionLabel(questionId: any): string {
+    const schema = this.formSchema();
+    const key = String(questionId);
+    if (!schema) return key;
+    const q = schema.find(item => item.id === key);
+    return q ? q.label : key;
+  }
+
+  formatResponseValue(value: any): string {
+    if (Array.isArray(value)) return value.join(', ');
+    if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+    if (typeof value === 'object' && value !== null) return JSON.stringify(value); // Fallback
+    return value;
+  }
+
+  hasFormResponses(): boolean {
+    const responses = this.formResponses();
+    if (!responses) return false;
+    // Check if object has keys
+    return Object.keys(responses).length > 0;
   }
 
   openForEdit(event: any, type: 'booking' | 'block') {
     this.isEditMode.set(true);
+    this.waitlistEntryId = null;
     this.existingId.set(event.id);
     this.activeTab.set(type);
 
@@ -206,9 +259,16 @@ export class CalendarActionModalComponent {
       this.clientId = event.extendedProps?.client_id || null;
       this.resourceId = event.extendedProps?.resourceId || null; // Restore for edit if available
       this.bookingStatus.set(event.extendedProps?.status || 'confirmed');
+
+      // Load Form Responses
+      this.formResponses.set(event.extendedProps?.form_responses || null);
+      this.formSchema.set(event.extendedProps?.service?.form_schema || []);
+
       // Restore recurrence logic if complex recurrence parsing is needed
     } else if (type === 'block') {
       this.resourceId = event.resourceId || null;
+      this.formResponses.set(null);
+      this.formSchema.set([]);
     }
 
     if (this.existingId()) {
@@ -545,6 +605,8 @@ export class CalendarActionModalComponent {
 
       couponId: (this.activeTab() === 'booking' && this.appliedCoupon()) ? this.appliedCoupon()!.id : undefined,
       discountAmount: (this.activeTab() === 'booking' && this.appliedCoupon()) ? this.appliedCoupon()!.discount_value : undefined,
+
+      waitlistEntryId: this.activeTab() === 'booking' ? (this.waitlistEntryId || undefined) : undefined,
 
       status: bookingStatus
     });

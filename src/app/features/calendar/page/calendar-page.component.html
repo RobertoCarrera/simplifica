@@ -5,16 +5,21 @@
             <p class="text-gray-500 dark:text-gray-400">Gestiona tus citas y bloqueos</p>
         </div>
 
-        <!-- View Options -->
-        <div
-            class="flex items-center space-x-2 bg-white dark:bg-gray-800 p-1 rounded-md border border-gray-200 dark:border-gray-700">
-            <span class="text-xs font-medium text-gray-500 pl-2">Colores:</span>
-            <select [value]="colorMode()" (change)="colorMode.set($any($event.target).value)"
-                class="text-sm bg-transparent border-none focus:ring-0 text-gray-700 dark:text-gray-200 cursor-pointer">
-                <option value="status">Por Estado</option>
-                <option value="service">Por Servicio</option>
-                <option value="professional">Por Profesional</option>
-            </select>
+        <!-- Actions -->
+        <div class="flex items-center space-x-3">
+
+
+            <!-- View Options -->
+            <div
+                class="flex items-center space-x-2 bg-white dark:bg-gray-800 p-1 rounded-md border border-gray-200 dark:border-gray-700">
+                <span class="text-xs font-medium text-gray-500 pl-2">Colores:</span>
+                <select [value]="colorMode()" (change)="colorMode.set($any($event.target).value)"
+                    class="text-sm bg-transparent border-none focus:ring-0 text-gray-700 dark:text-gray-200 cursor-pointer">
+                    <option value="status">Por Estado</option>
+                    <option value="service">Por Servicio</option>
+                    <option value="professional">Por Profesional</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -26,8 +31,9 @@
     <div class="flex-1 min-h-0 relative">
         <app-calendar [events]="filteredEvents()" [startHour]="config().calendar_start_hour ?? 8"
             [endHour]="config().calendar_end_hour ?? 22" [resources]="resources()" [showAddButton]="true"
-            [showBlockButton]="true" [colorMode]="colorMode()" (viewChange)="onViewChange($event)"
-            (addEvent)="onAddEvent()" (blockTime)="onBlockTime()" (eventClick)="onEventClick($event)"
+            [showBlockButton]="true" [showWaitlistButton]="!!companyId()" [waitlistCount]="waitlistCount()"
+            [colorMode]="colorMode()" (viewChange)="onViewChange($event)" (addEvent)="onAddEvent()"
+            (blockTime)="onBlockTime()" (waitlistClick)="isWaitlistOpen.set(true)" (eventClick)="onEventClick($event)"
             (dateClick)="onDateClick($event)" (eventDrop)="onEventDrop($event)" (eventResize)="onEventResize($event)"
             (eventAction)="onEventAction($event)">
         </app-calendar>
@@ -37,5 +43,8 @@
             (closeModal)="isModalOpen.set(false)" (saveAction)="handleModalSave($event)"
             (deleteAction)="handleModalDelete($event)">
         </app-calendar-action-modal>
+
+        <app-waitlist-modal *ngIf="companyId()" [isOpen]="isWaitlistOpen()" [companyId]="companyId()!"
+            (closeModal)="isWaitlistOpen.set(false)" (promoteEntry)="handlePromoteAction($event)"></app-waitlist-modal>
     </div>
 </div>

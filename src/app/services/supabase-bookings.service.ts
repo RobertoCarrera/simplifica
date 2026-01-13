@@ -244,6 +244,7 @@ export class SupabaseBookingsService {
                     *,
                     booking_type:booking_types(name),
                     resource:resources(name),
+                    service:services(name, form_schema),
                     professional:professionals!professional_id(
                         user:users(name)
                     )
@@ -580,7 +581,8 @@ export class SupabaseBookingsService {
                     *,
                     client:client_id (
                         email,
-                        raw_user_meta_data
+                        name,
+                        surname
                     ),
                     service:service_id (
                         name
@@ -595,6 +597,15 @@ export class SupabaseBookingsService {
             })
         );
     }
+
+    async updateWaitlistStatus(id: string, status: 'pending' | 'notified' | 'prioritized' | 'expired' | 'converted') {
+        const { error } = await this.supabase
+            .from('waitlist')
+            .update({ status })
+            .eq('id', id);
+        if (error) throw error;
+    }
+
 }
 
 export interface AvailabilityException {

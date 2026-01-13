@@ -76,7 +76,12 @@ import { PortalBookingWizardComponent } from '../ticket-wizard/portal-booking-wi
                             </span>
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <div class="flex justify-end gap-2" *ngIf="b.status !== 'cancelled'">
+                            <div class="flex justify-end gap-2">
+                                <button (click)="openDetailsModal(b)"
+                                    class="text-gray-600 hover:text-gray-800 text-xs font-medium border border-gray-200 hover:bg-gray-50 px-2 py-1 rounded transition-colors">
+                                    Ver Detalles
+                                </button>
+                                <ng-container *ngIf="b.status !== 'cancelled'">
                                 <button (click)="rescheduleBooking(b)"
                                     class="text-blue-600 hover:text-blue-800 text-xs font-medium border border-blue-200 hover:bg-blue-50 px-2 py-1 rounded transition-colors">
                                     Reprogramar
@@ -85,6 +90,7 @@ import { PortalBookingWizardComponent } from '../ticket-wizard/portal-booking-wi
                                     class="text-red-600 hover:text-red-800 text-xs font-medium border border-red-200 hover:bg-red-50 px-2 py-1 rounded transition-colors">
                                     Cancelar
                                 </button>
+                                </ng-container>
                             </div>
                         </td>
                     </tr>
@@ -166,6 +172,67 @@ import { PortalBookingWizardComponent } from '../ticket-wizard/portal-booking-wi
         </div>
     </div>
 
+    <!-- Details Modal -->
+    <div *ngIf="showDetailsModal && selectedBooking" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col animate-fade-in-up">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold text-gray-900">Detalles de la Reserva</h3>
+                <button (click)="closeDetailsModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto">
+                 <div class="space-y-6">
+                    <!-- Header Info -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Servicio</label>
+                            <p class="font-medium text-gray-900 text-lg leading-tight">{{ selectedBooking.service_name }}</p>
+                        </div>
+                        <div>
+                             <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Fecha</label>
+                             <p class="font-medium text-gray-900">{{ selectedBooking.start_time | date:'mediumDate' }}</p>
+                             <p class="text-sm text-gray-500">{{ selectedBooking.start_time | date:'shortTime' }} - {{ selectedBooking.end_time | date:'shortTime' }}</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                         <label class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Estado</label>
+                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                [ngClass]="{
+                                    'bg-green-100 text-green-800': selectedBooking.status === 'confirmed',
+                                    'bg-yellow-100 text-yellow-800': selectedBooking.status === 'pending',
+                                    'bg-blue-100 text-blue-800': selectedBooking.status === 'rescheduled',
+                                    'bg-red-100 text-red-800': selectedBooking.status === 'cancelled'
+                                }">
+                                {{ selectedBooking.status === 'confirmed' ? 'Confirmada' : (selectedBooking.status === 'pending' ? 'Pendiente' : (selectedBooking.status === 'rescheduled' ? 'Reprogramada' : 'Cancelada')) }}
+                         </span>
+                    </div>
+
+                    <!-- Additional Info Section -->
+                    <div *ngIf="hasFormResponses()" class="pt-6 border-t border-gray-100">
+                        <h4 class="font-bold text-gray-900 mb-4 flex items-center">
+                            <i class="fas fa-clipboard-list text-gray-400 mr-2"></i> Información Adicional
+                        </h4>
+                        <div class="bg-gray-50 rounded-xl p-4 space-y-4 border border-gray-100">
+                             <div *ngFor="let item of selectedBooking.form_responses | keyvalue">
+                                <div class="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">{{ getQuestionLabel(item.key) }}</div>
+                                <div class="text-gray-900 font-medium break-words">{{ formatResponseValue(item.value) }}</div>
+                             </div>
+                        </div>
+                    </div>
+                 </div>
+            </div>
+            
+            <div class="p-4 bg-gray-50 border-t border-gray-100 text-right">
+                <button (click)="closeDetailsModal()" class="px-5 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors shadow-sm">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
   </div>
   `
 })
@@ -189,6 +256,40 @@ export class PortalDashboardComponent implements OnInit {
   bookingToCancel: ClientPortalBooking | null = null;
   cancelReason = '';
   submittingCancellation = false;
+
+  // Details Modal
+  showDetailsModal = false;
+  selectedBooking: ClientPortalBooking | null = null;
+
+  openDetailsModal(booking: ClientPortalBooking) {
+    this.selectedBooking = booking;
+    this.showDetailsModal = true;
+  }
+
+  closeDetailsModal() {
+    this.showDetailsModal = false;
+    this.selectedBooking = null;
+  }
+
+  getQuestionLabel(questionId: any): string {
+    const schema = this.selectedBooking?.form_schema;
+    if (!schema) return String(questionId);
+    // Ensure ID comparison is string-safe
+    const q = schema.find((item: any) => String(item.id) === String(questionId));
+    return q ? q.label : String(questionId);
+  }
+
+  formatResponseValue(value: any): string {
+    if (Array.isArray(value)) return value.join(', ');
+    if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+    if (typeof value === 'object' && value !== null) return JSON.stringify(value);
+    return value;
+  }
+
+  hasFormResponses(): boolean {
+    if (!this.selectedBooking || !this.selectedBooking.form_responses) return false;
+    return Object.keys(this.selectedBooking.form_responses).length > 0;
+  }
 
   async ngOnInit() {
     await Promise.all([this.loadTickets(), this.loadQuotes(), this.loadBookings()]);

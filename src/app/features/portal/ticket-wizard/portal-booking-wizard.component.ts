@@ -117,22 +117,24 @@ import { firstValueFrom } from 'rxjs';
                             
                             <!-- Text Input -->
                             <input *ngIf="q.type === 'text'" type="text" 
-                                    [(ngModel)]="formAnswers[q.label]" 
+                                    [(ngModel)]="formAnswers[q.id]" 
                                     class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-blue-500"
                                     [required]="q.required">
 
                             <!-- Textarea -->
                             <textarea *ngIf="q.type === 'textarea'" 
-                                    [(ngModel)]="formAnswers[q.label]" rows="3"
+                                    [(ngModel)]="formAnswers[q.id]" rows="3"
                                     class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-blue-500"
                                     [required]="q.required"></textarea>
 
                             <!-- Checkbox -->
                             <div *ngIf="q.type === 'checkbox'" class="flex items-center">
-                                <input type="checkbox" [(ngModel)]="formAnswers[q.label]" 
+                                <input type="checkbox" [(ngModel)]="formAnswers[q.id]" 
                                     class="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
                                 <span class="ml-2 text-sm text-gray-600">Sí</span>
                             </div>
+
+                            <!-- Legacy support or fallback if ID missing? Schema builder ensures IDs. -->
                         </div>
                     </div>
                 </div>
@@ -330,7 +332,7 @@ export class PortalBookingWizardComponent {
         if (this.selectedService.form_schema?.length) {
             for (const q of this.selectedService.form_schema) {
                 if (q.required) {
-                    const ans = this.formAnswers[q.label];
+                    const ans = this.formAnswers[q.id];
                     if (!ans || (typeof ans === 'string' && !ans.trim())) {
                         alert(`Por favor responde a la pregunta obligatoria: "${q.label}"`);
                         return;

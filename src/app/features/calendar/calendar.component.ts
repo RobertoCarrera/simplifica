@@ -61,6 +61,18 @@ import { AnimationService } from '../../services/animation.service';
             <!-- Add event button -->
             <div class="flex space-x-2">
                 <button
+                *ngIf="showWaitlistButton"
+                (click)="onWaitlistClick()"
+                class="inline-flex items-center px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-md hover:bg-amber-600 transition-colors shadow-sm"
+                title="Lista de Espera">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="hidden sm:inline">Espera</span>
+                <span *ngIf="waitlistCount > 0" class="ml-2 bg-white text-amber-600 text-xs font-bold px-1.5 py-0.5 rounded-full">{{ waitlistCount }}</span>
+                </button>
+
+                <button
                 *ngIf="showBlockButton"
                 (click)="onBlockTime()"
                 class="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700 transition-colors">
@@ -461,6 +473,8 @@ export class CalendarComponent implements OnInit {
   @Input() selectable = true;
   @Input() showAddButton = true;
   @Input() showBlockButton = false;
+  @Input() showWaitlistButton = false;
+  @Input() waitlistCount = 0;
   @Input() startHour = 8;
   @Input() endHour = 22;
   @Input() resources: CalendarResource[] = [];
@@ -474,6 +488,7 @@ export class CalendarComponent implements OnInit {
   @Output() eventDrop = new EventEmitter<{ event: CalendarEvent, newStart: Date, newResource?: string }>();
   @Output() eventResize = new EventEmitter<{ event: CalendarEvent, newEnd: Date }>();
   @Output() eventAction = new EventEmitter<{ action: string, event: CalendarEvent }>();
+  @Output() waitlistClick = new EventEmitter<void>();
 
   // Context Menu State
   contextMenuVisible = false;
@@ -757,8 +772,17 @@ export class CalendarComponent implements OnInit {
     );
   }
 
-  onAddEvent() { this.addEvent.emit(); }
-  onBlockTime() { this.blockTime.emit(); }
+  onAddEvent() {
+    this.addEvent.emit();
+  }
+
+  onBlockTime() {
+    this.blockTime.emit();
+  }
+
+  onWaitlistClick() {
+    this.waitlistClick.emit();
+  }
 
   // DRAG AND DROP HANDLER
   onEventDrop(event: CdkDragDrop<any>) {

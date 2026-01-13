@@ -6,6 +6,7 @@ import { ToastService } from '../../../services/toast.service';
 import { CalendarComponent } from '../calendar.component';
 import { CalendarEvent, CalendarView } from '../calendar.interface';
 import { CalendarActionModalComponent } from '../modal/calendar-action-modal/calendar-action-modal.component';
+import { WaitlistModalComponent } from '../modal/waitlist-modal/waitlist-modal.component';
 import { CalendarFilterComponent, CalendarFilterState } from '../components/calendar-filter/calendar-filter.component';
 
 import { SupabaseServicesService } from '../../../services/supabase-services.service';
@@ -17,7 +18,7 @@ import { CalendarResource } from '../calendar.interface';
 @Component({
     selector: 'app-calendar-page',
     standalone: true,
-    imports: [CommonModule, CalendarComponent, CalendarActionModalComponent, CalendarFilterComponent],
+    imports: [CommonModule, CalendarComponent, CalendarActionModalComponent, CalendarFilterComponent, WaitlistModalComponent],
     templateUrl: './calendar-page.component.html',
     styleUrls: ['./calendar-page.component.scss']
 })
@@ -30,6 +31,9 @@ export class CalendarPageComponent implements OnInit {
     private googleCalendarService = inject(GoogleCalendarService);
     private professionalsService = inject(SupabaseProfessionalsService);
 
+    // Expose for template
+    readonly companyId = this.authService.currentCompanyId;
+
     @Input() isEmbedded = false;
 
     events = signal<CalendarEvent[]>([]);
@@ -37,6 +41,8 @@ export class CalendarPageComponent implements OnInit {
 
     // Modal State
     isModalOpen = signal(false);
+    isWaitlistOpen = signal(false);
+    waitlistCount = signal(0);
     selectedDate = signal<Date | null>(null);
     @ViewChild(CalendarActionModalComponent) modalComponent!: CalendarActionModalComponent;
 
@@ -148,6 +154,12 @@ export class CalendarPageComponent implements OnInit {
                 const standard = types.find(t => t.slug === 'cita-estandar') || types[0];
                 this.defaultBookingTypeId = standard.id;
             }
+        });
+
+        // Load Waitlist Count
+        this.bookingsService.getWaitlist(companyId).subscribe(entries => {
+            const pending = entries.filter(e => e.status === 'pending').length;
+            this.waitlistCount.set(pending);
         });
     }
 
@@ -288,6 +300,17 @@ export class CalendarPageComponent implements OnInit {
         }
     }
 
+    handlePromoteAction(entry: any) {
+        // Open Calendar Modal with pre-filled data
+        this.isModalOpen.set(true);
+        this.isWaitlistOpen.set(false); // Close waitlist modal
+        setTimeout(() => {
+            if (this.modalComponent) {
+                this.modalComponent.openFromWaitlist(entry);
+            }
+        });
+    }
+
     async handleModalSave(data: any) {
         const companyId = this.authService.currentCompanyId();
         if (!companyId) return;
@@ -381,8 +404,16 @@ export class CalendarPageComponent implements OnInit {
                         discount_amount: (data as any).discountAmount
                     });
                     this.toastService.success('Guardado', 'Cita creada correctamente.');
+
+                    await this.bookingsService.updateWaitlistStatus(data.waitlistEntryId, 'converted');
+                    this.toastService.success('Lista de Espera', 'Solicitud marcada como convertida.');
+
+                    // Update count
+                    const current = this.waitlistCount();
+                    if (current > 0) this.waitlistCount.set(current - 1);
                 }
             }
+
 
             this.loadBookings();
 

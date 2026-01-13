@@ -200,6 +200,108 @@ serve(async (req) => {
             `;
         }
 
+        // --- Waitlist Logic (On Cancellation) ---
+        if (notificationType === 'cancellation') {
+            console.log('Checking waitlist for cancelled slot:', record.service_id, record.start_time);
+
+            // 1. Find pending waitlist entries for this service and time
+            // overlapping checks can be complex, for now we check exact start match or within range if needed.
+            // Simplified: Match Exact Start Time for now (as slots are fixed usually)
+            const cancelledStart = record.start_time;
+            const cancelledEnd = record.end_time;
+
+            const { data: waitlistEntries, error: wlError } = await supabase
+                .from('waitlist')
+                .select('id, client_id, created_at')
+                .eq('service_id', record.service_id)
+                .eq('status', 'pending')
+                .eq('start_time', cancelledStart); // Strict match for now
+
+            if (wlError) {
+                console.error('Error fetching waitlist:', wlError);
+            } else if (waitlistEntries && waitlistEntries.length > 0) {
+                console.log(`Found ${waitlistEntries.length} waiting clients.`);
+
+                // 2. Notify each waiting client
+                for (const entry of waitlistEntries) {
+                    // Fetch Client Email
+                    const { data: clientUser } = await supabase.from('users').select('email, raw_user_meta_data').eq('id', entry.client_id).single();
+                    if (!clientUser || !clientUser.email) continue;
+
+                    const clientName = clientUser.raw_user_meta_data?.full_name || 'Cliente';
+                    const clientEmail = clientUser.email;
+
+                    // Prepare Email
+                    const wlSubject = `¡Hueco Disponible! ${serviceName}`;
+                    const wlBody = `
+                        <div style="${commonStyle}">
+                            <div style="${containerStyle}">
+                                <div style="${headerStyle}">¡Buena noticia! 🎉</div>
+                                <p>Hola ${clientName},</p>
+                                <p>Se ha liberado un hueco para <strong>${serviceName}</strong> el <strong>${dateStr}</strong> a las <strong>${timeStr}</strong>.</p>
+                                <p>Sabemos que estabas esperando por esta fecha.</p>
+                                <div style="${detailsStyle}">
+                                    <p>Entra ahora en tu portal para reservarlo antes de que se ocupe de nuevo.</p>
+                                </div>
+                                <p><a href="https://app.simplifica.com/portal">Ir al Portal</a></p>
+                            </div>
+                        </div>
+                    `;
+
+                    // Send Email (Reuse SES Logic)
+                    try {
+                        // ... reusing the SES signing logic block below would be cleaner if refactored into a function, 
+                        // but for inline simplicity in this step, we will call the AWS API for each.
+                        // Ideally, we batch or loop. Here we will just fire and forget/await inside loop.
+
+                        const wlSesBody = JSON.stringify({
+                            FromEmailAddress: fromEmail,
+                            Destination: { ToAddresses: [clientEmail] },
+                            Content: {
+                                Simple: {
+                                    Subject: { Data: wlSubject, Charset: 'UTF-8' },
+                                    Body: { Html: { Data: wlBody, Charset: 'UTF-8' } }
+                                }
+                            }
+                        });
+
+                        const { authorization: authZ, amzDate: dateZ, payloadHash: hashZ } = await signAwsRequest({
+                            method: 'POST',
+                            url: endpoint,
+                            region,
+                            service: 'ses',
+                            accessKeyId,
+                            secretAccessKey,
+                            body: wlSesBody
+                        });
+
+                        await fetch(endpoint.toString(), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': authZ,
+                                'x-amz-date': dateZ,
+                                'x-amz-content-sha256': hashZ,
+                                'Host': endpoint.host
+                            },
+                            body: wlSesBody
+                        });
+
+                        // 3. Update Waitlist Status
+                        await supabase
+                            .from('waitlist')
+                            .update({ status: 'notified', updated_at: new Date().toISOString() })
+                            .eq('id', entry.id);
+
+                        console.log(`Notified waitlist client ${entry.id}`);
+
+                    } catch (notifyErr) {
+                        console.error('Failed to notify waitlist client:', notifyErr);
+                    }
+                }
+            }
+        }
+
         // --- AWS SES Sending ---
         const region = Deno.env.get('AWS_REGION') ?? 'us-east-1';
         const accessKeyId = Deno.env.get('AWS_ACCESS_KEY_ID');

@@ -14,8 +14,9 @@ export interface ClientPortalBooking {
   professional_name?: string;
   total_price: number;
   payment_status: string;
+  form_responses?: any;   // Added
+  form_schema?: any[];    // Added
 }
-
 
 export interface ClientPortalTicket {
   id: string;
@@ -130,7 +131,8 @@ export class ClientPortalService {
         start_time,
         end_time,
         status,
-        service:services ( name, duration_minutes )
+        form_responses,
+        service:services ( name, duration_minutes, form_schema )
       `)
       .order('start_time', { ascending: false });
 
@@ -146,7 +148,9 @@ export class ClientPortalService {
       service_duration: b.service?.duration_minutes,
       professional_name: 'Asignado', // Placeholder until DB sync is confirmed
       total_price: 0, // Placeholder
-      payment_status: 'pending' // Placeholder
+      payment_status: 'pending', // Placeholder
+      form_responses: b.form_responses,
+      form_schema: b.service?.form_schema
     }));
 
     return { data: mapped, error: null };
