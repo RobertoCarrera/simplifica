@@ -384,6 +384,9 @@ export class CalendarPageComponent implements OnInit {
         }
     }
     async onEventClick(eventWrapper: any) {
+        if (eventWrapper.nativeEvent) {
+            eventWrapper.nativeEvent.stopPropagation();
+        }
         const event = eventWrapper.event;
         // Check if it's an exception (block)
         if (event.extendedProps?.description === 'Horario bloqueado' || event.backgroundColor === '#9ca3af') {
