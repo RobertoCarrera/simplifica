@@ -202,15 +202,22 @@ export class CalendarPageComponent implements OnInit {
             // Fetch Google Events
             this.googleCalendarService.listEvents(companyId, start, end)
         ]).then(([bookings, exceptions, googleEvents]) => {
-            const bookingEvents: CalendarEvent[] = bookings.map((b: Booking) => ({
+
+            // 0. Deduplicate Bookings (Safety Net against join multiplications)
+            const uniqueBookings = bookings.filter((b: any, index: number, self: any[]) =>
+                index === self.findIndex((t: any) => t.id === b.id)
+            );
+
+            // 1. Map Bookings
+            const bookingEvents: CalendarEvent[] = uniqueBookings.map((b: Booking) => ({
                 id: b.id,
                 title: b.customer_name + (b.booking_type ? ` - ${b.booking_type.name}` : ''),
                 start: new Date(b.start_time),
                 end: new Date(b.end_time),
-                color: '#818cf8',
+                color: b.status === 'confirmed' ? '#4f46e5' : '#818cf8', // Improved status coloring
                 description: b.notes,
                 meta: { type: 'booking', original: b },
-                resourceId: b.professional_id || b.resource_id || undefined // Prioritize professional for timeline rows
+                resourceId: b.professional_id || b.resource_id || undefined
             }));
 
             const exceptionEvents: CalendarEvent[] = exceptions.map((ex: any) => ({
@@ -218,23 +225,28 @@ export class CalendarPageComponent implements OnInit {
                 title: ex.reason || 'Bloqueado',
                 start: new Date(ex.start_time),
                 end: new Date(ex.end_time),
-                color: '#9ca3af', // Gray-400
+                color: '#9ca3af',
                 description: 'Horario bloqueado',
                 meta: { type: 'block', original: ex },
-                resourceId: ex.user_id // Assuming availability exceptions are linked to a user/professional
+                resourceId: ex.user_id
             }));
 
-            // Map Google Events
-            const gEvents: CalendarEvent[] = googleEvents.map((g: any) => ({
-                id: g.id,
-                title: g.summary || 'Evento Externo',
-                start: new Date(g.start.dateTime || g.start.date), // Handle all-day
-                end: new Date(g.end.dateTime || g.end.date),
-                color: '#e24029', // Google Red or different color
-                description: g.description || 'Evento de Google Calendar',
-                meta: { type: 'google', original: g },
-                // Google events might not map to a resource unless we infer from calendar owner
-            }));
+            // 2. Identify Google Event IDs that are already linked to our bookings
+            // We cast b to any because google_event_id might not be in the strict type definition yet if not updated
+            const linkedGoogleIds = new Set(uniqueBookings.map((b: any) => b.google_event_id).filter((id: any) => !!id));
+
+            // 3. Map Google Events (Filtering out linked ones)
+            const gEvents: CalendarEvent[] = googleEvents
+                .filter((g: any) => !linkedGoogleIds.has(g.id)) // Deduplication Magic
+                .map((g: any) => ({
+                    id: g.id,
+                    title: g.summary || 'Evento Externo',
+                    start: new Date(g.start.dateTime || g.start.date),
+                    end: new Date(g.end.dateTime || g.end.date),
+                    color: '#e24029',
+                    description: g.description || 'Evento de Google Calendar',
+                    meta: { type: 'google', original: g },
+                }));
 
             this.events.set([...bookingEvents, ...exceptionEvents, ...gEvents]);
 
@@ -405,12 +417,18 @@ export class CalendarPageComponent implements OnInit {
                     });
                     this.toastService.success('Guardado', 'Cita creada correctamente.');
 
-                    await this.bookingsService.updateWaitlistStatus(data.waitlistEntryId, 'converted');
-                    this.toastService.success('Lista de Espera', 'Solicitud marcada como convertida.');
+                    if (data.waitlistEntryId) {
+                        try {
+                            await this.bookingsService.updateWaitlistStatus(data.waitlistEntryId, 'converted');
+                            this.toastService.success('Lista de Espera', 'Solicitud marcada como convertida.');
 
-                    // Update count
-                    const current = this.waitlistCount();
-                    if (current > 0) this.waitlistCount.set(current - 1);
+                            // Update count
+                            const current = this.waitlistCount();
+                            if (current > 0) this.waitlistCount.set(current - 1);
+                        } catch (err) {
+                            console.warn('Could not update waitlist status', err);
+                        }
+                    }
                 }
             }
 
