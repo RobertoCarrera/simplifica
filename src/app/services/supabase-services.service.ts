@@ -132,9 +132,13 @@ export interface Service {
   // Capacity & Workflow
   max_capacity?: number;
   requires_confirmation?: boolean;
+  room_required?: boolean;
 
   // Intake Forms
   form_schema?: any[]; // JSON defines custom questions
+
+  // Relations
+  service_tags?: any[];
 
   // Campos calculados (server-side) para display
   display_price?: number;        // Precio representativo (desde variantes o base_price)

@@ -692,7 +692,7 @@ export class ClientPortalService {
     }
   }
 
-  async createSelfBooking(booking: { service_id: string, start_time: string, end_time: string, form_responses?: any }): Promise<{ success: boolean; error?: string }> {
+  async createSelfBooking(booking: { service_id: string, start_time: string, end_time: string, form_responses?: any }): Promise<{ success: boolean; data?: any; error?: string }> {
     try {
       const user = await firstValueFrom(this.auth.userProfile$);
       if (!user?.company_id) return { success: false, error: 'No company context' };
@@ -708,7 +708,25 @@ export class ClientPortalService {
       if (error) return { success: false, error: error.message };
       if (data && !data.success) return { success: false, error: data.error };
 
-      return { success: true };
+      return { success: true, data: data };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async convertQuoteToInvoice(quoteId: string): Promise<{ success: boolean; invoiceId?: string; error?: string }> {
+    try {
+      const { data, error } = await this.sb.instance.rpc('convert_quote_to_invoice', {
+        p_quote_id: quoteId
+      });
+
+      if (error) return { success: false, error: error.message };
+      // RPC usually returns the new invoice ID or row.
+      // Based on previous issues, it might return just the ID or UUID.
+      // Let's assume it returns UUID directly or object { id: ... }
+      // Checks needed.
+      console.log('Invoice conversion result:', data);
+      return { success: true, invoiceId: data };
     } catch (e: any) {
       return { success: false, error: e.message };
     }

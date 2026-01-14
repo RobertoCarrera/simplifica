@@ -343,6 +343,8 @@ export class CalendarActionModalComponent {
       if (service) {
         durationMinutes = service.duration_minutes || 60;
         this.computedBuffer.set(service.buffer_minutes || 0);
+        // Add Buffer to total duration
+        durationMinutes += (service.buffer_minutes || 0);
       } else {
         this.computedBuffer.set(null);
       }
@@ -560,6 +562,42 @@ export class CalendarActionModalComponent {
               }
             } catch (err) {
               console.error('Error checking capacity:', err);
+            }
+          }
+
+          // Resource / Room Assignment Logic
+          if (service.room_required || service.required_resource_type) {
+            // Default to 'sala' (room) if only room_required is true
+            // If required_resource_type is set (e.g. 'camilla', 'laser'), use that
+            const resourceType = service.required_resource_type || 'sala';
+
+            try {
+              // We need the companyId - usually from service or passed in. 
+              // Assuming service.company_id is reliable.
+              const companyId = service.company_id;
+
+              if (companyId) {
+                const assignedResourceId = await this.bookingsService.findAvailableResource(
+                  companyId,
+                  resourceType,
+                  start,
+                  end
+                );
+
+                if (!assignedResourceId) {
+                  const confirmForce = confirm(
+                    `⚠️ Sin recursos disponibles\n\nNo se encontró ningún recurso tipo "${resourceType}" disponible para este horario.` +
+                    `\n\n¿Deseas guardar la reserva SIN asignar recurso? (Podría causar conflictos)`
+                  );
+                  if (!confirmForce) return;
+                } else {
+                  this.resourceId = assignedResourceId;
+                  // Optional: Notify user
+                  // console.log('Auto-assigned resource:', assignedResourceId);
+                }
+              }
+            } catch (err) {
+              console.error('Error auto-assigning resource:', err);
             }
           }
 

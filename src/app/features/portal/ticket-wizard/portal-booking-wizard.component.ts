@@ -1,18 +1,27 @@
-import { Component, EventEmitter, Output, Input, inject, signal, OnInit } from '@angular/core';
+import { Component, EventEmitter, Output, Input, inject, signal, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { PaymentIntegrationsService } from '../../../services/payment-integrations.service';
 import { ClientPortalService } from '../../../services/client-portal.service';
 import { AuthService } from '../../../services/auth.service';
+import { PaymentMethodSelectorComponent, PaymentSelection } from '../../../features/payments/selector/payment-method-selector.component';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
     selector: 'app-portal-booking-wizard',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, PaymentMethodSelectorComponent],
     template: `
     <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         
+        <!-- Payment Selector (Hidden/Overlay) -->
+        <app-payment-method-selector
+            #paymentSelector
+            (selected)="onPaymentMethodSelected($event)"
+            (cancelled)="onPaymentSelectionCancelled()"
+        ></app-payment-method-selector>
+
         <!-- Header -->
         <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
           <h2 class="text-xl font-bold text-gray-800">Nueva Reserva</h2>
@@ -161,6 +170,9 @@ export class PortalBookingWizardComponent {
 
     private portal = inject(ClientPortalService);
     private auth = inject(AuthService);
+    private paymentIntegrations = inject(PaymentIntegrationsService);
+
+    @ViewChild('paymentSelector') paymentSelector!: PaymentMethodSelectorComponent;
 
     step = signal(1);
     loadingServices = false;
@@ -346,29 +358,126 @@ export class PortalBookingWizardComponent {
         const start = this.selectedSlot;
         const end = new Date(start.getTime() + this.selectedService.duration_minutes * 60000);
 
-        let res;
+        // Simple Reschedule Case (No Payment Logic Updated yet)
         if (this.bookingToReschedule) {
-            res = await this.portal.rescheduleBooking(
+            const res = await this.portal.rescheduleBooking(
                 this.bookingToReschedule.id,
                 start.toISOString(),
                 end.toISOString()
             );
-        } else {
-            res = await this.portal.createSelfBooking({
-                service_id: this.selectedService.id,
-                start_time: start.toISOString(),
-                end_time: end.toISOString(),
-                form_responses: this.selectedService.form_schema?.length ? this.formAnswers : null
-            });
+            if (res.success) {
+                this.bookingCreated.emit();
+                this.close.emit();
+            } else {
+                alert('Error: ' + res.error);
+            }
+            this.submitting = false;
+            return;
         }
 
-        if (res.success) {
+        // New Booking Case
+        const res = await this.portal.createSelfBooking({
+            service_id: this.selectedService.id,
+            start_time: start.toISOString(),
+            end_time: end.toISOString(),
+            form_responses: this.selectedService.form_schema?.length ? this.formAnswers : null
+        });
+
+        if (!res.success) {
+            alert('Error: ' + res.error);
+            this.submitting = false;
+            return;
+        }
+
+        // Check for Deposit
+        // Assuming selectedService has deposit_amount. 
+        // Note: portal.listPublicServices returns service fields. Need to verify deposit_amount is there.
+        // If it is, and > 0, we require payment.
+
+        // Use a safe check for deposit amount
+        const depositAmount = this.selectedService.deposit_amount || 0;
+
+        if (depositAmount > 0 && res.data?.quote_id) {
+            try {
+                // 1. Convert Quote to Invoice
+                const invRes = await this.portal.convertQuoteToInvoice(res.data.quote_id);
+                if (!invRes.success || !invRes.invoiceId) {
+                    // Fallback: Just confirm booking without payment flow if invoice fails? 
+                    // Or alert user "Booking confirmed, please pay invoice #"
+                    console.error('Invoice generation failed', invRes.error);
+                    alert('Reserva creada, pero hubo un error generando la factura. Por favor contacta con soporte.');
+                    this.bookingCreated.emit();
+                    this.close.emit();
+                    return;
+                }
+
+                this.pendingInvoiceId = invRes.invoiceId;
+
+                // 2. Open Payment Selector
+                // We'll hide the wizard or keep it open with a spinner?
+                // Let's keep wizard open but covered by payment modal.
+                this.paymentSelector.open(
+                    depositAmount,
+                    '', // Invoice number unknown or fetch it
+                    ['stripe', 'paypal'], // Should filter by company config
+                    false
+                );
+
+                // We stop here. onPaymentMethodSelected will continue.
+                this.submitting = false;
+                return;
+
+            } catch (e) {
+                console.error('Payment setup error', e);
+            }
+        }
+
+        // No deposit or quote linking failed
+        this.bookingCreated.emit();
+        this.close.emit();
+        this.submitting = false;
+    }
+
+    pendingInvoiceId: string | null = null;
+
+    async onPaymentMethodSelected(selection: PaymentSelection) {
+        if (!this.pendingInvoiceId) return;
+
+        if (selection.provider === 'cash') {
+            alert('El pago en efectivo no está disponible para depósitos online. Por favor selecciona otro método.');
+            return;
+        }
+
+        try {
+            this.submitting = true;
+            // Generate Link
+            const linkData = await this.paymentIntegrations.generatePaymentLink(
+                this.pendingInvoiceId,
+                selection.provider as 'stripe' | 'paypal'
+            );
+
+            // Redirect
+            if (linkData.payment_url) {
+                window.location.href = linkData.payment_url;
+            } else {
+                alert('Error generando enlace de pago.');
+                this.submitting = false;
+            }
+        } catch (e: any) {
+            alert('Error: ' + e.message);
+            this.submitting = false;
+        }
+    }
+
+    onPaymentSelectionCancelled() {
+        // User closed payment modal. 
+        // Booking is already created (Default status 'confirmed' in RPC).
+        // Maybe warn them?
+        if (confirm('La reserva se ha creado pero el pago está pendiente. ¿Deseas finalizar?')) {
             this.bookingCreated.emit();
             this.close.emit();
         } else {
-            alert('Error: ' + res.error);
+            // Re-open selector?
         }
-
-        this.submitting = false;
     }
 }
