@@ -154,7 +154,7 @@ export class ClientBookingsComponent implements OnInit {
         try {
             const { data, error } = await this.bookingsService['supabase']
                 .from('bookings')
-                .select('*, booking_type:booking_types(name, color), service:services(name), professional:professionals(user:users(name))')
+                .select('*, booking_type:booking_types(name), service:services(name), professional:professionals(user:users(name))')
                 .eq('client_id', this.clientId)
                 .order('start_time', { ascending: false })
                 .limit(50);

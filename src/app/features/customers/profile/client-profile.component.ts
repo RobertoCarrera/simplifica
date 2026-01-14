@@ -33,101 +33,105 @@ import { ToastService } from '../../../services/toast.service';
       </div>
 
       <div *ngIf="!isLoading() && customer()" class="flex-1 flex flex-col overflow-hidden">
-         <!-- Header -->
-         <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6 flex-shrink-0">
-             <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                 <div class="flex items-center gap-4">
-                     <!-- Avatar -->
-                     <div class="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-md"
-                          [style.background]="getAvatarGradient(customer()!)">
-                         {{ getInitials(customer()!) }}
-                     </div>
-                     
-                     <div>
-                         <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                             {{ getDisplayName(customer()!) }}
-                             <span *ngIf="customer()!.client_type === 'business'" class="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Empresa</span>
-                         </h1>
-                         <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm text-slate-500 dark:text-slate-400 mt-1">
-                             <span *ngIf="customer()!.email" class="flex items-center gap-1">
-                                 <i class="fas fa-envelope"></i> {{ customer()!.email }}
-                             </span>
-                             <span *ngIf="customer()!.phone" class="flex items-center gap-1">
-                                 <i class="fas fa-phone"></i> {{ customer()!.phone }}
-                             </span>
+         
+         <!-- Main Scrollable Area -->
+         <main class="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 scroll-smooth relative">
+             
+             <!-- Client Info (Scrolls away) -->
+             <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6">
+                 <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                     <div class="flex items-center gap-4">
+                         <!-- Avatar -->
+                         <div class="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-md"
+                              [style.background]="getAvatarGradient(customer()!)">
+                             {{ getInitials(customer()!) }}
+                         </div>
+                         
+                         <div>
+                             <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                 {{ getDisplayName(customer()!) }}
+                                 <span *ngIf="customer()!.client_type === 'business'" class="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Empresa</span>
+                             </h1>
+                             <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm text-slate-500 dark:text-slate-400 mt-1">
+                                 <span *ngIf="customer()!.email" class="flex items-center gap-1">
+                                     <i class="fas fa-envelope"></i> {{ customer()!.email }}
+                                 </span>
+                                 <span *ngIf="customer()!.phone" class="flex items-center gap-1">
+                                     <i class="fas fa-phone"></i> {{ customer()!.phone }}
+                                 </span>
+                             </div>
                          </div>
                      </div>
-                 </div>
 
-                 <!-- Actions / Tags -->
-                 <div class="flex flex-col items-end gap-3">
-                     <app-tag-manager [entityId]="customer()!.id" entityType="clients"></app-tag-manager>
-                     <!-- Future: Action Buttons like Edit, Invoice, etc -->
+                     <!-- Actions / Tags -->
+                     <div class="flex flex-col items-end gap-3">
+                         <app-tag-manager [entityId]="customer()!.id" entityType="clients"></app-tag-manager>
+                     </div>
                  </div>
              </div>
 
-             <!-- Navigation Tabs -->
-             <div class="flex items-center gap-6 mt-8 overflow-x-auto no-scrollbar">
-                 <button 
-                    (click)="setActiveTab('ficha')"
-                    class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
-                    [class.border-blue-500]="activeTab() === 'ficha'"
-                    [class.text-blue-600]="activeTab() === 'ficha'"
-                    [class.dark:text-blue-400]="activeTab() === 'ficha'"
-                    [class.border-transparent]="activeTab() !== 'ficha'"
-                    [class.text-slate-500]="activeTab() !== 'ficha'">
-                    <i class="fas fa-id-card mr-2"></i> Ficha Técnica
-                 </button>
+             <!-- Sticky Tabs Navigation -->
+             <div class="sticky top-0 z-20 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 shadow-sm overflow-x-auto no-scrollbar">
+                 <div class="flex items-center gap-6">
+                     <button 
+                        (click)="setActiveTab('ficha')"
+                        class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                        [class.border-blue-500]="activeTab() === 'ficha'"
+                        [class.text-blue-600]="activeTab() === 'ficha'"
+                        [class.dark:text-blue-400]="activeTab() === 'ficha'"
+                        [class.border-transparent]="activeTab() !== 'ficha'"
+                        [class.text-slate-500]="activeTab() !== 'ficha'">
+                        <i class="fas fa-id-card mr-2"></i> Ficha Técnica
+                     </button>
 
-                 <button 
-                    (click)="setActiveTab('clinical')"
-                    class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
-                    [class.border-emerald-500]="activeTab() === 'clinical'"
-                    [class.text-emerald-600]="activeTab() === 'clinical'"
-                    [class.dark:text-emerald-400]="activeTab() === 'clinical'"
-                    [class.border-transparent]="activeTab() !== 'clinical'"
-                    [class.text-slate-500]="activeTab() !== 'clinical'">
-                    <i class="fas fa-notes-medical mr-2"></i> Historial Clínico
-                 </button>
+                     <button 
+                        (click)="setActiveTab('clinical')"
+                        class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                        [class.border-emerald-500]="activeTab() === 'clinical'"
+                        [class.text-emerald-600]="activeTab() === 'clinical'"
+                        [class.dark:text-emerald-400]="activeTab() === 'clinical'"
+                        [class.border-transparent]="activeTab() !== 'clinical'"
+                        [class.text-slate-500]="activeTab() !== 'clinical'">
+                        <i class="fas fa-notes-medical mr-2"></i> Historial Clínico
+                     </button>
 
-                 <button 
-                    (click)="setActiveTab('agenda')"
-                    class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
-                    [class.border-purple-500]="activeTab() === 'agenda'"
-                    [class.text-purple-600]="activeTab() === 'agenda'"
-                    [class.dark:text-purple-400]="activeTab() === 'agenda'"
-                    [class.border-transparent]="activeTab() !== 'agenda'"
-                    [class.text-slate-500]="activeTab() !== 'agenda'">
-                    <i class="fas fa-calendar-alt mr-2"></i> Agenda
-                 </button>
+                     <button 
+                        (click)="setActiveTab('agenda')"
+                        class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                        [class.border-purple-500]="activeTab() === 'agenda'"
+                        [class.text-purple-600]="activeTab() === 'agenda'"
+                        [class.dark:text-purple-400]="activeTab() === 'agenda'"
+                        [class.border-transparent]="activeTab() !== 'agenda'"
+                        [class.text-slate-500]="activeTab() !== 'agenda'">
+                        <i class="fas fa-calendar-alt mr-2"></i> Agenda
+                     </button>
 
-                 <button 
-                    (click)="setActiveTab('billing')"
-                    class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
-                    [class.border-amber-500]="activeTab() === 'billing'"
-                    [class.text-amber-600]="activeTab() === 'billing'"
-                    [class.dark:text-amber-400]="activeTab() === 'billing'"
-                    [class.border-transparent]="activeTab() !== 'billing'"
-                    [class.text-slate-500]="activeTab() !== 'billing'">
-                    <i class="fas fa-file-invoice-dollar mr-2"></i> Facturación
-                 </button>
+                     <button 
+                        (click)="setActiveTab('billing')"
+                        class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                        [class.border-amber-500]="activeTab() === 'billing'"
+                        [class.text-amber-600]="activeTab() === 'billing'"
+                        [class.dark:text-amber-400]="activeTab() === 'billing'"
+                        [class.border-transparent]="activeTab() !== 'billing'"
+                        [class.text-slate-500]="activeTab() !== 'billing'">
+                        <i class="fas fa-file-invoice-dollar mr-2"></i> Facturación
+                     </button>
 
-                 <button 
-                    (click)="setActiveTab('documents')"
-                    class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
-                    [class.border-cyan-500]="activeTab() === 'documents'"
-                    [class.text-cyan-600]="activeTab() === 'documents'"
-                    [class.dark:text-cyan-400]="activeTab() === 'documents'"
-                    [class.border-transparent]="activeTab() !== 'documents'"
-                    [class.text-slate-500]="activeTab() !== 'documents'">
-                    <i class="fas fa-folder mr-2"></i> Documentos
-                 </button>
+                     <button 
+                        (click)="setActiveTab('documents')"
+                        class="py-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                        [class.border-cyan-500]="activeTab() === 'documents'"
+                        [class.text-cyan-600]="activeTab() === 'documents'"
+                        [class.dark:text-cyan-400]="activeTab() === 'documents'"
+                        [class.border-transparent]="activeTab() !== 'documents'"
+                        [class.text-slate-500]="activeTab() !== 'documents'">
+                        <i class="fas fa-folder mr-2"></i> Documentos
+                     </button>
+                 </div>
              </div>
-         </header>
 
-         <!-- Content -->
-         <main class="flex-1 overflow-auto p-6 bg-slate-50 dark:bg-slate-900 scroll-smooth">
-             <div class="max-w-7xl mx-auto pb-20">
+             <!-- Tab Content -->
+             <div class="p-6 max-w-7xl mx-auto pb-20">
                  
                  <!-- Tab: Ficha -->
                  <div *ngIf="activeTab() === 'ficha'" class="animate-fade-in space-y-6">
