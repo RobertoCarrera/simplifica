@@ -1,5 +1,6 @@
-import { Component, signal, computed, OnDestroy } from '@angular/core';
+import { Component, signal, computed, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { A11yModule } from '@angular/cdk/a11y';
 
 export interface ConfirmModalOptions {
   title: string;
@@ -15,12 +16,18 @@ export interface ConfirmModalOptions {
 @Component({
   selector: 'app-confirm-modal',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, A11yModule],
   template: `
     @if (visible()) {
       <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+           role="dialog"
+           aria-modal="true"
+           [attr.aria-labelledby]="'modal-title'"
+           [attr.aria-describedby]="'modal-message'"
            (click)="onBackdropClick($event)">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-modal-appear"
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-modal-appear outline-none"
+             cdkTrapFocus
+             [cdkTrapFocusAutoCapture]="true"
              (click)="$event.stopPropagation()">
           
           <!-- Header with Icon -->
@@ -45,10 +52,10 @@ export interface ConfirmModalOptions {
               </div>
             }
             
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            <h3 id="modal-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">
               {{ options().title }}
             </h3>
-            <p class="text-gray-600 dark:text-gray-400">
+            <p id="modal-message" class="text-gray-600 dark:text-gray-400">
               {{ options().message }}
             </p>
           </div>
@@ -171,6 +178,13 @@ export class ConfirmModalComponent implements OnDestroy {
   onBackdropClick(event: Event): void {
     // Clicking outside cancels (unless prevented)
     if (!this.options().preventCloseOnBackdrop) {
+      this.cancel();
+    }
+  }
+
+  @HostListener('window:keydown.escape', ['$event'])
+  handleEscape(event: KeyboardEvent) {
+    if (this.visible()) {
       this.cancel();
     }
   }
