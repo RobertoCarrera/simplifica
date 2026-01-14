@@ -13,7 +13,7 @@ import { AnimationService } from '../../../services/animation.service';
     AnimationService.buttonPress
   ],
   template: `
-    <div class="theme-selector" @fadeInUp>
+    <div class="theme-selector" role="region" aria-label="Selector de tema" @fadeInUp>
       <!-- Toggle de tema oscuro/claro -->
       <div class="mb-6">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Tema</h3>
@@ -22,11 +22,12 @@ import { AnimationService } from '../../../services/animation.service';
             (click)="toggleTheme()"
             [class.active]="currentTheme() === 'light'"
             class="theme-toggle-btn"
+            [attr.aria-pressed]="currentTheme() === 'light'"
             @buttonPress
             #lightBtn
             (mouseenter)="lightBtn.style.transform = 'scale(1.05)'"
             (mouseleave)="lightBtn.style.transform = 'scale(1)'">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                     d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
               </path>
@@ -38,11 +39,12 @@ import { AnimationService } from '../../../services/animation.service';
             (click)="setDarkTheme()"
             [class.active]="currentTheme() === 'dark'"
             class="theme-toggle-btn"
+            [attr.aria-pressed]="currentTheme() === 'dark'"
             @buttonPress
             #darkBtn
             (mouseenter)="darkBtn.style.transform = 'scale(1.05)'"
             (mouseleave)="darkBtn.style.transform = 'scale(1)'">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                     d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
               </path>
@@ -62,11 +64,14 @@ import { AnimationService } from '../../../services/animation.service';
             [class.active]="currentColorScheme() === color.value"
             [style.background-color]="color.preview"
             class="color-scheme-btn group"
+            [attr.aria-pressed]="currentColorScheme() === color.value"
+            [attr.aria-label]="color.name"
             @cardHover
             [title]="color.name">
             <div class="color-preview" [style.background-color]="color.preview">
               <svg *ngIf="currentColorScheme() === color.value" 
                    class="w-4 h-4 text-white" 
+                   aria-hidden="true"
                    fill="currentColor" viewBox="0 0 24 24">
                 <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
               </svg>
