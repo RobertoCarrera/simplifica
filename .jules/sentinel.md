@@ -1,0 +1,4 @@
+## 2026-01-14 - [Advanced Search HTML Injection]
+**Vulnerability:** The `highlightMatches` function in `AdvancedSearchService` performed direct regex replacement on unescaped strings, potentially allowing stored HTML injection (and theoretically XSS if Angular's sanitizer were bypassed or configured loosely) to be rendered via `[innerHTML]`.
+**Learning:** Highlighting functions that operate on user-controlled text MUST treat the source text as plain text and escape it before inserting HTML tags (like `<mark>`). Relying solely on the framework's final sanitizer is insufficient for preventing HTML injection (defacement) and risks bugs where valid HTML in text breaks the layout.
+**Prevention:** Always escape raw text before applying HTML formatting in helper functions that return strings intended for `innerHTML`.
