@@ -188,6 +188,11 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         // Use cached completeness for sorting
         const completeness = this.completenessCache();
 
+        // Optimization: Use Intl.Collator for performant locale-aware string comparison
+        // This avoids repeated .toLowerCase() allocations inside the sort loop (O(N log N))
+        const useCollator = sortBy === 'name' || sortBy === 'apellidos';
+        const collator = useCollator ? new Intl.Collator('es', { sensitivity: 'base', numeric: true }) : null;
+
         filtered.sort((a, b) => {
             // Priority Sort: Incomplete users FIRST
             const aComplete = completeness.get(a.id) ?? false;
@@ -199,15 +204,16 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             }
 
             // Secondary Sort: Respect selected sort
-            let aValue = a[sortBy];
-            let bValue = b[sortBy];
+            const aValue = a[sortBy];
+            const bValue = b[sortBy];
 
-            if (typeof aValue === 'string') {
-                aValue = aValue.toLowerCase();
-                bValue = (bValue as string).toLowerCase();
+            if (useCollator && typeof aValue === 'string' && typeof bValue === 'string') {
+                const result = collator!.compare(aValue, bValue);
+                return sortOrder === 'asc' ? result : -result;
             }
 
-            const result = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+            // Fallback / Date comparison
+            const result = (aValue || '') < (bValue || '') ? -1 : (aValue || '') > (bValue || '') ? 1 : 0;
             return sortOrder === 'asc' ? result : -result;
         });
 
