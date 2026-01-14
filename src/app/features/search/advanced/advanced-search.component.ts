@@ -6,11 +6,12 @@ import { Subject, takeUntil } from 'rxjs';
 import { AdvancedSearchService } from '../../../services/advanced-search.service';
 import { ToastService } from '../../../services/toast.service';
 import { SearchFilter, SearchableItem, SearchSuggestion } from '../../../models/search.interface';
+import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
 
 @Component({
   selector: 'app-advanced-search',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SafeHtmlPipe],
   template: `
     <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
       <div>
@@ -166,11 +167,11 @@ import { SearchFilter, SearchableItem, SearchSuggestion } from '../../../models/
                   </div>
                   
                   <h4 class="text-lg font-medium text-gray-900 mb-1" 
-                      [innerHTML]="highlightText(result.item.title)">
+                      [innerHTML]="highlightText(result.item.title) | safeHtml: { ADD_ATTR: ['class'] }">
                   </h4>
                   
                   <p class="text-gray-600 mb-2" 
-                     [innerHTML]="highlightText(result.item.description || '')">
+                     [innerHTML]="highlightText(result.item.description || '') | safeHtml: { ADD_ATTR: ['class'] }">
                   </p>
                   
                   <div class="flex items-center space-x-4 text-sm text-gray-500">
@@ -196,7 +197,7 @@ import { SearchFilter, SearchableItem, SearchSuggestion } from '../../../models/
               <div class="mt-3 flex flex-wrap gap-1">
                 <span *ngFor="let tag of result.item.tags" 
                       class="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-md"
-                      [innerHTML]="highlightText(tag)">
+                      [innerHTML]="highlightText(tag) | safeHtml: { ADD_ATTR: ['class'] }">
                 </span>
               </div>
             </div>
