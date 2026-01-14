@@ -10,8 +10,8 @@ select
     $$
     select
       net.http_post(
-          url:='https://ufutyjbqfjrlzkprvyvs.supabase.co/functions/v1/process-reminders',
-          headers:='{"Content-Type": "application/json", "Authorization": "Bearer sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz"}'::jsonb,
+          url:='https://YOUR_PROJECT_REF.supabase.co/functions/v1/process-reminders',
+          headers:='{"Content-Type": "application/json", "Authorization": "Bearer YOUR_SERVICE_ROLE_KEY"}'::jsonb,
           body:='{}'::jsonb
       ) as request_id;
     $$

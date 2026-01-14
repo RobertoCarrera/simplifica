@@ -46,6 +46,7 @@ export class DashboardComponent implements OnInit {
     recentCustomers = signal<Customer[]>([]);
     loadingRecents = signal(true);
 
+
     // Modal State
     showTicketForm = signal(false);
     showCustomerForm = signal(false);
