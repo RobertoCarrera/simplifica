@@ -397,11 +397,29 @@ export class AdvancedSearchService {
   // Resaltar coincidencias en el texto
   highlightMatches(text: string, query: string): string {
     if (!this.options.highlightMatches || !query.trim()) {
-      return text;
+      return this.escapeHtml(text);
     }
 
     const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">$1</mark>');
+    const parts = text.split(regex);
+
+    return parts.map((part, index) => {
+      const escaped = this.escapeHtml(part);
+      if (index % 2 === 1) { // Captured group (match)
+        return `<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">${escaped}</mark>`;
+      }
+      return escaped;
+    }).join('');
+  }
+
+  private escapeHtml(unsafe: string): string {
+    if (!unsafe) return '';
+    return unsafe
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
   // Estadísticas de búsqueda
