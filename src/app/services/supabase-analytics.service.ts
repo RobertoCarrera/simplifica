@@ -65,4 +65,36 @@ export class SupabaseAnalyticsService {
         if (error) throw error;
         return data || [];
     }
+    async getOccupancyHeatmap(companyId: string, startDate: Date, endDate: Date): Promise<{ day_of_week: number, hour_of_day: number, booking_count: number }[]> {
+        const { data, error } = await this.supabase
+            .rpc('f_analytics_occupancy_heatmap', {
+                p_company_id: companyId,
+                p_start_date: startDate.toISOString(),
+                p_end_date: endDate.toISOString()
+            });
+
+        if (error) throw error;
+        return data || [];
+    }
+
+    async getRevenueForecast(companyId: string): Promise<{ period: string, total_revenue: number }[]> {
+        const { data, error } = await this.supabase
+            .rpc('f_analytics_revenue_forecast', {
+                p_company_id: companyId
+            });
+
+        if (error) throw error;
+        return data || [];
+    }
+
+    async getTopPerformers(companyId: string, monthDate: Date): Promise<{ professional_id: string, professional_name: string, bookings_count: number, total_revenue: number }[]> {
+        const { data, error } = await this.supabase
+            .rpc('f_analytics_top_performers', {
+                p_company_id: companyId,
+                p_month_date: monthDate.toISOString()
+            });
+
+        if (error) throw error;
+        return data || [];
+    }
 }

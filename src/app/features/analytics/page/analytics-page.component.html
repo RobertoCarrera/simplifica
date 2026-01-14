@@ -63,6 +63,19 @@
         </div>
     </div>
 
+    <!-- BI Command Center -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Revenue Forecast -->
+        <div class="lg:col-span-1">
+            <app-revenue-forecast></app-revenue-forecast>
+        </div>
+
+        <!-- Occupancy Heatmap -->
+        <div class="lg:col-span-2">
+            <app-occupancy-heatmap [startDate]="startDate()" [endDate]="endDate()"></app-occupancy-heatmap>
+        </div>
+    </div>
+
     <!-- Charts Section -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Revenue Chart -->
@@ -126,29 +139,14 @@
             </div>
         </div>
 
-        <!-- Top Professionals -->
-        <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700">
-            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Rendimiento Profesionales</h3>
-            <div class="space-y-4">
-                <div *ngFor="let item of proRevenue()" class="group">
-                    <div class="flex justify-between text-sm mb-1">
-                        <span class="text-gray-700 dark:text-gray-300 font-medium">{{ item.professional_name }}</span>
-                        <span class="text-gray-900 dark:text-white font-bold">{{ item.revenue |
-                            currency:'EUR':'symbol':'1.0-0' }}</span>
-                    </div>
-                    <div class="w-full bg-gray-100 dark:bg-slate-700 rounded-full h-2.5">
-                        <div class="bg-purple-600 h-2.5 rounded-full transition-all duration-500"
-                            [style.width.%]="(item.revenue / totalRevenue()) * 100"></div>
-                    </div>
-                    <div class="text-xs text-gray-500 mt-1">{{ item.bookings_count }} citas</div>
-                </div>
-                <div *ngIf="proRevenue().length === 0" class="text-center py-8 text-gray-500">
-                    No hay datos disponibles
-                </div>
-            </div>
+        <!-- Top Professionals (New Widget) -->
+        <div class="h-full">
+            <app-top-performers [selectedDate]="startDate()"></app-top-performers>
         </div>
 
     </div>
+
+
 
     <!-- Daily Breakdown Table -->
     <div

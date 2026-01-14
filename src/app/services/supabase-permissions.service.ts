@@ -78,6 +78,10 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     { key: 'analytics.export', label: 'Exportar datos', description: 'Puede exportar reportes', category: 'Analíticas' },
     { key: 'analytics.ai', label: 'Insights IA (Analíticas)', description: 'Ver recomendaciones de IA', category: 'Inteligencia Artificial' },
 
+    // Marketing 
+    { key: 'marketing.view', label: 'Ver Marketing', description: 'Acceso a módulo de Marketing', category: 'Marketing' },
+    { key: 'marketing.manage', label: 'Gestionar Campañas', description: 'Crear y enviar campañas', category: 'Marketing' },
+
     // Settings
     { key: 'settings.manage', label: 'Gestión configuración', description: 'Acceso a ajustes avanzados del sistema', category: 'Sistema' },
     { key: 'settings.billing', label: 'Gestión facturación', description: 'Acceso a configuración de facturación', category: 'Facturación' },
@@ -98,7 +102,8 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'quotes.view': true, 'quotes.create': true, 'quotes.edit': true, 'quotes.approve': true,
         'chat.access': true, 'chat.ai': true,
         'services.view': true, 'services.create': true, 'services.edit': true,
-        'analytics.view': true, 'analytics.export': true, 'analytics.ai': true
+        'analytics.view': true, 'analytics.export': true, 'analytics.ai': true,
+        'marketing.view': true, 'marketing.manage': true
     },
     owner: {
         'clients.view': true, 'clients.edit': true, 'clients.delete': true,
@@ -110,7 +115,8 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'quotes.view': true, 'quotes.create': true, 'quotes.edit': true, 'quotes.approve': true,
         'chat.access': true, 'chat.ai': true,
         'services.view': true, 'services.create': true, 'services.edit': true,
-        'analytics.view': true, 'analytics.export': true, 'analytics.ai': true
+        'analytics.view': true, 'analytics.export': true, 'analytics.ai': true,
+        'marketing.view': true, 'marketing.manage': true
     },
     admin: {
         'clients.view': true, 'clients.edit': true, 'clients.delete': false,

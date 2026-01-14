@@ -241,6 +241,15 @@ export class ResponsiveSidebarComponent implements OnInit {
       requiredPermission: 'services.view' // New permission
     },
     {
+      id: 12,
+      label: 'Marketing',
+      icon: 'sparkles',
+      route: '/marketing',
+      module: 'production',
+      moduleKey: 'moduloMarketing',
+      requiredPermission: 'marketing.view'
+    },
+    {
       id: 11,
       label: 'Reservas',
       icon: 'calendar', // Lucide icon

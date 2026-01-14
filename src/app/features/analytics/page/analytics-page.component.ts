@@ -38,10 +38,16 @@ export type ChartOptions = {
   colors: string[];
 };
 
+import { OccupancyHeatmapComponent } from '../components/occupancy-heatmap/occupancy-heatmap.component';
+import { RevenueForecastComponent } from '../components/revenue-forecast/revenue-forecast.component';
+import { TopPerformersComponent } from '../components/top-performers/top-performers.component';
+
 @Component({
   selector: 'app-analytics-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, CurrencyPipe, NgApexchartsModule],
+  imports: [CommonModule, FormsModule, DatePipe, CurrencyPipe, NgApexchartsModule,
+    OccupancyHeatmapComponent, RevenueForecastComponent, TopPerformersComponent
+  ],
   templateUrl: './analytics-page.component.html',
   styleUrls: ['./analytics-page.component.scss']
 })

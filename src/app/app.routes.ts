@@ -103,6 +103,7 @@ export const routes: Routes = [
     { path: 'configuracion/etiquetas', loadComponent: () => import('./features/settings/tags-management/tags-management.component').then(m => m.TagsManagementComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/booking-types', loadComponent: () => import('./features/settings/booking/booking-settings.component').then(m => m.BookingSettingsComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'marketing', loadComponent: () => import('./features/marketing/page/marketing-page.component').then(m => m.MarketingPageComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     // Admin modules management (solo admin)
     { path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard] },
     // Client portal admin (owner/admin only)
