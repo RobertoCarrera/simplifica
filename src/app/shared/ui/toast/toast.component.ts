@@ -15,13 +15,15 @@ import { AnimationService } from '../../../services/animation.service';
         <div 
           @toastNotification
           class="flex items-start p-4 rounded-lg shadow-lg backdrop-blur-sm border transition-all duration-300"
-          [ngClass]="getToastClasses(toast.type)">
+          [ngClass]="getToastClasses(toast.type)"
+          [attr.role]="toast.type === 'error' ? 'alert' : 'status'"
+          [attr.aria-live]="toast.type === 'error' ? 'assertive' : 'polite'">
           
           <!-- Icon -->
           <div class="flex-shrink-0 mr-3">
             <div class="w-6 h-6 rounded-full flex items-center justify-center"
                  [ngClass]="getIconClasses(toast.type)">
-              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                 @switch (toast.type) {
                   @case ('success') {
                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
@@ -65,8 +67,9 @@ import { AnimationService } from '../../../services/animation.service';
           <div class="flex-shrink-0 ml-4">
             <button
               (click)="toastService.removeToast(toast.id)"
-              class="inline-flex text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-indigo-500 dark:focus:ring-offset-gray-800">
-              <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+              class="inline-flex text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-50 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
+              aria-label="Cerrar notificación">
+              <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
               </svg>
             </button>
