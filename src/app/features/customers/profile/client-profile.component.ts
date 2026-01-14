@@ -5,12 +5,23 @@ import { SupabaseCustomersService } from '../../../services/supabase-customers.s
 import { Customer } from '../../../models/customer';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
 import { SecureClinicalNotesComponent } from '../components/secure-clinical-notes/secure-clinical-notes.component';
+import { ClientBookingsComponent } from './components/client-bookings/client-bookings.component';
+import { ClientBillingComponent } from './components/client-billing/client-billing.component';
+import { ClientDocumentsComponent } from './components/client-documents/client-documents.component';
 import { ToastService } from '../../../services/toast.service';
 
 @Component({
     selector: 'app-client-profile',
     standalone: true,
-    imports: [CommonModule, RouterModule, TagManagerComponent, SecureClinicalNotesComponent],
+    imports: [
+        CommonModule,
+        RouterModule,
+        TagManagerComponent,
+        SecureClinicalNotesComponent,
+        ClientBookingsComponent,
+        ClientBillingComponent,
+        ClientDocumentsComponent
+    ],
     template: `
     <div class="h-full flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden">
       <!-- Loading State -->
@@ -56,9 +67,9 @@ import { ToastService } from '../../../services/toast.service';
              </div>
 
              <!-- Navigation Tabs -->
-             <div class="flex items-center gap-6 mt-8 overflow-x-auto">
+             <div class="flex items-center gap-6 mt-8 overflow-x-auto no-scrollbar">
                  <button 
-                    (click)="activeTab.set('ficha')"
+                    (click)="setActiveTab('ficha')"
                     class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
                     [class.border-blue-500]="activeTab() === 'ficha'"
                     [class.text-blue-600]="activeTab() === 'ficha'"
@@ -69,7 +80,7 @@ import { ToastService } from '../../../services/toast.service';
                  </button>
 
                  <button 
-                    (click)="activeTab.set('clinical')"
+                    (click)="setActiveTab('clinical')"
                     class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
                     [class.border-emerald-500]="activeTab() === 'clinical'"
                     [class.text-emerald-600]="activeTab() === 'clinical'"
@@ -80,51 +91,90 @@ import { ToastService } from '../../../services/toast.service';
                  </button>
 
                  <button 
-                    (click)="activeTab.set('billing')"
+                    (click)="setActiveTab('agenda')"
+                    class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                    [class.border-purple-500]="activeTab() === 'agenda'"
+                    [class.text-purple-600]="activeTab() === 'agenda'"
+                    [class.dark:text-purple-400]="activeTab() === 'agenda'"
+                    [class.border-transparent]="activeTab() !== 'agenda'"
+                    [class.text-slate-500]="activeTab() !== 'agenda'">
+                    <i class="fas fa-calendar-alt mr-2"></i> Agenda
+                 </button>
+
+                 <button 
+                    (click)="setActiveTab('billing')"
                     class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
                     [class.border-amber-500]="activeTab() === 'billing'"
                     [class.text-amber-600]="activeTab() === 'billing'"
+                    [class.dark:text-amber-400]="activeTab() === 'billing'"
                     [class.border-transparent]="activeTab() !== 'billing'"
                     [class.text-slate-500]="activeTab() !== 'billing'">
                     <i class="fas fa-file-invoice-dollar mr-2"></i> Facturación
+                 </button>
+
+                 <button 
+                    (click)="setActiveTab('documents')"
+                    class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                    [class.border-cyan-500]="activeTab() === 'documents'"
+                    [class.text-cyan-600]="activeTab() === 'documents'"
+                    [class.dark:text-cyan-400]="activeTab() === 'documents'"
+                    [class.border-transparent]="activeTab() !== 'documents'"
+                    [class.text-slate-500]="activeTab() !== 'documents'">
+                    <i class="fas fa-folder mr-2"></i> Documentos
                  </button>
              </div>
          </header>
 
          <!-- Content -->
-         <main class="flex-1 overflow-auto p-6">
-             <div class="max-w-7xl mx-auto">
+         <main class="flex-1 overflow-auto p-6 bg-slate-50 dark:bg-slate-900 scroll-smooth">
+             <div class="max-w-7xl mx-auto pb-20">
                  
                  <!-- Tab: Ficha -->
-                 <div *ngIf="activeTab() === 'ficha'" class="animate-fade-in">
+                 <div *ngIf="activeTab() === 'ficha'" class="animate-fade-in space-y-6">
                      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                          <!-- Basic Info Card -->
                          <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
-                             <h3 class="font-bold text-lg mb-4 text-slate-800 dark:text-white">Información Personal</h3>
-                             <dl class="space-y-3">
+                             <h3 class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2">
+                                 <i class="fas fa-user-circle text-blue-500"></i> Información Personal
+                             </h3>
+                             <dl class="space-y-4">
                                  <div>
-                                     <dt class="text-xs text-slate-400 uppercase">DNI / NIF</dt>
+                                     <dt class="text-xs text-slate-400 uppercase font-semibold">DNI / NIF</dt>
                                      <dd class="text-slate-700 dark:text-slate-300 font-medium">{{ customer()!.dni || customer()!.cif_nif || '-' }}</dd>
                                  </div>
                                  <div *ngIf="customer()!.address">
-                                     <dt class="text-xs text-slate-400 uppercase">Dirección</dt>
+                                     <dt class="text-xs text-slate-400 uppercase font-semibold">Dirección</dt>
                                      <dd class="text-slate-700 dark:text-slate-300">{{ customer()!.address }}</dd>
+                                 </div>
+                                  <div>
+                                     <dt class="text-xs text-slate-400 uppercase font-semibold">Notas Internas</dt>
+                                     <dd class="text-slate-600 dark:text-slate-400 text-sm italic">{{ customer()!.notes || 'Sin notas' }}</dd>
                                  </div>
                              </dl>
                          </div>
-                         <!-- More cards (Devices, Metrics) could go here -->
+                         
+                         <!-- Stats or Other Info could go here -->
                      </div>
                  </div>
 
                  <!-- Tab: Clinical Notes -->
-                 <div *ngIf="activeTab() === 'clinical'" class="animate-fade-in max-w-4xl mx-auto">
+                 <div *ngIf="activeTab() === 'clinical'" class="animate-fade-in max-w-5xl mx-auto">
                      <app-secure-clinical-notes [clientId]="customer()!.id"></app-secure-clinical-notes>
                  </div>
 
+                 <!-- Tab: Agenda -->
+                 <div *ngIf="activeTab() === 'agenda'" class="animate-fade-in max-w-5xl mx-auto">
+                     <app-client-bookings [clientId]="customer()!.id" [clientData]="customer()"></app-client-bookings>
+                 </div>
+
                  <!-- Tab: Billing -->
-                 <div *ngIf="activeTab() === 'billing'" class="animate-fade-in text-center py-20 opacity-50">
-                     <i class="fas fa-tools text-4xl mb-4"></i>
-                     <p>Módulo de facturación en construcción.</p>
+                 <div *ngIf="activeTab() === 'billing'" class="animate-fade-in max-w-5xl mx-auto">
+                     <app-client-billing [clientId]="customer()!.id"></app-client-billing>
+                 </div>
+
+                  <!-- Tab: Documents -->
+                 <div *ngIf="activeTab() === 'documents'" class="animate-fade-in max-w-5xl mx-auto">
+                     <app-client-documents [clientId]="customer()!.id"></app-client-documents>
                  </div>
                  
              </div>
@@ -135,6 +185,8 @@ import { ToastService } from '../../../services/toast.service';
     styles: [`
     .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   `]
 })
 export class ClientProfileComponent implements OnInit {
@@ -144,13 +196,15 @@ export class ClientProfileComponent implements OnInit {
 
     customer = signal<Customer | null>(null);
     isLoading = signal(true);
-    activeTab = signal<'ficha' | 'clinical' | 'billing'>('ficha');
+    activeTab = signal<'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents'>('ficha');
 
     ngOnInit() {
         this.route.params.subscribe(params => {
             const id = params['id'];
             if (id) this.loadCustomer(id);
         });
+
+        // Preserve tab on reload via query params? (Optional enhancement)
     }
 
     loadCustomer(id: string) {
@@ -168,6 +222,10 @@ export class ClientProfileComponent implements OnInit {
         });
     }
 
+    setActiveTab(tab: 'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents') {
+        this.activeTab.set(tab);
+    }
+
     // Helpers
     getDisplayName(c: Customer): string {
         return c.client_type === 'business'
@@ -181,7 +239,6 @@ export class ClientProfileComponent implements OnInit {
     }
 
     getAvatarGradient(c: Customer): string {
-        // Generate distinct gradient based on name char code
         const name = c.name + (c.apellidos || '');
         let hash = 0;
         for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
