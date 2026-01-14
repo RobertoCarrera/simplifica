@@ -17,8 +17,39 @@
                 class="form-control body-input"></textarea>
         </div>
 
+
+
+        <div class="attachments-area">
+            <label class="btn-attach" title="Adjuntar archivos">
+                <i class="icon-paperclip"></i>
+                <span>Adjuntar</span>
+                <input type="file" multiple (change)="onFileSelected($event)" style="display: none;">
+            </label>
+
+            <div class="files-grid" *ngIf="attachments.length > 0">
+                <div *ngFor="let att of attachments; let i = index" class="file-card">
+                    <div class="file-preview">
+                        <!-- Image Preview -->
+                        <img *ngIf="att.file.type.startsWith('image/')"
+                            [src]="'data:' + att.file.type + ';base64,' + att.base64" alt="preview">
+                        <!-- Generic Icon -->
+                        <div *ngIf="!att.file.type.startsWith('image/')" class="file-icon">
+                            📄
+                        </div>
+                        <button (click)="removeAttachment(i)" class="btn-remove" title="Eliminar">×</button>
+                    </div>
+                    <div class="file-info">
+                        <span class="file-name">{{ att.file.name }}</span>
+                        <span class="file-size">{{ (att.file.size / 1024).toFixed(0) }} KB</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="composer-actions">
-            <button class="btn btn-primary" (click)="send()">Enviar</button>
+            <button class="btn btn-primary" (click)="send()" [disabled]="isSending">
+                {{ isSending ? 'Enviando...' : 'Enviar' }}
+            </button>
             <button class="btn btn-text" (click)="cancel()">Descartar draft</button>
         </div>
     </div>

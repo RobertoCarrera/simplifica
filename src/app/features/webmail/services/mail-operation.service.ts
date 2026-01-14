@@ -101,7 +101,9 @@ export class MailOperationService {
       to: message.to,
       subject: message.subject,
       body: message.body_text,
-      html_body: message.body_html
+      html_body: message.body_html,
+      attachments: (message as any).attachments, // Pass attachments
+      trackingId: (message as any).trackingId // Pass tracking ID
     };
 
     console.log('📧 Sending email payload:', payload);

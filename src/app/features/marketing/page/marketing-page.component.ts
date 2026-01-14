@@ -5,10 +5,10 @@ import { SupabaseMarketingService, Campaign, AudienceMember } from '../../../ser
 import { SupabaseService } from '../../../services/supabase.service';
 
 @Component({
-    selector: 'app-marketing-page',
-    standalone: true,
-    imports: [CommonModule, FormsModule, DatePipe],
-    template: `
+  selector: 'app-marketing-page',
+  standalone: true,
+  imports: [CommonModule, FormsModule, DatePipe],
+  template: `
     <div class="max-w-7xl mx-auto p-6 space-y-6">
       
       <!-- Header -->
@@ -17,9 +17,46 @@ import { SupabaseService } from '../../../services/supabase.service';
           <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Marketing y Lealtad</h1>
           <p class="text-slate-500 text-sm">Crea campañas automatizadas para retener a tus clientes.</p>
         </div>
-        <button (click)="openCreateModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 font-medium">
-          <i class="fas fa-plus"></i> Nueva Campaña
-        </button>
+        <div class="flex gap-3">
+             <button (click)="loadStats()" class="p-2 text-slate-400 hover:text-slate-600 rounded-full" title="Actualizar Estadísticas">
+                 <i class="fas fa-sync-alt" [class.animate-spin]="loadingStats()"></i>
+             </button>
+             <button (click)="openCreateModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center gap-2 font-medium">
+                <i class="fas fa-plus"></i> Nueva Campaña
+             </button>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <i class="fas fa-paper-plane text-6xl text-blue-500"></i>
+                </div>
+                <h3 class="text-slate-500 text-sm font-medium uppercase tracking-wide mb-2">Total Enviados</h3>
+                <div class="text-3xl font-bold text-slate-800 dark:text-white">{{ stats.totalSent }}</div>
+                <div class="mt-2 text-xs text-slate-500">Emails entregados</div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                <div class="absolute right-0 top-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <i class="fas fa-envelope-open-text text-6xl text-emerald-500"></i>
+                </div>
+                <h3 class="text-slate-500 text-sm font-medium uppercase tracking-wide mb-2">Aperturas</h3>
+                <div class="text-3xl font-bold text-slate-800 dark:text-white">{{ stats.opened }}</div>
+                <div class="mt-2 text-xs text-emerald-600 font-medium">
+                    <i class="fas fa-arrow-up"></i> {{ stats.openRate | number:'1.1-1' }}% Tasa de apertura
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm relative overflow-hidden group">
+                 <div class="absolute right-0 top-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <i class="fas fa-mouse-pointer text-6xl text-purple-500"></i>
+                </div>
+                <h3 class="text-slate-500 text-sm font-medium uppercase tracking-wide mb-2">Clics</h3>
+                <div class="text-3xl font-bold text-slate-800 dark:text-white">0</div>
+                <div class="mt-2 text-xs text-slate-500">Próximamente</div>
+            </div>
       </div>
 
       <!-- Campaign List -->
@@ -145,110 +182,125 @@ import { SupabaseService } from '../../../services/supabase.service';
   `
 })
 export class MarketingPageComponent implements OnInit {
-    private marketingService = inject(SupabaseMarketingService);
-    private supabaseService = inject(SupabaseService);
+  private marketingService = inject(SupabaseMarketingService);
+  private supabaseService = inject(SupabaseService);
 
-    campaigns = signal<Campaign[]>([]);
+  campaigns = signal<Campaign[]>([]);
 
-    // Modal State
-    showModal = signal(false);
-    newCampaign: Campaign = this.getEmptyCampaign();
+  // Modal State
+  showModal = signal(false);
+  newCampaign: Campaign = this.getEmptyCampaign();
 
-    // Audience State
-    audienceSize = signal(0);
-    loadingAudience = signal(false);
+  // Audience State
+  audienceSize = signal(0);
+  loadingAudience = signal(false);
 
-    ngOnInit() {
-        this.loadCampaigns();
+  // Stats
+  stats = { totalSent: 0, opened: 0, openRate: 0 };
+  loadingStats = signal(false);
+
+  ngOnInit() {
+    this.loadCampaigns();
+    this.loadStats();
+  }
+
+  async loadStats() {
+    this.loadingStats.set(true);
+    // Simulate loading
+    setTimeout(() => {
+      // Mock data
+      this.stats = { totalSent: 1240, opened: 512, openRate: 41.2 };
+      this.loadingStats.set(false);
+    }, 800);
+  }
+
+  async loadCampaigns() {
+    const companyId = this.supabaseService.currentCompanyId;
+    if (!companyId) return;
+    try {
+      const data = await this.marketingService.getCampaigns(companyId);
+      this.campaigns.set(data);
+    } catch (e) {
+      console.error(e);
     }
+  }
 
-    async loadCampaigns() {
-        const companyId = this.supabaseService.currentCompanyId;
-        if (!companyId) return;
-        try {
-            const data = await this.marketingService.getCampaigns(companyId);
-            this.campaigns.set(data);
-        } catch (e) {
-            console.error(e);
-        }
+  getEmptyCampaign(): Campaign {
+    return {
+      name: '',
+      type: 'email',
+      content: '',
+      target_audience: { inactive_days: 30 }
+    };
+  }
+
+  openCreateModal() {
+    this.newCampaign = this.getEmptyCampaign();
+    this.checkAudience();
+    this.showModal.set(true);
+  }
+
+  closeModal() {
+    this.showModal.set(false);
+  }
+
+  async checkAudience() {
+    const companyId = this.supabaseService.currentCompanyId;
+    if (!companyId) return;
+
+    this.loadingAudience.set(true);
+    try {
+      // Clean criteria
+      const criteria: any = {};
+      if (this.newCampaign.target_audience.inactive_days) criteria.inactive_days = this.newCampaign.target_audience.inactive_days;
+      if (this.newCampaign.target_audience.birthday_month) criteria.birthday_month = this.newCampaign.target_audience.birthday_month;
+
+      const result = await this.marketingService.getEstimatedAudience(companyId, criteria);
+      this.audienceSize.set(result.length);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      this.loadingAudience.set(false);
     }
+  }
 
-    getEmptyCampaign(): Campaign {
-        return {
-            name: '',
-            type: 'email',
-            content: '',
-            target_audience: { inactive_days: 30 }
-        };
+  async saveCampaign() {
+    const companyId = this.supabaseService.currentCompanyId;
+    if (!companyId) return;
+
+    try {
+      this.newCampaign.company_id = companyId;
+      await this.marketingService.createCampaign(this.newCampaign);
+      this.closeModal();
+      this.loadCampaigns();
+    } catch (e) {
+      console.error(e);
+      alert('Error al guardar campaña');
     }
+  }
 
-    openCreateModal() {
-        this.newCampaign = this.getEmptyCampaign();
-        this.checkAudience();
-        this.showModal.set(true);
+  async sendCampaign(campaign: Campaign) {
+    if (!confirm('¿Estás seguro de enviar esta campaña ahora?')) return;
+    try {
+      await this.marketingService.sendCampaign(campaign.id!);
+      this.loadCampaigns();
+      alert('Campaña enviada con éxito (simulado)');
+    } catch (e) {
+      console.error(e);
     }
+  }
 
-    closeModal() {
-        this.showModal.set(false);
+  getStatusClass(status: string) {
+    switch (status) {
+      case 'sent': return 'bg-emerald-100 text-emerald-700';
+      case 'scheduled': return 'bg-blue-100 text-blue-700';
+      default: return 'bg-slate-100 text-slate-600';
     }
+  }
 
-    async checkAudience() {
-        const companyId = this.supabaseService.currentCompanyId;
-        if (!companyId) return;
-
-        this.loadingAudience.set(true);
-        try {
-            // Clean criteria
-            const criteria: any = {};
-            if (this.newCampaign.target_audience.inactive_days) criteria.inactive_days = this.newCampaign.target_audience.inactive_days;
-            if (this.newCampaign.target_audience.birthday_month) criteria.birthday_month = this.newCampaign.target_audience.birthday_month;
-
-            const result = await this.marketingService.getEstimatedAudience(companyId, criteria);
-            this.audienceSize.set(result.length);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            this.loadingAudience.set(false);
-        }
-    }
-
-    async saveCampaign() {
-        const companyId = this.supabaseService.currentCompanyId;
-        if (!companyId) return;
-
-        try {
-            this.newCampaign.company_id = companyId;
-            await this.marketingService.createCampaign(this.newCampaign);
-            this.closeModal();
-            this.loadCampaigns();
-        } catch (e) {
-            console.error(e);
-            alert('Error al guardar campaña');
-        }
-    }
-
-    async sendCampaign(campaign: Campaign) {
-        if (!confirm('¿Estás seguro de enviar esta campaña ahora?')) return;
-        try {
-            await this.marketingService.sendCampaign(campaign.id!);
-            this.loadCampaigns();
-            alert('Campaña enviada con éxito (simulado)');
-        } catch (e) {
-            console.error(e);
-        }
-    }
-
-    getStatusClass(status: string) {
-        switch (status) {
-            case 'sent': return 'bg-emerald-100 text-emerald-700';
-            case 'scheduled': return 'bg-blue-100 text-blue-700';
-            default: return 'bg-slate-100 text-slate-600';
-        }
-    }
-
-    getMonthName(month: number) {
-        const date = new Date();
-        date.setMonth(month - 1);
-        return date.toLocaleDateString('es-ES', { month: 'long' });
-    }
+  getMonthName(month: number) {
+    const date = new Date();
+    date.setMonth(month - 1);
+    return date.toLocaleDateString('es-ES', { month: 'long' });
+  }
 }
