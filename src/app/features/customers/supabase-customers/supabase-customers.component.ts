@@ -26,6 +26,7 @@ import { AiService } from '../../../services/ai.service';
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
 import { LoyaltyModalComponent } from '../loyalty-modal/loyalty-modal.component';
+import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 
 @Component({
     selector: 'app-supabase-customers',
@@ -60,6 +61,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     public auth = inject(AuthService);
     portal = inject(ClientPortalService);
     private completenessSvc = inject(CustomersSvc);
+    private tagsService = inject(GlobalTagsService);
 
     // Overlay dependencies
     private overlay = inject(Overlay);
@@ -130,6 +132,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     sortBy = signal<'name' | 'apellidos' | 'created_at'>('name'); // Default to name
     sortOrder = signal<'asc' | 'desc'>('asc'); // Default to asc for alphabetical
 
+    // Tag Filter
+    availableTags = signal<GlobalTag[]>([]);
+    selectedTagId = signal<string>('ALL'); // 'ALL' or tag UUID
+
 
 
     // UI filter toggle for incomplete imports (Removed from UI, logic deprecated)
@@ -174,6 +180,14 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
         // ✅ Filtrar clientes anonimizados (ocultarlos de la lista)
         filtered = filtered.filter(customer => !this.isCustomerAnonymized(customer));
+
+        // Filter by Tag
+        const tagId = this.selectedTagId();
+        if (tagId && tagId !== 'ALL') {
+            filtered = filtered.filter(customer =>
+                customer.tags && customer.tags.some((t: any) => t.id === tagId)
+            );
+        }
 
         // Apply search filter
         const search = this.searchTerm().toLowerCase().trim();
@@ -251,6 +265,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         this.loadGdprData();
         // Initialize portal access cache
         this.refreshPortalAccess();
+        // Load tags
+        this.loadTags();
     }
 
     ngOnDestroy() {
@@ -399,6 +415,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         });
     }
 
+    loadTags() {
+        this.tagsService.getTags('clients').subscribe(tags => {
+            this.availableTags.set(tags);
+        });
+    }
+
     // Via suggestions handler
     // Locality input handlers removed (moved to child component)
 
@@ -462,8 +484,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
 
     viewCustomer(customer: Customer) {
-        // Implementar vista de detalles
-        this.selectCustomer(customer);
+        this.router.navigate(['/clientes', customer.id]);
     }
 
     duplicateCustomer(customer: Customer) {

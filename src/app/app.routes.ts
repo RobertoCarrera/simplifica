@@ -58,6 +58,11 @@ export const routes: Routes = [
 
     // Clientes (Lazy Load)
     {
+        path: 'clientes/:id',
+        loadComponent: () => import('./features/customers/profile/client-profile.component').then(m => m.ClientProfileComponent),
+        canActivate: [StaffGuard]
+    },
+    {
         path: 'clientes',
         loadComponent: () => import('./features/customers/supabase-customers/supabase-customers.component').then(m => m.SupabaseCustomersComponent),
         canActivate: [StaffGuard]

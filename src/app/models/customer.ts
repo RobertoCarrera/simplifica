@@ -57,6 +57,7 @@ export interface Customer {
   access_count?: number;
   devices?: { count?: number; id?: string; deleted_at?: string }[];
   loyalty_points_balance?: number;
+  tags?: any[]; // GlobalTag[] loaded dynamically
 }
 
 // Interface para crear cliente (sin ID)
