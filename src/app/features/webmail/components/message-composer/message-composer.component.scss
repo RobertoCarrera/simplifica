@@ -46,13 +46,35 @@
             font-size: 0.95rem;
             font-weight: 500;
             color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+
+            .save-status {
+                font-size: 0.75rem;
+                font-weight: 400;
+                color: #64748b;
+                background: #f1f5f9;
+                padding: 2px 8px;
+                border-radius: 4px;
+            }
 
             :host-context(.dark) & {
                 color: #e2e8f0; // Brighter text for dark mode
+
+                .save-status {
+                    color: #94a3b8;
+                    background: #334155;
+                }
             }
 
             @media (prefers-color-scheme: dark) {
                 color: #e2e8f0;
+
+                .save-status {
+                    color: #94a3b8;
+                    background: #334155;
+                }
             }
         }
     }
@@ -313,7 +335,8 @@
                 align-items: center;
                 background: #3b82f6;
                 border-radius: 20px;
-                overflow: hidden;
+                overflow: visible; // Allow dropdown to show
+                position: relative; // For absolute positioning of dropdown
 
                 button {
                     background: transparent;
@@ -339,12 +362,233 @@
                     padding: 0.5rem 0.5rem;
                     border-left: 1px solid rgba(255, 255, 255, 0.2);
                 }
+
+                .schedule-menu {
+                    position: absolute;
+                    bottom: 100%;
+                    left: 0;
+                    margin-bottom: 0.5rem;
+                    background: #fff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                    min-width: 200px;
+                    z-index: 100;
+                    overflow: hidden;
+                    animation: fadeIn 0.15s ease-out;
+
+                    :host-context(.dark) & {
+                        background: #1e293b;
+                        border-color: #334155;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+                    }
+
+                    @media (prefers-color-scheme: dark) {
+                        background: #1e293b;
+                        border-color: #334155;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+                    }
+
+                    .menu-item {
+                        padding: 0.75rem 1rem;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        cursor: pointer;
+                        transition: background 0.2s;
+                        color: #1e293b;
+                        font-size: 0.9rem;
+
+                        :host-context(.dark) & {
+                            color: #f8fafc;
+                        }
+
+                        @media (prefers-color-scheme: dark) {
+                            color: #f8fafc;
+                        }
+
+                        .date-hint {
+                            color: #94a3b8;
+                            font-size: 0.8rem;
+                        }
+
+                        &:hover {
+                            background: #f1f5f9;
+
+                            :host-context(.dark) & {
+                                background: #334155;
+                            }
+
+                            @media (prefers-color-scheme: dark) {
+                                background: #334155;
+                            }
+                        }
+                    }
+
+
+                    .separator {
+                        height: 1px;
+                        background: #e2e8f0;
+                        margin: 0.25rem 0;
+
+                        :host-context(.dark) & {
+                            background: #334155;
+                        }
+
+                        @media (prefers-color-scheme: dark) {
+                            background: #334155;
+                        }
+                    }
+
+                    .custom-date-picker {
+                        padding: 1rem;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 0.75rem;
+
+                        .picker-header {
+                            display: flex;
+                            align-items: center;
+                            gap: 0.5rem;
+                            font-weight: 500;
+                            color: #334155;
+                            margin-bottom: 0.5rem;
+
+                            .back-btn {
+                                cursor: pointer;
+                                color: #64748b;
+                                padding: 4px;
+                                border-radius: 4px;
+
+                                &:hover {
+                                    background: #f1f5f9;
+                                    color: #1e293b;
+                                }
+                            }
+                        }
+
+                        .picker-body {
+                            display: flex;
+                            flex-direction: column;
+                            gap: 0.5rem;
+
+                            label {
+                                font-size: 0.8rem;
+                                color: #64748b;
+                            }
+
+                            input {
+                                padding: 0.5rem;
+                                border: 1px solid #e2e8f0;
+                                border-radius: 4px;
+                                font-size: 0.9rem;
+                                color: #1e293b;
+                                outline: none;
+
+                                &:focus {
+                                    border-color: #3b82f6;
+                                }
+                            }
+                        }
+
+                        .btn-confirm-schedule {
+                            margin-top: 0.5rem;
+                            padding: 0.5rem;
+                            background: #3b82f6;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            font-weight: 500;
+                            cursor: pointer;
+
+                            &:hover {
+                                background: #2563eb;
+                            }
+                        }
+
+                        :host-context(.dark) & {
+                            .picker-header {
+                                color: #e2e8f0;
+
+                                .back-btn:hover {
+                                    background: #334155;
+                                    color: #f8fafc;
+                                }
+                            }
+
+                            .picker-body {
+                                label {
+                                    color: #94a3b8;
+                                }
+
+                                input {
+                                    background: #1e293b;
+                                    border-color: #475569;
+                                    color: #f8fafc;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             .formatting-actions {
                 display: flex;
                 align-items: center;
                 gap: 0.25rem;
+                padding: 0 0.5rem;
+
+                .emoji-wrapper {
+                    position: relative;
+
+                    .emoji-picker {
+                        position: absolute;
+                        bottom: 120%;
+                        left: 0;
+                        background: white;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                        padding: 0.5rem;
+                        display: grid;
+                        grid-template-columns: repeat(5, 1fr);
+                        gap: 0.5rem;
+                        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                        z-index: 100;
+                        min-width: 180px;
+
+                        span {
+                            font-size: 1.25rem;
+                            cursor: pointer;
+                            padding: 4px;
+                            border-radius: 4px;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+
+                            &:hover {
+                                background: #f1f5f9;
+                            }
+                        }
+
+                        :host-context(.dark) & {
+                            background: #1e293b;
+                            border-color: #334155;
+
+                            span:hover {
+                                background: #334155;
+                            }
+                        }
+
+                        @media (prefers-color-scheme: dark) {
+                            background: #1e293b;
+                            border-color: #334155;
+
+                            span:hover {
+                                background: #334155;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -371,12 +615,22 @@
                 color: #1e293b;
             }
 
+            &.active {
+                color: #3b82f6;
+                background: rgba(59, 130, 246, 0.1);
+            }
+
             :host-context(.dark) & {
                 color: #94a3b8;
 
                 &:hover {
                     background: #334155;
                     color: #f8fafc;
+                }
+
+                &.active {
+                    color: #60a5fa;
+                    background: rgba(96, 165, 250, 0.15);
                 }
             }
         }

@@ -71,6 +71,9 @@ export interface MailMessage {
 
     // Attachments (JSONB in DB)
     attachments?: MailAttachment[];
+
+    // Metadata (e.g. is_confidential)
+    metadata?: Record<string, any>;
 }
 
 export interface MailThread {

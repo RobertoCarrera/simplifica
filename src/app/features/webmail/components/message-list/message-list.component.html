@@ -20,7 +20,8 @@
         <ng-template #searchMode>
             <div class="search-box">
                 <i class="fas fa-search"></i>
-                <input type="text" placeholder="Buscar correos...">
+                <input type="text" placeholder="Buscar correos..." [ngModel]="searchTerm()"
+                    (keyup.enter)="onSearch($any($event.target).value)" (blur)="onSearch($any($event.target).value)">
             </div>
 
             <!-- Standard toolbar actions if needed, or Select All trigger -->
@@ -66,7 +67,10 @@
 
                 <div class="content">
                     <div class="header">
-                        <span class="sender">{{ thread.participants?.join(', ') || 'Desconocido' }}</span>
+                        <span class="sender">
+                            {{ isDraftsOrSent() ? 'Para: ' : '' }}
+                            {{ thread.participants?.join(', ') || 'Desconocido' }}
+                        </span>
                         <span class="date">{{ thread.last_message_at | date:'M/d/yy' }}</span>
                     </div>
                     <div class="subject-row">
