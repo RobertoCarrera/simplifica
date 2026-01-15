@@ -30,6 +30,15 @@ export class MailOperationService {
     if (error) throw error;
   }
 
+  async permanentDeleteMessages(messageIds: string[]) {
+    if (!messageIds.length) return;
+    const { error } = await this.supabase
+      .from('mail_messages')
+      .delete()
+      .in('id', messageIds);
+    if (error) throw error;
+  }
+
   async deleteMessages(messageIds: string[]) {
     if (!messageIds.length) return;
 
@@ -123,7 +132,7 @@ export class MailOperationService {
 
   // Placeholder for sending
   // Placeholder for sending
-  async sendMessage(message: Partial<MailMessage>, account?: any) {
+  async sendMessage(message: Partial<MailMessage>, account?: any, draftId?: string) {
     if (!account) throw new Error('Account required to send email');
 
     let htmlBody = message.body_html || '';
@@ -171,6 +180,17 @@ export class MailOperationService {
       }
       throw error;
     }
+
+    // If sent successfully and it was a draft, delete the draft
+    if (draftId) {
+      try {
+        await this.permanentDeleteMessages([draftId]);
+        console.log('Draft deleted after sending');
+      } catch (delError) {
+        console.warn('Failed to delete draft after sending', delError);
+      }
+    }
+
     return data;
   }
 
@@ -195,7 +215,8 @@ export class MailOperationService {
       body_html: message.body_html || '',
       snippet: (message.body_text || '').substring(0, 100),
       is_read: true,
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      metadata: message.metadata || {} // Store metadata (e.g. confidential)
     };
 
     // If ID exists, it's an update
@@ -204,11 +225,35 @@ export class MailOperationService {
         .from('mail_messages')
         .update(payload)
         .eq('id', message.id)
-        .select()
-        .single();
+        .select('*, thread_id');
 
       if (error) throw error;
-      return data.id;
+
+      const updatedMessage = data && data.length > 0 ? data[0] : null;
+
+      if (!updatedMessage) {
+        // If update failed (e.g. deleted), we can try to Insert or just throw specific error
+        console.warn('Draft update failed - row not found (possibly deleted).');
+        // Option: Fallback to INSERT if we want to ensure save?
+        // For now, let's just return message.id so we don't break the flow, but warn.
+        return message.id;
+      }
+
+      // Force update of thread to reflect new snippet/subject
+      if (updatedMessage.thread_id) {
+        const { error: threadError } = await this.supabase
+          .from('mail_threads')
+          .update({
+            last_message_at: new Date().toISOString(),
+            snippet: payload.snippet,
+            subject: payload.subject
+          })
+          .eq('id', updatedMessage.thread_id);
+
+        if (threadError) console.warn('Failed to update thread summary:', threadError);
+      }
+
+      return updatedMessage.id;
     } else {
       // New Draft
       const { data, error } = await this.supabase
@@ -223,11 +268,11 @@ export class MailOperationService {
   }
 
   // THREADS SUPPORT
-  async getThreads(folderName: string, accountId: string, limit = 20, offset = 0) {
+  async getThreads(folderId: string, accountId: string, limit = 20, offset = 0) {
     const { data, error } = await this.supabase
       .rpc('f_mail_get_threads', {
         p_account_id: accountId,
-        p_folder_name: folderName,
+        p_folder_id: folderId,
         p_limit: limit,
         p_offset: offset
       });

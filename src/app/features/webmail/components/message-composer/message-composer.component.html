@@ -2,7 +2,9 @@
     (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
 
     <div class="composer-header">
-        <h2>Mensaje Nuevo</h2>
+        <h2>Mensaje Nuevo <span class="save-status" *ngIf="savingDraft || draftId">
+                {{ savingDraft ? 'Guardando...' : 'Borrador guardado' }}
+            </span></h2>
         <div class="window-actions">
             <button class="btn-icon" (click)="minimize.emit()" title="Minimizar"><i class="fas fa-minus"></i></button>
             <button class="btn-icon" (click)="maximize.emit()" title="Maximizar"><i class="fas fa-expand"></i></button>
@@ -60,9 +62,44 @@
                     Enviar
                     <i class="fas fa-paper-plane"></i>
                 </button>
-                <button class="btn-schedule">
+                <button class="btn-schedule" (click)="toggleScheduleMenu()" title="Programar envío">
                     <i class="fas fa-chevron-down"></i>
                 </button>
+                <div class="schedule-menu" *ngIf="showScheduleMenu">
+                    <ng-container *ngIf="!showCustomScheduleDate">
+                        <div class="menu-item" (click)="scheduleSend('tomorrow')">
+                            <span>Mañana por la mañana</span>
+                            <span class="date-hint">8:00 AM</span>
+                        </div>
+                        <div class="menu-item" (click)="scheduleSend('afternoon')">
+                            <span>Esta tarde</span>
+                            <span class="date-hint">1:00 PM</span>
+                        </div>
+                        <div class="menu-item" (click)="scheduleSend('monday')">
+                            <span>Lunes por la mañana</span>
+                            <span class="date-hint">8:00 AM</span>
+                        </div>
+                        <div class="separator"></div>
+                        <div class="menu-item" (click)="showCustomScheduleDate = true; $event.stopPropagation()">
+                            <span>Elegir fecha y hora</span>
+                        </div>
+                    </ng-container>
+
+                    <div class="custom-date-picker" *ngIf="showCustomScheduleDate" (click)="$event.stopPropagation()">
+                        <div class="picker-header">
+                            <span (click)="showCustomScheduleDate = false" class="back-btn"><i
+                                    class="fas fa-arrow-left"></i></span>
+                            <span>Programar envío</span>
+                        </div>
+                        <div class="picker-body">
+                            <label>Fecha</label>
+                            <input type="date" [(ngModel)]="customDateStr" [min]="minDateStr">
+                            <label>Hora</label>
+                            <input type="time" [(ngModel)]="customTimeStr">
+                        </div>
+                        <button class="btn-confirm-schedule" (click)="confirmCustomSchedule()">Programar</button>
+                    </div>
+                </div>
             </div>
 
             <div class="formatting-actions">
@@ -71,16 +108,31 @@
                 <button class="btn-icon" (click)="fileInput.click()" title="Adjuntar archivos">
                     <i class="fas fa-paperclip"></i>
                 </button>
-                <button class="btn-icon"><i class="fas fa-link"></i></button>
-                <button class="btn-icon"><i class="fas fa-smile"></i></button>
-                <button class="btn-icon"><i class="fab fa-google-drive"></i></button>
-                <button class="btn-icon"><i class="fas fa-image"></i></button>
-                <button class="btn-icon"><i class="fas fa-lock"></i></button>
+                <button class="btn-icon" (click)="insertLink()" title="Insertar enlace"><i
+                        class="fas fa-link"></i></button>
+
+                <div class="emoji-wrapper" style="position: relative;">
+                    <button class="btn-icon" (click)="toggleEmojiPicker()" title="Emojis"><i
+                            class="fas fa-smile"></i></button>
+                    <div class="emoji-picker" *ngIf="showEmojiPicker">
+                        <span *ngFor="let emoji of commonEmojis" (click)="insertEmoji(emoji)">{{ emoji }}</span>
+                    </div>
+                </div>
+
+                <button class="btn-icon" title="Google Drive (Próximamente)"><i
+                        class="fab fa-google-drive"></i></button>
+                <button class="btn-icon" (click)="insertImage()" title="Insertar imagen"><i
+                        class="fas fa-image"></i></button>
+                <button class="btn-icon" [class.active]="isConfidential" (click)="toggleConfidential()"
+                    title="Modo confidencial">
+                    <i class="fas fa-lock"></i>
+                </button>
             </div>
         </div>
 
         <div class="secondary-actions">
-            <button class="btn-icon" (click)="saveDraft()"><i class="fas fa-trash"></i></button>
+            <button class="btn-icon" (click)="discardDraft()" title="Descartar borrador"><i
+                    class="fas fa-trash"></i></button>
         </div>
     </div>
 

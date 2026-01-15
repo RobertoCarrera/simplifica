@@ -45,6 +45,7 @@ export class MessageListComponent implements OnInit {
     this.route.paramMap.subscribe(params => {
       const path = params.get('folderPath') || 'inbox';
       this.currentFolderPath = path;
+      this.searchTerm.set(''); // Reset search
       this.loadMessagesForPath(path);
       // Clear selection on route change
       this.selectedThreadIds.set(new Set());
@@ -205,12 +206,29 @@ export class MessageListComponent implements OnInit {
     }
   }
 
+  searchTerm = signal('');
+
+  onSearch(query: string) {
+    this.searchTerm.set(query);
+    const folders = this.store.folders();
+    const folder = folders.find(f => f.path.toLowerCase() === this.currentFolderPath.toLowerCase() || f.system_role === this.currentFolderPath.toLowerCase());
+
+    if (folder) {
+      this.store.loadThreads(folder, query);
+    }
+  }
+
   private loadMessagesForPath(path: string) {
     const folders = this.store.folders();
     let folder = folders.find(f => f.path.toLowerCase() === path.toLowerCase() || f.system_role === path.toLowerCase());
 
     if (folder) {
-      this.store.loadMessages(folder);
+      // Reset search on folder change unless we want to persist (usually reset)
+      // If we are calling this from route change, we should reset search
+      // But if we are calling this from effect... 
+      // Effect dependency is just store.folders().
+      // Let's reset search in ngOnInit route sub.
+      this.store.loadThreads(folder, this.searchTerm());
     }
   }
 }

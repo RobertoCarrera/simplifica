@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnDestroy, OnInit, ViewEncapsulation, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Editor } from '@tiptap/core';
@@ -16,7 +16,7 @@ import { TiptapEditorDirective } from 'ngx-tiptap';
     styleUrl: './tiptap-editor.component.scss',
     encapsulation: ViewEncapsulation.None // Needed for Tiptap styles
 })
-export class TiptapEditorComponent implements OnInit, OnDestroy {
+export class TiptapEditorComponent implements OnInit, OnDestroy, OnChanges {
     @Input() content = '';
     @Input() placeholder = 'Escribe aquí...';
     @Output() contentChange = new EventEmitter<string>();
@@ -41,6 +41,18 @@ export class TiptapEditorComponent implements OnInit, OnDestroy {
                 this.contentChange.emit(html);
             },
         });
+    }
+
+    ngOnChanges(changes: SimpleChanges) {
+        if (changes['content'] && this.editor) {
+            const newContent = changes['content'].currentValue;
+            // Only update if content is different to avoid cursor jumps / infinite loops
+            if (this.editor.getHTML() !== newContent) {
+                // If newContent is empty, or just different, update it.
+                // Note: getHTML() might add tags, so comparison isn't perfect but covers basic async load.
+                this.editor.commands.setContent(newContent);
+            }
+        }
     }
 
     ngOnDestroy() {
@@ -68,5 +80,12 @@ export class TiptapEditorComponent implements OnInit, OnDestroy {
             return;
         }
         this.editor?.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+    }
+
+    addImage(url?: string) {
+        const src = url || window.prompt('URL de la imagen');
+        if (src) {
+            this.editor?.chain().focus().setImage({ src }).run();
+        }
     }
 }

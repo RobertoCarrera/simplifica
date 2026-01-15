@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, Output, EventEmitter } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, Output, EventEmitter, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -25,6 +25,8 @@ interface AttachmentItem {
   styleUrl: './message-composer.component.scss'
 })
 export class MessageComposerComponent implements OnInit, OnDestroy {
+  @ViewChild(TiptapEditorComponent) editorComponent!: TiptapEditorComponent;
+
   @Output() minimize = new EventEmitter<void>();
   @Output() maximize = new EventEmitter<void>();
   @Output() close = new EventEmitter<void>();
@@ -40,6 +42,17 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
   isDragOver = false;
   showCc = false;
   showBcc = false;
+  showScheduleMenu = false;
+  showCustomScheduleDate = false;
+
+  customDateStr = '';
+  customTimeStr = '09:00';
+  minDateStr = new Date().toISOString().split('T')[0];
+
+  // Features
+  isConfidential = false;
+  showEmojiPicker = false;
+  commonEmojis = ['👍', '😊', '🎉', '❌', '✅', '❤️', '🔥', '🤔', '👀', '📧'];
 
   // Search State
   searchResults: ChipItem[] = [];
@@ -67,12 +80,18 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
     });
 
     this.setupSearch();
+    this.setupAutoSave();
+  }
 
+  setupAutoSave() {
+    if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
     this.autoSaveTimer = setInterval(() => {
-      if (this.isDirty() && !this.isSending) {
+      // Autosave only if dirty, not sending, and not currently saving
+      if (this.isDirty() && !this.isSending && !this.savingDraft) {
+        // console.log('Autosave triggered');
         this.saveDraft(true);
       }
-    }, 10000);
+    }, 10000); // 10 seconds
   }
 
   ngOnDestroy() {
@@ -131,8 +150,11 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
     }
   }
 
+  isDiscarding = false;
+
   async saveDraft(silent = false) {
     if (!this.store.currentAccount()) return;
+    if (this.isDiscarding) return;
     if (!this.isDirty()) return;
 
     this.savingDraft = true;
@@ -142,16 +164,55 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
         to: this.toRecipients.map(r => ({ email: r.value, name: r.label === r.value ? '' : r.label })),
         subject: this.subject,
         body_text: this.body,
-        body_html: this.body
+        body_html: this.body,
+        metadata: { confidential: this.isConfidential }
       }, this.store.currentAccount()!.id);
 
+      if (this.isDiscarding) return;
+
       this.draftId = id;
+      this.store.refreshCurrentFolder();
       if (!silent) console.log('Draft saved');
     } catch (error) {
-      console.error('Error saving draft:', error);
+      if (!this.isDiscarding) {
+        console.error('Error saving draft:', error);
+      }
     } finally {
       this.savingDraft = false;
     }
+  }
+
+  async discardDraft() {
+    this.isDiscarding = true; // Set flag immediately
+    if (this.autoSaveTimer) clearInterval(this.autoSaveTimer); // Stop timer
+
+    if (this.draftId) {
+      if (confirm('¿Estás seguro de que quieres descartar este borrador?')) {
+        try {
+          // Force hard delete for drafts
+          await this.operations.permanentDeleteMessages([this.draftId]);
+          this.close.emit();
+        } catch (error) {
+          console.error('Error deleting draft:', error);
+          alert('Error al descartar el borrador');
+          this.isDiscarding = false; // Revert if failed
+        }
+      } else {
+        this.isDiscarding = false; // Revert if cancelled
+        // Restart timer if needed?
+        this.setupAutoSave();
+      }
+    } else {
+      this.close.emit();
+    }
+  }
+
+  insertLink() {
+    this.editorComponent.addLink();
+  }
+
+  insertImage() {
+    this.editorComponent.addImage();
   }
 
   attachments: AttachmentItem[] = [];
@@ -256,10 +317,11 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
           contentType: a.file.type,
           size: a.file.size,
           storage_path: a.storagePath // Send the storage path for backend to link
-        }))
+        })),
+        metadata: { confidential: this.isConfidential }
       };
 
-      await this.operations.sendMessage(payload, account);
+      await this.operations.sendMessage(payload, account, this.draftId || undefined);
 
       this.close.emit(); // Emit close instead of navigating directly
     } catch (e: any) {
@@ -268,6 +330,45 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
     } finally {
       this.isSending = false;
     }
+  }
+
+  toggleScheduleMenu() {
+    this.showScheduleMenu = !this.showScheduleMenu;
+  }
+
+  toggleConfidential() {
+    this.isConfidential = !this.isConfidential;
+  }
+
+  toggleEmojiPicker() {
+    this.showEmojiPicker = !this.showEmojiPicker;
+  }
+
+  insertEmoji(emoji: string) {
+    const component = this.editorComponent;
+    if (component && component.editor) {
+      component.editor.commands.insertContent(emoji);
+    }
+    this.showEmojiPicker = false;
+  }
+
+  scheduleSend(option: string) {
+    this.showScheduleMenu = false;
+    // Mock implementation for now
+    if (option === 'custom') {
+      alert('Se abrirá el selector de fecha y hora. (Próximamente)');
+    } else {
+      alert(`Programado para: ${option} (Simulado)`);
+    }
+  }
+
+  confirmCustomSchedule() {
+    if (!this.customDateStr || !this.customTimeStr) return;
+    const date = new Date(this.customDateStr + 'T' + this.customTimeStr);
+    console.log('Scheduled for:', date);
+    this.scheduleSend('custom-confirmed');
+    this.showScheduleMenu = false;
+    this.showCustomScheduleDate = false;
   }
 
   cancel() {
