@@ -1,6 +1,6 @@
 <div *ngIf="visible" class="app-modal-overlay">
   <div class="app-modal-backdrop" (click)="backdropClick()"></div>
-  <div class="app-modal-panel" role="dialog" aria-modal="true">
+  <div class="app-modal-panel" role="dialog" aria-modal="true" [attr.aria-label]="ariaLabel || null">
     <ng-content></ng-content>
   </div>
 </div>
