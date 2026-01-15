@@ -21,6 +21,15 @@ export class MailOperationService {
     if (error) throw error;
   }
 
+  async moveThreads(threadIds: string[], targetFolderId: string) {
+    const { error } = await this.supabase
+      .from('mail_messages')
+      .update({ folder_id: targetFolderId })
+      .in('thread_id', threadIds);
+
+    if (error) throw error;
+  }
+
   async deleteMessages(messageIds: string[]) {
     if (!messageIds.length) return;
 
@@ -253,6 +262,33 @@ export class MailOperationService {
 
       if (error) throw error;
     }
+  }
+
+  async createFolder(name: string, accountId: string, parentId?: string | null): Promise<void> {
+    // Generate simple slug for path. In a real app, might want to ensure uniqueness or hierarchy.
+    // For now, we assume top level or simple hierarchy.
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const path = parentId ? `${parentId}/${slug}` : slug;
+
+    // Should check if path exists or let DB constraints handle it? 
+    // We'll trust the UI/DB for now.
+
+    // Check if path is taken by system folder (optional safety)
+    if (['inbox', 'sent', 'drafts', 'trash', 'spam'].includes(slug)) {
+      throw new Error('El nombre de la carpeta está reservado.');
+    }
+
+    const { error } = await this.supabase
+      .from('mail_folders')
+      .insert({
+        account_id: accountId,
+        name: name,
+        path: path, // Note: This might collide, ideally we'd uniqueify it
+        type: 'user',
+        parent_id: parentId || null
+      });
+
+    if (error) throw error;
   }
 }
 
