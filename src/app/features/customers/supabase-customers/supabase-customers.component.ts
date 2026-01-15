@@ -25,6 +25,7 @@ import { AiService } from '../../../services/ai.service';
 
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
+import { CustomerView } from '../models/customer-view.model';
 
 @Component({
     selector: 'app-supabase-customers',
@@ -187,6 +188,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
         // Use cached completeness for sorting
         const completeness = this.completenessCache();
+        const portalKeys = this.portalAccessKeys(); // Dependencia para el VM
 
         filtered.sort((a, b) => {
             // Priority Sort: Incomplete users FIRST
@@ -211,7 +213,23 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             return sortOrder === 'asc' ? result : -result;
         });
 
-        return filtered;
+        // ⚡ Bolt Optimization: Map to ViewModel to avoid function calls in template loop
+        return filtered.map(c => {
+            const vm: CustomerView = {
+                ...c,
+                displayName: this.getDisplayName(c),
+                initials: this.getCustomerInitials(c),
+                avatarGradient: this.getAvatarGradient(c),
+                formattedDate: this.formatDate(c.created_at),
+                attentionReasons: this.formatAttentionReasons(c),
+                isComplete: completeness.get(c.id) ?? false,
+                gdprBadgeConfig: this.getGdprBadgeConfig(c),
+                // ⚡ Bolt: Maintain trailing space logic from refreshPortalAccess to match keys
+                hasAccessToPortal: c.email ? portalKeys.has(`${c.id}:${c.email.toLowerCase()} `) : false,
+                hasPendingRectification: this.hasPendingRectification(c)
+            };
+            return vm;
+        });
     });
 
     // Completeness helpers for template
