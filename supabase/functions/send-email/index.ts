@@ -200,16 +200,30 @@ serve(async (req) => {
 
             const { data: msgMsg } = await supabaseClient.from('mail_messages').insert(messageData).select().single();
 
-            // If attachments, save them to mail_attachments table? 
-            // We usually don't store the file content in DB, but in storage.
-            // But here we received base64. If we want to view it in "Sent", we should upload to storage.
-            // For now, let's just log success.
+            // Save attachments to mail_attachments table
+            if (msgMsg && attachments && Array.isArray(attachments)) {
+                const attachmentRecords = attachments
+                    .filter((att: any) => att.filename && att.storage_path)
+                    .map((att: any) => ({
+                        message_id: msgMsg.id,
+                        filename: att.filename,
+                        size: att.size || 0,
+                        content_type: att.contentType,
+                        storage_path: att.storage_path
+                    }));
+
+                if (attachmentRecords.length > 0) {
+                    const { error: attError } = await supabaseClient.from('mail_attachments').insert(attachmentRecords);
+                    if (attError) {
+                        console.error('Error saving attachments:', attError);
+                    }
+                }
+            }
+
+            return new Response(JSON.stringify({ success: true, trackingId }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
         }
-
-        return new Response(JSON.stringify({ success: true, trackingId }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-
     } catch (error: any) {
         console.error(error);
         return new Response(JSON.stringify({ error: error.message }), {

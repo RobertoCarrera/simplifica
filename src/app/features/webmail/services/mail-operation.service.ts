@@ -98,6 +98,29 @@ export class MailOperationService {
     if (error) throw error;
   }
 
+  async uploadAttachment(file: File): Promise<{ path: string, url: string }> {
+    const userId = (await this.supabase.auth.getUser()).data.user?.id;
+    if (!userId) throw new Error('Usuario no autenticado');
+
+    const filePath = `${userId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
+
+    const { data, error } = await this.supabase
+      .storage
+      .from('mail-attachments')
+      .upload(filePath, file, {
+        upsert: false
+      });
+
+    if (error) throw error;
+
+    const { data: { publicUrl } } = this.supabase
+      .storage
+      .from('mail-attachments')
+      .getPublicUrl(filePath);
+
+    return { path: filePath, url: publicUrl };
+  }
+
   // Placeholder for sending
   // Placeholder for sending
   async sendMessage(message: Partial<MailMessage>, account?: any) {
