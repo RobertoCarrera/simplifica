@@ -1,62 +1,94 @@
-<div class="composer-container">
+<div class="composer-container" [class.drag-over]="isDragOver" (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+
     <div class="composer-header">
-        <h2>Conversación nueva</h2>
+        <h2>Mensaje Nuevo</h2>
+        <div class="window-actions">
+            <button class="btn-icon" (click)="minimize.emit()" title="Minimizar"><i class="fas fa-minus"></i></button>
+            <button class="btn-icon" (click)="maximize.emit()" title="Maximizar"><i class="fas fa-expand"></i></button>
+            <button class="btn-icon close" (click)="close.emit()" title="Cerrar"><i class="fas fa-times"></i></button>
+        </div>
     </div>
 
     <div class="composer-form">
-        <div class="field-row">
-            <span class="label">Para:</span>
-            <input type="text" [(ngModel)]="to" class="clean-input">
+        <!-- To Field -->
+        <div class="form-group to-field">
+            <span class="label">Para</span>
+            <app-chip-autocomplete [allItems]="searchResults" [loading]="searchLoading" [(selectedItems)]="toRecipients"
+                (search)="onSearch($event)" class="flex-1" placeholder="Destinatarios..."></app-chip-autocomplete>
+            <div class="cc-bcc-toggle">
+                <span (click)="showCc = !showCc" [class.active]="showCc">Cc</span>
+                <span (click)="showBcc = !showBcc" [class.active]="showBcc">Cco</span>
+            </div>
         </div>
 
-        <div class="field-row">
-            <span class="label">Asunto:</span>
-            <input type="text" [(ngModel)]="subject" class="clean-input">
+        <!-- Subject Field -->
+        <div class="form-group">
+            <input type="text" [(ngModel)]="subject" placeholder="Asunto" class="clean-input">
         </div>
 
-        <!-- Editor takes remaining space -->
-        <div class="editor-wrapper">
-            <app-tiptap-editor [content]="body" (contentChange)="body = $event"
-                placeholder="Escribe tu mensaje aquí...">
-            </app-tiptap-editor>
+        <!-- Editor -->
+        <div class="form-group editor">
+            <app-tiptap-editor [(content)]="body" placeholder="Escribe tu mensaje aquí..."></app-tiptap-editor>
         </div>
 
-        <!-- Attachments Preview (Overlay or bottom of editor?) -->
-        <div class="attachments-area" *ngIf="attachments.length > 0">
-            <div class="files-grid">
-                <div *ngFor="let att of attachments; let i = index" class="file-card">
-                    <div class="file-preview">
-                        <img *ngIf="att.file.type.startsWith('image/')"
-                            [src]="'data:' + att.file.type + ';base64,' + att.base64" alt="preview">
-                        <div *ngIf="!att.file.type.startsWith('image/')" class="file-icon">📄</div>
-                        <button (click)="removeAttachment(i)" class="btn-remove" title="Eliminar">×</button>
-                    </div>
-                    <div class="file-info">
-                        <span class="file-name">{{ att.file.name }}</span>
-                    </div>
+        <!-- Attachments List -->
+        <div class="attachments-list" *ngIf="attachments.length > 0">
+            <div class="attachment-item" *ngFor="let att of attachments; let i = index">
+                <div class="att-icon">
+                    <i class="fas fa-file-pdf" *ngIf="att.file.type.includes('pdf')"></i>
+                    <i class="fas fa-file-image" *ngIf="att.file.type.includes('image')"></i>
+                    <i class="fas fa-file"
+                        *ngIf="!att.file.type.includes('pdf') && !att.file.type.includes('image')"></i>
                 </div>
+                <div class="att-info">
+                    <span class="att-name">{{ att.file.name }}</span>
+                    <span class="att-size">{{ att.file.size | number }} bytes</span>
+                </div>
+                <button class="btn-icon remove" (click)="removeAttachment(i)">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
         </div>
     </div>
 
+    <!-- Footer Actions -->
     <div class="composer-footer">
-        <div class="left-actions">
-            <button class="btn btn-primary" (click)="send()" [disabled]="isSending">
-                {{ isSending ? 'Enviando...' : 'Enviar' }}
-            </button>
-            <label class="btn-icon-attached" title="Adjuntar archivos">
-                <i class="fas fa-paperclip"></i>
-                <input type="file" multiple (change)="onFileSelected($event)" style="display: none;">
-            </label>
+        <div class="primary-actions">
+            <div class="send-group">
+                <button class="btn-send" (click)="send()">
+                    Enviar
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+                <button class="btn-schedule">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+
+            <div class="formatting-actions">
+                <!-- Attachment Button -->
+                <input type="file" #fileInput multiple (change)="onFileSelected($event)" style="display: none;">
+                <button class="btn-icon" (click)="fileInput.click()" title="Adjuntar archivos">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+                <button class="btn-icon"><i class="fas fa-link"></i></button>
+                <button class="btn-icon"><i class="fas fa-smile"></i></button>
+                <button class="btn-icon"><i class="fab fa-google-drive"></i></button>
+                <button class="btn-icon"><i class="fas fa-image"></i></button>
+                <button class="btn-icon"><i class="fas fa-lock"></i></button>
+            </div>
         </div>
 
-        <div class="right-actions">
-            <button class="btn btn-icon" (click)="saveDraft()" title="Guardar borrador">
-                <i class="fas fa-save"></i>
-            </button>
-            <button class="btn btn-icon" (click)="cancel()" title="Descartar">
-                <i class="fas fa-trash"></i>
-            </button>
+        <div class="secondary-actions">
+            <button class="btn-icon" (click)="saveDraft()"><i class="fas fa-trash"></i></button>
+        </div>
+    </div>
+
+    <!-- Drag Overlay -->
+    <div class="drag-overlay" *ngIf="isDragOver">
+        <div class="drag-message">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <span>Suelta los archivos aquí para adjuntarlos</span>
         </div>
     </div>
 </div>
