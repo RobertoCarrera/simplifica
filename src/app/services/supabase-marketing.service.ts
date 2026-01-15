@@ -68,14 +68,57 @@ export class SupabaseMarketingService {
         return data || [];
     }
 
-    // Mock send function (in reality this would call an Edge Function)
     async sendCampaign(campaignId: string) {
-        const { error } = await this.supabase
-            .from('marketing_campaigns')
-            .update({ status: 'sent', sent_at: new Date().toISOString() })
-            .eq('id', campaignId);
+        // OLD: Update DB directly
+        // const { error } = await this.supabase
+        //     .from('marketing_campaigns')
+        //     .update({ status: 'sent', sent_at: new Date().toISOString() })
+        //     .eq('id', campaignId);
+
+        // NEW: Invoke Edge Function
+        const { data, error } = await this.supabase.functions.invoke('process-campaign', {
+            body: { campaignId }
+        });
 
         if (error) throw error;
-        return true;
+        return data;
+    }
+
+    async getStats(companyId: string) {
+        // Query marketing_logs joined with campaigns to filter by company
+        // Using 'head: true' for count only
+
+        try {
+            // 1. Sent
+            const { count: sentCount, error: sentError } = await this.supabase
+                .from('marketing_logs')
+                .select('id, marketing_campaigns!inner(company_id)', { count: 'exact', head: true })
+                .eq('marketing_campaigns.company_id', companyId)
+                .eq('status', 'sent');
+
+            if (sentError) throw sentError;
+
+            // 2. Opened
+            const { count: openCount, error: openError } = await this.supabase
+                .from('marketing_logs')
+                .select('id, marketing_campaigns!inner(company_id)', { count: 'exact', head: true })
+                .eq('marketing_campaigns.company_id', companyId)
+                .eq('status', 'opened');
+
+            if (openError) throw openError;
+
+            const totalSent = sentCount || 0;
+            const opened = openCount || 0;
+
+            return {
+                totalSent,
+                opened,
+                openRate: totalSent > 0 ? (opened / totalSent) * 100 : 0
+            };
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+            // Return zeros on error to avoid breaking UI
+            return { totalSent: 0, opened: 0, openRate: 0 };
+        }
     }
 }

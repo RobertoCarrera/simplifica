@@ -46,8 +46,8 @@ export interface MailMessage {
     thread_id?: string | null;
     folder_id?: string | null;
 
-    from: MailAddress;
-    to: MailAddress[];
+    from?: MailAddress;
+    to?: MailAddress[];
     cc?: MailAddress[];
     bcc?: MailAddress[];
 
@@ -72,6 +72,7 @@ export interface MailMessage {
 }
 
 export interface MailAttachment {
+
     id: string;
     message_id: string;
     filename: string;

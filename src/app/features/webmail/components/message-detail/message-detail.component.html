@@ -14,8 +14,17 @@
             <div class="avatar">{{ getSenderInitial(msg.from) }}</div>
             <div class="info">
                 <div class="sender">
-                    <span class="name">{{ getSenderName(msg.from) }}</span>
-                    <span class="email">{{ msg.from.email }}</span>
+                    <!-- If I am the sender, show who I sent it to -->
+                    <ng-container *ngIf="isMe(msg.from); else showFrom">
+                        <span class="label">Para: </span>
+                        <span class="name">{{ msg.to && msg.to[0] ? (msg.to[0].name || msg.to[0].email) : 'Sin
+                            destinatario' }}</span>
+                        <!-- Handle multiple recipients later -->
+                    </ng-container>
+                    <ng-template #showFrom>
+                        <span class="name">{{ getSenderName(msg.from) }}</span>
+                        <span class="email">{{ msg.from?.email }}</span>
+                    </ng-template>
                 </div>
                 <div class="date">{{ msg.received_at | date:'medium' }}</div>
             </div>
@@ -54,7 +63,8 @@
             <div class="user-info">
                 <div class="avatar-sm">{{ (store.currentAccount()?.sender_name || 'Me').charAt(0).toUpperCase() }}</div>
                 <div class="meta">
-                    <span class="reply-to">Respondiendo a <strong>{{ msg.from.name || msg.from.email }}</strong></span>
+                    <span class="reply-to">Respondiendo a <strong>{{ msg.from?.name || msg.from?.email ||
+                            '(Desconocido)' }}</strong></span>
                 </div>
             </div>
             <button class="btn-icon-sm" (click)="discardReply()" title="Cerrar"><i class="fas fa-times"></i></button>

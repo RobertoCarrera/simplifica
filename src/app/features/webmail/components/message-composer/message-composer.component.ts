@@ -16,18 +16,75 @@ export class MessageComposerComponent implements OnInit {
   to = '';
   subject = '';
   body = '';
+  draftId: string | null = null;
+  savingDraft = false;
+  autoSaveTimer: any;
 
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private operations = inject(MailOperationService);
   private store = inject(MailStoreService);
 
-  ngOnInit() {
-    this.route.queryParams.subscribe(params => {
+  async ngOnInit() {
+    this.route.queryParams.subscribe(async params => {
       if (params['to']) this.to = params['to'];
       if (params['subject']) this.subject = params['subject'];
-      // if (params['replyTo']) ... handle threading context if needed
+
+      // Load Draft if ID present
+      if (params['draftId']) {
+        this.draftId = params['draftId'];
+        await this.loadDraft(this.draftId!);
+      }
     });
+
+    // Auto-save setup (simple interval for now, ideally debounce on change)
+    this.autoSaveTimer = setInterval(() => {
+      if (this.isDirty() && !this.isSending) {
+        this.saveDraft(true);
+      }
+    }, 10000); // Check every 10s
+  }
+
+  ngOnDestroy() {
+    if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
+  }
+
+  isDirty(): boolean {
+    return !!(this.to || this.subject || this.body);
+  }
+
+  async loadDraft(id: string) {
+    const msg = await this.store.getMessage(id);
+    if (msg) {
+      // Populate fields
+      this.to = msg.to?.map((t: any) => t.email).join(', ') || '';
+      this.subject = msg.subject || '';
+      this.body = msg.body_html || msg.body_text || '';
+      // TODO: Handle attachments if we decide to re-hydrate them (complex due to File object)
+    }
+  }
+
+  async saveDraft(silent = false) {
+    if (!this.store.currentAccount()) return;
+    if (!this.isDirty()) return;
+
+    this.savingDraft = true;
+    try {
+      const id = await this.operations.saveDraft({
+        id: this.draftId || undefined,
+        to: this.to ? [{ email: this.to, name: '' }] : [],
+        subject: this.subject,
+        body_text: this.body, // Assuming text editor for now
+        body_html: this.body
+      }, this.store.currentAccount()!.id);
+
+      this.draftId = id;
+      if (!silent) console.log('Draft saved');
+    } catch (error) {
+      console.error('Error saving draft:', error);
+    } finally {
+      this.savingDraft = false;
+    }
   }
 
   attachments: { file: File, base64: string }[] = [];

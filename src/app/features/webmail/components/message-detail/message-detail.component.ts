@@ -63,8 +63,15 @@ export class MessageDetailComponent implements OnInit {
   }
 
   getSenderName(from: any): string {
+    if (!from) return '';
     const text = from.name || from.email || '';
     return text.replace(/["<>]/g, '').trim();
+  }
+
+  isMe(from: any): boolean {
+    const account = this.store.currentAccount();
+    if (!account || !from || !from.email) return false;
+    return from.email.toLowerCase() === account.email.toLowerCase();
   }
 
   getSenderInitial(from: any): string {
@@ -115,8 +122,10 @@ export class MessageDetailComponent implements OnInit {
         subject = 'Re: ' + subject;
       }
 
+      const toAddress = msg.from && msg.from.email ? [{ name: msg.from.name || '', email: msg.from.email }] : [];
+
       await this.operations.sendMessage({
-        to: msg.from.email ? [{ name: msg.from.name || '', email: msg.from.email }] : [],
+        to: toAddress,
         subject: subject,
         body_text: this.replyContent,
         // thread_id: msg.thread_id // FUTURE: Link to thread

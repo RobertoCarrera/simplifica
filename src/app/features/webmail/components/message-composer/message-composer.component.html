@@ -47,10 +47,14 @@
         </div>
 
         <div class="composer-actions">
+            <div class="status-text" *ngIf="savingDraft">Guardando...</div>
+            <div class="status-text" *ngIf="!savingDraft && draftId">Borrador guardado</div>
+
             <button class="btn btn-primary" (click)="send()" [disabled]="isSending">
                 {{ isSending ? 'Enviando...' : 'Enviar' }}
             </button>
-            <button class="btn btn-text" (click)="cancel()">Descartar draft</button>
+            <button class="btn btn-secondary" (click)="saveDraft()">Guardar</button>
+            <button class="btn btn-text" (click)="cancel()">Cerrar</button>
         </div>
     </div>
 </div>

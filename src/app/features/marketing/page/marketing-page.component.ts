@@ -85,8 +85,13 @@ import { SupabaseService } from '../../../services/supabase.service';
             </div>
 
             <div class="flex gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-              <button *ngIf="campaign.status === 'draft'" (click)="sendCampaign(campaign)" class="flex-1 py-2 text-center text-sm font-medium text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                <i class="fas fa-paper-plane mr-1"></i> Enviar
+              <button *ngIf="campaign.status === 'draft'" (click)="sendCampaign(campaign)" [disabled]="isSendingCampaign()" class="flex-1 py-2 text-center text-sm font-medium text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                <ng-container *ngIf="!isSendingCampaign()">
+                    <i class="fas fa-paper-plane mr-1"></i> Enviar
+                </ng-container>
+                <ng-container *ngIf="isSendingCampaign()">
+                    <i class="fas fa-spinner fa-spin mr-1"></i> Enviando...
+                </ng-container>
               </button>
               <button class="flex-1 py-2 text-center text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg transition-colors">
                 <i class="fas fa-edit mr-1"></i> Editar
@@ -205,13 +210,18 @@ export class MarketingPageComponent implements OnInit {
   }
 
   async loadStats() {
+    const companyId = this.supabaseService.currentCompanyId;
+    if (!companyId) return;
+
     this.loadingStats.set(true);
-    // Simulate loading
-    setTimeout(() => {
-      // Mock data
-      this.stats = { totalSent: 1240, opened: 512, openRate: 41.2 };
+    try {
+      const stats = await this.marketingService.getStats(companyId);
+      this.stats = stats;
+    } catch (e) {
+      console.error('Error loading stats:', e);
+    } finally {
       this.loadingStats.set(false);
-    }, 800);
+    }
   }
 
   async loadCampaigns() {
@@ -279,14 +289,28 @@ export class MarketingPageComponent implements OnInit {
     }
   }
 
+  isSendingCampaign = signal(false);
+
   async sendCampaign(campaign: Campaign) {
-    if (!confirm('¿Estás seguro de enviar esta campaña ahora?')) return;
+    if (!confirm('¿Estás seguro de enviar esta campaña ahora? Esta acción no se puede deshacer.')) return;
+
+    this.isSendingCampaign.set(true);
     try {
-      await this.marketingService.sendCampaign(campaign.id!);
+      const result = await this.marketingService.sendCampaign(campaign.id!);
+
       this.loadCampaigns();
-      alert('Campaña enviada con éxito (simulado)');
-    } catch (e) {
+      this.loadStats(); // Update stats immediately
+
+      if (result.success) {
+        alert(`Campaña enviada con éxito.\nEnviados: ${result.sent}\nFallidos: ${result.failed}`);
+      } else {
+        alert('La campaña se procesó pero hubo advertencias.');
+      }
+    } catch (e: any) {
       console.error(e);
+      alert('Error al enviar campaña: ' + (e.message || e.error || 'Error desconocido'));
+    } finally {
+      this.isSendingCampaign.set(false);
     }
   }
 

@@ -22,7 +22,7 @@
 
         <div *ngIf="!loading() && messages().length > 0" class="messages">
             <div *ngFor="let msg of messages()" class="message-item" [class.unread]="!msg.is_read"
-                [routerLink]="['../thread', msg.id]">
+                (click)="onMessageClick(msg)">
                 <!-- Checkbox removed by user request -->
                 <!-- <div class="checkbox">
                     <input type="checkbox">
@@ -31,10 +31,15 @@
                     <i class="far fa-star"></i>
                 </div>
                 <div class="sender">
-                    {{ msg.from.name || msg.from.email }}
+                    <ng-container *ngIf="isDraftsOrSent(); else showSender">
+                        To: {{ msg.to?.[0]?.name || msg.to?.[0]?.email || '(Sin destinatario)' }}
+                    </ng-container>
+                    <ng-template #showSender>
+                        {{ msg.from?.name || msg.from?.email || '(Desconocido)' }}
+                    </ng-template>
                 </div>
                 <div class="subject-snippet">
-                    <span class="subject">{{ msg.subject }}</span>
+                    <span class="subject">{{ msg.subject || '(Sin asunto)' }}</span>
                     <span class="snippet">- {{ msg.snippet }}</span>
                 </div>
                 <div class="date">

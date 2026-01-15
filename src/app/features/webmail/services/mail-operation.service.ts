@@ -132,4 +132,52 @@ export class MailOperationService {
     }
     return data;
   }
+
+  async saveDraft(message: Partial<MailMessage>, accountId: string): Promise<string> {
+    // 1. Find Drafts folder
+    const { data: draftsFolder, error: folderError } = await this.supabase
+      .from('mail_folders')
+      .select('id')
+      .eq('account_id', accountId)
+      .eq('system_role', 'drafts')
+      .single();
+
+    if (folderError || !draftsFolder) throw new Error('Drafts folder not found');
+
+    // 2. Prepare Payload
+    const payload: any = {
+      account_id: accountId,
+      folder_id: draftsFolder.id,
+      to: message.to || [],
+      subject: message.subject || '',
+      body_text: message.body_text || '',
+      body_html: message.body_html || '',
+      snippet: (message.body_text || '').substring(0, 100),
+      is_read: true,
+      updated_at: new Date().toISOString()
+    };
+
+    // If ID exists, it's an update
+    if (message.id) {
+      const { data, error } = await this.supabase
+        .from('mail_messages')
+        .update(payload)
+        .eq('id', message.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data.id;
+    } else {
+      // New Draft
+      const { data, error } = await this.supabase
+        .from('mail_messages')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data.id;
+    }
+  }
 }

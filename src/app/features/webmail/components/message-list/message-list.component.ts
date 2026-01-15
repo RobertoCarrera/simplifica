@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, ActivatedRoute } from '@angular/router';
+import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { MailStoreService } from '../../services/mail-store.service';
 import { MailFolder } from '../../../../core/interfaces/webmail.interface';
 
@@ -24,12 +24,12 @@ export class MessageListComponent implements OnInit {
     effect(() => {
       const folders = this.store.folders();
       if (folders.length > 0 && this.currentFolderPath) {
-        // Re-attempt load if we have folders but maybe didn't find the folder previously
-        // Or just blindly reliable validation inside loadMessagesForPath
         this.loadMessagesForPath(this.currentFolderPath);
       }
     });
   }
+
+  private _router = inject(Router);
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
@@ -39,23 +39,26 @@ export class MessageListComponent implements OnInit {
     });
   }
 
-  private loadMessagesForPath(path: string) {
-    // Find folder by path (case insensitive match on system role or path)
-    // We assume store.folders is populated. If not, we might need to wait.
+  isDraftsOrSent(): boolean {
+    return ['drafts', 'sent'].includes(this.currentFolderPath.toLowerCase());
+  }
 
-    // Simple helper assuming flat list is sufficient to find by path
+  onMessageClick(msg: any) {
+    if (this.currentFolderPath.toLowerCase() === 'drafts') {
+      // Open Composer in Draft Mode
+      this._router.navigate(['webmail/composer'], { queryParams: { draftId: msg.id } });
+    } else {
+      // View Thread
+      this._router.navigate(['../thread', msg.id], { relativeTo: this.route });
+    }
+  }
+
+  private loadMessagesForPath(path: string) {
     const folders = this.store.folders();
     let folder = folders.find(f => f.path.toLowerCase() === path.toLowerCase() || f.system_role === path.toLowerCase());
 
     if (folder) {
       this.store.loadMessages(folder);
-    } else {
-      // Retry if folders empty? handled by effect in service ideally?
-      // For now, if no folders, we can't load messages.
-      // If store auto-loads folders, we should react to that.
-      if (folders.length === 0) {
-        // Just triggered on load?
-      }
     }
   }
 }
