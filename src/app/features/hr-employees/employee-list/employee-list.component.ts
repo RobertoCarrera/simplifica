@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { EmployeeService, Employee } from '../../../core/services/employee.service';
 import { AuthService } from '../../../services/auth.service';
+import { ThemeService } from '../../../services/theme.service';
 
 @Component({
   selector: 'app-employee-list',
@@ -14,6 +15,7 @@ import { AuthService } from '../../../services/auth.service';
 export class EmployeeListComponent implements OnInit {
   private employeeService = inject(EmployeeService);
   private authService = inject(AuthService);
+  private themeService = inject(ThemeService); // Ensure theme service is active if needed
 
   employees = signal<Employee[]>([]);
   loading = signal(true);

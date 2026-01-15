@@ -298,7 +298,15 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'core',
       roleOnly: 'adminOnly'
     },
-    // Empresa y Ayuda se integran en Configuración para simplificar el menú
+    {
+      id: 14,
+      label: 'RRHH',
+      icon: 'users',
+      route: '/rrhh/empleadas',
+      module: 'production',
+      moduleKey: 'moduloRRHH',
+      requiredPermission: 'employees.view'
+    },
   ];
 
   // Computed menu items based on user role
