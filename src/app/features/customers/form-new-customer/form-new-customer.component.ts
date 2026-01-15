@@ -14,14 +14,19 @@ import { AddressesService } from '../../../services/addresses.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 import { GdprComplianceService } from '../../../services/gdpr-compliance.service';
 
+import { DateSelectorModalComponent } from '../../../shared/components/date-selector-modal/date-selector-modal.component';
+
 @Component({
   selector: 'app-form-new-customer',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppModalComponent, TagManagerComponent],
+  imports: [CommonModule, FormsModule, AppModalComponent, TagManagerComponent, DateSelectorModalComponent],
   templateUrl: './form-new-customer.component.html',
   styleUrl: './form-new-customer.component.scss'
 })
 export class FormNewCustomerComponent implements OnInit, OnChanges {
+
+  showDatePicker = false;
+  // ...
 
   @Input() customer: Customer | null = null;
   @Input() companyId: string | undefined = undefined;
@@ -429,7 +434,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       email: this.formData.email,
       phone: this.formData.phone,
       dni: this.formData.dni,
-      birth_date: this.formData.birth_date ? new Date(this.formData.birth_date) : undefined,
+      birth_date: this.formData.birth_date || undefined,
       client_type: this.formData.client_type as 'individual' | 'business',
       business_name: this.formData.business_name,
       cif_nif: this.formData.cif_nif,
@@ -535,6 +540,20 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
         }
       });
     }
+  }
+
+  // --- Date Picker Logic ---
+  openDatePicker() {
+    this.showDatePicker = true;
+  }
+
+  closeDatePicker() {
+    this.showDatePicker = false;
+  }
+
+  onDateSelected(date: string) {
+    this.formData.birth_date = date;
+    this.showDatePicker = false;
   }
 
   closeForm() {
