@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { sendEmail } from '../_shared/email-sender.ts';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -22,14 +23,13 @@ serve(async (req) => {
         console.log('Webhook payload received:', payload);
 
         // Extract fields with fallbacks
-        // Expected structure: { first_name, last_name, email, phone, message, origin, ... }
         const {
             first_name,
             last_name,
             email,
             phone,
             message,
-            origin, // e.g. 'wordpress', 'doctoralia'
+            origin,
             interest,
             metadata = {}
         } = payload;
@@ -44,13 +44,10 @@ serve(async (req) => {
         else if (originLower.includes('telef')) source = 'phone';
 
         // Must determine company_id
-        // For MVP, if we don't have it in payload, we might need a fallback or query it.
-        // Assuming single-tenant or passed in payload or finding a default company.
-        // Let's check if 'company_id' is in payload, otherwise try to find one.
         let company_id = payload.company_id;
 
         if (!company_id) {
-            // Fallback: Get the first company (Dangerous in multi-tenant, ok for single tenant MVP)
+            // Fallback: Get the first company
             const { data: companies } = await supabaseClient.from('companies').select('id').limit(1);
             if (companies && companies.length > 0) {
                 company_id = companies[0].id;
@@ -84,15 +81,36 @@ serve(async (req) => {
             throw error;
         }
 
-        // Optional: Send Notification (Email/Internal) - Phase 3
-        // await notifyTeam(leadData);
+        // Send Welcome Email
+        if (email) {
+            try {
+                await sendEmail({
+                    to: [email],
+                    subject: 'Hemos recibido tu solicitud - CAIBS',
+                    body: `Hola ${first_name || ''},
+
+Hemos recibido tu solicitud y ya está en proceso.
+Una de nuestras profesionales revisará tu caso y se pondrá en contacto contigo muy pronto.
+
+Gracias por confiar en CAIBS.
+
+Atentamente,
+El equipo de CAIBS`,
+                    fromName: 'CAIBS Equipo',
+                });
+                console.log('Welcome email sent to:', email);
+            } catch (emailError) {
+                console.error('Error sending welcome email:', emailError);
+                // Don't fail the webhook response if email fails, just log it
+            }
+        }
 
         return new Response(JSON.stringify({ success: true, lead_id: data.id }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Webhook Error:', error);
         return new Response(JSON.stringify({ error: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
