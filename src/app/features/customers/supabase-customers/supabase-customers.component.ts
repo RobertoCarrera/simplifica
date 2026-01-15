@@ -7,6 +7,7 @@ import { TemplatePortal } from '@angular/cdk/portal';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { AnimationService } from '../../../services/animation.service';
 import { Customer, CreateCustomerDev } from '../../../models/customer';
+import { CustomerView } from '../models/customer-view.model';
 import { AddressesService } from '../../../services/addresses.service';
 import { LocalitiesService } from '../../../services/localities.service';
 import { Locality } from '../../../models/locality';
@@ -78,6 +79,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // State signals
     customers = signal<Customer[]>([]);
+
+    // Computed views to avoid expensive recalculations in template
+    allCustomerViews = computed(() => {
+        return this.customers().map(c => this.mapToView(c));
+    });
+
     isLoading = signal(false);
     showForm = signal(false);
     selectedCustomer = signal<Customer | null>(null);
@@ -164,7 +171,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Computed
     filteredCustomers = computed(() => {
-        let filtered = this.customers();
+        let filtered = this.allCustomerViews();
 
         // ✅ Filtrar clientes anonimizados (ocultarlos de la lista)
         filtered = filtered.filter(customer => !this.isCustomerAnonymized(customer));
@@ -548,13 +555,24 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         this.onSearchChange('');
     }
 
+    private mapToView(customer: Customer): CustomerView {
+        return {
+            ...customer,
+            initials: this.getCustomerInitials(customer),
+            displayName: this.getDisplayName(customer),
+            formattedDate: this.formatDate(customer.created_at),
+            avatarGradient: this.getAvatarGradient(customer),
+            gdprBadge: this.getGdprBadgeConfig(customer)
+        };
+    }
+
     // Utility methods
-    getCustomerInitials(customer: Customer): string {
+    private getCustomerInitials(customer: Customer): string {
         return `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
     }
 
     // Nombre amigable para mostrar en la card evitando UUIDs u otros identificadores técnicos
-    getDisplayName(customer: Customer): string {
+    private getDisplayName(customer: Customer): string {
         if (!customer) return '';
         // Preferir razón social si es empresa
         let base = customer.client_type === 'business'
@@ -579,7 +597,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         return base;
     }
 
-    formatDate(date: string | Date | null | undefined): string {
+    private formatDate(date: string | Date | null | undefined): string {
         if (!date) return '';
 
         // Normalize to Date instance
