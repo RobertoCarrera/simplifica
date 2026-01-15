@@ -396,12 +396,43 @@ export class AdvancedSearchService {
 
   // Resaltar coincidencias en el texto
   highlightMatches(text: string, query: string): string {
+    if (!text) return '';
+
+    // Si no hay query o highlight está desactivado, solo escapamos el texto para seguridad
     if (!this.options.highlightMatches || !query.trim()) {
-      return text;
+      return this.escapeHtml(text);
     }
 
+    // Escapamos caracteres especiales de regex en la query
     const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">$1</mark>');
+
+    // Dividimos el texto usando la regex. Al usar grupo de captura, el separador (el match) se incluye en el array.
+    // Ejemplo: "hola mundo".split(/(mundo)/) -> ["hola ", "mundo", ""]
+    const parts = text.split(regex);
+
+    return parts.map((part, index) => {
+      // Los elementos impares son los matches (porque split con captura intercala matches)
+      // Ojo: split puede comportarse distinto si el match está al principio o final.
+      // Verificamos si la parte coincide con la regex para estar seguros, o confiamos en la estructura de split.
+      // La estructura de split con captura siempre es: [non-match, match, non-match, match, non-match...]
+      // Si empieza con match: ["", match, non-match...]
+      if (index % 2 === 1) {
+        // Es un match: lo envolvemos en mark, pero escapamos su contenido por si acaso
+        return `<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">${this.escapeHtml(part)}</mark>`;
+      } else {
+        // No es match: solo escapamos
+        return this.escapeHtml(part);
+      }
+    }).join('');
+  }
+
+  private escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
   // Estadísticas de búsqueda
