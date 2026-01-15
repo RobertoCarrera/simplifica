@@ -18,6 +18,28 @@ export interface Lead {
     created_at: string;
     updated_at: string;
     company_id: string;
+    lead_source_id?: string;
+    lead_source?: { name: string };
+}
+
+export interface LeadSource {
+    id: string;
+    company_id: string;
+    name: string;
+    is_active: boolean;
+}
+
+export interface LeadInteraction {
+    id: string;
+    lead_id: string;
+    user_id: string;
+    type: 'call' | 'email' | 'meeting' | 'note' | 'whatsapp' | 'other';
+    summary: string;
+    created_at: string;
+    user?: {
+        full_name: string;
+        email: string;
+    };
 }
 
 @Injectable({
@@ -32,7 +54,7 @@ export class LeadService {
     getLeads(companyId: string): Observable<Lead[]> {
         const query = this.supabase
             .from('leads')
-            .select('*')
+            .select('*, lead_source:lead_source_id(name)')
             .eq('company_id', companyId)
             .order('created_at', { ascending: false });
 
@@ -90,5 +112,107 @@ export class LeadService {
 
         if (error) throw error;
         return data as Lead;
+    }
+
+    /**
+     * Get a single lead by ID
+     */
+    async getLead(id: string): Promise<Lead | null> {
+        const { data, error } = await this.supabase
+            .from('leads')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+        return data as Lead;
+    }
+
+    /**
+     * Get interactions for a lead
+     */
+    async getInteractions(leadId: string): Promise<LeadInteraction[]> {
+        const { data, error } = await this.supabase
+            .from('lead_interactions')
+            .select('*, user:user_id(name, surname, email)')
+            .eq('lead_id', leadId)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching interactions', error);
+            return [];
+        }
+        return (data || []) as LeadInteraction[];
+    }
+
+    /**
+     * Add a new interaction
+     */
+    async addInteraction(interaction: Partial<LeadInteraction>): Promise<LeadInteraction> {
+        const { data: user } = await this.supabase.auth.getUser();
+        if (user.user) {
+            interaction.user_id = user.user.id;
+        }
+
+        const { data, error } = await this.supabase
+            .from('lead_interactions')
+            .insert(interaction)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data as LeadInteraction;
+    }
+
+    /**
+     * Get lead sources
+     */
+    async getLeadSources(companyId: string): Promise<LeadSource[]> {
+        const { data, error } = await this.supabase
+            .from('lead_sources')
+            .select('*')
+            .eq('company_id', companyId)
+            .eq('is_active', true)
+            .order('name');
+
+        if (error) throw error;
+        return (data || []) as LeadSource[];
+    }
+
+    /**
+     * Create lead source
+     */
+    async createLeadSource(name: string, companyId: string): Promise<LeadSource> {
+        const { data, error } = await this.supabase
+            .from('lead_sources')
+            .insert({ name, company_id: companyId })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data as LeadSource;
+    }
+    /**
+     * Delete a lead source (Soft delete by setting is_active = false)
+     */
+    async deleteLeadSource(id: string): Promise<void> {
+        const { error } = await this.supabase
+            .from('lead_sources')
+            .update({ is_active: false })
+            .eq('id', id);
+
+        if (error) throw error;
+    }
+
+    /**
+     * Delete a lead
+     */
+    async deleteLead(id: string): Promise<void> {
+        const { error } = await this.supabase
+            .from('leads')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
     }
 }

@@ -1,29 +1,36 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LeadsKanbanComponent } from '../leads-kanban/leads-kanban.component';
+import { LeadDetailModalComponent } from '../lead-detail-modal/lead-detail-modal.component';
 
 @Component({
-    selector: 'app-leads-page',
-    standalone: true,
-    imports: [CommonModule, LeadsKanbanComponent],
-    template: `
+  selector: 'app-leads-page',
+  standalone: true,
+  imports: [CommonModule, LeadsKanbanComponent, LeadDetailModalComponent],
+  template: `
     <div class="leads-page-container">
       <header class="page-header">
         <h1>Gestión de Leads</h1>
         <div class="actions">
-           <!-- Future: Add Lead Button -->
-           <button class="btn btn-primary" (click)="openAddLead()">
+           <button class="btn btn-primary" (click)="showModal = true">
              <i class="fas fa-plus"></i> Nuevo Lead
            </button>
         </div>
       </header>
       
       <div class="content-area">
-        <app-leads-kanban></app-leads-kanban>
+        <app-leads-kanban [refreshTrigger]="refreshTrigger"></app-leads-kanban>
       </div>
+
+      <app-lead-detail-modal 
+        *ngIf="showModal" 
+        [leadId]="null" 
+        (closeEvent)="showModal = false"
+        (saveEvent)="onLeadSaved()">
+      </app-lead-detail-modal>
     </div>
   `,
-    styles: [`
+  styles: [`
     .leads-page-container {
       padding: 1.5rem;
       height: 100%;
@@ -73,8 +80,11 @@ import { LeadsKanbanComponent } from '../leads-kanban/leads-kanban.component';
   `]
 })
 export class LeadsPageComponent {
-    openAddLead() {
-        // Check if we need a modal or separate page
-        alert('Funcionalidad de crear lead manual en desarrollo');
-    }
+  showModal = false;
+  refreshTrigger = 0;
+
+  onLeadSaved() {
+    this.refreshTrigger++;
+    this.showModal = false;
+  }
 }
