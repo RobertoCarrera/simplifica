@@ -36,6 +36,12 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     { key: 'clients.edit', label: 'Editar clientes', description: 'Puede modificar datos de clientes', category: 'Clientes' },
     { key: 'clients.delete', label: 'Eliminar clientes', description: 'Puede eliminar clientes', category: 'Clientes' },
 
+    // CRM (Leads)
+    { key: 'leads.view', label: 'Ver leads', description: 'Puede ver el tablero de leads', category: 'CRM' },
+    { key: 'leads.create', label: 'Crear leads', description: 'Puede crear nuevos leads manualmente', category: 'CRM' },
+    { key: 'leads.edit', label: 'Editar leads', description: 'Puede editar información de leads', category: 'CRM' },
+    { key: 'leads.delete', label: 'Eliminar leads', description: 'Puede eliminar leads', category: 'CRM' },
+
     // Invoices
     { key: 'invoices.view', label: 'Ver facturas', description: 'Puede ver facturas', category: 'Facturación' },
     { key: 'invoices.create', label: 'Crear facturas', description: 'Puede crear facturas', category: 'Facturación' },
@@ -116,7 +122,8 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'chat.access': true, 'chat.ai': true,
         'services.view': true, 'services.create': true, 'services.edit': true,
         'analytics.view': true, 'analytics.export': true, 'analytics.ai': true,
-        'marketing.view': true, 'marketing.manage': true
+        'marketing.view': true, 'marketing.manage': true,
+        'leads.view': true, 'leads.create': true, 'leads.edit': true, 'leads.delete': true
     },
     admin: {
         'clients.view': true, 'clients.edit': true, 'clients.delete': false,
@@ -128,7 +135,8 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'quotes.view': true, 'quotes.create': true, 'quotes.edit': true, 'quotes.approve': false,
         'chat.access': true, 'chat.ai': true,
         'services.view': true, 'services.create': true, 'services.edit': true,
-        'analytics.view': true, 'analytics.export': false, 'analytics.ai': true
+        'analytics.view': true, 'analytics.export': false, 'analytics.ai': true,
+        'leads.view': true, 'leads.create': true, 'leads.edit': true, 'leads.delete': false
     },
     member: {
         'clients.view': true, 'clients.edit': false, 'clients.delete': false,

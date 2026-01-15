@@ -259,6 +259,15 @@ export class ResponsiveSidebarComponent implements OnInit {
       requiredPermission: ['bookings.view', 'bookings.view_own', 'bookings.manage_own', 'bookings.manage_all']
     },
     {
+      id: 13,
+      label: 'Leads (CRM)',
+      icon: 'users',
+      route: '/leads',
+      module: 'production',
+      moduleKey: 'moduloMarketing',
+      requiredPermission: 'leads.view'
+    },
+    {
       id: 95,
       label: 'Webmail',
       icon: 'mail',
@@ -535,6 +544,8 @@ export class ResponsiveSidebarComponent implements OnInit {
         return 'moduloFacturas';
       case '/chat':
         return 'moduloChat';
+      case '/leads':
+        return 'moduloMarketing';
       default:
         return null; // elementos sin control por módulo
     }
