@@ -1,0 +1,180 @@
+<div class="container mx-auto p-6 max-w-4xl">
+    <!-- Header -->
+    <div class="flex items-center gap-4 mb-6">
+        <button [routerLink]="['/rrhh/empleadas']"
+            class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+            <i class="fas fa-arrow-left text-xl"></i>
+        </button>
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800 dark:text-white">
+                {{ isEditing() ? 'Editar Empleada' : 'Nueva Empleada' }}
+            </h1>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex border-b border-slate-200 dark:border-slate-700 mb-6">
+        <button (click)="activeTab.set('profile')" class="px-6 py-3 font-medium text-sm border-b-2 transition-colors"
+            [ngClass]="activeTab() === 'profile' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'">
+            <i class="fas fa-user mr-2"></i> Perfil
+        </button>
+        @if (isEditing()) {
+        <button (click)="activeTab.set('documents')" class="px-6 py-3 font-medium text-sm border-b-2 transition-colors"
+            [ngClass]="activeTab() === 'documents' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'">
+            <i class="fas fa-file-contract mr-2"></i> Documentación
+        </button>
+        }
+    </div>
+
+    <!-- PROFILE TAB -->
+    @if (activeTab() === 'profile') {
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+        <form [formGroup]="form" (ngSubmit)="save()" class="space-y-6">
+
+            <!-- Job Info -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Puesto / Cargo
+                        *</label>
+                    <input type="text" formControlName="job_title"
+                        class="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                        placeholder="Ej. Esteticista Senior">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Fecha de Inicio
+                        *</label>
+                    <input type="date" formControlName="hire_date"
+                        class="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tipo de Contrato
+                        *</label>
+                    <select formControlName="contract_type"
+                        class="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                        <option value="indefinido">Indefinido</option>
+                        <option value="temporal">Temporal</option>
+                        <option value="autonomo">Autónomo / Mercantil</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Estado</label>
+                    <div class="flex items-center gap-2 mt-2">
+                        <input type="checkbox" formControlName="is_active" id="active"
+                            class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                        <label for="active" class="text-sm text-slate-700 dark:text-slate-300">Perfil Activo</label>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="border-slate-200 dark:border-slate-700">
+
+            <!-- Fiscal Info -->
+            <h3 class="text-lg font-medium text-slate-800 dark:text-white">Datos Fiscales & Pago</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">NIF / DNI *</label>
+                    <input type="text" formControlName="nif"
+                        class="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nº Seguridad
+                        Social</label>
+                    <input type="text" formControlName="social_security_number"
+                        class="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">IBAN</label>
+                    <input type="text" formControlName="iban"
+                        class="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                </div>
+            </div>
+
+            <!-- Compensation -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Salario Base
+                        (€)</label>
+                    <input type="number" formControlName="salary_base"
+                        class="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">% Comisión
+                        General</label>
+                    <input type="number" formControlName="commission_rate"
+                        class="w-full rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white">
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-4">
+                <button type="submit" [disabled]="form.invalid || loading()"
+                    class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-sm disabled:opacity-50 flex items-center gap-2">
+                    @if (loading()) { <i class="fas fa-spinner fa-spin"></i> }
+                    Guardar Perfil
+                </button>
+            </div>
+        </form>
+    </div>
+    }
+
+    <!-- DOCUMENTS TAB -->
+    @if (activeTab() === 'documents') {
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-6">
+
+        <!-- Upload Area -->
+        <div
+            class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-8 text-center mb-8 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors relative cursor-pointer">
+            <input type="file" (change)="onFileSelected($event)"
+                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" [disabled]="uploading()">
+            <div class="space-y-2">
+                <div
+                    class="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto text-indigo-500">
+                    <i class="fas fa-cloud-upload-alt text-xl"></i>
+                </div>
+                <p class="font-medium text-slate-800 dark:text-white text-lg">Subir documento</p>
+                <p class="text-slate-500 dark:text-slate-400 text-sm">Arrastra o haz clic para subir contratos, nóminas,
+                    etc. (PDF, Imágenes)</p>
+                @if (uploading()) {
+                <p class="text-indigo-600 text-sm font-medium mt-2"><i class="fas fa-spinner fa-spin"></i> Subiendo...
+                </p>
+                }
+            </div>
+        </div>
+
+        <!-- List -->
+        <h3 class="font-bold text-slate-800 dark:text-white mb-4">Documentos Guardados ({{documents().length}})</h3>
+
+        <div class="space-y-3">
+            @for (doc of documents(); track doc.id) {
+            <div
+                class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-100 dark:border-slate-700 group">
+                <div class="flex items-center gap-4">
+                    <i class="fas fa-file-pdf text-red-500 text-xl"></i> <!-- Generic icon for now -->
+                    <div>
+                        <p class="font-medium text-slate-800 dark:text-white">{{ doc.name }}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">{{ doc.uploaded_at | date:'medium' }}</p>
+                    </div>
+                </div>
+                <div
+                    class="flex items-center gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button (click)="download(doc)"
+                        class="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Descargar">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button (click)="deleteDoc(doc)"
+                        class="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            }
+            @if (documents().length === 0) {
+            <div class="text-center py-6 text-slate-400 text-sm">
+                No hay documentos subidos aún.
+            </div>
+            }
+        </div>
+    </div>
+    }
+</div>
