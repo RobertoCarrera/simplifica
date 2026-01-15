@@ -13,8 +13,9 @@
         </div>
 
         <div class="form-group editor">
-            <textarea [(ngModel)]="body" placeholder="Escribe tu mensaje aquí..."
-                class="form-control body-input"></textarea>
+            <app-tiptap-editor [content]="body" (contentChange)="body = $event"
+                placeholder="Escribe tu mensaje aquí...">
+            </app-tiptap-editor>
         </div>
 
 

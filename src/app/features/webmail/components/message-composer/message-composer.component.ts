@@ -5,10 +5,12 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { MailStoreService } from '../../services/mail-store.service';
 
+import { TiptapEditorComponent } from '../../../../shared/ui/tiptap-editor/tiptap-editor.component';
+
 @Component({
   selector: 'app-message-composer',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TiptapEditorComponent],
   templateUrl: './message-composer.component.html',
   styleUrl: './message-composer.component.scss'
 })

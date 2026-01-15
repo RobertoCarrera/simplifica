@@ -103,14 +103,22 @@ export class MailOperationService {
   async sendMessage(message: Partial<MailMessage>, account?: any) {
     if (!account) throw new Error('Account required to send email');
 
+    let htmlBody = message.body_html || '';
+
+    // Append signature if exists
+    if (account.settings && account.settings.signature) {
+      // Basic separator, can be improved or made customizable
+      htmlBody += `<br><br>--<br>${account.settings.signature}`;
+    }
+
     const payload = {
       accountId: account.id,
       fromName: account.sender_name,
       fromEmail: account.email,
       to: message.to,
       subject: message.subject,
-      body: message.body_text,
-      html_body: message.body_html,
+      body: message.body_text, // Should we strip HTML for fallback? Edge function might handle it.
+      html_body: htmlBody,
       attachments: (message as any).attachments, // Pass attachments
       trackingId: (message as any).trackingId, // Pass tracking ID
       threadId: (message as any).thread_id // Pass thread ID
