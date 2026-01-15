@@ -36,7 +36,8 @@
                         [style.backgroundColor]="color"
                         [class.border-transparent]="tagForm.get('color')?.value !== color"
                         [class.border-white]="tagForm.get('color')?.value === color"
-                        [class.ring-gray-400]="tagForm.get('color')?.value === color">
+                        [class.ring-gray-400]="tagForm.get('color')?.value === color"
+                        [attr.aria-label]="'Seleccionar color ' + color">
                     </button>
                 </div>
             </div>
