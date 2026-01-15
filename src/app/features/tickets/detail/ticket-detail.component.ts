@@ -19,6 +19,7 @@ import { ToastService } from '../../../services/toast.service';
 import { TenantService } from '../../../services/tenant.service';
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
+import DOMPurify from 'dompurify';
 
 // TipTap imports
 import { Editor } from '@tiptap/core';
@@ -1874,12 +1875,18 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // Helper to transform HTML content (e.g. make images clickable thumbnails)
   getProcessedContent(htmlContent: string): any {
     if (!htmlContent) return '';
+
+    // Sanitize first to prevent XSS
+    const sanitizedHtml = DOMPurify.sanitize(htmlContent, {
+      ADD_ATTR: ['target'], // Allow target="_blank"
+    });
+
     // simple string manipulation to add class/onclick logic or wrap in anchor
     // We want: output <a href="src" target="_blank"><img src="src" class="comment-thumbnail" /></a>
 
     // Create a temporary DOM element to parse content
     const div = document.createElement('div');
-    div.innerHTML = htmlContent;
+    div.innerHTML = sanitizedHtml;
 
     const images = div.querySelectorAll('img');
     images.forEach((img: HTMLImageElement) => {
