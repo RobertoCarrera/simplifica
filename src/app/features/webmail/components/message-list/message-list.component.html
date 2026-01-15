@@ -50,7 +50,8 @@
 
             <!-- List -->
             <div class="message-item" *ngFor="let thread of store.threads()" [class.unread]="!thread.is_read"
-                [class.selected]="isSelected(thread.thread_id)" (click)="onMessageClick(thread)">
+                [class.selected]="isSelected(thread.thread_id)" (click)="onMessageClick(thread)" draggable="true"
+                (dragstart)="onDragStart($event, thread)">
 
                 <div class="checkbox" (click)="$event.stopPropagation()">
                     <input type="checkbox" [checked]="isSelected(thread.thread_id)"
@@ -78,3 +79,4 @@
         </div>
     </div>
 </div>
+<app-confirm-modal #confirmModal></app-confirm-modal>

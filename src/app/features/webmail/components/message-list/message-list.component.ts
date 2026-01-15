@@ -1,23 +1,27 @@
-import { Component, OnInit, inject, effect, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, effect, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, ActivatedRoute, Router } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { MailStoreService } from '../../services/mail-store.service';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { MailFolder } from '../../../../core/interfaces/webmail.interface';
+import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 
 
 @Component({
   selector: 'app-message-list',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule, ConfirmModalComponent],
   templateUrl: './message-list.component.html',
   styleUrl: './message-list.component.scss'
 })
 export class MessageListComponent implements OnInit {
-  store = inject(MailStoreService);
-  operations = inject(MailOperationService);
+  public store = inject(MailStoreService);
+  private operations = inject(MailOperationService);
   private _router = inject(Router);
-  private route = inject(ActivatedRoute);
+  public route = inject(ActivatedRoute);
+
+  @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
 
   messages = this.store.messages;
   loading = this.store.isLoading;
@@ -96,6 +100,27 @@ export class MessageListComponent implements OnInit {
     this.selectedThreadIds.set(currentSet);
   }
 
+  onDragStart(event: DragEvent, thread: any) { // thread is MailThread-like
+    // Check if dragging a selected item
+    const isSelected = this.selectedThreadIds().has(thread.thread_id);
+
+    let idsToMove: string[] = [];
+
+    if (isSelected) {
+      // Drag all selected
+      idsToMove = Array.from(this.selectedThreadIds());
+    } else {
+      // Drag only this one
+      idsToMove = [thread.thread_id];
+    }
+
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('application/json', JSON.stringify({ threadIds: idsToMove }));
+      event.dataTransfer.setData('text/plain', idsToMove.join(',')); // Fallback
+    }
+  }
+
   toggleSelectAll(event: any) {
     const checked = event.target.checked;
     if (checked) {
@@ -126,7 +151,17 @@ export class MessageListComponent implements OnInit {
     const ids = Array.from(this.selectedThreadIds());
     if (ids.length === 0) return;
 
-    if (confirm(`¿Estás seguro de eliminar ${ids.length} conversacion(es)?`)) {
+    // Use Custom Modal
+    const confirmed = await this.confirmModal.open({
+      title: 'Eliminar conversaciones',
+      message: `¿Estás seguro de eliminar ${ids.length} conversacion(es)?`,
+      confirmText: 'Sí, eliminar',
+      cancelText: 'Cancelar',
+      icon: 'fas fa-trash-alt',
+      iconColor: 'red'
+    });
+
+    if (confirmed) {
       try {
         const account = this.store.currentAccount();
         if (!account) return;
