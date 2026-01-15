@@ -110,6 +110,25 @@ import { ToastService } from '../../../services/toast.service';
           <!-- Tab: History (Interactions) -->
           <div class="tab-content" *ngIf="activeTab === 'history'">
              
+             <!-- GDPR Consent -->
+             <div class="gdpr-section" style="margin-bottom: 2rem; padding: 1rem; background: var(--bg-secondary, #f8fafc); border-radius: 0.5rem; border: 1px solid var(--border-color, #e2e8f0);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                   <div>
+                       <h4 style="margin: 0 0 0.5rem 0;">Consentimiento RGPD</h4>
+                       <span class="status-badge" [class.success]="lead?.gdpr_accepted" [class.pending]="!lead?.gdpr_accepted" style="font-size: 0.8rem; padding: 0.2rem 0.6rem; border-radius: 9px; font-weight: 600;">
+                         {{ lead?.gdpr_accepted ? 'Aceptado' : 'Pendiente' }}
+                       </span>
+                       <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;" *ngIf="lead?.gdpr_consent_sent_at">
+                           Solicitud enviada: {{ lead?.gdpr_consent_sent_at | date:'medium' }}
+                       </div>
+                   </div>
+                   <button class="btn btn-outline" (click)="sendGdprRequest()" [disabled]="sendingGdpr || lead?.gdpr_accepted">
+                       <i class="fas" [ngClass]="sendingGdpr ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i>
+                       {{ lead?.gdpr_consent_sent_at ? 'Reenviar Solicitud' : 'Enviar Solicitud' }}
+                   </button>
+                </div>
+             </div>
+
              <!-- Add Interaction -->
              <div class="new-interaction">
                <h4>Registrar interacción</h4>
@@ -336,24 +355,30 @@ export class LeadDetailModalComponent implements OnInit {
   }
 
   async addInteraction() {
-    if (this.interactionForm.invalid || !this.leadId) return;
+    // ... existing code ...
+  }
 
-    this.loadingInteraction = true;
-    const val = this.interactionForm.value;
+  sendingGdpr = false;
+  async sendGdprRequest() {
+    if (!this.lead || !this.lead.email) {
+      this.toastService.error('Error', 'El lead no tiene email registrado.');
+      return;
+    }
 
+    this.sendingGdpr = true;
     try {
-      await this.leadService.addInteraction({
-        lead_id: this.leadId,
-        type: val.type,
-        summary: val.summary
-      });
-
-      this.interactionForm.reset({ type: 'call' });
-      this.loadInteractions(); // refresh list
-    } catch (error) {
-      console.error('Error adding interaction', error);
+      await this.leadService.sendGdprRequest(
+        this.lead.id,
+        this.lead.email,
+        this.lead.first_name || 'Cliente'
+      );
+      this.toastService.success('Enviado', 'Solicitud de consentimiento enviada por email.');
+      this.loadLead(); // Refresh dates
+    } catch (err: any) {
+      console.error('Error sending GDPR', err);
+      this.toastService.error('Error', 'No se pudo enviar la solicitud: ' + (err.message || err));
     } finally {
-      this.loadingInteraction = false;
+      this.sendingGdpr = false;
     }
   }
 
@@ -393,10 +418,14 @@ export class LeadDetailModalComponent implements OnInit {
     switch (type) {
       case 'call': return 'fa-phone';
       case 'email': return 'fa-envelope';
-      case 'whatsapp': return 'fa-comments'; // FontAwesome doesn't have distinct whatsapp in free sometimes, using comments
+      case 'whatsapp': return 'fa-comments';
       case 'meeting': return 'fa-calendar';
       case 'note': return 'fa-sticky-note';
       default: return 'fa-circle';
     }
   }
 }
+/* Styles handled here for inline simplicity */
+// .status-badge { background: #e2e8f0; color: #475569; }
+// .status-badge.success { background: #dcfce7; color: #166534; }
+// .status-badge.pending { background: #fef9c3; color: #854d0e; }

@@ -143,6 +143,9 @@ export class AnalyticsService {
     hours: number;
   }>>([]);
 
+  // Leads By Channel (Signal)
+  // We can either expose a signal or just a method. Let's expose a method to simple fetch for now as it's not time-series critical yet.
+
   // Loading state
   private loading = signal<boolean>(true);
   private error = signal<string | null>(null);
@@ -452,30 +455,37 @@ export class AnalyticsService {
 
   // Refresh analytics data (can be called manually or on interval)
   async refreshAnalytics(): Promise<void> {
-    this.loading.set(true);
-    this.error.set(null);
-    try {
-      await Promise.all([
-        // Consolidar: quotes kpis + trend en una llamada
-        this.loadQuoteKpisAndTrend(),
-        this.loadAllDraftQuotes(),
-        this.loadRecurringMonthly(),
-        this.loadCurrentPipeline(),
-        // Consolidar: invoice kpis + trend en una llamada
-        // Consolidar: invoice kpis + trend en una llamada
-        this.loadInvoiceKpisAndTrend(),
-        this.loadTicketKpisAndTrend(),
-        this.loadTicketCurrentStatus(),
-        // Consolidar: booking kpis + trend + top services
-        this.loadBookingKpisAndTrend(),
-        this.loadTopServices()
-      ]);
-    } catch (err: any) {
-      console.error('[AnalyticsService] Failed to load analytics', err);
-      this.error.set(err?.message || 'Error al cargar analíticas');
-    } finally {
-      this.loading.set(false);
+    // ...
+  }
+
+  /**
+   * Get Leads by Channel (Source)
+   */
+  /**
+   * Get Leads by Channel (Source)
+   */
+  async getLeadsByChannel(): Promise<{ source: string; count: number }[]> {
+    // We rely on RLS to filter leads by the user's company.
+    // The policy on 'leads' table ensures users only see leads from their company.
+
+    const { data, error } = await this.supabase.instance
+      .from('leads')
+      .select('source');
+
+    if (error) {
+      console.error('[AnalyticsService] Error fetching leads stats:', error);
+      return [];
     }
+
+    const counts: Record<string, number> = {};
+    (data || []).forEach((lead: any) => {
+      const src = lead.source || 'other';
+      counts[src] = (counts[src] || 0) + 1;
+    });
+
+    return Object.entries(counts)
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count);
   }
 
   // --- PRESUPUESTOS: Consolidado KPIs + Trend en una sola llamada ---

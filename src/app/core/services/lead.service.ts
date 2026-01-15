@@ -19,7 +19,9 @@ export interface Lead {
     updated_at: string;
     company_id: string;
     lead_source_id?: string;
-    lead_source?: { name: string };
+    gdpr_consent_sent_at?: string;
+    gdpr_accepted?: boolean;
+    lead_source?: { id: string; name: string };
 }
 
 export interface LeadSource {
@@ -202,6 +204,34 @@ export class LeadService {
             .eq('id', id);
 
         if (error) throw error;
+    }
+
+    async sendGdprRequest(leadId: string, email: string, name: string): Promise<void> {
+        const { error: emailError } = await this.supabase.functions.invoke('send-email', {
+            body: {
+                to: [email],
+                subject: 'Consentimiento para Tratamiento de Datos - CAIBS',
+                body: `Hola ${name},
+
+Para poder continuar ofreciéndote nuestros servicios de psicología y salud, necesitamos tu consentimiento explícito para el tratamiento de tus datos personales, conforme al RGPD.
+
+Por favor, responde a este correo confirmando que ACEPTAS el tratamiento de tus datos para fines de gestión de citas y comunicación profesional.
+
+Atentamente,
+El equipo de CAIBS`,
+                fromName: 'CAIBS Admin',
+                // fromEmail omitted to use default
+            }
+        });
+
+        if (emailError) throw emailError;
+
+        const { error: dbError } = await this.supabase
+            .from('leads')
+            .update({ gdpr_consent_sent_at: new Date() })
+            .eq('id', leadId);
+
+        if (dbError) throw dbError;
     }
 
     /**

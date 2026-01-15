@@ -43,6 +43,9 @@ interface KanbanColumn {
             
             <div class="card-title">
                 {{ lead.first_name }} {{ lead.last_name }}
+                <i class="fas fa-exclamation-triangle warning-icon" 
+                   *ngIf="isStagnant(lead)" 
+                   title="Sin actividad en > 7 días"></i>
             </div>
             
             <div class="card-details" *ngIf="lead.interest">
@@ -207,6 +210,15 @@ interface KanbanColumn {
         font-size: 1rem;
         margin-bottom: 0.25rem;
         color: var(--text-primary);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        .warning-icon {
+            color: #f59e0b; /* Amber 500 */
+            font-size: 0.9rem;
+            animation: pulse 2s infinite;
+        }
     }
     
     .card-details {
@@ -255,6 +267,12 @@ interface KanbanColumn {
         font-style: italic;
         font-size: 0.9rem;
         opacity: 0.6;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; transform: scale(1.1); }
+        100% { opacity: 0.6; }
     }
 
   `]
@@ -340,6 +358,17 @@ export class LeadsKanbanComponent implements OnInit, OnChanges {
       'phone': 'Teléfono'
     };
     return map[source] || source;
+  }
+
+  isStagnant(lead: Lead): boolean {
+    if (['won', 'lost'].includes(lead.status)) return false;
+    if (!lead.updated_at) return false;
+
+    const lastUpdate = new Date(lead.updated_at).getTime();
+    const now = new Date().getTime();
+    const diffDays = (now - lastUpdate) / (1000 * 3600 * 24);
+
+    return diffDays > 7;
   }
 
   openLead(lead: Lead) {

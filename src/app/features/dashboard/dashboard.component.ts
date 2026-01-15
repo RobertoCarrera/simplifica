@@ -94,10 +94,24 @@ export class DashboardComponent implements OnInit {
                 this.recentCustomers.set(customers);
             }
 
+            // 3. Fetch Leads Stats
+            this.loadLeadsStats();
+
         } catch (err) {
             console.error('Error loading dashboard recents', err);
         } finally {
             this.loadingRecents.set(false);
+        }
+    }
+
+    leadsByChannel = signal<{ source: string; count: number }[]>([]);
+
+    async loadLeadsStats() {
+        try {
+            const stats = await this.analyticsService.getLeadsByChannel();
+            this.leadsByChannel.set(stats);
+        } catch (e) {
+            console.error('Error loading leads stats', e);
         }
     }
 
