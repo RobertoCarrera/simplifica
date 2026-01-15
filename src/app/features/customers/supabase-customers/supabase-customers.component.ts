@@ -25,6 +25,10 @@ import { AiService } from '../../../services/ai.service';
 
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
+import { CustomerView } from '../models/customer-view.model';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 @Component({
     selector: 'app-supabase-customers',
@@ -77,7 +81,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     audioChunks: Blob[] = [];
 
     // State signals
-    customers = signal<Customer[]>([]);
+    customers = signal<CustomerView[]>([]);
     isLoading = signal(false);
     showForm = signal(false);
     selectedCustomer = signal<Customer | null>(null);
@@ -153,15 +157,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     // Removed legacy CSV mapping handlers
 
 
-    // Cache completeness status to avoid O(N log N) re-calculations during sort
-    completenessCache = computed(() => {
-        const cache = new Map<string, boolean>();
-        this.customers().forEach(c => {
-            cache.set(c.id, this.completenessSvc.computeCompleteness(c).complete);
-        });
-        return cache;
-    });
-
     // Computed
     filteredCustomers = computed(() => {
         let filtered = this.customers();
@@ -173,7 +168,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         const search = this.searchTerm().toLowerCase().trim();
         if (search) {
             filtered = filtered.filter(customer =>
-                customer.name.toLowerCase().includes(search) ||
+                customer.displayName.toLowerCase().includes(search) ||
                 customer.apellidos.toLowerCase().includes(search) ||
                 customer.email.toLowerCase().includes(search) ||
                 customer.dni.toLowerCase().includes(search) ||
@@ -185,13 +180,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         const sortBy = this.sortBy();
         const sortOrder = this.sortOrder();
 
-        // Use cached completeness for sorting
-        const completeness = this.completenessCache();
-
         filtered.sort((a, b) => {
             // Priority Sort: Incomplete users FIRST
-            const aComplete = completeness.get(a.id) ?? false;
-            const bComplete = completeness.get(b.id) ?? false;
+            const aComplete = a.isComplete;
+            const bComplete = b.isComplete;
 
             if (aComplete !== bComplete) {
                 // If one is incomplete (false) and other is complete (true), incomplete comes first
@@ -214,14 +206,68 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         return filtered;
     });
 
-    // Completeness helpers for template
-    isCustomerComplete(c: Customer): boolean {
-        return this.completenessCache().get(c.id) ?? false;
+    private mapToView(customer: Customer): CustomerView {
+        return {
+            ...customer,
+            displayName: this._calculateDisplayName(customer),
+            initials: this._calculateCustomerInitials(customer),
+            avatarGradient: this._calculateAvatarGradient(customer),
+            formattedDate: this._calculateFormatDate(customer.created_at),
+            isComplete: this.completenessSvc.computeCompleteness(customer).complete,
+            missingFields: this.completenessSvc.computeCompleteness(customer).missingFields
+        };
     }
 
-    getCustomerMissingFields(c: Customer): string[] {
-        return this.completenessSvc.computeCompleteness(c).missingFields;
+    private _calculateDisplayName(customer: Customer): string {
+        if (!customer) return '';
+        // Preferir razón social si es empresa
+        let base = customer.client_type === 'business'
+            ? (customer.business_name || customer.trade_name || customer.name)
+            : [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
+
+        if (!base || !base.trim()) {
+            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+        }
+
+        if (UUID_REGEX.test(base.trim())) {
+            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+        }
+
+        if (EMAIL_REGEX.test(base)) {
+            base = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
+        }
+
+        return base;
     }
+
+    private _calculateCustomerInitials(customer: Customer): string {
+        return `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
+    }
+
+    private _calculateAvatarGradient(customer: Customer): string {
+        const name = `${customer.name}${customer.apellidos}`;
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue = Math.abs(hash % 360);
+        return `linear-gradient(135deg, hsl(${hue}, 70%, 80%) 0%, hsl(${hue + 45}, 70%, 80%) 100%)`;
+    }
+
+    private _calculateFormatDate(date: string | Date | null | undefined): string {
+        if (!date) return '';
+
+        const d: Date = typeof date === 'string' ? new Date(date) : date;
+
+        if (isNaN(d.getTime())) return '';
+
+        return d.toLocaleDateString('es-ES', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+
 
     onOnlyIncompleteChange(_val: any) {
         // Trigger recompute; searchTerm is a signal, resetting to same value is enough for change detection in computed
@@ -384,7 +430,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     private loadData() {
         // Subscribe to customers
         this.customersService.customers$.subscribe(customers => {
-            this.customers.set(customers);
+            const views = customers.map(c => this.mapToView(c));
+            this.customers.set(views);
             // Keep portal access cache in sync with customer list
             this.refreshPortalAccess();
         });
@@ -548,51 +595,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         this.onSearchChange('');
     }
 
-    // Utility methods
-    getCustomerInitials(customer: Customer): string {
-        return `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
-    }
-
-    // Nombre amigable para mostrar en la card evitando UUIDs u otros identificadores técnicos
-    getDisplayName(customer: Customer): string {
-        if (!customer) return '';
-        // Preferir razón social si es empresa
-        let base = customer.client_type === 'business'
-            ? (customer.business_name || customer.trade_name || customer.name)
-            : [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
-
-        if (!base || !base.trim()) {
-            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
-        }
-
-        // Detectar patrón UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(base.trim())) {
-            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
-        }
-
-        // Evitar mostrar correos como nombre si accidentalmente se mapearon
-        if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(base)) {
-            base = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
-        }
-
-        return base;
-    }
-
-    formatDate(date: string | Date | null | undefined): string {
-        if (!date) return '';
-
-        // Normalize to Date instance
-        const d: Date = typeof date === 'string' ? new Date(date) : date;
-
-        if (isNaN(d.getTime())) return '';
-
-        return d.toLocaleDateString('es-ES', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    }
 
     // ========================================
     // GDPR METHODS
@@ -713,7 +715,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
                     const currentCustomers = this.customers();
                     const updatedCustomers = currentCustomers.map(c => {
                         if (c.id === customer.id) {
-                            return {
+                            const updated = {
                                 ...c,
                                 name: 'ANONYMIZED_' + Math.random().toString(36).substr(2, 8),
                                 apellidos: 'ANONYMIZED_' + Math.random().toString(36).substr(2, 8),
@@ -722,6 +724,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
                                 dni: '',
                                 anonymized_at: new Date().toISOString()
                             } as Customer;
+                            return this.mapToView(updated);
                         }
                         return c;
                     });
@@ -858,16 +861,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         return this.pendingRectifications().has(customer.email);
     }
 
-    // Avatar gradient generator - consistent hash-based color selection
-    getAvatarGradient(customer: Customer): string {
-        const name = `${customer.name}${customer.apellidos}`;
-        let hash = 0;
-        for (let i = 0; i < name.length; i++) {
-            hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const hue = Math.abs(hash % 360);
-        return `linear-gradient(135deg, hsl(${hue}, 70%, 80%) 0%, hsl(${hue + 45}, 70%, 80%) 100%)`;
-    }
 
 
     getGdprStatusClass(customer: Customer): string {
