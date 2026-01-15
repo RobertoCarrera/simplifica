@@ -4,58 +4,59 @@
     </div>
 
     <div class="composer-form">
-        <div class="form-group">
-            <input type="text" [(ngModel)]="to" placeholder="Destinatarios" class="form-control">
+        <div class="field-row">
+            <span class="label">Para:</span>
+            <input type="text" [(ngModel)]="to" class="clean-input">
         </div>
 
-        <div class="form-group">
-            <input type="text" [(ngModel)]="subject" placeholder="Asunto" class="form-control">
+        <div class="field-row">
+            <span class="label">Asunto:</span>
+            <input type="text" [(ngModel)]="subject" class="clean-input">
         </div>
 
-        <div class="form-group editor">
+        <!-- Editor takes remaining space -->
+        <div class="editor-wrapper">
             <app-tiptap-editor [content]="body" (contentChange)="body = $event"
                 placeholder="Escribe tu mensaje aquí...">
             </app-tiptap-editor>
         </div>
 
-
-
-        <div class="attachments-area">
-            <label class="btn-attach" title="Adjuntar archivos">
-                <i class="icon-paperclip"></i>
-                <span>Adjuntar</span>
-                <input type="file" multiple (change)="onFileSelected($event)" style="display: none;">
-            </label>
-
-            <div class="files-grid" *ngIf="attachments.length > 0">
+        <!-- Attachments Preview (Overlay or bottom of editor?) -->
+        <div class="attachments-area" *ngIf="attachments.length > 0">
+            <div class="files-grid">
                 <div *ngFor="let att of attachments; let i = index" class="file-card">
                     <div class="file-preview">
-                        <!-- Image Preview -->
                         <img *ngIf="att.file.type.startsWith('image/')"
                             [src]="'data:' + att.file.type + ';base64,' + att.base64" alt="preview">
-                        <!-- Generic Icon -->
-                        <div *ngIf="!att.file.type.startsWith('image/')" class="file-icon">
-                            📄
-                        </div>
+                        <div *ngIf="!att.file.type.startsWith('image/')" class="file-icon">📄</div>
                         <button (click)="removeAttachment(i)" class="btn-remove" title="Eliminar">×</button>
                     </div>
                     <div class="file-info">
                         <span class="file-name">{{ att.file.name }}</span>
-                        <span class="file-size">{{ (att.file.size / 1024).toFixed(0) }} KB</span>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="composer-actions">
-            <div class="status-text" *ngIf="savingDraft">Guardando...</div>
-            <div class="status-text" *ngIf="!savingDraft && draftId">Borrador guardado</div>
-
+    <div class="composer-footer">
+        <div class="left-actions">
             <button class="btn btn-primary" (click)="send()" [disabled]="isSending">
                 {{ isSending ? 'Enviando...' : 'Enviar' }}
             </button>
-            <button class="btn btn-secondary" (click)="saveDraft()">Guardar</button>
-            <button class="btn btn-text" (click)="cancel()">Cerrar</button>
+            <label class="btn-icon-attached" title="Adjuntar archivos">
+                <i class="fas fa-paperclip"></i>
+                <input type="file" multiple (change)="onFileSelected($event)" style="display: none;">
+            </label>
+        </div>
+
+        <div class="right-actions">
+            <button class="btn btn-icon" (click)="saveDraft()" title="Guardar borrador">
+                <i class="fas fa-save"></i>
+            </button>
+            <button class="btn btn-icon" (click)="cancel()" title="Descartar">
+                <i class="fas fa-trash"></i>
+            </button>
         </div>
     </div>
 </div>
