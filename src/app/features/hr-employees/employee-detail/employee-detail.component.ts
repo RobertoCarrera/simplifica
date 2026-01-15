@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { EmployeeService, Employee, EmployeeDocument } from '../../../core/services/employee.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { ThemeService } from '../../../services/theme.service';
 
 @Component({
   selector: 'app-employee-detail',
@@ -19,7 +20,8 @@ export class EmployeeDetailComponent implements OnInit {
   private router = inject(Router);
   private employeeService = inject(EmployeeService);
   private authService = inject(AuthService);
-  private toastElement = inject(ToastService); // Assuming generic toast service usage
+  private toastElement = inject(ToastService);
+  private themeService = inject(ThemeService); // Ensure theme handling
 
   activeTab = signal<'profile' | 'documents'>('profile');
   isEditing = signal(false);

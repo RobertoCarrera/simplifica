@@ -88,6 +88,12 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     { key: 'marketing.view', label: 'Ver Marketing', description: 'Acceso a módulo de Marketing', category: 'Marketing' },
     { key: 'marketing.manage', label: 'Gestionar Campañas', description: 'Crear y enviar campañas', category: 'Marketing' },
 
+    // HR (Empleadas)
+    { key: 'employees.view', label: 'Ver empleadas', description: 'Puede ver el listado de empleadas', category: 'Recursos Humanos' },
+    { key: 'employees.create', label: 'Crear empleadas', description: 'Puede dar de alta nuevas empleadas', category: 'Recursos Humanos' },
+    { key: 'employees.edit', label: 'Editar empleadas', description: 'Puede modificar datos de empleadas', category: 'Recursos Humanos' },
+    { key: 'employees.delete', label: 'Eliminar empleadas', description: 'Puede eliminar registros de empleadas', category: 'Recursos Humanos' },
+
     // Settings
     { key: 'settings.manage', label: 'Gestión configuración', description: 'Acceso a ajustes avanzados del sistema', category: 'Sistema' },
     { key: 'settings.billing', label: 'Gestión facturación', description: 'Acceso a configuración de facturación', category: 'Facturación' },
@@ -123,7 +129,8 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'services.view': true, 'services.create': true, 'services.edit': true,
         'analytics.view': true, 'analytics.export': true, 'analytics.ai': true,
         'marketing.view': true, 'marketing.manage': true,
-        'leads.view': true, 'leads.create': true, 'leads.edit': true, 'leads.delete': true
+        'leads.view': true, 'leads.create': true, 'leads.edit': true, 'leads.delete': true,
+        'employees.view': true, 'employees.create': true, 'employees.edit': true, 'employees.delete': true
     },
     admin: {
         'clients.view': true, 'clients.edit': true, 'clients.delete': false,
@@ -136,7 +143,8 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'chat.access': true, 'chat.ai': true,
         'services.view': true, 'services.create': true, 'services.edit': true,
         'analytics.view': true, 'analytics.export': false, 'analytics.ai': true,
-        'leads.view': true, 'leads.create': true, 'leads.edit': true, 'leads.delete': false
+        'leads.view': true, 'leads.create': true, 'leads.edit': true, 'leads.delete': false,
+        'employees.view': true, 'employees.create': true, 'employees.edit': true, 'employees.delete': false
     },
     member: {
         'clients.view': true, 'clients.edit': false, 'clients.delete': false,

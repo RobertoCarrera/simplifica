@@ -46,7 +46,10 @@ export class EmployeeService {
     getEmployees(companyId: string): Observable<Employee[]> {
         const query = this.supabase
             .from('employees')
-            .select('*, user:user_id(name, surname, email, avatar_url)')
+            .select(`
+                *,
+                user:user_id(name, surname, email)
+            `)
             .eq('company_id', companyId)
             .order('created_at', { ascending: false });
 
