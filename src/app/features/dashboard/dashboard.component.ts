@@ -108,7 +108,8 @@ export class DashboardComponent implements OnInit {
 
     async loadLeadsStats() {
         try {
-            const stats = await this.analyticsService.getLeadsByChannel();
+            // Pasamos undefined para cargar histórico completo en dashboard principal
+            const stats = await this.analyticsService.getLeadsByChannel(undefined, undefined);
             this.leadsByChannel.set(stats);
         } catch (e) {
             console.error('Error loading leads stats', e);

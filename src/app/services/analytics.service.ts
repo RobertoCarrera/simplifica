@@ -464,13 +464,25 @@ export class AnalyticsService {
   /**
    * Get Leads by Channel (Source)
    */
-  async getLeadsByChannel(): Promise<{ source: string; count: number }[]> {
+  async getLeadsByChannel(startDate?: string, endDate?: string): Promise<{ source: string; count: number }[]> {
     // We rely on RLS to filter leads by the user's company.
-    // The policy on 'leads' table ensures users only see leads from their company.
 
-    const { data, error } = await this.supabase.instance
+    let query = this.supabase.instance
       .from('leads')
       .select('source');
+
+    if (startDate) {
+      query = query.gte('created_at', startDate);
+    }
+    if (endDate) {
+      // Asume endDate es inclusivo hasta el final del día si es YYYY-MM-DD, 
+      // pero si es string simple, mejor asegurar que cubra el día. 
+      // Si el input es '2025-01-30', le agregamos time si es necesario o usamos lte.
+      // Supabase lte funcionará bien con fechas ISO.
+      query = query.lte('created_at', endDate + 'T23:59:59');
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('[AnalyticsService] Error fetching leads stats:', error);
