@@ -1,8 +1,12 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DragDropModule, CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { Lead, LeadService } from '../../../core/services/lead.service';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
+import { AuthService } from '../../../services/auth.service';
+import { ToastService } from '../../../services/toast.service';
+import { LeadDetailModalComponent } from '../lead-detail-modal/lead-detail-modal.component';
+import { ThemeService } from '../../../services/theme.service';
 
 interface KanbanColumn {
   id: Lead['status'];
@@ -14,9 +18,9 @@ interface KanbanColumn {
 @Component({
   selector: 'app-leads-kanban',
   standalone: true,
-  imports: [CommonModule, DragDropModule],
+  imports: [CommonModule, DragDropModule, LeadDetailModalComponent],
   template: `
-    <div class="kanban-board">
+    <div class="kanban-board" [class.dark-mode]="themeService.currentTheme() === 'dark'">
       <div class="kanban-column" *ngFor="let col of columns">
         <div class="column-header" [ngClass]="col.colorClass">
           <h3>{{ col.title }}</h3>
@@ -25,13 +29,15 @@ interface KanbanColumn {
         
         <div 
           cdkDropList 
+          [id]="col.id"
           [cdkDropListData]="col.items"
+          [cdkDropListConnectedTo]="connectedLists"
           class="lead-list" 
           (cdkDropListDropped)="drop($event, col.id)">
           
-          <div class="lead-card" *ngFor="let lead of col.items" cdkDrag>
+            <div class="lead-card" *ngFor="let lead of col.items" cdkDrag (dblclick)="openLead(lead)">
             <div class="card-badges">
-                <span class="badge source" [attr.data-source]="lead.source">{{ formatSource(lead.source) }}</span>
+                <span class="badge source" [attr.data-source]="lead.lead_source?.name || lead.source">{{ lead.lead_source?.name || formatSource(lead.source) }}</span>
                 <span class="date">{{ lead.created_at | date:'shortDate' }}</span>
             </div>
             
@@ -46,7 +52,11 @@ interface KanbanColumn {
             <div class="card-footer">
                 <span class="phone" *ngIf="lead.phone"><i class="fas fa-phone"></i></span>
                 <span class="email" *ngIf="lead.email"><i class="fas fa-envelope"></i></span>
-                <button class="btn-action" title="Ver detalle"><i class="fas fa-arrow-right"></i></button>
+                
+                <button class="btn-action delete" *ngIf="authService.userRole() === 'owner'" title="Eliminar" (click)="deleteLead(lead); $event.stopPropagation()">
+                   <i class="fas fa-trash"></i>
+                </button>
+                <button class="btn-action" title="Ver detalle" (click)="openLead(lead); $event.stopPropagation()"><i class="fas fa-arrow-right"></i></button>
             </div>
           </div>
           
@@ -56,6 +66,13 @@ interface KanbanColumn {
         </div>
       </div>
     </div>
+
+    <app-lead-detail-modal 
+      *ngIf="selectedLeadId" 
+      [leadId]="selectedLeadId" 
+      (closeEvent)="selectedLeadId = null"
+      (saveEvent)="onLeadSaved()">
+    </app-lead-detail-modal>
   `,
   styles: [`
     .kanban-board {
@@ -77,8 +94,9 @@ interface KanbanColumn {
       height: 100%;
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
       
-      :host-context(.dark) & {
-         background: #1e293b;
+      .dark-mode & {
+         background: #334155; /* Slightly lighter than card */
+         .column-header h3 { color: #f8fafc; }
       }
     }
     
@@ -127,6 +145,10 @@ interface KanbanColumn {
       :host-context(.dark) & {
          background: #0f172a;
          border-color: #334155;
+         
+         .card-title { color: #f8fafc; }
+         .card-details { color: #cbd5e1; }
+         .card-badges .date { color: #94a3b8; }
       }
     }
     
@@ -191,7 +213,10 @@ interface KanbanColumn {
         padding-top: 0.5rem;
         color: var(--text-secondary);
         
-        :host-context(.dark) & { border-top-color: #334155; }
+        .dark-mode & { 
+          border-top-color: #334155; 
+          color: #94a3b8;
+        }
         
         .btn-action {
              margin-left: auto;
@@ -199,6 +224,14 @@ interface KanbanColumn {
              border: none;
              color: var(--color-primary-500);
              cursor: pointer;
+             
+             &.delete {
+               margin-left: 0;
+               margin-right: auto;
+               color: var(--color-error, #ef4444);
+               opacity: 0.5;
+               &:hover { opacity: 1; }
+             }
         }
     }
     
@@ -213,9 +246,13 @@ interface KanbanColumn {
 
   `]
 })
-export class LeadsKanbanComponent implements OnInit {
+export class LeadsKanbanComponent implements OnInit, OnChanges {
+  @Input() refreshTrigger = 0;
+
   leadService = inject(LeadService);
-  supabase = inject(SupabaseClientService);
+  authService = inject(AuthService);
+  themeService = inject(ThemeService);
+  toastService = inject(ToastService);
 
   columns: KanbanColumn[] = [
     { id: 'new', title: 'Nuevos', items: [], colorClass: 'col-new' },
@@ -225,24 +262,25 @@ export class LeadsKanbanComponent implements OnInit {
     { id: 'lost', title: 'Perdidos', items: [], colorClass: 'col-lost' }
   ];
 
+  connectedLists: string[] = this.columns.map(c => c.id);
+
+  selectedLeadId: string | null = null;
+  supabase = inject(SupabaseClientService);
+
   async ngOnInit() {
     this.loadLeads();
   }
 
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['refreshTrigger'] && !changes['refreshTrigger'].firstChange) {
+      this.loadLeads();
+    }
+  }
+
   async loadLeads() {
-    // Assuming user has a company_id in profile or we fetch first
-    const { data: user } = await this.supabase.instance.auth.getUser();
-    if (!user.user) return;
-
-    const { data: member } = await this.supabase.instance
-      .from('company_members')
-      .select('company_id')
-      .eq('user_id', user.user.id)
-      .limit(1)
-      .maybeSingle();
-
-    if (member) {
-      this.leadService.getLeads(member.company_id).subscribe(leads => {
+    const companyId = this.authService.currentCompanyId();
+    if (companyId) {
+      this.leadService.getLeads(companyId).subscribe(leads => {
         this.distributeLeads(leads);
       });
     }
@@ -289,5 +327,29 @@ export class LeadsKanbanComponent implements OnInit {
       'phone': 'Teléfono'
     };
     return map[source] || source;
+  }
+
+  openLead(lead: Lead) {
+    this.selectedLeadId = lead.id;
+  }
+
+  onLeadSaved() {
+    this.selectedLeadId = null;
+    this.loadLeads();
+  }
+
+  async deleteLead(lead: Lead) {
+    if (this.authService.userRole() !== 'owner') return;
+
+    if (!confirm(`¿Eliminar lead ${lead.first_name} ${lead.last_name}?`)) return;
+
+    try {
+      await this.leadService.deleteLead(lead.id);
+      this.toastService.success('Eliminado', 'Lead eliminado correctamente');
+      this.loadLeads();
+    } catch (err: any) {
+      console.error('Error deleting lead', err);
+      this.toastService.error('Error', 'No se pudo eliminar el lead');
+    }
   }
 }
