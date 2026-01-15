@@ -103,7 +103,7 @@ export const routes: Routes = [
     { path: 'configuracion/etiquetas', loadComponent: () => import('./features/settings/tags-management/tags-management.component').then(m => m.TagsManagementComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/booking-types', loadComponent: () => import('./features/settings/booking/booking-settings.component').then(m => m.BookingSettingsComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
-    { path: 'marketing', loadComponent: () => import('./features/marketing/page/marketing-page.component').then(m => m.MarketingPageComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'marketing', loadComponent: () => import('./features/marketing/marketing-dashboard/marketing-dashboard.component').then(m => m.MarketingDashboardComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'leads', loadComponent: () => import('./features/crm/leads-page/leads-page.component').then(m => m.LeadsPageComponent), canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloMarketing' } }, // Leads CRM
 
     // HR Module
