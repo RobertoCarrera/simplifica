@@ -65,19 +65,21 @@
             </div>
         </div>
 
-        <!-- Conversion Card -->
+        <!-- CPL Card -->
         <div
             class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden group">
             <div
                 class="absolute right-0 top-0 w-32 h-32 bg-purple-50 dark:bg-purple-900/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110">
             </div>
             <div class="relative z-10">
-                <div class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1 uppercase tracking-wider">
-                    Conversión Est.</div>
-                <div class="text-3xl font-bold text-slate-900 dark:text-white">-- %</div>
+                <div class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1 uppercase tracking-wider">CPL
+                    Medio</div>
+                <div class="text-3xl font-bold text-slate-900 dark:text-white">
+                    {{ avgCpl() | currency:'EUR' }}
+                </div>
             </div>
             <div class="mt-4 text-xs text-slate-500">
-                Datos insuficientes para cálculo automático.
+                <span class="text-slate-900 dark:text-white font-semibold">{{ totalLeads() }}</span> leads totales
             </div>
         </div>
     </div>
@@ -125,39 +127,43 @@
                     <thead
                         class="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-slate-700/50">
                         <tr>
-                            <th class="px-4 py-3 rounded-l-lg">Fecha</th>
-                            <th class="px-4 py-3">Canal</th>
+                            <th class="px-4 py-3 rounded-l-lg">Canal</th>
                             <th class="px-4 py-3 text-right">Inversión</th>
-                            <th class="px-4 py-3 text-right">Impresiones</th>
-                            <th class="px-4 py-3 text-right rounded-r-lg">Clicks</th>
+                            <th class="px-4 py-3 text-right">Leads</th>
+                            <th class="px-4 py-3 text-right">CPL</th>
+                            <th class="px-4 py-3 text-right">Clicks</th>
+                            <th class="px-4 py-3 text-right rounded-r-lg">CPC</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-                        @for (metric of marketingMetrics(); track metric.id) {
+                        @for (row of performanceData(); track row.channel) {
                         <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                             <td class="px-4 py-3 font-medium text-slate-900 dark:text-white">
-                                {{ metric.date | date:'mediumDate' }}
-                            </td>
-                            <td class="px-4 py-3">
                                 <span
                                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
-                                    {{ getChannelLabel(metric.channel) }}
+                                    {{ getChannelLabel(row.channel) }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-right font-mono text-slate-600 dark:text-slate-300">
-                                {{ metric.spend | currency:'EUR' }}
+                                {{ row.spend | currency:'EUR' }}
+                            </td>
+                            <td class="px-4 py-3 text-right font-bold text-indigo-600 dark:text-indigo-400">
+                                {{ row.leads | number }}
+                            </td>
+                            <td class="px-4 py-3 text-right font-mono text-slate-600 dark:text-slate-300">
+                                {{ row.cpl | currency:'EUR' }}
                             </td>
                             <td class="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                                {{ metric.impressions | number }}
+                                {{ row.clicks | number }}
                             </td>
                             <td class="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                                {{ metric.clicks | number }}
+                                {{ row.cpc | currency:'EUR' }}
                             </td>
                         </tr>
                         }
-                        @if (marketingMetrics().length === 0) {
+                        @if (performanceData().length === 0) {
                         <tr>
-                            <td colspan="5" class="px-4 py-12 text-center text-slate-500">
+                            <td colspan="6" class="px-4 py-12 text-center text-slate-500">
                                 No hay datos registrados en los últimos 30 días.
                             </td>
                         </tr>
@@ -248,11 +254,81 @@
             </div>
             }
 
-            <!-- Social Table (Placeholder) -->
+            <!-- Social Table -->
             @if (activeTab() === 'social') {
-            <div class="text-center py-12 text-slate-500">
-                <i class="fas fa-hammer text-4xl mb-3 text-slate-300"></i>
-                <p>Visualización de métricas sociales en construcción.</p>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <!-- Social KPIs -->
+                <div
+                    class="bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl p-6 text-white shadow-lg shadow-pink-200 dark:shadow-none">
+                    <div class="text-white/80 text-sm font-medium mb-1 uppercase tracking-wider">Instagram</div>
+                    <div class="text-3xl font-bold">{{ instagramFollowers() | number }}</div>
+                    <div class="text-sm mt-2 text-white/80">Seguidores</div>
+                </div>
+                <div
+                    class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 text-white shadow-lg shadow-slate-300 dark:shadow-none">
+                    <div class="text-white/80 text-sm font-medium mb-1 uppercase tracking-wider">TikTok</div>
+                    <div class="text-3xl font-bold">{{ tiktokFollowers() | number }}</div>
+                    <div class="text-sm mt-2 text-white/80">Seguidores</div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
+                    <div class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1 uppercase tracking-wider">
+                        Engagement Medio</div>
+                    <div class="text-3xl font-bold text-slate-900 dark:text-white">{{ avgEngagement() | number:'1.2-2'
+                        }}%</div>
+                </div>
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700">
+                    <div class="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1 uppercase tracking-wider">
+                        Posts Mes</div>
+                    <div class="text-3xl font-bold text-slate-900 dark:text-white">{{ monthlyPosts() }}</div>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead
+                        class="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-slate-700/50">
+                        <tr>
+                            <th class="px-4 py-3 rounded-l-lg">Fecha</th>
+                            <th class="px-4 py-3">Plataforma</th>
+                            <th class="px-4 py-3 text-right">Seguidores</th>
+                            <th class="px-4 py-3 text-right">Engagement</th>
+                            <th class="px-4 py-3 text-right rounded-r-lg">Posts</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                        @for (metric of socialMetrics(); track metric.id) {
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                            <td class="px-4 py-3 font-medium text-slate-900 dark:text-white">
+                                {{ metric.date | date:'mediumDate' }}
+                            </td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300">
+                                    <i
+                                        class="fab fa-{{metric.platform === 'google_business' ? 'google' : metric.platform}}"></i>
+                                    {{ getChannelLabel(metric.platform) }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-right font-mono text-slate-600 dark:text-slate-300">
+                                {{ metric.followers | number }}
+                            </td>
+                            <td class="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
+                                {{ metric.engagement_rate }}%
+                            </td>
+                            <td class="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
+                                {{ metric.posts_count }}
+                            </td>
+                        </tr>
+                        }
+                        @if (socialMetrics().length === 0) {
+                        <tr>
+                            <td colspan="5" class="px-4 py-12 text-center text-slate-500">
+                                No hay métricas sociales registradas.
+                            </td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
             }
             }
@@ -274,8 +350,21 @@
             </button>
         </div>
 
+        <div class="px-6 py-3 border-b border-slate-100 dark:border-slate-700 flex gap-2">
+            <button (click)="metricType.set('advertising')"
+                [ngClass]="{'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400': metricType() === 'advertising'}"
+                class="flex-1 py-2 text-sm font-medium rounded-lg transition-colors text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700">
+                <i class="fas fa-ad mr-2"></i> Publicidad
+            </button>
+            <button (click)="metricType.set('social')"
+                [ngClass]="{'bg-pink-50 text-pink-600 dark:bg-pink-900/20 dark:text-pink-400': metricType() === 'social'}"
+                class="flex-1 py-2 text-sm font-medium rounded-lg transition-colors text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700">
+                <i class="fas fa-hashtag mr-2"></i> Redes Sociales
+            </button>
+        </div>
+
+        @if(metricType() === 'advertising') {
         <form [formGroup]="metricForm" (ngSubmit)="saveMetric()" class="p-6 space-y-4">
-            <!-- Form content preserved -->
             <div>
                 <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Fecha</label>
                 <input type="date" formControlName="date"
@@ -311,10 +400,53 @@
             <div class="pt-2">
                 <button type="submit" [disabled]="metricForm.invalid"
                     class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none transition-all disabled:opacity-50 disabled:shadow-none">
-                    Guardar Datos
+                    Guardar Datos Ads
                 </button>
             </div>
         </form>
+        } @else {
+        <form [formGroup]="socialForm" (ngSubmit)="saveSocialMetric()" class="p-6 space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Fecha</label>
+                <input type="date" formControlName="date"
+                    class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500/50">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Plataforma</label>
+                <select formControlName="platform"
+                    class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500/50">
+                    <option value="instagram">Instagram</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="google_business">Google My Business</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Seguidores</label>
+                    <input type="number" formControlName="followers" min="0"
+                        class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500/50">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Posts Publicados</label>
+                    <input type="number" formControlName="posts_count" min="0"
+                        class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500/50">
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Engagement Rate (%)</label>
+                <input type="number" formControlName="engagement_rate" min="0" max="100" step="0.01"
+                    class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-pink-500/50">
+            </div>
+            <div class="pt-2">
+                <button type="submit" [disabled]="socialForm.invalid"
+                    class="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white font-medium rounded-xl shadow-lg shadow-pink-200 dark:shadow-none transition-all disabled:opacity-50 disabled:shadow-none">
+                    Guardar Social Stats
+                </button>
+            </div>
+        </form>
+        }
     </div>
 </div>
 }
