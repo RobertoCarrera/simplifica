@@ -27,6 +27,18 @@ export interface SocialMetric {
     created_at?: string;
 }
 
+export interface ContentPost {
+    id?: string;
+    company_id: string;
+    title: string;
+    status: 'idea' | 'copy' | 'design' | 'review' | 'scheduled' | 'published';
+    platform: string;
+    scheduled_date?: string;
+    content_url?: string;
+    notes?: string;
+    created_at?: string;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -100,6 +112,9 @@ export class MarketingService {
     /**
      * Upsert a social snapshot
      */
+    /**
+     * Upsert a social snapshot
+     */
     async upsertSocialMetric(metric: Partial<SocialMetric> & { company_id: string, date: string, platform: string }): Promise<SocialMetric> {
         const { data, error } = await this.supabase
             .from('social_metrics')
@@ -109,5 +124,54 @@ export class MarketingService {
 
         if (error) throw error;
         return data as SocialMetric;
+    }
+
+    // --- Content Calendar ---
+
+    getContentPosts(companyId: string): Observable<ContentPost[]> {
+        return from(this.supabase
+            .from('content_posts')
+            .select('*')
+            .eq('company_id', companyId)
+            .order('scheduled_date', { ascending: true })
+        ).pipe(
+            map(res => (res.data || []) as ContentPost[]),
+            catchError(err => {
+                console.error('Error fetching content posts:', err);
+                return of([]);
+            })
+        );
+    }
+
+    async createContentPost(post: Partial<ContentPost>): Promise<ContentPost> {
+        const { data, error } = await this.supabase
+            .from('content_posts')
+            .insert(post)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data as ContentPost;
+    }
+
+    async updateContentPost(id: string, updates: Partial<ContentPost>): Promise<ContentPost> {
+        const { data, error } = await this.supabase
+            .from('content_posts')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data as ContentPost;
+    }
+
+    async deleteContentPost(id: string): Promise<void> {
+        const { error } = await this.supabase
+            .from('content_posts')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
     }
 }
