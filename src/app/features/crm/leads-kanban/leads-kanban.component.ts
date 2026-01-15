@@ -20,261 +20,176 @@ interface KanbanColumn {
   standalone: true,
   imports: [CommonModule, DragDropModule, LeadDetailModalComponent],
   template: `
-    <div class="kanban-board" [class.dark-mode]="themeService.currentTheme() === 'dark'">
-      <div class="kanban-column" *ngFor="let col of columns">
-        <div class="column-header" [ngClass]="col.colorClass">
-          <h3>{{ col.title }}</h3>
-          <span class="count">{{ col.items.length }}</span>
-        </div>
-        
-        <div 
-          cdkDropList 
-          [id]="col.id"
-          [cdkDropListData]="col.items"
-          [cdkDropListConnectedTo]="connectedLists"
-          class="lead-list" 
-          (cdkDropListDropped)="drop($event, col.id)">
+    <div class="h-full flex flex-col animate-fade-in" [class.dark]="themeService.currentTheme() === 'dark'">
+      
+      <!-- Board Container -->
+      <div class="flex-1 overflow-x-auto overflow-y-hidden" cdkDropListGroup>
+        <div class="flex h-full gap-6 pb-4 min-w-fit px-1">
           
-            <div class="lead-card" *ngFor="let lead of col.items" cdkDrag (dblclick)="openLead(lead)">
-            <div class="card-badges">
-                <span class="badge source" [attr.data-source]="lead.lead_source?.name || lead.source">{{ lead.lead_source?.name || formatSource(lead.source) }}</span>
-                <span class="date">{{ lead.created_at | date:'shortDate' }}</span>
+          @for (col of columns; track col.id) {
+          <div class="flex-shrink-0 w-80 flex flex-col bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50 shadow-sm transition-colors duration-300">
+            
+            <!-- Column Header -->
+            <div class="p-4 border-b border-slate-200/50 dark:border-slate-700/50 flex justify-between items-center bg-white/50 dark:bg-slate-800/50 rounded-t-xl backdrop-blur-sm sticky top-0 z-10">
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full" [ngClass]="getStatusDotColor(col.id)"></div>
+                <h3 class="font-bold text-sm uppercase text-slate-600 dark:text-slate-300 tracking-wide">{{ col.title }}</h3>
+              </div>
+              <span class="text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-medium">
+                {{ col.items.length }}
+              </span>
             </div>
             
-            <div class="card-title">
-                {{ lead.first_name }} {{ lead.last_name }}
-                <i class="fas fa-exclamation-triangle warning-icon" 
-                   *ngIf="isStagnant(lead)" 
-                   title="Sin actividad en > 7 días"></i>
-            </div>
-            
-            <div class="card-details" *ngIf="lead.interest">
-                <i class="fas fa-info-circle"></i> {{ lead.interest }}
-            </div>
-            
-            <div class="card-footer">
-                <span class="phone" *ngIf="lead.phone"><i class="fas fa-phone"></i></span>
-                <span class="email" *ngIf="lead.email"><i class="fas fa-envelope"></i></span>
+            <!-- Drop List -->
+            <div 
+              cdkDropList 
+              [cdkDropListData]="col.items"
+              class="flex-1 p-3 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent"
+              (cdkDropListDropped)="drop($event, col.id)">
+              
+              <!-- Lead Card -->
+               @for (lead of col.items; track lead.id) {
+              <div 
+                   cdkDrag 
+                   class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors duration-200 cursor-grab active:cursor-grabbing group relative"
+
+                   (dblclick)="openLead(lead)">
                 
-                <button class="btn-action delete" *ngIf="authService.userRole() === 'owner'" title="Eliminar" (click)="deleteLead(lead); $event.stopPropagation()">
-                   <i class="fas fa-trash"></i>
-                </button>
-                <button class="btn-action" title="Ver detalle" (click)="openLead(lead); $event.stopPropagation()"><i class="fas fa-arrow-right"></i></button>
+                <!-- Card Header: Source & Date -->
+                <div class="flex justify-between items-start mb-3">
+                  <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border"
+                        [ngClass]="getSourceBadgeClass(lead.lead_source?.name || lead.source)">
+                    <i [class]="getSourceIcon(lead.lead_source?.name || lead.source)" class="mr-1"></i>
+                    {{ lead.lead_source?.name || formatSource(lead.source) }}
+                  </span>
+                  <span class="text-[10px] text-slate-400 font-medium">
+                    {{ lead.created_at | date:'d MMM' }}
+                  </span>
+                </div>
+                
+                <!-- Card Title -->
+                <div class="mb-2">
+                  <h4 class="text-sm font-semibold text-slate-900 dark:text-white leading-tight flex items-center justify-between gap-2">
+                    <span class="line-clamp-1">{{ lead.first_name }} {{ lead.last_name }}</span>
+                    @if (isStagnant(lead)) {
+                    <i class="fas fa-exclamation-triangle text-amber-500 animate-pulse text-xs" 
+                       title="Sin actividad en > 7 días"></i>
+                    }
+                  </h4>
+                </div>
+                
+                <!-- Card Details -->
+                @if (lead.interest) {
+                <div class="mb-3">
+                   <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 bg-slate-50 dark:bg-slate-700/50 p-2 rounded-lg">
+                     <i class="fas fa-info-circle mr-1 opacity-70"></i> {{ lead.interest }}
+                   </p>
+                </div>
+                }
+                
+                <!-- Card Footer: Actions -->
+                <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-700/50 mt-1">
+                  <div class="flex gap-3 text-slate-400">
+                    @if (lead.phone) { <span title="Tiene teléfono"><i class="fas fa-phone text-xs"></i></span> }
+                    @if (lead.email) { <span title="Tiene email"><i class="fas fa-envelope text-xs"></i></span> }
+                  </div>
+                  
+                  <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    @if (authService.userRole() === 'owner') {
+                    <button 
+                            (click)="deleteLead(lead); $event.stopPropagation()"
+                            class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                            title="Eliminar">
+                        <i class="fas fa-trash text-xs"></i>
+                    </button>
+                    }
+                    <button (click)="openLead(lead); $event.stopPropagation()"
+                            class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                            title="Ver detalle">
+                        <i class="fas fa-arrow-right text-xs"></i>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+              }
+              <!-- End Lead Card -->
+
+              @if (col.items.length === 0) {
+              <div class="text-center py-8 text-slate-400 italic text-xs">
+                Sin leads en esta etapa
+              </div>
+              }
+
             </div>
           </div>
+          }
           
-           <div class="empty-state" *ngIf="col.items.length === 0">
-             <span class="placeholder">Sin leads</span>
-           </div>
         </div>
       </div>
     </div>
 
+    <!-- Modals -->
+    @if (selectedLeadId) {
     <app-lead-detail-modal 
-      *ngIf="selectedLeadId" 
       [leadId]="selectedLeadId" 
       (closeEvent)="selectedLeadId = null"
       (saveEvent)="onLeadSaved()">
     </app-lead-detail-modal>
+    }
   `,
   styles: [`
-    .kanban-board {
-      display: flex;
-      gap: 1.5rem;
-      height: 100%;
-      overflow-x: auto;
-      padding-bottom: 1rem;
+    /* Custom Scrollbar for columns */
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 4px;
     }
-    
-    .kanban-column {
-      flex: 1;
-      min-width: 300px;
-      max-width: 350px;
-      background: var(--bg-secondary, #f1f5f9);
-      border-radius: 0.75rem;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      
-      .dark-mode & {
-         background: #334155; /* Slightly lighter than card */
-         .column-header h3 { color: #f8fafc; }
-      }
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: transparent;
     }
-    
-    .column-header {
-      padding: 1rem;
-      border-bottom: 2px solid rgba(0,0,0,0.05);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      
-      h3 { margin: 0; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; }
-      .count { background: rgba(0,0,0,0.1); padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; }
-      
-      &.col-new { border-bottom-color: #3b82f6; h3 { color: #3b82f6; } }
-      &.col-contacted { border-bottom-color: #f59e0b; h3 { color: #f59e0b; } }
-      &.col-meeting { border-bottom-color: #8b5cf6; h3 { color: #8b5cf6; } }
-      &.col-won { border-bottom-color: #10b981; h3 { color: #10b981; } }
-      &.col-lost { border-bottom-color: #ef4444; h3 { color: #ef4444; } }
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 20px;
     }
-    
-    .lead-list {
-      padding: 1rem;
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      min-height: 100px; /* Ensure drop target exists */
+    .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+      background-color: #475569;
     }
-    
-    .lead-card {
-      background: var(--bg-card, #fff);
-      padding: 1rem;
-      border-radius: 0.5rem;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-      cursor: grab;
-      border: 1px solid transparent;
-      transition: all 0.2s;
-      
-      &:hover {
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-        transform: translateY(-2px);
-      }
-      
-      :host-context(.dark) & {
-         background: #0f172a;
-         border-color: #334155;
-         
-         .card-title { color: #f8fafc; }
-         .card-details { color: #cbd5e1; }
-         .card-badges .date { color: #94a3b8; }
-      }
-    }
-    
+
+    /* CDK Drag & Drop Styles specific overrides if needed */
     .cdk-drag-preview {
-      box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
-      border-radius: 0.5rem;
-      background: var(--bg-card, #fff);
-      
-      .dark-mode & {
-         background: #0f172a;
-         border: 1px solid #334155;
-      }
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      border-radius: 0.75rem;
+      background-color: white;
+      padding: 1rem;
+      border: 1px solid #e2e8f0;
+      width: 100%;
+      max-width: 320px;
+    }
+    
+    .dark .cdk-drag-preview {
+      background-color: #1e293b;
+      border-color: #334155;
+      color: white;
     }
     
     .cdk-drag-placeholder {
       opacity: 0.3;
       background: #e2e8f0;
       border: 2px dashed #94a3b8;
-      border-radius: 0.5rem;
-      
-      .dark-mode & {
-         background: rgba(255,255,255,0.05);
-         border-color: #475569;
-      }
+      border-radius: 0.75rem;
+    }
+    
+    .dark .cdk-drag-placeholder {
+      background: rgba(255,255,255,0.05);
+      border-color: #475569;
     }
     
     .cdk-drag-animating {
       transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
     }
     
-    .lead-list.cdk-drop-list-dragging .lead-card:not(.cdk-drag-placeholder) {
+    .cdk-drop-list-dragging .cdk-drag {
       transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
     }
-    
-    .card-badges {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 0.5rem;
-        font-size: 0.75rem;
-        color: var(--text-secondary);
-        
-        .badge {
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: #e2e8f0;
-            color: #475569;
-            font-weight: 500;
-            
-            &[data-source="web_form"] { background: #dbeafe; color: #1e40af; }
-            &[data-source="doctoralia"] { background: #dcfce7; color: #166534; }
-        }
-    }
-    
-    .card-title {
-        font-weight: 600;
-        font-size: 1rem;
-        margin-bottom: 0.25rem;
-        color: var(--text-primary);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-
-        .warning-icon {
-            color: #f59e0b; /* Amber 500 */
-            font-size: 0.9rem;
-            animation: pulse 2s infinite;
-        }
-    }
-    
-    .card-details {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        margin-bottom: 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-    
-    .card-footer {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        border-top: 1px solid var(--border-color, #e2e8f0);
-        padding-top: 0.5rem;
-        color: var(--text-secondary);
-        
-        .dark-mode & { 
-          border-top-color: #334155; 
-          color: #94a3b8;
-        }
-        
-        .btn-action {
-             margin-left: auto;
-             background: none;
-             border: none;
-             color: var(--color-primary-500);
-             cursor: pointer;
-             
-             &.delete {
-               margin-left: 0;
-               margin-right: auto;
-               color: var(--color-error, #ef4444);
-               opacity: 0.5;
-               &:hover { opacity: 1; }
-             }
-        }
-    }
-    
-    .empty-state {
-        text-align: center;
-        padding: 2rem 0;
-        color: var(--text-secondary);
-        font-style: italic;
-        font-size: 0.9rem;
-        opacity: 0.6;
-    }
-
-    @keyframes pulse {
-        0% { opacity: 0.6; }
-        50% { opacity: 1; transform: scale(1.1); }
-        100% { opacity: 0.6; }
-    }
-
   `]
 })
 export class LeadsKanbanComponent implements OnInit, OnChanges {
@@ -292,8 +207,6 @@ export class LeadsKanbanComponent implements OnInit, OnChanges {
     { id: 'won', title: 'Ganados', items: [], colorClass: 'col-won' },
     { id: 'lost', title: 'Perdidos', items: [], colorClass: 'col-lost' }
   ];
-
-  connectedLists: string[] = this.columns.map(c => c.id);
 
   selectedLeadId: string | null = null;
   supabase = inject(SupabaseClientService);
@@ -343,8 +256,9 @@ export class LeadsKanbanComponent implements OnInit, OnChanges {
       try {
         await this.leadService.updateLeadStatus(lead.id, newStatus);
       } catch (err) {
-        // Revert on error (optional complexity)
+        // Revert or show error
         console.error('Failed to update status', err);
+        this.toastService.error('Error', 'No se pudo actualizar el estado');
       }
     }
   }
@@ -355,9 +269,47 @@ export class LeadsKanbanComponent implements OnInit, OnChanges {
       'doctoralia': 'Doctoralia',
       'top_doctors': 'Top Doctors',
       'whatsapp': 'WhatsApp',
-      'phone': 'Teléfono'
+      'phone': 'Teléfono',
+      'instagram': 'Instagram',
+      'facebook': 'Facebook'
     };
     return map[source] || source;
+  }
+
+  getSourceIcon(source: string): string {
+    const map: any = {
+      'web_form': 'fas fa-globe',
+      'doctoralia': 'fas fa-user-md',
+      'top_doctors': 'fas fa-stethoscope',
+      'whatsapp': 'fab fa-whatsapp',
+      'phone': 'fas fa-phone',
+      'instagram': 'fab fa-instagram',
+      'facebook': 'fab fa-facebook'
+    };
+    return map[source] || 'fas fa-link';
+  }
+
+  getSourceBadgeClass(source: string): string {
+    const map: any = {
+      'web_form': 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+      'doctoralia': 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+      'top_doctors': 'bg-teal-50 text-teal-600 border-teal-100 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800',
+      'whatsapp': 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
+      'instagram': 'bg-pink-50 text-pink-600 border-pink-100 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-800',
+      'facebook': 'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800'
+    };
+    return map[source] || 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600';
+  }
+
+  getStatusDotColor(status: string): string {
+    const map: any = {
+      'new': 'bg-blue-500',
+      'contacted': 'bg-amber-500',
+      'meeting_scheduled': 'bg-purple-500',
+      'won': 'bg-emerald-500',
+      'lost': 'bg-red-500'
+    };
+    return map[status] || 'bg-slate-500';
   }
 
   isStagnant(lead: Lead): boolean {
@@ -383,7 +335,7 @@ export class LeadsKanbanComponent implements OnInit, OnChanges {
   async deleteLead(lead: Lead) {
     if (this.authService.userRole() !== 'owner') return;
 
-    if (!confirm(`¿Eliminar lead ${lead.first_name} ${lead.last_name}?`)) return;
+    if (!confirm(`¿Eliminar lead ${lead.first_name} ${lead.last_name}? DE ESTE MODO NO PODRAS RECUPERARLO. TE ACONSEJO MOVERLO A PERDIDO`)) return;
 
     try {
       await this.leadService.deleteLead(lead.id);

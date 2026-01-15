@@ -8,17 +8,18 @@ import { LeadDetailModalComponent } from '../lead-detail-modal/lead-detail-modal
   standalone: true,
   imports: [CommonModule, LeadsKanbanComponent, LeadDetailModalComponent],
   template: `
-    <div class="leads-page-container">
-      <header class="page-header">
-        <h1>Gestión de Leads</h1>
-        <div class="actions">
-           <button class="btn btn-primary" (click)="showModal = true">
-             <i class="fas fa-plus"></i> Nuevo Lead
+    <div class="h-full flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden">
+      <header class="flex justify-between items-center px-6 py-4 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+        <h1 class="text-xl font-bold text-slate-900 dark:text-white">Gestión de Leads</h1>
+        <div class="flex items-center gap-3">
+           <button (click)="showModal = true"
+                   class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-sm transition-colors flex items-center gap-2">
+             <i class="fas fa-plus"></i> <span class="hidden sm:inline">Nuevo Lead</span>
            </button>
         </div>
       </header>
       
-      <div class="content-area">
+      <div class="flex-1 overflow-hidden p-4 md:p-6">
         <app-leads-kanban [refreshTrigger]="refreshTrigger"></app-leads-kanban>
       </div>
 
@@ -30,54 +31,7 @@ import { LeadDetailModalComponent } from '../lead-detail-modal/lead-detail-modal
       </app-lead-detail-modal>
     </div>
   `,
-  styles: [`
-    .leads-page-container {
-      padding: 1.5rem;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      background: var(--bg-main, #f8fafc);
-    }
-    
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-      
-      h1 {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0;
-      }
-    }
-    
-    .content-area {
-      flex: 1;
-      overflow: hidden;
-    }
-    
-    .btn {
-      padding: 0.5rem 1rem;
-      border-radius: 0.5rem;
-      font-weight: 500;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      border: none;
-      
-      &.btn-primary {
-        background: var(--color-primary-600, #2563eb);
-        color: white;
-        
-        &:hover {
-          background: var(--color-primary-700, #1d4ed8);
-        }
-      }
-    }
-  `]
+  styles: []
 })
 export class LeadsPageComponent {
   showModal = false;
