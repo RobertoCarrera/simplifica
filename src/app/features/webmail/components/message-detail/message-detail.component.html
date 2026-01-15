@@ -3,7 +3,11 @@
         <div class="toolbar">
             <button class="btn-icon" (click)="goBack()" title="Volver"><i class="fas fa-arrow-left"></i></button>
             <div class="actions">
-                <button class="btn-icon" title="Responder" (click)="reply()"><i class="fas fa-reply"></i></button>
+                <button *ngIf="isDraft()" class="btn-primary-sm" (click)="resumeDraft()">
+                    <i class="fas fa-pen"></i> Seguir Editando
+                </button>
+                <button *ngIf="!isDraft()" class="btn-icon" title="Responder" (click)="reply()"><i
+                        class="fas fa-reply"></i></button>
                 <button class="btn-icon" title="Eliminar" (click)="delete()"><i class="fas fa-trash"></i></button>
             </div>
         </div>

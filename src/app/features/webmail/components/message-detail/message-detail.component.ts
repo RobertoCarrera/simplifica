@@ -177,16 +177,33 @@ export class MessageDetailComponent implements OnInit {
     }
   }
 
+  // Computed: Check if current thread is a Draft
+  isDraft = computed(() => {
+    const msg = this.latestMessage();
+    const account = this.store.currentAccount();
+    if (!msg || !account) return false;
+
+    // Check against store's folders to find "drafts" system role
+    const draftsFolder = this.store.folders().find(f => f.account_id === account.id && f.system_role === 'drafts');
+    return draftsFolder ? msg.folder_id === draftsFolder.id : false;
+  });
+
+  resumeDraft() {
+    const msg = this.latestMessage();
+    if (msg) {
+      this.router.navigate(['/webmail/composer'], { queryParams: { draftId: msg.id } });
+    }
+  }
+
+  // ... (existing helper methods)
+
   async delete() {
     if (!confirm('¿Estás seguro de que quieres eliminar este correo?')) return;
-
+    // ... (rest of delete)
     const msg = this.message();
     if (msg) {
       try {
         await this.operations.deleteMessages([msg.id]);
-        // Optimistic UI or wait for store update?
-        // Store should update if it listens to real changes, or we might need to refresh folder.
-        // For now, just go back.
         this.location.back();
       } catch (error) {
         console.error('Error deleting message:', error);

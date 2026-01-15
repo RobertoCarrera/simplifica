@@ -5,6 +5,7 @@ import { MailStoreService } from '../../services/mail-store.service';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { MailFolder } from '../../../../core/interfaces/webmail.interface';
 
+
 @Component({
   selector: 'app-message-list',
   standalone: true,
@@ -25,6 +26,7 @@ export class MessageListComponent implements OnInit {
 
   // Selection Logic
   selectedThreadIds = signal<Set<string>>(new Set());
+  lastSelectedId: string | null = null; // Track last clicked for Shift+Select
 
   constructor() {
     effect(() => {
@@ -42,6 +44,7 @@ export class MessageListComponent implements OnInit {
       this.loadMessagesForPath(path);
       // Clear selection on route change
       this.selectedThreadIds.set(new Set());
+      this.lastSelectedId = null;
     });
   }
 
@@ -59,15 +62,38 @@ export class MessageListComponent implements OnInit {
 
   // --- Selection Methods ---
 
-  toggleSelection(event: Event, threadId: string) {
-    event.stopPropagation(); // Prevent row click
-    const current = new Set(this.selectedThreadIds());
-    if (current.has(threadId)) {
-      current.delete(threadId);
+  toggleSelection(event: any, threadId: string) {
+    event.stopPropagation();
+
+    const threads = this.store.threads();
+    const currentSet = new Set(this.selectedThreadIds());
+
+    // Shift + Click Range Selection
+    if (event.shiftKey && this.lastSelectedId && threads.some(t => t.thread_id === this.lastSelectedId)) {
+      const lastIndex = threads.findIndex(t => t.thread_id === this.lastSelectedId);
+      const currentIndex = threads.findIndex(t => t.thread_id === threadId);
+
+      if (lastIndex !== -1 && currentIndex !== -1) {
+        const start = Math.min(lastIndex, currentIndex);
+        const end = Math.max(lastIndex, currentIndex);
+
+        // Select everything in range
+        for (let i = start; i <= end; i++) {
+          currentSet.add(threads[i].thread_id);
+        }
+      }
     } else {
-      current.add(threadId);
+      // Normal Click
+      if (currentSet.has(threadId)) {
+        currentSet.delete(threadId);
+        this.lastSelectedId = null; // Reset last selected on deselect? Or keep?
+      } else {
+        currentSet.add(threadId);
+        this.lastSelectedId = threadId;
+      }
     }
-    this.selectedThreadIds.set(current);
+
+    this.selectedThreadIds.set(currentSet);
   }
 
   toggleSelectAll(event: any) {
@@ -77,6 +103,7 @@ export class MessageListComponent implements OnInit {
       this.selectedThreadIds.set(new Set(allIds));
     } else {
       this.selectedThreadIds.set(new Set());
+      this.lastSelectedId = null;
     }
   }
 
@@ -112,6 +139,7 @@ export class MessageListComponent implements OnInit {
         await this.operations.bulkTrashThreads(ids, systemRole || 'user', account.id);
 
         this.selectedThreadIds.set(new Set());
+        this.lastSelectedId = null;
         if (folder) this.store.loadMessages(folder);
 
       } catch (err) {
@@ -134,6 +162,7 @@ export class MessageListComponent implements OnInit {
       const folder = folders.find(f => f.path.toLowerCase() === this.currentFolderPath.toLowerCase() || f.system_role === this.currentFolderPath.toLowerCase());
 
       this.selectedThreadIds.set(new Set());
+      this.lastSelectedId = null;
       if (folder) this.store.loadMessages(folder);
 
     } catch (err) {
