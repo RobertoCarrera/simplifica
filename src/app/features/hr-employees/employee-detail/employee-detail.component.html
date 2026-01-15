@@ -29,7 +29,7 @@
     </div>
 
     <!-- Navigation Tabs -->
-    <div class="flex p-1 mb-8 bg-slate-100 dark:bg-slate-800/50 rounded-xl w-fit">
+    <div class="flex flex-wrap gap-2 p-1 mb-8 bg-slate-100 dark:bg-slate-800/50 rounded-xl w-fit">
         <button (click)="activeTab.set('profile')"
             class="px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2"
             [ngClass]="activeTab() === 'profile' 
@@ -52,6 +52,15 @@
                 {{ documents().length }}
             </span>
         </button>
+
+        <button (click)="activeTab.set('commissions')"
+            class="px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2"
+            [ngClass]="activeTab() === 'commissions' 
+                ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-slate-200 dark:ring-slate-600' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'">
+            <i class="fas fa-percent text-lg"></i>
+            <span>Comisiones</span>
+        </button>
         }
     </div>
 
@@ -61,7 +70,7 @@
         <!-- Left Column: Form/Content -->
         <div class="lg:col-span-2 space-y-6">
 
-            <!-- PROFILE FORM -->
+            <!-- PROFILE TAB -->
             @if (activeTab() === 'profile') {
             <form [formGroup]="form" (ngSubmit)="save()" class="space-y-6 animate-fade-in">
 
@@ -126,8 +135,7 @@
                                     </div>
                                 </div>
                                 <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                    {{ form.get('is_active')?.value ? 'Activo (Puede acceder)' : 'Inactivo (Sin acceso)'
-                                    }}
+                                    {{ form.get('is_active')?.value ? 'Activo' : 'Inactivo' }}
                                 </span>
                             </label>
                         </div>
@@ -203,6 +211,41 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Section: Access Control (New) -->
+                @if (isEditing()) {
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div
+                        class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-3">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <h3 class="font-semibold text-slate-800 dark:text-white">Acceso al Sistema</h3>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 gap-6">
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-medium text-slate-900 dark:text-white">Módulo RRHH</h4>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Permite a esta empleada ver y
+                                        gestionar el módulo de Recursos Humanos.</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer" [checked]="hasHRAccess()"
+                                        (change)="toggleHRAccess(!hasHRAccess())" [disabled]="loadingModuleAccess()">
+                                    <div
+                                        class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600">
+                                    </div>
+                                </label>
+                            </div>
+                            @if(loadingModuleAccess()) { <p class="text-xs text-slate-400 mt-2"><i
+                                    class="fas fa-spinner fa-spin"></i> Actualizando acceso...</p> }
+                        </div>
+                    </div>
+                </div>
+                }
 
                 <!-- Actions -->
                 <div class="flex justify-end pt-4 gap-3 sticky bottom-6 z-10">
@@ -300,9 +343,112 @@
                 </div>
             </div>
             }
+
+            <!-- COMMISSIONS TAB (New) -->
+            @if (activeTab() === 'commissions') {
+            <div class="space-y-6 animate-fade-in">
+
+                <!-- Services List & Configuration -->
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div
+                        class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 flex items-center justify-center">
+                                <i class="fas fa-percentage"></i>
+                            </div>
+                            <h3 class="font-semibold text-slate-800 dark:text-white">Configuración de Comisiones</h3>
+                        </div>
+                    </div>
+
+                    <div class="p-6">
+                        <!-- Add New Commission Form -->
+                        <div
+                            class="mb-8 bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 border border-slate-200 dark:border-slate-600">
+                            <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Añadir Comisión
+                                Especial</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                <div class="col-span-2">
+                                    <label class="text-xs text-slate-500 mb-1 block">Servicio</label>
+                                    <select #serviceSelect
+                                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="">Seleccionar Servicio...</option>
+                                        @for(svc of availableServices(); track svc.id) {
+                                        <option [value]="svc.id">{{ svc.name }}</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-slate-500 mb-1 block">% Comisión</label>
+                                    <input #percentInput type="number" min="0" max="100" placeholder="0"
+                                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <button
+                                        (click)="addCommission(serviceSelect.value, percentInput.value, 0); serviceSelect.value=''; percentInput.value=''"
+                                        class="w-full px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center">
+                                        <i class="fas fa-plus mr-1"></i> Añadir
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Commissions Table -->
+                        @if (commissionsConfig().length > 0) {
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead
+                                    class="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-slate-700/50">
+                                    <tr>
+                                        <th class="px-4 py-3 rounded-l-lg">Servicio</th>
+                                        <th class="px-4 py-3 text-center">% Comisión</th>
+                                        <th class="px-4 py-3 text-center">Fijo (€)</th>
+                                        <th class="px-4 py-3 rounded-r-lg text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                                    @for(comm of commissionsConfig(); track comm.id) {
+                                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                                        <td class="px-4 py-3 font-medium text-slate-700 dark:text-slate-200">
+                                            {{ comm.service?.name || 'Servicio Eliminado' }}
+                                        </td>
+                                        <td class="px-4 py-3 text-center text-slate-600 dark:text-slate-300">
+                                            <span
+                                                class="px-2 py-1 rounded bg-pink-50 text-pink-600 dark:bg-pink-900/20 dark:text-pink-400 font-bold">
+                                                {{ comm.commission_percentage }}%
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-center text-slate-600 dark:text-slate-300">
+                                            {{ comm.fixed_amount || 0 }} €
+                                        </td>
+                                        <td class="px-4 py-3 text-right">
+                                            <button (click)="removeCommission(comm.id!)"
+                                                class="text-slate-400 hover:text-red-500 transition-colors p-1"
+                                                title="Eliminar Configuración">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        } @else {
+                        <div class="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
+                            <i class="fas fa-info-circle mb-2 block text-xl"></i>
+                            No hay comisiones especiales configuradas. <br>
+                            Se aplicará la tasa base del perfil ({{ form.get('commission_rate')?.value }}%).
+                        </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            }
+
         </div>
 
-        <!-- Right Column: Summary / Tips (Optional) -->
+        <!-- Right Column: Summary / Tips -->
         <div class="hidden lg:block space-y-6">
             <div
                 class="bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl p-6 border border-indigo-100 dark:border-indigo-800/30 sticky top-6">
@@ -317,12 +463,13 @@
                     </li>
                     <li class="flex items-start gap-2">
                         <i class="fas fa-check text-indigo-500 mt-1"></i>
-                        <span>Al "Inactivar" un perfil, la empleada perderá acceso inmediato al sistema.</span>
+                        <span>Al "Inactivar" un perfil, la empleada perderá acceso inmediato al sistema si está
+                            vinculado a un usuario.</span>
                     </li>
                     <li class="flex items-start gap-2">
                         <i class="fas fa-check text-indigo-500 mt-1"></i>
-                        <span>Los documentos subidos son <strong>privados</strong> y solo visibles por Administradores y
-                            la propia empleada.</span>
+                        <span>Las comisiones especiales sobreescriben la comisión base para servicios
+                            específicos.</span>
                     </li>
                 </ul>
             </div>

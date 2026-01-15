@@ -34,6 +34,25 @@ export interface EmployeeDocument {
     uploaded_at: string;
 }
 
+export interface Service {
+    id: string;
+    name: string;
+    description?: string;
+    base_price?: number;
+}
+
+export interface CommissionConfig {
+    id?: string; // Optional for new records
+    company_id: string;
+    employee_id: string;
+    service_id: string;
+    commission_percentage: number;
+    fixed_amount: number;
+    service?: Service; // Joined data
+    created_at?: string;
+    updated_at?: string;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -174,5 +193,77 @@ export class EmployeeService {
             .eq('id', id);
 
         if (dbError) throw dbError;
+    }
+
+    // --- Commissions & Services ---
+
+    /**
+     * Get all services for the current company (to handle dropdowns)
+     */
+    async getServices(companyId: string): Promise<Service[]> {
+        const { data, error } = await this.supabase
+            .from('services') // Assuming 'services' table exists
+            .select('id, name, description, base_price(price)') // Adjust mapping if needed
+            .eq('company_id', companyId) // Services usually linked to company
+            .order('name');
+
+        // Note: Check actual service table structure if 'base_price' is a relation or column
+        // For now assuming simple structure or adaptation
+
+        if (error) {
+            console.warn('Error fetching services (maybe table name differs?):', error);
+            return [];
+        }
+        return data.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            description: s.description,
+            base_price: typeof s.base_price === 'object' ? s.base_price?.price : s.base_price
+        })) as Service[];
+    }
+
+    /**
+     * Get commissions config for an employee
+     */
+    async getCommissionsConfig(employeeId: string): Promise<CommissionConfig[]> {
+        const { data, error } = await this.supabase
+            .from('employee_commissions_config')
+            .select(`
+                *,
+                service:service_id (id, name, base_price)
+            `)
+            .eq('employee_id', employeeId);
+
+        if (error) throw error;
+        return (data || []) as CommissionConfig[];
+    }
+
+    /**
+     * Upsert commission config
+     */
+    async upsertCommissionConfig(config: Partial<CommissionConfig>): Promise<CommissionConfig> {
+        // Remove 'service' joined object if present before upserting
+        const { service, ...upsertData } = config as any;
+
+        const { data, error } = await this.supabase
+            .from('employee_commissions_config')
+            .upsert(upsertData)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data as CommissionConfig;
+    }
+
+    /**
+   * Delete commission config
+   */
+    async deleteCommissionConfig(id: string): Promise<void> {
+        const { error } = await this.supabase
+            .from('employee_commissions_config')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
     }
 }
