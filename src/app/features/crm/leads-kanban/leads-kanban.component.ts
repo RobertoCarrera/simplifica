@@ -153,13 +153,26 @@ interface KanbanColumn {
     }
     
     .cdk-drag-preview {
-      box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2),
-                  0 8px 10px 1px rgba(0, 0, 0, 0.14),
-                  0 3px 14px 2px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+      border-radius: 0.5rem;
+      background: var(--bg-card, #fff);
+      
+      .dark-mode & {
+         background: #0f172a;
+         border: 1px solid #334155;
+      }
     }
     
     .cdk-drag-placeholder {
-      opacity: 0;
+      opacity: 0.3;
+      background: #e2e8f0;
+      border: 2px dashed #94a3b8;
+      border-radius: 0.5rem;
+      
+      .dark-mode & {
+         background: rgba(255,255,255,0.05);
+         border-color: #475569;
+      }
     }
     
     .cdk-drag-animating {
