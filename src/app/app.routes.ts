@@ -105,6 +105,19 @@ export const routes: Routes = [
     { path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'marketing', loadComponent: () => import('./features/marketing/page/marketing-page.component').then(m => m.MarketingPageComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'leads', loadComponent: () => import('./features/crm/leads-page/leads-page.component').then(m => m.LeadsPageComponent), canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloMarketing' } }, // Leads CRM
+
+    // HR Module
+    {
+        path: 'rrhh/empleadas',
+        loadComponent: () => import('./features/hr-employees/employee-list/employee-list.component').then(m => m.EmployeeListComponent),
+        canActivate: [AuthGuard, OwnerAdminGuard]
+    },
+    {
+        path: 'rrhh/empleadas/:id',
+        loadComponent: () => import('./features/hr-employees/employee-detail/employee-detail.component').then(m => m.EmployeeDetailComponent),
+        canActivate: [AuthGuard, OwnerAdminGuard]
+    },
+
     // Admin modules management (solo admin)
     { path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard] },
     // Client portal admin (owner/admin only)
