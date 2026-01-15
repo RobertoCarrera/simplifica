@@ -396,12 +396,34 @@ export class AdvancedSearchService {
 
   // Resaltar coincidencias en el texto
   highlightMatches(text: string, query: string): string {
+    if (!text) return '';
+
+    // 1. Escapar caracteres HTML para prevenir XSS desde el texto
+    const escapedText = this.escapeHtml(text);
+
     if (!this.options.highlightMatches || !query.trim()) {
-      return text;
+      return escapedText;
     }
 
-    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">$1</mark>');
+    // 2. Escapar query para coincidencia HTML (ya que comparamos contra escapedText)
+    const escapedQueryHtml = this.escapeHtml(query);
+
+    // 3. Escapar query para uso en Regex
+    const escapedQueryRegex = escapedQueryHtml.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    const regex = new RegExp(`(${escapedQueryRegex})`, 'gi');
+    return escapedText.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">$1</mark>');
+  }
+
+  private escapeHtml(text: string): string {
+    const map: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, (m) => map[m]);
   }
 
   // Estadísticas de búsqueda
