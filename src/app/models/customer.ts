@@ -33,6 +33,7 @@ export interface Customer {
   address?: string;
   activo?: boolean;
   fecha_nacimiento?: string;
+  birth_date?: string | Date;
   profesion?: string;
   empresa?: string;
 
