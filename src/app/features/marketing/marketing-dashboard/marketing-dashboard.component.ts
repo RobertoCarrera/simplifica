@@ -364,7 +364,10 @@ export class MarketingDashboardComponent implements OnInit {
             name: '',
             type: 'email',
             content: '',
-            target_audience: { inactive_days: 30 }
+            target_audience: { inactive_days: 30 },
+            trigger_type: 'manual',
+            is_active: false,
+            config: {}
         };
     }
 
@@ -379,14 +382,30 @@ export class MarketingDashboardComponent implements OnInit {
     }
 
     async checkAudience() {
+        // If automation, we can essentially use the same estimation logic for now
+        // Birthday automation -> birthday_month (current month approx) or just 1/12th of total?
+        // Inactivity automation -> inactive_days
+
         const companyId = this.authService.companyId();
         if (!companyId) return;
 
         this.loadingAudience.set(true);
         try {
             const criteria: any = {};
-            if (this.newCampaign.target_audience.inactive_days) criteria.inactive_days = this.newCampaign.target_audience.inactive_days;
-            if (this.newCampaign.target_audience.birthday_month) criteria.birthday_month = this.newCampaign.target_audience.birthday_month;
+
+            // Map automation config to audience criteria for estimation
+            if (this.newCampaign.trigger_type === 'inactivity') {
+                // Use the config days or default 30
+                const days = this.newCampaign.config?.days || 30;
+                criteria.inactive_days = days;
+            } else if (this.newCampaign.trigger_type === 'birthday') {
+                // For estimation, maybe show people having birthday THIS month?
+                criteria.birthday_month = new Date().getMonth() + 1;
+            } else {
+                // Manual
+                if (this.newCampaign.target_audience.inactive_days) criteria.inactive_days = this.newCampaign.target_audience.inactive_days;
+                if (this.newCampaign.target_audience.birthday_month) criteria.birthday_month = this.newCampaign.target_audience.birthday_month;
+            }
 
             const result = await this.campaignService.getEstimatedAudience(companyId, criteria);
             this.audienceSize.set(result.length);
@@ -403,14 +422,59 @@ export class MarketingDashboardComponent implements OnInit {
 
         try {
             this.newCampaign.company_id = companyId;
-            await this.campaignService.createCampaign(this.newCampaign);
-            this.toast.success('Campaña creada', 'La campaña se ha guardado correctamente');
+
+            // Prepare Automation Config
+            if (this.newCampaign.trigger_type === 'inactivity') {
+                // Ensure config has days
+                if (!this.newCampaign.config?.days) {
+                    this.newCampaign.config = { days: 30 };
+                }
+                // Only auto-activate on creation, or keep as is on edit
+                if (!this.newCampaign.id) {
+                    this.newCampaign.is_active = true;
+                }
+            } else if (this.newCampaign.trigger_type === 'birthday') {
+                if (!this.newCampaign.id) {
+                    this.newCampaign.is_active = true;
+                }
+                this.newCampaign.config = {};
+            } else {
+                if (!this.newCampaign.id) {
+                    this.newCampaign.is_active = false; // Manual
+                }
+            }
+
+            if (this.newCampaign.id) {
+                // Update
+                const { id, ...updates } = this.newCampaign;
+                await this.campaignService.updateCampaign(id, updates);
+                this.toast.success('Actualizado', 'La campaña se ha actualizado correctamente.');
+            } else {
+                // Create
+                await this.campaignService.createCampaign(this.newCampaign);
+                if (this.newCampaign.trigger_type !== 'manual') {
+                    this.toast.success('Automatización Activada', 'La campaña se ejecutará diariamente.');
+                } else {
+                    this.toast.success('Borrador creado', 'La campaña manual se ha guardado.');
+                }
+            }
+
             this.closeCampaignModal();
             this.loadCampaigns(companyId);
         } catch (e) {
             console.error(e);
             this.toast.error('Error', 'No se pudo guardar la campaña');
         }
+    }
+
+    editCampaign(campaign: Campaign) {
+        // deep copy to avoid mutating the list until saved
+        this.newCampaign = JSON.parse(JSON.stringify(campaign));
+        // Ensure config is not null
+        if (!this.newCampaign.config) this.newCampaign.config = {};
+
+        this.checkAudience();
+        this.showCampaignModal.set(true);
     }
 
     async sendCampaign(campaign: Campaign) {
@@ -433,6 +497,25 @@ export class MarketingDashboardComponent implements OnInit {
             this.toast.error('Error', 'Falló el envío de la campaña');
         } finally {
             this.isSendingCampaign.set(false);
+        }
+    }
+
+    async toggleCampaignStatus(campaign: Campaign) {
+        // Toggle Active/Inactive for automation
+        if (!campaign.id) return;
+        const newStatus = !campaign.is_active;
+        try {
+            // We need an update method in service. For now assuming createCampaign handles upsert or we add update.
+            // Wait, service only has createCampaign (insert). We need updateCampaign.
+            // I'll add a quick direct call or update service. Service has updateContentPost but not updateCampaign?
+            // Checking service... Service has insert. I need to add update.
+            // For now, I will add updateCampaign to service in next step or use direct supabase client if I could.
+            // Let's assume I will add it.
+            await this.campaignService.updateCampaign(campaign.id, { is_active: newStatus });
+            campaign.is_active = newStatus;
+            this.toast.success('Actualizado', `Campaña ${newStatus ? 'activada' : 'pausada'}`);
+        } catch (e) {
+            this.toast.error('Error', 'No se pudo actualizar');
         }
     }
 

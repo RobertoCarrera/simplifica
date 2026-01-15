@@ -14,6 +14,10 @@ export interface Campaign {
         birthday_month?: number;
     };
     status?: 'draft' | 'scheduled' | 'sent';
+    sent_at?: string;
+    trigger_type?: 'manual' | 'birthday' | 'inactivity';
+    is_active?: boolean;
+    config?: any;
     created_at?: string;
 }
 
@@ -50,6 +54,18 @@ export class SupabaseMarketingService {
         const { data, error } = await this.supabase
             .from('marketing_campaigns')
             .insert(campaign)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    }
+
+    async updateCampaign(id: string, updates: Partial<Campaign>) {
+        const { data, error } = await this.supabase
+            .from('marketing_campaigns')
+            .update(updates)
+            .eq('id', id)
             .select()
             .single();
 
