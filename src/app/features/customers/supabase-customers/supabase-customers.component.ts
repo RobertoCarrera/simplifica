@@ -25,6 +25,7 @@ import { AiService } from '../../../services/ai.service';
 
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
+import { CustomerView, GdprBadgeConfig } from '../models/customer-view.model';
 
 @Component({
     selector: 'app-supabase-customers',
@@ -163,7 +164,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     });
 
     // Computed
-    filteredCustomers = computed(() => {
+    filteredCustomers = computed<CustomerView[]>(() => {
         let filtered = this.customers();
 
         // ✅ Filtrar clientes anonimizados (ocultarlos de la lista)
@@ -211,7 +212,35 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             return sortOrder === 'asc' ? result : -result;
         });
 
-        return filtered;
+        // Map to CustomerView to avoid function calls in template (Performance Optimization)
+        const portalKeys = this.portalAccessKeys();
+        const pendingRects = this.pendingRectifications();
+
+        return filtered.map(customer => {
+            // Calculate derived properties once per change
+            const initials = this.getCustomerInitials(customer);
+            const displayName = this.getDisplayName(customer);
+            const avatarGradient = this.getAvatarGradient(customer);
+            const isComplete = completeness.get(customer.id) ?? false;
+            const formattedDate = this.formatDate(customer.created_at);
+            const hasPortalAccess = customer.id && customer.email ? portalKeys.has(`${customer.id}:${customer.email.toLowerCase()} `) : false;
+            const gdprBadge = this.getGdprBadgeConfig(customer);
+            const hasPendingRectification = customer.email ? pendingRects.has(customer.email) : false;
+            const attentionReasonsFormatted = this.formatAttentionReasons(customer);
+
+            return {
+                ...customer,
+                initials,
+                displayName,
+                avatarGradient,
+                isComplete,
+                formattedDate,
+                hasPortalAccess,
+                gdprBadge,
+                hasPendingRectification,
+                attentionReasonsFormatted
+            } as CustomerView;
+        });
     });
 
     // Completeness helpers for template

@@ -1,0 +1,3 @@
+## 2025-02-27 - View Model Pattern for Signal-Based Components
+**Learning:** Using `computed` signals to map data to a "View Model" (e.g., `Customer` -> `CustomerView`) is highly effective for performance. It allows pre-calculating derived properties (gradients, formatted dates, permissions) once per data change, rather than on every change detection cycle in the template. This replaces the need for pure pipes or memoization decorators in many cases.
+**Action:** When working with large lists in Angular Signals, prefer creating a specific InterfaceView extending the base model and a `computed` signal that maps the data, moving logic from template/methods to the mapping function.
