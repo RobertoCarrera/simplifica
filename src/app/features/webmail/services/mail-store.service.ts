@@ -17,6 +17,7 @@ export class MailStoreService {
   folderTree = computed(() => this.buildFolderTree(this.folders()));
 
   messages = signal<MailMessage[]>([]);
+  threads = signal<any[]>([]); // MailThread[] but avoiding circular dependency issues if any
   selectedMessage = signal<MailMessage | null>(null);
 
   isLoading = signal<boolean>(false);
@@ -85,22 +86,30 @@ export class MailStoreService {
     return roots;
   }
 
-  // --- Message Logic ---
-  async loadMessages(folder: MailFolder) {
+  // --- Message/Thread Logic ---
+  async loadThreads(folder: MailFolder) {
     if (!this.currentAccount()) return;
 
     this.isLoading.set(true);
-    const { data, error } = await this.supabase
-      .from('mail_messages')
-      .select('*')
-      .eq('account_id', this.currentAccount()!.id)
-      .eq('folder_id', folder.id)
-      .order('received_at', { ascending: false });
+    try {
+      const { data, error } = await this.supabase
+        .rpc('f_mail_get_threads', {
+          p_account_id: this.currentAccount()!.id,
+          p_folder_name: folder.id // Passing ID directly as our RPC supports checking ID too
+        });
 
-    if (error) console.error('Error fetching messages:', error);
-    if (data) this.messages.set(data);
+      if (error) throw error;
+      this.threads.set(data || []);
+    } catch (e) {
+      console.error('Error fetching threads:', e);
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
 
-    this.isLoading.set(false);
+  // kept for backward compatibility if needed, using threads now
+  async loadMessages(folder: MailFolder) {
+    this.loadThreads(folder);
   }
 
   async getMessage(id: string) {

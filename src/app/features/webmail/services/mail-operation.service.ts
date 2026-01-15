@@ -103,7 +103,8 @@ export class MailOperationService {
       body: message.body_text,
       html_body: message.body_html,
       attachments: (message as any).attachments, // Pass attachments
-      trackingId: (message as any).trackingId // Pass tracking ID
+      trackingId: (message as any).trackingId, // Pass tracking ID
+      threadId: (message as any).thread_id // Pass thread ID
     };
 
     console.log('📧 Sending email payload:', payload);
@@ -180,4 +181,78 @@ export class MailOperationService {
       return data.id;
     }
   }
+
+  // THREADS SUPPORT
+  async getThreads(folderName: string, accountId: string, limit = 20, offset = 0) {
+    const { data, error } = await this.supabase
+      .rpc('f_mail_get_threads', {
+        p_account_id: accountId,
+        p_folder_name: folderName,
+        p_limit: limit,
+        p_offset: offset
+      });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getThreadMessages(threadId: string): Promise<MailMessage[]> {
+    const { data, error } = await this.supabase
+      .rpc('f_mail_get_thread_messages', {
+        p_thread_id: threadId
+      });
+
+    if (error) throw error;
+    return data || [];
+  }
+  // BULK THREAD OPERATIONS
+  async bulkMarkReadThreads(threadIds: string[], isRead: boolean) {
+    const { error } = await this.supabase
+      .from('mail_messages')
+      .update({ is_read: isRead })
+      .in('thread_id', threadIds);
+
+    if (error) throw error;
+  }
+
+  async bulkTrashThreads(threadIds: string[], currentFolderSystemRole: string, accountId: string) {
+    // 1. Find Trash folder for this account
+    const { data: trashFolder, error: trashError } = await this.supabase
+      .from('mail_folders')
+      .select('id')
+      .eq('account_id', accountId)
+      .eq('system_role', 'trash')
+      .single();
+
+    if (trashError || !trashFolder) throw new Error('Trash folder not found');
+
+    if (currentFolderSystemRole === 'trash') {
+      // HARD DELETE
+      // first delete messages
+      const { error: msgError } = await this.supabase
+        .from('mail_messages')
+        .delete()
+        .in('thread_id', threadIds);
+
+      if (msgError) throw msgError;
+
+      // then delete threads
+      const { error: threadError } = await this.supabase
+        .from('mail_threads')
+        .delete()
+        .in('id', threadIds);
+
+      if (threadError) throw threadError;
+
+    } else {
+      // MOVE TO TRASH
+      const { error } = await this.supabase
+        .from('mail_messages')
+        .update({ folder_id: trashFolder.id })
+        .in('thread_id', threadIds);
+
+      if (error) throw error;
+    }
+  }
 }
+

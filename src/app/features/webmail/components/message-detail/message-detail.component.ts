@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule, Location } from '@angular/common'; // Import Location
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -21,7 +21,18 @@ export class MessageDetailComponent implements OnInit {
   private location = inject(Location);
   private operations = inject(MailOperationService);
 
-  message = this.store.selectedMessage;
+  // State for Thread
+  threadMessages = signal<MailMessage[]>([]);
+  loadingThread = signal(false);
+
+  // Computed: Get the LATEST message for the main display logic (subject, etc)
+  latestMessage = computed(() => {
+    const thread = this.threadMessages();
+    return thread.length > 0 ? thread[thread.length - 1] : null;
+  });
+
+  // Replaces 'message' signal
+  message = this.latestMessage;
 
   // Inline Reply State
   showReplyBox = signal(false);
@@ -31,25 +42,15 @@ export class MessageDetailComponent implements OnInit {
   // Quoted Text State
   showQuotedText = signal(false);
 
-  // Processed Body (Signal or Method)
-  get bodyParts() {
-    const msg = this.message();
+  // Processed Body (Signal or Method) - Now handles specific message
+  getBodyParts(msg: MailMessage) {
     if (!msg) return { main: '', quoted: '' };
 
     const body = msg.body_html || msg.body_text || '';
 
-    // Simple Heuristic for Outlook/Spanish headers
-    // Looks for "De: ... Enviado: ... Para: ..." block
-    // Or "From: ... Sent: ... To: ..."
-    // This is brittle but works for the user's specific case shown in screenshots.
-    // Regex explanation:
-    // (?:<hr[^>]*>\s*)? -> Optional HR
-    // (?:De|From):\s+.* -> "De: Name"
-    // (?:<br>\s*|\n\s*) -> Newline
-    // (?:Enviado|Sent): -> "Enviado: Date"
-
+    // Logic for separating quoted text...
+    // Reuse existing regex logic
     const quoteRegex = /(?:<hr[^>]*>\s*)?(?:<div>\s*)?(?:<b>)?(?:De|From):(?:<\/b>)?\s+.*(?:<br>|\n)\s*(?:<b>)?(?:Enviado|Sent|Date):(?:<\/b>)?/i;
-
     const match = body.match(quoteRegex);
 
     if (match && match.index !== undefined && match.index > 0) {
@@ -58,8 +59,13 @@ export class MessageDetailComponent implements OnInit {
         quoted: body.substring(match.index)
       };
     }
-
     return { main: body, quoted: '' };
+  }
+
+  // Helper alias for template if needed
+  get bodyParts() {
+    // Fallback for single message view compatibility if we used property access
+    return this.getBodyParts(this.message()!);
   }
 
   getSenderName(from: any): string {
@@ -83,10 +89,38 @@ export class MessageDetailComponent implements OnInit {
     this.route.paramMap.subscribe(params => {
       const id = params.get('threadId');
       if (id) {
-        this.store.getMessage(id);
-        this.showQuotedText.set(false); // Reset on new message
+        this.loadThread(id);
       }
     });
+  }
+
+  async loadThread(threadId: string) {
+    this.loadingThread.set(true);
+    try {
+      // If we navigated via "Thread ID", we fetch all messages with that thread_id
+      // Note: If the route pass MESSAGE ID, we might need to resolve thread_id first.
+      // BUT: Our router link passes `msg.id` as `threadId` path param currently in MessageList.
+      // Wait. `MessageList` passes `msg.id`.
+      // If the item in MessageList is a THREAD, it passes `thread.thread_id`.
+      // If it was a message, it passed message id.
+      // The new MessageList passes `thread.thread_id`.
+      // So `id` here is indeed a THREAD ID.
+
+      const messages = await this.operations.getThreadMessages(threadId);
+      this.threadMessages.set(messages);
+      this.showQuotedText.set(false);
+
+      // Scroll to bottom
+      setTimeout(() => {
+        const container = document.querySelector('.detail-container'); // Need to target scroll container
+        if (container) container.scrollTop = container.scrollHeight;
+      }, 100);
+
+    } catch (e) {
+      console.error('Error loading thread', e);
+    } finally {
+      this.loadingThread.set(false);
+    }
   }
 
   goBack() {
@@ -128,7 +162,7 @@ export class MessageDetailComponent implements OnInit {
         to: toAddress,
         subject: subject,
         body_text: this.replyContent,
-        // thread_id: msg.thread_id // FUTURE: Link to thread
+        thread_id: msg.thread_id
       }, account);
 
       // Success

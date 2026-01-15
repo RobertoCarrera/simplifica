@@ -32,7 +32,8 @@ serve(async (req) => {
             body, // text body
             html_body, // optional html
             attachments, // optional array of { filename, content (base64), contentType }
-            trackingId // optional tracking ID for pixel
+            trackingId, // optional tracking ID for pixel
+            threadId // optional thread ID
         } = await req.json();
 
         if (!accountId || !fromEmail || !to || !subject) {
@@ -123,7 +124,7 @@ serve(async (req) => {
         params.append('RawMessage.Data', btoa(rawMessage));
         // Source is required even for Raw
         params.append('Source', fromName ? `"${fromName}" <${fromEmail}>` : fromEmail);
-        to.forEach((t: any, i: numer) => {
+        to.forEach((t: any, i: number) => {
             params.append(`Destinations.member.${i + 1}`, t.email);
         });
 
@@ -145,7 +146,41 @@ serve(async (req) => {
         const { data: folder } = await supabaseClient.from('mail_folders').select('id').eq('account_id', accountId).eq('system_role', 'sent').single();
 
         if (folder) {
-            const { data: msgMsg } = await supabaseClient.from('mail_messages').insert({
+            // Ensure Thread ID exists
+            let finalThreadId = threadId;
+
+            if (!finalThreadId) {
+                // Create a new Thread
+                const { data: threadData, error: threadError } = await supabaseClient
+                    .from('mail_threads')
+                    .insert({
+                        account_id: accountId,
+                        subject: subject,
+                        snippet: body.substring(0, 100),
+                        last_message_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single();
+
+                if (!threadError && threadData) {
+                    finalThreadId = threadData.id;
+                } else {
+                    console.error('Error creating thread:', threadError);
+                    // Fallback: Proceed without thread_id (will be orphaned, but message saved)
+                    // Or throw? Better to save message.
+                }
+            } else {
+                // Update existing thread's last_message_at
+                await supabaseClient
+                    .from('mail_threads')
+                    .update({
+                        last_message_at: new Date().toISOString(),
+                        snippet: body.substring(0, 100)
+                    })
+                    .eq('id', finalThreadId);
+            }
+
+            const messageData: any = {
                 account_id: accountId,
                 folder_id: folder.id,
                 from: { name: fromName, email: fromEmail },
@@ -159,8 +194,11 @@ serve(async (req) => {
                 metadata: {
                     tracking_id: trackingId,
                     has_attachments: (attachments && attachments.length > 0)
-                }
-            }).select().single();
+                },
+                thread_id: finalThreadId
+            };
+
+            const { data: msgMsg } = await supabaseClient.from('mail_messages').insert(messageData).select().single();
 
             // If attachments, save them to mail_attachments table? 
             // We usually don't store the file content in DB, but in storage.
