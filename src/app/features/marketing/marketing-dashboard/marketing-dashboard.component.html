@@ -1,35 +1,7 @@
-<div class="container mx-auto p-4 lg:p-8 max-w-7xl animate-fade-in">
+<div class="container mx-auto p-4 pt-0 max-w-7xl animate-fade-in">
 
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-            <h1 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
-                Marketing & Analytics
-            </h1>
-            <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
-                Visión 360 del rendimiento de tus campañas
-            </p>
-        </div>
-
-        <div class="flex items-center gap-3">
-            @if(activeTab() === 'campaigns') {
-            <button (click)="openCampaignModal()"
-                class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-lg shadow-indigo-200 dark:shadow-none hover:shadow-indigo-300 transition-all flex items-center gap-2">
-                <i class="fas fa-bullhorn"></i> <span class="hidden sm:inline">Nueva Campaña</span>
-            </button>
-            } @else if(activeTab() === 'calendar') {
-            <button (click)="openPostModal()"
-                class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-lg shadow-indigo-200 dark:shadow-none hover:shadow-indigo-300 transition-all flex items-center gap-2">
-                <i class="fas fa-plus"></i> <span class="hidden sm:inline">Nuevo Post</span>
-            </button>
-            } @else {
-            <button (click)="openAddModal()"
-                class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-lg shadow-indigo-200 dark:shadow-none hover:shadow-indigo-300 transition-all flex items-center gap-2">
-                <i class="fas fa-plus"></i> <span class="hidden sm:inline">Nueva Métrica</span>
-            </button>
-            }
-        </div>
-    </div>
+    <!-- Header removed, buttons moved to tabs -->
+    <div class="mb-4"></div>
 
     <!-- KPI Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -135,6 +107,20 @@
             } @else {
             <!-- Performance Table -->
             @if (activeTab() === 'performance') {
+            <!-- Header / Actions -->
+            <div class="flex justify-between items-center mb-6 px-1">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 dark:text-white tracking-tight">Rendimiento de Canales
+                    </h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Analiza el retorno de inversión de tus
+                        campañas</p>
+                </div>
+                <button (click)="openAddModal()"
+                    class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-200 dark:shadow-none hover:shadow-indigo-300 transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+                    <i class="fas fa-plus"></i> Nueva Métrica
+                </button>
+            </div>
+
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
                     <thead
@@ -188,6 +174,19 @@
 
             <!-- Campaigns Tab -->
             @if (activeTab() === 'campaigns') {
+            <!-- Header / Actions -->
+            <div class="flex justify-between items-center mb-6 px-1">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 dark:text-white tracking-tight">Campañas &
+                        Automatizaciones</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Gestiona tus emails y mensajes masivos</p>
+                </div>
+                <button (click)="openCampaignModal()"
+                    class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium shadow-lg shadow-indigo-200 dark:shadow-none hover:shadow-indigo-300 transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+                    <i class="fas fa-bullhorn"></i> Nueva Campaña
+                </button>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 @for (campaign of campaigns(); track campaign.id) {
                 <div
@@ -304,6 +303,18 @@
 
             <!-- Social Table -->
             @if (activeTab() === 'social') {
+            <!-- Header / Actions -->
+            <div class="flex justify-between items-center mb-6 px-1">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 dark:text-white tracking-tight">Redes Sociales</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">Seguimiento de crecimiento y engagement</p>
+                </div>
+                <button (click)="openAddModal()"
+                    class="px-5 py-2.5 bg-pink-600 hover:bg-pink-700 text-white rounded-xl text-sm font-medium shadow-lg shadow-pink-200 dark:shadow-none hover:shadow-pink-300 transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+                    <i class="fas fa-plus"></i> Nueva Métrica
+                </button>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 <!-- Social KPIs -->
                 <div
@@ -382,59 +393,7 @@
 
             <!-- Calendar / Kanban Tab -->
             @if (activeTab() === 'calendar') {
-            <div class="flex overflow-x-auto gap-4 pb-4 h-[calc(100vh-350px)] min-h-[500px]" cdkDropListGroup>
-                @for (col of kanbanColumns; track col) {
-                <div
-                    class="flex-shrink-0 w-72 flex flex-col bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-slate-100 dark:border-slate-700/50">
-                    <!-- Column Header -->
-                    <div
-                        class="p-4 border-b border-slate-200/50 dark:border-slate-700/50 flex justify-between items-center bg-white/50 dark:bg-slate-800/50 rounded-t-xl backdrop-blur-sm">
-                        <h3 class="font-bold text-sm uppercase text-slate-600 dark:text-slate-300">{{ col }}</h3>
-                        <span
-                            class="text-xs bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-medium">
-                            {{ getPostsByStatus(col).length }}
-                        </span>
-                    </div>
-
-                    <!-- Drop List -->
-                    <div class="flex-1 p-3 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-600"
-                        cdkDropList [cdkDropListData]="getPostsByStatus(col)" (cdkDropListDropped)="drop($event, col)">
-
-                        @for (post of getPostsByStatus(col); track post.id) {
-                        <div class="bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group"
-                            cdkDrag>
-
-                            <!-- Post Card -->
-                            <div class="flex justify-between items-start mb-2">
-                                <span
-                                    class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
-                                    {{ post.platform }}
-                                </span>
-                                <!-- Options Menu (Simulated) -->
-                                <!-- <button class="text-slate-300 hover:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <i class="fas fa-ellipsis-h"></i>
-                                        </button> -->
-                            </div>
-
-                            <h4 class="text-sm font-semibold text-slate-900 dark:text-white mb-2 leading-tight">{{
-                                post.title }}</h4>
-
-                            @if(post.notes) {
-                            <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-3">{{ post.notes }}</p>
-                            }
-
-                            <div
-                                class="flex items-center gap-2 text-[10px] text-slate-400 border-t border-slate-100 dark:border-slate-700/50 pt-3 mt-1">
-                                <i class="far fa-calendar-alt"></i>
-                                {{ post.scheduled_date | date:'mediumDate' }}
-                            </div>
-
-                        </div>
-                        }
-                    </div>
-                </div>
-                }
-            </div>
+            <app-content-calendar class="block h-[calc(100vh-350px)] min-h-[500px]"></app-content-calendar>
             }
             }
         </div>
@@ -723,63 +682,6 @@
                 {{ newCampaign.trigger_type === 'manual' ? 'Guardar Borrador' : 'Activar Automatización' }}
             </button>
         </div>
-    </div>
-</div>
-}
-
-<!-- Modal: New Post -->
-@if (showPostModal()) {
-<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-    <div
-        class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden transform scale-100 transition-all">
-        <div
-            class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
-            <h3 class="font-bold text-lg text-slate-900 dark:text-white">Nuevo Post</h3>
-            <button (click)="showPostModal.set(false)"
-                class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-
-        <form [formGroup]="postForm" (ngSubmit)="savePost()" class="p-6 space-y-4">
-            <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Título / Idea</label>
-                <input type="text" formControlName="title" placeholder="Ej: Reel sobre beneficios del yoga"
-                    class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Plataforma</label>
-                    <select formControlName="platform"
-                        class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
-                        <option value="instagram">Instagram</option>
-                        <option value="tiktok">TikTok</option>
-                        <option value="blog">Blog</option>
-                        <option value="newsletter">Newsletter</option>
-                        <option value="linkedin">LinkedIn</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Fecha Programada</label>
-                    <input type="date" formControlName="scheduled_date"
-                        class="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50">
-                </div>
-            </div>
-
-            <div>
-                <label class="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Notas</label>
-                <textarea formControlName="notes" rows="3" placeholder="Detalles del copy, hashtags, enlaces..."
-                    class="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 font-sans"></textarea>
-            </div>
-
-            <div class="pt-2">
-                <button type="submit" [disabled]="postForm.invalid"
-                    class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none transition-all disabled:opacity-50 disabled:shadow-none">
-                    Crear Post
-                </button>
-            </div>
-        </form>
     </div>
 </div>
 }

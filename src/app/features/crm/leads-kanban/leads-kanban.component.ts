@@ -39,6 +39,7 @@ export class LeadsKanbanComponent implements OnInit, OnChanges {
   ];
 
   selectedLeadId: string | null = null;
+  showLeadModal = false; // New flag for modal visibility
   supabase = inject(SupabaseClientService);
 
   async ngOnInit() {
@@ -155,10 +156,21 @@ export class LeadsKanbanComponent implements OnInit, OnChanges {
 
   openLead(lead: Lead) {
     this.selectedLeadId = lead.id;
+    this.showLeadModal = true;
+  }
+
+  openNewLeadModal() {
+    this.selectedLeadId = null;
+    this.showLeadModal = true;
+  }
+
+  closeLeadModal() {
+    this.showLeadModal = false;
+    this.selectedLeadId = null;
   }
 
   onLeadSaved() {
-    this.selectedLeadId = null;
+    this.closeLeadModal();
     this.loadLeads();
   }
 
