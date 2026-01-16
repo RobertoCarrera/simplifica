@@ -195,6 +195,12 @@ export const routes: Routes = [
     { path: 'pago/:token/completado', component: PaymentSuccessComponent },
     { path: 'pago/:token/cancelado', component: PaymentCancelledComponent },
 
+    // Public Booking Widget (NO AUTH REQUIRED)
+    {
+        path: 'portal/book/:companyId',
+        loadComponent: () => import('./features/public/booking-widget/booking-widget.component').then(m => m.BookingWidgetComponent)
+    },
+
     // Public Privacy Policy
     {
         path: 'privacy-policy',
