@@ -13,6 +13,10 @@ if (environment.production) {
 }
 import { appConfig } from './app/app.config';
 import { AppComponent } from './app/app.component';
+import { configureSecurity } from './app/core/utils/security.config';
+
+// Initialize global security configurations (DOMPurify hooks, etc.)
+configureSecurity();
 
 bootstrapApplication(AppComponent, appConfig)
   .catch((err) => console.error(err));
