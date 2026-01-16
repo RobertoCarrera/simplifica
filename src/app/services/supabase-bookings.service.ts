@@ -392,13 +392,14 @@ export class SupabaseBookingsService {
 
         // Sync to Google Calendar
         if (data.google_event_id) {
+            console.log(`[Sync] Updating Google Event: ${data.google_event_id}`);
             try {
                 const bookingWithService = {
                     ...data,
                     service_name: data.service?.name,
                 };
 
-                await this.supabase.functions.invoke('google-calendar', {
+                const { data: googleData, error: googleError } = await this.supabase.functions.invoke('google-calendar', {
                     body: {
                         action: 'update_event',
                         companyId: data.company_id,
@@ -406,8 +407,46 @@ export class SupabaseBookingsService {
                         booking: bookingWithService
                     }
                 });
+
+                if (googleError) {
+                    console.error('[Sync] Google Calendar Update Function Error:', googleError);
+                    // Optional: Notify user of partial failure but don't block
+                } else {
+                    console.log('[Sync] Google Calendar Update Success:', googleData);
+                }
             } catch (e) {
-                console.warn('Google Calendar Update Failed:', e);
+                console.error('[Sync] Google Calendar Update Exception:', e);
+            }
+        } else {
+            console.warn('[Sync] No google_event_id found. Attempting to creating new Google Event to re-sync...');
+            try {
+                const bookingWithService = {
+                    ...data,
+                    service_name: data.service?.name,
+                };
+
+                const { data: googleData, error: googleError } = await this.supabase.functions.invoke('google-calendar', {
+                    body: {
+                        action: 'create_event',
+                        companyId: data.company_id,
+                        booking: bookingWithService
+                    }
+                });
+
+                if (googleError) {
+                    console.error('[Sync] Auto-create failed (Function Error):', googleError);
+                } else if (googleData?.google_event_id) {
+                    console.log('[Sync] Auto-create Success. Linking ID:', googleData.google_event_id);
+                    // Update DB with new ID
+                    await this.supabase
+                        .from('bookings')
+                        .update({ google_event_id: googleData.google_event_id })
+                        .eq('id', id);
+
+                    data.google_event_id = googleData.google_event_id; // Update local reference
+                }
+            } catch (e) {
+                console.error('[Sync] Auto-create Exception:', e);
             }
         }
 

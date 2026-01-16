@@ -673,6 +673,33 @@ export class CalendarComponent implements OnInit {
     this.eventClick.emit({ event: calendarEvent, nativeEvent: event });
   }
 
+  onEventContextMenu(event: MouseEvent, calendarEvent: CalendarEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.selectedEvent = calendarEvent;
+
+    // Position relative to viewport
+    this.contextMenuPosition = {
+      x: event.clientX,
+      y: event.clientY
+    };
+
+    this.contextMenuVisible = true;
+  }
+
+  closeContextMenu() {
+    this.contextMenuVisible = false;
+    this.selectedEvent = null;
+  }
+
+  onMenuAction(item: MenuAction) {
+    if (this.selectedEvent) {
+      this.eventAction.emit({ action: item.action, event: this.selectedEvent });
+    }
+    this.closeContextMenu();
+  }
+
   getEventColor(event: CalendarEvent): string {
     if (this.colorMode === 'static') {
       return event.color || '#6366f1';
@@ -700,26 +727,7 @@ export class CalendarComponent implements OnInit {
     return event.color || '#6366f1';
   }
 
-  onEventContextMenu(event: MouseEvent, calendarEvent: CalendarEvent) {
-    event.preventDefault();
-    event.stopPropagation();
 
-    this.selectedEvent = calendarEvent;
-    this.contextMenuPosition = { x: event.clientX, y: event.clientY };
-    this.contextMenuVisible = true;
-  }
-
-  onMenuAction(action: MenuAction) {
-    if (this.selectedEvent) {
-      this.eventAction.emit({ action: action.action, event: this.selectedEvent });
-    }
-    this.closeContextMenu();
-  }
-
-  closeContextMenu() {
-    this.contextMenuVisible = false;
-    this.selectedEvent = null;
-  }
 
   // UPDATED METHODS FOR WEEK/DAY VIEW LOGIC
 
