@@ -360,7 +360,8 @@ export class CalendarPageComponent implements OnInit {
                         data.endTime
                     );
                     if (!resourceId) {
-                        this.toastService.warning('Atención', 'No se encontró recurso disponible. Se reservará sin recurso.');
+                        this.toastService.error('Sin Disponibilidad', 'No hay profesionales/recursos disponibles para este horario.');
+                        return;
                     }
                 }
 
@@ -484,6 +485,25 @@ export class CalendarPageComponent implements OnInit {
             // Optimistic update (optional)
 
             try {
+                // Check Conflicts FIRST
+                const targetProfessionalId = newResource || event.resourceId; // Check if we moved to another column
+
+                if (targetProfessionalId) {
+                    const conflict = await this.bookingsService.checkProfessionalConflict(
+                        companyId,
+                        targetProfessionalId,
+                        newStart,
+                        newEnd,
+                        event.id
+                    );
+
+                    if (conflict.hasConflict) {
+                        this.toastService.error('Conflicto detectado', conflict.reason || 'El recurso no está disponible.');
+                        this.loadBookings(); // Revert visual
+                        return;
+                    }
+                }
+
                 const updates: any = {
                     start_time: newStart.toISOString(),
                     end_time: newEnd.toISOString()
@@ -618,6 +638,24 @@ export class CalendarPageComponent implements OnInit {
 
         if (event.meta?.type === 'booking') {
             try {
+                // Check Conflicts
+                const targetProfessionalId = event.resourceId; // Same resource
+                if (targetProfessionalId) {
+                    const conflict = await this.bookingsService.checkProfessionalConflict(
+                        companyId,
+                        targetProfessionalId,
+                        event.start,
+                        newEnd,
+                        event.id
+                    );
+
+                    if (conflict.hasConflict) {
+                        this.toastService.error('Conflicto detectado', conflict.reason || 'El recurso no está disponible.');
+                        this.loadBookings(); // Revert
+                        return;
+                    }
+                }
+
                 await this.bookingsService.updateBooking(event.id, {
                     end_time: newEnd.toISOString()
                 });

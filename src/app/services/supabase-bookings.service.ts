@@ -579,6 +579,72 @@ export class SupabaseBookingsService {
         return count || 0;
     }
 
+    async checkProfessionalConflict(companyId: string, professionalId: string, startTime: Date, endTime: Date, excludeBookingId?: string): Promise<{ hasConflict: boolean, reason?: string }> {
+        const startStr = startTime.toISOString();
+        const endStr = endTime.toISOString();
+
+        // 1. Check Bookings Overlap
+        let query = this.supabase
+            .from('bookings')
+            .select('id')
+            .eq('company_id', companyId)
+            //.eq('professional_id', professionalId) // Check if professional_id is used or resource_id? 
+            // The schema seems to use professional_id on bookings for the staff member.
+            .eq('professional_id', professionalId)
+            .neq('status', 'cancelled')
+            .lt('start_time', endStr)
+            .gt('end_time', startStr);
+
+        if (excludeBookingId) {
+            query = query.neq('id', excludeBookingId);
+        }
+
+        const { data: bookings, error: bookError } = await query;
+        if (bookError) throw bookError;
+
+        if (bookings && bookings.length > 0) {
+            return { hasConflict: true, reason: 'Ya tiene otra cita en este horario.' };
+        }
+
+        // 2. Check Blocks (Availability Exceptions)
+        // Blocks might be assigned to a specific user (professional) OR be global?
+        // Usually exceptions have user_id.
+        const { data: blocks, error: blockError } = await this.supabase
+            .from('availability_exceptions')
+            .select('id, reason')
+            .eq('company_id', companyId)
+            .eq('user_id', professionalId) // Assuming professional_id matches user_id in exceptions
+            .lte('start_time', endStr)
+            .gte('end_time', startStr);
+
+        // Logic: Exception Start < End AND Exception End > Start (Standard Overlap)
+        // The query above .lte('start_time', endStr) && .gte('end_time', startStr) finds things that encompass the range?
+        // No, verifying overlap logic:
+        // Overlap if (BlockStart < ReqEnd) AND (BlockEnd > ReqStart)
+        // Supabase filter:
+        // .lt('start_time', endStr)
+        // .gt('end_time', startStr)
+        // Because if BlockStart >= ReqEnd, it's after. If BlockEnd <= ReqStart, it's before.
+        // So we want to find rows where NOT (Start >= ReqEnd OR End <= ReqStart)
+
+        let blockQuery = this.supabase
+            .from('availability_exceptions')
+            .select('id, reason')
+            .eq('company_id', companyId)
+            .or(`user_id.eq.${professionalId},user_id.is.null`) // Check user blocks or global blocks? assuming blocks are usually per user or null for company closed
+            .lt('start_time', endStr)
+            .gt('end_time', startStr);
+
+        const { data: foundBlocks, error: bErr } = await blockQuery;
+        if (bErr) throw bErr;
+
+        if (foundBlocks && foundBlocks.length > 0) {
+            return { hasConflict: true, reason: `Horario bloqueado: ${foundBlocks[0].reason || 'Cierre'}` };
+        }
+
+        return { hasConflict: false };
+    }
+
     // --- Audit/History ---
 
     getBookingHistory(bookingId: string): Observable<BookingHistory[]> {
