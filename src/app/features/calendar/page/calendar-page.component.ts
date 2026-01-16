@@ -365,6 +365,14 @@ export class CalendarPageComponent implements OnInit {
                     }
                 }
 
+                if (service) {
+                    const validation = this.bookingsService.validateBookingRules(service, data.startTime);
+                    if (!validation.valid) {
+                        this.toastService.error('No permitido', validation.error || 'No cumple reglas de reserva.');
+                        return;
+                    }
+                }
+
                 // Recurring Logic
                 if (data.recurrence && data.recurrence.type !== 'none' && data.recurrence.endDate) {
                     const bookingsToCheck = this.generateRecurringDates(data.startTime, data.endTime, data.recurrence.type, data.recurrence.endDate);
@@ -494,7 +502,8 @@ export class CalendarPageComponent implements OnInit {
                         targetProfessionalId,
                         newStart,
                         newEnd,
-                        event.id
+                        event.id,
+                        event.meta?.original?.service?.buffer_minutes || 0
                     );
 
                     if (conflict.hasConflict) {
@@ -646,7 +655,8 @@ export class CalendarPageComponent implements OnInit {
                         targetProfessionalId,
                         event.start,
                         newEnd,
-                        event.id
+                        event.id,
+                        event.meta?.original?.service?.buffer_minutes || 0
                     );
 
                     if (conflict.hasConflict) {
