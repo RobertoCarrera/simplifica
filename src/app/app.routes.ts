@@ -117,6 +117,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/hr-employees/employee-detail/employee-detail.component').then(m => m.EmployeeDetailComponent),
         canActivate: [AuthGuard, OwnerAdminGuard]
     },
+    {
+        path: 'rrhh/mis-comisiones',
+        loadComponent: () => import('./features/hr-employees/my-commissions/my-commissions.component').then(m => m.MyCommissionsComponent),
+        canActivate: [StaffGuard]
+    },
 
     // Admin modules management (solo admin)
     { path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard] },

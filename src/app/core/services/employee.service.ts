@@ -203,22 +203,19 @@ export class EmployeeService {
     async getServices(companyId: string): Promise<Service[]> {
         const { data, error } = await this.supabase
             .from('services') // Assuming 'services' table exists
-            .select('id, name, description, base_price(price)') // Adjust mapping if needed
+            .select('id, name, description, base_price') // Adjusted mapping
             .eq('company_id', companyId) // Services usually linked to company
             .order('name');
 
-        // Note: Check actual service table structure if 'base_price' is a relation or column
-        // For now assuming simple structure or adaptation
-
         if (error) {
-            console.warn('Error fetching services (maybe table name differs?):', error);
+            console.warn('Error fetching services:', error);
             return [];
         }
         return data.map((s: any) => ({
             id: s.id,
             name: s.name,
             description: s.description,
-            base_price: typeof s.base_price === 'object' ? s.base_price?.price : s.base_price
+            base_price: s.base_price
         })) as Service[];
     }
 
