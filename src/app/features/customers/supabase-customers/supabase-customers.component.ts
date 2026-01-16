@@ -25,6 +25,7 @@ import { AiService } from '../../../services/ai.service';
 
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
+import { CustomerView } from '../models/customer-view.model';
 
 @Component({
     selector: 'app-supabase-customers',
@@ -211,7 +212,25 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             return sortOrder === 'asc' ? result : -result;
         });
 
-        return filtered;
+        // Map to ViewModel to avoid function calls in template
+        const portalKeys = this.portalAccessKeys();
+        const rectifications = this.pendingRectifications();
+
+        return filtered.map(c => {
+            const view: CustomerView = {
+                ...c,
+                displayName: this.getDisplayName(c),
+                initials: this.getCustomerInitials(c),
+                avatarGradient: this.getAvatarGradient(c),
+                formattedDate: this.formatDate(c.created_at),
+                isComplete: completeness.get(c.id) ?? false,
+                attentionReasons: this.formatAttentionReasons(c),
+                hasPortalAccess: portalKeys.has(`${c.id}:${(c.email || '').toLowerCase()} `),
+                gdprBadge: this.getGdprBadgeConfig(c),
+                hasPendingRectification: rectifications.has(c.email)
+            };
+            return view;
+        });
     });
 
     // Completeness helpers for template
