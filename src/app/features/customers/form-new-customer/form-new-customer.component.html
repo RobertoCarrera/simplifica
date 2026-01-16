@@ -9,8 +9,8 @@
                 <p class="modal-subtitle">{{ customer ? 'Modifica los datos del cliente' : 'Introduce los datos del
                     nuevo cliente' }}</p>
             </div>
-            <button (click)="closeForm()" class="modal-close">
-                <i class="fas fa-times"></i>
+            <button (click)="closeForm()" class="modal-close" aria-label="Cerrar formulario">
+                <i class="fas fa-times" aria-hidden="true"></i>
             </button>
         </div>
 
@@ -40,8 +40,8 @@
                             <div class="dropdown-header">
                                 <span>Seleccionar tipo de cliente</span>
                                 <button type="button" (click)="clientTypeDropdownOpen.set(false)"
-                                    class="dropdown-close">
-                                    <i class="fas fa-times"></i>
+                                    class="dropdown-close" aria-label="Cerrar menú">
+                                    <i class="fas fa-times" aria-hidden="true"></i>
                                 </button>
                             </div>
                             <div class="dropdown-options">
@@ -317,14 +317,19 @@
 
         <div class="modal-actions">
             <button type="button" (click)="closeForm()" class="btn-cancel" title="Cancelar">
-                <i class="fas fa-times"></i>
+                <i class="fas fa-times" aria-hidden="true"></i>
                 <span>Cancelar</span>
             </button>
             <button type="button" (click)="saveCustomer()" class="btn-save"
                 [disabled]="isLoading() || (formData.client_type === 'business' ? !(formData.business_name && formData.cif_nif && formData.email) : !(formData.name && formData.email))"
                 [title]="customer ? 'Actualizar' : 'Crear'">
-                <i class="fas fa-check"></i>
-                <span>{{ customer ? 'Actualizar' : 'Guardar Cliente' }}</span>
+                @if (isLoading()) {
+                    <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                    <span>Guardando...</span>
+                } @else {
+                    <i class="fas fa-check" aria-hidden="true"></i>
+                    <span>{{ customer ? 'Actualizar' : 'Guardar Cliente' }}</span>
+                }
             </button>
         </div>
     </div>
