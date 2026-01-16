@@ -8,10 +8,12 @@ import { ToastService } from '../../../services/toast.service';
 import { SupabaseMarketingService, Campaign } from '../../../services/supabase-marketing.service';
 import { CdkDragDrop, moveItemInArray, transferArrayItem, DragDropModule } from '@angular/cdk/drag-drop';
 
+import { ContentCalendarComponent } from '../content-calendar/content-calendar.component';
+
 @Component({
     selector: 'app-marketing-dashboard',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, FormsModule, DatePipe, DragDropModule],
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, DatePipe, DragDropModule, ContentCalendarComponent],
     templateUrl: './marketing-dashboard.component.html',
     styleUrls: ['./marketing-dashboard.component.scss']
 })
@@ -28,14 +30,14 @@ export class MarketingDashboardComponent implements OnInit {
     leadsMetrics = signal<{ source: string; count: number }[]>([]);
     socialMetrics = signal<SocialMetric[]>([]);
     campaigns = signal<Campaign[]>([]);
-    contentPosts = signal<ContentPost[]>([]); // New Signal for Kanban
+
 
     loading = signal(true);
 
     // UI State
     activeTab = signal<'performance' | 'social' | 'campaigns' | 'calendar'>('performance');
     showAddMetricModal = signal(false);
-    showPostModal = signal(false); // New modal state
+
 
     // Campaign UI State
     showCampaignModal = signal(false);
@@ -62,16 +64,7 @@ export class MarketingDashboardComponent implements OnInit {
         engagement_rate: [0, [Validators.min(0), Validators.max(100)]],
         posts_count: [0, [Validators.min(0)]]
     });
-    // Post Form
-    postForm = this.fb.group({
-        title: ['', Validators.required],
-        platform: ['instagram', Validators.required],
-        status: ['idea', Validators.required],
-        scheduled_date: [new Date().toISOString().split('T')[0]],
-        notes: ['']
-    });
 
-    kanbanColumns = ['idea', 'copy', 'design', 'review', 'scheduled', 'published'];
 
     // KPIs Computed
     totalSpend = computed(() => this.marketingMetrics().reduce((acc, m) => acc + (m.spend || 0), 0));
@@ -189,81 +182,10 @@ export class MarketingDashboardComponent implements OnInit {
         // Load Campaigns
         this.loadCampaigns(cid);
 
-        // Load Content Posts
-        this.loadContentPosts(cid);
+
     }
 
-    // --- Content Calendar Logic ---
 
-    async loadContentPosts(cid: string) {
-        this.marketingService.getContentPosts(cid).subscribe(posts => {
-            this.contentPosts.set(posts);
-        });
-    }
-
-    getPostsByStatus(status: string) {
-        return this.contentPosts().filter(p => p.status === status);
-    }
-
-    async drop(event: CdkDragDrop<ContentPost[]>, newStatus: string) {
-        if (event.previousContainer === event.container) {
-            moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
-        } else {
-            const item = event.previousContainer.data[event.previousIndex];
-            transferArrayItem(
-                event.previousContainer.data,
-                event.container.data,
-                event.previousIndex,
-                event.currentIndex,
-            );
-
-            // Optimistic update
-            const updatedPosts = this.contentPosts().map(p => {
-                if (p.id === item.id) return { ...p, status: newStatus as any };
-                return p;
-            });
-            this.contentPosts.set(updatedPosts);
-
-            // Backend Update
-            try {
-                if (item.id) {
-                    await this.marketingService.updateContentPost(item.id, { status: newStatus as any });
-                }
-            } catch (e) {
-                console.error(e);
-                this.toast.error('Error', 'No se pudo actualizar el estado');
-                this.loadData(); // Revert on error
-            }
-        }
-    }
-
-    openPostModal() {
-        this.postForm.reset({
-            status: 'idea',
-            scheduled_date: new Date().toISOString().split('T')[0],
-            platform: 'instagram'
-        });
-        this.showPostModal.set(true);
-    }
-
-    async savePost() {
-        if (this.postForm.invalid) return;
-        const cid = this.authService.companyId();
-        if (!cid) return;
-
-        try {
-            await this.marketingService.createContentPost({
-                company_id: cid,
-                ...this.postForm.value as any
-            });
-            this.toast.success('Creado', 'Post añadido al calendario');
-            this.showPostModal.set(false);
-            this.loadContentPosts(cid);
-        } catch (e) {
-            console.error(e);
-            this.toast.error('Error', 'No se pudo crear el post');
-        }
-    }
 
     async loadCampaigns(cid: string) {
         try {
