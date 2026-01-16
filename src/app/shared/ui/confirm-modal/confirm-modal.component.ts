@@ -21,7 +21,11 @@ export interface ConfirmModalOptions {
       <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
            (click)="onBackdropClick($event)">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-modal-appear"
-             (click)="$event.stopPropagation()">
+             (click)="$event.stopPropagation()"
+             role="alertdialog"
+             aria-modal="true"
+             aria-labelledby="confirm-modal-title"
+             aria-describedby="confirm-modal-desc">
           
           <!-- Header with Icon -->
           <div class="p-6 text-center">
@@ -45,10 +49,10 @@ export interface ConfirmModalOptions {
               </div>
             }
             
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            <h3 id="confirm-modal-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">
               {{ options().title }}
             </h3>
-            <p class="text-gray-600 dark:text-gray-400">
+            <p id="confirm-modal-desc" class="text-gray-600 dark:text-gray-400">
               {{ options().message }}
             </p>
           </div>
