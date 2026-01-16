@@ -2,7 +2,7 @@ import { Component, OnInit, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { MailStoreService } from '../../services/mail-store.service';
-import { MailFolder } from '../../../../core/interfaces/webmail.interface';
+import { MailFolder, MailMessage } from '../../../../core/interfaces/webmail.interface';
 
 @Component({
   selector: 'app-message-list',
@@ -57,5 +57,9 @@ export class MessageListComponent implements OnInit {
         // Just triggered on load?
       }
     }
+  }
+
+  trackByMessage(index: number, message: MailMessage): string {
+    return message.id;
   }
 }
