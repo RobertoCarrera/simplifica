@@ -25,6 +25,7 @@ import { AiService } from '../../../services/ai.service';
 
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
+import { CustomerView } from '../models/customer-view.model';
 
 @Component({
     selector: 'app-supabase-customers',
@@ -153,18 +154,58 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     // Removed legacy CSV mapping handlers
 
 
-    // Cache completeness status to avoid O(N log N) re-calculations during sort
-    completenessCache = computed(() => {
-        const cache = new Map<string, boolean>();
-        this.customers().forEach(c => {
-            cache.set(c.id, this.completenessSvc.computeCompleteness(c).complete);
-        });
-        return cache;
+    // Transform raw customers to view models (pre-calculation)
+    customersView = computed(() => {
+        return this.customers().map(c => this.toCustomerView(c));
     });
+
+    private toCustomerView(customer: Customer): CustomerView {
+        // Initials
+        const initials = `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
+
+        // Display Name
+        let displayName = customer.client_type === 'business'
+            ? (customer.business_name || customer.trade_name || customer.name)
+            : [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
+
+        if (!displayName || !displayName.trim()) {
+            displayName = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+        }
+
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(displayName.trim())) {
+            displayName = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+        }
+
+        if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(displayName)) {
+            displayName = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
+        }
+
+        // Gradient
+        const nameForHash = `${customer.name}${customer.apellidos}`;
+        let hash = 0;
+        for (let i = 0; i < nameForHash.length; i++) {
+            hash = nameForHash.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue = Math.abs(hash % 360);
+        const avatarGradient = `linear-gradient(135deg, hsl(${hue}, 70%, 80%) 0%, hsl(${hue + 45}, 70%, 80%) 100%)`;
+
+        // Completeness
+        const completeness = this.completenessSvc.computeCompleteness(customer);
+
+        return {
+            ...customer,
+            displayName,
+            initials,
+            avatarGradient,
+            isComplete: completeness.complete,
+            missingFields: completeness.missingFields
+        };
+    }
 
     // Computed
     filteredCustomers = computed(() => {
-        let filtered = this.customers();
+        let filtered = this.customersView();
 
         // ✅ Filtrar clientes anonimizados (ocultarlos de la lista)
         filtered = filtered.filter(customer => !this.isCustomerAnonymized(customer));
@@ -185,13 +226,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         const sortBy = this.sortBy();
         const sortOrder = this.sortOrder();
 
-        // Use cached completeness for sorting
-        const completeness = this.completenessCache();
-
         filtered.sort((a, b) => {
             // Priority Sort: Incomplete users FIRST
-            const aComplete = completeness.get(a.id) ?? false;
-            const bComplete = completeness.get(b.id) ?? false;
+            const aComplete = a.isComplete;
+            const bComplete = b.isComplete;
 
             if (aComplete !== bComplete) {
                 // If one is incomplete (false) and other is complete (true), incomplete comes first
@@ -213,15 +251,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
         return filtered;
     });
-
-    // Completeness helpers for template
-    isCustomerComplete(c: Customer): boolean {
-        return this.completenessCache().get(c.id) ?? false;
-    }
-
-    getCustomerMissingFields(c: Customer): string[] {
-        return this.completenessSvc.computeCompleteness(c).missingFields;
-    }
 
     onOnlyIncompleteChange(_val: any) {
         // Trigger recompute; searchTerm is a signal, resetting to same value is enough for change detection in computed
@@ -549,36 +578,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     }
 
     // Utility methods
-    getCustomerInitials(customer: Customer): string {
-        return `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
-    }
-
-    // Nombre amigable para mostrar en la card evitando UUIDs u otros identificadores técnicos
-    getDisplayName(customer: Customer): string {
-        if (!customer) return '';
-        // Preferir razón social si es empresa
-        let base = customer.client_type === 'business'
-            ? (customer.business_name || customer.trade_name || customer.name)
-            : [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
-
-        if (!base || !base.trim()) {
-            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
-        }
-
-        // Detectar patrón UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(base.trim())) {
-            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
-        }
-
-        // Evitar mostrar correos como nombre si accidentalmente se mapearon
-        if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(base)) {
-            base = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
-        }
-
-        return base;
-    }
-
     formatDate(date: string | Date | null | undefined): string {
         if (!date) return '';
 
@@ -856,17 +855,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     hasPendingRectification(customer: Customer): boolean {
         return this.pendingRectifications().has(customer.email);
-    }
-
-    // Avatar gradient generator - consistent hash-based color selection
-    getAvatarGradient(customer: Customer): string {
-        const name = `${customer.name}${customer.apellidos}`;
-        let hash = 0;
-        for (let i = 0; i < name.length; i++) {
-            hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const hue = Math.abs(hash % 360);
-        return `linear-gradient(135deg, hsl(${hue}, 70%, 80%) 0%, hsl(${hue + 45}, 70%, 80%) 100%)`;
     }
 
 
