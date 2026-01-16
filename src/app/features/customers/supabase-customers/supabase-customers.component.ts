@@ -7,6 +7,7 @@ import { TemplatePortal } from '@angular/cdk/portal';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { AnimationService } from '../../../services/animation.service';
 import { Customer, CreateCustomerDev } from '../../../models/customer';
+import { CustomerView } from '../models/customer-view.model';
 import { AddressesService } from '../../../services/addresses.service';
 import { LocalitiesService } from '../../../services/localities.service';
 import { Locality } from '../../../models/locality';
@@ -211,7 +212,93 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             return sortOrder === 'asc' ? result : -result;
         });
 
-        return filtered;
+        // Map to View Model to avoid function calls in template
+        const portalKeys = this.portalAccessKeys();
+        const pendingRects = this.pendingRectifications();
+        const gdprConfig = this.rgpdStatusConfig;
+        // completeness already defined above
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+        return filtered.map(customer => {
+            // Calculate derived values here
+            const initials = `${(customer.name || '').charAt(0)}${(customer.apellidos || '').charAt(0)}`.toUpperCase();
+
+            // getDisplayName logic
+            let displayName = customer.client_type === 'business'
+                ? (customer.business_name || customer.trade_name || customer.name)
+                : [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
+            if (!displayName || !displayName.trim()) {
+                displayName = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+            }
+
+            if (uuidRegex.test(displayName.trim())) {
+                displayName = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+            }
+            if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(displayName)) {
+                displayName = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
+            }
+
+            // getAvatarGradient logic
+            const nameForHash = `${customer.name || ''}${customer.apellidos || ''}`;
+            let hash = 0;
+            for (let i = 0; i < nameForHash.length; i++) {
+                hash = nameForHash.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const hue = Math.abs(hash % 360);
+            const avatarGradient = `linear-gradient(135deg, hsl(${hue}, 70%, 80%) 0%, hsl(${hue + 45}, 70%, 80%) 100%)`;
+
+            // isCustomerComplete logic
+            const isComplete = completeness.get(customer.id) ?? false;
+
+            // formatDate logic
+            let formattedDate = '';
+            if (customer.created_at) {
+                const d = typeof customer.created_at === 'string' ? new Date(customer.created_at) : customer.created_at;
+                if (!isNaN(d.getTime())) {
+                    formattedDate = d.toLocaleDateString('es-ES', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                }
+            }
+
+            // hasPortalAccess logic - NOTE: The key includes a trailing space as per original logic!
+            const portalAccess = customer.id && customer.email ? portalKeys.has(`${customer.id}:${customer.email.toLowerCase()} `) : false;
+
+            // getGdprBadgeConfig logic
+            const complianceStatus = customer.data_processing_consent ? 'compliant' : 'nonCompliant';
+            const gdprBadge = gdprConfig[complianceStatus];
+
+            // hasPendingRectification logic
+            const hasPendingRectification = customer.email ? pendingRects.has(customer.email) : false;
+
+            // formatAttentionReasons logic
+            const md = (customer.metadata) || {};
+            const reasons: string[] = Array.isArray(md.attention_reasons) ? md.attention_reasons : [];
+            let attentionReasons = 'Marcado para revisión';
+            if (reasons.length) {
+                const map: Record<string, string> = {
+                    email_missing_or_invalid: 'Email faltante o inválido',
+                    name_missing: 'Nombre faltante',
+                    surname_missing: 'Apellidos faltantes',
+                };
+                attentionReasons = 'Revisar: ' + reasons.map(r => map[r] || r).join(', ');
+            }
+
+            return {
+                ...customer,
+                initials,
+                displayName,
+                avatarGradient,
+                isComplete,
+                formattedDate,
+                portalAccess,
+                gdprBadge,
+                hasPendingRectification,
+                attentionReasons
+            } as CustomerView;
+        });
     });
 
     // Completeness helpers for template
