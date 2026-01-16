@@ -56,6 +56,8 @@ $$;
 DROP POLICY IF EXISTS "Authenticated users can insert notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Users can view notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Users can update notifications" ON public.notifications;
 
 -- Insert: Allow authenticated users (e.g. triggers/system usually bypass RLS if security definer, but for client-side inserts if any)
 CREATE POLICY "Authenticated users can insert notifications" ON public.notifications FOR INSERT TO authenticated WITH CHECK (true);
