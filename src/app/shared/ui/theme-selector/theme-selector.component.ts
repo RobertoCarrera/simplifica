@@ -19,8 +19,9 @@ import { AnimationService } from '../../../services/animation.service';
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Tema</h3>
         <div class="flex items-center space-x-4">
           <button
-            (click)="toggleTheme()"
+            (click)="setLightTheme()"
             [class.active]="currentTheme() === 'light'"
+            [attr.aria-pressed]="currentTheme() === 'light'"
             class="theme-toggle-btn"
             @buttonPress
             #lightBtn
@@ -37,6 +38,7 @@ import { AnimationService } from '../../../services/animation.service';
           <button
             (click)="setDarkTheme()"
             [class.active]="currentTheme() === 'dark'"
+            [attr.aria-pressed]="currentTheme() === 'dark'"
             class="theme-toggle-btn"
             @buttonPress
             #darkBtn
@@ -54,8 +56,8 @@ import { AnimationService } from '../../../services/animation.service';
 
       <!-- Selector de esquema de colores -->
       <div>
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Esquema de Colores</h3>
-        <div class="grid grid-cols-5 gap-3">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3" id="color-scheme-label">Esquema de Colores</h3>
+        <div class="grid grid-cols-5 gap-3" role="radiogroup" aria-labelledby="color-scheme-label">
           <button
             *ngFor="let color of colorSchemes"
             (click)="setColorScheme(color.value)"
@@ -63,7 +65,10 @@ import { AnimationService } from '../../../services/animation.service';
             [style.background-color]="color.preview"
             class="color-scheme-btn group"
             @cardHover
-            [title]="color.name">
+            [title]="color.name"
+            role="radio"
+            [attr.aria-checked]="currentColorScheme() === color.value"
+            [attr.aria-label]="color.name">
             <div class="color-preview" [style.background-color]="color.preview">
               <svg *ngIf="currentColorScheme() === color.value" 
                    class="w-4 h-4 text-white" 
@@ -141,6 +146,10 @@ export class ThemeSelectorComponent {
 
   toggleTheme(): void {
     this.themeService.toggleTheme();
+  }
+
+  setLightTheme(): void {
+    this.themeService.setTheme('light');
   }
 
   setDarkTheme(): void {
