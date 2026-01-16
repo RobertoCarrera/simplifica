@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnDestroy } from '@angular/core';
+import { Component, signal, computed, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 export interface ConfirmModalOptions {
@@ -21,6 +21,10 @@ export interface ConfirmModalOptions {
       <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
            (click)="onBackdropClick($event)">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-modal-appear"
+             role="alertdialog"
+             aria-modal="true"
+             aria-labelledby="modal-title"
+             aria-describedby="modal-desc"
              (click)="$event.stopPropagation()">
           
           <!-- Header with Icon -->
@@ -45,10 +49,10 @@ export interface ConfirmModalOptions {
               </div>
             }
             
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            <h3 id="modal-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">
               {{ options().title }}
             </h3>
-            <p class="text-gray-600 dark:text-gray-400">
+            <p id="modal-desc" class="text-gray-600 dark:text-gray-400">
               {{ options().message }}
             </p>
           </div>
@@ -64,6 +68,7 @@ export interface ConfirmModalOptions {
             }
             <button 
               (click)="confirm()"
+              autofocus
               class="flex-1 py-3.5 px-4 font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-white"
               [style.background]="getButtonGradient()">
               {{ options().confirmText || 'Confirmar' }}
@@ -116,6 +121,13 @@ export class ConfirmModalComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.toggleBodyScroll(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscKey() {
+    if (this.visible() && !this.options().preventCloseOnBackdrop) {
+      this.cancel();
+    }
   }
 
   getButtonGradient(): string {
