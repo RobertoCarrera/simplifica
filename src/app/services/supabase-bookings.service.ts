@@ -61,7 +61,13 @@ export interface Booking {
 
     // Joined fields
     booking_type?: { name: string; color?: string };
-    service?: { name: string };
+    service?: {
+        name: string;
+        duration_minutes?: number;
+        buffer_minutes?: number;
+        min_notice_minutes?: number;
+        max_lead_days?: number;
+    };
     resource?: { name: string };
     professional?: { user: { name: string } };
 }
@@ -244,7 +250,7 @@ export class SupabaseBookingsService {
                     *,
                     booking_type:booking_types(name),
                     resource:resources(name),
-                    service:services(name, form_schema),
+                    service:services(name, form_schema, buffer_minutes, min_notice_minutes, max_lead_days),
                     professional:professionals!professional_id(
                         user:users(name)
                     )
@@ -266,7 +272,7 @@ export class SupabaseBookingsService {
                 .from('bookings')
                 .select(`
                     *,
-                    service:services(name, duration_minutes),
+                    service:services(name, duration_minutes, buffer_minutes),
                     booking_type:booking_types(name)
                 `)
                 .eq('company_id', companyId)
@@ -286,7 +292,7 @@ export class SupabaseBookingsService {
             .insert(booking)
             .select(`
                 *,
-                service:services(name, duration_minutes)
+                service:services(name, duration_minutes, buffer_minutes)
             `)
             .single();
 
@@ -340,7 +346,7 @@ export class SupabaseBookingsService {
             .insert(bookings)
             .select(`
                 *,
-                service:services(name, duration_minutes)
+                service:services(name, duration_minutes, buffer_minutes)
             `);
 
         if (error) throw error;
@@ -384,7 +390,7 @@ export class SupabaseBookingsService {
             .eq('id', id)
             .select(`
                 *,
-                service:services(name, duration_minutes)
+                service:services(name, duration_minutes, buffer_minutes)
             `)
             .single();
 
@@ -579,21 +585,40 @@ export class SupabaseBookingsService {
         return count || 0;
     }
 
-    async checkProfessionalConflict(companyId: string, professionalId: string, startTime: Date, endTime: Date, excludeBookingId?: string): Promise<{ hasConflict: boolean, reason?: string }> {
+    /**
+     * Checks for conflicts including Buffer Times.
+     * @param newBufferMinutes Optional buffer coming AFTER this new appointment
+     */
+    async checkProfessionalConflict(
+        companyId: string,
+        professionalId: string,
+        startTime: Date,
+        endTime: Date,
+        excludeBookingId?: string,
+        newBufferMinutes: number = 0
+    ): Promise<{ hasConflict: boolean, reason?: string }> {
         const startStr = startTime.toISOString();
         const endStr = endTime.toISOString();
 
+        // Calculate the "Effective End Time" for the NEW booking (End + Buffer)
+        const newEffectiveEndMs = endTime.getTime() + (newBufferMinutes * 60000);
+        const newEffectiveEndStr = new Date(newEffectiveEndMs).toISOString();
+
         // 1. Check Bookings Overlap
+        // Range optimization: Look for bookings starting 2 hours before (max buffer assumption)
+        // to ensure we catch those with long buffers.
+        const searchStart = new Date(startTime.getTime() - 7200000).toISOString();
+        const searchEnd = newEffectiveEndStr;
+
         let query = this.supabase
             .from('bookings')
-            .select('id')
+            .select('id, start_time, end_time, service:services(buffer_minutes)')
             .eq('company_id', companyId)
-            //.eq('professional_id', professionalId) // Check if professional_id is used or resource_id? 
-            // The schema seems to use professional_id on bookings for the staff member.
+            //.eq('professional_id', professionalId) // Fix potentially ambiguous column if joined? No, simple select.
             .eq('professional_id', professionalId)
             .neq('status', 'cancelled')
-            .lt('start_time', endStr)
-            .gt('end_time', startStr);
+            .lt('start_time', searchEnd)
+            .gt('end_time', searchStart);
 
         if (excludeBookingId) {
             query = query.neq('id', excludeBookingId);
@@ -603,36 +628,30 @@ export class SupabaseBookingsService {
         if (bookError) throw bookError;
 
         if (bookings && bookings.length > 0) {
-            return { hasConflict: true, reason: 'Ya tiene otra cita en este horario.' };
+            for (const b of bookings) {
+                const bStart = new Date(b.start_time).getTime();
+                const bEnd = new Date(b.end_time).getTime();
+                // Safe access to buffer, defaulting to 0
+                const bBuffer = (b.service as any)?.buffer_minutes || 0;
+                const bEffectiveEnd = bEnd + (bBuffer * 60000);
+
+                // Overlap Check: (NewStart < ExistingEffectiveEnd) AND (NewEffectiveEnd > ExistingStart)
+                const newStartMs = startTime.getTime();
+
+                if (newStartMs < bEffectiveEnd && newEffectiveEndMs > bStart) {
+                    return { hasConflict: true, reason: 'Conflicto con cita existente (o su tiempo de preparación).' };
+                }
+            }
         }
 
         // 2. Check Blocks (Availability Exceptions)
-        // Blocks might be assigned to a specific user (professional) OR be global?
-        // Usually exceptions have user_id.
-        const { data: blocks, error: blockError } = await this.supabase
-            .from('availability_exceptions')
-            .select('id, reason')
-            .eq('company_id', companyId)
-            .eq('user_id', professionalId) // Assuming professional_id matches user_id in exceptions
-            .lte('start_time', endStr)
-            .gte('end_time', startStr);
-
-        // Logic: Exception Start < End AND Exception End > Start (Standard Overlap)
-        // The query above .lte('start_time', endStr) && .gte('end_time', startStr) finds things that encompass the range?
-        // No, verifying overlap logic:
-        // Overlap if (BlockStart < ReqEnd) AND (BlockEnd > ReqStart)
-        // Supabase filter:
-        // .lt('start_time', endStr)
-        // .gt('end_time', startStr)
-        // Because if BlockStart >= ReqEnd, it's after. If BlockEnd <= ReqStart, it's before.
-        // So we want to find rows where NOT (Start >= ReqEnd OR End <= ReqStart)
-
+        // Blocks are hard blocks (no buffer usually, or implicit).
         let blockQuery = this.supabase
             .from('availability_exceptions')
             .select('id, reason')
             .eq('company_id', companyId)
-            .or(`user_id.eq.${professionalId},user_id.is.null`) // Check user blocks or global blocks? assuming blocks are usually per user or null for company closed
-            .lt('start_time', endStr)
+            .or(`user_id.eq.${professionalId},user_id.is.null`)
+            .lt('start_time', newEffectiveEndStr)
             .gt('end_time', startStr);
 
         const { data: foundBlocks, error: bErr } = await blockQuery;
@@ -643,6 +662,42 @@ export class SupabaseBookingsService {
         }
 
         return { hasConflict: false };
+    }
+
+    /**
+     * Validates business rules like min notice, max lead time, availability window.
+     * Does NOT check slot availability (use checkProfessionalConflict for that).
+     */
+    validateBookingRules(service: any, startTime: Date): { valid: boolean, error?: string } {
+        const now = new Date();
+        const startMs = startTime.getTime();
+        const nowMs = now.getTime();
+
+        // 1. Min Notice
+        if (service.min_notice_minutes) {
+            const minNoticeMs = service.min_notice_minutes * 60000;
+            if (startMs < nowMs + minNoticeMs) {
+                return {
+                    valid: false,
+                    error: `Se requiere una antelación mínima de ${service.min_notice_minutes} minutos.`
+                };
+            }
+        }
+
+        // 2. Max Lead Time (Days)
+        if (service.max_lead_days) {
+            const maxLeadMs = service.max_lead_days * 24 * 60 * 60 * 1000;
+            // Allow until end of that day? Or exact time? Usually days means "date".
+            // Let's use strict timestamp for simplicity.
+            if (startMs > nowMs + maxLeadMs) {
+                return {
+                    valid: false,
+                    error: `No se puede reservar con más de ${service.max_lead_days} días de antelación.`
+                };
+            }
+        }
+
+        return { valid: true };
     }
 
     // --- Audit/History ---
