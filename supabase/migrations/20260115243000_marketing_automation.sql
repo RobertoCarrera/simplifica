@@ -43,6 +43,7 @@ BEGIN
             c.id, c.name, c.email
         FROM public.clients c
         WHERE c.company_id = p_company_id
+        AND c.marketing_consent = true
         AND EXTRACT(MONTH FROM c.birth_date) = EXTRACT(MONTH FROM CURRENT_DATE)
         AND EXTRACT(DAY FROM c.birth_date) = EXTRACT(DAY FROM CURRENT_DATE);
     
