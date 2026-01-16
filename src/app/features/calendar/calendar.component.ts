@@ -822,13 +822,20 @@ export class CalendarComponent implements OnInit {
     // 5. Vertical Time Change (Week/Day)
     if ((this.currentView().type === 'week' || this.currentView().type === 'day') && !targetData.isTimeline) {
       const deltaY = event.distance.y;
-      const deltaMins = Math.round((deltaY / this.hourHeight) * 60);
-      // Apply delta to original time
-      newStart.setHours(movedEvent.start.getHours(), movedEvent.start.getMinutes() + deltaMins);
-    }
+      // Calculate minutes based on pixel distance
+      const deltaMins = (deltaY / this.hourHeight) * 60;
 
-    // Only emit if changed
-    if (newStart.getTime() !== movedEvent.start.getTime() || newResource !== movedEvent.resourceId) {
+      // Apply delta
+      newStart.setMinutes(newStart.getMinutes() + deltaMins);
+
+      // Snap to grid
+      newStart = this.roundToNearest15Minutes(newStart);
+    }
+    // 6. Timeline Horizontal Drag could be added here if needed, currently assumes day/resource change only for simplicity or standard vertical drag
+    // If timeline supported horizontal time dragging, we'd use event.distance.x
+
+    // Only emit if changed (and ensure valid date)
+    if (!isNaN(newStart.getTime()) && (newStart.getTime() !== movedEvent.start.getTime() || newResource !== movedEvent.resourceId)) {
       this.eventDrop.emit({ event: movedEvent, newStart, newResource });
     }
   }
@@ -852,14 +859,30 @@ export class CalendarComponent implements OnInit {
 
   onResizeEnd(dragEvent: any, calendarEvent: CalendarEvent) {
     const deltaY = dragEvent.distance.y;
-    const deltaMins = Math.round((deltaY / this.hourHeight) * 60);
+    // Calculate exact minutes change
+    const deltaMins = (deltaY / this.hourHeight) * 60;
 
-    const newEnd = new Date(calendarEvent.end);
-    if (deltaMins !== 0) {
-      newEnd.setMinutes(newEnd.getMinutes() + deltaMins);
+    let newEnd = new Date(calendarEvent.end);
+    newEnd.setMinutes(newEnd.getMinutes() + deltaMins);
+
+    // Snap to grid
+    newEnd = this.roundToNearest15Minutes(newEnd);
+
+    // Minimum duration check (15 mins)
+    const start = new Date(calendarEvent.start);
+    if (newEnd.getTime() <= start.getTime()) {
+      newEnd = new Date(start.getTime() + 15 * 60000);
+    }
+
+    if (newEnd.getTime() !== calendarEvent.end.getTime()) {
       this.eventResize.emit({ event: calendarEvent, newEnd });
     }
     dragEvent.source.reset();
+  }
+
+  private roundToNearest15Minutes(date: Date): Date {
+    const ms = 1000 * 60 * 15;
+    return new Date(Math.round(date.getTime() / ms) * ms);
   }
 
   getTextColor(backgroundColor: string): string {
