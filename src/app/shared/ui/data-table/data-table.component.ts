@@ -32,6 +32,7 @@ import { AnimationService } from '../../../services/animation.service';
                 [(ngModel)]="searchTerm"
                 (input)="onSearch()"
                 placeholder="Buscar..."
+                aria-label="Buscar en la tabla"
                 class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
             </div>
           </div>
@@ -167,12 +168,14 @@ import { AnimationService } from '../../../services/animation.service';
               <button
                 (click)="previousPage()"
                 [disabled]="currentPage() === 1"
+                aria-label="Página anterior"
                 class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                 Anterior
               </button>
               <button
                 (click)="nextPage()"
                 [disabled]="currentPage() === totalPages()"
+                aria-label="Página siguiente"
                 class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                 Siguiente
               </button>
@@ -194,6 +197,7 @@ import { AnimationService } from '../../../services/animation.service';
                   <button
                     (click)="previousPage()"
                     [disabled]="currentPage() === 1"
+                    aria-label="Página anterior"
                     class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"/>
@@ -203,6 +207,8 @@ import { AnimationService } from '../../../services/animation.service';
                   @for (page of visiblePages(); track page) {
                     <button
                       (click)="goToPage(page)"
+                      [attr.aria-label]="'Ir a la página ' + page"
+                      [attr.aria-current]="page === currentPage() ? 'page' : null"
                       class="relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors"
                       [ngClass]="page === currentPage() 
                         ? 'z-10 bg-indigo-50 dark:bg-indigo-900 border-indigo-500 text-indigo-600 dark:text-indigo-400' 
@@ -214,6 +220,7 @@ import { AnimationService } from '../../../services/animation.service';
                   <button
                     (click)="nextPage()"
                     [disabled]="currentPage() === totalPages()"
+                    aria-label="Página siguiente"
                     class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
