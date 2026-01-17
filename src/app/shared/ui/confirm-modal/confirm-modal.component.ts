@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnDestroy } from '@angular/core';
+import { Component, signal, computed, OnDestroy, HostListener, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 export interface ConfirmModalOptions {
@@ -19,9 +19,14 @@ export interface ConfirmModalOptions {
   template: `
     @if (visible()) {
       <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-           (click)="onBackdropClick($event)">
+           (click)="onBackdropClick($event)"
+           role="presentation">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-modal-appear"
-             (click)="$event.stopPropagation()">
+             (click)="$event.stopPropagation()"
+             role="alertdialog"
+             aria-modal="true"
+             aria-labelledby="modal-title"
+             aria-describedby="modal-description">
           
           <!-- Header with Icon -->
           <div class="p-6 text-center">
@@ -33,7 +38,8 @@ export interface ConfirmModalOptions {
                      'bg-red-100 dark:bg-red-900/30': options().iconColor === 'red',
                      'bg-amber-100 dark:bg-amber-900/30': options().iconColor === 'amber',
                      'bg-purple-100 dark:bg-purple-900/30': options().iconColor === 'purple'
-                   }">
+                   }"
+                   aria-hidden="true">
                 <i [class]="options().icon + ' text-2xl'"
                    [ngClass]="{
                      'text-blue-600 dark:text-blue-400': options().iconColor === 'blue',
@@ -45,10 +51,10 @@ export interface ConfirmModalOptions {
               </div>
             }
             
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            <h3 id="modal-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">
               {{ options().title }}
             </h3>
-            <p class="text-gray-600 dark:text-gray-400">
+            <p id="modal-description" class="text-gray-600 dark:text-gray-400">
               {{ options().message }}
             </p>
           </div>
@@ -63,11 +69,12 @@ export interface ConfirmModalOptions {
               </button>
             }
             <button 
+              #confirmBtn
               (click)="confirm()"
               class="flex-1 py-3.5 px-4 font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-white"
               [style.background]="getButtonGradient()">
               {{ options().confirmText || 'Confirmar' }}
-              <i class="fas fa-arrow-right text-sm"></i>
+              <i class="fas fa-arrow-right text-sm" aria-hidden="true"></i>
             </button>
           </div>
         </div>
@@ -96,6 +103,8 @@ export interface ConfirmModalOptions {
   `]
 })
 export class ConfirmModalComponent implements OnDestroy {
+  @ViewChild('confirmBtn') confirmBtn!: ElementRef<HTMLButtonElement>;
+
   visible = signal(false);
   options = signal<ConfirmModalOptions>({
     title: 'Confirmar',
@@ -113,6 +122,13 @@ export class ConfirmModalComponent implements OnDestroy {
     amber: 'linear-gradient(to right, #f59e0b, #f97316)',
     purple: 'linear-gradient(to right, #a855f7, #8b5cf6)'
   };
+
+  @HostListener('document:keydown.escape', ['$event'])
+  handleEscape(event: KeyboardEvent) {
+    if (this.visible() && !this.options().preventCloseOnBackdrop) {
+      this.cancel();
+    }
+  }
 
   ngOnDestroy(): void {
     this.toggleBodyScroll(false);
@@ -144,6 +160,13 @@ export class ConfirmModalComponent implements OnDestroy {
     });
     this.visible.set(true);
     this.toggleBodyScroll(true);
+
+    // Focus confirm button after a small delay to allow rendering
+    setTimeout(() => {
+      if (this.confirmBtn?.nativeElement) {
+        this.confirmBtn.nativeElement.focus();
+      }
+    }, 50);
 
     return new Promise<boolean>((resolve) => {
       this.resolvePromise = resolve;
