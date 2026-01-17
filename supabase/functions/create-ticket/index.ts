@@ -546,6 +546,24 @@ serve(async (req: Request) => {
       }
     }
 
+    // [New] Handle device linkage if p_device_id is provided
+    if (body.p_device_id) {
+      try {
+        const { error: devErr } = await supabaseAdmin
+          .from('ticket_devices')
+          .insert({
+            ticket_id: inserted.id,
+            device_id: body.p_device_id
+          });
+        if (devErr) {
+          console.warn(`[${FUNCTION_NAME}] Failed to link device`, devErr);
+          // Do not fail, ticket created
+        }
+      } catch (devEx) {
+        console.warn(`[${FUNCTION_NAME}] Exception linking device`, devEx);
+      }
+    }
+
     return jsonResponse(200, { result: inserted }, origin || '*');
   } catch (e) {
     console.error(`[${FUNCTION_NAME}] Internal error`, e?.message || e);
