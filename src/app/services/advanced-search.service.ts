@@ -394,14 +394,42 @@ export class AdvancedSearchService {
     this.suggestions.set(suggestions.slice(0, 8));
   }
 
+  private escapeHtml(unsafe: string): string {
+    if (!unsafe) return '';
+    return unsafe
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   // Resaltar coincidencias en el texto
   highlightMatches(text: string, query: string): string {
+    if (!text) return '';
+
+    // Always escape to prevent XSS, even if no query
     if (!this.options.highlightMatches || !query.trim()) {
-      return text;
+      return this.escapeHtml(text);
     }
 
-    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">$1</mark>');
+    // Escape special regex characters in the query
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedQuery})`, 'gi');
+
+    // Split by the query (capturing group keeps the delimiters)
+    const parts = text.split(regex);
+
+    return parts.map(part => {
+      // If this part matches the query (case insensitive), wrap it in mark
+      // BUT escape it first to be safe
+      if (part.toLowerCase() === query.toLowerCase()) {
+        return `<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">${this.escapeHtml(part)}</mark>`;
+      } else {
+        // Otherwise just escape the text
+        return this.escapeHtml(part);
+      }
+    }).join('');
   }
 
   // Estadísticas de búsqueda
