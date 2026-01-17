@@ -10,6 +10,7 @@ import { TicketDetailComponent } from './features/tickets/detail/ticket-detail.c
 import { ConfiguracionComponent } from './features/settings/configuracion/configuracion.component';
 import { EmergencyLoginComponent } from './features/auth/emergency-login/emergency-login.component';
 import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard } from './guards/auth.guard';
+import { SuperAdminGuard } from './guards/super-admin.guard';
 import { StaffGuard } from './core/guards/staff.guard';
 import { ModuleGuard } from './guards/module.guard';
 import { ClientRoleGuard } from './guards/client-role.guard';
@@ -125,6 +126,14 @@ export const routes: Routes = [
 
     // Admin modules management (solo admin)
     { path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard] },
+
+    // Global Audit Logs (Super Admin Only)
+    {
+        path: 'admin/auditoria',
+        loadComponent: () => import('./features/admin/audit-logs/audit-logs.component').then(m => m.AuditLogsComponent),
+        canActivate: [AuthGuard, SuperAdminGuard]
+    },
+
     // Client portal admin (owner/admin only)
     { path: 'empresa/portal-clientes', component: ClientPortalAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     // Ruta de invitaciones eliminada (modelo de auto-registro activo)
