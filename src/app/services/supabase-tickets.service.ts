@@ -569,10 +569,11 @@ export class SupabaseTicketsService {
         priority: ticketData.priority || 'normal',
         due_date: ticketData.due_date || null,
         total_amount: ticketData.total_amount ?? null,
-        device_id: ticketData.device_id ?? null,
+        // device_id REMOVED: Column does not exist on tickets table
         created_at: nowIso,
         updated_at: nowIso
       };
+
       const { data: createdRow, error: createErr } = await this.supabase.getClient()
         .from('tickets')
         .insert(directTicket)
@@ -587,6 +588,13 @@ export class SupabaseTicketsService {
         }
         if (normalizedProducts.length > 0) {
           await this.replaceTicketProducts(created.id, String(ticketData.company_id || ''), normalizedProducts);
+        }
+        // Handle Device Link manually (ticket_devices)
+        if (ticketData.device_id) {
+          await this.supabase.getClient().from('ticket_devices').insert({
+            ticket_id: created.id,
+            device_id: ticketData.device_id
+          });
         }
       } catch (svcErr) {
         console.warn('Fallback path: failed to insert ticket relations after ticket creation', svcErr);
@@ -606,14 +614,15 @@ export class SupabaseTicketsService {
     return this.createTicketWithItems(ticketData, items, []);
   }
 
-  async updateTicket(ticketId: string, ticketData: Partial<Ticket>): Promise<Ticket> {
+  async updateTicket(ticketId: string, ticketData: Partial<Ticket> & { device_id?: string }): Promise<Ticket> {
     try {
       // Filter out non-column fields to prevent 400 errors
       // Explicitly allow only columns that exist in the 'tickets' table
       const allowedColumns = [
         'company_id', 'client_id', 'stage_id', 'title', 'description',
         'priority', 'due_date', 'estimated_hours', 'actual_hours',
-        'total_amount', 'assigned_to', 'is_opened', 'ticket_number', 'device_id'
+        'total_amount', 'assigned_to', 'is_opened', 'ticket_number'
+        // 'device_id' REMOVED: Column does not exist on tickets table
       ];
 
       const cleanData: any = {};
@@ -636,6 +645,22 @@ export class SupabaseTicketsService {
         .single();
 
       if (error) throw error;
+
+      // Handle Device Link manually (ticket_devices)
+      // If device_id is provided (even if null/empty to clear), we update the relation
+      if (ticketData.device_id !== undefined) {
+        const client = this.supabase.getClient();
+        // 1. Delete existing
+        await client.from('ticket_devices').delete().eq('ticket_id', ticketId);
+
+        // 2. Insert new if valid
+        if (ticketData.device_id) {
+          await client.from('ticket_devices').insert({
+            ticket_id: ticketId,
+            device_id: ticketData.device_id
+          });
+        }
+      }
 
       return this.transformTicketData(data);
     } catch (error) {
