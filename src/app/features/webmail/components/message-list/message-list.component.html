@@ -21,7 +21,7 @@
         </div>
 
         <div *ngIf="!loading() && messages().length > 0" class="messages">
-            <div *ngFor="let msg of messages()" class="message-item" [class.unread]="!msg.is_read"
+            <div *ngFor="let msg of messages(); trackBy: trackByMessage" class="message-item" [class.unread]="!msg.is_read"
                 [routerLink]="['../thread', msg.id]">
                 <!-- Checkbox removed by user request -->
                 <!-- <div class="checkbox">
