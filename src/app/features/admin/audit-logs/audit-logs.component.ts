@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, inject, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuditService, AuditLog } from '../../../services/audit.service';
@@ -161,6 +161,7 @@ import { JsonPipe } from '@angular/common';
 })
 export class AuditLogsComponent implements OnInit {
   private auditService = inject(AuditService);
+  private zone = inject(NgZone);
 
   logs = signal<AuditLog[]>([]);
   loading = signal(false);
@@ -174,8 +175,26 @@ export class AuditLogsComponent implements OnInit {
 
   selectedLog = signal<AuditLog | null>(null);
 
+  subscription: any;
+
   ngOnInit() {
     this.loadLogs();
+    this.setupRealtimeSubscription();
+  }
+
+  ngOnDestroy() {
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+    }
+  }
+
+  setupRealtimeSubscription() {
+    this.subscription = this.auditService.subscribeToLogs((newLog) => {
+      // Run inside Angular Zone to ensure Signal update triggers view refresh
+      this.zone.run(() => {
+        this.logs.update(current => [newLog, ...current]);
+      });
+    });
   }
 
   async loadLogs() {

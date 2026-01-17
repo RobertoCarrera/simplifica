@@ -90,4 +90,18 @@ export class AuditService {
             console.error('Audit logging exception:', e);
         }
     }
+
+    subscribeToLogs(callback: (log: AuditLog) => void) {
+        return this.supabase.db
+            .channel('audit_logs_realtime')
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'audit_logs' },
+                (payload: any) => {
+                    const newLog = payload.new as AuditLog;
+                    callback(newLog);
+                }
+            )
+            .subscribe();
+    }
 }
