@@ -2,6 +2,14 @@ import { Pipe, PipeTransform, inject } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import DOMPurify from 'dompurify';
 
+// Security Hook: Prevent Reverse Tabnabbing
+// Enforce rel="noopener noreferrer" on all links with target="_blank"
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    if ('target' in node && node.getAttribute('target') === '_blank') {
+        node.setAttribute('rel', 'noopener noreferrer');
+    }
+});
+
 @Pipe({
     name: 'safeHtml',
     standalone: true
