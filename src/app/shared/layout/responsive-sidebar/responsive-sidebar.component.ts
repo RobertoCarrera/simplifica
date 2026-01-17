@@ -23,7 +23,7 @@ interface MenuItem {
   module?: string; // 'core' | 'production' | 'development'
   moduleKey?: string; // Optional key to check in modules_catalog
   // roleOnly can be used to restrict visibility to specific roles
-  roleOnly?: 'ownerAdmin' | 'adminOnly' | 'adminEmployeeClient' | 'adminOnlyWebmail';
+  roleOnly?: 'ownerAdmin' | 'adminOnly' | 'adminEmployeeClient' | 'adminOnlyWebmail' | 'superAdminOnly';
   requiredPermission?: string | string[]; // Permission key(s) required (OR logic)
 }
 
@@ -291,6 +291,14 @@ export class ResponsiveSidebarComponent implements OnInit {
       roleOnly: 'adminOnlyWebmail' // Specific role for admin webmail
     },
     {
+      id: 96,
+      label: 'Logs',
+      icon: 'shield',
+      route: '/logs',
+      module: 'core',
+      roleOnly: 'superAdminOnly'
+    },
+    {
       id: 99,
       label: 'Gestión Módulos',
       icon: 'sparkles',
@@ -369,6 +377,9 @@ export class ResponsiveSidebarComponent implements OnInit {
         }
         if (item.roleOnly === 'adminOnlyWebmail') {
           return isAdmin;
+        }
+        if (item.roleOnly === 'superAdminOnly') {
+          return false; // Since isSuperAdmin check above handles visibility, this block hides it from others
         }
         return true;
       }
