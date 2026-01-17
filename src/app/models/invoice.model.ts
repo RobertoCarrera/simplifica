@@ -360,6 +360,8 @@ export function isOverdue(invoice: Invoice): boolean {
 
 // Normaliza la visualización de números de factura a prefijo "F"
 // Acepta el objeto Invoice o un string ya construido y reemplaza cualquier serie central por "F".
+const SERIES_REGEX = /-[A-Z]-/;
+
 export function formatInvoiceNumber(invoice: Invoice | string): string {
   let raw: string | undefined;
   if (typeof invoice === 'string') {
@@ -370,5 +372,5 @@ export function formatInvoiceNumber(invoice: Invoice | string): string {
   }
   if (!raw) return '';
   // Reemplazar el segmento central de serie por F: YYYY-X-##### -> YYYY-F-#####
-  return raw.replace(/-[A-Z]-/, '-F-');
+  return raw.replace(SERIES_REGEX, '-F-');
 }

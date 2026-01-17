@@ -146,18 +146,23 @@ export class InvoiceListComponent implements OnInit {
     
     // Apply sorting
     const sort = this.sortBy();
+    // Optimization: Reuse Collator for better performance
+    const collator = new Intl.Collator('es');
+
     return filtered.sort((a, b) => {
       switch (sort) {
         case 'date-asc':
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          // Optimization: Avoid new Date() for ISO strings
+          return a.created_at.localeCompare(b.created_at);
         case 'date-desc':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          // Optimization: Avoid new Date() for ISO strings
+          return b.created_at.localeCompare(a.created_at);
         case 'amount-asc':
           return (a.total || 0) - (b.total || 0);
         case 'amount-desc':
           return (b.total || 0) - (a.total || 0);
         case 'client-asc':
-          return (a.client?.name || '').localeCompare(b.client?.name || '');
+          return collator.compare(a.client?.name || '', b.client?.name || '');
         default:
           return 0;
       }
@@ -178,9 +183,8 @@ export class InvoiceListComponent implements OnInit {
         const normalInvoices = (list || []).filter(inv => !inv.is_recurring);
         // Ordenar de más nueva a más antigua por fecha de factura
         const sorted = normalInvoices.sort((a, b) => {
-          const dateA = new Date(a.invoice_date).getTime();
-          const dateB = new Date(b.invoice_date).getTime();
-          return dateB - dateA; // Más reciente primero
+          // Optimization: Avoid new Date() for ISO strings
+          return b.invoice_date.localeCompare(a.invoice_date);
         });
         this.invoices.set(sorted);
       },
