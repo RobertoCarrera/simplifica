@@ -3,19 +3,23 @@
     <button class="btn w-3/4 bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
     [ngClass]="{'bg-green-500 hidden': this.creating === true}" 
     (click)="isCreating()">
-        <i class="bi bi-plus mr-1"></i>{{itemType}}
+        <i class="bi bi-plus mr-1" aria-hidden="true"></i>{{itemType}}
     </button>
 </div>
 <div [ngClass]="{'bg-white shadow-lg rounded-lg overflow-hidden z-30': this.creating === true}" 
-    class="w-80 fixed bottom-0 rounded-lg p-4 ml-2 mb-3">
+    class="w-80 fixed bottom-0 rounded-lg p-4 ml-2 mb-3"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-hidden]="!creating">
     <div [ngClass]="{'flex flex-col items-center justify-between space-y-4': this.creating === true}" 
     class="hidden">
         <div class="w-full">
             <div class="flex items-center justify-between pr-3">
                 <p class="w-1/2 m-0 font-semibold text-gray-900">{{itemType}} #{{this.totalItems+1}}</p>
                 <button class="p-0 text-gray-600 hover:text-gray-900 rounded border-0 transition-colors duration-200"
-                (click)="isCreating()">
-                    <i class="bi bi-x-lg text-lg"></i>
+                (click)="isCreating()"
+                aria-label="Cerrar formulario">
+                    <i class="bi bi-x-lg text-lg" aria-hidden="true"></i>
                 </button>
             </div>
         </div>
@@ -35,11 +39,11 @@
             </div>
             <div class="flex items-center justify-around" *ngIf="this.formStep === 2 && this.personType === true">
                 <h3 class="w-3/4 m-0 text-lg font-semibold text-gray-900">Información de la persona</h3>
-                <img class="w-12 h-12 rounded-full p-1 border border-gray-200" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="">
+                <img class="w-12 h-12 rounded-full p-1 border border-gray-200" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="" aria-hidden="true">
             </div>
             <div class="flex items-center justify-around" *ngIf="this.formStep === 2 && this.businessType === true">
                 <h3 class="w-3/4 m-0 text-lg font-semibold text-gray-900">Información de la empresa</h3>
-                <img class="w-12 h-12 rounded-full p-1 border border-gray-200" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="">
+                <img class="w-12 h-12 rounded-full p-1 border border-gray-200" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="" aria-hidden="true">
             </div>
         </div>
         <div *ngIf="this.formStep === 2 && this.personType === true" class="flex items-center justify-around">
@@ -75,7 +79,7 @@
                 [ngClass]="{'btns-nuevo-servicio': this.creating === true}" 
                 (click)="removeStep()">
                     <div class="col-2">
-                        <i class="bi bi-x fs-5"></i>
+                        <i class="bi bi-x fs-5" aria-hidden="true"></i>
                     </div>
                     <div class="col-10 align-content-center">
                         <span *ngIf="this.formStep === 2">Cancelar</span>
@@ -84,14 +88,15 @@
                 </button>
                 <button *ngIf="this.formStep === 3" 
                     (click)="addProduct()"
-                    class="btn btn-primary btn-anadir-servicio">
-                    <i class="bi bi-plus-circle-fill"></i>
+                    class="btn btn-primary btn-anadir-servicio"
+                    aria-label="Añadir servicio">
+                    <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
                 </button>
                 <button *ngIf="this.formStep === 2 && childBoolean" class="btn btn-warning"
                 [ngClass]="{'btns-nuevo-servicio': this.creating === true}"
                 (click)="openCustomerModal()">
                     <div class="col-2">     
-                        <i class="bi bi-check fs-5"></i>
+                        <i class="bi bi-check fs-5" aria-hidden="true"></i>
                     </div>
                     <div class="col-10 align-content-center">Ver Cliente</div>
                 </button>
@@ -101,7 +106,7 @@
                 [ngClass]="{'btns-nuevo-servicio': this.creating === true}" 
                 (click)="addStep()">
                     <div class="col-2">
-                        <i class="bi bi-check fs-5"></i> 
+                        <i class="bi bi-check fs-5" aria-hidden="true"></i>
                     </div>
                     <div class="col-10 align-content-center">
                         <span>Siguiente</span>
@@ -113,7 +118,7 @@
                 [ngClass]="{'btns-nuevo-servicio': this.creating === true}" 
                  (click)="addStep(); createCustomer()">
                     <div class="col-2">
-                        <i class="bi bi-check fs-5"></i> 
+                        <i class="bi bi-check fs-5" aria-hidden="true"></i>
                     </div>
                     <div class="col-10 align-content-center">
                         <span>Crear</span>
