@@ -74,4 +74,20 @@ export class AuditService {
         const types = new Set((data as any[])?.map(d => d.entity_type));
         return Array.from(types).sort();
     }
+    async logAction(action: string, entityType: string, entityId: string, companyId: string | null, metadata: any = {}): Promise<void> {
+        try {
+            const { error } = await this.supabase.db.rpc('log_audit_event', {
+                p_company_id: companyId,
+                p_action: action,
+                p_entity_type: entityType,
+                p_entity_id: entityId,
+                p_metadata: metadata
+            } as any);
+            if (error) {
+                console.error('Audit logging failed:', error);
+            }
+        } catch (e) {
+            console.error('Audit logging exception:', e);
+        }
+    }
 }
