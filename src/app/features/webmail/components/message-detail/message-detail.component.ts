@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, ViewChild } from '@angular/core';
 import { CommonModule, Location } from '@angular/common'; // Import Location
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -6,11 +6,12 @@ import { MailStoreService } from '../../services/mail-store.service';
 import { MailMessage } from '../../../../core/interfaces/webmail.interface';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { SafeHtmlPipe } from '../../../../core/pipes/safe-html.pipe';
+import { ConfirmModalComponent } from '../../../../shared/ui/confirm-modal/confirm-modal.component';
 
 @Component({
   selector: 'app-message-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, SafeHtmlPipe],
+  imports: [CommonModule, RouterModule, FormsModule, SafeHtmlPipe, ConfirmModalComponent],
   templateUrl: './message-detail.component.html',
   styleUrl: './message-detail.component.scss'
 })
@@ -20,6 +21,8 @@ export class MessageDetailComponent implements OnInit {
   private router = inject(Router);
   private location = inject(Location);
   private operations = inject(MailOperationService);
+
+  @ViewChild('confirmModal') confirmModal!: ConfirmModalComponent;
 
   message = this.store.selectedMessage;
 
@@ -135,7 +138,16 @@ export class MessageDetailComponent implements OnInit {
   }
 
   async delete() {
-    if (!confirm('¿Estás seguro de que quieres eliminar este correo?')) return;
+    const confirmed = await this.confirmModal.open({
+      title: 'Eliminar correo',
+      message: '¿Estás seguro de que quieres eliminar este correo? Esta acción no se puede deshacer.',
+      icon: 'fas fa-trash-alt',
+      iconColor: 'red',
+      confirmText: 'Sí, eliminar',
+      cancelText: 'Cancelar'
+    });
+
+    if (!confirmed) return;
 
     const msg = this.message();
     if (msg) {
