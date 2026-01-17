@@ -454,8 +454,35 @@ export class AnalyticsService {
   }
 
   // Refresh analytics data (can be called manually or on interval)
+  // Refresh analytics data (can be called manually or on interval)
   async refreshAnalytics(): Promise<void> {
-    // ...
+    try {
+      this.loading.set(true);
+      this.error.set(null);
+
+      // Load all data in parallel
+      await Promise.all([
+        this.loadQuoteKpisAndTrend(),
+        this.loadQuoteMonthlyAnalytics(),
+        this.loadAllDraftQuotes(),
+        this.loadRecurringMonthly(),
+        this.loadCurrentPipeline(),
+
+        this.loadInvoiceKpisAndTrend(),
+
+        this.loadTicketKpisAndTrend(),
+        this.loadTicketCurrentStatus(),
+
+        this.loadBookingKpisAndTrend(),
+        this.loadTopServices()
+      ]);
+
+    } catch (err) {
+      console.error('[AnalyticsService] Error refreshing analytics:', err);
+      this.error.set('Hubo un problema al cargar los datos. Por favor intenta de nuevo.');
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   /**

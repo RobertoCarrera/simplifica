@@ -64,13 +64,17 @@ export class RevenueForecastComponent implements OnInit {
     };
 
     ngOnInit() {
-        this.loadData();
+        // Subscribe to company changes to load data when company is ready
+        this.supabaseService.company$.subscribe(companyId => {
+            if (companyId) {
+                this.loadData(companyId);
+            } else {
+                this.loading.set(false);
+            }
+        });
     }
 
-    async loadData() {
-        const companyId = this.supabaseService.currentCompanyId;
-        if (!companyId) return;
-
+    async loadData(companyId: string) {
         this.loading.set(true);
         try {
             const res = await this.analyticsService.getRevenueForecast(companyId);
