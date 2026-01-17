@@ -6,6 +6,8 @@ import { SupabaseCustomersService, CustomerFilters } from '../../../services/sup
 import { SupabaseServicesService } from '../../../services/supabase-services.service';
 import { ToastService } from '../../../services/toast.service';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
+import { AuditService } from '../../../services/audit.service';
+import { AuthService } from '../../../services/auth.service';
 
 type DataType = 'customers' | 'services';
 
@@ -20,6 +22,8 @@ export class DataExportImportComponent {
     private servicesService = inject(SupabaseServicesService);
     private toastService = inject(ToastService);
     private simpleSupabase = inject(SimpleSupabaseService);
+    private auditService = inject(AuditService);
+    private authService = inject(AuthService);
 
     activeSection = signal<'export' | 'import'>('export');
     selectedDataType = signal<DataType>('customers');
@@ -132,6 +136,21 @@ export class DataExportImportComponent {
                 window.URL.revokeObjectURL(url);
                 this.toastService.success('¡Éxito!', 'Clientes exportados correctamente');
                 this.loading.set(false);
+
+                // Audit Log
+                const currentCompany = this.authService.currentCompanyId();
+                const userId = this.authService.currentUser?.id;
+                this.auditService.logAction(
+                    'export.csv',
+                    'clients',
+                    currentCompany || 'global', // Using company ID as entity ID for bulk export of that company
+                    currentCompany,
+                    {
+                        filters: filters,
+                        timestamp: new Date().toISOString(),
+                        exporter_id: userId
+                    }
+                );
             },
             error: (error) => {
                 console.error('Error exporting customers:', error);
