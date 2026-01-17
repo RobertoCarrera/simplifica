@@ -11,9 +11,11 @@
                     </div>
                     <input type="text" [ngModel]="searchTerm()" (ngModelChange)="onSearchChange($event)"
                         placeholder="Buscar por nombre, email, teléfono o DNI..."
+                        aria-label="Buscar clientes"
                         class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow sm:text-sm">
                     @if (searchTerm()) {
                     <button (click)="clearFilters()"
+                        aria-label="Limpiar búsqueda"
                         class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                         <i class="fas fa-times"></i>
                     </button>
@@ -30,7 +32,8 @@
 
                     <button (click)="sortOrder.set(sortOrder() === 'asc' ? 'desc' : 'asc'); onFiltersChange()"
                         class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
-                        [title]="sortOrder() === 'asc' ? 'Orden ascendente' : 'Orden descendente'">
+                        [title]="sortOrder() === 'asc' ? 'Orden ascendente' : 'Orden descendente'"
+                        [attr.aria-label]="sortOrder() === 'asc' ? 'Orden ascendente' : 'Orden descendente'">
                         <i class="fas" [class.fa-sort-amount-down]="sortOrder() === 'desc'"
                             [class.fa-sort-amount-up]="sortOrder() === 'asc'"></i>
                     </button>
@@ -268,7 +271,8 @@
                 <button (click)="toggleRecording()" [class.bg-red-500]="isRecording()"
                     [class.animate-pulse]="isRecording()" [class.bg-purple-600]="!isRecording()"
                     class="p-3 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 hover:bg-purple-700 flex items-center justify-center w-12 h-12"
-                    [title]="isRecording() ? 'Detener grabación' : 'Crear cliente por voz (IA)'">
+                    [title]="isRecording() ? 'Detener grabación' : 'Crear cliente por voz (IA)'"
+                    [attr.aria-label]="isRecording() ? 'Detener grabación' : 'Crear cliente por voz con inteligencia artificial'">
                     @if(isProcessingAudio()) {
                     <i class="fas fa-circle-notch fa-spin text-lg"></i>
                     } @else {
@@ -278,7 +282,8 @@
 
                 <!-- New Customer FAB -->
                 <button (click)="openForm()"
-                    class="p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center justify-center w-14 h-14">
+                    class="p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center justify-center w-14 h-14"
+                    aria-label="Crear nuevo cliente">
                     <i class="fas fa-plus text-xl"></i>
                 </button>
             </div>
