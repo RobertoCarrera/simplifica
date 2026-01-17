@@ -143,7 +143,7 @@ export class DataExportImportComponent {
                 this.auditService.logAction(
                     'export.csv',
                     'clients',
-                    currentCompany || 'global', // Using company ID as entity ID for bulk export of that company
+                    currentCompany || '00000000-0000-0000-0000-000000000000', // NIL UUID if no company (global)
                     currentCompany,
                     {
                         filters: filters,
