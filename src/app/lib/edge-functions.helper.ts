@@ -131,53 +131,6 @@ export async function callEdgeFunction<TRequest = any, TResponse = any>(
 }
 
 /**
- * Encripta contenido usando Web Crypto API (AES-GCM)
- * Para certificados y claves privadas antes de enviarlos al backend
- */
-export async function encryptContent(content: string): Promise<string> {
-  try {
-    // Generar clave efímera AES-256
-    const key = await crypto.subtle.generateKey(
-      { name: 'AES-GCM', length: 256 },
-      true,
-      ['encrypt']
-    );
-
-    // Generar IV aleatorio
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-
-    // Codificar texto a bytes
-    const encoder = new TextEncoder();
-    const data = encoder.encode(content);
-
-    // Encriptar
-    const encrypted = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      data
-    );
-
-    // Exportar clave
-    const exportedKey = await crypto.subtle.exportKey('raw', key);
-
-    // Combinar: key (32 bytes) + iv (12 bytes) + encrypted data
-    const combined = new Uint8Array(
-      exportedKey.byteLength + iv.byteLength + encrypted.byteLength
-    );
-    combined.set(new Uint8Array(exportedKey), 0);
-    combined.set(iv, exportedKey.byteLength);
-    combined.set(new Uint8Array(encrypted), exportedKey.byteLength + iv.byteLength);
-
-    // Convertir a base64
-    return btoa(String.fromCharCode(...combined));
-
-  } catch (error) {
-    console.error('Error encrypting content:', error);
-    throw new Error('Error al encriptar el contenido');
-  }
-}
-
-/**
  * Lee un archivo como texto
  */
 export function readFileAsText(file: File): Promise<string> {
