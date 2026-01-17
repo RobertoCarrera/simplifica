@@ -63,19 +63,23 @@ export class OccupancyHeatmapComponent implements OnInit, OnChanges {
     };
 
     ngOnInit() {
-        this.loadData();
+        this.supabaseService.company$.subscribe(companyId => {
+            if (companyId) {
+                this.loadData(companyId);
+            } else {
+                this.loading.set(false);
+            }
+        });
     }
 
     ngOnChanges(changes: SimpleChanges) {
-        if (changes['startDate'] || changes['endDate']) {
-            this.loadData();
+        const companyId = this.supabaseService.currentCompanyId;
+        if ((changes['startDate'] || changes['endDate']) && companyId) {
+            this.loadData(companyId);
         }
     }
 
-    async loadData() {
-        const companyId = this.supabaseService.currentCompanyId;
-        if (!companyId) return;
-
+    async loadData(companyId: string) {
         this.loading.set(true);
         try {
             const res = await this.analyticsService.getOccupancyHeatmap(
