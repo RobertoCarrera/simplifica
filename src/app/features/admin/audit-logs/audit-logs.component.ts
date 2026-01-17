@@ -192,7 +192,12 @@ export class AuditLogsComponent implements OnInit {
     this.subscription = this.auditService.subscribeToLogs((newLog) => {
       // Run inside Angular Zone to ensure Signal update triggers view refresh
       this.zone.run(() => {
-        this.logs.update(current => [newLog, ...current]);
+        this.logs.update(current => {
+          if (current.some(log => log.id === newLog.id)) {
+            return current;
+          }
+          return [newLog, ...current];
+        });
       });
     });
   }
