@@ -129,7 +129,7 @@ export const routes: Routes = [
 
     // Global Audit Logs (Super Admin Only)
     {
-        path: 'admin/auditoria',
+        path: 'logs',
         loadComponent: () => import('./features/admin/audit-logs/audit-logs.component').then(m => m.AuditLogsComponent),
         canActivate: [AuthGuard, SuperAdminGuard]
     },

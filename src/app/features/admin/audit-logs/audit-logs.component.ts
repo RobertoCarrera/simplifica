@@ -5,10 +5,10 @@ import { AuditService, AuditLog } from '../../../services/audit.service';
 import { JsonPipe } from '@angular/common';
 
 @Component({
-    selector: 'app-audit-logs',
-    standalone: true,
-    imports: [CommonModule, FormsModule],
-    template: `
+  selector: 'app-audit-logs',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
     <div class="p-6 max-w-7xl mx-auto space-y-6">
       <!-- Header -->
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -79,10 +79,10 @@ import { JsonPipe } from '@angular/common';
                   <td class="px-4 py-3">
                     <div class="flex items-center gap-2">
                        <div class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
-                          {{ (log.actor?.email || '?')[0] | uppercase }}
+                          {{ (log.actor_email || '?')[0] | uppercase }}
                        </div>
-                       <span class="text-slate-700 dark:text-slate-200 font-medium truncate max-w-[150px]" [title]="log.actor?.email">
-                          {{ log.actor?.email || 'System' }}
+                       <span class="text-slate-700 dark:text-slate-200 font-medium truncate max-w-[150px]" [title]="log.actor_email">
+                          {{ log.actor_email || 'System' }}
                        </span>
                     </div>
                   </td>
@@ -160,54 +160,54 @@ import { JsonPipe } from '@angular/common';
   `
 })
 export class AuditLogsComponent implements OnInit {
-    private auditService = inject(AuditService);
+  private auditService = inject(AuditService);
 
-    logs = signal<AuditLog[]>([]);
-    loading = signal(false);
-    page = signal(0);
-    pageSize = 20;
+  logs = signal<AuditLog[]>([]);
+  loading = signal(false);
+  page = signal(0);
+  pageSize = 20;
 
-    filters = {
-        entityType: '',
-        action: ''
-    };
+  filters = {
+    entityType: '',
+    action: ''
+  };
 
-    selectedLog = signal<AuditLog | null>(null);
+  selectedLog = signal<AuditLog | null>(null);
 
-    ngOnInit() {
-        this.loadLogs();
+  ngOnInit() {
+    this.loadLogs();
+  }
+
+  async loadLogs() {
+    this.loading.set(true);
+    try {
+      const res = await this.auditService.getLogs(this.page(), this.pageSize, {
+        entityType: this.filters.entityType || undefined,
+        action: this.filters.action || undefined
+      });
+      this.logs.set(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      this.loading.set(false);
     }
+  }
 
-    async loadLogs() {
-        this.loading.set(true);
-        try {
-            const res = await this.auditService.getLogs(this.page(), this.pageSize, {
-                entityType: this.filters.entityType || undefined,
-                action: this.filters.action || undefined
-            });
-            this.logs.set(res.data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            this.loading.set(false);
-        }
-    }
+  resetAndLoad() {
+    this.page.set(0);
+    this.loadLogs();
+  }
 
-    resetAndLoad() {
-        this.page.set(0);
-        this.loadLogs();
-    }
+  changePage(delta: number) {
+    this.page.update(p => Math.max(0, p + delta));
+    this.loadLogs();
+  }
 
-    changePage(delta: number) {
-        this.page.update(p => Math.max(0, p + delta));
-        this.loadLogs();
-    }
+  openDetail(log: AuditLog) {
+    this.selectedLog.set(log);
+  }
 
-    openDetail(log: AuditLog) {
-        this.selectedLog.set(log);
-    }
-
-    closeDetail() {
-        this.selectedLog.set(null);
-    }
+  closeDetail() {
+    this.selectedLog.set(null);
+  }
 }

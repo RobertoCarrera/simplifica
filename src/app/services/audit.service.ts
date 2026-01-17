@@ -14,7 +14,7 @@ export interface AuditLog {
     new_data: any;
     ip_address: string;
     user_agent: string;
-    actor?: { email: string }; // Joined
+    actor_email?: string;
 }
 
 @Injectable({
@@ -31,7 +31,7 @@ export class AuditService {
 
         let query = this.supabase.db
             .from('audit_logs')
-            .select('*, actor:actor_id(email)', { count: 'exact' });
+            .select('*', { count: 'exact' });
 
         if (filters?.entityType) {
             query = query.eq('entity_type', filters.entityType);
