@@ -1,0 +1,4 @@
+## 2024-05-23 - [Reverse Tabnabbing Protection]
+**Vulnerability:** The application used `DOMPurify` to sanitize HTML but allowed `target="_blank"` without enforcing `rel="noopener noreferrer"`. This could allow malicious links (Reverse Tabnabbing) to hijack the parent window via `window.opener`.
+**Learning:** `DOMPurify` configuration needs explicit hooks to modify attributes securely. Simple sanitization is not enough when `target="_blank"` is permitted. Type mismatches with `DOMPurify` (TrustedHTML vs string) can cause build failures in strict Angular environments.
+**Prevention:** Created a centralized `sanitizeHtml` utility in `src/app/core/utils/sanitization.utils.ts` that enforces `rel="noopener noreferrer"` on all links with `target="_blank"`. Refactored `SafeHtmlPipe` and `TicketDetailComponent` to use this single source of truth.

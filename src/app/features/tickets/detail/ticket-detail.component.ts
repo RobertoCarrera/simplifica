@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, ElementRef, ViewChild, OnDestroy, AfterViewInit, AfterViewChecked, ChangeDetectorRef, computed, Renderer2, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
-import DOMPurify from 'dompurify';
+import { sanitizeHtml } from '../../../core/utils/sanitization.utils';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
@@ -1877,10 +1877,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!htmlContent) return '';
 
     // Sanitize the HTML to remove scripts/unsafe tags before processing
-    // We allow target attribute for links if they exist
-    const cleanHtml = DOMPurify.sanitize(htmlContent, {
-      ADD_ATTR: ['target']
-    });
+    // Using centralized utility to ensure consistent security (e.g. noopener noreferrer)
+    const cleanHtml = sanitizeHtml(htmlContent);
 
     // simple string manipulation to add class/onclick logic or wrap in anchor
     // We want: output <a href="src" target="_blank"><img src="src" class="comment-thumbnail" /></a>
