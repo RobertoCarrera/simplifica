@@ -14,6 +14,7 @@
             <div class="flex items-center justify-between pr-3">
                 <p class="w-1/2 m-0 font-semibold text-gray-900">{{itemType}} #{{this.totalItems+1}}</p>
                 <button class="p-0 text-gray-600 hover:text-gray-900 rounded border-0 transition-colors duration-200"
+                aria-label="Cerrar modal"
                 (click)="isCreating()">
                     <i class="bi bi-x-lg text-lg"></i>
                 </button>
@@ -35,11 +36,11 @@
             </div>
             <div class="flex items-center justify-around" *ngIf="this.formStep === 2 && this.personType === true">
                 <h3 class="w-3/4 m-0 text-lg font-semibold text-gray-900">Información de la persona</h3>
-                <img class="w-12 h-12 rounded-full p-1 border border-gray-200" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="">
+                <img class="w-12 h-12 rounded-full p-1 border border-gray-200" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="Icono de persona">
             </div>
             <div class="flex items-center justify-around" *ngIf="this.formStep === 2 && this.businessType === true">
                 <h3 class="w-3/4 m-0 text-lg font-semibold text-gray-900">Información de la empresa</h3>
-                <img class="w-12 h-12 rounded-full p-1 border border-gray-200" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="">
+                <img class="w-12 h-12 rounded-full p-1 border border-gray-200" src="https://img.freepik.com/vector-premium/iconos-usuario-incluye-iconos-usuario-icones-personas-simbolos-elementos-diseno-grafico-calidad-premium_981536-526.jpg" alt="Icono de empresa">
             </div>
         </div>
         <div *ngIf="this.formStep === 2 && this.personType === true" class="flex items-center justify-around">
@@ -84,6 +85,7 @@
                 </button>
                 <button *ngIf="this.formStep === 3" 
                     (click)="addProduct()"
+                    aria-label="Añadir producto"
                     class="btn btn-primary btn-anadir-servicio">
                     <i class="bi bi-plus-circle-fill"></i>
                 </button>
