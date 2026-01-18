@@ -91,9 +91,9 @@ export class ProductMetadataService {
     try {
       // Try to use the helper function first
       const { data: brandId, error: rpcError } = await this.supabase.getClient()
-        .rpc('get_or_create_brand', { 
-          p_brand_name: name.trim(), 
-          p_company_id: companyId 
+        .rpc('get_or_create_brand', {
+          p_brand_name: name.trim(),
+          p_company_id: companyId
         });
 
       if (!rpcError && brandId) {
@@ -198,9 +198,9 @@ export class ProductMetadataService {
     try {
       // Try to use the helper function first
       const { data: categoryId, error: rpcError } = await this.supabase.getClient()
-        .rpc('get_or_create_category', { 
-          p_category_name: name.trim(), 
-          p_company_id: companyId 
+        .rpc('get_or_create_category', {
+          p_category_name: name.trim(),
+          p_company_id: companyId
         });
 
       if (!rpcError && categoryId) {
@@ -271,5 +271,67 @@ export class ProductMetadataService {
         return of([]);
       })
     );
+  }
+
+
+  // =====================================================
+  // MODELS
+  // =====================================================
+
+  /**
+   * Get models for a specific brand
+   */
+  getModels(brandId: string): Observable<any[]> {
+    return from(
+      this.supabase.getClient()
+        .from('product_models')
+        .select('*')
+        .eq('brand_id', brandId)
+        .is('deleted_at', null)
+        .order('name', { ascending: true })
+        .then(({ data, error }) => {
+          if (error) throw error;
+          return data || [];
+        })
+    ).pipe(
+      catchError(error => {
+        console.error('Error loading models:', error);
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Create a new model (or get existing if name/brand combo already exists)
+   */
+  async createModel(name: string, brandId: string, companyId: string): Promise<any> {
+    try {
+      // Simple check first
+      const { data: existing } = await this.supabase.getClient()
+        .from('product_models')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('brand_id', brandId)
+        .ilike('name', name.trim())
+        .maybeSingle();
+
+      if (existing) return existing;
+
+      const { data, error } = await this.supabase.getClient()
+        .from('product_models')
+        .insert({
+          name: name.trim(),
+          brand_id: brandId,
+          company_id: companyId
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error createModel:', error);
+      throw error;
+    }
   }
 }

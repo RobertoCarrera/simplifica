@@ -7,6 +7,7 @@ export interface Product {
     // New normalized fields
     category_id: string | null;
     brand_id: string | null;
+    catalog_product_id: string | null;
     model: string | null;
     description: string | null;
     price: number; // store numeric for UI; service will normalize from string if needed

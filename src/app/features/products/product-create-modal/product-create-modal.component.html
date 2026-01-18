@@ -1,0 +1,220 @@
+<div class="modal-overlay">
+    <div class="modal-content w-full max-w-3xl bg-white dark:bg-slate-800" (click)="$event.stopPropagation()">
+        <!-- Modal Header -->
+        <div class="flex items-start justify-between p-4 border-b border-gray-200 dark:border-slate-700">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-slate-50 flex items-center gap-2">
+                <i class="fas fa-box text-orange-500"></i>
+                {{ productToEdit ? 'Editar Producto' : 'Nuevo Producto' }}
+                <span *ngIf="newProduct.catalog_product_id"
+                    class="ml-2 text-xs bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
+                    <i class="fas fa-globe mr-1"></i>Catálogo Global
+                </span>
+            </h2>
+            <button type="button" (click)="closeModal()"
+                class="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 p-2 rounded-md">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="modal-body">
+            <form (ngSubmit)="saveProduct()" id="productForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Nombre del Producto
+                        *</label>
+                    <input type="text" [(ngModel)]="newProduct.name" name="name"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="Ingresa el nombre del producto" required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Marca</label>
+                    <div class="relative">
+                        <input type="text" [(ngModel)]="brandSearchText"
+                            (ngModelChange)="onBrandSearchChange(); newProduct.brand = brandSearchText"
+                            (focus)="showBrandInput = true" (keydown.enter)="onBrandEnter($event)" name="brand"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            placeholder="Ej: Samsung, Apple, Xiaomi" autocomplete="off">
+
+                        <!-- Brand Dropdown -->
+                        <div *ngIf="showBrandInput"
+                            class="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg shadow-lg">
+
+                            <div class="max-h-60 overflow-y-auto">
+                                <div *ngFor="let brand of filteredBrands"
+                                    class="px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer flex items-center gap-2 text-gray-900 dark:text-slate-100"
+                                    (click)="selectBrand(brand)">
+                                    <i class="fas fa-tag text-gray-400 dark:text-slate-500"></i>
+                                    <span>{{ brand.name }}</span>
+                                    <small *ngIf="brand.company_id"
+                                        class="text-gray-500 dark:text-slate-400">Privada</small>
+                                    <small *ngIf="!brand.company_id"
+                                        class="text-green-600 dark:text-green-400">Global</small>
+                                </div>
+
+                                <div *ngIf="brandSearchText && !hasExactBrandMatch()"
+                                    class="px-3 py-2 hover:bg-green-50 dark:hover:bg-green-900/30 cursor-pointer flex items-center gap-2 text-green-600 dark:text-green-400"
+                                    (click)="createNewBrand()">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Crear "{{ brandSearchText }}"</span>
+                                </div>
+
+                                <div *ngIf="brandSearchText && hasExactBrandMatch()"
+                                    class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer flex items-center gap-2 text-blue-600 dark:text-blue-400"
+                                    (click)="selectExistingBrandMatch()">
+                                    <i class="fas fa-check"></i>
+                                    <span>Usar "{{ getExactBrandMatch()?.name }}" (existe)</span>
+                                </div>
+                            </div>
+
+                            <div class="p-2 border-t border-gray-200 dark:border-slate-700">
+                                <button type="button"
+                                    class="w-full px-3 py-1 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 rounded"
+                                    (click)="showBrandInput = false">
+                                    Cerrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Categoría</label>
+                    <div class="relative">
+                        <input type="text" [(ngModel)]="categorySearchText"
+                            (ngModelChange)="onCategorySearchChange(); newProduct.category = categorySearchText"
+                            (focus)="showCategoryInput = true" (keydown.enter)="onCategoryEnter($event)" name="category"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            placeholder="Ej: Accesorios, Repuestos, Hardware" autocomplete="off">
+
+                        <!-- Category Dropdown -->
+                        <div *ngIf="showCategoryInput"
+                            class="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg shadow-lg">
+
+                            <div class="max-h-60 overflow-y-auto">
+                                <div *ngFor="let category of filteredCategories"
+                                    class="px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer flex items-center gap-2 text-gray-900 dark:text-slate-100"
+                                    (click)="selectCategory(category)">
+                                    <i [class]="category.icon || 'fas fa-folder'"
+                                        [style.color]="category.color || '#6b7280'"></i>
+                                    <span>{{ category.name }}</span>
+                                    <small *ngIf="category.company_id"
+                                        class="text-gray-500 dark:text-slate-400">Privada</small>
+                                    <small *ngIf="!category.company_id"
+                                        class="text-green-600 dark:text-green-400">Global</small>
+                                </div>
+
+                                <div *ngIf="categorySearchText && !hasExactCategoryMatch()"
+                                    class="px-3 py-2 hover:bg-green-50 dark:hover:bg-green-900/30 cursor-pointer flex items-center gap-2 text-green-600 dark:text-green-400"
+                                    (click)="createNewCategory()">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Crear "{{ categorySearchText }}"</span>
+                                </div>
+
+                                <div *ngIf="categorySearchText && hasExactCategoryMatch()"
+                                    class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer flex items-center gap-2 text-blue-600 dark:text-blue-400"
+                                    (click)="selectExistingCategoryMatch()">
+                                    <i class="fas fa-check"></i>
+                                    <span>Usar "{{ getExactCategoryMatch()?.name }}" (existe)</span>
+                                </div>
+                            </div>
+
+                            <div class="p-2 border-t border-gray-200 dark:border-slate-700">
+                                <button type="button"
+                                    class="w-full px-3 py-1 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 rounded"
+                                    (click)="showCategoryInput = false">
+                                    Cerrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Modelo</label>
+                    <div class="relative">
+                        <input type="text" [(ngModel)]="modelSearchText" (ngModelChange)="onModelSearchChange()"
+                            (focus)="showModelInput = true" (keydown.enter)="onModelEnter($event)" name="model"
+                            [disabled]="!newProduct.brand_id"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                            placeholder="Ej: iPhone 14, Galaxy S23" autocomplete="off">
+
+                        <div *ngIf="showModelInput && newProduct.brand_id"
+                            class="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg shadow-lg">
+
+                            <div class="max-h-60 overflow-y-auto">
+                                <div *ngFor="let model of filteredModels"
+                                    class="px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer flex items-center gap-2 text-gray-900 dark:text-slate-100"
+                                    (click)="selectModel(model)">
+                                    <i class="fas fa-mobile-alt text-gray-400 dark:text-slate-500"></i>
+                                    <span>{{ model.name }}</span>
+                                </div>
+
+                                <div *ngIf="modelSearchText && !hasExactModelMatch()"
+                                    class="px-3 py-2 hover:bg-green-50 dark:hover:bg-green-900/30 cursor-pointer flex items-center gap-2 text-green-600 dark:text-green-400"
+                                    (click)="createNewModel()">
+                                    <i class="fas fa-plus"></i>
+                                    <span>Crear "{{ modelSearchText }}"</span>
+                                </div>
+
+                                <div *ngIf="modelSearchText && hasExactModelMatch()"
+                                    class="px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer flex items-center gap-2 text-blue-600 dark:text-blue-400"
+                                    (click)="selectExistingModelMatch()">
+                                    <i class="fas fa-check"></i>
+                                    <span>Usar "{{ getExactModelMatch()?.name }}" (existe)</span>
+                                </div>
+                            </div>
+
+                            <div class="p-2 border-t border-gray-200 dark:border-slate-700">
+                                <button type="button"
+                                    class="w-full px-3 py-1 text-sm text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 rounded"
+                                    (click)="showModelInput = false">
+                                    Cerrar
+                                </button>
+                            </div>
+                        </div>
+                        <div *ngIf="!newProduct.brand_id && showModelInput"
+                            class="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg shadow-lg p-3 text-sm text-gray-500 dark:text-slate-400">
+                            Primero selecciona una marca.
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Precio (€)</label>
+                    <input type="number" [(ngModel)]="newProduct.price" name="price" step="0.01"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="0.00">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Stock</label>
+                    <input type="number" [(ngModel)]="newProduct.stock_quantity" name="stock_quantity"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="Cantidad en stock">
+                </div>
+
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Descripción</label>
+                    <textarea [(ngModel)]="newProduct.description" name="description" rows="3"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="Descripción detallada del producto..."></textarea>
+                </div>
+            </form>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-footer">
+            <button type="button" (click)="closeModal()"
+                class="px-4 py-2 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-slate-300 rounded-lg">
+                <i class="fas fa-times mr-2"></i>
+                Cancelar
+            </button>
+            <button type="submit" form="productForm"
+                class="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg flex items-center gap-2">
+                <i class="fas fa-save"></i>
+                {{ productToEdit ? 'Actualizar' : 'Guardar' }}
+            </button>
+        </div>
+    </div>
+</div>
