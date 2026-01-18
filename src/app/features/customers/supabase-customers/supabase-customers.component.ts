@@ -7,6 +7,7 @@ import { TemplatePortal } from '@angular/cdk/portal';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { AnimationService } from '../../../services/animation.service';
 import { Customer, CreateCustomerDev } from '../../../models/customer';
+import { CustomerView, GdprBadgeConfig } from '../models/customer-view.model';
 import { AddressesService } from '../../../services/addresses.service';
 import { LocalitiesService } from '../../../services/localities.service';
 import { Locality } from '../../../models/locality';
@@ -25,6 +26,10 @@ import { AiService } from '../../../services/ai.service';
 
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
+
+// Optimization: Define regex constants once
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 @Component({
     selector: 'app-supabase-customers',
@@ -66,10 +71,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     @ViewChild('modalTemplate') modalTemplate!: TemplateRef<any>;
     private overlayRef?: OverlayRef;
 
-
-
-    // Audio State
-
     // Audio State
     isRecording = signal(false);
     isProcessingAudio = signal(false);
@@ -77,12 +78,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     audioChunks: Blob[] = [];
 
     // State signals
-    customers = signal<Customer[]>([]);
+    customers = signal<CustomerView[]>([]);
     isLoading = signal(false);
     showForm = signal(false);
-    selectedCustomer = signal<Customer | null>(null);
-
-    // Client type dropdown - Refactored to child component
+    selectedCustomer = signal<CustomerView | null>(null);
 
     // History management for modals
     private popStateListener: any = null;
@@ -115,20 +114,32 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     sortBy = signal<'name' | 'apellidos' | 'created_at'>('name'); // Default to name
     sortOrder = signal<'asc' | 'desc'>('asc'); // Default to asc for alphabetical
 
-
-
     // UI filter toggle for incomplete imports (Removed from UI, logic deprecated)
     onlyIncomplete: boolean = false;
 
-    // Form data
+    // Unified RGPD badge configuration - follows style guide semantic palette
+    rgpdStatusConfig: Record<string, GdprBadgeConfig> = {
+        compliant: {
+            label: '',
+            classes: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 font-medium px-2 py-0.5 text-xs rounded-full border border-green-200 dark:border-green-800',
+            icon: 'fa-shield-alt text-xs'
+        },
+        partial: {
+            label: '',
+            classes: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-medium px-2 py-0.5 text-xs rounded-full border border-amber-200 dark:border-amber-800',
+            icon: 'fa-shield-alt text-xs'
+        },
+        nonCompliant: {
+            label: '',
+            classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 font-medium px-2 py-0.5 text-xs rounded-full border border-red-200 dark:border-red-800',
+            icon: 'fa-shield-exclamation text-xs'
+        }
+    };
 
-    // Form data
-    // Form data - Refactored to child component
+    // Pending Rectification Requests Logic
+    pendingRectifications = signal<Set<string>>(new Set());
 
-    // Método manejador de selección de archivo CSV
-    // Removed legacy CSV handlers
-
-
+    constructor() { }
 
     hasDevices(customer: Customer): boolean {
         if (!customer?.devices) return false;
@@ -146,22 +157,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         return activeDevices.length > 0;
     }
 
-
-
-
-    // Método que se llama cuando el usuario confirma el mapeo de columnas en el modal
-    // Removed legacy CSV mapping handlers
-
-
-    // Cache completeness status to avoid O(N log N) re-calculations during sort
-    completenessCache = computed(() => {
-        const cache = new Map<string, boolean>();
-        this.customers().forEach(c => {
-            cache.set(c.id, this.completenessSvc.computeCompleteness(c).complete);
-        });
-        return cache;
-    });
-
     // Computed
     filteredCustomers = computed(() => {
         let filtered = this.customers();
@@ -173,6 +168,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         const search = this.searchTerm().toLowerCase().trim();
         if (search) {
             filtered = filtered.filter(customer =>
+                customer.displayName.toLowerCase().includes(search) || // Use displayName for search too? Or keep original fields
                 customer.name.toLowerCase().includes(search) ||
                 customer.apellidos.toLowerCase().includes(search) ||
                 customer.email.toLowerCase().includes(search) ||
@@ -185,13 +181,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         const sortBy = this.sortBy();
         const sortOrder = this.sortOrder();
 
-        // Use cached completeness for sorting
-        const completeness = this.completenessCache();
-
         filtered.sort((a, b) => {
             // Priority Sort: Incomplete users FIRST
-            const aComplete = completeness.get(a.id) ?? false;
-            const bComplete = completeness.get(b.id) ?? false;
+            const aComplete = a.isComplete;
+            const bComplete = b.isComplete;
 
             if (aComplete !== bComplete) {
                 // If one is incomplete (false) and other is complete (true), incomplete comes first
@@ -214,30 +207,9 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         return filtered;
     });
 
-    // Completeness helpers for template
-    isCustomerComplete(c: Customer): boolean {
-        return this.completenessCache().get(c.id) ?? false;
-    }
-
-    getCustomerMissingFields(c: Customer): string[] {
-        return this.completenessSvc.computeCompleteness(c).missingFields;
-    }
-
     onOnlyIncompleteChange(_val: any) {
         // Trigger recompute; searchTerm is a signal, resetting to same value is enough for change detection in computed
         this.searchTerm.set(this.searchTerm());
-    }
-
-    formatAttentionReasons(c: any): string {
-        const md = (c && c.metadata) || {};
-        const reasons: string[] = Array.isArray(md.attention_reasons) ? md.attention_reasons : [];
-        if (!reasons.length) return 'Marcado para revisión';
-        const map: Record<string, string> = {
-            email_missing_or_invalid: 'Email faltante o inválido',
-            name_missing: 'Nombre faltante',
-            surname_missing: 'Apellidos faltantes',
-        };
-        return 'Revisar: ' + reasons.map(r => map[r] || r).join(', ');
     }
 
     ngOnInit() {
@@ -305,8 +277,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     }
 
     private isValidEmail(email: string): boolean {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test((email || '').trim());
+        return EMAIL_REGEX.test((email || '').trim());
     }
 
     async sendInvite() {
@@ -384,23 +355,88 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     private loadData() {
         // Subscribe to customers
         this.customersService.customers$.subscribe(customers => {
-            this.customers.set(customers);
+            // ⚡ Optimization: Map to View Model once
+            const views = customers.map(c => this.mapToView(c));
+            this.customers.set(views);
             // Keep portal access cache in sync with customer list
             this.refreshPortalAccess();
         });
 
-        // Subscribe to loading state
         // Subscribe to loading state
         this.customersService.loading$.subscribe(loading => {
             this.isLoading.set(loading);
         });
     }
 
-    // Via suggestions handler
-    // Locality input handlers removed (moved to child component)
+    private mapToView(customer: Customer): CustomerView {
+        // 1. Completeness
+        const completeness = this.completenessSvc.computeCompleteness(customer);
+        const missingFields = completeness.missingFields;
+        const isComplete = completeness.complete;
 
+        let attentionLabel = 'Marcado para revisión';
+        const md = (customer.metadata) || {};
+        const reasons: string[] = Array.isArray(md.attention_reasons) ? md.attention_reasons : [];
+        if (reasons.length) {
+            const map: Record<string, string> = {
+                email_missing_or_invalid: 'Email faltante o inválido',
+                name_missing: 'Nombre faltante',
+                surname_missing: 'Apellidos faltantes',
+            };
+            attentionLabel = 'Revisar: ' + reasons.map(r => map[r] || r).join(', ');
+        }
 
+        // 2. Display Name
+        let displayName = '';
+        if (customer) {
+            let base = customer.client_type === 'business'
+                ? (customer.business_name || customer.trade_name || customer.name)
+                : [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
 
+            if (!base || !base.trim()) {
+                base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+            }
+
+            if (UUID_REGEX.test(base.trim())) {
+                base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
+            }
+
+            if (EMAIL_REGEX.test(base)) {
+                base = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
+            }
+            displayName = base;
+        }
+
+        // 3. Initials
+        const initials = `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
+
+        // 4. Avatar Gradient
+        const nameForHash = `${customer.name}${customer.apellidos}`;
+        let hash = 0;
+        for (let i = 0; i < nameForHash.length; i++) {
+            hash = nameForHash.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue = Math.abs(hash % 360);
+        const avatarGradient = `linear-gradient(135deg, hsl(${hue}, 70%, 80%) 0%, hsl(${hue + 45}, 70%, 80%) 100%)`;
+
+        // 5. GDPR Badge
+        let gdprStatus = 'nonCompliant';
+        if (customer.data_processing_consent) {
+            gdprStatus = 'compliant';
+        }
+        const gdprBadge = this.rgpdStatusConfig[gdprStatus] || this.rgpdStatusConfig['nonCompliant'];
+
+        return {
+            ...customer,
+            displayName,
+            initials,
+            avatarGradient,
+            isComplete,
+            missingFields,
+            attentionLabel,
+            gdprBadge
+        };
+    }
 
     // Event handlers
     onSearchChange(term: string) {
@@ -417,18 +453,16 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Customer actions
     selectCustomer(customer: Customer) {
-        this.selectedCustomer.set(customer);
-        // Could open a detail view or perform other actions
+        // cast to view or re-map? passed object is likely a view already if coming from template
+        this.selectedCustomer.set(customer as CustomerView);
     }
 
     editCustomer(customer: Customer) {
-        this.selectedCustomer.set(customer);
+        this.selectedCustomer.set(customer as CustomerView);
         this.setupOverlay();
         this.showForm.set(true);
         history.pushState({ modal: 'customer-form' }, '');
     }
-
-
 
     openForm() {
         this.selectedCustomer.set(null);
@@ -459,7 +493,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
 
     viewCustomer(customer: Customer) {
-        // Implementar vista de detalles
         this.selectCustomer(customer);
     }
 
@@ -469,8 +502,15 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             name: customer.name + ' (Copia)',
             email: '',
             dni: '',
-            id: '' // Ensure new ID
-        } as any);
+            id: '', // Ensure new ID
+            displayName: customer.name + ' (Copia)',
+            initials: '',
+            avatarGradient: '',
+            isComplete: false,
+            missingFields: [],
+            attentionLabel: '',
+            gdprBadge: this.rgpdStatusConfig['nonCompliant']
+        } as CustomerView);
         this.setupOverlay();
         this.showForm.set(true);
     }
@@ -539,46 +579,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         });
     }
 
-
-
-
-
     clearFilters() {
         this.searchTerm.set('');
         this.onSearchChange('');
     }
 
     // Utility methods
-    getCustomerInitials(customer: Customer): string {
-        return `${customer.name.charAt(0)}${customer.apellidos.charAt(0)}`.toUpperCase();
-    }
-
-    // Nombre amigable para mostrar en la card evitando UUIDs u otros identificadores técnicos
-    getDisplayName(customer: Customer): string {
-        if (!customer) return '';
-        // Preferir razón social si es empresa
-        let base = customer.client_type === 'business'
-            ? (customer.business_name || customer.trade_name || customer.name)
-            : [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
-
-        if (!base || !base.trim()) {
-            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
-        }
-
-        // Detectar patrón UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(base.trim())) {
-            base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
-        }
-
-        // Evitar mostrar correos como nombre si accidentalmente se mapearon
-        if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(base)) {
-            base = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
-        }
-
-        return base;
-    }
-
     formatDate(date: string | Date | null | undefined): string {
         if (!date) return '';
 
@@ -606,8 +612,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     }
 
     goToGdpr() {
-        // Navigate to the dedicated GDPR manager route (same app) with a query param
-        // so users can access the full GDPR interface if they prefer.
         try {
             this.router.navigate(['/clientes-gdpr'], { queryParams: { gdpr: '1' } });
         } catch (e) {
@@ -713,7 +717,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
                     const currentCustomers = this.customers();
                     const updatedCustomers = currentCustomers.map(c => {
                         if (c.id === customer.id) {
-                            return {
+                            const updated = {
                                 ...c,
                                 name: 'ANONYMIZED_' + Math.random().toString(36).substr(2, 8),
                                 apellidos: 'ANONYMIZED_' + Math.random().toString(36).substr(2, 8),
@@ -721,7 +725,9 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
                                 phone: '',
                                 dni: '',
                                 anonymized_at: new Date().toISOString()
-                            } as Customer;
+                            } as CustomerView;
+                            // Re-map to view to update display properties
+                            return this.mapToView(updated);
                         }
                         return c;
                     });
@@ -785,8 +791,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Show GDPR compliance status for a customer
     getGdprComplianceStatus(customer: Customer): 'compliant' | 'partial' | 'nonCompliant' {
-        // This would typically check various compliance factors
-        // If they have the mandatory consent (data_processing), they are compliant for service provision.
         if (customer.data_processing_consent) {
             return 'compliant';
         } else {
@@ -794,57 +798,18 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         }
     }
 
-    // Unified RGPD badge configuration - follows style guide semantic palette
-    rgpdStatusConfig = {
-        compliant: {
-            label: '',
-            classes: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 font-medium px-2 py-0.5 text-xs rounded-full border border-green-200 dark:border-green-800',
-            icon: 'fa-shield-alt text-xs'
-        },
-        partial: {
-            label: '',
-            classes: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-medium px-2 py-0.5 text-xs rounded-full border border-amber-200 dark:border-amber-800',
-            icon: 'fa-shield-alt text-xs'
-        },
-        nonCompliant: {
-            label: '',
-            classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 font-medium px-2 py-0.5 text-xs rounded-full border border-red-200 dark:border-red-800',
-            icon: 'fa-shield-exclamation text-xs'
-        }
-    };
-
-    getGdprBadgeConfig(customer: Customer) {
-        const status = this.getGdprComplianceStatus(customer);
-        return this.rgpdStatusConfig[status];
-    }
-
-    // Pending Rectification Requests Logic
-    pendingRectifications = signal<Set<string>>(new Set());
+    // getGdprBadgeConfig removed - use customer.gdprBadge
 
     loadGdprData() {
-        // Load compliance stats - Use getComplianceDashboard instead of getComplianceStats
+        // Load compliance stats
         this.gdprService.getComplianceDashboard().subscribe(stats => {
             this.complianceStats.set(stats);
         });
 
-        // Load pending rectification requests to control "Edit" button visibility
-        // Access 'accessRequests' from the dashboard stats or fetch separate if needed.
-        // Assuming getAccessRequests exists (as used in other components) or deriving from dashboard if it returns list.
-        // Based on service review, getComplianceDashboard returns counts. We need the list.
-        // Let's use getAuditLog or verify getAccessRequests Exists.
-        // Wait, step 17560 line 85 shows createAccessRequest. I didn't see getAccessRequests in the snippet.
-        // But GdprCustomerManager uses it. Let's assume it exists or use getComplianceDashboard if it includes data.
-        // Re-reading service (17570) - getComplianceDashboard returns counts and filtered lists in 'pendingAccessRequests' (count).
-        // It does not return the full list in the mapped response (just counts).
-        // I need to fetch the actual requests.
-
-        // Let's assume getAccessRequests exists as inferred from other usage, otherwise I will use supabase client directly here for speed or verify service again.
-        // Actually, looking at GdprCustomerManager (Step 17524), it uses this.gdprService.getAccessRequests().
         this.gdprService.getAccessRequests().subscribe((requests: GdprAccessRequest[]) => {
             if (requests) {
                 const rectificationEmails = new Set<string>();
                 requests.forEach(req => {
-                    // Use processing_status
                     if (req.request_type === 'rectification' && (req.processing_status === 'received' || req.processing_status === 'in_progress')) {
                         rectificationEmails.add(req.subject_email);
                     }
@@ -858,33 +823,9 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         return this.pendingRectifications().has(customer.email);
     }
 
-    // Avatar gradient generator - consistent hash-based color selection
-    getAvatarGradient(customer: Customer): string {
-        const name = `${customer.name}${customer.apellidos}`;
-        let hash = 0;
-        for (let i = 0; i < name.length; i++) {
-            hash = name.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        const hue = Math.abs(hash % 360);
-        return `linear-gradient(135deg, hsl(${hue}, 70%, 80%) 0%, hsl(${hue + 45}, 70%, 80%) 100%)`;
-    }
+    // getAvatarGradient removed - use customer.avatarGradient
 
-
-    getGdprStatusClass(customer: Customer): string {
-        // Deprecated: kept for backwards compatibility, use getGdprBadgeConfig instead
-        const status = this.getGdprComplianceStatus(customer);
-        switch (status) {
-            case 'compliant': return 'text-green-600 bg-green-100';
-            case 'partial': return 'text-yellow-600 bg-yellow-100';
-            default: return 'text-red-600 bg-red-100';
-        }
-    }
-
-    getGdprStatusText(customer: Customer): string {
-        // Deprecated: kept for backwards compatibility, use getGdprBadgeConfig instead
-        const config = this.getGdprBadgeConfig(customer);
-        return config.label;
-    }
+    // getGdprStatusClass/Text removed - deprecated
 
     toggleGdprMenu(event: Event, customerId: string) {
         event.stopPropagation();
@@ -935,7 +876,6 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             const allMenus = document.querySelectorAll('.gdpr-dropdown');
             allMenus.forEach(menu => menu.classList.add('hidden'));
         }
-        // Locality selector cleanup removed as it's handled in child component
     }
 
     // Load GDPR compliance statistics
@@ -980,15 +920,13 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     }
 
     // Prevent Escape key from closing the customer modal unintentionally.
-    // Some global handlers may close modals on Escape; intercept it while our modal is open.
     @HostListener('document:keydown.escape', ['$event'])
     onEscape(event: any) {
         if (this.showForm()) {
-            // Stop propagation so global listeners don't close the modal.
             if (event?.stopPropagation) event.stopPropagation();
-            // Intentionally do not call closeForm() so only explicit UI actions close the modal.
         }
     }
+
     // --- Audio Client Creation Logic ---
     async toggleRecording() {
         if (this.isRecording()) {
@@ -1037,27 +975,32 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             console.log('AI Client Data:', result);
 
             // Pre-fill form data
-            // Construct a partial customer to prefill the form
-            const partialCustomer: Partial<Customer> = {
+            const partialCustomer: Partial<CustomerView> = {
                 name: result.name || '',
                 apellidos: result.apellidos || '',
                 email: result.email || '',
                 phone: result.phone || '',
                 dni: result.dni || '',
                 business_name: result.business_name || '',
-                // map other fields if present in result
-                // For address, we can pass it if we have structure
                 direccion: {
                     nombre: (result as any).addressNombre || '',
                     tipo_via: (result as any).addressTipoVia || '',
                     numero: (result as any).addressNumero || '',
-                    localidad_id: '' // Can't guess ID easily
+                    localidad_id: ''
                 } as any,
                 marketing_consent: false,
-                data_processing_consent: false
+                data_processing_consent: false,
+                // Add default view props
+                displayName: result.name || '',
+                initials: '',
+                avatarGradient: '',
+                isComplete: false,
+                missingFields: [],
+                attentionLabel: '',
+                gdprBadge: this.rgpdStatusConfig['nonCompliant']
             };
 
-            this.selectedCustomer.set(partialCustomer as Customer);
+            this.selectedCustomer.set(partialCustomer as CustomerView);
             this.showForm.set(true);
             this.toastService.success('Datos extraídos del audio', 'Cliente pre-rellenado');
 
@@ -1068,6 +1011,5 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             this.isProcessingAudio.set(false);
         }
     }
-
 
 }
