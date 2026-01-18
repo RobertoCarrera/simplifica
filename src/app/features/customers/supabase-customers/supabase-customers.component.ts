@@ -26,6 +26,11 @@ import { AiService } from '../../../services/ai.service';
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
 
+// Constants for performance optimization
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const COLLATOR = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
+
 @Component({
     selector: 'app-supabase-customers',
     standalone: true,
@@ -202,11 +207,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             let aValue = a[sortBy];
             let bValue = b[sortBy];
 
-            if (typeof aValue === 'string') {
-                aValue = aValue.toLowerCase();
-                bValue = (bValue as string).toLowerCase();
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                const result = COLLATOR.compare(aValue, bValue);
+                return sortOrder === 'asc' ? result : -result;
             }
 
+            // Fallback for non-string values (e.g. Dates)
             const result = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
             return sortOrder === 'asc' ? result : -result;
         });
@@ -566,13 +572,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         }
 
         // Detectar patrón UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(base.trim())) {
+        if (UUID_REGEX.test(base.trim())) {
             base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
         }
 
         // Evitar mostrar correos como nombre si accidentalmente se mapearon
-        if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(base)) {
+        if (EMAIL_REGEX.test(base)) {
             base = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
         }
 
