@@ -143,21 +143,21 @@
                             <div class="flex items-start gap-4 mb-4 pr-8">
                                 <div class="relative shrink-0">
                                     <div class="w-12 h-12 rounded-full flex items-center justify-center text-gray-600 font-bold text-lg shadow-sm"
-                                        [style.background]="getAvatarGradient(customer)">
-                                        {{ getCustomerInitials(customer) }}
+                                        [style.background]="customer.avatarGradient">
+                                        {{ customer.initials }}
                                     </div>
                                     <!-- Online/Active Indicator could go here -->
                                 </div>
 
                                 <div class="min-w-0 flex-1">
                                     <h3 class="font-semibold text-gray-900 dark:text-white truncate"
-                                        [title]="getDisplayName(customer)">
-                                        {{ getDisplayName(customer) }}
+                                        [title]="customer.displayName">
+                                        {{ customer.displayName }}
                                     </h3>
                                     <!-- Incomplete warning -->
-                                    @if (!isCustomerComplete(customer)) {
+                                    @if (!customer.isComplete) {
                                     <div class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200"
-                                        [title]="formatAttentionReasons(customer)">
+                                        [title]="customer.attentionLabel">
                                         <i class="fas fa-exclamation-triangle"></i>
                                         Faltan datos
                                     </div>
@@ -209,7 +209,7 @@
                                 </button>
 
                                 <!-- GDPR Status Badge -->
-                                @let badge = getGdprBadgeConfig(customer);
+                                @let badge = customer.gdprBadge;
                                 <div class="flex items-center gap-1.5 ml-2" [title]="badge.label">
                                     <span
                                         [class]="badge.classes + ' flex items-center justify-center w-6 h-6 rounded-full'">
