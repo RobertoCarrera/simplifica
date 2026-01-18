@@ -163,6 +163,122 @@ export class ProductsService {
     return data;
   }
 
+  // --- SUPPLIER METHODS ---
+
+  async getSuppliers(): Promise<any[]> {
+    const client = this.supabase.getClient();
+    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+    if (!companyId) return [];
+
+    const { data, error } = await client
+      .from('suppliers')
+      .select('*')
+      .eq('company_id', companyId)
+      .is('deleted_at', null)
+      .order('name');
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async createSupplier(supplier: any): Promise<any> {
+    const client = this.supabase.getClient();
+    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+
+    const { data, error } = await client
+      .from('suppliers')
+      .insert({ ...supplier, company_id: companyId })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  // Link a supplier to a catalog product with price
+  async addSupplierProduct(supplierProduct: any): Promise<any> {
+    const client = this.supabase.getClient();
+    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+
+    const { data, error } = await client
+      .from('supplier_products')
+      .insert({ ...supplierProduct, company_id: companyId })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async getSupplierProducts(catalogProductId: string): Promise<any[]> {
+    const client = this.supabase.getClient();
+    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+    if (!companyId) return [];
+
+    const { data, error } = await client
+      .from('supplier_products')
+      .select('*, suppliers(name)')
+      .eq('company_id', companyId)
+      .eq('catalog_product_id', catalogProductId)
+      .order('price', { ascending: true }); // Best price first
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  // --- STOCK TRACEABILITY ---
+
+  /**
+   * Updates stock quantity AND records the movement in `stock_movements`.
+   * @param productId Internal Product ID
+   * @param quantityChange Positive for addition, negative for subtraction
+   * @param type Reason for movement
+   * @param notes Optional notes
+   */
+  async updateStock(productId: string, quantityChange: number, type: 'purchase' | 'sale' | 'adjustment' | 'return' | 'initial', notes?: string, referenceId?: string): Promise<void> {
+    const client = this.supabase.getClient();
+    const userId = this.auth.userProfile?.id || (await this.auth.getUser())?.id;
+    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+
+    // 1. Get current stock to be safe? Or just increment.
+    // Let's use an RPC for atomicity if possible, but for now client-side transaction logic.
+    // Since Supabase-js doesn't support complex transactions easily without RPC, we'll do:
+    // Insert Movement -> Update Product. 
+    // Worst case: Mismatch. Real solution: RPC.
+
+    // For now, simple calls.
+
+    // A. Record Movement
+    const { error: moveError } = await client
+      .from('stock_movements')
+      .insert({
+        company_id: companyId,
+        product_id: productId,
+        quantity_change: quantityChange,
+        movement_type: type,
+        user_id: userId,
+        notes: notes,
+        reference_id: referenceId
+      });
+
+    if (moveError) throw moveError;
+
+    // B. Update Product Stock (using RPC increment equivalent or direct update)
+    // We can use a Postgres function `increment` if we had one, but let's read-modify-write for now or simply trust the diff.
+    // Actually, `stock_quantity = stock_quantity + X` is unsuported in JS client directly without RPC.
+
+    // Let's fetch current just to be safe-ish.
+    const { data: product } = await client.from('products').select('stock_quantity').eq('id', productId).single();
+    const newStock = (product?.stock_quantity || 0) + quantityChange;
+
+    const { error: updateError } = await client
+      .from('products')
+      .update({ stock_quantity: newStock } as any)
+      .eq('id', productId);
+
+    if (updateError) throw updateError;
+  }
+
   private normalizeProduct = (row: any): Product => ({
     id: row.id,
     name: row.name,
@@ -178,7 +294,10 @@ export class ProductsService {
     created_at: row.created_at,
     updated_at: row.updated_at ?? null,
     deleted_at: row.deleted_at ?? null,
-    company_id: row.company_id
+    company_id: row.company_id,
+    min_stock_level: row.min_stock_level ?? 5,
+    location: row.location ?? null,
+    barcode: row.barcode ?? null
   });
 }
 

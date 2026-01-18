@@ -26,6 +26,7 @@ export type Database = {
                     updated_at: string | null
                     deleted_at: string | null
                 }
+
                 Insert: {
                     id?: string
                     name: string
@@ -41,6 +42,7 @@ export type Database = {
                     created_at?: string | null
                     updated_at?: string | null
                     deleted_at?: string | null
+                    ean?: string | null
                 }
                 Update: {
                     id?: string
@@ -57,6 +59,7 @@ export type Database = {
                     created_at?: string | null
                     updated_at?: string | null
                     deleted_at?: string | null
+                    ean?: string | null
                 }
             }
             products: {
@@ -75,6 +78,9 @@ export type Database = {
                     brand_id: string | null
                     category_id: string | null
                     catalog_product_id: string | null
+                    min_stock_level: number | null
+                    barcode: string | null
+                    location: string | null
                 }
                 Insert: {
                     id?: string
@@ -91,6 +97,9 @@ export type Database = {
                     brand_id?: string | null
                     category_id?: string | null
                     catalog_product_id?: string | null
+                    min_stock_level?: number | null
+                    barcode?: string | null
+                    location?: string | null
                 }
                 Update: {
                     id?: string
@@ -107,54 +116,167 @@ export type Database = {
                     brand_id?: string | null
                     category_id?: string | null
                     catalog_product_id?: string | null
+                    min_stock_level?: number | null
+                    barcode?: string | null
+                    location?: string | null
                 }
             }
-            ticket_products: {
-                Row: {
-                    id: string
-                    ticket_id: string
-                    product_id: string | null
-                    quantity: number
-                    price_per_unit: number
-                    total_price: number
-                    company_id: string | null
-                    created_at: string
-                    updated_at: string
-                    catalog_product_id: string | null
-                }
-                Insert: {
-                    id?: string
-                    ticket_id: string
-                    product_id?: string | null
-                    quantity: number
-                    price_per_unit: number
-                    total_price: number
-                    company_id?: string | null
-                    created_at?: string
-                    updated_at?: string
-                    catalog_product_id?: string | null
-                }
-                Update: {
-                    id?: string
-                    ticket_id?: string
-                    product_id?: string | null
-                    quantity?: number
-                    price_per_unit?: number
-                    total_price?: number
-                    company_id?: string | null
-                    created_at?: string
-                    updated_at?: string
-                    catalog_product_id?: string | null
-                }
+        }
+        ticket_products: {
+            Row: {
+                id: string
+                ticket_id: string
+                product_id: string | null
+                quantity: number
+                price_per_unit: number
+                total_price: number
+                company_id: string | null
+                created_at: string
+                updated_at: string
+                catalog_product_id: string | null
             }
-            // ... other tables (keeping key ones for brevity if file is not overwritten but merged, 
-            // but 'write_to_file' overwrites, so I should ideally get the full content or just patch. 
-            // Since I don't have the full original file content in memory to reproduce perfectly 
-            // without potentially breaking other things, I will skip overwriting the entire `supabase.ts` 
-            // and instead focus on updating the service to use `any` or the partial types I define there 
-            // if I can't easily merge. 
-            // For this environment, usually I should modify the actual file. 
-            // Let me READ the actual global types file first if it exists, or deciding where to put these types.)
+            Insert: {
+                id?: string
+                ticket_id: string
+                product_id?: string | null
+                quantity: number
+                price_per_unit: number
+                total_price: number
+                company_id?: string | null
+                created_at?: string
+                updated_at?: string
+                catalog_product_id?: string | null
+            }
+            Update: {
+                id?: string
+                ticket_id?: string
+                product_id?: string | null
+                quantity?: number
+                price_per_unit?: number
+                total_price?: number
+                company_id?: string | null
+                created_at?: string
+                updated_at?: string
+                catalog_product_id?: string | null
+            }
+        }
+        suppliers: {
+            Row: {
+                id: string
+                company_id: string
+                name: string
+                email: string | null
+                phone: string | null
+                website: string | null
+                address: string | null
+                tax_id: string | null
+                created_at: string | null
+                updated_at: string | null
+                deleted_at: string | null
+            }
+            Insert: {
+                id?: string
+                company_id: string
+                name: string
+                email?: string | null
+                phone?: string | null
+                website?: string | null
+                address?: string | null
+                tax_id?: string | null
+                created_at?: string | null
+                updated_at?: string | null
+                deleted_at?: string | null
+            }
+            Update: {
+                id?: string
+                company_id?: string
+                name?: string
+                email?: string | null
+                phone?: string | null
+                website?: string | null
+                address?: string | null
+                tax_id?: string | null
+                created_at?: string | null
+                updated_at?: string | null
+                deleted_at?: string | null
+            }
+        }
+        supplier_products: {
+            Row: {
+                id: string
+                company_id: string
+                supplier_id: string
+                catalog_product_id: string
+                supplier_sku: string | null
+                price: number
+                currency: string | null
+                url: string | null
+                last_checked_at: string | null
+                created_at: string | null
+                updated_at: string | null
+            }
+            Insert: {
+                id?: string
+                company_id: string
+                supplier_id: string
+                catalog_product_id: string
+                supplier_sku?: string | null
+                price?: number
+                currency?: string | null
+                url?: string | null
+                last_checked_at?: string | null
+                created_at?: string | null
+                updated_at?: string | null
+            }
+            Update: {
+                id?: string
+                company_id?: string
+                supplier_id?: string
+                catalog_product_id?: string
+                supplier_sku?: string | null
+                price?: number
+                currency?: string | null
+                url?: string | null
+                last_checked_at?: string | null
+                created_at?: string | null
+                updated_at?: string | null
+            }
+        }
+        stock_movements: {
+            Row: {
+                id: string
+                company_id: string
+                product_id: string
+                quantity_change: number
+                movement_type: 'purchase' | 'sale' | 'adjustment' | 'return' | 'initial'
+                reference_id: string | null
+                user_id: string | null
+                notes: string | null
+                created_at: string | null
+            }
+            Insert: {
+                id?: string
+                company_id: string
+                product_id: string
+                quantity_change: number
+                movement_type: 'purchase' | 'sale' | 'adjustment' | 'return' | 'initial'
+                reference_id?: string | null
+                user_id?: string | null
+                notes?: string | null
+                created_at?: string | null
+            }
+            Update: {
+                id?: string
+                company_id?: string
+                product_id?: string
+                quantity_change?: number
+                movement_type?: 'purchase' | 'sale' | 'adjustment' | 'return' | 'initial'
+                reference_id?: string | null
+                user_id?: string | null
+                notes?: string | null
+                created_at?: string | null
+            }
         }
     }
+}
 }

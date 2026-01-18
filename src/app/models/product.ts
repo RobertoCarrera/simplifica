@@ -16,4 +16,7 @@ export interface Product {
     updated_at?: string | null;
     deleted_at?: string | null;
     company_id: string;
+    min_stock_level?: number;
+    barcode?: string | null;
+    location?: string | null;
 }
