@@ -31,7 +31,7 @@ export class ProductsService {
 
     let query: any = client
       .from('products')
-      .select('*')
+      .select('*, product_categories(name), product_brands(name)')
       .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
@@ -60,13 +60,9 @@ export class ProductsService {
     const payload: any = {
       name: product.name?.trim() || 'Producto',
       description: product.description ?? null,
-      // Use normalized IDs if available, otherwise use legacy text fields
       category_id: product.category_id ?? null,
       brand_id: product.brand_id ?? null,
-      // Keep legacy fields for backward compatibility
-      category: product.category ?? null,
-      brand: product.brand ?? null,
-      model: product.model ?? null,
+      catalog_product_id: (product as any).catalog_product_id ?? null,
       price: typeof product.price === 'number' ? product.price : Number(product.price || 0),
       stock_quantity: Number(product.stock_quantity || 0),
       company_id: companyId
@@ -75,7 +71,7 @@ export class ProductsService {
     const { data, error } = await client
       .from('products')
       .insert(payload)
-      .select('*')
+      .select('*, product_categories(name), product_brands(name)')
       .single();
 
     if (error) throw error;
@@ -93,11 +89,19 @@ export class ProductsService {
     if (payload.price !== undefined) payload.price = Number(payload.price || 0);
     if (payload.stock_quantity !== undefined) payload.stock_quantity = Number(payload.stock_quantity || 0);
 
+    // Remove legacy text fields and join fields
+    delete payload.category;
+    delete payload.brand;
+    delete payload.brand_name;
+    delete payload.category_name;
+    delete payload.product_categories;
+    delete payload.product_brands;
+
     const { data, error } = await client
       .from('products')
       .update(payload)
       .eq('id', productId)
-      .select('*')
+      .select('*, product_categories(name), product_brands(name)')
       .single();
 
     if (error) throw error;
@@ -118,13 +122,55 @@ export class ProductsService {
     if (error) throw error;
   }
 
+  // --- CATALOG METHODS ---
+
+  // Search Global Catalog
+  async searchCatalog(query: string): Promise<any[]> {
+    const client = this.supabase.getClient();
+    if (!query.trim()) return [];
+
+    // Simple text matching for now. Vector search will be added via Edge Function later.
+    const { data, error } = await client
+      .from('product_catalog')
+      .select('*')
+      .ilike('name', `%${query}%`)
+      .limit(20);
+
+    if (error) {
+      console.error('Error searching catalog:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  // Create a new Catalog Item (Private to company by default)
+  async createCatalogItem(item: any): Promise<any> {
+    const client = this.supabase.getClient();
+    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+
+    const payload = {
+      ...item,
+      company_id: companyId
+    };
+
+    const { data, error } = await client
+      .from('product_catalog')
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
   private normalizeProduct = (row: any): Product => ({
     id: row.id,
     name: row.name,
-    category: row.category ?? null,
-    brand: row.brand ?? null,
+    category: row.product_categories?.name ?? null,
+    brand: row.product_brands?.name ?? null,
     category_id: row.category_id ?? null,
     brand_id: row.brand_id ?? null,
+    catalog_product_id: row.catalog_product_id ?? null,
     model: row.model ?? null,
     description: row.description ?? null,
     price: typeof row.price === 'number' ? row.price : Number(row.price || 0),
@@ -135,3 +181,4 @@ export class ProductsService {
     company_id: row.company_id
   });
 }
+

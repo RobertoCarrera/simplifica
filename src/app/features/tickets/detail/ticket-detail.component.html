@@ -328,18 +328,32 @@
             <div class="tab-content-animate">
               <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Productos Asignados</h3>
-                <button *ngIf="!isClient()" (click)="openProductsModal()" class="btn btn-primary">
-                  <i class="fas fa-box"></i>
-                  Modificar Productos
-                </button>
+                <div class="flex items-center gap-2">
+                  <button *ngIf="!isClient()" (click)="openProductsModal()" class="btn btn-primary">
+                    <i class="fas fa-box"></i>
+                    Modificar Productos
+                  </button>
+                  <button *ngIf="!isClient()" (click)="openCreateProductModal()" class="btn btn-secondary"
+                    type="button">
+                    <i class="fas fa-plus"></i>
+                    Crear Producto
+                  </button>
+                </div>
               </div>
               <div *ngIf="ticketProducts.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
                 <i class="fas fa-box text-5xl mb-4 opacity-50"></i>
                 <p class="text-lg">No hay productos asignados a este ticket</p>
-                <button *ngIf="!isClient()" (click)="openProductsModal()" class="mt-4 btn btn-secondary">
-                  <i class="fas fa-plus mr-2"></i>
-                  Añadir Productos
-                </button>
+                <div class="mt-4 flex justify-center gap-2">
+                  <button *ngIf="!isClient()" (click)="openProductsModal()" class="btn btn-secondary">
+                    <i class="fas fa-plus mr-2"></i>
+                    Añadir Productos
+                  </button>
+                  <button *ngIf="!isClient()" (click)="openCreateProductModal(); $event.stopPropagation()"
+                    class="btn btn-secondary" type="button">
+                    <i class="fas fa-plus mr-2"></i>
+                    Crear Producto
+                  </button>
+                </div>
               </div>
               <div *ngIf="ticketProducts.length > 0" class="space-y-4">
                 <div *ngFor="let productItem of ticketProducts"
@@ -1302,15 +1316,41 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="space-y-1.5">
           <label for="device_brand" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Marca *</label>
-          <input type="text" id="device_brand" [(ngModel)]="deviceFormData.brand" name="device_brand"
-            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-            placeholder="Ej: Apple, Samsung, Xiaomi">
+          <div class="relative">
+            <input type="text" id="device_brand" [(ngModel)]="deviceFormData.brand" name="device_brand"
+              (focus)="onBrandFocus()" (input)="filterBrandsList()" (blur)="onBrandBlur()"
+              (keydown.enter)="onBrandEnter(); $event.preventDefault()"
+              class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              placeholder="Ej: Apple, Samsung, Xiaomi" autocomplete="off">
+
+            <!-- Autocomplete Dropdown -->
+            <div *ngIf="showBrandInput && filteredBrands.length > 0"
+              class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              <div *ngFor="let brand of filteredBrands" (click)="selectBrand(brand)"
+                class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-sm text-gray-900 dark:text-white">
+                {{ brand.name }}
+              </div>
+            </div>
+          </div>
         </div>
         <div class="space-y-1.5">
           <label for="device_model" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Modelo *</label>
-          <input type="text" id="device_model" [(ngModel)]="deviceFormData.model" name="device_model"
-            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-            placeholder="Ej: iPhone 14, Galaxy S23">
+          <div class="relative">
+            <input type="text" id="device_model" [(ngModel)]="deviceFormData.model" name="device_model"
+              (focus)="onModelFocus()" (input)="filterModelsList()" (blur)="onModelBlur()"
+              (keydown.enter)="onModelEnter(); $event.preventDefault()"
+              class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              placeholder="Ej: iPhone 14, Galaxy S23" autocomplete="off" [disabled]="!deviceFormData.brand">
+
+            <!-- Autocomplete Dropdown -->
+            <div *ngIf="showModelInput && filteredModels.length > 0"
+              class="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              <div *ngFor="let model of filteredModels" (click)="selectModel(model)"
+                class="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-sm text-gray-900 dark:text-white">
+                {{ model.name }}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1466,3 +1506,8 @@
     </div>
   </div>
 </div>
+
+<!-- Modal must be OUTSIDE the main content div for proper z-index -->
+<app-product-create-modal *ngIf="showCreateProductModal" (close)="closeCreateProductModal()"
+  (saved)="onProductCreated($event)">
+</app-product-create-modal>

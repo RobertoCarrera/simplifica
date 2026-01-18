@@ -8,6 +8,7 @@ import { SupabaseTicketsService, Ticket, TicketTimelineEvent, TicketMacro } from
 import { SupabaseTicketStagesService, TicketStage as ConfigStage } from '../../../services/supabase-ticket-stages.service';
 import { DevicesService, Device } from '../../../services/devices.service';
 import { ProductsService } from '../../../services/products.service';
+import { ProductMetadataService } from '../../../services/product-metadata.service';
 import { TicketModalService } from '../../../services/ticket-modal.service';
 
 import { environment } from '../../../../environments/environment';
@@ -55,13 +56,14 @@ interface TicketComment {
 }
 
 import { ClientDevicesModalComponent } from '../../../features/devices/client-devices-modal/client-devices-modal.component';
+import { ProductCreateModalComponent } from '../../../features/products/product-create-modal/product-create-modal.component';
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
 
 @Component({
   selector: 'app-ticket-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, ClientDevicesModalComponent, SkeletonLoaderComponent, TagManagerComponent],
+  imports: [CommonModule, FormsModule, ClientDevicesModalComponent, SkeletonLoaderComponent, TagManagerComponent, ProductCreateModalComponent],
   styleUrls: ['./ticket-detail.component.scss'],
   templateUrl: './ticket-detail.component.html'
 })
@@ -124,6 +126,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private servicesService = inject(SupabaseServicesService);
   private devicesService = inject(DevicesService);
   private productsService = inject(ProductsService);
+  private productMetadataService = inject(ProductMetadataService); // Injected
   private settingsService = inject(SupabaseSettingsService);
   private ticketModalService = inject(TicketModalService);
 
@@ -132,6 +135,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private toastService = inject(ToastService);
   private tenantService = inject(TenantService);
   private authService = inject(AuthService);
+
+  // Brand Autocomplete state
+  availableBrands: any[] = [];
+  filteredBrands: any[] = [];
+  brandSearchText: string = '';
+  showBrandInput = false;
 
   // Track if there is an existing active quote derived from this ticket
   activeQuoteId: string | null = null;
@@ -165,6 +174,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   filteredDevices: Device[] = [];
   deviceSearchText = '';
   selectedDeviceIds: Set<string> = new Set();
+
+  // Create Product Modal state
+  showCreateProductModal = false;
 
   // History management for modals
   private popStateListener: any = null;
@@ -2545,6 +2557,51 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
   }
 
+  // --- Product Creation Modal (create new product) ---
+
+  openCreateProductModal() {
+    console.log('openCreateProductModal called!');
+    this.showCreateProductModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closeCreateProductModal() {
+    this.showCreateProductModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async onProductCreated(product?: any) {
+    this.closeCreateProductModal();
+
+    if (product && this.ticket?.id) {
+      // If we have a valid product and ticket context, link it immediately
+      try {
+        const payload = {
+          ticket_id: this.ticket.id,
+          product_id: product.id,
+          quantity: 1,
+          price_per_unit: product.price || 0,
+          company_id: (this.ticket as any).company_id
+        };
+
+        const { error } = await this.supabase.getClient()
+          .from('ticket_products')
+          .insert(payload);
+
+        if (error) throw error;
+
+        this.toastService.success('Éxito', 'Producto creado y añadido al ticket');
+        await this.loadTicketProducts();
+      } catch (err: any) {
+        console.error('Error linking new product to ticket:', err);
+        // Fallback message if linking fails but creation succeeded
+        this.toastService.warning('Producto creado', 'El producto se creó pero no se pudo vincular automáticamente al ticket.');
+      }
+    } else {
+      this.toastService.success('Éxito', 'Producto creado correctamente');
+    }
+  }
+
   filterProductsList() {
     if (!this.productSearchText.trim()) {
       this.filteredProducts = [...this.productsCatalog];
@@ -2793,6 +2850,123 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // CREATE DEVICE MODAL LOGIC (Ported)
   // ============================================
 
+
+  // ============================================
+  // BRAND AUTOCOMPLETE LOGIC
+  // ============================================
+
+  loadBrands() {
+    this.productMetadataService.getBrands().subscribe(brands => {
+      this.availableBrands = brands;
+      this.filterBrandsList();
+    });
+  }
+
+  filterBrandsList() {
+    const search = (this.deviceFormData.brand || '').toLowerCase();
+    this.filteredBrands = this.availableBrands.filter(b =>
+      b.name.toLowerCase().includes(search)
+    );
+    this.showBrandInput = true;
+  }
+
+  selectBrand(brand: any) {
+    this.deviceFormData.brand = brand.name;
+    this.deviceFormData.brand_id = brand.id; // Store brand_id for filtering models
+    this.showBrandInput = false;
+    this.deviceFormData.model = ''; // Reset model when brand changes
+    this.loadModels(brand.id);
+  }
+
+  onBrandEnter() {
+    // If exact match in filtered, select it
+    const exactMatch = this.filteredBrands.find(b => b.name.toLowerCase() === (this.deviceFormData.brand || '').toLowerCase());
+    if (exactMatch) {
+      this.selectBrand(exactMatch);
+    } else {
+      // Allow custom brand (will be created in createAndSelectDevice)
+      this.showBrandInput = false;
+      this.deviceFormData.brand_id = null; // New brand, no ID yet
+      this.availableModels = []; // No models for new brand
+      this.filteredModels = [];
+    }
+  }
+
+  // Close brand dropdown on blur (delayed to allow click)
+  onBrandBlur() {
+    setTimeout(() => {
+      this.showBrandInput = false;
+    }, 200);
+  }
+
+  onBrandFocus() {
+    this.loadBrands();
+    this.filterBrandsList();
+    this.showBrandInput = true;
+  }
+
+
+  // ============================================
+  // MODEL AUTOCOMPLETE LOGIC
+  // ============================================
+
+  // Model Autocomplete state
+  availableModels: any[] = [];
+  filteredModels: any[] = [];
+  showModelInput = false;
+
+
+  loadModels(brandId: string) {
+    if (!brandId) {
+      this.availableModels = [];
+      this.filteredModels = [];
+      return;
+    }
+    this.productMetadataService.getModels(brandId).subscribe(models => {
+      this.availableModels = models;
+      this.filterModelsList();
+    });
+  }
+
+  filterModelsList() {
+    const search = (this.deviceFormData.model || '').toLowerCase();
+    this.filteredModels = this.availableModels.filter(m =>
+      m.name.toLowerCase().includes(search)
+    );
+    this.showModelInput = true;
+  }
+
+  selectModel(model: any) {
+    this.deviceFormData.model = model.name;
+    this.showModelInput = false;
+  }
+
+  onModelEnter() {
+    const exactMatch = this.filteredModels.find(m => m.name.toLowerCase() === (this.deviceFormData.model || '').toLowerCase());
+    if (exactMatch) {
+      this.selectModel(exactMatch);
+    } else {
+      this.showModelInput = false;
+    }
+  }
+
+  onModelFocus() {
+    // Only load/show if we have models or if we want to confirm no models
+    if (this.availableModels.length > 0 || this.deviceFormData.brand_id) {
+      if (this.availableModels.length === 0 && this.deviceFormData.brand_id) {
+        this.loadModels(this.deviceFormData.brand_id);
+      }
+      this.filterModelsList();
+      this.showModelInput = true;
+    }
+  }
+
+  onModelBlur() {
+    setTimeout(() => {
+      this.showModelInput = false;
+    }, 200);
+  }
+
   openCreateDeviceForm() {
     if (this.isClient()) {
       this.clientDevicesModalMode = 'select';
@@ -2890,6 +3064,20 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
 
     try {
+      // 1. Ensure brand exists in shared table
+      if (this.deviceFormData.brand && this.deviceFormData.company_id) {
+        // We use createBrand from metadata service which handles get-or-create logic
+        try {
+          // Fire and forget or await? Better await to ensure it exists for future queries
+          await this.productMetadataService.createBrand(
+            this.deviceFormData.brand,
+            this.deviceFormData.company_id
+          );
+        } catch (e) {
+          console.warn('Could not sync brand to shared table, proceeding with device creation', e);
+        }
+      }
+
       let deviceData = {
         ...this.deviceFormData,
         // Ensure authoritative IDs
@@ -3043,3 +3231,4 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     this.selectedDeviceImages.splice(index, 1);
   }
 }
+
