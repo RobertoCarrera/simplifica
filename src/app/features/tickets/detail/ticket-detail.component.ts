@@ -1,8 +1,8 @@
 import { Component, OnInit, inject, ElementRef, ViewChild, OnDestroy, AfterViewInit, AfterViewChecked, ChangeDetectorRef, computed, Renderer2, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
-import DOMPurify from 'dompurify';
 import { FormsModule } from '@angular/forms';
+import { sanitizeHtml } from '../../../core/utils/sanitization.utils';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
 import { SupabaseTicketsService, Ticket } from '../../../services/supabase-tickets.service';
@@ -1877,9 +1877,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!htmlContent) return '';
 
     // Sanitize first to prevent XSS
-    const cleanHtml = DOMPurify.sanitize(htmlContent, {
-      ADD_ATTR: ['target', 'class', 'style'], // Allow safe attributes we might use/need
-    });
+    const cleanHtml = sanitizeHtml(htmlContent);
 
     // simple string manipulation to add class/onclick logic or wrap in anchor
     // We want: output <a href="src" target="_blank"><img src="src" class="comment-thumbnail" /></a>
