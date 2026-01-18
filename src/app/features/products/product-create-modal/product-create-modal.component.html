@@ -188,10 +188,38 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Stock</label>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Stock Actual</label>
                     <input type="number" [(ngModel)]="newProduct.stock_quantity" name="stock_quantity"
                         class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                        placeholder="Cantidad en stock">
+                        placeholder="0">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Stock Mínimo</label>
+                    <input type="number" [(ngModel)]="newProduct.min_stock_level" name="min_stock_level"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="Ej: 5">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Código de
+                        Barras</label>
+                    <div class="flex gap-2">
+                        <input type="text" [(ngModel)]="newProduct.barcode" name="barcode"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            placeholder="Escanea o ingresa código">
+                        <button type="button"
+                            class="px-3 py-2 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600">
+                            <i class="fas fa-barcode"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Ubicación</label>
+                    <input type="text" [(ngModel)]="newProduct.location" name="location"
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="Ej: Estante A-1">
                 </div>
 
                 <div class="md:col-span-2">

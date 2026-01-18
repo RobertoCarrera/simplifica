@@ -759,6 +759,11 @@ export class AuthService {
   // MÉTODOS PÚBLICOS DE AUTENTICACIÓN
   // ==========================================
 
+  async getUser(): Promise<User | null> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    return user;
+  }
+
   async login(credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> {
     try {
       console.log('🔐 Attempting login (email):', credentials.email);
