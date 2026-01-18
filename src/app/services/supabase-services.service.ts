@@ -373,8 +373,8 @@ export class SupabaseServicesService {
       id: service.id,
       name: service.name,
       description: service.description || '',
-      base_price: service.base_price || 0,
-      estimated_hours: service.estimated_hours || 0,
+      base_price: Number(service.base_price) || 0,
+      estimated_hours: Number(service.estimated_hours) || 0,
       // Map category UUID to its name if available; otherwise keep original string or fallback
       category: (typeof service.category === 'string' && this.isValidUuid(service.category) && categoriesById[service.category])
         ? categoriesById[service.category].name

@@ -359,19 +359,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.openLightbox(img.src);
     }
   }
-
   openLightbox(imageUrl: string) {
     if (!imageUrl) return;
     this.selectedImage = imageUrl;
     this.lockBodyScroll();
-    this.loadStaff();
     this.loadConfig();
   }
 
-  async loadStaff() {
-    const user = this.authService.userProfile;
-    if (user?.role && user.role !== 'client' && user.company_id) {
-      this.staffUsers = await this.ticketsService.getCompanyStaff(user.company_id);
+  async loadStaff(companyId?: string) {
+    const cid = companyId || this.ticket?.company_id || this.ticket?.company?.id || this.authService.userProfile?.company_id;
+    if (cid) {
+      this.staffUsers = await this.ticketsService.getCompanyStaff(cid);
     }
   }
 
@@ -1550,7 +1548,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           *,
           client:clients(id, name, email, phone),
           stage:ticket_stages(id, name, position, color),
-          company:companies(id, name)
+          company:companies(id, name),
+          assigned_user:users(id, name, email)
         `)
         .eq('id', this.ticketId)
         .single();
@@ -1565,14 +1564,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         await this.checkActiveQuoteForTicket();
       } catch { }
 
+      // Determine company ID early
+      const companyId = ticketData.company_id || ticketData.company?.id || this.authService.userProfile?.company_id;
+
       // Parallelize independent data loading
       await Promise.all([
         this.loadTicketServices(),
         this.loadTicketProducts(),
-
         this.loadTicketDevices(),
         this.loadComments(),
-        this.loadMacros()
+        this.loadMacros(),
+        this.loadStaff(companyId) // Use the company ID from the ticket
       ]);
 
       // Cargar estados visibles (genéricos no ocultos + específicos de empresa)
@@ -1993,11 +1995,14 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       const sid = it?.service?.id; if (sid) this.selectedServiceQuantities.set(sid, Math.max(1, Number(it.quantity || 1)));
     }
     // Ensure at least one selected for safety
+    // Ensure at least one selected for safety - REMOVED to avoid misleading logic
+    /*
     if (this.selectedServiceIds.size === 0 && this.servicesCatalog.length > 0) {
       this.selectedServiceIds.add(this.servicesCatalog[0].id);
       // default quantity
       this.selectedServiceQuantities.set(this.servicesCatalog[0].id, 1);
     }
+    */
     this.showServicesModal = true;
     document.body.classList.add('modal-open');
     this.lockBodyScroll();
@@ -2021,7 +2026,24 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         const sid = it?.service?.id; const q = it?.quantity || 1; if (sid) existingQty.set(sid, q);
       }
       // Use quantities from selectedServiceQuantities if available, otherwise keep existing or 1
-      const items = Array.from(this.selectedServiceIds).map(id => ({ service_id: id, quantity: this.selectedServiceQuantities.get(id) || existingQty.get(id) || 1 }));
+      const items = Array.from(this.selectedServiceIds).map(id => {
+        const qty = this.selectedServiceQuantities.get(id) || existingQty.get(id) || 1;
+        // Lookup service to get base price
+        const svcInfo = this.servicesCatalog.find(s => s.id === id);
+        let unitPrice = 0;
+        if (svcInfo && typeof svcInfo.base_price === 'number') {
+          unitPrice = svcInfo.base_price;
+        } else {
+          // Fallback to existing price if service not in catalog (e.g. hidden/inactive)
+          const existing = (this.ticketServices || []).find(ts => ts.service?.id === id);
+          unitPrice = (existing?.unit_price || existing?.service?.base_price) || 0;
+        }
+        return {
+          service_id: id,
+          quantity: qty,
+          unit_price: unitPrice
+        };
+      });
       const companyIdForReplace = String((this.ticket as any).company_id || (this.ticket as any).company?.id || '');
       await this.ticketsService.replaceTicketServices(this.ticket.id, companyIdForReplace, items);
       await this.loadTicketServices();
@@ -2177,13 +2199,23 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
       this.ticketServices = (items as any[]).map((it: any) => {
         const svc = it?.service || {};
-        // Ensure estimated_hours is a number (DB might return string)
+
+        // Ensure estimated_hours is a number
         if (svc && svc.estimated_hours !== undefined && svc.estimated_hours !== null) {
           const n = Number(svc.estimated_hours);
           svc.estimated_hours = Number.isFinite(n) ? n : 0;
         } else {
           svc.estimated_hours = 0;
         }
+
+        // Ensure base_price is a number
+        if (svc && svc.base_price !== undefined && svc.base_price !== null) {
+          const n = Number(svc.base_price);
+          svc.base_price = Number.isFinite(n) ? n : 0;
+        } else {
+          svc.base_price = 0;
+        }
+
         const cat = svc?.category;
         const isUuid = typeof cat === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cat);
         const category_name = isUuid ? (categoriesById[cat]?.name || 'Sin categoría') : (cat || 'Sin categoría');
@@ -2423,9 +2455,34 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   // Pricing helpers: prefer persisted values from ticket_services with fallback to service.base_price
   getUnitPrice(item: any): number {
-    const fromRelation = typeof item?.price_per_unit === 'number' ? item.price_per_unit : null;
-    const fromService = typeof item?.service?.base_price === 'number' ? item.service.base_price : 0;
-    return (fromRelation ?? fromService) || 0;
+    let fromRelation: number | null = null;
+    if (item?.price_per_unit !== undefined && item?.price_per_unit !== null) {
+      fromRelation = Number(item.price_per_unit);
+    } else if (item?.unit_price !== undefined && item?.unit_price !== null) {
+      fromRelation = Number(item.unit_price);
+    }
+
+    let fromService = 0;
+    if (item?.service?.base_price !== undefined && item?.service?.base_price !== null) {
+      fromService = Number(item.service.base_price);
+    }
+
+    // If fromRelation is a valid number, use it. Otherwise fallback.
+    // Note: If stored price is 0, we trust it IF it was a valid number, 
+    // BUT given the bug context, if it's 0 we might want to fallback if base_price > 0.
+    // However, intentional 0 price is possible.
+    // For the specific bug fix: The bug caused 0 to be stored. 
+    // We'll use the fallback if fromRelation is falsy (0) AND fromService is truthy (>0),
+    // which implies the stored 0 is likely an error. 
+    // However, to be safe and allow intentional free items, we usually shouldn't override 0.
+    // But due to the widespread issue, we will allow fallback if 0 to fix the display for existing tickets.
+    // This is a trade-off: intentional free items need to be handled carefully, but 
+    // likely services usually have a price.
+    if (fromRelation && !isNaN(fromRelation)) return fromRelation;
+    // If 0 or NaN, try fallback
+    if (fromService && !isNaN(fromService)) return fromService;
+
+    return fromRelation || 0;
   }
 
   getLineTotal(item: any): number {
@@ -2534,10 +2591,22 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!this.ticket) return;
     try {
       // Build items array
-      const items = Array.from(this.selectedProductIds).map(productId => ({
-        product_id: productId,
-        quantity: this.tempProductQuantities.get(productId) || 1
-      }));
+      const items = Array.from(this.selectedProductIds).map(productId => {
+        const prod = this.productsCatalog.find(p => p.id === productId);
+        let unitPrice = 0;
+        if (prod && typeof prod.price === 'number') {
+          unitPrice = prod.price;
+        } else {
+          // Fallback if product not in catalog (e.g. archived)
+          const existing = (this.ticketProducts || []).find(tp => tp.product?.id === productId);
+          unitPrice = (existing?.price_per_unit || existing?.product?.price) || 0;
+        }
+        return {
+          product_id: productId,
+          quantity: this.tempProductQuantities.get(productId) || 1,
+          unit_price: unitPrice
+        };
+      });
 
       // Get company ID
       const companyId = String((this.ticket as any).company_id || (this.ticket as any).company?.id || '');
@@ -2563,7 +2632,16 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .eq('ticket_id', this.ticket.id);
 
       if (error) throw error;
-      this.ticketProducts = data || [];
+
+      // Coerce product prices
+      this.ticketProducts = (data || []).map((tp: any) => {
+        const prod = tp.product || {};
+        if (prod.price !== undefined && prod.price !== null) {
+          prod.price = Number(prod.price) || 0;
+        }
+        return tp;
+      });
+
     } catch (err) {
       console.error('Error loading ticket products:', err);
       this.ticketProducts = [];
@@ -2571,7 +2649,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   getProductUnitPrice(item: any): number {
-    return item?.price_per_unit ?? item?.product?.price ?? 0;
+    const p1 = Number(item?.price_per_unit);
+    const p2 = Number(item?.product?.price);
+    const v1 = !isNaN(p1) ? p1 : 0;
+    const v2 = !isNaN(p2) ? p2 : 0;
+    // Fallback if 0 (bug fix heuristic)
+    return v1 || v2 || 0;
   }
 
   getProductLineTotal(item: any): number {
