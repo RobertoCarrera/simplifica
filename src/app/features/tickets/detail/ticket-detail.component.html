@@ -215,20 +215,13 @@
               </span>
             </button>
 
-            <!-- Timeline Tab (Staff Only) -->
-            <button *ngIf="!isClient()" (click)="activeTab = 'timeline'" [class.active-tab]="activeTab === 'timeline'"
-              class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
-              <i class="fas fa-history mr-1 sm:mr-2"></i>
-              <span class="hidden xs:inline">Auditoría / Timeline</span>
-              <span class="xs:hidden">Hist.</span>
-            </button>
+
 
             <!-- ... existing tabs ... -->
             <button (click)="activeTab = 'services'" [class.active-tab]="activeTab === 'services'"
               class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
               <i class="fas fa-wrench mr-1 sm:mr-2"></i>
               <span class="hidden xs:inline">Servicios</span>
-              <!-- ... --> (rest matches original)
               <span class="xs:hidden">Serv.</span>
               <span *ngIf="ticketServices.length > 0"
                 class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
@@ -765,88 +758,14 @@
             </div>
             }
 
-            <!-- Timeline Tab -->
-            @if (activeTab === 'timeline') {
-            <div class="tab-content-animate">
-              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                <div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
-                  <i class="fas fa-history"></i>
-                </div>
-                Auditoría del Ticket
-              </h3>
 
-              <div class="relative border-l-2 border-gray-100 dark:border-gray-700 ml-3 space-y-8 py-2">
-                <!-- Custom Timeline Loop -->
-                <div *ngFor="let event of recentActivity" class="relative pl-8 group">
-                  <!-- Connector Dot -->
-                  <div
-                    class="absolute -left-[9px] top-1 w-5 h-5 rounded-full border-4 border-white dark:border-gray-800 bg-gray-200 dark:bg-gray-600 group-hover:bg-blue-500 transition-colors shadow-sm">
-                  </div>
-
-                  <!-- Content Card -->
-                  <div
-                    class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
-                    <div class="flex justify-between items-start mb-1">
-                      <span class="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                        {{ event.actor?.email || 'Sistema' }}
-                      </span>
-                      <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap ml-2">
-                        {{ formatDate(event.created_at) }}
-                      </span>
-                    </div>
-
-                    <div class="text-sm text-gray-700 dark:text-gray-300">
-                      <!-- Dynamic content based on event type -->
-                      <ng-container [ngSwitch]="event.event_type">
-                        <span *ngSwitchCase="'creation'" class="text-green-600 dark:text-green-400 font-medium">
-                          <i class="fas fa-plus-circle mr-1"></i> Creó el ticket
-                        </span>
-                        <span *ngSwitchCase="'stage_change'" class="text-blue-600 dark:text-blue-400 font-medium">
-                          <i class="fas fa-exchange-alt mr-1"></i> Cambió el estado
-                          <span class="text-gray-600 dark:text-gray-400 font-normal">
-                            de {{ event.metadata?.old_stage }} a {{ event.metadata?.new_stage }}
-                          </span>
-                        </span>
-                        <span *ngSwitchCase="'assignment_change'"
-                          class="text-purple-600 dark:text-purple-400 font-medium">
-                          <i class="fas fa-user-tag mr-1"></i> Asignó el ticket
-                          <span class="text-gray-600 dark:text-gray-400 font-normal">
-                            a {{ event.metadata?.new_assignee || 'nadie' }}
-                          </span>
-                        </span>
-                        <span *ngSwitchCase="'priority_change'"
-                          class="text-orange-600 dark:text-orange-400 font-medium">
-                          <i class="fas fa-layer-group mr-1"></i> Cambió prioridad
-                        </span>
-                        <span *ngSwitchCase="'comment'" class="text-gray-600 dark:text-gray-300">
-                          <i class="far fa-comment-alt mr-1"></i> Añadió un comentario
-                        </span>
-                        <span *ngSwitchDefault>
-                          {{ event.description || 'Actividad registrada' }}
-                        </span>
-                      </ng-container>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- End of Timeline Marker -->
-                <div class="relative pl-8">
-                  <div
-                    class="absolute -left-[7px] top-1 w-4 h-4 rounded-full bg-green-500 border-2 border-white dark:border-gray-800 shadow-sm">
-                  </div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">Ticket Creado</div>
-                  <div class="text-[10px] text-gray-400 dark:text-gray-500">{{ formatDate(ticket.created_at) }}</div>
-                </div>
-              </div>
-            </div>
-            }
           </div>
         </div>
       </div>
 
+
       <!-- Sidebar (Right Side) -->
       <div class="space-y-4 sm:space-y-6 lg:col-span-1">
-
         <!-- Tags Card -->
         <div *ngIf="!isClient()"
           class="bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
@@ -858,28 +777,6 @@
             <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Etiquetas</h3>
           </div>
           <app-tag-manager [entityId]="ticket.id" entityType="tickets"></app-tag-manager>
-        </div>
-
-        <!-- SLA / Info Card (Staff Only) -->
-        <div *ngIf="!isClient()"
-          class="bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
-          <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <div
-              class="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 p-2 sm:p-3 rounded-lg shadow-md">
-              <i class="fas fa-stopwatch text-lg sm:text-xl"></i>
-            </div>
-            <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">SLA & Métricas</h3>
-          </div>
-          <div class="space-y-3">
-            <div class="flex justify-between items-center text-sm">
-              <span class="text-gray-600 dark:text-gray-400">Tiempo 1ª Respuesta:</span>
-              <span class="font-bold text-gray-900 dark:text-gray-100">{{ firstResponseTime || '--' }}</span>
-            </div>
-            <div class="flex justify-between items-center text-sm">
-              <span class="text-gray-600 dark:text-gray-400">Tiempo Resolución:</span>
-              <span class="font-bold text-gray-900 dark:text-gray-100">{{ resolutionTime || '--' }}</span>
-            </div>
-          </div>
         </div>
 
         <!-- Client Contact - ADMIN ONLY (clients shouldn't see their own info card) -->
@@ -898,7 +795,8 @@
               <div *ngIf="client.email" class="flex items-center gap-2 text-xs sm:text-sm">
                 <i class="fas fa-envelope text-blue-600 dark:text-blue-400 w-3 sm:w-4"></i>
                 <a [href]="'mailto:' + client.email"
-                  class="text-blue-600 dark:text-blue-400 hover:underline truncate">{{ client.email }}</a>
+                  class="text-blue-600 dark:text-blue-400 hover:underline truncate">{{
+                  client.email }}</a>
               </div>
               <div *ngIf="client.phone" class="flex items-center gap-2 text-xs sm:text-sm">
                 <i class="fas fa-phone text-blue-600 dark:text-blue-400 w-3 sm:w-4"></i>
@@ -921,7 +819,7 @@
           </div>
         </div>
 
-        <!-- Quick Stats -->
+        <!-- Quick Stats / Summary -->
         <div
           class="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-800/20 shadow-md border border-green-200 dark:border-green-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
           <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
@@ -969,53 +867,104 @@
           </div>
         </div>
 
-        <!-- Timeline -->
-        <div
+        <!-- Timeline (Rich Version, moved from Tabs) -->
+        <div *ngIf="!isClient()"
           class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6">
           <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
             <div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
               <i class="fas fa-history"></i>
             </div>
-            Timeline
+            Auditoría / Timeline
           </h3>
 
-          <div class="relative border-l-2 border-gray-100 dark:border-gray-700 ml-3 space-y-6">
-            <!-- Creation -->
-            <div class="ml-6 relative">
+          <div class="relative border-l-2 border-gray-100 dark:border-gray-700 ml-3 space-y-8 py-2">
+            <!-- Custom Timeline Loop -->
+            <div *ngFor="let event of recentActivity" class="relative pl-8 group">
+              <!-- Connector Dot -->
               <div
-                class="absolute -left-[31px] bg-green-500 h-4 w-4 rounded-full border-4 border-white dark:border-gray-800">
+                class="absolute -left-[9px] top-1 w-5 h-5 rounded-full border-4 border-white dark:border-gray-800 bg-gray-200 dark:bg-gray-600 group-hover:bg-blue-500 transition-colors shadow-sm">
               </div>
-              <h4 class="font-bold text-gray-900 dark:text-gray-100 text-sm">Ticket creado</h4>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ formatDate(ticket.created_at) }}</p>
+
+              <!-- Content Card -->
+              <div
+                class="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start mb-1">
+                  <span class="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                    {{ event.actor?.email || 'Sistema' }}
+                  </span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap ml-2">
+                    {{ formatDate(event.created_at) }}
+                  </span>
+                </div>
+
+                <div class="text-sm text-gray-700 dark:text-gray-300">
+                  <!-- Dynamic content based on event type -->
+                  <ng-container [ngSwitch]="event.event_type">
+                    <span *ngSwitchCase="'creation'" class="text-green-600 dark:text-green-400 font-medium">
+                      <i class="fas fa-plus-circle mr-1"></i> Creó el ticket
+                    </span>
+                    <span *ngSwitchCase="'stage_change'" class="text-blue-600 dark:text-blue-400 font-medium">
+                      <i class="fas fa-exchange-alt mr-1"></i> Cambió el estado
+                      <span class="text-gray-600 dark:text-gray-400 font-normal">
+                        de {{ event.metadata?.old_stage }} a {{ event.metadata?.new_stage }}
+                      </span>
+                    </span>
+                    <span *ngSwitchCase="'assignment_change'" class="text-purple-600 dark:text-purple-400 font-medium">
+                      <i class="fas fa-user-tag mr-1"></i> Asignó el ticket
+                      <span class="text-gray-600 dark:text-gray-400 font-normal">
+                        a {{ event.metadata?.new_assignee || 'nadie' }}
+                      </span>
+                    </span>
+                    <span *ngSwitchCase="'priority_change'" class="text-orange-600 dark:text-orange-400 font-medium">
+                      <i class="fas fa-layer-group mr-1"></i> Cambió prioridad
+                    </span>
+                    <span *ngSwitchCase="'comment'" class="text-gray-600 dark:text-gray-300">
+                      <i class="far fa-comment-alt mr-1"></i> Añadió un comentario
+                    </span>
+                    <span *ngSwitchDefault>
+                      {{ event.description || 'Actividad registrada' }}
+                    </span>
+                  </ng-container>
+                </div>
+              </div>
             </div>
 
-            <!-- Last Update -->
-            <div class="ml-6 relative">
+            <!-- End of Timeline Marker -->
+            <div class="relative pl-8">
               <div
-                class="absolute -left-[31px] bg-blue-500 h-4 w-4 rounded-full border-4 border-white dark:border-gray-800">
+                class="absolute -left-[7px] top-1 w-4 h-4 rounded-full bg-green-500 border-2 border-white dark:border-gray-800 shadow-sm">
               </div>
-              <h4 class="font-bold text-gray-900 dark:text-gray-100 text-sm">Última actualización</h4>
-              <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(ticket.updated_at) }}</p>
-            </div>
-
-
-            <div *ngFor="let activity of recentActivity" class="flex items-start space-x-3">
-              <div class="flex-shrink-0 w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full mt-2"></div>
-              <div>
-                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ activity.action }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(activity.created_at) }}</p>
-              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">Ticket Creado</div>
+              <div class="text-[10px] text-gray-400 dark:text-gray-500">{{ formatDate(ticket.created_at) }}</div>
             </div>
           </div>
         </div>
-        <!-- Tags Section (moved from header) -->
-        <div
-          class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6 mt-4">
-          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Etiquetas</h3>
-          <app-tag-manager *ngIf="ticketId" [entityType]="'tickets'" [entityId]="ticketId">
-          </app-tag-manager>
+
+
+
+        <!-- SLA / Info Card (Staff Only) -->
+        <div *ngIf="!isClient()"
+          class="bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
+          <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <div
+              class="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 p-2 sm:p-3 rounded-lg shadow-md">
+              <i class="fas fa-stopwatch text-lg sm:text-xl"></i>
+            </div>
+            <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">SLA & Métricas</h3>
+          </div>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-gray-600 dark:text-gray-400">Tiempo 1ª Respuesta:</span>
+              <span class="font-bold text-gray-900 dark:text-gray-100">{{ firstResponseTime || '--' }}</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+              <span class="text-gray-600 dark:text-gray-400">Tiempo Resolución:</span>
+              <span class="font-bold text-gray-900 dark:text-gray-100">{{ resolutionTime || '--' }}</span>
+            </div>
+          </div>
         </div>
       </div>
+
     </div>
   </div>
 </div>

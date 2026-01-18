@@ -58,6 +58,10 @@ export interface Ticket {
     email: string;
     phone: string;
   };
+  company?: {
+    id: string;
+    name: string;
+  };
   stage?: TicketStage;
   assigned_user?: {
     id: string;
@@ -560,7 +564,8 @@ export class SupabaseTicketsService {
 
     // Normalize payload and compute totals
     const rows = (items || []).map(it => {
-      const price = typeof it.unit_price === 'number' ? it.unit_price : 0;
+      let price = Number(it.unit_price);
+      if (!Number.isFinite(price)) price = 0;
       const qty = Math.max(1, Number(it.quantity || 1));
       return {
         ticket_id: ticketId,
@@ -658,7 +663,8 @@ export class SupabaseTicketsService {
 
     // Normalize payload and compute totals
     const rows = (items || []).map(it => {
-      const price = typeof it.unit_price === 'number' ? it.unit_price : 0;
+      let price = Number(it.unit_price);
+      if (!Number.isFinite(price)) price = 0;
       const qty = Math.max(1, Number(it.quantity || 1));
       return {
         ticket_id: ticketId,
@@ -773,6 +779,57 @@ export class SupabaseTicketsService {
   }
 
   async getCompanyStaff(companyId: string): Promise<{ id: string, name: string, email: string }[]> {
+    try {
+      // Fetch via company_members to get all associated staff, not just primary ones
+      // We join users (for profile) and app_roles->role_permissions (for checks)
+      const { data, error } = await this.supabase.getClient()
+        .from('company_members')
+        .select(`
+          user:users!user_id(id, name, email, active),
+          role:app_roles!role_id(name, label, permissions:role_permissions(permission))
+        `)
+        .eq('company_id', companyId);
+
+      if (error) {
+        console.warn('getCompanyStaff: smart join failed, falling back to basic query', error);
+        // Fallback to legacy behavior if relations fail or tables missing
+        return this.getCompanyStaffLegacy(companyId);
+      }
+
+      const staff: Array<{ id: string, name: string, email: string }> = [];
+      const seenIds = new Set<string>();
+
+      (data || []).forEach((row: any) => {
+        const u = row.user;
+        if (!u) return;
+
+        // Active check (if 'active' col exists on users)
+        if (u.active === false) return; // explicit false checks
+
+        // Permission check
+        const r = row.role || {};
+        const perms: string[] = (r.permissions || []).map((p: any) => p.permission);
+        const isAuthorized =
+          perms.includes('tickets.assignable') ||
+          // Fallback for super users who might bypass permissions, or implicit access
+          ['owner', 'admin', 'super_admin'].includes(r.name);
+
+        if (isAuthorized && !seenIds.has(u.id)) {
+          seenIds.add(u.id);
+          staff.push({ id: u.id, name: u.name, email: u.email });
+        }
+      });
+
+      return staff.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    } catch (err) {
+      console.error('getCompanyStaff exception:', err);
+      return this.getCompanyStaffLegacy(companyId);
+    }
+  }
+
+  // Legacy fallback: query users by primary company_id
+  private async getCompanyStaffLegacy(companyId: string): Promise<{ id: string, name: string, email: string }[]> {
     const { data, error } = await this.supabase.getClient()
       .from('users')
       .select('id, name, email')
@@ -780,10 +837,7 @@ export class SupabaseTicketsService {
       .eq('active', true)
       .order('name');
 
-    if (error) {
-      console.error('getCompanyStaff error', error);
-      return [];
-    }
+    if (error) return [];
     return data || [];
   }
 
