@@ -64,6 +64,10 @@ export interface Ticket {
     name: string;
     email: string;
   };
+  // Enterprise / SLA Fields
+  first_response_at?: string | null;
+  resolution_time_mins?: number | null;
+  sla_status?: string | null;
 }
 
 export interface TicketComment {
@@ -121,6 +125,32 @@ export interface TicketStats {
   totalRevenue: number;
   totalEstimatedHours: number;
   totalActualHours: number;
+}
+
+export interface TicketTimelineEvent {
+  id: string;
+  ticket_id: string;
+  actor_id: string;
+  event_type: 'creation' | 'stage_change' | 'priority_change' | 'assignment_change' | 'comment';
+  metadata: any;
+  is_public: boolean;
+  created_at: string;
+  actor?: {
+    email: string;
+    // name could be joined too
+  };
+}
+
+export interface TicketTag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface TicketMacro {
+  id: string;
+  title: string;
+  content: string;
 }
 
 @Injectable({
@@ -340,123 +370,8 @@ export class SupabaseTicketsService {
 
   async createTicket(ticketData: Partial<Ticket>, functionEndpoint: string = 'create-ticket'): Promise<Ticket> {
     try {
-      // Prefer Edge Function to bypass RLS safely and validate membership
-      const client = this.supabase.getClient();
-      let edgeBaseUrl = '';
-      try {
-        const { RuntimeConfigService } = await import('./runtime-config.service');
-        const cfg = new (RuntimeConfigService as any)();
-        await cfg.load?.();
-        const conf = cfg.get();
-        if (conf && conf.edgeFunctionsBaseUrl) {
-          edgeBaseUrl = conf.edgeFunctionsBaseUrl;
-        }
-      } catch (e) {
-        console.warn('Could not load RuntimeConfigService', e);
-      }
-
-      // FORCE FALLBACK: Docker is not running on host, so we cannot update the Edge Function.
-      // We force client-side insert which has been updated with the correct logic.
-      if (false && edgeBaseUrl) {
-        try {
-          const funcUrl = edgeBaseUrl.replace(/\/+$/, '') + '/' + functionEndpoint;
-          const sess = await client.auth.getSession();
-          const accessToken = (sess as any)?.data?.session?.access_token || null;
-          const headers: any = { 'Content-Type': 'application/json' };
-          if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-
-          const body: any = {
-            p_company_id: ticketData.company_id,
-            p_client_id: ticketData.client_id,
-            p_title: ticketData.title,
-            p_description: ticketData.description,
-            p_stage_id: ticketData.stage_id,
-            p_priority: ticketData.priority || 'normal',
-            p_due_date: ticketData.due_date,
-            p_estimated_hours: ticketData.estimated_hours,
-            p_total_amount: ticketData.total_amount,
-            p_device_id: ticketData.device_id,
-            p_initial_comment: (ticketData as any).initial_comment,
-            p_initial_attachment_url: (ticketData as any).initial_attachment_url
-          };
-
-          const resp = await fetch(funcUrl, { method: 'POST', headers, body: JSON.stringify(body) });
-          let json: any = {};
-          try { json = await resp.json(); } catch { json = {}; }
-          if (!resp.ok) {
-            if (resp.status === 404) {
-              console.warn(`Edge ${functionEndpoint} not deployed (404), falling back to direct insert`);
-            } else if (resp.status >= 500) {
-              console.warn(`Edge ${functionEndpoint} returned 5xx, falling back to direct insert`, json);
-            } else {
-              console.error(`Edge ${functionEndpoint} error`, json);
-              throw new Error(json?.error || 'Error creando ticket');
-            }
-          } else {
-            const r = Array.isArray(json) ? json[0] : (json?.result || json?.data || json);
-            if (r && r.id) {
-              return this.transformTicketData(r);
-            }
-          }
-        } catch (edgeErr: any) {
-          // Only fallback when the function is missing; otherwise bubble up
-          const msg = typeof edgeErr === 'object' && edgeErr && 'message' in edgeErr
-            ? String((edgeErr as any).message)
-            : String(edgeErr || '');
-          if (/404/.test(msg) || /not deployed/i.test(msg)) {
-            console.warn(`Edge ${functionEndpoint} not available, using direct insert`);
-          } else {
-            throw edgeErr;
-          }
-        }
-      }
-
-      // Fallback: client-side insert (subject to RLS) - aligned with current tickets schema
-      let description = ticketData.description || '';
-      const attachmentUrl = (ticketData as any).initial_attachment_url;
-      if (attachmentUrl) {
-        description += `\n\n![Adjunto](${attachmentUrl})`;
-      }
-
-      const newTicketData: any = {
-        company_id: ticketData.company_id,
-        client_id: ticketData.client_id,
-        title: ticketData.title,
-        description: description,
-        stage_id: ticketData.stage_id,
-        priority: ticketData.priority || 'normal',
-        due_date: ticketData.due_date || null,
-        total_amount: ticketData.total_amount ?? null,
-        // device_id: ticketData.device_id ?? null, // REMOVED: Column does not exist on tickets table
-        // initial_attachment_url: (ticketData as any).initial_attachment_url || null, // REMOVED: Column does not exist
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      const { data, error } = await client
-        .from('tickets')
-        .insert(newTicketData)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Handle Device Link manually (ticket_devices)
-      if (ticketData.device_id && data?.id) {
-        try {
-          await client.from('ticket_devices').insert({
-            ticket_id: data.id,
-            device_id: ticketData.device_id
-          });
-        } catch (devErr) {
-          console.warn('Error linking device in fallback:', devErr);
-        }
-      }
-
-      // REMOVED: Initial comment logic as per user request to NOT use comments for attachments.
-      // The attachment is now appended to the ticket description above.
-
-      return this.transformTicketData(data);
+      // Delegate to the main method which now uses the robust 'create_ticket' RPC
+      return await this.createTicketWithItems(ticketData, [], []);
     } catch (error: any) {
       console.error('❌ Error creating ticket:', error);
       const msg = error?.message || 'Error creando ticket';
@@ -487,122 +402,43 @@ export class SupabaseTicketsService {
       }))
       .filter(it => typeof it.product_id === 'string' && it.product_id.length > 0);
 
-    // If no services, we still create the ticket but UI should have prevented this
     try {
       const client = this.supabase.getClient();
-      // Try to get runtime config
-      let edgeBaseUrl = '';
-      try {
-        const { RuntimeConfigService } = await import('./runtime-config.service');
-        const cfg = new (RuntimeConfigService as any)();
-        await cfg.load?.();
-        const conf = cfg.get();
-        if (conf && conf.edgeFunctionsBaseUrl) {
-          edgeBaseUrl = conf.edgeFunctionsBaseUrl;
-        }
-      } catch (e) {
-        console.warn('Could not load RuntimeConfigService', e);
-      }
 
-      if (edgeBaseUrl) {
-        try {
-          const funcUrl = edgeBaseUrl.replace(/\/+$/, '') + '/create-ticket';
-          const sess = await client.auth.getSession();
-          const accessToken = (sess as any)?.data?.session?.access_token || null;
-          const headers: any = { 'Content-Type': 'application/json' };
-          if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-
-          const body: any = {
-            p_company_id: ticketData.company_id,
-            p_client_id: ticketData.client_id,
-            p_title: ticketData.title,
-            p_description: ticketData.description,
-            p_stage_id: ticketData.stage_id,
-            p_priority: ticketData.priority || 'normal',
-            p_due_date: ticketData.due_date,
-            p_estimated_hours: ticketData.estimated_hours,
-            p_total_amount: ticketData.total_amount,
-            p_device_id: ticketData.device_id,
-            p_initial_comment: (ticketData as any).initial_comment,
-            p_initial_attachment_url: (ticketData as any).initial_attachment_url,
-            p_services: normalizedServices,
-            p_products: normalizedProducts
-          };
-
-          const resp = await fetch(funcUrl, { method: 'POST', headers, body: JSON.stringify(body) });
-          let json: any = {};
-          try { json = await resp.json(); } catch { json = {}; }
-          if (!resp.ok) {
-            if (resp.status === 404) {
-              console.warn('Edge create-ticket not deployed (404), falling back to direct insert');
-            } else {
-              console.error('Edge create-ticket error', json);
-              throw new Error(json?.error || 'Error creando ticket');
-            }
-          } else {
-            const r = Array.isArray(json) ? json[0] : (json?.result || json?.data || json);
-            if (r && r.id) {
-              return this.transformTicketData(r);
-            }
-          }
-        } catch (edgeErr: any) {
-          // Only fallback when the function is missing; otherwise bubble up
-          const msg = typeof edgeErr === 'object' && edgeErr && 'message' in edgeErr
-            ? String((edgeErr as any).message)
-            : String(edgeErr || '');
-          if (/404/.test(msg) || /not deployed/i.test(msg)) {
-            console.warn('Edge create-ticket not available, using direct insert');
-          } else {
-            throw edgeErr;
-          }
-        }
-      }
-
-      // Fallback: direct insert into tickets (bypass edge) and then replace relations
-      const nowIso = new Date().toISOString();
-      const directTicket: any = {
-        company_id: ticketData.company_id,
-        client_id: ticketData.client_id,
-        title: ticketData.title,
-        description: ticketData.description,
-        stage_id: ticketData.stage_id,
-        priority: ticketData.priority || 'normal',
-        due_date: ticketData.due_date || null,
-        total_amount: ticketData.total_amount ?? null,
-        // device_id REMOVED: Column does not exist on tickets table
-        created_at: nowIso,
-        updated_at: nowIso
+      const payload = {
+        p_company_id: ticketData.company_id,
+        p_client_id: ticketData.client_id,
+        p_title: ticketData.title,
+        p_description: ticketData.description,
+        p_stage_id: ticketData.stage_id,
+        p_priority: ticketData.priority || 'normal',
+        p_due_date: ticketData.due_date,
+        // estimated_hours not in RPC yet, but can be added later or ignored for now if not critical
+        p_services: normalizedServices,
+        p_products: normalizedProducts,
+        p_initial_comment: (ticketData as any).initial_comment,
+        p_initial_attachment_url: (ticketData as any).initial_attachment_url,
+        p_device_id: ticketData.device_id
       };
 
-      const { data: createdRow, error: createErr } = await this.supabase.getClient()
-        .from('tickets')
-        .insert(directTicket)
-        .select('*')
-        .single();
-      if (createErr) throw createErr;
-      const created = this.transformTicketData(createdRow);
+      const { data, error } = await client.rpc('create_ticket', payload);
 
-      try {
-        if (normalizedServices.length > 0) {
-          await this.replaceTicketServices(created.id, String(ticketData.company_id || ''), normalizedServices);
-        }
-        if (normalizedProducts.length > 0) {
-          await this.replaceTicketProducts(created.id, String(ticketData.company_id || ''), normalizedProducts);
-        }
-        // Handle Device Link manually (ticket_devices)
-        if (ticketData.device_id) {
-          await this.supabase.getClient().from('ticket_devices').insert({
-            ticket_id: created.id,
-            device_id: ticketData.device_id
-          });
-        }
-      } catch (svcErr) {
-        console.warn('Fallback path: failed to insert ticket relations after ticket creation', svcErr);
+      if (error) {
+        console.error('RPC create_ticket error', error);
+        throw error;
       }
-      return created;
-    } catch (err) {
+
+      if (data && data.id) {
+        return this.transformTicketData(data);
+      }
+
+      throw new Error('No data returned from create_ticket RPC');
+
+    } catch (err: any) {
       console.error('❌ Error createTicketWithItems:', err);
-      throw err;
+      // Clean error message
+      const msg = err?.message || 'Error creando ticket';
+      throw new Error(msg);
     }
   }
 
@@ -795,9 +631,11 @@ export class SupabaseTicketsService {
           // If company_id missing in this branch
           const msg2 = (e2 && (e2.message || '')).toString();
           if ((e2.code === 'PGRST204' || msg2.includes("Could not find the 'company_id' column"))) {
+
             const rowsUnitNoCompany = rowsUnit.map((r: any) => { const { company_id, ...rest } = r; return rest; });
             const { error: e3 } = await client.from('ticket_services').insert(rowsUnitNoCompany);
             if (e3) throw e3;
+
             return;
           }
           throw e2;
@@ -1101,6 +939,99 @@ export class SupabaseTicketsService {
       console.error('Error uploading ticket attachment:', error);
       throw error;
     }
+  }
+
+  // --- TIMELINE ---
+  async getTicketTimeline(ticketId: string): Promise<TicketTimelineEvent[]> {
+    try {
+      const { data, error } = await this.supabase.getClient()
+        .from('ticket_timeline')
+        .select(`
+          *,
+          actor:users!ticket_timeline_actor_id_fkey(email, name, surname)
+        `)
+        .eq('ticket_id', ticketId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        // Fallback: simple select if join fails
+        const { data: simpleData, error: simpleErr } = await this.supabase.getClient()
+          .from('ticket_timeline')
+          .select('*')
+          .eq('ticket_id', ticketId)
+          .order('created_at', { ascending: false });
+        if (simpleErr) throw simpleErr;
+        return simpleData || [];
+      }
+      return data || [];
+    } catch (e) {
+      console.error('Error fetching timeline:', e);
+      return [];
+    }
+  }
+
+  // --- TAGS ---
+  async getCompanyTags(companyId: string): Promise<TicketTag[]> {
+    const { data, error } = await this.supabase.getClient()
+      .from('global_tags')
+      .select('*')
+      .eq('company_id', companyId)
+      .order('name');
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getTicketTags(ticketId: string): Promise<TicketTag[]> {
+    // Join tickets_tags -> global_tags
+    const { data, error } = await this.supabase.getClient()
+      .from('tickets_tags')
+      .select(`
+        tag:global_tags (
+          id, name, color
+        )
+      `)
+      .eq('ticket_id', ticketId);
+
+    if (error) throw error;
+    return (data || []).map((row: any) => row.tag);
+  }
+
+  async addTagToTicket(ticketId: string, tagId: string): Promise<void> {
+    const { error } = await this.supabase.getClient()
+      .from('tickets_tags')
+      .insert({ ticket_id: ticketId, tag_id: tagId });
+    if (error) throw error;
+  }
+
+  async removeTagFromTicket(ticketId: string, tagId: string): Promise<void> {
+    const { error } = await this.supabase.getClient()
+      .from('tickets_tags')
+      .delete()
+      .eq('ticket_id', ticketId)
+      .eq('tag_id', tagId);
+    if (error) throw error;
+  }
+
+  async createTag(companyId: string, name: string, color: string): Promise<TicketTag> {
+    const { data, error } = await this.supabase.getClient()
+      .from('global_tags')
+      .insert({ company_id: companyId, name, color, scope: ['tickets'] })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  // --- MACROS ---
+  async getMacros(companyId: string): Promise<TicketMacro[]> {
+    const { data, error } = await this.supabase.getClient()
+      .from('ticket_macros')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('is_active', true)
+      .order('title');
+    if (error) throw error;
+    return data || [];
   }
 }
 
