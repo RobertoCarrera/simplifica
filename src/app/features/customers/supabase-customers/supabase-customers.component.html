@@ -143,21 +143,21 @@
                             <div class="flex items-start gap-4 mb-4 pr-8">
                                 <div class="relative shrink-0">
                                     <div class="w-12 h-12 rounded-full flex items-center justify-center text-gray-600 font-bold text-lg shadow-sm"
-                                        [style.background]="getAvatarGradient(customer)">
-                                        {{ getCustomerInitials(customer) }}
+                                        [style.background]="customer.ui.avatarGradient">
+                                        {{ customer.ui.initials }}
                                     </div>
                                     <!-- Online/Active Indicator could go here -->
                                 </div>
 
                                 <div class="min-w-0 flex-1">
                                     <h3 class="font-semibold text-gray-900 dark:text-white truncate"
-                                        [title]="getDisplayName(customer)">
-                                        {{ getDisplayName(customer) }}
+                                        [title]="customer.ui.displayName">
+                                        {{ customer.ui.displayName }}
                                     </h3>
                                     <!-- Incomplete warning -->
-                                    @if (!isCustomerComplete(customer)) {
+                                    @if (!customer.ui.isComplete) {
                                     <div class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200"
-                                        [title]="formatAttentionReasons(customer)">
+                                        [title]="customer.ui.attentionReasons">
                                         <i class="fas fa-exclamation-triangle"></i>
                                         Faltan datos
                                     </div>
@@ -188,7 +188,7 @@
                                 </div>
                                 <div class="flex flex-col">
                                     <span class="text-gray-400 dark:text-gray-500 mb-0.5">Alta</span>
-                                    <span class="text-gray-700 dark:text-gray-300">{{ formatDate(customer.created_at)
+                                    <span class="text-gray-700 dark:text-gray-300">{{ customer.ui.formattedDate
                                         }}</span>
                                 </div>
                             </div>
@@ -209,7 +209,7 @@
                                 </button>
 
                                 <!-- GDPR Status Badge -->
-                                @let badge = getGdprBadgeConfig(customer);
+                                @let badge = customer.ui.gdprBadge;
                                 <div class="flex items-center gap-1.5 ml-2" [title]="badge.label">
                                     <span
                                         [class]="badge.classes + ' flex items-center justify-center w-6 h-6 rounded-full'">
