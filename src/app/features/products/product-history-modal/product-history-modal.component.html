@@ -1,0 +1,74 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+    (click)="closeModal()">
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-in-up"
+        (click)="$event.stopPropagation()">
+        <!-- Header -->
+        <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <i class="fas fa-history text-orange-500"></i>
+                Historial de Movimientos: {{ productName }}
+            </h3>
+            <button (click)="closeModal()"
+                class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2 rounded-md transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Content -->
+        <div class="max-h-[70vh] overflow-y-auto p-0">
+            <div *ngIf="isLoading" class="p-8 text-center text-gray-500 dark:text-gray-400">
+                <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                <p>Cargando historial...</p>
+            </div>
+
+            <div *ngIf="!isLoading && movements.length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
+                <i class="fas fa-clipboard-list fa-3x mb-4 opacity-50"></i>
+                <p>No hay movimientos registrados para este producto.</p>
+            </div>
+
+            <table *ngIf="!isLoading && movements.length > 0" class="w-full text-left border-collapse">
+                <thead
+                    class="bg-gray-50 dark:bg-slate-700/50 sticky top-0 z-10 text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">
+                    <tr>
+                        <th class="p-3">Fecha</th>
+                        <th class="p-3">Tipo</th>
+                        <th class="p-3 text-right">Cantidad</th>
+                        <th class="p-3">Notas</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
+                    <tr *ngFor="let move of movements"
+                        class="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
+                        <td class="p-3 text-sm text-gray-600 dark:text-gray-300">
+                            {{ formatDate(move.created_at) }}
+                        </td>
+                        <td class="p-3">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize"
+                                [ngClass]="{
+                                    'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400': move.quantity_change > 0,
+                                    'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400': move.quantity_change < 0,
+                                    'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400': move.quantity_change === 0
+                                }">
+                                {{ getMovementLabel(move.movement_type) }}
+                            </span>
+                        </td>
+                        <td class="p-3 text-right font-mono font-medium"
+                            [class.text-green-600]="move.quantity_change > 0"
+                            [class.text-red-600]="move.quantity_change < 0">
+                            {{ move.quantity_change > 0 ? '+' : '' }}{{ move.quantity_change }}
+                        </td>
+                        <td class="p-3 text-sm text-gray-500 dark:text-gray-400 max-w-[200px] truncate"
+                            [title]="move.notes || ''">
+                            {{ move.notes || '-' }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="p-3 bg-gray-50 dark:bg-slate-700/30 text-right">
+            <small class="text-gray-500 dark:text-gray-400">Mostrando últimos movimientos</small>
+        </div>
+    </div>
+</div>

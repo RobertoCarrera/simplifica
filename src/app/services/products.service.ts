@@ -129,11 +129,34 @@ export class ProductsService {
     const client = this.supabase.getClient();
     if (!query.trim()) return [];
 
-    // Simple text matching for now. Vector search will be added via Edge Function later.
+    // Try AI Semantic Search first
+    try {
+      const { data: embeddingData, error: embedError } = await client.functions.invoke('generate-embedding', {
+        body: { input: query }
+      });
+
+      if (!embedError && embeddingData?.embedding) {
+        const { data: searchResults, error: searchError } = await client.rpc('match_product_catalog', {
+          query_embedding: embeddingData.embedding, // Supabase handles vector string/array conversion
+          match_threshold: 0.1, // Adjusted threshold
+          match_count: 20
+        });
+
+        if (!searchError && searchResults && searchResults.length > 0) {
+          return searchResults;
+        }
+      } else {
+        console.warn('Embedding generation failed:', embedError);
+      }
+    } catch (e) {
+      console.warn('AI search error, falling back to basic search:', e);
+    }
+
+    // Fallback to basic text search
     const { data, error } = await client
       .from('product_catalog')
       .select('*')
-      .ilike('name', `%${query}%`)
+      .or(`name.ilike.%${query}%,brand.ilike.%${query}%,model.ilike.%${query}%`)
       .limit(20);
 
     if (error) {
@@ -144,13 +167,28 @@ export class ProductsService {
   }
 
   // Create a new Catalog Item (Private to company by default)
+  // Create a new Catalog Item (Private to company by default)
   async createCatalogItem(item: any): Promise<any> {
     const client = this.supabase.getClient();
     const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
 
+    let embedding = null;
+    try {
+      const textToEmbed = `${item.brand || ''} ${item.model || ''} ${item.name} ${JSON.stringify(item.specs || '')}`;
+      const { data: embeddingData } = await client.functions.invoke('generate-embedding', {
+        body: { input: textToEmbed }
+      });
+      if (embeddingData?.embedding) {
+        embedding = embeddingData.embedding;
+      }
+    } catch (e) {
+      console.warn('Embedding generation failed for new catalog item', e);
+    }
+
     const payload = {
       ...item,
-      company_id: companyId
+      company_id: companyId,
+      embedding: embedding
     };
 
     const { data, error } = await client
@@ -277,6 +315,26 @@ export class ProductsService {
       .eq('id', productId);
 
     if (updateError) throw updateError;
+  }
+
+  async getStockMovements(productId: string): Promise<any[]> {
+    const client = this.supabase.getClient();
+    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+
+    // We might need to join with users table to get the user who performed the action if possible, 
+    // but auth.users is protected. 
+    // Usually we store user_id. We can try to join with public.users profile if we have one.
+    // For now simple fetch.
+
+    const { data, error } = await client
+      .from('stock_movements')
+      .select('*') // If we had a public profile relation: .select('*, users(name)')
+      .eq('company_id', companyId)
+      .eq('product_id', productId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
   }
 
   private normalizeProduct = (row: any): Product => ({

@@ -1,13 +1,16 @@
 import { Component, OnInit, inject } from '@angular/core';
+// Force rebuild
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProductsService } from '../../../services/products.service';
 import { ProductCreateModalComponent } from '../product-create-modal/product-create-modal.component';
+import { ProductHistoryModalComponent } from '../product-history-modal/product-history-modal.component';
 
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [CommonModule, FormsModule, ProductCreateModalComponent],
+  imports: [CommonModule, FormsModule, RouterModule, ProductCreateModalComponent, ProductHistoryModalComponent],
   templateUrl: './products.component.html',
   styleUrls: ['./products.component.scss']
 })
@@ -28,6 +31,10 @@ export class ProductsComponent implements OnInit {
   editingProduct: any = null;
   isLoading = false;
   showNewProductForm = false;
+
+  // History Modal State
+  showHistoryModal = false;
+  historyProduct: any = null;
 
   private productsService = inject(ProductsService);
 
@@ -158,6 +165,16 @@ export class ProductsComponent implements OnInit {
   editProduct(product: any) {
     this.editingProduct = product;
     this.showNewProductForm = true;
+  }
+
+  viewHistory(product: any) {
+    this.historyProduct = product;
+    this.showHistoryModal = true;
+  }
+
+  closeHistoryModal() {
+    this.showHistoryModal = false;
+    this.historyProduct = null;
   }
 
   closeForm() {
