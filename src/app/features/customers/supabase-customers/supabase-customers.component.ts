@@ -26,6 +26,21 @@ import { AiService } from '../../../services/ai.service';
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
 
+// ✅ ViewModel Interface for Performance Optimization
+// Pre-calculates expensive UI values to avoid re-computation in the template loop
+interface CustomerViewModel extends Customer {
+    ui: {
+        avatarGradient: string;
+        initials: string;
+        displayName: string;
+        formattedDate: string;
+        gdprBadge: { label: string; classes: string; icon: string };
+        isComplete: boolean;
+        attentionReasons: string;
+        hasDevices: boolean;
+    };
+}
+
 @Component({
     selector: 'app-supabase-customers',
     standalone: true,
@@ -115,7 +130,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     sortBy = signal<'name' | 'apellidos' | 'created_at'>('name'); // Default to name
     sortOrder = signal<'asc' | 'desc'>('asc'); // Default to asc for alphabetical
 
-
+    // ✅ Performance: Reusable Collator for sorting
+    private collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
 
     // UI filter toggle for incomplete imports (Removed from UI, logic deprecated)
     onlyIncomplete: boolean = false;
@@ -162,9 +178,31 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         return cache;
     });
 
+    // ✅ Enriched Customers: Compute View Models ONCE when data changes
+    enrichedCustomers = computed<CustomerViewModel[]>(() => {
+        const raw = this.customers();
+        // Depend on completenessCache to update when it changes
+        const completeness = this.completenessCache();
+
+        return raw.map(c => ({
+            ...c,
+            ui: {
+                avatarGradient: this.getAvatarGradient(c),
+                initials: this.getCustomerInitials(c),
+                displayName: this.getDisplayName(c),
+                formattedDate: this.formatDate(c.created_at),
+                gdprBadge: this.getGdprBadgeConfig(c),
+                isComplete: completeness.get(c.id) ?? false,
+                attentionReasons: this.formatAttentionReasons(c),
+                hasDevices: this.hasDevices(c)
+            }
+        }));
+    });
+
     // Computed
     filteredCustomers = computed(() => {
-        let filtered = this.customers();
+        // Source from enriched customers
+        let filtered = this.enrichedCustomers();
 
         // ✅ Filtrar clientes anonimizados (ocultarlos de la lista)
         filtered = filtered.filter(customer => !this.isCustomerAnonymized(customer));
@@ -185,13 +223,11 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         const sortBy = this.sortBy();
         const sortOrder = this.sortOrder();
 
-        // Use cached completeness for sorting
-        const completeness = this.completenessCache();
-
         filtered.sort((a, b) => {
             // Priority Sort: Incomplete users FIRST
-            const aComplete = completeness.get(a.id) ?? false;
-            const bComplete = completeness.get(b.id) ?? false;
+            // Use pre-calculated value
+            const aComplete = a.ui.isComplete;
+            const bComplete = b.ui.isComplete;
 
             if (aComplete !== bComplete) {
                 // If one is incomplete (false) and other is complete (true), incomplete comes first
@@ -199,15 +235,21 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             }
 
             // Secondary Sort: Respect selected sort
-            let aValue = a[sortBy];
-            let bValue = b[sortBy];
+            let aValue: any = a[sortBy];
+            let bValue: any = b[sortBy];
 
-            if (typeof aValue === 'string') {
-                aValue = aValue.toLowerCase();
-                bValue = (bValue as string).toLowerCase();
+            // Use Collator for strings
+            let result = 0;
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                result = this.collator.compare(aValue, bValue);
+            } else {
+                 if (typeof aValue === 'string') {
+                    aValue = aValue.toLowerCase();
+                    bValue = (bValue as string).toLowerCase();
+                 }
+                result = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
             }
 
-            const result = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
             return sortOrder === 'asc' ? result : -result;
         });
 
@@ -216,6 +258,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Completeness helpers for template
     isCustomerComplete(c: Customer): boolean {
+        // Fallback or use UI prop if passed as ViewModel (but template might pass Customer type still if not updated)
+        // We will update template to use c.ui.isComplete
         return this.completenessCache().get(c.id) ?? false;
     }
 
