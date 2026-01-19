@@ -1,0 +1,4 @@
+## 2026-01-19 - [Angular Sanitization & DOMPurify]
+**Vulnerability:** Potential XSS in `TourOverlayComponent` due to binding `innerHTML` to untrusted content without explicit sanitization, although Angular sanitizes by default.
+**Learning:** While Angular's `[innerHTML]` is secure by default (stripping scripts), relying on it implicitly can lead to confusion about security posture. The project uses a custom `SafeHtmlPipe` which uses `DOMPurify` to allow specific attributes (like `target`) while maintaining strict security. Using this pipe explicitly signals "this content is trusted because it was sanitized by DOMPurify".
+**Prevention:** Always use `SafeHtmlPipe` (wrapping `DOMPurify`) when binding `innerHTML` to dynamic content, even if Angular's default sanitizer might be sufficient, to ensure consistent and configurable sanitization policies across the application.
