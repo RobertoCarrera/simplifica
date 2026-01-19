@@ -25,6 +25,8 @@ export type Database = {
                     created_at: string | null
                     updated_at: string | null
                     deleted_at: string | null
+                    ean: string | null
+                    embedding: string | null
                 }
 
                 Insert: {
@@ -43,6 +45,7 @@ export type Database = {
                     updated_at?: string | null
                     deleted_at?: string | null
                     ean?: string | null
+                    embedding?: string | null
                 }
                 Update: {
                     id?: string
@@ -60,6 +63,7 @@ export type Database = {
                     updated_at?: string | null
                     deleted_at?: string | null
                     ean?: string | null
+                    embedding?: string | null
                 }
             }
             products: {
@@ -276,6 +280,28 @@ export type Database = {
                 notes?: string | null
                 created_at?: string | null
             }
+        }
+    }
+    Functions: {
+        match_product_catalog: {
+            Args: {
+                query_embedding: string
+                match_threshold: number
+                match_count: number
+            }
+            Returns: {
+                id: string
+                name: string
+                brand: string
+                model: string
+                category: string
+                sku: string
+                specs: Json
+                compatibility: Json
+                source: string
+                image_url: string
+                similarity: number
+            }[]
         }
     }
 }
