@@ -396,12 +396,35 @@ export class AdvancedSearchService {
 
   // Resaltar coincidencias en el texto
   highlightMatches(text: string, query: string): string {
-    if (!this.options.highlightMatches || !query.trim()) {
-      return text;
+    if (!this.options.highlightMatches || !query || !query.trim()) {
+      return this.escapeHtml(text);
     }
 
-    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">$1</mark>');
+    const cleanQuery = query.trim();
+    // Escape regex characters in query
+    const escapedQueryForRegex = cleanQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escapedQueryForRegex})`, 'gi');
+
+    // Split text by the query, capturing the delimiters
+    const parts = text.split(regex);
+
+    return parts.map(part => {
+      // Check if the part matches the query case-insensitively
+      if (part.toLowerCase() === cleanQuery.toLowerCase()) {
+        return `<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">${this.escapeHtml(part)}</mark>`;
+      } else {
+        return this.escapeHtml(part);
+      }
+    }).join('');
+  }
+
+  private escapeHtml(text: string): string {
+    if (!text) return text;
+    return text.replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
   // Estadísticas de búsqueda
