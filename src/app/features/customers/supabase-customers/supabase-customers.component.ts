@@ -26,6 +26,26 @@ import { AiService } from '../../../services/ai.service';
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
 
+// Optimization: Pre-compile regex patterns
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EMAIL_CHECK_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+// Optimization: View Model to avoid template computations
+export interface CustomerViewModel extends Customer {
+    displayName: string;
+    initials: string;
+    avatarGradient: string;
+    isComplete: boolean;
+    missingFields: string[];
+    hasPortalAccess: boolean;
+    gdprBadge: {
+        label: string;
+        classes: string;
+        icon: string;
+    };
+    attentionReasons: string;
+}
+
 @Component({
     selector: 'app-supabase-customers',
     standalone: true,
@@ -109,6 +129,50 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Cache of client portal access to avoid per-item async calls from the template
     private portalAccessKeys = signal<Set<string>>(new Set());
+
+    // Optimization: Enriched computed signal for template performance
+    enrichedCustomers = computed(() => {
+        const customers = this.filteredCustomers();
+        const completeness = this.completenessCache();
+        const portalKeys = this.portalAccessKeys();
+
+        return customers.map(c => {
+            // Calculate display name
+            const displayName = this.getDisplayName(c);
+
+            // Calculate avatar gradient
+            const avatarGradient = this.getAvatarGradient(c);
+
+            // Calculate initials
+            const initials = this.getCustomerInitials(c);
+
+            // Check completeness
+            const isComplete = completeness.get(c.id) ?? false;
+            const missingFields = this.completenessSvc.computeCompleteness(c).missingFields;
+
+            // Check portal access
+            // Note: The key in portalAccessKeys includes a trailing space as per original logic
+            const hasPortalAccess = c.email ? portalKeys.has(`${c.id}:${c.email.toLowerCase()} `) : false;
+
+            // GDPR Badge
+            const gdprBadge = this.getGdprBadgeConfig(c);
+
+            // Attention reasons
+            const attentionReasons = this.formatAttentionReasons(c);
+
+            return {
+                ...c,
+                displayName,
+                initials,
+                avatarGradient,
+                isComplete,
+                missingFields,
+                hasPortalAccess,
+                gdprBadge,
+                attentionReasons
+            } as CustomerViewModel;
+        });
+    });
 
     // Filter signals
     searchTerm = signal('');
@@ -566,13 +630,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         }
 
         // Detectar patrón UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(base.trim())) {
+        if (UUID_REGEX.test(base.trim())) {
             base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
         }
 
         // Evitar mostrar correos como nombre si accidentalmente se mapearon
-        if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(base)) {
+        if (EMAIL_CHECK_REGEX.test(base)) {
             base = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
         }
 
