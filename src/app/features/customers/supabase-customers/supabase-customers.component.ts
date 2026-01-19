@@ -26,6 +26,11 @@ import { AiService } from '../../../services/ai.service';
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
 
+// OPTIMIZATION: Extract Regex constants to avoid reallocation
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EMAIL_CHECK_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const EMAIL_VALIDATION_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 @Component({
     selector: 'app-supabase-customers',
     standalone: true,
@@ -66,7 +71,9 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     @ViewChild('modalTemplate') modalTemplate!: TemplateRef<any>;
     private overlayRef?: OverlayRef;
 
-
+    // OPTIMIZATION: Cache collator for Spanish sorting
+    // Avoids repeated Intl.Collator instantiation and toLowerCase() allocations
+    private collator = new Intl.Collator('es-ES', { usage: 'sort', sensitivity: 'base', numeric: true });
 
     // Audio State
 
@@ -199,14 +206,16 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             }
 
             // Secondary Sort: Respect selected sort
-            let aValue = a[sortBy];
-            let bValue = b[sortBy];
+            const aValue = a[sortBy];
+            const bValue = b[sortBy];
 
-            if (typeof aValue === 'string') {
-                aValue = aValue.toLowerCase();
-                bValue = (bValue as string).toLowerCase();
+            // OPTIMIZATION: Use Intl.Collator for locale-aware, efficient sorting without allocations
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                const result = this.collator.compare(aValue, bValue);
+                return sortOrder === 'asc' ? result : -result;
             }
 
+            // Fallback for non-string types (though currently only strings are sorted)
             const result = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
             return sortOrder === 'asc' ? result : -result;
         });
@@ -305,8 +314,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     }
 
     private isValidEmail(email: string): boolean {
-        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return re.test((email || '').trim());
+        return EMAIL_VALIDATION_REGEX.test((email || '').trim());
     }
 
     async sendInvite() {
@@ -566,13 +574,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         }
 
         // Detectar patrón UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(base.trim())) {
+        if (UUID_REGEX.test(base.trim())) {
             base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
         }
 
         // Evitar mostrar correos como nombre si accidentalmente se mapearon
-        if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(base)) {
+        if (EMAIL_CHECK_REGEX.test(base)) {
             base = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
         }
 
