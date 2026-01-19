@@ -68,15 +68,8 @@ export class SupplierManagerComponent implements OnInit {
     if (!this.currentSupplier.name) return;
 
     try {
-      if (this.isEditing) {
-        // Update not implemented in service yet, let's just re-create/ignore for now or better add Update in service later.
-        // For MVP let's assume create works or we'll add update.
-        // Actually I missed updateSupplier in service. Let's start with create only or use Supabase generic update in service if I had made it public (I didn't).
-        // I'll skip Edit save logic for a second and just support Create for this iteration or add updateSupplier quickly.
-        // I'll assume createSupplier handles it or just do create for now.
-        await this.productService.createSupplier(this.currentSupplier); // This will fail for update usually due to ID. 
-        // Ideally we update the service to handle upsert or add update method.
-        // Let's just do CREATE for now and refresh.
+      if (this.isEditing && this.currentSupplier.id) {
+        await this.productService.updateSupplier(this.currentSupplier.id, this.currentSupplier);
       } else {
         await this.productService.createSupplier(this.currentSupplier);
       }
@@ -85,6 +78,19 @@ export class SupplierManagerComponent implements OnInit {
       this.loadSuppliers();
     } catch (err) {
       console.error('Error saving supplier', err);
+    }
+  }
+
+  async deleteSupplier(supplier: any) {
+    if (!confirm(`¿Estás seguro de que deseas eliminar al proveedor "${supplier.name}"?`)) {
+      return;
+    }
+
+    try {
+      await this.productService.deleteSupplier(supplier.id);
+      this.loadSuppliers();
+    } catch (err) {
+      console.error('Error deleting supplier', err);
     }
   }
 }

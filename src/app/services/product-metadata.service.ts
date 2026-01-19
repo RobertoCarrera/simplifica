@@ -477,16 +477,16 @@ export class ProductMetadataService {
    */
   async seedCatalog(): Promise<void> {
     const seedData = [
-      { name: 'iPhone 15 Pro Max', brand: 'Apple', model: 'A2849', description: 'Titanium design, A17 Pro chip, 48MP Main camera, USB-C.', ean: '195949042211' },
-      { name: 'Samsung Galaxy S24 Ultra', brand: 'Samsung', model: 'SM-S928B', description: 'AI-powered, Titanium frame, S Pen included, 200MP camera.', ean: '8806095299221' },
-      { name: 'MacBook Pro 14"', brand: 'Apple', model: 'M3 Pro', description: 'Space Black, M3 Pro chip, 18GB Unified Memory, 512GB SSD.', ean: '194253000000' },
-      { name: 'Sony WH-1000XM5', brand: 'Sony', model: 'WH-1000XM5', description: 'Wireless Noise Cancelling Headphones, 30-hour battery.', ean: '4548736132580' },
-      { name: 'Dell XPS 13', brand: 'Dell', model: '9315', description: 'Thin laptop, 13.4" FHD+, i7-1250U, 16GB RAM, 512GB SSD.', ean: '5397184630000' },
-      { name: 'iPad Air 5', brand: 'Apple', model: 'M1', description: '10.9-inch Liquid Retina display, M1 chip.', ean: '194252796253' },
-      { name: 'Nintendo Switch OLED', brand: 'Nintendo', model: 'HEG-001', description: '7-inch OLED screen, 64GB internal storage.', ean: '0045496883386' },
-      { name: 'Logitech MX Master 3S', brand: 'Logitech', model: '910-006557', description: 'Performance Wireless Mouse, 8K DPI, Quiet Clicks.', ean: '097855173977' },
-      { name: 'Google Pixel 8 Pro', brand: 'Google', model: 'GC3VE', description: 'Google Tensor G3, Fully upgraded cameras, Google AI.', ean: '0840244706662' },
-      { name: 'AirPods Pro (2nd Gen)', brand: 'Apple', model: 'MTJV3', description: 'USB-C MagSafe Case, Active Noise Cancellation.', ean: '195949052500' }
+      { name: 'iPhone 15 Pro Max', brand: 'Apple', model: 'A2849', category: 'Smartphones', description: 'Titanium design, A17 Pro chip, 48MP Main camera, USB-C.', ean: '195949042211' },
+      { name: 'Samsung Galaxy S24 Ultra', brand: 'Samsung', model: 'SM-S928B', category: 'Smartphones', description: 'AI features, 200MP camera, Titanium frame, S Pen included.', ean: '8806095305141' },
+      { name: 'Sony WH-1000XM5', brand: 'Sony', model: 'WH-1000XM5', category: 'Headphones', description: 'Wireless Noise Cancelling Headphones, 30-hour battery.', ean: '4548736132580' },
+      { name: 'MacBook Pro 14"', brand: 'Apple', model: 'M3 Pro', category: 'Laptops', description: 'M3 Pro chip, 14-inch Liquid Retina XDR display, 18GB RAM.', ean: '194253000000' },
+      { name: 'Dell XPS 13', brand: 'Dell', model: '9315', category: 'Laptops', description: 'Ultra-thin laptop, 13.4-inch FHD+, Intel Core i7 12th Gen.', ean: '884116000000' },
+      { name: 'iPad Air 5', brand: 'Apple', model: 'M1', category: 'Tablets', description: 'M1 chip, 10.9-inch Liquid Retina display, 5G capable.', ean: '194252000000' },
+      { name: 'Nintendo Switch OLED', brand: 'Nintendo', model: 'HEG-001', category: 'Consoles', description: '7-inch OLED screen, 64GB internal storage.', ean: '045496883386' },
+      { name: 'Logitech MX Master 3S', brand: 'Logitech', model: '910-006557', category: 'Accessories', description: 'Performance Wireless Mouse, 8K DPI tracking.', ean: '097855173787' },
+      { name: 'Google Pixel 8 Pro', brand: 'Google', model: 'GC3VE', category: 'Smartphones', description: 'Google Tensor G3, Advanced AI, Pro camera system.', ean: '810029930000' },
+      { name: 'AirPods Pro (2nd Gen)', brand: 'Apple', model: 'MTJV3', category: 'Headphones', description: 'USB-C charging case, Active Noise Cancellation.', ean: '195949000000' }
     ];
 
     console.log('Starting Catalog Seeding...');

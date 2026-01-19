@@ -27,7 +27,7 @@ export class ProductsService {
 
   private async fetchProducts(): Promise<any[]> {
     const client = this.supabase.getClient();
-    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId || null;
+    const companyId = this.auth.companyId() || this.supabase.currentCompanyId || null;
 
     let query: any = client
       .from('products')
@@ -54,7 +54,7 @@ export class ProductsService {
 
   private async insertProduct(product: Partial<Product>): Promise<any> {
     const client = this.supabase.getClient();
-    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId || null;
+    const companyId = this.auth.companyId() || this.supabase.currentCompanyId || null;
     if (!this.isValidUuid(companyId)) throw new Error('No company_id available');
 
     const payload: any = {
@@ -170,7 +170,7 @@ export class ProductsService {
   // Create a new Catalog Item (Private to company by default)
   async createCatalogItem(item: any): Promise<any> {
     const client = this.supabase.getClient();
-    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+    const companyId = this.auth.companyId() || this.supabase.currentCompanyId;
 
     let embedding = null;
     try {
@@ -205,7 +205,7 @@ export class ProductsService {
 
   async getSuppliers(): Promise<any[]> {
     const client = this.supabase.getClient();
-    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+    const companyId = this.auth.companyId() || this.supabase.currentCompanyId;
     if (!companyId) return [];
 
     const { data, error } = await client
@@ -221,7 +221,8 @@ export class ProductsService {
 
   async createSupplier(supplier: any): Promise<any> {
     const client = this.supabase.getClient();
-    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+    const companyId = this.auth.companyId() || this.supabase.currentCompanyId;
+    if (!companyId) throw new Error('Company ID is required to create a supplier');
 
     const { data, error } = await client
       .from('suppliers')
@@ -233,10 +234,33 @@ export class ProductsService {
     return data;
   }
 
+  async updateSupplier(id: string, supplier: any): Promise<any> {
+    const client = this.supabase.getClient();
+    const { data, error } = await client
+      .from('suppliers')
+      .update(supplier)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async deleteSupplier(id: string): Promise<void> {
+    const client = this.supabase.getClient();
+    const { error } = await client
+      .from('suppliers')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
   // Link a supplier to a catalog product with price
   async addSupplierProduct(supplierProduct: any): Promise<any> {
     const client = this.supabase.getClient();
-    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+    const companyId = this.auth.companyId() || this.supabase.currentCompanyId;
 
     const { data, error } = await client
       .from('supplier_products')
@@ -250,7 +274,7 @@ export class ProductsService {
 
   async getSupplierProducts(catalogProductId: string): Promise<any[]> {
     const client = this.supabase.getClient();
-    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+    const companyId = this.auth.companyId() || this.supabase.currentCompanyId;
     if (!companyId) return [];
 
     const { data, error } = await client
@@ -264,6 +288,16 @@ export class ProductsService {
     return data || [];
   }
 
+  async deleteSupplierProduct(id: string): Promise<void> {
+    const client = this.supabase.getClient();
+    const { error } = await client
+      .from('supplier_products')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
   // --- STOCK TRACEABILITY ---
 
   /**
@@ -275,8 +309,20 @@ export class ProductsService {
    */
   async updateStock(productId: string, quantityChange: number, type: 'purchase' | 'sale' | 'adjustment' | 'return' | 'initial', notes?: string, referenceId?: string): Promise<void> {
     const client = this.supabase.getClient();
-    const userId = this.auth.userProfile?.id || (await this.auth.getUser())?.id;
-    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+
+    // FIX: The schema for `stock_movements` defines user_id as FK to `auth.users(id)`.
+    // Therefore, we MUST use the Auth ID, NOT the internal users.id.
+    const authUser = await this.auth.getUser();
+    if (!authUser?.id) throw new Error('No authenticated user found for stock update.');
+
+    const userId = authUser.id; // Use Supabase Auth ID directly
+    console.log('✅ Resolved Auth User ID for stock_movements:', userId);
+
+    if (!userId) {
+      console.error('❌ Could not resolve internal user ID for stock movement.');
+      throw new Error('User not identified for stock tracking.');
+    }
+    const companyId = this.auth.companyId() || this.supabase.currentCompanyId;
 
     // 1. Get current stock to be safe? Or just increment.
     // Let's use an RPC for atomicity if possible, but for now client-side transaction logic.
@@ -319,7 +365,7 @@ export class ProductsService {
 
   async getStockMovements(productId: string): Promise<any[]> {
     const client = this.supabase.getClient();
-    const companyId = this.auth.userProfile?.company_id || this.supabase.currentCompanyId;
+    const companyId = this.auth.companyId() || this.supabase.currentCompanyId;
 
     // We might need to join with users table to get the user who performed the action if possible, 
     // but auth.users is protected. 

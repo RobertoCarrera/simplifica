@@ -159,6 +159,8 @@ export class AuthService {
 
 
 
+
+
   // Método auxiliar para operaciones que requieren sesión válida
   private async retryWithSession<T>(
     operation: () => Promise<T>,

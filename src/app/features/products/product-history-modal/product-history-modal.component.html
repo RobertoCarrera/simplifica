@@ -14,6 +14,58 @@
             </button>
         </div>
 
+        <!-- Adjustment Toggle -->
+        <div
+            class="px-4 py-2 border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/20 flex justify-end">
+            <button (click)="toggleAdjustmentForm()"
+                class="text-sm px-3 py-1.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex items-center gap-2">
+                <i class="fas" [ngClass]="showAdjustmentForm ? 'fa-minus' : 'fa-plus'"></i>
+                {{ showAdjustmentForm ? 'Cancelar Ajuste' : 'Ajustar Stock Manualmente' }}
+            </button>
+        </div>
+
+        <!-- Adjustment Form -->
+        <div *ngIf="showAdjustmentForm"
+            class="p-4 bg-indigo-50 dark:bg-slate-800/80 border-b border-indigo-100 dark:border-slate-700 animate-fade-in-down">
+            <div class="grid grid-cols-12 gap-3">
+                <div class="col-span-4">
+                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo</label>
+                    <select [(ngModel)]="newMovement.type"
+                        class="w-full text-sm rounded-md border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white pb-1">
+                        <option value="adjustment">Ajuste / Corrección</option>
+                        <option value="purchase">Compra (Entrada)</option>
+                        <option value="sale">Venta (Salida)</option>
+                        <option value="return">Devolución</option>
+                        <option value="damaged">Mermas / Dañado</option>
+                    </select>
+                </div>
+                <div class="col-span-3">
+                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Cant. Cambio</label>
+                    <input type="number" [(ngModel)]="newMovement.quantity"
+                        class="w-full text-sm rounded-md border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white pb-1"
+                        placeholder="Ej. 10 o -5">
+                </div>
+                <div class="col-span-5">
+                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Nota</label>
+                    <input type="text" [(ngModel)]="newMovement.notes"
+                        class="w-full text-sm rounded-md border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white pb-1"
+                        placeholder="Razón del ajuste...">
+                </div>
+            </div>
+            <div class="mt-3 flex justify-end">
+                <button (click)="saveAdjustment()" [disabled]="isLoading || newMovement.quantity === 0"
+                    class="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 transition-colors disabled:opacity-50">
+                    <i *ngIf="isLoading" class="fas fa-spinner fa-spin mr-1"></i>
+                    Guardar Movimiento
+                </button>
+            </div>
+            <p class="mt-2 text-xs text-indigo-800 dark:text-indigo-300">
+                <i class="fas fa-info-circle mr-1"></i>
+                Si seleccionas "Venta" o "Mermas", intenta poner una cantidad negativa (ej: -5), aunque el sistema
+                intentará corregirlo si es positivo.
+            </p>
+        </div>
+
         <!-- Content -->
         <div class="max-h-[70vh] overflow-y-auto p-0">
             <div *ngIf="isLoading" class="p-8 text-center text-gray-500 dark:text-gray-400">
