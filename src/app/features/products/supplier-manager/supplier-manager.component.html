@@ -56,8 +56,13 @@
                         {{ supplier.tax_id || '-' }}
                     </td>
                     <td class="p-4 text-right">
-                        <button (click)="editSupplier(supplier)" class="text-blue-500 hover:text-blue-700 p-2">
+                        <button (click)="editSupplier(supplier)" class="text-blue-500 hover:text-blue-700 p-2 mr-2"
+                            title="Editar">
                             <i class="fas fa-edit"></i>
+                        </button>
+                        <button (click)="deleteSupplier(supplier)" class="text-red-500 hover:text-red-700 p-2"
+                            title="Eliminar">
+                            <i class="fas fa-trash"></i>
                         </button>
                     </td>
                 </tr>

@@ -7,11 +7,12 @@ import { ProductsService } from '../../../services/products.service';
 import { ProductCreateModalComponent } from '../product-create-modal/product-create-modal.component';
 import { ProductHistoryModalComponent } from '../product-history-modal/product-history-modal.component';
 import { BarcodeScannerComponent } from '../barcode-scanner/barcode-scanner.component';
+import { CatalogSupplierModalComponent } from '../catalog-supplier-modal/catalog-supplier-modal.component';
 
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ProductCreateModalComponent, ProductHistoryModalComponent, BarcodeScannerComponent],
+  imports: [CommonModule, FormsModule, RouterModule, ProductCreateModalComponent, ProductHistoryModalComponent, BarcodeScannerComponent, CatalogSupplierModalComponent],
   templateUrl: './products.component.html',
   styleUrls: ['./products.component.scss']
 })
@@ -36,6 +37,10 @@ export class ProductsComponent implements OnInit {
   // History Modal State
   showHistoryModal = false;
   historyProduct: any = null;
+
+  // Supplier Modal State
+  showSupplierModal = false;
+  supplierModalItem: any = null;
 
   private productsService = inject(ProductsService);
   private productMetadataService = inject(ProductMetadataService);
@@ -152,56 +157,77 @@ export class ProductsComponent implements OnInit {
     }
   }
 
-  async importToInventory(catalogItem: any) {
-    if (!confirm(`¿Quieres añadir "${catalogItem.name}" a tu inventario?`)) return;
+  // --- Import Confirmation Modal ---
+  showImportModal = false;
+  pendingImportItem: any = null;
+
+  importToInventory(catalogItem: any) {
+    this.pendingImportItem = catalogItem;
+    this.showImportModal = true;
+  }
+
+  cancelImport() {
+    this.showImportModal = false;
+    this.pendingImportItem = null;
+  }
+
+  confirmImport() {
+    if (!this.pendingImportItem) return;
+    const catalogItem = this.pendingImportItem;
+    this.showImportModal = false;
 
     // Map catalog item to local product structure
     const newProduct = {
       name: catalogItem.name,
-      description: catalogItem.specs ? JSON.stringify(catalogItem.specs) : catalogItem.name,
-      brand_name: catalogItem.brand, // Service handles parsing or creation
+      description: catalogItem.description || catalogItem.name,
+      brand_name: catalogItem.brand,
       model: catalogItem.model,
-      category_name: catalogItem.category,
-      price: 0, // Default to 0, user should update
+      category_name: (() => {
+        const map: any = {
+          'Headphones': 'Auriculares', 'Earbuds': 'Auriculares',
+          'Smartphones': 'Teléfonos', 'Mobile Phones': 'Teléfonos',
+          'Laptops': 'Portátiles',
+          'Tablets': 'Tablets', 'Pads': 'Tablets',
+          'Consoles': 'Consolas',
+          'Accessories': 'Accesorios',
+          'Audio': 'Sonido',
+          'Computers': 'Informática',
+          'Electronics': 'Electrónica'
+        };
+        return map[catalogItem.category] || catalogItem.category;
+      })(),
+      price: 0,
       stock_quantity: 0,
-      catalog_product_id: catalogItem.id
+      catalog_product_id: catalogItem.id,
+      ean: catalogItem.ean,
+      image_url: catalogItem.image_url
     };
 
-    // We open the form pre-filled instead of auto-crating?
-    // User requested "quick add". But prices/stock are needed.
-    // Let's open the modal in "Create" mode but pre-filled.
+    this.isLoading = true;
+    this.productsService.createProduct(newProduct).subscribe({
+      next: (createdProduct) => {
+        this.isLoading = false;
+        this.loadProducts();
+        this.activeTab = 'inventory';
 
-    this.editingProduct = null;
-    this.showNewProductForm = true;
+        // Enrich the created product with the names we know, 
+        // because the API response might only contain IDs (relations not expanded)
+        const enrichedProduct = {
+          ...createdProduct,
+          brand: newProduct.brand_name,
+          category: newProduct.category_name,
+          model: newProduct.model // createProduct response should have model, but to be safe
+        };
 
-    // Slight hack: we need to pass this data to the modal.
-    // The modal currently takes `productToEdit` (which implies ID exists).
-    // I'll overload `productToEdit` or use a new logic in future.
-    // For now, let's treat it as a "Template".
-
-    setTimeout(() => {
-      // We can expose a method on the child or rely on inputs.
-      // Since `productToEdit` expects an ID for updates, let's just create it directly 
-      // OR better: Add `prefillData` input to modal.
-      // For this iteration, I'll direct save it as 0 stock/price if that's acceptable?
-      // User said: "base de datos completa y potente ya lista para decirte qué producto es"
-      // Let's just creation directly and let them edit later.
-
-      this.isLoading = true;
-      this.productsService.createProduct(newProduct).subscribe({
-        next: (createdProduct) => {
-          this.isLoading = false;
-          this.loadProducts();
-          this.activeTab = 'inventory';
-          // Open edit modal for the newly created product
-          this.editProduct(createdProduct);
-        },
-        error: (e) => {
-          console.error(e);
-          this.isLoading = false;
-        }
-      });
-    }, 100);
+        // Open edit modal for the newly created product
+        this.editProduct(enrichedProduct);
+      },
+      error: (e) => {
+        console.error(e);
+        this.isLoading = false;
+        this.pendingImportItem = null;
+      }
+    });
   }
 
   // --- Modal & Actions ---
@@ -224,6 +250,17 @@ export class ProductsComponent implements OnInit {
   closeHistoryModal() {
     this.showHistoryModal = false;
     this.historyProduct = null;
+  }
+
+  openSupplierModal(item: any, event: Event) {
+    event.stopPropagation();
+    this.supplierModalItem = item;
+    this.showSupplierModal = true;
+  }
+
+  closeSupplierModal() {
+    this.showSupplierModal = false;
+    this.supplierModalItem = null;
   }
 
   closeForm() {
