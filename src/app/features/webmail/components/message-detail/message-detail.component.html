@@ -1,10 +1,10 @@
 <div class="message-detail-container" *ngIf="message() as msg">
     <div class="header">
         <div class="toolbar">
-            <button class="btn-icon" (click)="goBack()" title="Volver"><i class="fas fa-arrow-left"></i></button>
+            <button class="btn-icon" (click)="goBack()" aria-label="Volver" title="Volver"><i class="fas fa-arrow-left" aria-hidden="true"></i></button>
             <div class="actions">
-                <button class="btn-icon" title="Responder" (click)="reply()"><i class="fas fa-reply"></i></button>
-                <button class="btn-icon" title="Eliminar" (click)="delete()"><i class="fas fa-trash"></i></button>
+                <button class="btn-icon" aria-label="Responder" title="Responder" (click)="reply()"><i class="fas fa-reply" aria-hidden="true"></i></button>
+                <button class="btn-icon" aria-label="Eliminar" title="Eliminar" (click)="delete()"><i class="fas fa-trash" aria-hidden="true"></i></button>
             </div>
         </div>
 
@@ -57,7 +57,7 @@
                     <span class="reply-to">Respondiendo a <strong>{{ msg.from.name || msg.from.email }}</strong></span>
                 </div>
             </div>
-            <button class="btn-icon-sm" (click)="discardReply()" title="Cerrar"><i class="fas fa-times"></i></button>
+            <button class="btn-icon-sm" (click)="discardReply()" aria-label="Cerrar" title="Cerrar"><i class="fas fa-times" aria-hidden="true"></i></button>
         </div>
 
         <div class="reply-editor">
@@ -69,10 +69,10 @@
         <div class="reply-actions">
             <button class="btn-primary" (click)="sendReply()" [disabled]="isSending() || !replyContent.trim()">
                 <ng-container *ngIf="!isSending()">Enviar</ng-container>
-                <ng-container *ngIf="isSending()"><i class="fas fa-spinner fa-spin"></i> Enviando...</ng-container>
+                <ng-container *ngIf="isSending()"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Enviando...</ng-container>
             </button>
-            <button class="btn-icon" (click)="discardReply()" title="Descartar borrador"><i
-                    class="fas fa-trash-alt"></i></button>
+            <button class="btn-icon" (click)="discardReply()" aria-label="Descartar borrador" title="Descartar borrador"><i
+                    class="fas fa-trash-alt" aria-hidden="true"></i></button>
         </div>
     </div>
 </div>
