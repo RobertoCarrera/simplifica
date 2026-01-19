@@ -6,11 +6,12 @@ import { ProductsService } from '../../../services/products.service';
 import { ProductMetadataService } from '../../../services/product-metadata.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { BarcodeScannerComponent } from '../barcode-scanner/barcode-scanner.component';
 
 @Component({
     selector: 'app-product-create-modal',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, BarcodeScannerComponent],
     templateUrl: './product-create-modal.component.html',
     styleUrls: ['./product-create-modal.component.scss']
 })
@@ -26,8 +27,35 @@ export class ProductCreateModalComponent implements OnInit, OnDestroy {
         stock_quantity: 0,
         brand: '',
         category: '',
-        model: ''
+        model: '',
+        barcode: '',
+        location: '',
+        min_stock_level: 5
     };
+
+    // Scanner
+    showScanner = false;
+
+    // ... (rest of props)
+
+
+
+    // ... (rest of methods)
+
+    // Scanner Methods
+    openScanner() {
+        this.showScanner = true;
+    }
+
+    closeScanner() {
+        this.showScanner = false;
+    }
+
+    handleScan(code: string) {
+        this.newProduct.barcode = code;
+        this.closeScanner();
+        this.toastService.success('Escaneado', `Código detectado: ${code}`);
+    }
 
     // Autocomplete for brands and categories
     availableBrands: any[] = [];

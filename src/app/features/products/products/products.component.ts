@@ -1,16 +1,17 @@
 import { Component, OnInit, inject } from '@angular/core';
-// Force rebuild
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { ProductMetadataService } from '../../../services/product-metadata.service';
 import { ProductsService } from '../../../services/products.service';
 import { ProductCreateModalComponent } from '../product-create-modal/product-create-modal.component';
 import { ProductHistoryModalComponent } from '../product-history-modal/product-history-modal.component';
+import { BarcodeScannerComponent } from '../barcode-scanner/barcode-scanner.component';
 
 @Component({
   selector: 'app-products',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ProductCreateModalComponent, ProductHistoryModalComponent],
+  imports: [CommonModule, FormsModule, RouterModule, ProductCreateModalComponent, ProductHistoryModalComponent, BarcodeScannerComponent],
   templateUrl: './products.component.html',
   styleUrls: ['./products.component.scss']
 })
@@ -37,9 +38,24 @@ export class ProductsComponent implements OnInit {
   historyProduct: any = null;
 
   private productsService = inject(ProductsService);
+  private productMetadataService = inject(ProductMetadataService);
 
   ngOnInit() {
     this.loadProducts();
+  }
+
+  // ... (rest of the file)
+
+  async seedCatalog() {
+    if (!confirm('Esto añadirá datos de prueba al Catálogo Global. ¿Continuar?')) return;
+    try {
+      this.isCatalogLoading = true;
+      await this.productMetadataService.seedCatalog();
+    } catch (error) {
+      console.error('Seeding cleanup error:', error);
+    } finally {
+      this.isCatalogLoading = false;
+    }
   }
 
   // --- Inventory Methods ---
@@ -65,26 +81,59 @@ export class ProductsComponent implements OnInit {
     }
   }
 
+  showLowStockOnly = false;
+
   filterProducts() {
-    if (!this.searchTerm.trim()) {
-      this.filteredProducts = [...this.products];
-      return;
+    let filtered = this.products;
+
+    // 1. Text Search
+    if (this.searchTerm.trim()) {
+      const searchText = this.searchTerm.toLowerCase().trim();
+      filtered = filtered.filter(product =>
+        product.name?.toLowerCase().includes(searchText) ||
+        product.description?.toLowerCase().includes(searchText) ||
+        product.brand?.toLowerCase().includes(searchText) ||
+        product.category?.toLowerCase().includes(searchText) ||
+        product.model?.toLowerCase().includes(searchText)
+      );
     }
 
-    const searchText = this.searchTerm.toLowerCase().trim();
-    this.filteredProducts = this.products.filter(product =>
-      product.name?.toLowerCase().includes(searchText) ||
-      product.description?.toLowerCase().includes(searchText) ||
-      product.brand?.toLowerCase().includes(searchText) ||
-      product.category?.toLowerCase().includes(searchText) ||
-      product.model?.toLowerCase().includes(searchText)
-    );
+    // 2. Low Stock Filter
+    if (this.showLowStockOnly) {
+      filtered = filtered.filter(product => {
+        const minStock = product.min_stock_level || 5;
+        // Show if stock is "Red" (< min) or "Yellow" (< min*2)
+        // Adjust logic based on preference. Usually "Low Stock" means "Needs Action" so Red+Yellow.
+        return (product.stock_quantity || 0) < (minStock * 2);
+      });
+    }
+
+    this.filteredProducts = filtered;
+  }
+
+  toggleLowStockFilter() {
+    this.showLowStockOnly = !this.showLowStockOnly;
+    this.filterProducts();
   }
 
   // --- Catalog Methods ---
 
   setActiveTab(tab: 'inventory' | 'catalog') {
     this.activeTab = tab;
+    if (tab === 'catalog' && this.catalogResults.length === 0) {
+      this.loadCatalogProducts();
+    }
+  }
+
+  async loadCatalogProducts() {
+    this.isCatalogLoading = true;
+    try {
+      this.catalogResults = await this.productMetadataService.listCatalogProducts();
+    } catch (error) {
+      console.error('Error loading catalog products:', error);
+    } finally {
+      this.isCatalogLoading = false;
+    }
   }
 
   async searchCatalog() {
@@ -95,7 +144,7 @@ export class ProductsComponent implements OnInit {
 
     this.isCatalogLoading = true;
     try {
-      this.catalogResults = await this.productsService.searchCatalog(this.catalogSearchTerm);
+      this.catalogResults = await this.productMetadataService.searchCatalog(this.catalogSearchTerm);
     } catch (error) {
       console.error('Error searching catalog:', error);
     } finally {
@@ -204,6 +253,30 @@ export class ProductsComponent implements OnInit {
     }
   }
 
+  // --- Scanner Logic ---
+
+  showScanner = false;
+
+  openScanner() {
+    this.showScanner = true;
+  }
+
+  closeScanner() {
+    this.showScanner = false;
+  }
+
+  handleScan(code: string) {
+    this.closeScanner();
+    if (this.activeTab === 'inventory') {
+      this.searchTerm = code;
+      this.filterProducts();
+    } else {
+      this.catalogSearchTerm = code;
+      this.searchCatalog();
+    }
+  }
+
+  // --- Utility ---
   formatDate(dateString: string): string {
     return new Date(dateString).toLocaleDateString();
   }
@@ -214,4 +287,5 @@ export class ProductsComponent implements OnInit {
       currency: 'EUR'
     }).format(price);
   }
+
 }
