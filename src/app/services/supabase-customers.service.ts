@@ -188,7 +188,7 @@ export class SupabaseCustomersService {
     // Nota: Usando LEFT JOIN (sin !) para permitir clientes sin dirección
     let query = this.supabase
       .from('clients')
-      .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at)');  // ← Fetch ID and deleted_at for client-side filtering
+      .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(*))');  // ← Fetch ID and deleted_at for client-side filtering
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
     const companyId = this.authService.companyId();
@@ -252,7 +252,7 @@ export class SupabaseCustomersService {
 
         // Schema cache may lack relation: fallback without embed
         if ((error as any)?.code === 'PGRST200') {
-          let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)');
+          let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(*))');
           if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
           if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
 
@@ -333,7 +333,8 @@ export class SupabaseCustomersService {
       access_restrictions: client.access_restrictions ?? undefined,
       last_accessed_at: client.last_accessed_at ?? undefined,
       access_count: client.access_count ?? undefined,
-      devices: client.devices || []
+      devices: client.devices || [],
+      tags: client.clients_tags?.map((t: any) => t.global_tags) || []
     } as Customer;
   }
 

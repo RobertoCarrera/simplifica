@@ -570,9 +570,13 @@ export class LoginComponent implements OnDestroy, OnInit {
           try {
             // Decode and normalize the path
             let normalized = decodeURIComponent(returnTo);
-            // Ensure it starts with /
-            if (!normalized.startsWith('/')) {
-              normalized = `/${normalized}`;
+            
+            // SECURITY: Prevent Open Redirect attacks
+            // Ensure the path is strictly a local relative path starting with /
+            // and NOT starting with // (which browsers interpret as protocol-relative)
+            if (!normalized.startsWith('/') || normalized.startsWith('//')) {
+              console.warn('⚠️ Invalid returnUrl detected, redirecting to /inicio:', normalized);
+              normalized = '/inicio';
             }
 
             // Navigate directly without history manipulation

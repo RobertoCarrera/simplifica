@@ -2,6 +2,7 @@ import { Component, OnInit, inject, HostListener, OnDestroy, ViewChild, ElementR
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseServicesService, Service, ServiceCategory, ServiceVariant } from '../../../services/supabase-services.service';
+import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
 import { SimpleSupabaseService, SimpleCompany } from '../../../services/simple-supabase.service';
 import { DevRoleService } from '../../../services/dev-role.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
@@ -96,7 +97,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     timeQuantity: false,
     difficulty: false,
     booking: false,       // Reservas section
-    visibility: false
+    visibility: false,
+    intakeForm: false
   };
 
   // Form validation
@@ -107,13 +109,42 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   private toastService = inject(ToastService);
   private unitsService = inject(SupabaseUnitsService);
   private globalTagsService = inject(GlobalTagsService);
+  private bookingsService = inject(SupabaseBookingsService);
 
   // Units of measure for dynamic select
   units: UnitOfMeasure[] = [];
+  availableResourceTypes: string[] = [];
   unitsLoaded = false;
 
   // History management for modals
   private popStateListener: any = null;
+
+  // --- Accordion & Intake Form Methods ---
+  toggleAccordion(section: keyof typeof this.accordionState) {
+    this.accordionState[section] = !this.accordionState[section];
+  }
+
+  addQuestion() {
+    if (!this.formData.form_schema) {
+      this.formData.form_schema = [];
+    }
+    this.formData.form_schema.push({
+      id: this.generateId(),
+      type: 'text',
+      label: 'Nueva Pregunta',
+      required: false
+    });
+  }
+
+  removeQuestion(index: number) {
+    if (this.formData.form_schema) {
+      this.formData.form_schema.splice(index, 1);
+    }
+  }
+
+  private generateId(): string {
+    return Math.random().toString(36).substring(2, 9);
+  }
 
   ngOnInit() {
     this.loadCompanies().then(() => {
@@ -186,6 +217,23 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.units = [];
       this.unitsLoaded = true;
     }
+  }
+
+  loadResourceTypes() {
+    if (!this.selectedCompanyId) {
+      console.warn('loadResourceTypes: No company ID');
+      return;
+    }
+    console.log('loadResourceTypes: fetching for', this.selectedCompanyId);
+    this.bookingsService.getResources(this.selectedCompanyId).subscribe(resources => {
+      console.log('loadResourceTypes: resources found', resources);
+      const types = new Set<string>(['room', 'equipment']);
+      resources.forEach(r => {
+        if (r.type) types.add(r.type);
+      });
+      this.availableResourceTypes = Array.from(types).sort();
+      console.log('loadResourceTypes: available types', this.availableResourceTypes);
+    });
   }
 
   updateCategoryFilter() {
@@ -442,7 +490,10 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       booking_color: '#3b82f6',
       required_resource_type: undefined,
       max_capacity: 1,
-      requires_confirmation: false
+      requires_confirmation: false,
+      form_schema: [],
+      // Public fields
+      is_public: false
     };
 
     // Inicializar tags seleccionados (pendingTags used for new services)
@@ -468,6 +519,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.loadServiceCategories();
     // this.loadServiceTags(); // Removed
     this.loadUnits();
+    this.loadResourceTypes();
 
     // Añadir entrada al historial para que el botón "atrás" cierre el modal
     history.pushState({ modal: 'service-form' }, '');
@@ -512,7 +564,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       timeQuantity: false,
       difficulty: false,
       booking: false,
-      visibility: false
+      visibility: false,
+      intakeForm: false
     };
 
     // Restaurar scroll de la página principal
@@ -890,17 +943,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.accordionState[section] = true;
   }
 
-  toggleAccordion(section: keyof typeof this.accordionState) {
-    const wasActive = this.accordionState[section];
 
-    // Close all sections
-    Object.keys(this.accordionState).forEach(key => {
-      this.accordionState[key as keyof typeof this.accordionState] = false;
-    });
-
-    // Toggle the clicked section (if it was active, it stays closed; if not, it opens)
-    this.accordionState[section] = !wasActive;
-  }
 
   formatCurrency(amount: number): string {
     return this.servicesService.formatCurrency(amount);

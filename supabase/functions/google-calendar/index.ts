@@ -149,7 +149,7 @@ serve(async (req) => {
                 }
             };
 
-            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${targetCalendarId}/events`, {
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -191,7 +191,7 @@ serve(async (req) => {
                 // Keeping it simple.
             };
 
-            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${targetCalendarId}/events/${google_event_id}`, {
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${google_event_id}?sendUpdates=all`, {
                 method: 'PATCH', // PATCH to update only fields provided
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -217,7 +217,7 @@ serve(async (req) => {
 
             console.log('Deleting Google Event:', google_event_id);
 
-            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${targetCalendarId}/events/${google_event_id}`, {
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events/${google_event_id}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
@@ -285,7 +285,7 @@ serve(async (req) => {
         if (action === 'list_events') {
             if (!timeMin || !timeMax) throw new Error('Missing parameters for list_events');
 
-            const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${targetCalendarId}/events`);
+            const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(targetCalendarId)}/events`);
             url.searchParams.append('timeMin', timeMin);
             url.searchParams.append('timeMax', timeMax);
             url.searchParams.append('singleEvents', 'true');

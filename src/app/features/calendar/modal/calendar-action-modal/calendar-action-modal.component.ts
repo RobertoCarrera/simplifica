@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseCouponsService, Coupon } from '../../../../services/supabase-coupons.service';
 import { Service } from '../../../../services/supabase-services.service';
-import { SupabaseBookingsService } from '../../../../services/supabase-bookings.service';
+import { SupabaseBookingsService, BookingHistory, WaitlistEntry } from '../../../../services/supabase-bookings.service';
 
 export interface CalendarActionData {
   type: 'booking' | 'block';
@@ -16,6 +16,7 @@ export interface CalendarActionData {
   serviceId?: string;
   clientId?: string;
   id?: string;
+  resourceId?: string; // For blocks or specific professional assignments
   recurrence?: {
     type: 'daily' | 'weekly' | 'monthly';
     endDate: Date;
@@ -26,6 +27,7 @@ export interface CalendarActionData {
   couponId?: string;
   discountAmount?: number;
   status?: 'confirmed' | 'pending' | 'cancelled';
+  waitlistEntryId?: string;
 }
 
 @Component({
@@ -40,16 +42,81 @@ export class CalendarActionModalComponent {
   initialStartDate = input<Date | null>(null);
   services = input<Service[]>([]);
   clients = input<any[]>([]);
+  resources = input<{ id: string, title: string }[]>([]); // New input
   closeModal = output<void>();
   saveAction = output<CalendarActionData>();
 
-  activeTab = signal<'booking' | 'block'>('booking');
+  // Waitlist Logic
+  isFullCapacity = signal(false);
+  joiningWaitlist = signal(false);
+
+  // Computed Check for Save Button
+  // We need to check if capacity is full when time changes
+  checkCapacity = async () => {
+    if (this.activeTab() !== 'booking' || !this.serviceId || !this.startTimeStr() || !this.endTimeStr()) return;
+
+    // Only check if creating new or changing time significantly
+    // Simplified: check every time for now if valid dates
+    try {
+      const start = new Date(this.startTimeStr());
+      const end = new Date(this.endTimeStr());
+
+      // This should assume max_capacity is fetched from service or passed in
+      // For now, we'll assume strict 1-slot capacity unless service says otherwise
+      const cap = await this.bookingsService.checkServiceCapacity(this.serviceId, start, end);
+      // Assuming capacity is 1 for now or fetching from Service input
+      // TODO: Get real max_capacity from this.services().find(...)
+      const service = this.services().find(s => s.id === this.serviceId);
+      const maxCap = service?.max_capacity || 1;
+
+      this.isFullCapacity.set(cap >= maxCap);
+    } catch (e) {
+      console.error('Error checking capacity', e);
+    }
+  }
+
+  async onJoinWaitlist() {
+    if (!this.clientId || !this.serviceId || !this.startTimeStr()) return;
+
+    this.joiningWaitlist.set(true);
+    try {
+      const service = this.services().find(s => s.id === this.serviceId);
+      if (!service) return;
+
+      await this.bookingsService.joinWaitlist({
+        company_id: service.company_id,
+        client_id: this.clientId,
+        service_id: this.serviceId,
+        start_time: this.startTimeStr(),
+        end_time: this.endTimeStr(),
+        status: 'pending'
+      });
+      this.closeModal.emit();
+      // Maybe show toast?
+    } catch (e) {
+      console.error(e);
+    } finally {
+      this.joiningWaitlist.set(false);
+    }
+  }
+
+
+
+
+
+  activeTab = signal<'booking' | 'block' | 'history'>('booking');
+  history = signal<BookingHistory[]>([]);
+  isLoadingHistory = signal(false);
+
   // New: If set, hides the tabs and locks the mode
   forcedMode = signal<'booking' | 'block' | null>(null);
 
   isEditMode = signal(false);
   existingId = signal<string | null>(null);
-  deleteAction = output<string>();
+  deleteAction = output<{ id: string, type: 'booking' | 'block' }>();
+
+  // Booking Status Tracking
+  bookingStatus = signal<'confirmed' | 'pending' | 'cancelled'>('confirmed');
 
   // Dependencies
   private couponsService = inject(SupabaseCouponsService);
@@ -77,6 +144,8 @@ export class CalendarActionModalComponent {
 
   clientId: string | null = null;
   serviceId: string | null = null;
+  resourceId: string | null = null; // New field for Block target
+  waitlistEntryId: string | null = null;
 
   ngOnChanges() {
     if (this.isOpen()) {
@@ -108,10 +177,63 @@ export class CalendarActionModalComponent {
     this.couponCode.set('');
     this.appliedCoupon.set(null);
     this.couponMessage.set(null);
+
+    this.bookingStatus.set('confirmed'); // Default for new, will be overriden by validation if needed
+
+    this.waitlistEntryId = null;
+  }
+
+  openFromWaitlist(entry: WaitlistEntry) {
+    this.isEditMode.set(false);
+    this.existingId.set(null);
+    this.activeTab.set('booking');
+    this.forcedMode.set('booking');
+
+    this.waitlistEntryId = entry.id;
+    this.serviceId = entry.service_id;
+    this.clientId = entry.client_id;
+
+    // Init Dates
+    const start = new Date(entry.start_time);
+    const end = new Date(entry.end_time);
+    this.startTimeStr.set(this.toDateTimeLocal(start));
+    this.endTimeStr.set(this.toDateTimeLocal(end));
+
+    this.bookingStatus.set('confirmed');
+
+    // Recalculate price if possible
+    this.recalculatePrice();
+  }
+
+  // Form Responses
+  formResponses = signal<any>(null);
+  formSchema = signal<any[]>([]);
+
+  getQuestionLabel(questionId: any): string {
+    const schema = this.formSchema();
+    const key = String(questionId);
+    if (!schema) return key;
+    const q = schema.find(item => item.id === key);
+    return q ? q.label : key;
+  }
+
+  formatResponseValue(value: any): string {
+    if (Array.isArray(value)) return value.join(', ');
+    if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+    if (typeof value === 'object' && value !== null) return JSON.stringify(value); // Fallback
+    return value;
+  }
+
+  hasFormResponses(): boolean {
+    const responses = this.formResponses();
+    if (!responses) return false;
+    // Check if object has keys
+    return Object.keys(responses).length > 0;
   }
 
   openForEdit(event: any, type: 'booking' | 'block') {
     this.isEditMode.set(true);
+    this.waitlistEntryId = null;
     this.existingId.set(event.id);
     this.activeTab.set(type);
 
@@ -135,7 +257,22 @@ export class CalendarActionModalComponent {
     if (type === 'booking') {
       this.serviceId = event.extendedProps?.service_id || null;
       this.clientId = event.extendedProps?.client_id || null;
+      this.resourceId = event.extendedProps?.resourceId || null; // Restore for edit if available
+      this.bookingStatus.set(event.extendedProps?.status || 'confirmed');
+
+      // Load Form Responses
+      this.formResponses.set(event.extendedProps?.form_responses || null);
+      this.formSchema.set(event.extendedProps?.service?.form_schema || []);
+
       // Restore recurrence logic if complex recurrence parsing is needed
+    } else if (type === 'block') {
+      this.resourceId = event.resourceId || null;
+      this.formResponses.set(null);
+      this.formSchema.set([]);
+    }
+
+    if (this.existingId()) {
+      this.loadHistory(this.existingId()!);
     }
   }
 
@@ -206,6 +343,8 @@ export class CalendarActionModalComponent {
       if (service) {
         durationMinutes = service.duration_minutes || 60;
         this.computedBuffer.set(service.buffer_minutes || 0);
+        // Add Buffer to total duration
+        durationMinutes += (service.buffer_minutes || 0);
       } else {
         this.computedBuffer.set(null);
       }
@@ -339,11 +478,25 @@ export class CalendarActionModalComponent {
     this.closeModal.emit();
   }
 
-  async save() {
+  approveBooking() {
+    this.save('confirmed');
+  }
+
+  rejectBooking() {
+    const confirmReject = confirm('¿Estás seguro de rechazar esta reserva? Se marcará como cancelada.');
+    if (confirmReject) {
+      this.save('cancelled');
+    }
+  }
+
+  async save(forceStatus?: 'confirmed' | 'pending' | 'cancelled') {
     let start: Date;
     let end: Date;
-    let bookingStatus: 'confirmed' | 'pending' | 'cancelled' = 'confirmed';
+    // Default to current status if editing, or confirmed if creating (unless forced)
+    let bookingStatus: 'confirmed' | 'pending' | 'cancelled' = forceStatus || this.bookingStatus();
     let service: Service | undefined;
+
+    if (this.activeTab() === 'history') return;
 
     if (this.activeTab() === 'block') {
       const type = this.blockType();
@@ -412,9 +565,47 @@ export class CalendarActionModalComponent {
             }
           }
 
+          // Resource / Room Assignment Logic
+          if (service.room_required || service.required_resource_type) {
+            // Default to 'sala' (room) if only room_required is true
+            // If required_resource_type is set (e.g. 'camilla', 'laser'), use that
+            const resourceType = service.required_resource_type || 'sala';
+
+            try {
+              // We need the companyId - usually from service or passed in. 
+              // Assuming service.company_id is reliable.
+              const companyId = service.company_id;
+
+              if (companyId) {
+                const assignedResourceId = await this.bookingsService.findAvailableResource(
+                  companyId,
+                  resourceType,
+                  start,
+                  end
+                );
+
+                if (!assignedResourceId) {
+                  const confirmForce = confirm(
+                    `⚠️ Sin recursos disponibles\n\nNo se encontró ningún recurso tipo "${resourceType}" disponible para este horario.` +
+                    `\n\n¿Deseas guardar la reserva SIN asignar recurso? (Podría causar conflictos)`
+                  );
+                  if (!confirmForce) return;
+                } else {
+                  this.resourceId = assignedResourceId;
+                  // Optional: Notify user
+                  // console.log('Auto-assigned resource:', assignedResourceId);
+                }
+              }
+            } catch (err) {
+              console.error('Error auto-assigning resource:', err);
+            }
+          }
+
           // Approval Workflow
-          if (service.requires_confirmation) {
+          // Only apply if we are NOT forcing a status (e.g. approving).
+          if (!forceStatus && service.requires_confirmation) {
             bookingStatus = 'pending';
+
             const confirmPending = confirm(
               `ℹ️ Aprobación Requerida\n\nEste servicio requiere aprobación manual.` +
               `\nLa reserva se creará en estado 'Pendiente'.` +
@@ -428,7 +619,7 @@ export class CalendarActionModalComponent {
 
     // Emit
     this.saveAction.emit({
-      type: this.activeTab(),
+      type: this.activeTab() as 'booking' | 'block',
       startTime: start,
       endTime: end,
       reason: this.activeTab() === 'block' ? (this.blockReason || 'Bloqueado') : undefined,
@@ -436,6 +627,7 @@ export class CalendarActionModalComponent {
       // Booking specific
       serviceId: this.activeTab() === 'booking' ? (this.serviceId || undefined) : undefined,
       clientId: this.activeTab() === 'booking' ? (this.clientId || undefined) : undefined,
+      resourceId: this.activeTab() === 'block' ? (this.resourceId || undefined) : undefined, // Emit resourceId
       id: this.existingId() || undefined,
       recurrence: (this.activeTab() === 'booking' && this.recurrenceType() !== 'none') ? {
         type: this.recurrenceType() as 'daily' | 'weekly' | 'monthly',
@@ -452,6 +644,8 @@ export class CalendarActionModalComponent {
       couponId: (this.activeTab() === 'booking' && this.appliedCoupon()) ? this.appliedCoupon()!.id : undefined,
       discountAmount: (this.activeTab() === 'booking' && this.appliedCoupon()) ? this.appliedCoupon()!.discount_value : undefined,
 
+      waitlistEntryId: this.activeTab() === 'booking' ? (this.waitlistEntryId || undefined) : undefined,
+
       status: bookingStatus
     });
 
@@ -460,12 +654,39 @@ export class CalendarActionModalComponent {
 
   delete() {
     if (this.existingId()) {
-      this.deleteAction.emit(this.existingId()!);
+      const type = (this.activeTab() === 'block') ? 'block' : 'booking';
+      this.deleteAction.emit({ id: this.existingId()!, type });
       this.close();
     }
   }
 
-  setTab(tab: 'booking' | 'block') {
+  setTab(tab: 'booking' | 'block' | 'history') {
     this.activeTab.set(tab);
+    if (tab === 'history' && this.existingId() && this.history().length === 0) {
+      this.loadHistory(this.existingId()!);
+    }
+  }
+
+  async loadHistory(bookingId: string) {
+    // Validate UUID format to prevent 400 errors
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    // Check if valid UUID and not a placeholder/garbage string
+    if (!bookingId || !uuidRegex.test(bookingId)) {
+      // limit log noise
+      if (bookingId) console.warn('Skipping history load for non-UUID id:', bookingId);
+      return;
+    }
+
+    this.isLoadingHistory.set(true);
+    this.bookingsService.getBookingHistory(bookingId).subscribe({
+      next: (data) => {
+        this.history.set(data);
+        this.isLoadingHistory.set(false);
+      },
+      error: (err) => {
+        console.error('Error loading history', err);
+        this.isLoadingHistory.set(false);
+      }
+    });
   }
 }

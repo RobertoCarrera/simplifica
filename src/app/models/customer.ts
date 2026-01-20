@@ -33,6 +33,7 @@ export interface Customer {
   address?: string;
   activo?: boolean;
   fecha_nacimiento?: string;
+  birth_date?: string;
   profesion?: string;
   empresa?: string;
 
@@ -48,6 +49,7 @@ export interface Customer {
   deletion_reason?: string;
   anonymized_at?: string;
   is_minor?: boolean;
+  notes?: string;
   parental_consent_verified?: boolean;
   parental_consent_date?: string;
   data_minimization_applied?: boolean;
@@ -57,6 +59,7 @@ export interface Customer {
   access_count?: number;
   devices?: { count?: number; id?: string; deleted_at?: string }[];
   loyalty_points_balance?: number;
+  tags?: any[]; // GlobalTag[] loaded dynamically
 }
 
 // Interface para crear cliente (sin ID)

@@ -36,6 +36,12 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     { key: 'clients.edit', label: 'Editar clientes', description: 'Puede modificar datos de clientes', category: 'Clientes' },
     { key: 'clients.delete', label: 'Eliminar clientes', description: 'Puede eliminar clientes', category: 'Clientes' },
 
+    // CRM (Leads)
+    { key: 'leads.view', label: 'Ver leads', description: 'Puede ver el tablero de leads', category: 'CRM' },
+    { key: 'leads.create', label: 'Crear leads', description: 'Puede crear nuevos leads manualmente', category: 'CRM' },
+    { key: 'leads.edit', label: 'Editar leads', description: 'Puede editar información de leads', category: 'CRM' },
+    { key: 'leads.delete', label: 'Eliminar leads', description: 'Puede eliminar leads', category: 'CRM' },
+
     // Invoices
     { key: 'invoices.view', label: 'Ver facturas', description: 'Puede ver facturas', category: 'Facturación' },
     { key: 'invoices.create', label: 'Crear facturas', description: 'Puede crear facturas', category: 'Facturación' },
@@ -49,6 +55,7 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     // Tickets
     { key: 'tickets.view', label: 'Ver tickets', description: 'Puede ver tickets', category: 'Tickets' },
     { key: 'tickets.create', label: 'Crear tickets', description: 'Puede crear tickets', category: 'Tickets' },
+    { key: 'tickets.assignable', label: 'Asignable en tickets', description: 'Puede ser asignado a tickets', category: 'Tickets' },
     { key: 'tickets.ai', label: 'Uso de IA (Tickets)', description: 'Puede usar IA para generar/resumir tickets', category: 'Inteligencia Artificial' },
 
     // Products
@@ -78,6 +85,19 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     { key: 'analytics.export', label: 'Exportar datos', description: 'Puede exportar reportes', category: 'Analíticas' },
     { key: 'analytics.ai', label: 'Insights IA (Analíticas)', description: 'Ver recomendaciones de IA', category: 'Inteligencia Artificial' },
 
+    // Marketing 
+    { key: 'marketing.view', label: 'Ver Marketing', description: 'Acceso a módulo de Marketing', category: 'Marketing' },
+    { key: 'marketing.manage', label: 'Gestionar Campañas', description: 'Crear y enviar campañas', category: 'Marketing' },
+
+    // HR (Empleadas)
+    { key: 'employees.view', label: 'Ver empleadas', description: 'Puede ver el listado de empleadas', category: 'Recursos Humanos' },
+    { key: 'employees.create', label: 'Crear empleadas', description: 'Puede dar de alta nuevas empleadas', category: 'Recursos Humanos' },
+    { key: 'employees.edit', label: 'Editar empleadas', description: 'Puede modificar datos de empleadas', category: 'Recursos Humanos' },
+    { key: 'employees.delete', label: 'Eliminar empleadas', description: 'Puede eliminar registros de empleadas', category: 'Recursos Humanos' },
+
+    // Notifications
+    { key: 'notifications.view', label: 'Ver notificaciones', description: 'Puede ver notificaciones globales de la empresa', category: 'Notificaciones' },
+
     // Settings
     { key: 'settings.manage', label: 'Gestión configuración', description: 'Acceso a ajustes avanzados del sistema', category: 'Sistema' },
     { key: 'settings.billing', label: 'Gestión facturación', description: 'Acceso a configuración de facturación', category: 'Facturación' },
@@ -92,43 +112,52 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'clients.view': true, 'clients.view_own': true, 'clients.edit': true, 'clients.delete': true,
         'invoices.view': true, 'invoices.create': true,
         'bookings.view': true, 'bookings.view_own': true, 'bookings.manage_own': true, 'bookings.manage_all': true,
-        'tickets.view': true, 'tickets.create': true,
+        'tickets.view': true, 'tickets.create': true, 'tickets.assignable': true,
         'settings.manage': true, 'settings.billing': true,
         'products.view': true, 'products.create': true, 'products.edit': true, 'products.delete': true, 'products.ai': true,
         'quotes.view': true, 'quotes.create': true, 'quotes.edit': true, 'quotes.approve': true,
         'chat.access': true, 'chat.ai': true,
         'services.view': true, 'services.create': true, 'services.edit': true,
-        'analytics.view': true, 'analytics.export': true, 'analytics.ai': true
+        'analytics.view': true, 'analytics.export': true, 'analytics.ai': true,
+        'marketing.view': true, 'marketing.manage': true,
+        'notifications.view': true
     },
     owner: {
         'clients.view': true, 'clients.edit': true, 'clients.delete': true,
         'invoices.view': true, 'invoices.create': true,
         'bookings.view': true, 'bookings.manage_all': true,
-        'tickets.view': true, 'tickets.create': true, 'tickets.ai': true,
+        'tickets.view': true, 'tickets.create': true, 'tickets.assignable': true, 'tickets.ai': true,
         'settings.manage': true, 'settings.billing': true,
         'products.view': true, 'products.create': true, 'products.edit': true, 'products.delete': true, 'products.ai': true,
         'quotes.view': true, 'quotes.create': true, 'quotes.edit': true, 'quotes.approve': true,
         'chat.access': true, 'chat.ai': true,
         'services.view': true, 'services.create': true, 'services.edit': true,
-        'analytics.view': true, 'analytics.export': true, 'analytics.ai': true
+        'analytics.view': true, 'analytics.export': true, 'analytics.ai': true,
+        'marketing.view': true, 'marketing.manage': true,
+        'leads.view': true, 'leads.create': true, 'leads.edit': true, 'leads.delete': true,
+        'employees.view': true, 'employees.create': true, 'employees.edit': true, 'employees.delete': true,
+        'notifications.view': true
     },
     admin: {
         'clients.view': true, 'clients.edit': true, 'clients.delete': false,
         'invoices.view': true, 'invoices.create': true,
         'bookings.view': true, 'bookings.manage_all': true,
-        'tickets.view': true, 'tickets.create': true, 'tickets.ai': true,
+        'tickets.view': true, 'tickets.create': true, 'tickets.assignable': true, 'tickets.ai': true,
         'settings.manage': true, 'settings.billing': false,
         'products.view': true, 'products.create': true, 'products.edit': true, 'products.delete': false, 'products.ai': true,
         'quotes.view': true, 'quotes.create': true, 'quotes.edit': true, 'quotes.approve': false,
         'chat.access': true, 'chat.ai': true,
         'services.view': true, 'services.create': true, 'services.edit': true,
-        'analytics.view': true, 'analytics.export': false, 'analytics.ai': true
+        'analytics.view': true, 'analytics.export': false, 'analytics.ai': true,
+        'leads.view': true, 'leads.create': true, 'leads.edit': true, 'leads.delete': false,
+        'employees.view': true, 'employees.create': true, 'employees.edit': true, 'employees.delete': false,
+        'notifications.view': true
     },
     member: {
         'clients.view': true, 'clients.edit': false, 'clients.delete': false,
         'invoices.view': false, 'invoices.create': false,
         'bookings.view': true, 'bookings.view_own': true, 'bookings.manage_own': false,
-        'tickets.view': true, 'tickets.create': true, 'tickets.ai': false,
+        'tickets.view': true, 'tickets.create': true, 'tickets.assignable': true, 'tickets.ai': false,
         'settings.manage': false, 'settings.billing': false,
         'products.view': true, 'products.create': false, 'products.edit': false, 'products.delete': false, 'products.ai': false,
         'quotes.view': true, 'quotes.create': false, 'quotes.edit': false, 'quotes.approve': false,
@@ -139,7 +168,7 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'clients.view_own': true, 'clients.view': false, 'clients.edit': false, 'clients.delete': false,
         'invoices.view': false, 'invoices.create': false,
         'bookings.view_own': true, 'bookings.manage_own': true, 'bookings.view': false,
-        'tickets.view': true, 'tickets.create': true, 'tickets.ai': true,
+        'tickets.view': true, 'tickets.create': true, 'tickets.assignable': true, 'tickets.ai': true,
         'settings.manage': false, 'settings.billing': false,
         'products.view': true, 'products.create': false, 'products.edit': false, 'products.delete': false, 'products.ai': false,
         'quotes.view': false, 'quotes.create': false, 'quotes.edit': false, 'quotes.approve': false,
@@ -150,7 +179,7 @@ export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
         'clients.view': true, 'clients.edit': false, 'clients.delete': false,
         'invoices.view': false, 'invoices.create': false,
         'bookings.view': false, 'bookings.manage_own': false,
-        'tickets.view': true, 'tickets.create': true, 'tickets.ai': false,
+        'tickets.view': true, 'tickets.create': true, 'tickets.assignable': true, 'tickets.ai': false,
         'settings.manage': false, 'settings.billing': false,
         'products.view': false, 'products.create': false, 'products.edit': false, 'products.delete': false, 'products.ai': false,
         'quotes.view': false, 'quotes.create': false, 'quotes.edit': false, 'quotes.approve': false,
@@ -357,5 +386,13 @@ export class SupabasePermissionsService {
     isAdminOrOwner(): boolean {
         const role = this.authService.userRole();
         return role === 'owner' || role === 'super_admin' || role === 'admin';
+    }
+
+    isClient(): boolean {
+        // Assuming client users have role 'client' or null (if public user) but standard auth flow usually sets role.
+        // If not set, we might check profile. For now, check role 'client'.
+        const role = this.authService.userRole();
+        // Also check if they are NOT staff
+        return role === 'client' || (!this.isAdminOrOwner() && role !== 'professional' && role !== 'agent' && role !== 'member');
     }
 }

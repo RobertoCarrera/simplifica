@@ -10,6 +10,7 @@ import { TicketDetailComponent } from './features/tickets/detail/ticket-detail.c
 import { ConfiguracionComponent } from './features/settings/configuracion/configuracion.component';
 import { EmergencyLoginComponent } from './features/auth/emergency-login/emergency-login.component';
 import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard } from './guards/auth.guard';
+import { SuperAdminGuard } from './guards/super-admin.guard';
 import { StaffGuard } from './core/guards/staff.guard';
 import { ModuleGuard } from './guards/module.guard';
 import { ClientRoleGuard } from './guards/client-role.guard';
@@ -58,6 +59,11 @@ export const routes: Routes = [
 
     // Clientes (Lazy Load)
     {
+        path: 'clientes/:id',
+        loadComponent: () => import('./features/customers/profile/client-profile.component').then(m => m.ClientProfileComponent),
+        canActivate: [StaffGuard]
+    },
+    {
         path: 'clientes',
         loadComponent: () => import('./features/customers/supabase-customers/supabase-customers.component').then(m => m.SupabaseCustomersComponent),
         canActivate: [StaffGuard]
@@ -80,6 +86,7 @@ export const routes: Routes = [
     { path: 'tickets', component: SupabaseTicketsComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
     { path: 'tickets/:id', component: TicketDetailComponent, canActivate: [AuthGuard] },
     { path: 'productos', component: ProductsComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloProductos' } },
+    { path: 'productos/proveedores', loadComponent: () => import('./features/products/supplier-manager/supplier-manager.component').then(m => m.SupplierManagerComponent), canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloProductos' } },
     { path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
     { path: 'dispositivos', component: DevicesManagerComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
     { path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloChat' } },
@@ -98,8 +105,36 @@ export const routes: Routes = [
     { path: 'configuracion/etiquetas', loadComponent: () => import('./features/settings/tags-management/tags-management.component').then(m => m.TagsManagementComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'configuracion/booking-types', loadComponent: () => import('./features/settings/booking/booking-settings.component').then(m => m.BookingSettingsComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
     { path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'marketing', loadComponent: () => import('./features/marketing/marketing-dashboard/marketing-dashboard.component').then(m => m.MarketingDashboardComponent), canActivate: [AuthGuard, OwnerAdminGuard] },
+    { path: 'leads', loadComponent: () => import('./features/crm/leads-page/leads-page.component').then(m => m.LeadsPageComponent), canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloMarketing' } }, // Leads CRM
+
+    // HR Module
+    {
+        path: 'rrhh/empleadas',
+        loadComponent: () => import('./features/hr-employees/employee-list/employee-list.component').then(m => m.EmployeeListComponent),
+        canActivate: [AuthGuard, OwnerAdminGuard]
+    },
+    {
+        path: 'rrhh/empleadas/:id',
+        loadComponent: () => import('./features/hr-employees/employee-detail/employee-detail.component').then(m => m.EmployeeDetailComponent),
+        canActivate: [AuthGuard, OwnerAdminGuard]
+    },
+    {
+        path: 'rrhh/mis-comisiones',
+        loadComponent: () => import('./features/hr-employees/my-commissions/my-commissions.component').then(m => m.MyCommissionsComponent),
+        canActivate: [StaffGuard]
+    },
+
     // Admin modules management (solo admin)
     { path: 'admin/modulos', component: ModulesAdminComponent, canActivate: [AuthGuard, AdminGuard] },
+
+    // Global Audit Logs (Super Admin Only)
+    {
+        path: 'logs',
+        loadComponent: () => import('./features/admin/audit-logs/audit-logs.component').then(m => m.AuditLogsComponent),
+        canActivate: [AuthGuard, SuperAdminGuard]
+    },
+
     // Client portal admin (owner/admin only)
     { path: 'empresa/portal-clientes', component: ClientPortalAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     // Ruta de invitaciones eliminada (modelo de auto-registro activo)
@@ -162,11 +197,19 @@ export const routes: Routes = [
     { path: 'portal/reservas', loadComponent: () => import('./features/bookings/portal-bookings/portal-bookings.component').then(m => m.PortalBookingsComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloReservas' } },
     { path: 'portal/mis-reservas', loadComponent: () => import('./features/bookings/portal-my-bookings/portal-my-bookings.component').then(m => m.PortalMyBookingsComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloReservas' } },
 
+    // Client portal settings
+
 
     // Public payment pages (NO AUTH REQUIRED)
     { path: 'pago/:token', component: PublicPaymentComponent },
     { path: 'pago/:token/completado', component: PaymentSuccessComponent },
     { path: 'pago/:token/cancelado', component: PaymentCancelledComponent },
+
+    // Public Booking Widget (NO AUTH REQUIRED)
+    {
+        path: 'portal/book/:companyId',
+        loadComponent: () => import('./features/public/booking-widget/booking-widget.component').then(m => m.BookingWidgetComponent)
+    },
 
     // Public Privacy Policy
     {

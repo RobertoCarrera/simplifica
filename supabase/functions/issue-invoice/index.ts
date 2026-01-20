@@ -25,6 +25,26 @@ serve(async (req) => {
             throw new Error('Missing invoiceid');
         }
 
+        // 1. SECURITY VALIDATION (IDOR Check)
+        // Verify that the invoice exists and is accessible for the user invoking the function.
+        // Since supabaseClient uses the user's Authorization header, RLS will enforce access.
+        const { data: invoiceCheck, error: checkError } = await supabaseClient
+            .from('invoices')
+            .select('id, company_id')
+            .eq('id', invoiceid)
+            .maybeSingle();
+
+        if (checkError || !invoiceCheck) {
+            return new Response(JSON.stringify({ 
+                error: 'Acceso denegado o factura no encontrada',
+                details: checkError?.message 
+            }), { 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 403 
+            });
+        }
+
+        // 2. RPC EXECUTION (Now safe)
         // Call the RPC that handles the logic
         // Note: Based on SQL search, 'verifactu_preflight_issue' seems to contain the logic 
         // for chaining and hashing, despite the name "preflight".

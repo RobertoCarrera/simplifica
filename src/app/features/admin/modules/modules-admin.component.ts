@@ -173,6 +173,13 @@ export class ModulesAdminComponent implements OnInit {
       'moduloPresupuestos': 'file-text',
       'moduloFacturas': 'receipt',
       'moduloReservas': 'calendar',
+      'moduloMarketing': 'sparkles', // Reusing sparkles or maybe 'mail'/'message-circle' if available? Lucide triggers 'sparkles' for duplicate. 
+      // Let's use 'megaphone' if imported, or just 'trending-up' substitute? 
+      // User has 'message-circle' imported. 
+      // The imports are: Smartphone, Package, Wrench, MessageCircle, TrendingUp, FileText, Receipt, Calendar, Sparkles, Box.
+      // 'moduloIA' uses 'sparkles'. 
+      // Let's use 'message-circle' or 'trending-up' or just share 'sparkles' for now, or add 'Megaphone' to imports.
+      // I will add 'Megaphone' to imports first.
       'moduloIA': 'sparkles'
     };
     return map[key] || 'box';

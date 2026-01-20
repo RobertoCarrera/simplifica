@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener, ViewChild, ElementRef, ChangeDetectorRef, TemplateRef, ViewContainerRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, HostListener, ViewChild, ElementRef, ChangeDetectorRef, TemplateRef, ViewContainerRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Overlay, OverlayModule, OverlayRef } from '@angular/cdk/overlay';
@@ -26,6 +26,7 @@ import { AiService } from '../../../services/ai.service';
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
 import { LoyaltyModalComponent } from '../loyalty-modal/loyalty-modal.component';
+import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 
 @Component({
     selector: 'app-supabase-customers',
@@ -40,7 +41,8 @@ import { LoyaltyModalComponent } from '../loyalty-modal/loyalty-modal.component'
         LoyaltyModalComponent
     ],
     templateUrl: './supabase-customers.component.html',
-    styleUrls: ['./supabase-customers.component.scss']
+    styleUrls: ['./supabase-customers.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
@@ -60,6 +62,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     public auth = inject(AuthService);
     portal = inject(ClientPortalService);
     private completenessSvc = inject(CustomersSvc);
+    private tagsService = inject(GlobalTagsService);
 
     // Overlay dependencies
     private overlay = inject(Overlay);
@@ -130,6 +133,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     sortBy = signal<'name' | 'apellidos' | 'created_at'>('name'); // Default to name
     sortOrder = signal<'asc' | 'desc'>('asc'); // Default to asc for alphabetical
 
+    // Tag Filter
+    availableTags = signal<GlobalTag[]>([]);
+    selectedTagId = signal<string>('ALL'); // 'ALL' or tag UUID
+
 
 
     // UI filter toggle for incomplete imports (Removed from UI, logic deprecated)
@@ -168,12 +175,29 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     // Removed legacy CSV mapping handlers
 
 
+    // Cache completeness status to avoid O(N log N) re-calculations during sort
+    completenessCache = computed(() => {
+        const cache = new Map<string, boolean>();
+        this.customers().forEach(c => {
+            cache.set(c.id, this.completenessSvc.computeCompleteness(c).complete);
+        });
+        return cache;
+    });
+
     // Computed
     filteredCustomers = computed(() => {
         let filtered = this.customers();
 
         // ✅ Filtrar clientes anonimizados (ocultarlos de la lista)
         filtered = filtered.filter(customer => !this.isCustomerAnonymized(customer));
+
+        // Filter by Tag
+        const tagId = this.selectedTagId();
+        if (tagId && tagId !== 'ALL') {
+            filtered = filtered.filter(customer =>
+                customer.tags && customer.tags.some((t: any) => t.id === tagId)
+            );
+        }
 
         // Apply search filter
         const search = this.searchTerm().toLowerCase().trim();
@@ -191,10 +215,13 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         const sortBy = this.sortBy();
         const sortOrder = this.sortOrder();
 
+        // Use cached completeness for sorting
+        const completeness = this.completenessCache();
+
         filtered.sort((a, b) => {
             // Priority Sort: Incomplete users FIRST
-            const aComplete = this.isCustomerComplete(a);
-            const bComplete = this.isCustomerComplete(b);
+            const aComplete = completeness.get(a.id) ?? false;
+            const bComplete = completeness.get(b.id) ?? false;
 
             if (aComplete !== bComplete) {
                 // If one is incomplete (false) and other is complete (true), incomplete comes first
@@ -219,7 +246,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Completeness helpers for template
     isCustomerComplete(c: Customer): boolean {
-        return this.completenessSvc.computeCompleteness(c).complete;
+        return this.completenessCache().get(c.id) ?? false;
     }
 
     getCustomerMissingFields(c: Customer): string[] {
@@ -251,6 +278,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         this.loadGdprData();
         // Initialize portal access cache
         this.refreshPortalAccess();
+        // Load tags
+        this.loadTags();
     }
 
     ngOnDestroy() {
@@ -399,6 +428,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         });
     }
 
+    loadTags() {
+        this.tagsService.getTags('clients').subscribe(tags => {
+            this.availableTags.set(tags);
+        });
+    }
+
     // Via suggestions handler
     // Locality input handlers removed (moved to child component)
 
@@ -462,8 +497,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
 
     viewCustomer(customer: Customer) {
-        // Implementar vista de detalles
-        this.selectCustomer(customer);
+        this.router.navigate(['/clientes', customer.id]);
     }
 
     duplicateCustomer(customer: Customer) {
