@@ -43,9 +43,7 @@ Thumbs.db
 
 # Environment variables - NUNCA subir credenciales
 .env
-.env*
 .env.local
-.env.local.remote
 .env.production
 .env.development
 .vercel

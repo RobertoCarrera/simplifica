@@ -53,14 +53,8 @@
                         class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
 
                     <!-- Dropdown -->
-                    <div *ngIf="showCategorySuggestions"
-                        class="absolute z-[60] w-full mt-1 bg-white dark:bg-[#1e293b] rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto custom-scrollbar">
-
-                        <div *ngIf="categorySuggestions.length === 0"
-                            class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 italic text-center">
-                            Escribe para crear una nueva categoría...
-                        </div>
-
+                    <div *ngIf="showCategorySuggestions && categorySuggestions.length > 0"
+                        class="absolute z-50 w-full mt-1 bg-white dark:bg-[#1e293b] rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto custom-scrollbar">
                         <button type="button" *ngFor="let cat of categorySuggestions"
                             (click)="selectCategorySuggestion(cat)"
                             class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-blue-600/20 transition-colors">

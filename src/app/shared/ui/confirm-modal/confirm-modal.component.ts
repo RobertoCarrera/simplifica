@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnDestroy } from '@angular/core';
+import { Component, signal, computed, OnDestroy, HostListener, ViewChild, ElementRef, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 export interface ConfirmModalOptions {
@@ -19,6 +19,10 @@ export interface ConfirmModalOptions {
   template: `
     @if (visible()) {
       <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+           role="alertdialog"
+           aria-modal="true"
+           aria-labelledby="confirm-modal-title"
+           aria-describedby="confirm-modal-message"
            (click)="onBackdropClick($event)">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-modal-appear"
              (click)="$event.stopPropagation()">
@@ -45,10 +49,10 @@ export interface ConfirmModalOptions {
               </div>
             }
             
-            <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            <h3 id="confirm-modal-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">
               {{ options().title }}
             </h3>
-            <p class="text-gray-600 dark:text-gray-400">
+            <p id="confirm-modal-message" class="text-gray-600 dark:text-gray-400">
               {{ options().message }}
             </p>
           </div>
@@ -63,6 +67,7 @@ export interface ConfirmModalOptions {
               </button>
             }
             <button 
+              #confirmBtn
               (click)="confirm()"
               class="flex-1 py-3.5 px-4 font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-white"
               [style.background]="getButtonGradient()">
@@ -103,6 +108,8 @@ export class ConfirmModalComponent implements OnDestroy {
     iconColor: 'blue'
   });
 
+  @ViewChild('confirmBtn') confirmBtn?: ElementRef;
+
   private resolvePromise: ((value: boolean) => void) | null = null;
 
   // Gradient colors for CTA button
@@ -113,6 +120,22 @@ export class ConfirmModalComponent implements OnDestroy {
     amber: 'linear-gradient(to right, #f59e0b, #f97316)',
     purple: 'linear-gradient(to right, #a855f7, #8b5cf6)'
   };
+
+  constructor() {
+    effect(() => {
+      if (this.visible()) {
+        // Focus the confirm button when modal opens for keyboard accessibility
+        setTimeout(() => this.confirmBtn?.nativeElement.focus(), 50);
+      }
+    });
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape() {
+    if (this.visible() && !this.options().preventCloseOnBackdrop) {
+      this.cancel();
+    }
+  }
 
   ngOnDestroy(): void {
     this.toggleBodyScroll(false);

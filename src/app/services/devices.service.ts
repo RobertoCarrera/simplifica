@@ -221,24 +221,32 @@ export class DevicesService {
       let arr: any[] = data || [];
       console.log('[DevicesService] getDevices result count =', Array.isArray(arr) ? arr.length : 0);
 
-      // If result is empty but we have a valid company, try RPC fallback (bypasses RLS while enforcing membership)
+      // If result is empty but we have a valid company, try Edge Function fallback (bypasses RLS while enforcing membership)
       if ((arr?.length || 0) === 0 && this.isValidUuid(companyId)) {
         try {
-          const { data: rpcData, error: rpcError } = await this.supabase
-            .rpc('list_company_devices', { p_company_id: companyId });
-
-          if (rpcError) {
-            console.warn('[DevicesService] RPC fallback error', rpcError);
-          } else if (Array.isArray(rpcData) && rpcData.length > 0) {
-            console.log('[DevicesService] RPC fallback returned', rpcData.length, 'devices');
-            // Determine if we need to manually fetch client info? 
-            // For now, return devices as-is. Client-side usually handles missing 'client' property gracefully.
-            arr = rpcData;
-          } else {
-            console.warn('[DevicesService] RPC fallback returned empty list');
+          const sess = await this.supabase.auth.getSession();
+          const accessToken = (sess as any)?.data?.session?.access_token || null;
+          const base = (environment as any).edgeFunctionsBaseUrl || '';
+          if (base && accessToken) {
+            const funcUrl = base.replace(/\/+$/, '') + '/list-company-devices';
+            const headers: any = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` };
+            const resp = await fetch(funcUrl, { method: 'POST', headers, body: JSON.stringify({ p_company_id: companyId }) });
+            let json: any = {};
+            try { json = await resp.json(); } catch { json = {}; }
+            if (resp.ok) {
+              const r = Array.isArray(json) ? json : (json?.result || []);
+              if (Array.isArray(r) && r.length > 0) {
+                console.log('[DevicesService] Edge fallback returned', r.length, 'devices');
+                arr = r;
+              } else {
+                console.warn('[DevicesService] Edge fallback returned empty list');
+              }
+            } else {
+              console.warn('[DevicesService] Edge fallback error', json);
+            }
           }
         } catch (e) {
-          console.warn('[DevicesService] RPC fallback failed', e);
+          console.warn('[DevicesService] Edge fallback failed', e);
         }
       }
 

@@ -26,63 +26,66 @@ export interface MailFolder {
     type: 'system' | 'user';
     system_role?: 'inbox' | 'sent' | 'drafts' | 'trash' | 'spam';
     created_at?: string;
+    updated_at?: string;
     // UI helpers
     unread_count?: number;
     total_count?: number;
     children?: MailFolder[];
+    level?: number;
+    expanded?: boolean;
 }
 
 export interface MailAddress {
-    name?: string;
+    name: string;
     email: string;
-}
-
-export interface MailAttachment {
-    filename: string;
-    contentType?: string;
-    size: number;
-    url?: string;
-    id?: string;
-    storage_path?: string;
 }
 
 export interface MailMessage {
     id: string;
-    account_id: string; // The account that owns/syncs this message
-    thread_id?: string;
-    folder_id: string;
+    account_id: string;
+    thread_id?: string | null;
+    folder_id?: string | null;
 
-    // Headers
-    from?: MailAddress;
-    to?: MailAddress[];
+    from: MailAddress;
+    to: MailAddress[];
     cc?: MailAddress[];
     bcc?: MailAddress[];
+
     subject: string;
-
-    // Content
-    snippet?: string;
-    body_text?: string;
     body_html?: string;
+    body_text?: string;
+    snippet?: string;
 
-    // Flags & Metadata
     is_read: boolean;
     is_starred: boolean;
-    received_at: string;
+    is_archived: boolean;
 
-    // Attachments (JSONB in DB)
+    received_at: string;
+    created_at?: string;
+    updated_at?: string;
+
+    metadata?: any;
     attachments?: MailAttachment[];
 
-    // Metadata (e.g. is_confidential)
-    metadata?: Record<string, any>;
+    // UI helpers
+    selected?: boolean;
+}
+
+export interface MailAttachment {
+    id: string;
+    message_id: string;
+    filename: string;
+    size: number;
+    content_type: string;
+    storage_path: string;
+    url?: string; // Signed URL
 }
 
 export interface MailThread {
-    thread_id: string;
+    id: string;
+    account_id: string;
     subject: string;
     snippet: string;
     last_message_at: string;
-    message_count: number;
-    participants: string[];
-    is_read: boolean;
-    has_attachments: boolean;
+    messages?: MailMessage[]; // When loaded
 }
