@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnDestroy, HostListener, ElementRef, ViewChild, AfterViewChecked } from '@angular/core';
+import { Component, signal, computed, OnDestroy, HostListener, ViewChild, ElementRef, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 export interface ConfirmModalOptions {
@@ -19,11 +19,11 @@ export interface ConfirmModalOptions {
   template: `
     @if (visible()) {
       <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-           (click)="onBackdropClick($event)"
            role="alertdialog"
            aria-modal="true"
-           aria-labelledby="modal-title"
-           aria-describedby="modal-description">
+           aria-labelledby="confirm-modal-title"
+           aria-describedby="confirm-modal-message"
+           (click)="onBackdropClick($event)">
         <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-modal-appear"
              (click)="$event.stopPropagation()">
           
@@ -45,14 +45,14 @@ export interface ConfirmModalOptions {
                      'text-red-600 dark:text-red-400': options().iconColor === 'red',
                      'text-amber-600 dark:text-amber-400': options().iconColor === 'amber',
                      'text-purple-600 dark:text-purple-400': options().iconColor === 'purple'
-                   }" aria-hidden="true"></i>
+                   }"></i>
               </div>
             }
             
-            <h3 id="modal-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            <h3 id="confirm-modal-title" class="text-xl font-bold text-gray-900 dark:text-white mb-2">
               {{ options().title }}
             </h3>
-            <p id="modal-description" class="text-gray-600 dark:text-gray-400">
+            <p id="confirm-modal-message" class="text-gray-600 dark:text-gray-400">
               {{ options().message }}
             </p>
           </div>
@@ -72,7 +72,7 @@ export interface ConfirmModalOptions {
               class="flex-1 py-3.5 px-4 font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-white"
               [style.background]="getButtonGradient()">
               {{ options().confirmText || 'Confirmar' }}
-              <i class="fas fa-arrow-right text-sm" aria-hidden="true"></i>
+              <i class="fas fa-arrow-right text-sm"></i>
             </button>
           </div>
         </div>
@@ -108,10 +108,9 @@ export class ConfirmModalComponent implements OnDestroy {
     iconColor: 'blue'
   });
 
-  @ViewChild('confirmBtn') confirmBtn!: ElementRef<HTMLButtonElement>;
+  @ViewChild('confirmBtn') confirmBtn?: ElementRef;
 
   private resolvePromise: ((value: boolean) => void) | null = null;
-  private previousActiveElement: HTMLElement | null = null;
 
   // Gradient colors for CTA button
   private gradients: Record<string, string> = {
@@ -122,8 +121,17 @@ export class ConfirmModalComponent implements OnDestroy {
     purple: 'linear-gradient(to right, #a855f7, #8b5cf6)'
   };
 
-  @HostListener('document:keydown.escape', ['$event'])
-  onEscape(event: KeyboardEvent) {
+  constructor() {
+    effect(() => {
+      if (this.visible()) {
+        // Focus the confirm button when modal opens for keyboard accessibility
+        setTimeout(() => this.confirmBtn?.nativeElement.focus(), 50);
+      }
+    });
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape() {
     if (this.visible() && !this.options().preventCloseOnBackdrop) {
       this.cancel();
     }
@@ -131,7 +139,6 @@ export class ConfirmModalComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.toggleBodyScroll(false);
-    this.restoreFocus();
   }
 
   getButtonGradient(): string {
@@ -151,40 +158,15 @@ export class ConfirmModalComponent implements OnDestroy {
   }
 
   /**
-   * Save currently focused element to restore later
-   */
-  private saveFocus() {
-    this.previousActiveElement = document.activeElement as HTMLElement;
-  }
-
-  /**
-   * Restore focus to the element that triggered the modal
-   */
-  private restoreFocus() {
-    if (this.previousActiveElement) {
-      this.previousActiveElement.focus();
-      this.previousActiveElement = null;
-    }
-  }
-
-  /**
    * Open the modal and return a promise that resolves to true (confirm) or false (cancel)
    */
   open(options: ConfirmModalOptions): Promise<boolean> {
-    this.saveFocus();
     this.options.set({
       ...options,
       iconColor: options.iconColor || 'blue'
     });
     this.visible.set(true);
     this.toggleBodyScroll(true);
-
-    // Focus the confirm button after view update
-    setTimeout(() => {
-      if (this.confirmBtn) {
-        this.confirmBtn.nativeElement.focus();
-      }
-    });
 
     return new Promise<boolean>((resolve) => {
       this.resolvePromise = resolve;
@@ -194,7 +176,6 @@ export class ConfirmModalComponent implements OnDestroy {
   confirm(): void {
     this.visible.set(false);
     this.toggleBodyScroll(false);
-    this.restoreFocus();
     if (this.resolvePromise) {
       this.resolvePromise(true);
       this.resolvePromise = null;
@@ -204,7 +185,6 @@ export class ConfirmModalComponent implements OnDestroy {
   cancel(): void {
     this.visible.set(false);
     this.toggleBodyScroll(false);
-    this.restoreFocus();
     if (this.resolvePromise) {
       this.resolvePromise(false);
       this.resolvePromise = null;

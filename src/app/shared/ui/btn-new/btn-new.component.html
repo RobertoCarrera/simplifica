@@ -14,7 +14,7 @@
             <div class="flex items-center justify-between pr-3">
                 <p class="w-1/2 m-0 font-semibold text-gray-900">{{itemType}} #{{this.totalItems+1}}</p>
                 <button class="p-0 text-gray-600 hover:text-gray-900 rounded border-0 transition-colors duration-200"
-                (click)="isCreating()" aria-label="Cerrar">
+                (click)="isCreating()">
                     <i class="bi bi-x-lg text-lg"></i>
                 </button>
             </div>
@@ -84,8 +84,7 @@
                 </button>
                 <button *ngIf="this.formStep === 3" 
                     (click)="addProduct()"
-                    class="btn btn-primary btn-anadir-servicio"
-                    aria-label="Añadir producto">
+                    class="btn btn-primary btn-anadir-servicio">
                     <i class="bi bi-plus-circle-fill"></i>
                 </button>
                 <button *ngIf="this.formStep === 2 && childBoolean" class="btn btn-warning"

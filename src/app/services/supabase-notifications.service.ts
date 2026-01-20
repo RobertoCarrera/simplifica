@@ -56,25 +56,12 @@ export class SupabaseNotificationsService implements OnDestroy {
         if (!userId) return;
 
         try {
-            const companyId = this.authService.companyId();
-
-            let query = this.supabase.getClient()
+            const { data, error } = await this.supabase.getClient()
                 .from('notifications')
                 .select('*')
+                .eq('recipient_id', userId)
                 .order('created_at', { ascending: false })
                 .limit(50);
-
-            // Filter: (recipient_id = me OR recipient_id is null) AND company_id = my_company
-            if (companyId) {
-                query = query
-                    .eq('company_id', companyId)
-                    .or(`recipient_id.eq.${userId},recipient_id.is.null`);
-            } else {
-                // Fallback for edge cases with no company (though unlikely for app users)
-                query = query.eq('recipient_id', userId);
-            }
-
-            const { data, error } = await query;
 
             if (error) throw error;
             this._notifications.set(data || []);
@@ -123,25 +110,19 @@ export class SupabaseNotificationsService implements OnDestroy {
 
     private subscribeToNotifications(userId: string) {
         this.unsubscribeRealtime();
-        const companyId = this.authService.companyId();
-
-        // If no company, listen only to personal (fallback)
-        const filter = companyId
-            ? `company_id=eq.${companyId}`
-            : `recipient_id=eq.${userId}`;
 
         this.realtimeChannel = this.supabase.getClient()
-            .channel('public:notifications:' + (companyId || userId))
+            .channel('public:notifications:' + userId)
             .on(
                 'postgres_changes',
                 {
                     event: '*', // INSERT, UPDATE
                     schema: 'public',
                     table: 'notifications',
-                    filter: filter
+                    filter: `recipient_id=eq.${userId}`
                 },
                 (payload: any) => {
-                    this.handleRealtimeEvent(payload, userId);
+                    this.handleRealtimeEvent(payload);
                 }
             )
             .subscribe();
@@ -154,23 +135,8 @@ export class SupabaseNotificationsService implements OnDestroy {
         }
     }
 
-    private handleRealtimeEvent(payload: any, currentUserId: string) {
+    private handleRealtimeEvent(payload: any) {
         const { eventType, new: newRec, old: oldRec } = payload;
-
-        // Security / Relevance Check client-side
-        // If it's a new record or update, check if it belongs to us or is global
-        const checkRecord = newRec || oldRec;
-        if (!checkRecord) return; // Should not happen
-
-        const isMine = checkRecord.recipient_id === currentUserId;
-        const isGlobal = checkRecord.recipient_id === null;
-
-        // Note: For global notifications, we assume we have permission since we are in the app.
-        // Ideally we check permission service, but RLS prevents FETCHING if not allowed.
-        // For Realtime, we might receive it, but we can filter display.
-        if (!isMine && !isGlobal) {
-            return; // Ignore notifications for others
-        }
 
         this._notifications.update(currentList => {
             if (eventType === 'INSERT') {
