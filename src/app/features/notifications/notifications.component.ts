@@ -1,16 +1,19 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { LucideAngularModule, LucideIconProvider, LUCIDE_ICONS, Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle, Filter, Inbox, ClipboardList } from 'lucide-angular';
+import { LucideAngularModule, LucideIconProvider, LUCIDE_ICONS, Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle, Filter, Inbox, ClipboardList, Settings } from 'lucide-angular';
 import { SupabaseNotificationsService, AppNotification } from '../../services/supabase-notifications.service';
 import { TicketDetailComponent } from '../../features/tickets/detail/ticket-detail.component';
 import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdpr-request-detail.component';
+import { NotificationsSettingsComponent } from './settings/notifications-settings.component';
+import { ClientNotificationPreferencesComponent } from './client-settings/client-notification-preferences.component';
+import { SupabasePermissionsService } from '../../services/supabase-permissions.service';
 
 @Component({
     selector: 'app-notifications',
     standalone: true,
-    imports: [CommonModule, LucideAngularModule, TicketDetailComponent, GdprRequestDetailComponent],
-    providers: [{ provide: LUCIDE_ICONS, useValue: new LucideIconProvider({ Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle, Filter, Inbox, ClipboardList }) }],
+    imports: [CommonModule, LucideAngularModule, TicketDetailComponent, GdprRequestDetailComponent, NotificationsSettingsComponent, ClientNotificationPreferencesComponent],
+    providers: [{ provide: LUCIDE_ICONS, useValue: new LucideIconProvider({ Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle, Filter, Inbox, ClipboardList, Settings }) }],
     templateUrl: './notifications.component.html',
     styles: [`
     :host {
@@ -21,6 +24,7 @@ import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdp
 })
 export class NotificationsComponent {
     service = inject(SupabaseNotificationsService);
+    permissionsService = inject(SupabasePermissionsService);
     private router = inject(Router);
 
     // Modal state
@@ -113,7 +117,8 @@ export class NotificationsComponent {
         AlertCircle: 'alert-circle',
         Filter: 'filter',
         Inbox: 'inbox',
-        ClipboardList: 'clipboard-list'
+        ClipboardList: 'clipboard-list',
+        Settings: 'settings'
     };
 
     openNotification(notification: AppNotification) {
@@ -149,5 +154,12 @@ export class NotificationsComponent {
         if (type.includes('created')) return 'tag';
         if (type.includes('assigned')) return 'alert-circle';
         return 'bell';
+    }
+
+    // Settings View
+    view = signal<'list' | 'settings'>('list');
+
+    toggleView(view: 'list' | 'settings') {
+        this.view.set(view);
     }
 }

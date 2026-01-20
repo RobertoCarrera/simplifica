@@ -1,0 +1,479 @@
+<div class="container mx-auto p-4 lg:p-8 max-w-5xl">
+
+    <!-- Header & Navigation -->
+    <div class="flex items-center justify-between mb-8">
+        <div class="flex items-center gap-4">
+            <button [routerLink]="['/rrhh/empleadas']"
+                class="w-10 h-10 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 flex items-center justify-center transition-all hover:shadow-md">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+                    {{ isEditing() ? 'Editar Perfil' : 'Nueva Empleada' }}
+                </h1>
+                <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                    Gestión de información personal y contractual
+                </p>
+            </div>
+        </div>
+
+        <!-- Status Badge (Only when editing) -->
+        @if (isEditing()) {
+        <div class="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border"
+            [ngClass]="form.get('is_active')?.value ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-slate-100 border-slate-200 text-slate-600'">
+            <span class="w-2 h-2 rounded-full"
+                [ngClass]="form.get('is_active')?.value ? 'bg-emerald-500' : 'bg-slate-400'"></span>
+            <span class="text-sm font-medium">{{ form.get('is_active')?.value ? 'Activo' : 'Inactivo' }}</span>
+        </div>
+        }
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex flex-wrap gap-2 p-1 mb-8 bg-slate-100 dark:bg-slate-800/50 rounded-xl w-fit">
+        <button (click)="activeTab.set('profile')"
+            class="px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2"
+            [ngClass]="activeTab() === 'profile' 
+                ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-slate-200 dark:ring-slate-600' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'">
+            <i class="fas fa-user-circle text-lg"></i>
+            <span>Perfil Profesional</span>
+        </button>
+
+        @if (isEditing()) {
+        <button (click)="activeTab.set('documents')"
+            class="px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2"
+            [ngClass]="activeTab() === 'documents' 
+                ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-slate-200 dark:ring-slate-600' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'">
+            <i class="fas fa-folder-open text-lg"></i>
+            <span>Documentación</span>
+            <span
+                class="px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-600 text-xs text-slate-600 dark:text-slate-300 ml-1">
+                {{ documents().length }}
+            </span>
+        </button>
+
+        <button (click)="activeTab.set('commissions')"
+            class="px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2"
+            [ngClass]="activeTab() === 'commissions' 
+                ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-slate-200 dark:ring-slate-600' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'">
+            <i class="fas fa-percent text-lg"></i>
+            <span>Comisiones</span>
+        </button>
+        }
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+
+        <!-- Left Column: Form/Content -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- PROFILE TAB -->
+            @if (activeTab() === 'profile') {
+            <form [formGroup]="form" (ngSubmit)="save()" class="space-y-6 animate-fade-in">
+
+                <!-- Section: Información Contractual -->
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div
+                        class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-3">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                            <i class="fas fa-briefcase"></i>
+                        </div>
+                        <h3 class="font-semibold text-slate-800 dark:text-white">Información Contractual</h3>
+                    </div>
+
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-1.5">
+                            <label
+                                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Puesto
+                                / Cargo <span class="text-red-500">*</span></label>
+                            <input type="text" formControlName="job_title"
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400"
+                                placeholder="Ej. Esteticista Senior">
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label
+                                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Fecha
+                                de Inicio <span class="text-red-500">*</span></label>
+                            <input type="date" formControlName="hire_date"
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all">
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label
+                                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tipo
+                                de Contrato <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <select formControlName="contract_type"
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all appearance-none">
+                                    <option value="indefinido">Indefinido</option>
+                                    <option value="temporal">Temporal</option>
+                                    <option value="autonomo">Autónomo / Mercantil</option>
+                                </select>
+                                <div
+                                    class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                                    <i class="fas fa-chevron-down text-xs"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label
+                                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Estado
+                                del Perfil</label>
+                            <label
+                                class="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 dark:border-slate-600 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                <div class="relative flex items-center">
+                                    <input type="checkbox" formControlName="is_active" class="peer sr-only">
+                                    <div
+                                        class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-slate-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600">
+                                    </div>
+                                </div>
+                                <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                    {{ form.get('is_active')?.value ? 'Activo' : 'Inactivo' }}
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Datos Fiscales & Pago -->
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div
+                        class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-3">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                        </div>
+                        <h3 class="font-semibold text-slate-800 dark:text-white">Datos Fiscales y Pago</h3>
+                    </div>
+
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-1.5">
+                            <label
+                                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">NIF
+                                / DNI <span class="text-red-500">*</span></label>
+                            <input type="text" formControlName="nif"
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all placeholder:text-slate-400"
+                                placeholder="12345678X">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label
+                                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Nº
+                                Seguridad Social</label>
+                            <input type="text" formControlName="social_security_number"
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all">
+                        </div>
+                        <div class="md:col-span-2 space-y-1.5">
+                            <label
+                                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">IBAN</label>
+                            <input type="text" formControlName="iban"
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all font-mono"
+                                placeholder="ESXX XXXX XXXX XXXX XXXX">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Configuración Salarial -->
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div
+                        class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-3">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <h3 class="font-semibold text-slate-800 dark:text-white">Compensación</h3>
+                    </div>
+
+                    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-1.5">
+                            <label
+                                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Salario
+                                Base (€)</label>
+                            <input type="number" formControlName="salary_base"
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label
+                                class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">%
+                                Comisión General</label>
+                            <input type="number" formControlName="commission_rate"
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all">
+                            <p class="text-xs text-slate-400 mt-1">Este porcentaje aplica a todos los servicios por
+                                defecto.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Access Control (New) -->
+                @if (isEditing()) {
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div
+                        class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center gap-3">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <h3 class="font-semibold text-slate-800 dark:text-white">Acceso al Sistema</h3>
+                    </div>
+                    <div class="p-6 grid grid-cols-1 gap-6">
+                        <div>
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h4 class="font-medium text-slate-900 dark:text-white">Módulo RRHH</h4>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">Permite a esta empleada ver y
+                                        gestionar el módulo de Recursos Humanos.</p>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer" [checked]="hasHRAccess()"
+                                        (change)="toggleHRAccess(!hasHRAccess())" [disabled]="loadingModuleAccess()">
+                                    <div
+                                        class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600">
+                                    </div>
+                                </label>
+                            </div>
+                            @if(loadingModuleAccess()) { <p class="text-xs text-slate-400 mt-2"><i
+                                    class="fas fa-spinner fa-spin"></i> Actualizando acceso...</p> }
+                        </div>
+                    </div>
+                </div>
+                }
+
+                <!-- Actions -->
+                <div class="flex justify-end pt-4 gap-3 sticky bottom-6 z-10">
+                    <button type="submit" [disabled]="form.invalid || loading()"
+                        class="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium shadow-lg shadow-indigo-200 dark:shadow-none hover:shadow-indigo-300 disabled:opacity-50 disabled:shadow-none transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+                        @if (loading()) { <i class="fas fa-spinner fa-spin"></i> }
+                        @else { <i class="fas fa-save"></i> }
+                        {{ isEditing() ? 'Guardar Cambios' : 'Crear Empleada' }}
+                    </button>
+                </div>
+            </form>
+            }
+
+            <!-- DOCUMENTATION TAB -->
+            @if (activeTab() === 'documents') {
+            <div class="space-y-6 animate-fade-in">
+
+                <!-- Upload Card -->
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div class="p-8">
+                        <div
+                            class="relative border-2 border-dashed border-indigo-200 dark:border-slate-600 rounded-2xl p-10 text-center hover:bg-indigo-50/50 dark:hover:bg-slate-700/30 transition-all group">
+                            <input type="file" (change)="onFileSelected($event)"
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                [disabled]="uploading()">
+
+                            <div class="space-y-4 pointer-events-none">
+                                <div
+                                    class="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mx-auto text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform duration-300">
+                                    <i class="fas fa-cloud-upload-alt text-3xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-lg font-semibold text-slate-800 dark:text-white">Haz clic o arrastra
+                                        un archivo aquí</p>
+                                    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Soporta PDF, PNG, JPG
+                                        (Máx. 10MB)</p>
+                                </div>
+                                @if (uploading()) {
+                                <div
+                                    class="flex items-center justify-center gap-2 text-indigo-600 font-medium bg-white/80 dark:bg-slate-800/80 p-2 rounded-lg backdrop-blur-sm">
+                                    <i class="fas fa-spinner fa-spin"></i> Subiendo documento...
+                                </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Documents List -->
+                <div class="grid grid-cols-1 gap-4">
+                    @for (doc of documents(); track doc.id) {
+                    <div
+                        class="group bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center text-xl shrink-0">
+                                <i class="fas fa-file-pdf"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <h4 class="font-medium text-slate-900 dark:text-white truncate pr-4">{{ doc.name }}</h4>
+                                <div class="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                    <span><i class="far fa-calendar-alt mr-1"></i> {{ doc.uploaded_at |
+                                        date:'mediumDate' }}</span>
+                                    <span><i class="far fa-clock mr-1"></i> {{ doc.uploaded_at | date:'shortTime'
+                                        }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button (click)="download(doc)"
+                                class="w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors"
+                                title="Descargar">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button (click)="deleteDoc(doc)"
+                                class="w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 dark:text-slate-400 dark:hover:text-red-400 transition-colors"
+                                title="Eliminar">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    }
+                    @if (documents().length === 0) {
+                    <div
+                        class="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 border-dashed">
+                        <div
+                            class="w-16 h-16 bg-slate-50 dark:bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300 dark:text-slate-500">
+                            <i class="far fa-folder-open text-2xl"></i>
+                        </div>
+                        <p class="text-slate-500 dark:text-slate-400">No hay documentos almacenados.</p>
+                    </div>
+                    }
+                </div>
+            </div>
+            }
+
+            <!-- COMMISSIONS TAB (New) -->
+            @if (activeTab() === 'commissions') {
+            <div class="space-y-6 animate-fade-in">
+
+                <!-- Services List & Configuration -->
+                <div
+                    class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div
+                        class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 flex items-center justify-center">
+                                <i class="fas fa-percentage"></i>
+                            </div>
+                            <h3 class="font-semibold text-slate-800 dark:text-white">Configuración de Comisiones</h3>
+                        </div>
+                    </div>
+
+                    <div class="p-6">
+                        <!-- Add New Commission Form -->
+                        <div
+                            class="mb-8 bg-slate-50 dark:bg-slate-700/30 rounded-xl p-4 border border-slate-200 dark:border-slate-600">
+                            <h4 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Añadir Comisión
+                                Especial</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                <div class="col-span-2">
+                                    <label class="text-xs text-slate-500 mb-1 block">Servicio</label>
+                                    <select #serviceSelect
+                                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="">Seleccionar Servicio...</option>
+                                        @for(svc of availableServices(); track svc.id) {
+                                        <option [value]="svc.id">{{ svc.name }}</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-xs text-slate-500 mb-1 block">% Comisión</label>
+                                    <input #percentInput type="number" min="0" max="100" placeholder="0"
+                                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                                </div>
+                                <div>
+                                    <button
+                                        (click)="addCommission(serviceSelect.value, percentInput.value, 0); serviceSelect.value=''; percentInput.value=''"
+                                        class="w-full px-4 py-2 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center">
+                                        <i class="fas fa-plus mr-1"></i> Añadir
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Commissions Table -->
+                        @if (commissionsConfig().length > 0) {
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead
+                                    class="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-slate-700/50">
+                                    <tr>
+                                        <th class="px-4 py-3 rounded-l-lg">Servicio</th>
+                                        <th class="px-4 py-3 text-center">% Comisión</th>
+                                        <th class="px-4 py-3 text-center">Fijo (€)</th>
+                                        <th class="px-4 py-3 rounded-r-lg text-right">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                                    @for(comm of commissionsConfig(); track comm.id) {
+                                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                                        <td class="px-4 py-3 font-medium text-slate-700 dark:text-slate-200">
+                                            {{ comm.service?.name || 'Servicio Eliminado' }}
+                                        </td>
+                                        <td class="px-4 py-3 text-center text-slate-600 dark:text-slate-300">
+                                            <span
+                                                class="px-2 py-1 rounded bg-pink-50 text-pink-600 dark:bg-pink-900/20 dark:text-pink-400 font-bold">
+                                                {{ comm.commission_percentage }}%
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-center text-slate-600 dark:text-slate-300">
+                                            {{ comm.fixed_amount || 0 }} €
+                                        </td>
+                                        <td class="px-4 py-3 text-right">
+                                            <button (click)="removeCommission(comm.id!)"
+                                                class="text-slate-400 hover:text-red-500 transition-colors p-1"
+                                                title="Eliminar Configuración">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        } @else {
+                        <div class="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
+                            <i class="fas fa-info-circle mb-2 block text-xl"></i>
+                            No hay comisiones especiales configuradas. <br>
+                            Se aplicará la tasa base del perfil ({{ form.get('commission_rate')?.value }}%).
+                        </div>
+                        }
+                    </div>
+                </div>
+            </div>
+            }
+
+        </div>
+
+        <!-- Right Column: Summary / Tips -->
+        <div class="hidden lg:block space-y-6">
+            <div
+                class="bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl p-6 border border-indigo-100 dark:border-indigo-800/30 sticky top-6">
+                <h4 class="font-bold text-indigo-900 dark:text-indigo-300 mb-2 flex items-center gap-2">
+                    <i class="fas fa-info-circle"></i> Consejos
+                </h4>
+                <ul class="space-y-3 text-sm text-indigo-800/80 dark:text-indigo-300/80">
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-check text-indigo-500 mt-1"></i>
+                        <span>Asegúrate de tener el <strong>NIF/DNI</strong> y el <strong>IBAN</strong> correctos para
+                            evitar problemas en las nóminas.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-check text-indigo-500 mt-1"></i>
+                        <span>Al "Inactivar" un perfil, la empleada perderá acceso inmediato al sistema si está
+                            vinculado a un usuario.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-check text-indigo-500 mt-1"></i>
+                        <span>Las comisiones especiales sobreescriben la comisión base para servicios
+                            específicos.</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+</div>

@@ -83,7 +83,15 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="description">Descripción Detallada *</label>
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="description">Descripción Detallada *</label>
+                        <button type="button"
+                            class="text-xs flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors"
+                            *ngIf="permissionsService.hasPermissionSync('tickets.ai')">
+                            <i class="fas fa-magic"></i>
+                            <span>Mejorar con IA</span>
+                        </button>
+                    </div>
                     <textarea id="description" [(ngModel)]="formData.description" name="description"
                         class="form-textarea" [class.error]="formErrors['description']" rows="4"
                         placeholder="Describa el problema detalladamente..." required></textarea>

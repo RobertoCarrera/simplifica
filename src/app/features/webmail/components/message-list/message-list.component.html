@@ -1,24 +1,60 @@
 <div class="message-list-container">
     <div class="toolbar">
         <div class="search-box">
-            <i class="fas fa-search"></i>
-            <input type="text" placeholder="Buscar correos...">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" placeholder="Buscar correos..." aria-label="Buscar correos">
         </div>
         <div class="actions">
-            <button class="btn-icon"><i class="fas fa-sync"></i></button>
-            <button class="btn-icon"><i class="fas fa-filter"></i></button>
+            <button class="btn-icon" aria-label="Actualizar lista" title="Actualizar lista"><i class="fas fa-sync" aria-hidden="true"></i></button>
+            <button class="btn-icon" aria-label="Filtrar correos" title="Filtrar correos"><i class="fas fa-filter" aria-hidden="true"></i></button>
+        <div class="bulk-actions" *ngIf="selectionCount > 0; else searchMode">
+            <div class="selection-info">
+                <input type="checkbox" [checked]="allSelected()" (change)="toggleSelectAll($event)">
+                <span>{{ selectionCount }} seleccionados</span>
+            </div>
+            <div class="actions">
+                <button class="btn-icon" title="Marcar como leídos" (click)="markSelectedRead(true)"><i
+                        class="fas fa-envelope-open"></i></button>
+                <button class="btn-icon" title="Marcar como no leídos" (click)="markSelectedRead(false)"><i
+                        class="fas fa-envelope"></i></button>
+                <div class="separator"></div>
+                <!-- Future: Move to folder -->
+                <button class="btn-icon" title="Mover a Papelera" (click)="deleteSelected()"><i
+                        class="fas fa-trash"></i></button>
+            </div>
         </div>
+
+        <ng-template #searchMode>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Buscar correos..." [ngModel]="searchTerm()"
+                    (keyup.enter)="onSearch($any($event.target).value)" (blur)="onSearch($any($event.target).value)">
+            </div>
+
+            <!-- Standard toolbar actions if needed, or Select All trigger -->
+            <div class="actions">
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" [checked]="allSelected()" (change)="toggleSelectAll($event)"
+                        title="Seleccionar todo">
+                </div>
+                <!-- Refresh etc -->
+            </div>
+        </ng-template>
     </div>
 
     <div class="list-content">
-        <div *ngIf="loading()" class="loading-state">
-            <i class="fas fa-spinner fa-spin"></i> Cargando...
-        </div>
+        <div class="messages">
+            <!-- Loading -->
+            <div class="loading-state" *ngIf="loading()">
+                <i class="fas fa-circle-notch fa-spin"></i>
+                <p>Cargando mensajes...</p>
+            </div>
 
-        <div *ngIf="!loading() && messages().length === 0" class="empty-state">
-            <i class="fas fa-inbox"></i>
-            <p>No hay mensajes en esta carpeta</p>
-        </div>
+            <!-- Empty -->
+            <div class="empty-state" *ngIf="!loading() && store.threads().length === 0">
+                <i class="fas fa-inbox"></i>
+                <p>No hay correos en esta carpeta</p>
+            </div>
 
         <div *ngIf="!loading() && messages().length > 0" class="messages">
             <div *ngFor="let msg of messages(); trackBy: trackByMessage" class="message-item" [class.unread]="!msg.is_read"
@@ -33,14 +69,29 @@
                 <div class="sender">
                     {{ msg.from.name || msg.from.email }}
                 </div>
-                <div class="subject-snippet">
-                    <span class="subject">{{ msg.subject }}</span>
-                    <span class="snippet">- {{ msg.snippet }}</span>
+
+                <div class="avatar">
+                    <!-- Show initial of first participant or '?' -->
+                    {{ (thread.participants && thread.participants[0] ? thread.participants[0] :
+                    '?').charAt(0).toUpperCase() }}
                 </div>
-                <div class="date">
-                    {{ msg.received_at | date:'shortDate' }}
+
+                <div class="content">
+                    <div class="header">
+                        <span class="sender">
+                            {{ isDraftsOrSent() ? 'Para: ' : '' }}
+                            {{ thread.participants?.join(', ') || 'Desconocido' }}
+                        </span>
+                        <span class="date">{{ thread.last_message_at | date:'M/d/yy' }}</span>
+                    </div>
+                    <div class="subject-row">
+                        <span class="subject">{{ thread.subject || '(Sin asunto)' }}</span>
+                        <span class="count-badge" *ngIf="thread.message_count > 1">{{ thread.message_count }}</span>
+                    </div>
+                    <div class="snippet">{{ thread.snippet }}</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+<app-confirm-modal #confirmModal></app-confirm-modal>

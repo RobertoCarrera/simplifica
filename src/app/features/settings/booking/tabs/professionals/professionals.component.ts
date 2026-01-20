@@ -1,18 +1,23 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupabaseProfessionalsService, Professional } from '../../../../../services/supabase-professionals.service';
+import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
+
+import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
+import { ProfessionalScheduleModalComponent } from './modal/professional-schedule-modal/professional-schedule-modal.component';
 
 @Component({
     selector: 'app-professionals',
     standalone: true,
-    imports: [CommonModule, FormsModule, ReactiveFormsModule],
+    imports: [CommonModule, FormsModule, ReactiveFormsModule, SkeletonComponent, ProfessionalScheduleModalComponent],
     templateUrl: './professionals.component.html',
     styleUrls: ['./professionals.component.scss']
 })
 export class ProfessionalsComponent implements OnInit {
     private professionalsService = inject(SupabaseProfessionalsService);
+    private authService = inject(AuthService);
     private toast = inject(ToastService);
     private fb = inject(FormBuilder);
 
@@ -23,18 +28,28 @@ export class ProfessionalsComponent implements OnInit {
     // Modal state
     showModal = false;
     editingId: string | null = null;
+    creationMode: 'existing' | 'invite' = 'existing';
+
+    // Schedule Modal
+    managingScheduleUserId: string | null = null;
+    managingScheduleName: string = '';
 
     // Form
     form: FormGroup;
 
     // Available members and services for assignment
-    companyMembers = signal<{ id: string; user_id: string; full_name: string; email: string }[]>([]);
+    companyMembers = signal<{ id: string; user_id: string; full_name: string; email: string; role: string }[]>([]);
     bookableServices = signal<{ id: string; name: string }[]>([]);
     selectedServiceIds: string[] = [];
 
+    // Filtered members for dropdown
+    filteredMembers = computed(() => this.companyMembers().filter(m => m.role === 'professional'));
+
     constructor() {
         this.form = this.fb.group({
-            user_id: ['', Validators.required],
+            user_id: [''],
+            invite_email: ['', [Validators.email]],
+            invite_name: [''],
             display_name: ['', Validators.required],
             title: [''],
             bio: [''],
@@ -96,14 +111,34 @@ export class ProfessionalsComponent implements OnInit {
         } else {
             this.form.reset({
                 user_id: '',
+                invite_email: '',
+                invite_name: '',
                 display_name: '',
                 title: '',
                 bio: '',
                 is_active: true
             });
+            this.creationMode = 'existing';
             this.selectedServiceIds = [];
         }
         this.showModal = true;
+    }
+
+    setCreationMode(mode: 'existing' | 'invite') {
+        this.creationMode = mode;
+        // Reset/Update validators based on mode
+        if (mode === 'invite') {
+            this.form.get('user_id')?.clearValidators();
+            this.form.get('invite_email')?.setValidators([Validators.required, Validators.email]);
+            this.form.get('invite_name')?.setValidators([Validators.required]);
+        } else {
+            this.form.get('user_id')?.setValidators([Validators.required]);
+            this.form.get('invite_email')?.clearValidators();
+            this.form.get('invite_name')?.clearValidators();
+        }
+        this.form.get('user_id')?.updateValueAndValidity();
+        this.form.get('invite_email')?.updateValueAndValidity();
+        this.form.get('invite_name')?.updateValueAndValidity();
     }
 
     closeModal() {
@@ -126,10 +161,21 @@ export class ProfessionalsComponent implements OnInit {
 
     // Auto-fill display name when user changes
     onUserChange() {
-        const userId = this.form.get('user_id')?.value;
-        const member = this.companyMembers().find(m => m.user_id === userId);
-        if (member && !this.form.get('display_name')?.value) {
-            this.form.patchValue({ display_name: member.full_name });
+        if (this.creationMode === 'existing') {
+            const userId = this.form.get('user_id')?.value;
+            const member = this.companyMembers().find(m => m.user_id === userId);
+            if (member && !this.form.get('display_name')?.value) {
+                this.form.patchValue({ display_name: member.full_name });
+            }
+        }
+    }
+
+    onInviteNameChange() {
+        if (this.creationMode === 'invite') {
+            const inviteName = this.form.get('invite_name')?.value;
+            if (inviteName && (!this.form.get('display_name')?.value || this.form.get('display_name')?.value === this.form.get('invite_name')?.value)) {
+                this.form.patchValue({ display_name: inviteName });
+            }
         }
     }
 
@@ -138,13 +184,27 @@ export class ProfessionalsComponent implements OnInit {
         this.saving.set(true);
 
         const val = this.form.value;
+
+        // Prepare payload base
         const payload: Partial<Professional> = {
-            user_id: val.user_id,
             display_name: val.display_name,
             title: val.title,
             bio: val.bio,
             is_active: val.is_active
         };
+
+        if (this.editingId) {
+            payload.user_id = val.user_id;
+        } else {
+            // Creating new
+            if (this.creationMode === 'existing') {
+                payload.user_id = val.user_id;
+            } else {
+                // Invite mode
+                payload.email = val.invite_email;
+                // user_id remains undefined/null
+            }
+        }
 
         try {
             let professionalId = this.editingId;
@@ -153,6 +213,21 @@ export class ProfessionalsComponent implements OnInit {
                 await this.professionalsService.updateProfessional(this.editingId, payload);
                 this.toast.success('Actualizado', 'Profesional actualizado correctamente');
             } else {
+                // If invite mode, send invitation first
+                if (this.creationMode === 'invite') {
+                    const inviteRes = await this.authService.inviteUserToCompany({
+                        companyId: this.authService.currentCompanyId()!,
+                        email: val.invite_email,
+                        role: 'professional', // Use 'professional' role or 'member'? Using 'member' as per standard, or 'professional' if role exists.
+                        message: `Te han asignado como profesional: ${val.display_name}`
+                    });
+
+                    if (!inviteRes.success) {
+                        throw new Error(inviteRes.error || 'Error al enviar invitación');
+                    }
+                    this.toast.success('Invitación enviada', `Se ha invitado a ${val.invite_email}`);
+                }
+
                 const created = await this.professionalsService.createProfessional(payload);
                 professionalId = created.id;
                 this.toast.success('Creado', 'Nuevo profesional creado');
@@ -182,5 +257,18 @@ export class ProfessionalsComponent implements OnInit {
         } catch (e: any) {
             this.toast.error('Error', 'No se pudo eliminar');
         }
+    }
+    openScheduleModal(professional: Professional) {
+        if (!professional.user_id) {
+            this.toast.error('Error', 'Este profesional no tiene un usuario vinculado válido.');
+            return;
+        }
+        this.managingScheduleUserId = professional.user_id;
+        this.managingScheduleName = professional.display_name;
+    }
+
+    closeScheduleModal() {
+        this.managingScheduleUserId = null;
+        this.managingScheduleName = '';
     }
 }
