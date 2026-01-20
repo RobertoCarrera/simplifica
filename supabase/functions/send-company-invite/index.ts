@@ -234,7 +234,8 @@ serve(async (req: Request) => {
       if (inviteErr) {
         // Check if error is "email_exists" (or similar 422)
         if (inviteErr.status === 422 || inviteErr.message?.includes('registered') || inviteErr.code === 'email_exists') {
-          console.log("send-company-invite: User exists, falling back to Magic Link");
+          console.log("send-company-invite: User exists (422), falling back to Magic Link (signInWithOtp)");
+
           // Fallback to Magic Link
           const { error: otpErr } = await supabaseAdmin.auth.signInWithOtp({
             email,
@@ -244,33 +245,43 @@ serve(async (req: Request) => {
               data: { message: message }
             }
           });
+
           if (otpErr) throw otpErr;
+          console.log("send-company-invite: Magic Link sent successfully");
           emailSent = true;
+          // You might want to indicator to client that it was an existing user
         } else {
+          console.error("send-company-invite: inviteUserByEmail failed with unexpected error", inviteErr);
           throw inviteErr;
         }
       } else {
+        console.log("send-company-invite: Invite User email sent successfully");
         emailSent = true;
       }
     } catch (err) {
-      console.error("send-company-invite: invite/otp failed", err);
+      console.error("send-company-invite: invite/otp failed logic", err);
       emailError = err;
     }
 
     if (!emailSent) {
       if (forceEmail) {
         return new Response(
-          JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email: " + emailError?.message, token: inviteToken }),
+          JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email: " + (emailError?.message || 'Unknown error'), token: inviteToken }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       return new Response(
-        JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email (pero la invitación se creó): " + emailError?.message }),
+        JSON.stringify({ success: false, error: "email_send_failed", message: "Error enviando email (pero la invitación se guardó): " + (emailError?.message || 'Unknown error') }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    return new Response(JSON.stringify({ success: true, invitation_id: invitationId || null, token: inviteToken }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({
+      success: true,
+      invitation_id: invitationId || null,
+      token: inviteToken,
+      mode: emailError ? 'failed' : (inviteErr ? 'existing_user' : 'new_user')
+    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {
     console.error("send-company-invite: unhandled error", e);
     // Last-resort: avoid surfacing 500 to client to prevent function-layer retries/loops
