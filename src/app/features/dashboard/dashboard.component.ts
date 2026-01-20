@@ -41,11 +41,14 @@ export class DashboardComponent implements OnInit {
     invoiceMetrics = this.analyticsService.getInvoiceMetrics;
     ticketMetrics = this.analyticsService.getTicketMetrics;
     quoteMetrics = this.analyticsService.getQuoteMetrics;
+    bookingMetrics = this.analyticsService.getBookingMetrics;
+    topServices = this.analyticsService.getTopServices;
 
     // Local Recents Data
     recentTickets = signal<Ticket[]>([]);
     recentCustomers = signal<Customer[]>([]);
     loadingRecents = signal(true);
+
 
     // Modal State
     showTicketForm = signal(false);
@@ -94,10 +97,25 @@ export class DashboardComponent implements OnInit {
                 this.recentCustomers.set(customers);
             }
 
+            // 3. Fetch Leads Stats
+            this.loadLeadsStats();
+
         } catch (err) {
             console.error('Error loading dashboard recents', err);
         } finally {
             this.loadingRecents.set(false);
+        }
+    }
+
+    leadsByChannel = signal<{ source: string; count: number }[]>([]);
+
+    async loadLeadsStats() {
+        try {
+            // Pasamos undefined para cargar histórico completo en dashboard principal
+            const stats = await this.analyticsService.getLeadsByChannel(undefined, undefined);
+            this.leadsByChannel.set(stats);
+        } catch (e) {
+            console.error('Error loading leads stats', e);
         }
     }
 

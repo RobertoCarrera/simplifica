@@ -25,6 +25,28 @@ import { AiService } from '../../../services/ai.service';
 
 import { SupabaseCustomersService as CustomersSvc } from '../../../services/supabase-customers.service';
 import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer.component';
+import { LoyaltyModalComponent } from '../loyalty-modal/loyalty-modal.component';
+import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
+
+// Optimization: Pre-compile regex patterns
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EMAIL_CHECK_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+// Optimization: View Model to avoid template computations
+export interface CustomerViewModel extends Customer {
+    displayName: string;
+    initials: string;
+    avatarGradient: string;
+    isComplete: boolean;
+    missingFields: string[];
+    hasPortalAccess: boolean;
+    gdprBadge: {
+        label: string;
+        classes: string;
+        icon: string;
+    };
+    attentionReasons: string;
+}
 
 @Component({
     selector: 'app-supabase-customers',
@@ -35,7 +57,8 @@ import { FormNewCustomerComponent } from '../form-new-customer/form-new-customer
         SkeletonComponent,
         // ClientGdprModalComponent, // Removed as it is unused and causes build warning
         OverlayModule,
-        FormNewCustomerComponent
+        FormNewCustomerComponent,
+        LoyaltyModalComponent
     ],
     templateUrl: './supabase-customers.component.html',
     styleUrls: ['./supabase-customers.component.scss'],
@@ -59,6 +82,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     public auth = inject(AuthService);
     portal = inject(ClientPortalService);
     private completenessSvc = inject(CustomersSvc);
+    private tagsService = inject(GlobalTagsService);
 
     // Overlay dependencies
     private overlay = inject(Overlay);
@@ -107,13 +131,75 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     inviteMessage: string = '';
     inviteTarget = signal<Customer | null>(null);
 
+    // Loyalty Modal
+    showLoyaltyModal = signal(false);
+    loyaltyModalCustomer = signal<Customer | null>(null);
+
+    openLoyaltyModal(customer: Customer) {
+        this.loyaltyModalCustomer.set(customer);
+        this.showLoyaltyModal.set(true);
+    }
+
+    closeLoyaltyModal() {
+        this.showLoyaltyModal.set(false);
+        this.loyaltyModalCustomer.set(null);
+    }
+
     // Cache of client portal access to avoid per-item async calls from the template
     private portalAccessKeys = signal<Set<string>>(new Set());
+
+    // Optimization: Enriched computed signal for template performance
+    enrichedCustomers = computed(() => {
+        const customers = this.filteredCustomers();
+        const completeness = this.completenessCache();
+        const portalKeys = this.portalAccessKeys();
+
+        return customers.map(c => {
+            // Calculate display name
+            const displayName = this.getDisplayName(c);
+
+            // Calculate avatar gradient
+            const avatarGradient = this.getAvatarGradient(c);
+
+            // Calculate initials
+            const initials = this.getCustomerInitials(c);
+
+            // Check completeness
+            const isComplete = completeness.get(c.id) ?? false;
+            const missingFields = this.completenessSvc.computeCompleteness(c).missingFields;
+
+            // Check portal access
+            // Note: The key in portalAccessKeys includes a trailing space as per original logic
+            const hasPortalAccess = c.email ? portalKeys.has(`${c.id}:${c.email.toLowerCase()} `) : false;
+
+            // GDPR Badge
+            const gdprBadge = this.getGdprBadgeConfig(c);
+
+            // Attention reasons
+            const attentionReasons = this.formatAttentionReasons(c);
+
+            return {
+                ...c,
+                displayName,
+                initials,
+                avatarGradient,
+                isComplete,
+                missingFields,
+                hasPortalAccess,
+                gdprBadge,
+                attentionReasons
+            } as CustomerViewModel;
+        });
+    });
 
     // Filter signals
     searchTerm = signal('');
     sortBy = signal<'name' | 'apellidos' | 'created_at'>('name'); // Default to name
     sortOrder = signal<'asc' | 'desc'>('asc'); // Default to asc for alphabetical
+
+    // Tag Filter
+    availableTags = signal<GlobalTag[]>([]);
+    selectedTagId = signal<string>('ALL'); // 'ALL' or tag UUID
 
 
 
@@ -168,6 +254,14 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
         // ✅ Filtrar clientes anonimizados (ocultarlos de la lista)
         filtered = filtered.filter(customer => !this.isCustomerAnonymized(customer));
+
+        // Filter by Tag
+        const tagId = this.selectedTagId();
+        if (tagId && tagId !== 'ALL') {
+            filtered = filtered.filter(customer =>
+                customer.tags && customer.tags.some((t: any) => t.id === tagId)
+            );
+        }
 
         // Apply search filter
         const search = this.searchTerm().toLowerCase().trim();
@@ -248,6 +342,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         this.loadGdprData();
         // Initialize portal access cache
         this.refreshPortalAccess();
+        // Load tags
+        this.loadTags();
     }
 
     ngOnDestroy() {
@@ -396,6 +492,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         });
     }
 
+    loadTags() {
+        this.tagsService.getTags('clients').subscribe(tags => {
+            this.availableTags.set(tags);
+        });
+    }
+
     // Via suggestions handler
     // Locality input handlers removed (moved to child component)
 
@@ -459,8 +561,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
 
     viewCustomer(customer: Customer) {
-        // Implementar vista de detalles
-        this.selectCustomer(customer);
+        this.router.navigate(['/clientes', customer.id]);
     }
 
     duplicateCustomer(customer: Customer) {
@@ -566,13 +667,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         }
 
         // Detectar patrón UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(base.trim())) {
+        if (UUID_REGEX.test(base.trim())) {
             base = customer.client_type === 'business' ? 'Empresa importada' : 'Cliente importado';
         }
 
         // Evitar mostrar correos como nombre si accidentalmente se mapearon
-        if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(base)) {
+        if (EMAIL_CHECK_REGEX.test(base)) {
             base = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
         }
 
