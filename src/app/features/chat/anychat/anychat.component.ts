@@ -8,6 +8,7 @@ import {
   AnyChatMessage,
   AnyChatPaginatedResponse
 } from '../../../services/anychat.service';
+import { SupabasePermissionsService } from '../../../services/supabase-permissions.service';
 import { ToastService } from '../../../services/toast.service';
 
 @Component({
@@ -18,6 +19,7 @@ import { ToastService } from '../../../services/toast.service';
 export class AnychatComponent implements OnInit {
   private anychatService = inject(AnyChatService);
   private toastService = inject(ToastService);
+  public permissionsService = inject(SupabasePermissionsService);
 
   // ===============================
   // SIGNALS - ESTADO REACTIVO

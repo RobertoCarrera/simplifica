@@ -13,7 +13,7 @@
         <div class="tab-pane fade-in" *ngIf="activeTab() === 'accounts'">
 
             <!-- List Mode -->
-            <ng-container *ngIf="!isAdding">
+            <ng-container *ngIf="!isAdding && !isEditing">
                 <div class="section-title">
                     <span>Mis Cuentas</span>
                     <span class="count" *ngIf="accounts().length > 0">{{ accounts().length }}</span>
@@ -28,10 +28,15 @@
                             <div class="primary-text">{{ acc.email }}</div>
                             <div class="secondary-text">{{ acc.sender_name }}</div>
                         </div>
-                        <button class="btn-icon danger delete-btn" (click)="deleteAccount(acc.id!)"
-                            title="Eliminar cuenta">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
+                        <div class="card-actions">
+                            <button class="btn-icon edit-btn" (click)="editAccount(acc)" title="Editar configuración">
+                                <i class="fas fa-cog"></i>
+                            </button>
+                            <button class="btn-icon danger delete-btn" (click)="deleteAccount(acc.id!)"
+                                title="Eliminar cuenta">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div *ngIf="accounts().length === 0" class="empty-state">
@@ -48,52 +53,57 @@
                 </div>
             </ng-container>
 
-            <!-- Add Mode -->
-            <div class="add-form-wrapper scale-in" *ngIf="isAdding">
+            <!-- Add/Edit Mode -->
+            <div class="add-form-wrapper scale-in" *ngIf="isAdding || isEditing">
                 <div class="form-header">
-                    <h4>Nueva Cuenta</h4>
+                    <h4>{{ isEditing ? 'Configurar Cuenta' : 'Nueva Cuenta' }}</h4>
                     <button class="btn-icon close-form" (click)="toggleAdd()"><i class="fas fa-times"></i></button>
                 </div>
 
                 <div class="form-body">
+                    <!-- Email Section: Different for Edit/Add -->
                     <div class="form-section">
                         <label>Dirección de Correo</label>
-                        <div class="email-input-group">
-                            <input type="text" [(ngModel)]="newAccount.prefix" placeholder="usuario"
+
+                        <div class="email-input-group" *ngIf="isAdding">
+                            <input type="text" [(ngModel)]="formModel.prefix" placeholder="usuario"
                                 class="form-input prefix">
                             <span class="separator">&#64;</span>
-                            <select [(ngModel)]="newAccount.domain" class="form-select domain">
+                            <select [(ngModel)]="formModel.domain" class="form-select domain">
                                 <option value="" disabled selected>Seleccionar dominio</option>
-                                <option *ngFor="let d of myDomains()" [value]="d.domain">{{ d.domain }}
-                                </option>
+                                <option *ngFor="let d of myDomains()" [value]="d.domain">{{ d.domain }}</option>
                             </select>
                         </div>
-                        <small class="hint">Elige un prefijo y uno de tus dominios asignados.</small>
+
+                        <div *ngIf="isEditing">
+                            <input type="text" [value]="formModel.email" disabled class="form-input disabled">
+                            <small class="hint">El email no se puede cambiar.</small>
+                        </div>
                     </div>
 
                     <div class="form-section">
                         <label>Nombre del Remitente</label>
-                        <input type="text" [(ngModel)]="newAccount.name" placeholder="Ej: Juan Pérez"
-                            class="form-input">
+                        <input type="text" [(ngModel)]="formModel.name" placeholder="Ej: Juan Pérez" class="form-input">
                     </div>
 
                     <div class="form-section">
-                        <label>Firma (Opcional)</label>
-                        <textarea [(ngModel)]="newAccount.signature" class="form-textarea" rows="3"
-                            placeholder="Saludos cordiales..."></textarea>
+                        <label>Firma (HTML)</label>
+                        <!-- Tiptap Editor for Signature -->
+                        <div style="height: 300px; display: flex; flex-direction: column;">
+                            <app-tiptap-editor [content]="formModel.signature"
+                                (contentChange)="formModel.signature = $event" placeholder="Escribe tu firma aquí...">
+                            </app-tiptap-editor>
+                        </div>
                     </div>
                 </div>
 
                 <div class="form-footer">
                     <button class="btn btn-secondary" (click)="toggleAdd()">Cancelar</button>
-                    <button class="btn btn-primary" (click)="addAccount()"
-                        [disabled]="!newAccount.prefix || !newAccount.domain">
-                        Guardar Cuenta
+                    <button class="btn btn-primary" (click)="saveAccount()">
+                        {{ isEditing ? 'Guardar Cambios' : 'Crear Cuenta' }}
                     </button>
                 </div>
             </div>
         </div>
-
-
     </div>
 </div>
