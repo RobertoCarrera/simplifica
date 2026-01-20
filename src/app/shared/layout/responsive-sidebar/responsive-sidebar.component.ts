@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, HostListener, computed, effect } from '@angular/core';
+import { Component, OnInit, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building, Calendar } from 'lucide-angular';
@@ -23,7 +23,7 @@ interface MenuItem {
   module?: string; // 'core' | 'production' | 'development'
   moduleKey?: string; // Optional key to check in modules_catalog
   // roleOnly can be used to restrict visibility to specific roles
-  roleOnly?: 'ownerAdmin' | 'adminOnly' | 'adminEmployeeClient' | 'adminOnlyWebmail' | 'superAdminOnly';
+  roleOnly?: 'ownerAdmin' | 'adminOnly' | 'adminEmployeeClient' | 'adminOnlyWebmail';
   requiredPermission?: string | string[]; // Permission key(s) required (OR logic)
 }
 
@@ -93,25 +93,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   isSwitcherOpen = signal(false);
 
   availableCompanies = computed(() => {
-    const memberships = this.authService.companyMemberships();
-
-    // Deduplicate by company_id, prioritizing non-client roles if strictly necessary
-    // (AuthService already attempts this, but let's be robust)
-    const unique = new Map<string, any>();
-
-    memberships.forEach(m => {
-      if (!unique.has(m.company_id)) {
-        unique.set(m.company_id, m);
-      } else {
-        const existing = unique.get(m.company_id);
-        // If existing is client and new is member/owner, replace
-        if (existing.role === 'client' && m.role !== 'client') {
-          unique.set(m.company_id, m);
-        }
-      }
-    });
-
-    return Array.from(unique.values()).map(m => ({
+    return this.authService.companyMemberships().map(m => ({
       id: m.company_id,
       name: m.company?.name || 'Empresa Sin Nombre',
       role: m.role,
@@ -174,8 +156,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'smartphone',
       route: '/dispositivos',
       module: 'production',
-      moduleKey: 'moduloSAT',
-      requiredPermission: 'devices.view' // New permission
+      moduleKey: 'moduloSAT' // Linked to SAT/Tickets module
     },
     {
       id: 4,
@@ -184,7 +165,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/tickets',
       module: 'production',
       moduleKey: 'moduloSAT',
-      requiredPermission: 'tickets.view'
+      requiredPermission: ['tickets.view', 'tickets.create']
     },
     {
       id: 5,
@@ -192,8 +173,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'message-circle',
       route: '/chat',
       module: 'production',
-      moduleKey: 'moduloChat',
-      requiredPermission: 'chat.access' // New permission
+      moduleKey: 'moduloChat'
     },
     {
       id: 6,
@@ -201,8 +181,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'file-text',
       route: '/presupuestos',
       module: 'production',
-      moduleKey: 'moduloPresupuestos',
-      requiredPermission: 'quotes.view' // New permission
+      moduleKey: 'moduloPresupuestos'
     },
     {
       id: 7,
@@ -219,8 +198,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'trending-up',
       route: '/analytics',
       module: 'production',
-      moduleKey: 'moduloAnaliticas',
-      // requiredPermission: 'analytics.view' // Temporarily disabled to ensure visibility until permission is seeded
+      moduleKey: 'moduloAnaliticas'
     },
     {
       id: 9,
@@ -228,8 +206,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'package',
       route: '/productos',
       module: 'production',
-      moduleKey: 'moduloProductos',
-      requiredPermission: 'products.view' // New permission
+      moduleKey: 'moduloProductos'
     },
     {
       id: 10,
@@ -237,17 +214,9 @@ export class ResponsiveSidebarComponent implements OnInit {
       icon: 'wrench',
       route: '/servicios',
       module: 'production',
-      moduleKey: 'moduloServicios',
-      requiredPermission: 'services.view' // New permission
-    },
-    {
-      id: 12,
-      label: 'Marketing',
-      icon: 'sparkles',
-      route: '/marketing',
-      module: 'production',
-      moduleKey: 'moduloMarketing',
-      requiredPermission: 'marketing.view'
+      moduleKey: 'moduloServicios'
+      // No specific permission needed for "viewing" services? Or maybe 'services.view' (doesn't exist yet, implied?)
+      // Assuming 'professional' user access is controlled by module only for now OR implied logic
     },
     {
       id: 11,
@@ -257,15 +226,6 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'production',
       moduleKey: 'moduloReservas',
       requiredPermission: ['bookings.view', 'bookings.view_own', 'bookings.manage_own', 'bookings.manage_all']
-    },
-    {
-      id: 13,
-      label: 'Leads (CRM)',
-      icon: 'users',
-      route: '/leads',
-      module: 'production',
-      moduleKey: 'moduloMarketing',
-      requiredPermission: 'leads.view'
     },
     {
       id: 95,
@@ -291,14 +251,6 @@ export class ResponsiveSidebarComponent implements OnInit {
       roleOnly: 'adminOnlyWebmail' // Specific role for admin webmail
     },
     {
-      id: 96,
-      label: 'Logs',
-      icon: 'shield',
-      route: '/logs',
-      module: 'core',
-      roleOnly: 'superAdminOnly'
-    },
-    {
       id: 99,
       label: 'Gestión Módulos',
       icon: 'sparkles',
@@ -306,15 +258,7 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'core',
       roleOnly: 'adminOnly'
     },
-    {
-      id: 14,
-      label: 'RRHH',
-      icon: 'users',
-      route: '/rrhh/empleadas',
-      module: 'production',
-      moduleKey: 'moduloRRHH',
-      requiredPermission: 'employees.view'
-    },
+    // Empresa y Ayuda se integran en Configuración para simplificar el menú
   ];
 
   // Computed menu items based on user role
@@ -354,7 +298,6 @@ export class ResponsiveSidebarComponent implements OnInit {
         { id: 2002, label: 'Presupuestos', icon: 'file-text', route: '/portal/presupuestos', module: 'production', moduleKey: 'moduloPresupuestos' },
         { id: 2003, label: 'Facturas', icon: 'receipt', route: '/portal/facturas', module: 'production', moduleKey: 'moduloFacturas' },
         { id: 2004, label: 'Servicios', icon: 'wrench', route: '/portal/servicios', module: 'production', moduleKey: 'moduloServicios' },
-        { id: 2008, label: 'Reservas', icon: 'calendar', route: '/portal/reservas', module: 'production', moduleKey: 'moduloReservas' },
         { id: 2005, label: 'Dispositivos', icon: 'smartphone', route: '/portal/dispositivos', module: 'production', moduleKey: 'moduloSAT' },
         { id: 2006, label: 'Configuración', icon: 'settings', route: '/configuracion', module: 'core' }
       ];
@@ -377,9 +320,6 @@ export class ResponsiveSidebarComponent implements OnInit {
         }
         if (item.roleOnly === 'adminOnlyWebmail') {
           return isAdmin;
-        }
-        if (item.roleOnly === 'superAdminOnly') {
-          return false; // Since isSuperAdmin check above handles visibility, this block hides it from others
         }
         return true;
       }
@@ -424,26 +364,6 @@ export class ResponsiveSidebarComponent implements OnInit {
     });
   });
 
-  constructor() {
-    effect(() => {
-      const companyId = this.authService.currentCompanyId();
-      console.log('🔄 Sidebar: Company ID changed to:', companyId);
-
-      this.modulesService.fetchEffectiveModules().subscribe({
-        next: (mods: EffectiveModule[]) => {
-          console.log('🔍 Sidebar: Raw fetched modules (reactive):', mods);
-          const allowed = new Set<string>(mods.filter(m => m.enabled).map(m => m.key));
-          console.log('🔍 Sidebar: Allowed module keys:', allowed);
-          this._allowedModuleKeys.set(allowed);
-        },
-        error: (e) => {
-          console.warn('No se pudieron cargar los módulos efectivos:', e);
-          this._allowedModuleKeys.set(null);
-        }
-      });
-    });
-  }
-
   ngOnInit() {
     // Auto-collapse on mobile
     if (this.isMobile()) {
@@ -453,6 +373,20 @@ export class ResponsiveSidebarComponent implements OnInit {
       // Restore collapsed state from localStorage
       this.sidebarState.loadSavedState();
     }
+
+    // Cargar módulos efectivos (server-side) y construir set de claves permitidas
+    this.modulesService.fetchEffectiveModules().subscribe({
+      next: (mods: EffectiveModule[]) => {
+        console.log('🔍 Sidebar: Raw fetched modules:', mods);
+        const allowed = new Set<string>(mods.filter(m => m.enabled).map(m => m.key));
+        console.log('🔍 Sidebar: Allowed module keys:', allowed);
+        this._allowedModuleKeys.set(allowed);
+      },
+      error: (e) => {
+        console.warn('No se pudieron cargar los módulos efectivos:', e);
+        this._allowedModuleKeys.set(null);
+      }
+    });
 
     // Load granular permissions
     this.permissionsService.loadPermissionsMatrix();
@@ -563,8 +497,6 @@ export class ResponsiveSidebarComponent implements OnInit {
         return 'moduloFacturas';
       case '/chat':
         return 'moduloChat';
-      case '/leads':
-        return 'moduloMarketing';
       default:
         return null; // elementos sin control por módulo
     }

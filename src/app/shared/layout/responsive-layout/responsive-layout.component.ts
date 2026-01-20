@@ -72,8 +72,7 @@ export class ResponsiveLayoutComponent {
       url.includes('/recuperar-password') ||
       url.includes('/auth/callback') ||
       url.includes('/consent') ||
-      url.includes('/pago/') ||
-      url.includes('popup_callback=true');
+      url.includes('/pago/');
   }
 
   // Check if user is authenticated

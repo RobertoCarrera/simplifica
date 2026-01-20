@@ -1,146 +1,25 @@
-<div class="composer-container" [class.drag-over]="isDragOver" (dragover)="onDragOver($event)"
-    (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
-
+<div class="composer-container">
     <div class="composer-header">
-        <h2>Mensaje Nuevo <span class="save-status" *ngIf="savingDraft || draftId">
-                {{ savingDraft ? 'Guardando...' : 'Borrador guardado' }}
-            </span></h2>
-        <div class="window-actions">
-            <button class="btn-icon" (click)="minimize.emit()" title="Minimizar"><i class="fas fa-minus"></i></button>
-            <button class="btn-icon" (click)="maximize.emit()" title="Maximizar"><i class="fas fa-expand"></i></button>
-            <button class="btn-icon close" (click)="close.emit()" title="Cerrar"><i class="fas fa-times"></i></button>
-        </div>
+        <h2>Conversación nueva</h2>
     </div>
 
     <div class="composer-form">
-        <!-- To Field -->
-        <div class="form-group to-field">
-            <span class="label">Para</span>
-            <app-chip-autocomplete [allItems]="searchResults" [loading]="searchLoading" [(selectedItems)]="toRecipients"
-                (search)="onSearch($event)" class="flex-1" placeholder="Destinatarios..."></app-chip-autocomplete>
-            <div class="cc-bcc-toggle">
-                <span (click)="showCc = !showCc" [class.active]="showCc">Cc</span>
-                <span (click)="showBcc = !showBcc" [class.active]="showBcc">Cco</span>
-            </div>
-        </div>
-
-        <!-- Subject Field -->
         <div class="form-group">
-            <input type="text" [(ngModel)]="subject" placeholder="Asunto" class="clean-input">
+            <input type="text" [(ngModel)]="to" placeholder="Destinatarios" class="form-control">
         </div>
 
-        <!-- Editor -->
+        <div class="form-group">
+            <input type="text" [(ngModel)]="subject" placeholder="Asunto" class="form-control">
+        </div>
+
         <div class="form-group editor">
-            <app-tiptap-editor [(content)]="body" placeholder="Escribe tu mensaje aquí..."></app-tiptap-editor>
+            <textarea [(ngModel)]="body" placeholder="Escribe tu mensaje aquí..."
+                class="form-control body-input"></textarea>
         </div>
 
-        <!-- Attachments List -->
-        <div class="attachments-list" *ngIf="attachments.length > 0">
-            <div class="attachment-item" *ngFor="let att of attachments; let i = index">
-                <div class="att-icon">
-                    <i class="fas fa-file-pdf" *ngIf="att.file.type.includes('pdf')"></i>
-                    <i class="fas fa-file-image" *ngIf="att.file.type.includes('image')"></i>
-                    <i class="fas fa-file"
-                        *ngIf="!att.file.type.includes('pdf') && !att.file.type.includes('image')"></i>
-                </div>
-                <div class="att-info">
-                    <span class="att-name">{{ att.file.name }}</span>
-                    <span class="att-size">{{ att.file.size | number }} bytes</span>
-                </div>
-                <button class="btn-icon remove" (click)="removeAttachment(i)">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Footer Actions -->
-    <div class="composer-footer">
-        <div class="primary-actions">
-            <div class="send-group">
-                <button class="btn-send" (click)="send()">
-                    Enviar
-                    <i class="fas fa-paper-plane"></i>
-                </button>
-                <button class="btn-schedule" (click)="toggleScheduleMenu()" title="Programar envío">
-                    <i class="fas fa-chevron-down"></i>
-                </button>
-                <div class="schedule-menu" *ngIf="showScheduleMenu">
-                    <ng-container *ngIf="!showCustomScheduleDate">
-                        <div class="menu-item" (click)="scheduleSend('tomorrow')">
-                            <span>Mañana por la mañana</span>
-                            <span class="date-hint">8:00 AM</span>
-                        </div>
-                        <div class="menu-item" (click)="scheduleSend('afternoon')">
-                            <span>Esta tarde</span>
-                            <span class="date-hint">1:00 PM</span>
-                        </div>
-                        <div class="menu-item" (click)="scheduleSend('monday')">
-                            <span>Lunes por la mañana</span>
-                            <span class="date-hint">8:00 AM</span>
-                        </div>
-                        <div class="separator"></div>
-                        <div class="menu-item" (click)="showCustomScheduleDate = true; $event.stopPropagation()">
-                            <span>Elegir fecha y hora</span>
-                        </div>
-                    </ng-container>
-
-                    <div class="custom-date-picker" *ngIf="showCustomScheduleDate" (click)="$event.stopPropagation()">
-                        <div class="picker-header">
-                            <span (click)="showCustomScheduleDate = false" class="back-btn"><i
-                                    class="fas fa-arrow-left"></i></span>
-                            <span>Programar envío</span>
-                        </div>
-                        <div class="picker-body">
-                            <label>Fecha</label>
-                            <input type="date" [(ngModel)]="customDateStr" [min]="minDateStr">
-                            <label>Hora</label>
-                            <input type="time" [(ngModel)]="customTimeStr">
-                        </div>
-                        <button class="btn-confirm-schedule" (click)="confirmCustomSchedule()">Programar</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="formatting-actions">
-                <!-- Attachment Button -->
-                <input type="file" #fileInput multiple (change)="onFileSelected($event)" style="display: none;">
-                <button class="btn-icon" (click)="fileInput.click()" title="Adjuntar archivos">
-                    <i class="fas fa-paperclip"></i>
-                </button>
-                <button class="btn-icon" (click)="insertLink()" title="Insertar enlace"><i
-                        class="fas fa-link"></i></button>
-
-                <div class="emoji-wrapper" style="position: relative;">
-                    <button class="btn-icon" (click)="toggleEmojiPicker()" title="Emojis"><i
-                            class="fas fa-smile"></i></button>
-                    <div class="emoji-picker" *ngIf="showEmojiPicker">
-                        <span *ngFor="let emoji of commonEmojis" (click)="insertEmoji(emoji)">{{ emoji }}</span>
-                    </div>
-                </div>
-
-                <button class="btn-icon" title="Google Drive (Próximamente)"><i
-                        class="fab fa-google-drive"></i></button>
-                <button class="btn-icon" (click)="insertImage()" title="Insertar imagen"><i
-                        class="fas fa-image"></i></button>
-                <button class="btn-icon" [class.active]="isConfidential" (click)="toggleConfidential()"
-                    title="Modo confidencial">
-                    <i class="fas fa-lock"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="secondary-actions">
-            <button class="btn-icon" (click)="discardDraft()" title="Descartar borrador"><i
-                    class="fas fa-trash"></i></button>
-        </div>
-    </div>
-
-    <!-- Drag Overlay -->
-    <div class="drag-overlay" *ngIf="isDragOver">
-        <div class="drag-message">
-            <i class="fas fa-cloud-upload-alt"></i>
-            <span>Suelta los archivos aquí para adjuntarlos</span>
+        <div class="composer-actions">
+            <button class="btn btn-primary" (click)="send()">Enviar</button>
+            <button class="btn btn-text" (click)="cancel()">Descartar draft</button>
         </div>
     </div>
 </div>

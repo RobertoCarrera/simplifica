@@ -1,8 +1,9 @@
 export const environment = {
   production: false,
   supabase: {
-    url: 'https://ufutyjbqfjrlzkprvyvs.supabase.co',
-    anonKey: 'sb_publishable_dNnMhmfC0luhkc4GazBtSw_l7gWvcqq' // Publishable key
+    // TODO: Reemplazar con tus credenciales reales de Supabase
+    url: 'https://ufutyjbqfjrlzkprvyvs.supabase.co', // https://xxxxx.supabase.co
+    anonKey: 'sb_publishable_dNnMhmfC0luhkc4GazBtSw_l7gWvcqq'  // Anon key de tu proyecto
   },
   // Optional: enable calling Edge Function to create locality instead of direct RPC
   useEdgeCreateLocality: true,
@@ -22,3 +23,14 @@ export const environment = {
   // En desarrollo se deja vacío; la API key se usa solo en el Edge Function
   anychatApiKey: ''
 };
+
+// ========================================
+// INSTRUCCIONES PARA CONFIGURAR:
+// ========================================
+// 1. Ve a tu proyecto en https://app.supabase.com
+// 2. Ve a Settings → API
+// 3. Copia:
+//    - Project URL → url
+//    - anon/public key → anonKey
+// 4. Reemplaza los valores de arriba
+// ========================================

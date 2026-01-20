@@ -7,8 +7,7 @@ import {
     AVAILABLE_ROLES,
     DEFAULT_PERMISSIONS,
     PermissionDefinition,
-    Role,
-    AppRole
+    Role
 } from '../../../services/supabase-permissions.service';
 import { ToastService } from '../../../services/toast.service';
 import { SupabaseModulesService, EffectiveModule } from '../../../services/supabase-modules.service';
@@ -31,9 +30,6 @@ export class PermissionsManagerComponent implements OnInit {
     // Permission matrix: role -> permission -> granted
     matrix = signal<Record<string, Record<string, boolean>>>({});
 
-    // Dynamic roles fetched from DB
-    availableRoles = signal<AppRole[]>([]);
-
     // Map categories to module keys (if applicable)
     private categoryModuleMap: Record<string, string> = {
         'Tickets': 'moduloSAT',
@@ -41,10 +37,6 @@ export class PermissionsManagerComponent implements OnInit {
         'Reservas': 'moduloReservas',
         'Productos': 'moduloProductos',
         'Servicios': 'moduloServicios',
-        'Presupuestos': 'moduloPresupuestos',
-        'Chat': 'moduloChat',
-        'Analíticas': 'moduloAnaliticas',
-        'Inteligencia Artificial': 'moduloIA',
         // 'Clientes' is core
         // 'Sistema' is core
     };
@@ -76,29 +68,23 @@ export class PermissionsManagerComponent implements OnInit {
     });
 
     categories = computed(() => Object.keys(this.permissionsByCategory()));
+    roles = AVAILABLE_ROLES.filter((r: Role) => r !== 'owner' && r !== 'admin'); // Owner always has all permissions
 
-    // Roles to display in the table (all except owner and super_admin which are full access)
-    // Actually, 'admin' might also have fixed permissions in some systems, but here we allow editing admin? 
-    // The previous code said "roles !== owner && roles !== admin" - wait.
-    // Let's filter out 'owner' and 'super_admin' as they are god roles.
-    displayRoles = computed(() => {
-        return this.availableRoles().filter(r => r.name !== 'owner' && r.name !== 'super_admin' && r.name !== 'client' && r.name !== 'admin');
-    });
+    roleLabels: Record<string, string> = {
+        admin: 'Admin',
+        member: 'Miembro',
+        professional: 'Profesional',
+        agent: 'Agente'
+    };
 
     async ngOnInit() {
-        await this.loadData();
+        await this.loadPermissions();
     }
 
-    async loadData() {
+    async loadPermissions() {
         this.loading.set(true);
         try {
-            // Parallel load roles and matrix
-            const [roles, matrix] = await Promise.all([
-                this.permissionsService.getRoles(),
-                this.permissionsService.getPermissionMatrix()
-            ]);
-
-            this.availableRoles.set(roles);
+            const matrix = await this.permissionsService.getPermissionMatrix();
             this.matrix.set(matrix);
         } catch (e: unknown) {
             console.error('Error loading permissions:', e);
@@ -108,28 +94,26 @@ export class PermissionsManagerComponent implements OnInit {
         }
     }
 
-    isGranted(roleName: string, permission: string): boolean {
-        // Fallback to defaults is handled in getPermissionMatrix now, so matrix should have values
-        // But if matrix is missing the role entirely, check DEFAULT_PERMISSIONS for safety
-        return this.matrix()[roleName]?.[permission] ?? DEFAULT_PERMISSIONS[roleName]?.[permission] ?? false;
+    isGranted(role: string, permission: string): boolean {
+        return this.matrix()[role]?.[permission] ?? DEFAULT_PERMISSIONS[role as Role]?.[permission] ?? false;
     }
 
-    async togglePermission(roleName: string, permission: string) {
-        const currentValue = this.isGranted(roleName, permission);
+    async togglePermission(role: string, permission: string) {
+        const currentValue = this.isGranted(role, permission);
         const newValue = !currentValue;
 
         // Optimistic update
         const newMatrix = { ...this.matrix() };
-        if (!newMatrix[roleName]) newMatrix[roleName] = {};
-        newMatrix[roleName][permission] = newValue;
+        if (!newMatrix[role]) newMatrix[role] = {};
+        newMatrix[role][permission] = newValue;
         this.matrix.set(newMatrix);
 
-        this.saving.set(`${roleName}-${permission}`);
+        this.saving.set(`${role}-${permission}`);
         try {
-            await this.permissionsService.setPermission(roleName, permission, newValue);
+            await this.permissionsService.setPermission(role, permission, newValue);
         } catch (e: unknown) {
             // Revert on error
-            newMatrix[roleName][permission] = currentValue;
+            newMatrix[role][permission] = currentValue;
             this.matrix.set(newMatrix);
             this.toast.error('Error', 'No se pudo actualizar el permiso');
         } finally {
@@ -137,21 +121,19 @@ export class PermissionsManagerComponent implements OnInit {
         }
     }
 
-    async resetRole(role: AppRole) {
-        if (!confirm(`¿Restaurar permisos por defecto para ${role.label}?`)) return;
+    async resetRole(role: string) {
+        if (!confirm(`¿Restaurar permisos por defecto para ${this.roleLabels[role]}?`)) return;
 
         try {
-            await this.permissionsService.resetRoleToDefaults(role.name);
-            // Reload matrix to get clean state
-            const matrix = await this.permissionsService.getPermissionMatrix();
-            this.matrix.set(matrix);
+            await this.permissionsService.resetRoleToDefaults(role);
+            await this.loadPermissions();
             this.toast.success('Restaurado', 'Permisos restaurados a valores por defecto');
         } catch (e: unknown) {
             this.toast.error('Error', 'No se pudieron restaurar los permisos');
         }
     }
 
-    isSaving(roleName: string, permission: string): boolean {
-        return this.saving() === `${roleName}-${permission}`;
+    isSaving(role: string, permission: string): boolean {
+        return this.saving() === `${role}-${permission}`;
     }
 }

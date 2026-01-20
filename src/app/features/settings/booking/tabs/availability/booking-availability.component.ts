@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, input } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseBookingsService, AvailabilitySchedule } from '../../../../../services/supabase-bookings.service';
@@ -17,12 +17,10 @@ interface DaySchedule {
     slots: TimeSlot[];
 }
 
-import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
-
 @Component({
     selector: 'app-booking-availability',
     standalone: true,
-    imports: [CommonModule, FormsModule, SkeletonComponent],
+    imports: [CommonModule, FormsModule],
     templateUrl: './booking-availability.component.html',
     styleUrls: ['./booking-availability.component.scss']
 })
@@ -30,9 +28,6 @@ export class BookingAvailabilityComponent implements OnInit {
     private bookingsService = inject(SupabaseBookingsService);
     private authService = inject(AuthService);
     private toast = inject(ToastService);
-
-    // Inputs
-    targetUserId = input<string | null>(null);
 
     loading = signal<boolean>(false);
     saving = signal<boolean>(false);
@@ -53,7 +48,8 @@ export class BookingAvailabilityComponent implements OnInit {
     }
 
     get userId() {
-        return this.targetUserId() || this.authService.userProfile?.id;
+        return this.authService.userProfile?.id; // Or auth_user_id? Table uses user_id references public.users(id).
+        // AuthService userProfile usually has 'id'.
     }
 
     async loadAvailability() {
