@@ -3,12 +3,33 @@
         <!-- HEADER -->
         <div class="sidebar-header" *ngIf="!showSettings()">
             <div class="header-content">
-                <h2 class="app-title">
-                    <i class="fas fa-inbox"></i> Webmail
-                </h2>
-                <button class="btn-icon settings-btn" (click)="toggleSettings()" title="Configuración">
-                    <i class="fas fa-cog"></i>
-                </button>
+                <!-- App Title & Account Selector -->
+                <div class="account-selector" (click)="toggleAccountSelector()" [class.active]="showAccountSelector()">
+                    <div class="current-account">
+                        <h2 class="app-title"><i class="fas fa-inbox"></i> Webmail</h2>
+                        <span class="account-email" *ngIf="store.currentAccount() as account">
+                            {{ account.email }} <i class="fas fa-chevron-down"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="account-dropdown" *ngIf="showAccountSelector()">
+                    <div class="dropdown-item" 
+                         *ngFor="let acc of store.accounts()" 
+                         (click)="selectAccount(acc)"
+                         [class.active]="acc.id === store.currentAccount()?.id">
+                        <div class="avt">{{ acc.email.charAt(0).toUpperCase() }}</div>
+                        <div class="info">
+                            <span class="email">{{ acc.email }}</span>
+                            <span class="provider">{{ acc.provider }}</span>
+                        </div>
+                        <i class="fas fa-check" *ngIf="acc.id === store.currentAccount()?.id"></i>
+                    </div>
+                    <div class="dropdown-divider"></div>
+                    <div class="dropdown-item action" (click)="toggleSettings()">
+                        <i class="fas fa-cog"></i> Gestionar cuentas
+                    </div>
+                </div>
             </div>
 
             <!-- COMPOSE BUTTON (Gmail Style) -->

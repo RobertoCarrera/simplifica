@@ -157,6 +157,10 @@ export class AuthService {
   // Exponer cliente supabase directamente para componentes de callback/reset
   get client() { return this.supabase; }
 
+
+
+
+
   // Método auxiliar para operaciones que requieren sesión válida
   private async retryWithSession<T>(
     operation: () => Promise<T>,
@@ -317,7 +321,7 @@ export class AuthService {
       console.log('🔄 Fetching app user & memberships for auth ID:', authId);
 
       // --- PARALLEL FETCH: Internal User & Client User ---
-      const [userRes, clientRes] = await Promise.all([
+      let [userRes, clientRes] = await Promise.all([
         this.supabase
           .from('users')
           .select(`*, app_role:app_roles(*)`)
@@ -329,6 +333,26 @@ export class AuthService {
           .select(`id, auth_user_id, email, name, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
           .eq('auth_user_id', authId)
       ]);
+
+      // --- SELF-HEALING: If no clients found, try to sync ---
+      if ((!clientRes.data || clientRes.data.length === 0)) {
+        console.warn(`⚠️ No client records found for auth_user_id: ${authId}. Attempting to sync client profile from users table...`);
+        const syncRes = await this.supabase.rpc('sync_client_profile');
+        if (syncRes.data && syncRes.data.success && syncRes.data.updated_count > 0) {
+          console.log(`✅ Synced ${syncRes.data.updated_count} client records. Re-fetching...`);
+          // Re-fetch clients
+          clientRes = await this.supabase
+            .from('clients')
+            .select(`id, auth_user_id, email, name, company_id, is_active, company:companies(id, name, slug, nif, is_active, settings)`)
+            .eq('auth_user_id', authId);
+        } else {
+          console.log('ℹ️ Sync attempt returned no updates. Auth ID might be new or not mapped to any client.');
+          // Log userRes to see if internal user exists
+          if (!userRes.data) {
+            console.error(`❌ Critical: No internal 'users' record found for auth_user_id: ${authId} either. This user appears to be completely unmapped.`);
+          }
+        }
+      }
 
       console.log('👤 [DEBUG] Internal User fetch:', userRes);
       console.log('👤 [DEBUG] Client User fetch:', clientRes);
@@ -377,7 +401,13 @@ export class AuthService {
             company: company
           };
         });
-        allMemberships = [...allMemberships, ...clientMemberships.filter(m => m.status === 'active')];
+        // Deduplicate: Filter out client memberships if the user already has a membership for that company
+        // (This happens because accept_company_invitation creates BOTH a company_member entry AND links the client record)
+        const uniqueClientMemberships = clientMemberships.filter(cm =>
+          !allMemberships.some(im => im.company_id === cm.company_id)
+        );
+
+        allMemberships = [...allMemberships, ...uniqueClientMemberships.filter(m => m.status === 'active')];
       }
 
       this.companyMemberships.set(allMemberships);
@@ -407,13 +437,18 @@ export class AuthService {
         activeMembership = allMemberships.find(m => m.company_id === storedCid);
       }
 
-      // Fallback: Default to Owner/Admin role if available, otherwise first one
+      // Fallback: Default to priority role if available (Owner > Super Admin > Admin > Member > Client)
       if (!activeMembership) {
-        // Prefer non-client roles first
-        activeMembership = allMemberships.find(m => m.role !== 'client');
-        if (!activeMembership) {
-          activeMembership = allMemberships[0];
-        }
+        const rolePriority = { 'owner': 1, 'super_admin': 2, 'admin': 3, 'member': 4, 'client': 5 };
+
+        // Sort memberships by priority
+        const sorted = [...allMemberships].sort((a, b) => {
+          const pA = rolePriority[a.role as keyof typeof rolePriority] || 99;
+          const pB = rolePriority[b.role as keyof typeof rolePriority] || 99;
+          return pA - pB;
+        });
+
+        activeMembership = sorted[0]; // Best match
       }
 
       // 4. Construct AppUser based on Active Context
@@ -519,11 +554,14 @@ export class AuthService {
     // Reload User Profile (which triggers the Shim Logic in fetchAppUserByAuthId)
     const currentUser = this.currentUserSubject.value;
     if (currentUser) {
+      // Force reload of user profile with new company context
       await this.setCurrentUser(currentUser);
-      // Refresh page to ensure all components/guards re-evaluate with new role/permissions?
-      // Or just rely on reactive updates.
-      // Creating a full reload is safer for a major context switch.
-      window.location.reload();
+
+      // Notify navigation to ensure current route re-checks permissions if needed
+      // Currently, reactive signals (companyId, userRole, permissions) should update UI automatically.
+      // If specific routes need reload, we can use Router.navigate([], { onSameUrlNavigation: 'reload' })
+      // but usually avoiding full page reload is better.
+
       return true;
     }
     return false;
@@ -722,6 +760,11 @@ export class AuthService {
   // ==========================================
   // MÉTODOS PÚBLICOS DE AUTENTICACIÓN
   // ==========================================
+
+  async getUser(): Promise<User | null> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    return user;
+  }
 
   async login(credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> {
     try {
@@ -1183,6 +1226,23 @@ export class AuthService {
         return { success: false, error: result.error };
       }
 
+      // 📧 Send Invitation Email
+      const { error: fnError } = await this.supabase.functions.invoke('send-invitation', {
+        body: {
+          invitationId: result.invitation_id,
+          toEmail: data.email,
+          companyName: result.company_name, // Returned by RPC now
+          role: data.role || 'member',
+          message: data.message,
+          invitedBy: result.company_name // or user name if we had it, fallback to Company Name context
+        }
+      });
+
+      if (fnError) {
+        console.error('⚠️ Invitation created but email failed:', fnError);
+        // We don't return false because the invitation IS in the DB.
+      }
+
       return {
         success: true,
         invitationId: result.invitation_id
@@ -1267,7 +1327,7 @@ export class AuthService {
    * Enviar invitación por email usando Edge Function + SMTP de Supabase (SES)
    * Utiliza la sesión actual para autorizar y que la función valide owner/admin.
    */
-  async sendCompanyInvite(params: { email: string; role?: string; message?: string }): Promise<{ success: boolean; error?: string; info?: string; token?: string }> {
+  async sendCompanyInvite(params: { email: string; role?: string; message?: string }): Promise<{ success: boolean; error?: string; info?: string; token?: string; mode?: 'new_user' | 'existing_user' | 'failed' }> {
     try {
       const { data, error } = await this.supabase.functions.invoke('send-company-invite', {
         body: {
@@ -1286,7 +1346,7 @@ export class AuthService {
       if (!data?.success) {
         return { success: false, error: data?.message || data?.error || 'Invite failed', info: data?.info, token: data?.token };
       }
-      return { success: true, info: data?.info, token: data?.token };
+      return { success: true, info: data?.info, token: data?.token, mode: data?.mode };
     } catch (e: any) {
       console.error('❌ sendCompanyInvite exception:', e);
       return { success: false, error: e?.message || String(e) };
@@ -1459,5 +1519,54 @@ export class AuthService {
       this.userProfileSubject.next(profile);
     }
     return profile;
+  }
+
+  // --- Google Calendar Integration ---
+
+  async connectGoogleCalendar() {
+    const user = this.currentUserSubject.value;
+    if (user) {
+      // Link identity to current user
+      const { data, error } = await this.supabase.auth.linkIdentity({
+        provider: 'google',
+        options: {
+          scopes: 'https://www.googleapis.com/auth/calendar',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          },
+          redirectTo: window.location.origin + '/reservas'
+        }
+      });
+      if (error) throw error;
+      return data;
+    } else {
+      // Fallback or login (should not happen in this context)
+      const { data, error } = await this.supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          scopes: 'https://www.googleapis.com/auth/calendar',
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          },
+          redirectTo: window.location.origin + '/reservas'
+        }
+      });
+
+      if (error) throw error;
+      return data;
+    }
+  }
+
+  async checkGoogleConnection(): Promise<boolean> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user?.identities) return false;
+
+    // Check if there is an identity with provider 'google'
+    // Note: This only checks if they have signed in with Google. 
+    // It doesn't strictly guarantee we have the calendar scope unless we enforce it on login.
+    // But for now it's a good proxy.
+    return user.identities.some(id => id.provider === 'google');
   }
 }
