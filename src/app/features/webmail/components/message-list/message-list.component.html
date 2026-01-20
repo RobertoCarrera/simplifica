@@ -1,5 +1,12 @@
 <div class="message-list-container">
     <div class="toolbar">
+        <div class="search-box">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" placeholder="Buscar correos..." aria-label="Buscar correos">
+        </div>
+        <div class="actions">
+            <button class="btn-icon" aria-label="Actualizar lista" title="Actualizar lista"><i class="fas fa-sync" aria-hidden="true"></i></button>
+            <button class="btn-icon" aria-label="Filtrar correos" title="Filtrar correos"><i class="fas fa-filter" aria-hidden="true"></i></button>
         <div class="bulk-actions" *ngIf="selectionCount > 0; else searchMode">
             <div class="selection-info">
                 <input type="checkbox" [checked]="allSelected()" (change)="toggleSelectAll($event)">

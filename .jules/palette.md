@@ -1,7 +1,3 @@
-## 2024-05-22 - Explicit State vs Toggle on Dual Buttons
-**Learning:** When using two separate buttons for binary states (e.g., Light/Dark), avoid 'toggle' logic on the active button. Users expect the 'Light' button to enforce Light mode, not toggle to Dark if already active.
-**Action:** Always bind specific 'set' actions (e.g., `setLightTheme()`) to explicit state buttons, rather than generic toggle functions.
-
-## 2024-05-22 - Semantic Grouping for Settings
-**Learning:** Settings like theme or color selection are often implemented as div-soups. Screen readers miss the context that these are related choices.
-**Action:** Wrap related setting buttons in a container with `role="group"` and a descriptive `aria-label`, and use `aria-pressed` to indicate the active selection.
+## 2024-05-23 - Accessibility Patterns for Icon-Only Buttons
+**Learning:** Icon-only buttons often lack accessible names, making them invisible or confusing to screen reader users. Simply adding an icon class is not enough.
+**Action:** Always add `aria-label` (and `title` for tooltip) to the `<button>` element. Add `aria-hidden="true"` to the `<i>` or `<svg>` icon element to prevent redundant or confusing announcements.
