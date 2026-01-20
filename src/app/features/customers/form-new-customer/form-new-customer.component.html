@@ -178,23 +178,6 @@
                         tabindex="-1" autocomplete="off" aria-hidden="true" [attr.data-honeypot]="true">
                 </div>
 
-                <div class="form-group" *ngIf="formData.client_type === 'individual'">
-                    <label for="birth_date" class="form-label">
-                        <i class="fas fa-birthday-cake"></i>
-                        Fecha de Nacimiento
-                    </label>
-                    <div class="relative cursor-pointer" (click)="openDatePicker()">
-                        <input type="text" id="birth_date" name="birth_date" [ngModel]="formData.birth_date"
-                            (ngModelChange)="formData.birth_date = $event"
-                            class="form-input w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors shadow-sm cursor-pointer select-none"
-                            placeholder="Seleccionar fecha..." readonly>
-                        <div
-                            class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
-                            <i class="fas fa-calendar-alt"></i>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Responsive address row: desktop -> four columns; mobile -> stacked -->
                 <div class="form-row grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div class="form-group relative">
@@ -330,10 +313,6 @@
                     </div>
                 </div>
             </app-modal>
-
-            <app-date-selector-modal [visible]="showDatePicker" [initialDate]="formData.birth_date"
-                (close)="closeDatePicker()" (dateSelected)="onDateSelected($event)">
-            </app-date-selector-modal>
         </div>
 
         <div class="modal-actions">

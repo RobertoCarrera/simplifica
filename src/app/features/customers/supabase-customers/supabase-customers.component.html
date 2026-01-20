@@ -21,16 +21,6 @@
                 </div>
 
                 <div class="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-
-                    <!-- Tag Filter -->
-                    <select [ngModel]="selectedTagId()" (ngModelChange)="selectedTagId.set($event)"
-                        class="pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="ALL">Todas las etiquetas</option>
-                        @for (tag of availableTags(); track tag.id) {
-                        <option [value]="tag.id">{{ tag.name }}</option>
-                        }
-                    </select>
-
                     <select [(ngModel)]="sortBy" (change)="onFiltersChange()"
                         class="pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         <option value="created_at">Fecha creación</option>
@@ -66,7 +56,7 @@
         <div class="p-6">
             <app-skeleton type="card-grid" [count]="6"></app-skeleton>
         </div>
-        } @else if (enrichedCustomers().length === 0) {
+        } @else if (filteredCustomers().length === 0) {
         <div
             class="h-full flex flex-col items-center justify-center p-8 text-center text-gray-500 dark:text-gray-400 animate-fade-in">
             <div class="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
@@ -97,7 +87,7 @@
 
             <!-- Scrollable Grid -->
             <div class="customers-grid">
-                @for (customer of enrichedCustomers(); track customer.id; let i = $index) {
+                @for (customer of filteredCustomers(); track customer.id; let i = $index) {
                 <div class="customer-card relative bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow h-full flex flex-col"
                     [style.animation-delay]="i * 50 + 'ms'">
 
@@ -131,10 +121,6 @@
                                                 <i class="fas fa-envelope-open-text w-5 text-gray-400"></i> Invitar al
                                                 Portal
                                             </button>
-                                            <button (click)="openLoyaltyModal(customer)"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-yellow-600 dark:text-yellow-500">
-                                                <i class="fas fa-award w-5 text-yellow-500/70"></i> Puntos / Fidelidad
-                                            </button>
                                         </div>
                                         <!-- GDPR Section -->
                                         <div class="py-1 bg-gray-50 dark:bg-gray-700/30">
@@ -157,21 +143,21 @@
                             <div class="flex items-start gap-4 mb-4 pr-8">
                                 <div class="relative shrink-0">
                                     <div class="w-12 h-12 rounded-full flex items-center justify-center text-gray-600 font-bold text-lg shadow-sm"
-                                        [style.background]="customer.avatarGradient">
-                                        {{ customer.initials }}
+                                        [style.background]="getAvatarGradient(customer)">
+                                        {{ getCustomerInitials(customer) }}
                                     </div>
                                     <!-- Online/Active Indicator could go here -->
                                 </div>
 
                                 <div class="min-w-0 flex-1">
                                     <h3 class="font-semibold text-gray-900 dark:text-white truncate"
-                                        [title]="customer.displayName">
-                                        {{ customer.displayName }}
+                                        [title]="getDisplayName(customer)">
+                                        {{ getDisplayName(customer) }}
                                     </h3>
                                     <!-- Incomplete warning -->
-                                    @if (!customer.isComplete) {
+                                    @if (!isCustomerComplete(customer)) {
                                     <div class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200"
-                                        [title]="customer.attentionReasons">
+                                        [title]="formatAttentionReasons(customer)">
                                         <i class="fas fa-exclamation-triangle"></i>
                                         Faltan datos
                                     </div>
@@ -212,42 +198,24 @@
                                 class="mt-auto pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
                                 <!-- Portal Access Toggle -->
                                 <button
-                                    (click)="togglePortalAccess(customer, !customer.hasPortalAccess, $event)"
+                                    (click)="togglePortalAccess(customer, !hasPortalAccess(customer, customer.email), $event)"
                                     class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium transition-colors"
-                                    [class]="customer.hasPortalAccess
+                                    [class]="hasPortalAccess(customer, customer.email)
                     ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300' 
                     : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700/50 dark:text-gray-400'">
-                                    <i class="fas" [class.fa-key]="customer.hasPortalAccess"
-                                        [class.fa-lock]="!customer.hasPortalAccess"></i>
-                                    {{ customer.hasPortalAccess ? 'Acceso Portal' : 'Sin Acceso' }}
+                                    <i class="fas" [class.fa-key]="hasPortalAccess(customer, customer.email)"
+                                        [class.fa-lock]="!hasPortalAccess(customer, customer.email)"></i>
+                                    {{ hasPortalAccess(customer, customer.email) ? 'Acceso Portal' : 'Sin Acceso' }}
                                 </button>
 
-                                <!-- Points Badge -->
-                                <div class="flex items-center gap-1.5 ml-2 cursor-pointer group"
-                                    (click)="openLoyaltyModal(customer); $event.stopPropagation()">
-                                    <span
-                                        class="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400 font-bold px-2 py-1 text-xs rounded-full border border-yellow-200 dark:border-yellow-800 flex items-center gap-1 group-hover:bg-yellow-200 dark:group-hover:bg-yellow-900/60 transition-colors"
-                                        title="Puntos de Fidelidad">
-                                        <i class="fas fa-award text-yellow-600 dark:text-yellow-500"></i>
-                                        {{ customer.loyalty_points_balance || 0 }} pts
-                                    </span>
-                                </div>
-
                                 <!-- GDPR Status Badge -->
-                                @let badge = customer.gdprBadge;
+                                @let badge = getGdprBadgeConfig(customer);
                                 <div class="flex items-center gap-1.5 ml-2" [title]="badge.label">
                                     <span
                                         [class]="badge.classes + ' flex items-center justify-center w-6 h-6 rounded-full'">
                                         <i [class]="'fas ' + badge.icon"></i>
                                     </span>
                                 </div>
-
-                                <!-- View Profile Button -->
-                                <button (click)="viewCustomer(customer); $event.stopPropagation()"
-                                    class="ml-2 w-8 h-8 flex items-center justify-center rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50 transition-colors"
-                                    title="Ver Perfil Completo">
-                                    <i class="fas fa-arrow-right"></i>
-                                </button>
                             </div>
                         </div>
 
@@ -388,10 +356,4 @@
         </div>
     </div>
 </div>
-}
-
-<!-- Loyalty Modal -->
-@if (showLoyaltyModal()) {
-<app-loyalty-modal [customer]="loyaltyModalCustomer()" (closed)="closeLoyaltyModal()">
-</app-loyalty-modal>
 }

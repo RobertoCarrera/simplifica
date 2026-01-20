@@ -66,23 +66,6 @@ export interface TicketCurrentStatus {
   oldest_ticket_days: number | null;
 }
 
-// Interfaces para KPIs de Reservas
-export interface BookingKpis {
-  period_month: string;
-  bookings_count: number;
-  confirmed_count: number;
-  cancelled_count: number;
-  total_revenue: number;
-  total_hours: number;
-}
-
-export interface TopService {
-  service_id: string;
-  service_name: string;
-  bookings_count: number;
-  total_revenue: number;
-}
-
 @Injectable({
   providedIn: 'root'
 })
@@ -130,21 +113,6 @@ export class AnalyticsService {
     resolved: number;
     overdue: number;
   }>>([]);
-
-  // ========== RESERVAS (BOOKINGS) ==========
-  private bookingKpisMonthly = signal<BookingKpis | null>(null);
-  private topServices = signal<TopService[]>([]);
-
-  // Historical trend: bookings
-  private bookingHistoricalTrend = signal<Array<{
-    month: string;
-    count: number;
-    revenue: number;
-    hours: number;
-  }>>([]);
-
-  // Leads By Channel (Signal)
-  // We can either expose a signal or just a method. Let's expose a method to simple fetch for now as it's not time-series critical yet.
 
   // Loading state
   private loading = signal<boolean>(true);
@@ -376,49 +344,6 @@ export class AnalyticsService {
     return metrics;
   });
 
-  // ========== COMPUTED: MÉTRICAS DE RESERVAS ==========
-  getBookingMetrics = computed((): DashboardMetric[] => {
-    const kpis = this.bookingKpisMonthly();
-
-    const metrics: DashboardMetric[] = [
-      {
-        id: 'bookings-month',
-        title: 'Citas Reservadas',
-        value: kpis ? String(kpis.bookings_count) : '—',
-        change: 0,
-        changeType: 'neutral',
-        icon: '📅',
-        color: '#6366f1',
-        description: kpis ? `${kpis.confirmed_count} confirmadas` : 'Total citas este mes'
-      },
-      {
-        id: 'booking-revenue-month',
-        title: 'Ingresos Reservas',
-        value: kpis ? this.formatCurrency(kpis.total_revenue) : '—',
-        change: 0,
-        changeType: 'neutral',
-        icon: '💳',
-        color: '#8b5cf6',
-        description: 'Valor total de citas (no canceladas)'
-      },
-      {
-        id: 'booking-hours-month',
-        title: 'Horas Reservadas',
-        value: kpis ? this.formatCompact(kpis.total_hours) + 'h' : '—',
-        change: 0,
-        changeType: 'neutral',
-        icon: '⏳',
-        color: '#f43f5e',
-        description: 'Total horas ocupadas'
-      }
-    ];
-
-    return metrics;
-  });
-
-  getTopServices = computed(() => this.topServices());
-  getBookingHistoricalTrend = computed(() => this.bookingHistoricalTrend());
-
   // Histórico de presupuestos
   getQuoteHistoricalTrend = computed(() => this.quoteHistoricalTrend());
 
@@ -454,77 +379,27 @@ export class AnalyticsService {
   }
 
   // Refresh analytics data (can be called manually or on interval)
-  // Refresh analytics data (can be called manually or on interval)
   async refreshAnalytics(): Promise<void> {
+    this.loading.set(true);
+    this.error.set(null);
     try {
-      this.loading.set(true);
-      this.error.set(null);
-
-      // Load all data in parallel
       await Promise.all([
+        // Consolidar: quotes kpis + trend en una llamada
         this.loadQuoteKpisAndTrend(),
-        this.loadQuoteMonthlyAnalytics(),
         this.loadAllDraftQuotes(),
         this.loadRecurringMonthly(),
         this.loadCurrentPipeline(),
-
+        // Consolidar: invoice kpis + trend en una llamada
         this.loadInvoiceKpisAndTrend(),
-
         this.loadTicketKpisAndTrend(),
-        this.loadTicketCurrentStatus(),
-
-        this.loadBookingKpisAndTrend(),
-        this.loadTopServices()
+        this.loadTicketCurrentStatus()
       ]);
-
-    } catch (err) {
-      console.error('[AnalyticsService] Error refreshing analytics:', err);
-      this.error.set('Hubo un problema al cargar los datos. Por favor intenta de nuevo.');
+    } catch (err: any) {
+      console.error('[AnalyticsService] Failed to load analytics', err);
+      this.error.set(err?.message || 'Error al cargar analíticas');
     } finally {
       this.loading.set(false);
     }
-  }
-
-  /**
-   * Get Leads by Channel (Source)
-   */
-  /**
-   * Get Leads by Channel (Source)
-   */
-  async getLeadsByChannel(startDate?: string, endDate?: string): Promise<{ source: string; count: number }[]> {
-    // We rely on RLS to filter leads by the user's company.
-
-    let query = this.supabase.instance
-      .from('leads')
-      .select('source');
-
-    if (startDate) {
-      query = query.gte('created_at', startDate);
-    }
-    if (endDate) {
-      // Asume endDate es inclusivo hasta el final del día si es YYYY-MM-DD, 
-      // pero si es string simple, mejor asegurar que cubra el día. 
-      // Si el input es '2025-01-30', le agregamos time si es necesario o usamos lte.
-      // Supabase lte funcionará bien con fechas ISO.
-      query = query.lte('created_at', endDate + 'T23:59:59');
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('[AnalyticsService] Error fetching leads stats:', error);
-      return [];
-    }
-
-    const counts: Record<string, number> = {};
-    (data || []).forEach((lead: any) => {
-      const src = lead.source || 'other';
-      counts[src] = (counts[src] || 0) + 1;
-    });
-
-    return Object.entries(counts)
-      .map(([source, count]) => ({ source, count }))
-      .sort((a, b) => b.count - a.count);
   }
 
   // --- PRESUPUESTOS: Consolidado KPIs + Trend en una sola llamada ---
@@ -888,73 +763,6 @@ export class AnalyticsService {
       this.ticketCurrentStatus.set(null);
     }
   }
-
-  // --- RESERVAS: Consolidado KPIs + Trend ---
-  private async loadBookingKpisAndTrend(): Promise<void> {
-    const now = new Date();
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1));
-    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
-    const p_start = start.toISOString().slice(0, 10);
-    const p_end = end.toISOString().slice(0, 10);
-    const currentMonthStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
-
-    try {
-      const { data, error } = await this.supabase.instance.rpc('f_booking_analytics_monthly', { p_start, p_end });
-
-      if (error) {
-        console.warn('[AnalyticsService] f_booking_analytics_monthly RPC error:', error.message);
-        this.bookingKpisMonthly.set(null);
-        this.bookingHistoricalTrend.set([]);
-        return;
-      }
-
-      const rows = (data as any[] | null) || [];
-      const currentRow = rows.find(r => String(r.period_month || '').startsWith(currentMonthStr)) || null;
-
-      if (currentRow) {
-        this.bookingKpisMonthly.set({
-          period_month: currentRow.period_month,
-          bookings_count: Number(currentRow.bookings_count || 0),
-          confirmed_count: Number(currentRow.confirmed_count || 0),
-          cancelled_count: Number(currentRow.cancelled_count || 0),
-          total_revenue: Number(currentRow.total_revenue || 0),
-          total_hours: Number(currentRow.total_hours || 0)
-        });
-      } else {
-        this.bookingKpisMonthly.set(null);
-      }
-
-      const trend = rows.map(r => ({
-        month: String(r.period_month || '').slice(0, 7),
-        count: Number(r.bookings_count || 0),
-        revenue: Number(r.total_revenue || 0),
-        hours: Number(r.total_hours || 0)
-      })).sort((a, b) => a.month.localeCompare(b.month));
-
-      this.bookingHistoricalTrend.set(trend);
-    } catch (e) {
-      console.warn('[AnalyticsService] Error loading booking KPIs:', e);
-      this.bookingKpisMonthly.set(null);
-      this.bookingHistoricalTrend.set([]);
-    }
-  }
-
-  private async loadTopServices(): Promise<void> {
-    const now = new Date();
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)); // This month
-    // Optional: could do last 30 days or all time. Let's do this month for consistency with KPIs.
-    const p_start = start.toISOString().slice(0, 10);
-
-    try {
-      const { data, error } = await this.supabase.instance.rpc('f_analytics_top_services', { p_start, p_limit: 5 });
-      if (error) throw error;
-      this.topServices.set(data as TopService[] || []);
-    } catch (e) {
-      console.warn('Error loading top services', e);
-      this.topServices.set([]);
-    }
-  }
-
 
   private formatCompact(value: number): string {
     try {

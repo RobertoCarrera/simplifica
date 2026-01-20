@@ -1,8 +1,6 @@
 <ul class="folder-list">
     <li *ngFor="let folder of folders()">
-        <a [routerLink]="[folder.path]" routerLinkActive="active" class="folder-item"
-            [class.drag-over]="dragOverFolderId() === folder.id" (dragover)="onDragOver($event, folder)"
-            (drop)="onDrop($event, folder)">
+        <a [routerLink]="[folder.path]" routerLinkActive="active" class="folder-item">
             <i class="fas" [ngClass]="{
         'fa-inbox': folder.system_role === 'inbox',
         'fa-paper-plane': folder.system_role === 'sent',
@@ -18,9 +16,7 @@
         <!-- Simple recursion for now, ideally separate component or ng-template -->
         <ul *ngIf="folder.children?.length" class="sub-folders">
             <li *ngFor="let sub of folder.children">
-                <a [routerLink]="[sub.path]" routerLinkActive="active" class="folder-item sub"
-                    [class.drag-over]="dragOverFolderId() === sub.id" (dragover)="onDragOver($event, sub)"
-                    (drop)="onDrop($event, sub)">
+                <a [routerLink]="[sub.path]" routerLinkActive="active" class="folder-item sub">
                     <i class="fas fa-folder"></i>
                     <span>{{ sub.name }}</span>
                 </a>
@@ -28,21 +24,3 @@
         </ul>
     </li>
 </ul>
-
-<div class="create-folder-container">
-    <div *ngIf="isCreating()" class="create-form">
-        <i class="fas fa-folder text-blue-500"></i>
-        <input type="text" [ngModel]="newFolderName()" (ngModelChange)="newFolderName.set($event)"
-            placeholder="Nombre..." autoFocus (keyup.enter)="confirmCreate()" (keyup.escape)="cancelCreating()">
-        <button class="btn-icon" (click)="confirmCreate()" [disabled]="isLoading() || !newFolderName().trim()">
-            <i class="fas fa-check text-green-500"></i>
-        </button>
-        <button class="btn-icon" (click)="cancelCreating()">
-            <i class="fas fa-times text-gray-500"></i>
-        </button>
-    </div>
-
-    <button *ngIf="!isCreating()" class="btn-create" (click)="startCreating()">
-        <i class="fas fa-plus"></i> Nueva carpeta
-    </button>
-</div>
