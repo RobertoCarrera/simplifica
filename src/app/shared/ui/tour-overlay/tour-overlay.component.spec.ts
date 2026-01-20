@@ -22,6 +22,7 @@ describe('TourOverlayComponent', () => {
         showPrev: false,
         showSkip: true
       }),
+      currentStep: signal(null),
       stepIndex: signal(0),
       isFirstStep: signal(true),
       isLastStep: signal(false),
@@ -32,6 +33,7 @@ describe('TourOverlayComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [TourOverlayComponent, SafeHtmlPipe],
+      imports: [TourOverlayComponent],
       providers: [
         { provide: OnboardingService, useValue: mockOnboardingService }
       ]
@@ -63,5 +65,36 @@ describe('TourOverlayComponent', () => {
 
     // Check that safe HTML is preserved
     expect(innerHTML).toContain('<b>Bold Content</b>');
+  it('should sanitize HTML content', () => {
+    const maliciousContent = '<img src=x onerror=alert(1)>Welcome';
+    const safeContent = '<img src="x">Welcome'; // DOMPurify might remove onerror but keep img, or Angular might.
+
+    mockOnboardingService.currentTourData.set({ name: 'Test Tour', steps: [] });
+    mockOnboardingService.currentStep.set({
+      id: 'step1',
+      title: 'Step 1',
+      content: maliciousContent,
+      targetElement: 'body',
+      position: 'center',
+      showNext: true,
+      showPrev: false,
+      showSkip: true
+    });
+
+    fixture.detectChanges();
+
+    const pElement = fixture.nativeElement.querySelector('p.text-gray-700');
+    expect(pElement).toBeTruthy();
+
+    // Check that onerror is not present.
+    // Note: Angular's default sanitizer would also strip it, but we are adding SafeHtmlPipe
+    // to be explicit and perhaps allow more rich text features than Angular default if needed,
+    // or to ensure consistency.
+    // However, since we are adding the pipe, we expect the output to be trusted.
+    // If the pipe works, the content inside innerHTML should be the result of DOMPurify.
+
+    const htmlContent = pElement.innerHTML;
+    expect(htmlContent).not.toContain('onerror');
+    expect(htmlContent).toContain('src="x"');
   });
 });

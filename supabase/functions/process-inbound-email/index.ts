@@ -7,6 +7,16 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper to decode Base64
+function decodeBase64(str: string): Uint8Array {
+    const binaryString = atob(str);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+}
+
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
@@ -19,70 +29,57 @@ serve(async (req) => {
         );
 
         const {
-            to, // recipient email (our user)
-            from, // sender info { name, email } or just email string
+            to,
+            from,
             subject,
             body,
             html_body,
-            messageId, // external ID
-            inReplyTo // for threading
+            messageId,
+            inReplyTo,
+            attachments // Array of { filename, content (base64), contentType, size }
         } = await req.json();
 
         if (!to || !from || !subject) {
             throw new Error('Missing required fields: to, from, subject');
         }
 
-        // Normalize 'to' to find the account
-        // Input might be "Name <email@domain.com>" or just "email@domain.com"
-        // For simulation we assume simple email string or extract it.
         const targetEmail = extractEmail(to);
-
-        console.log(`Processing inbound email for: ${targetEmail}`);
+        console.log(`Processing inbound for: ${targetEmail}`);
 
         // 1. Find Account
         const { data: account, error: accountError } = await supabaseClient
             .from('mail_accounts')
             .select('id, user_id')
-            .eq('email', targetEmail) // Match exactly for now
+            .eq('email', targetEmail)
             .single();
 
         if (accountError || !account) {
-            console.error('Account not found for email:', targetEmail);
             throw new Error(`Account not found for ${targetEmail}`);
         }
 
-        // 2. Find Inbox Folder
-        const { data: inbox, error: inboxError } = await supabaseClient
+        // 2. Find Inbox
+        const { data: inbox } = await supabaseClient
             .from('mail_folders')
             .select('id')
             .eq('account_id', account.id)
             .eq('system_role', 'inbox')
             .single();
 
-        if (inboxError || !inbox) {
-            console.error('Inbox not found for account:', account.id);
-            throw new Error('Inbox not found');
-        }
+        if (!inbox) throw new Error('Inbox not found');
 
-        // 3. Threading Logic (Simplified)
+        // 3. Threading
         let threadId = null;
         if (inReplyTo) {
-            // Try to find original message to get its thread_id
-            // This is a naive implementation, real world threads are complex
             const { data: originalMsg } = await supabaseClient
                 .from('mail_messages')
                 .select('thread_id')
-                .eq('metadata->>messageId', inReplyTo) // Assuming we store Message-ID in metadata
+                .eq('metadata->>messageId', inReplyTo)
                 .single();
-
             if (originalMsg) threadId = originalMsg.thread_id;
         }
 
-        // If no thread found, create one? Or let insert trigger handle it?
-        // Schema has mail_threads table. 
-        // For now, if no threadId, create a new Thread.
         if (!threadId) {
-            const { data: newThread, error: threadError } = await supabaseClient
+            const { data: newThread } = await supabaseClient
                 .from('mail_threads')
                 .insert({
                     account_id: account.id,
@@ -91,16 +88,11 @@ serve(async (req) => {
                 })
                 .select()
                 .single();
-
-            if (!threadError && newThread) threadId = newThread.id;
+            if (newThread) threadId = newThread.id;
         } else {
-            // Update existing thread snippet/date
             await supabaseClient
                 .from('mail_threads')
-                .update({
-                    last_message_at: new Date().toISOString(),
-                    snippet: body.substring(0, 100)
-                })
+                .update({ last_message_at: new Date().toISOString(), snippet: body.substring(0, 100) })
                 .eq('id', threadId);
         }
 
@@ -112,22 +104,57 @@ serve(async (req) => {
                 folder_id: inbox.id,
                 thread_id: threadId,
                 from: typeof from === 'string' ? { email: from, name: '' } : from,
-                to: [{ email: targetEmail, name: '' }], // We are the recipient
+                to: [{ email: targetEmail, name: '' }],
                 subject: subject,
                 body_text: body,
                 body_html: html_body || body,
                 snippet: body.substring(0, 100),
-                is_read: false, // Unread
-                metadata: {
-                    messageId: messageId,
-                    inReplyTo: inReplyTo
-                }
+                is_read: false,
+                metadata: { messageId, inReplyTo, has_attachments: (attachments && attachments.length > 0) }
             })
             .select()
             .single();
 
-        if (insertError) {
-            throw insertError;
+        if (insertError) throw insertError;
+
+        // 5. Handle Attachments
+        if (attachments && Array.isArray(attachments)) {
+            const uploadPromises = attachments.map(async (att: any) => {
+                if (!att.content || !att.filename) return;
+
+                const fileContent = decodeBase64(att.content);
+                const year = new Date().getFullYear();
+                const month = new Date().getMonth() + 1;
+                // Path: accountId/year/month/messageId/filename
+                const storagePath = `${account.id}/${year}/${month}/${newMessage.id}/${att.filename}`;
+
+                // Upload to Storage
+                const { error: uploadError } = await supabaseClient
+                    .storage
+                    .from('mail-attachments')
+                    .upload(storagePath, fileContent, {
+                        contentType: att.contentType || 'application/octet-stream',
+                        upsert: true
+                    });
+
+                if (uploadError) {
+                    console.error('Upload error:', uploadError);
+                    return;
+                }
+
+                // Insert into DB
+                await supabaseClient
+                    .from('mail_attachments')
+                    .insert({
+                        message_id: newMessage.id,
+                        filename: att.filename,
+                        size: att.size || fileContent.byteLength,
+                        content_type: att.contentType,
+                        storage_path: storagePath
+                    });
+            });
+
+            await Promise.all(uploadPromises);
         }
 
         return new Response(JSON.stringify({ success: true, id: newMessage.id }), {
