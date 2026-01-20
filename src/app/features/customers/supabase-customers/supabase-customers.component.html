@@ -200,7 +200,7 @@
                                 <button
                                     (click)="togglePortalAccess(customer, !hasPortalAccess(customer, customer.email), $event)"
                                     class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium transition-colors"
-                                    [class]="hasPortalAccess(customer, customer.email) 
+                                    [class]="hasPortalAccess(customer, customer.email)
                     ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300' 
                     : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700/50 dark:text-gray-400'">
                                     <i class="fas" [class.fa-key]="hasPortalAccess(customer, customer.email)"

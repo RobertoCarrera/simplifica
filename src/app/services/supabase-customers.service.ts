@@ -231,9 +231,9 @@ export class SupabaseCustomersService {
 
         // Schema cache may lack relation: fallback without embed
         if ((error as any)?.code === 'PGRST200') {
-          let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)'); // Try with devices even in fallback if possible, or revert to * if failing again? 
-          // If PGRST200 happened on main query, it might be due to devices embed? 
-          // But usually fallback queries are simpler. 
+          let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)'); // Try with devices even in fallback if possible, or revert to * if failing again?
+          // If PGRST200 happened on main query, it might be due to devices embed?
+          // But usually fallback queries are simpler.
           // Let's stick to * but assume we might miss devices if embed fails.
           // Actually, let's try to get devices if we can.
           q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)');

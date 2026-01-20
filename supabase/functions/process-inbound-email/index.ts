@@ -79,7 +79,7 @@ serve(async (req) => {
         }
 
         // If no thread found, create one? Or let insert trigger handle it?
-        // Schema has mail_threads table. 
+        // Schema has mail_threads table.
         // For now, if no threadId, create a new Thread.
         if (!threadId) {
             const { data: newThread, error: threadError } = await supabaseClient

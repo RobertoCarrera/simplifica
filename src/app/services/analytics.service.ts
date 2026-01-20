@@ -79,11 +79,11 @@ export class AnalyticsService {
   private allDraftQuotes = signal<{ total: number; count: number } | null>(null);
   private recurringMonthly = signal<{ total: number; count: number } | null>(null);
   private currentPipeline = signal<{ total: number; count: number } | null>(null);
-  
+
   // Historical trend: last 6 months of quotes data (server-computed)
-  private quoteHistoricalTrend = signal<Array<{ 
-    month: string; 
-    total: number; 
+  private quoteHistoricalTrend = signal<Array<{
+    month: string;
+    total: number;
     subtotal: number;
     tax: number;
     count: number;
@@ -91,11 +91,11 @@ export class AnalyticsService {
 
   // ========== FACTURAS ==========
   private invoiceKpisMonthly = signal<InvoiceKpis | null>(null);
-  
+
   // Historical trend: last 6 months of invoices data
-  private invoiceHistoricalTrend = signal<Array<{ 
-    month: string; 
-    total: number; 
+  private invoiceHistoricalTrend = signal<Array<{
+    month: string;
+    total: number;
     subtotal: number;
     tax: number;
     count: number;
@@ -105,15 +105,15 @@ export class AnalyticsService {
   // ========== TICKETS ==========
   private ticketKpisMonthly = signal<TicketKpis | null>(null);
   private ticketCurrentStatus = signal<TicketCurrentStatus | null>(null);
-  
+
   // Historical trend: last 6 months of tickets data
-  private ticketHistoricalTrend = signal<Array<{ 
-    month: string; 
-    created: number; 
+  private ticketHistoricalTrend = signal<Array<{
+    month: string;
+    created: number;
     resolved: number;
     overdue: number;
   }>>([]);
-  
+
   // Loading state
   private loading = signal<boolean>(true);
   private error = signal<string | null>(null);
@@ -124,7 +124,7 @@ export class AnalyticsService {
   // ========== COMPUTED: MÉTRICAS DE FACTURAS (Ingresos Reales) ==========
   getInvoiceMetrics = computed((): DashboardMetric[] => {
     const kpis = this.invoiceKpisMonthly();
-    
+
     const metrics: DashboardMetric[] = [
       {
         id: 'invoices-month',
@@ -174,7 +174,7 @@ export class AnalyticsService {
         changeType: kpis && (kpis.overdue_count || 0) > 0 ? 'decrease' : 'neutral',
         icon: '⏳',
         color: '#eab308',
-        description: kpis && (kpis.overdue_count || 0) > 0 
+        description: kpis && (kpis.overdue_count || 0) > 0
           ? `${kpis.overdue_count} facturas vencidas`
           : 'Facturas por cobrar'
       }
@@ -191,18 +191,18 @@ export class AnalyticsService {
     const recurring = this.recurringMonthly();
     const pipeline = this.currentPipeline();
     const includeTax = this.pricesIncludeTax();
-    
+
     // Usar el pipeline actual (incluye TODOS los presupuestos pendientes, sin importar cuándo se crearon)
     // y sumarle los recurrentes programados
     const pipelineCount = pipeline?.count || 0;
     const pipelineValue = pipeline?.total || 0;
     const recurringCount = recurring?.count || 0;
     const recurringValue = recurring?.total || 0;
-    
+
     const totalQuotesCount = pipelineCount + recurringCount;
     const totalPipelineValue = pipelineValue + recurringValue;
     const hasRecurring = recurringCount > 0;
-    
+
     const metrics: DashboardMetric[] = [
       {
         id: 'quotes-month',
@@ -212,7 +212,7 @@ export class AnalyticsService {
         changeType: 'neutral',
         icon: '📄',
         color: '#3b82f6',
-        description: hasRecurring 
+        description: hasRecurring
           ? `${pipelineCount} pendientes + ${recurringCount} recurrentes`
           : `${pipelineCount} presupuestos pendientes`
       },
@@ -236,15 +236,15 @@ export class AnalyticsService {
         changeType: recurring && recurring.count > 0 ? 'increase' : 'neutral',
         icon: '🔄',
         color: '#f59e0b',
-        description: recurring && recurring.count > 0 
-          ? `${recurring.count} recurrentes a facturar este mes` 
+        description: recurring && recurring.count > 0
+          ? `${recurring.count} recurrentes a facturar este mes`
           : 'Sin recurrentes programados'
       },
       {
         id: 'conversion-rate',
         title: 'Tasa Conversión',
-        value: kpis && kpis.conversion_rate != null 
-          ? this.formatPercent(kpis.conversion_rate) 
+        value: kpis && kpis.conversion_rate != null
+          ? this.formatPercent(kpis.conversion_rate)
           : '0%',
         change: 0,
         changeType: 'neutral',
@@ -276,12 +276,12 @@ export class AnalyticsService {
   getTicketMetrics = computed((): DashboardMetric[] => {
     const kpis = this.ticketKpisMonthly();
     const status = this.ticketCurrentStatus();
-    
+
     // Calcular tickets abiertos actuales (no completados)
-    const openNow = status 
-      ? (status.total_open + status.total_in_progress) 
+    const openNow = status
+      ? (status.total_open + status.total_in_progress)
       : 0;
-    
+
     const metrics: DashboardMetric[] = [
       {
         id: 'tickets-open',
@@ -291,7 +291,7 @@ export class AnalyticsService {
         changeType: status && status.critical_open > 0 ? 'decrease' : 'neutral',
         icon: '🎫',
         color: '#0ea5e9',
-        description: status && status.critical_open > 0 
+        description: status && status.critical_open > 0
           ? `${status.critical_open} críticos pendientes`
           : 'Tickets activos actualmente'
       },
@@ -308,8 +308,8 @@ export class AnalyticsService {
       {
         id: 'tickets-avg-resolution',
         title: 'Tiempo Medio',
-        value: kpis && kpis.avg_resolution_days != null 
-          ? this.formatDays(kpis.avg_resolution_days) 
+        value: kpis && kpis.avg_resolution_days != null
+          ? this.formatDays(kpis.avg_resolution_days)
           : '—',
         change: 0,
         changeType: 'neutral',
@@ -325,7 +325,7 @@ export class AnalyticsService {
         changeType: status && status.total_overdue > 0 ? 'decrease' : 'neutral',
         icon: '⚠️',
         color: status && status.total_overdue > 0 ? '#ef4444' : '#64748b',
-        description: status && status.total_overdue > 0 
+        description: status && status.total_overdue > 0
           ? 'Requieren atención urgente'
           : 'Sin tickets vencidos'
       },
@@ -346,23 +346,23 @@ export class AnalyticsService {
 
   // Histórico de presupuestos
   getQuoteHistoricalTrend = computed(() => this.quoteHistoricalTrend());
-  
+
   // Histórico de facturas
   getInvoiceHistoricalTrend = computed(() => this.invoiceHistoricalTrend());
-  
+
   // Histórico de tickets
   getTicketHistoricalTrend = computed(() => this.ticketHistoricalTrend());
   getTicketCurrentStatus = computed(() => this.ticketCurrentStatus());
-  
+
   // Recurrentes mensuales
   getRecurringMonthly = computed(() => this.recurringMonthly());
-  
+
   // Pipeline actual (todos los presupuestos pendientes)
   getCurrentPipeline = computed(() => this.currentPipeline());
-  
+
   // Legacy (deprecated)
   getHistoricalTrend = computed(() => this.quoteHistoricalTrend());
-  
+
   isLoading = computed(() => this.loading());
   getError = computed(() => this.error());
 
@@ -450,7 +450,7 @@ export class AnalyticsService {
           count: Number(r.quotes_count || 0)
         }))
         .sort((a, b) => a.month.localeCompare(b.month));
-      
+
       this.quoteHistoricalTrend.set(trend);
     } catch (e) {
       console.error('[AnalyticsService] Error loading quote KPIs and trend:', e);
@@ -500,7 +500,7 @@ export class AnalyticsService {
     try {
       // Llamar sin filtro de fechas para obtener TODOS los borradores pendientes
       const { data, error } = await this.supabase.instance.rpc('f_quote_projected_revenue', {});
-      
+
       if (error) {
         console.warn('[AnalyticsService] f_quote_projected_revenue (all drafts) error:', error.message);
         this.allDraftQuotes.set(null);
@@ -512,7 +512,7 @@ export class AnalyticsService {
       // Sumar todos los borradores de todos los meses
       const total = rows.reduce((acc, r) => acc + Number((includeTax ? r.subtotal : r.grand_total) ?? 0), 0);
       const count = rows.reduce((acc, r) => acc + Number(r.draft_count ?? 0), 0);
-      
+
       this.allDraftQuotes.set({ total, count });
     } catch (e) {
       console.warn('[AnalyticsService] Error loading all draft quotes:', e);
@@ -530,7 +530,7 @@ export class AnalyticsService {
 
     try {
       const { data, error } = await this.supabase.instance.rpc('f_quote_recurring_monthly', { p_start, p_end });
-      
+
       if (error) {
         console.warn('[AnalyticsService] f_quote_recurring_monthly error:', error.message);
         this.recurringMonthly.set(null);
@@ -541,10 +541,10 @@ export class AnalyticsService {
       const includeTax = this.pricesIncludeTax();
       const monthStr = p_start.slice(0, 7);
       const monthRows = rows.filter(r => String(r.period_month || '').startsWith(monthStr));
-      
+
       const total = monthRows.reduce((acc, r) => acc + Number((includeTax ? r.subtotal : r.grand_total) ?? 0), 0);
       const count = monthRows.reduce((acc, r) => acc + Number(r.recurring_count ?? 0), 0);
-      
+
       this.recurringMonthly.set({ total, count });
     } catch (e) {
       console.warn('[AnalyticsService] Error loading recurring monthly:', e);
@@ -556,7 +556,7 @@ export class AnalyticsService {
   private async loadCurrentPipeline(): Promise<void> {
     try {
       const { data, error } = await this.supabase.instance.rpc('f_quote_pipeline_current', {});
-      
+
       if (error) {
         console.warn('[AnalyticsService] f_quote_pipeline_current error:', error.message);
         this.currentPipeline.set(null);
@@ -568,7 +568,7 @@ export class AnalyticsService {
         const includeTax = this.pricesIncludeTax();
         const total = Number((includeTax ? row.subtotal_sum : row.total_sum) ?? 0);
         const count = Number(row.quotes_count ?? 0);
-        
+
         this.currentPipeline.set({ total, count });
       } else {
         this.currentPipeline.set({ total: 0, count: 0 });
@@ -637,7 +637,7 @@ export class AnalyticsService {
           collected: Number(r.collected_sum || 0)
         }))
         .sort((a, b) => a.month.localeCompare(b.month));
-      
+
       this.invoiceHistoricalTrend.set(trend);
     } catch (e) {
       console.warn('[AnalyticsService] Error loading invoice KPIs and trend:', e);
@@ -713,7 +713,7 @@ export class AnalyticsService {
           overdue: Number(r.overdue_count || 0)
         }))
         .sort((a, b) => a.month.localeCompare(b.month));
-      
+
       this.ticketHistoricalTrend.set(trend);
     } catch (e) {
       console.warn('[AnalyticsService] Error loading ticket KPIs and trend:', e);
@@ -743,7 +743,7 @@ export class AnalyticsService {
       }
 
       const row = (data as any[] | null)?.[0] || null;
-      
+
       if (row) {
         this.ticketCurrentStatus.set({
           total_open: Number(row.total_open || 0),
