@@ -13,9 +13,10 @@ import { MailStoreService } from '../services/mail-store.service';
   styleUrl: './webmail-layout.component.scss'
 })
 export class WebmailLayoutComponent implements OnInit {
-  private store = inject(MailStoreService);
+  store = inject(MailStoreService); // Public for HTML access
 
   showSettings = signal(false);
+  showAccountSelector = signal(false);
 
   ngOnInit() {
     this.store.loadAccounts();
@@ -23,5 +24,15 @@ export class WebmailLayoutComponent implements OnInit {
 
   toggleSettings() {
     this.showSettings.update(v => !v);
+    this.showAccountSelector.set(false);
+  }
+
+  toggleAccountSelector() {
+    this.showAccountSelector.update(v => !v);
+  }
+
+  selectAccount(account: any) {
+    this.store.selectAccount(account);
+    this.showAccountSelector.set(false);
   }
 }

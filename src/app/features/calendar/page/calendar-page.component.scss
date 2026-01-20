@@ -1,0 +1,91 @@
+/* Calendar specific styles */
+:host ::ng-deep .fc {
+    --fc-border-color: #e5e7eb;
+    --fc-button-text-color: #374151;
+    --fc-button-bg-color: #ffffff;
+    --fc-button-border-color: #d1d5db;
+    --fc-button-hover-bg-color: #f3f4f6;
+    --fc-button-hover-border-color: #d1d5db;
+    --fc-button-active-bg-color: #e5e7eb;
+    --fc-button-active-border-color: #d1d5db;
+    --fc-event-bg-color: #818cf8;
+    --fc-event-border-color: #818cf8;
+    --fc-today-bg-color: #f3f4f6;
+    --fc-now-indicator-color: #ef4444;
+}
+
+:host ::ng-deep .fc .fc-toolbar-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+:host ::ng-deep .fc .fc-button-primary {
+    background-color: white;
+    color: #4b5563;
+    border-color: #e5e7eb;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    font-weight: 500;
+    text-transform: capitalize;
+    padding: 0.5rem 1rem;
+}
+
+:host ::ng-deep .fc .fc-button-primary:hover {
+    background-color: #f9fafb;
+    border-color: #d1d5db;
+    color: #111827;
+}
+
+:host ::ng-deep .fc .fc-button-primary:not(:disabled).fc-button-active,
+:host ::ng-deep .fc .fc-button-primary:not(:disabled):active {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+    color: #111827;
+}
+
+:host ::ng-deep .dark .fc {
+    --fc-border-color: #374151;
+    --fc-button-text-color: #e5e7eb;
+    --fc-button-bg-color: #1f2937;
+    --fc-button-border-color: #374151;
+    --fc-button-hover-bg-color: #111827;
+    --fc-button-hover-border-color: #4b5563;
+    --fc-button-active-bg-color: #374151;
+    --fc-button-active-border-color: #4b5563;
+    --fc-today-bg-color: #374151;
+    --fc-now-indicator-color: #f87171;
+}
+
+:host ::ng-deep .dark .fc .fc-toolbar-title {
+    color: #f9fafb;
+}
+
+:host ::ng-deep .dark .fc .fc-button-primary {
+    background-color: #1f2937;
+    color: #d1d5db;
+    border-color: #374151;
+}
+
+:host ::ng-deep .dark .fc .fc-button-primary:hover {
+    background-color: #111827;
+    color: #f3f4f6;
+}
+
+:host ::ng-deep .dark .fc .fc-button-primary:not(:disabled).fc-button-active {
+    background-color: #374151;
+    color: #ffffff;
+}
+
+/* Event styling */
+:host ::ng-deep .fc-event {
+    border: none;
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+:host ::ng-deep .fc-daygrid-event-dot {
+    border-color: currentColor;
+}

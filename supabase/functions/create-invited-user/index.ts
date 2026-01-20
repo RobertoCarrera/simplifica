@@ -50,7 +50,7 @@ serve(async (req: Request) => {
         // We must ensure this token corresponds to this email and is valid (pending).
         const { data: invitation, error: inviteErr } = await supabaseAdmin
             .from("company_invitations")
-            .select("id, email, status, expires_at")
+            .select("id, email, status, expires_at, company_id, role")
             .eq("token", invitation_token)
             .eq("status", "pending")
             .eq("email", sanitizedEmail) // Critical security check: Token must belong to this email
@@ -112,6 +112,29 @@ serve(async (req: Request) => {
                 throw createErr;
             }
             userId = newUser.user.id;
+        }
+
+        // 4. Ensure public.users record exists
+        // accept_company_invitation RPC requires this record to exist.
+        // We do this as Service Role to bypass RLS.
+        const { error: publicUserErr } = await supabaseAdmin
+            .from('users')
+            .upsert({
+                auth_user_id: userId,
+                email: sanitizedEmail,
+                company_id: invitation.company_id,
+                // role: invitation.role || 'member',  <-- REMOVED: Column does not exist
+                active: true,
+                updated_at: new Date().toISOString()
+                // Name/Surname will be updated by client side later, or we could pass them here if available in body?
+                // Client side passes password only in body usually.
+            }, { onConflict: 'auth_user_id' }); // Upsert just in case
+
+        if (publicUserErr) {
+            console.error("Failed to upsert public user:", publicUserErr);
+            // Don't throw? Or throw? If this fails, acceptInvitation will fail.
+            // Better to throw.
+            throw new Error("Error creating user profile: " + publicUserErr.message);
         }
 
         // 4. Return Success

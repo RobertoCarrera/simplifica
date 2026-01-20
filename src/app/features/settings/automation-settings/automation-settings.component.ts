@@ -44,7 +44,14 @@ export class AutomationSettingsComponent implements OnInit {
       ticket_client_can_close: [true],
       ticket_client_can_create_devices: [true],
       ticket_default_internal_comment: [false],
-      ticket_auto_assign_on_reply: [false]
+      ticket_auto_assign_on_reply: [false],
+      // REMINDERS & AUTOMATIONS (Dynamic)
+      automation_reminder_24h_enabled: [true],
+      automation_reminder_24h_offset: [24],
+      automation_reminder_1h_enabled: [true],
+      automation_reminder_1h_offset: [1],
+      automation_review_request_enabled: [true],
+      automation_review_request_offset: [2]
     });
   }
 
@@ -55,11 +62,9 @@ export class AutomationSettingsComponent implements OnInit {
 
   async loadCatalog() {
     try {
-      // FIX: 'modules' table does not exist. Use 'modules_catalog'.
       const { data } = await this.simpleSupabase.getClient()
         .from('modules_catalog')
         .select('key, name:label')
-        //.eq('is_active', true)
         .order('key');
 
       this.agentModules = [
@@ -69,22 +74,18 @@ export class AutomationSettingsComponent implements OnInit {
 
       if (data) {
         data.forEach((m: any) => {
-          // Ignore if it's already in static list (unlikely based on naming)
-          // Remove 'calendar' if present as requested (but it's not in DB list provided)
           if (m.key) {
             this.agentModules.push({ key: m.key, label: m.name });
           }
         });
       }
 
-      // Add controls to form
       this.agentModules.forEach(m => {
         this.settingsForm.addControl(`perm_${m.key}`, new FormControl(true));
       });
 
     } catch (e) {
       console.error('Error loading module catalog', e);
-      // Fallback controls?
     }
   }
 
@@ -100,7 +101,6 @@ export class AutomationSettingsComponent implements OnInit {
           ticket_stage_on_delete: settings.ticket_stage_on_delete ?? null,
           ticket_stage_on_staff_reply: settings.ticket_stage_on_staff_reply ?? null,
           ticket_stage_on_client_reply: settings.ticket_stage_on_client_reply ?? null,
-          // Advanced Configs
           ticket_client_view_estimated_hours: settings.ticket_client_view_estimated_hours ?? true,
           ticket_client_can_close: settings.ticket_client_can_close ?? true,
           ticket_client_can_create_devices: settings.ticket_client_can_create_devices ?? true,
@@ -108,27 +108,30 @@ export class AutomationSettingsComponent implements OnInit {
           ticket_auto_assign_on_reply: settings.ticket_auto_assign_on_reply ?? false
         });
 
-        // Load Agent Permissions
+        // Load Automation Rules (Safely fallback)
+        const auto = settings.automation || {};
+        this.settingsForm.patchValue({
+          // Reminder 24h
+          automation_reminder_24h_enabled: auto.reminder_24h?.enabled ?? true,
+          automation_reminder_24h_offset: auto.reminder_24h?.offset_hours ?? 24,
+          // Reminder 1h
+          automation_reminder_1h_enabled: auto.reminder_1h?.enabled ?? true,
+          automation_reminder_1h_offset: auto.reminder_1h?.offset_hours ?? 1,
+          // Review Request
+          automation_review_request_enabled: auto.review_request?.enabled ?? true,
+          automation_review_request_offset: auto.review_request?.offset_hours ?? 2
+        });
+
         const perms = settings.agent_module_access || [];
-        // If empty/null and not previously saved? Rely on migrated defaults or settings service defaults.
-        // Assuming migrated default 'tickets' etc.
-        // If settings.agent_module_access is array, patch values.
         const permPatch: Record<string, boolean> = {};
         this.agentModules.forEach(m => {
-          // If array is populated, use it. If array is empty (which shouldn't happen if default set), assume logic?
-          // Actually, if migration ran, it has defaults.
-          // If perms is empty array, it means NO permissions? Or legacy?
-          // Safest: if perms.length > 0 check inclusion. If 0 check if it's explicitly empty?
-          // Let's assume perms array is authoritative.
           permPatch[`perm_${m.key}`] = perms.includes(m.key);
-          // Special case: if perms is totally null/undefined (legacy row), default all true?
           if (!settings.agent_module_access) {
-            permPatch[`perm_${m.key}`] = true; // Enable all by default for existing companies before migration
+            permPatch[`perm_${m.key}`] = true;
           }
         });
         this.settingsForm.patchValue(permPatch);
 
-        // Load stages
         const cid = this.authService.companyId();
         if (cid) {
           const stages = await this.ticketsService.getTicketStages(cid);
@@ -150,7 +153,6 @@ export class AutomationSettingsComponent implements OnInit {
     try {
       const formValue = this.settingsForm.value;
 
-      // Reconstruct agent_module_access array
       const agent_module_access: string[] = [];
       this.agentModules.forEach(m => {
         if (formValue[`perm_${m.key}`]) {
@@ -159,12 +161,36 @@ export class AutomationSettingsComponent implements OnInit {
       });
 
       const { ...cleanForm } = formValue;
-      // Remove perm keys
       this.agentModules.forEach(m => delete cleanForm[`perm_${m.key}`]);
+
+      // Extract Automation Settings
+      const automation = {
+        reminder_24h: {
+          enabled: cleanForm.automation_reminder_24h_enabled,
+          offset_hours: cleanForm.automation_reminder_24h_offset
+        },
+        reminder_1h: {
+          enabled: cleanForm.automation_reminder_1h_enabled,
+          offset_hours: cleanForm.automation_reminder_1h_offset
+        },
+        review_request: {
+          enabled: cleanForm.automation_review_request_enabled,
+          offset_hours: cleanForm.automation_review_request_offset
+        }
+      };
+
+      // Remove flat keys from payload to avoid cluttering root settings (optional, but cleaner)
+      delete cleanForm.automation_reminder_24h_enabled;
+      delete cleanForm.automation_reminder_24h_offset;
+      delete cleanForm.automation_reminder_1h_enabled;
+      delete cleanForm.automation_reminder_1h_offset;
+      delete cleanForm.automation_review_request_enabled;
+      delete cleanForm.automation_review_request_offset;
 
       const payload = {
         ...cleanForm,
-        agent_module_access
+        agent_module_access,
+        automation // Nested JSONB
       };
 
       await firstValueFrom(this.settingsService.updateCompanySettings(payload));
@@ -177,3 +203,4 @@ export class AutomationSettingsComponent implements OnInit {
     }
   }
 }
+
