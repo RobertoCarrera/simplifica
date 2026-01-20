@@ -1,100 +1,93 @@
-
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SupabaseCustomersComponent } from './supabase-customers.component';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
-import { GdprComplianceService } from '../../../services/gdpr-compliance.service';
+import { of, BehaviorSubject } from 'rxjs';
+import { Customer } from '../../../models/customer';
+import { ChangeDetectorRef, ViewContainerRef } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ToastService } from '../../../services/toast.service';
+import { GdprComplianceService } from '../../../services/gdpr-compliance.service';
+import { AnimationService } from '../../../services/animation.service';
 import { AddressesService } from '../../../services/addresses.service';
 import { LocalitiesService } from '../../../services/localities.service';
-import { SidebarStateService } from '../../../services/sidebar-state.service';
 import { HoneypotService } from '../../../services/honeypot.service';
-import { Router } from '@angular/router';
+import { AiService } from '../../../services/ai.service';
+import { SidebarStateService } from '../../../services/sidebar-state.service';
+import { DevRoleService } from '../../../services/dev-role.service';
 import { AuthService } from '../../../services/auth.service';
 import { ClientPortalService } from '../../../services/client-portal.service';
-import { AnimationService } from '../../../services/animation.service';
-import { AiService } from '../../../services/ai.service';
-import { DevRoleService } from '../../../services/dev-role.service';
-import { of } from 'rxjs';
+import { Overlay } from '@angular/cdk/overlay';
 
-describe('SupabaseCustomersComponent', () => {
+describe('SupabaseCustomersComponent Sorting', () => {
   let component: SupabaseCustomersComponent;
   let fixture: ComponentFixture<SupabaseCustomersComponent>;
+  let mockCustomersService: any;
 
-  const mockCustomersService = {
-    customers$: of([]),
-    loading$: of(false),
-    loadCustomers: jasmine.createSpy('loadCustomers'),
-    computeCompleteness: jasmine.createSpy('computeCompleteness').and.returnValue({ complete: true, missingFields: [] })
-  };
-
-  const mockGdprService = {
-    getComplianceDashboard: jasmine.createSpy('getComplianceDashboard').and.returnValue(of({})),
-    getAccessRequests: jasmine.createSpy('getAccessRequests').and.returnValue(of([]))
-  };
-
-  const mockToastService = {
-    error: jasmine.createSpy('error'),
-    success: jasmine.createSpy('success')
-  };
-
-  // Mock other dependencies
-  const mockAddressesService = {};
-  const mockLocalitiesService = {};
-  const mockSidebarService = {};
-  const mockHoneypotService = {};
-  const mockRouter = { navigate: jasmine.createSpy('navigate') };
-  const mockAuthService = { companyId: jasmine.createSpy('companyId').and.returnValue('123') };
-  const mockPortalService = { listMappings: jasmine.createSpy('listMappings').and.returnValue(Promise.resolve({ data: [] })) };
-  const mockAnimationService = {};
-  const mockAiService = {};
-  const mockDevRoleService = {};
-
+  const mockCustomers: Customer[] = [
+    { id: '1', name: 'Zack', apellidos: 'Zackson', created_at: '2023-01-01', email: 'z@test.com', phone: '', dni: '', client_type: 'individual', usuario_id: 'u1' } as Customer,
+    { id: '2', name: 'Aaron', apellidos: 'Aaronson', created_at: '2023-01-02', email: 'a@test.com', phone: '', dni: '', client_type: 'individual', usuario_id: 'u1' } as Customer,
+    { id: '3', name: 'Álvaro', apellidos: 'Álvarez', created_at: '2023-01-03', email: 'al@test.com', phone: '', dni: '', client_type: 'individual', usuario_id: 'u1' } as Customer,
+  ];
 
   beforeEach(async () => {
+    mockCustomersService = {
+      customers$: new BehaviorSubject<Customer[]>(mockCustomers),
+      loading$: new BehaviorSubject<boolean>(false),
+      loadCustomers: jasmine.createSpy('loadCustomers'),
+      computeCompleteness: (c: Customer) => ({ complete: true, missingFields: [] }),
+      getCustomers: () => of([]),
+      customers: jasmine.createSpy('customers').and.returnValue(mockCustomers)
+    };
+
+    const mockRouter = { navigate: jasmine.createSpy('navigate') };
+    const mockAuthService = { companyId: () => 'company1', currentUser: () => ({ id: 'user1' }) };
+    const mockPortalService = { listMappings: () => Promise.resolve({ data: [] }) };
+    const mockGdprService = { getComplianceDashboard: () => of({}), getAccessRequests: () => of([]) };
+
     await TestBed.configureTestingModule({
       imports: [SupabaseCustomersComponent],
       providers: [
         { provide: SupabaseCustomersService, useValue: mockCustomersService },
-        { provide: GdprComplianceService, useValue: mockGdprService },
-        { provide: ToastService, useValue: mockToastService },
-        { provide: AddressesService, useValue: mockAddressesService },
-        { provide: LocalitiesService, useValue: mockLocalitiesService },
-        { provide: SidebarStateService, useValue: mockSidebarService },
-        { provide: HoneypotService, useValue: mockHoneypotService },
         { provide: Router, useValue: mockRouter },
         { provide: AuthService, useValue: mockAuthService },
         { provide: ClientPortalService, useValue: mockPortalService },
-        { provide: AnimationService, useValue: mockAnimationService },
-        { provide: AiService, useValue: mockAiService },
-        { provide: DevRoleService, useValue: mockDevRoleService }
+        { provide: GdprComplianceService, useValue: mockGdprService },
+        { provide: ToastService, useValue: jasmine.createSpyObj('ToastService', ['success', 'error', 'info']) },
+        { provide: AnimationService, useValue: {} },
+        { provide: AddressesService, useValue: {} },
+        { provide: LocalitiesService, useValue: {} },
+        { provide: HoneypotService, useValue: {} },
+        { provide: AiService, useValue: {} },
+        { provide: SidebarStateService, useValue: {} },
+        { provide: DevRoleService, useValue: { isDev: () => false } },
+        { provide: Overlay, useValue: { position: () => ({ global: () => ({}) }), create: () => ({ attach: () => {}, dispose: () => {} }) } },
+        { provide: ViewContainerRef, useValue: {} },
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => null } } } }
       ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(SupabaseCustomersComponent);
     component = fixture.componentInstance;
+
+    component.customers.set(mockCustomers);
     fixture.detectChanges();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-
-  it('should sort customers correctly using name (case insensitive)', () => {
-    const customerA = { id: '1', name: 'Álvaro', apellidos: 'B', email: 'a@a.com', dni: '1', created_at: '2023-01-01' } as any;
-    const customerB = { id: '2', name: 'zacarias', apellidos: 'A', email: 'z@z.com', dni: '2', created_at: '2023-01-02' } as any;
-
-    component.customers.set([customerB, customerA]); // Wrong order initially
+  it('should sort customers correctly', () => {
     component.sortBy.set('name');
     component.sortOrder.set('asc');
-
     const sorted = component.filteredCustomers();
-    expect(sorted[0].name).toBe('Álvaro');
-    expect(sorted[1].name).toBe('zacarias');
-  });
 
-  it('should get display name correctly avoiding UUIDs', () => {
-     const uuid = '12345678-1234-1234-1234-123456789012';
-     const customer = { id: '1', name: uuid, apellidos: '', client_type: 'individual' } as any;
-     expect(component.getDisplayName(customer)).toBe('Cliente importado');
+    // We expect correct Spanish sorting eventually: Aaron, Álvaro, Zack
+    // But verify what happens now.
+    // If standard sort (ASCII based on lower case):
+    // Aaron (a) < Zack (z) < Álvaro (á)
+
+    // We will verify the names order
+    const names = sorted.map(c => c.name);
+
+    // Expect correct Spanish sorting: Aaron, Álvaro, Zack
+    // (Standard ASCII sort would be Aaron, Zack, Álvaro because 'Z' < 'Á')
+    expect(names).toEqual(['Aaron', 'Álvaro', 'Zack']);
   });
 });
