@@ -21,7 +21,6 @@ import { ToastService } from '../../../services/toast.service';
 import { TenantService } from '../../../services/tenant.service';
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
-import DOMPurify from 'dompurify';
 
 // TipTap imports
 import { Editor } from '@tiptap/core';
