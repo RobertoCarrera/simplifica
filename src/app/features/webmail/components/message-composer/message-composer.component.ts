@@ -1,296 +1,37 @@
-import { Component, inject, OnInit, OnDestroy, Output, EventEmitter, ViewChild } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MailOperationService } from '../../services/mail-operation.service';
 import { MailStoreService } from '../../services/mail-store.service';
-import { MailContactService } from '../../services/mail-contact.service';
-import { TiptapEditorComponent } from '../../../../shared/ui/tiptap-editor/tiptap-editor.component';
-import { ChipAutocompleteComponent, ChipItem } from '../../../../shared/ui/chip-autocomplete/chip-autocomplete.component';
-import { Subject, debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs';
-
-interface AttachmentItem {
-  file: File;
-  base64: string;
-  storagePath?: string;
-  url?: string;
-  uploading?: boolean;
-}
 
 @Component({
   selector: 'app-message-composer',
   standalone: true,
-  imports: [CommonModule, FormsModule, TiptapEditorComponent, ChipAutocompleteComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './message-composer.component.html',
   styleUrl: './message-composer.component.scss'
 })
-export class MessageComposerComponent implements OnInit, OnDestroy {
-  @ViewChild(TiptapEditorComponent) editorComponent!: TiptapEditorComponent;
-
-  @Output() minimize = new EventEmitter<void>();
-  @Output() maximize = new EventEmitter<void>();
-  @Output() close = new EventEmitter<void>();
-
-  toRecipients: ChipItem[] = [];
+export class MessageComposerComponent implements OnInit {
+  to = '';
   subject = '';
   body = '';
-  draftId: string | null = null;
-  savingDraft = false;
-  autoSaveTimer: any;
-
-  // UI State
-  isDragOver = false;
-  showCc = false;
-  showBcc = false;
-  showScheduleMenu = false;
-  showCustomScheduleDate = false;
-
-  customDateStr = '';
-  customTimeStr = '09:00';
-  minDateStr = new Date().toISOString().split('T')[0];
-
-  // Features
-  isConfidential = false;
-  showEmojiPicker = false;
-  commonEmojis = ['👍', '😊', '🎉', '❌', '✅', '❤️', '🔥', '🤔', '👀', '📧'];
-
-  // Search State
-  searchResults: ChipItem[] = [];
-  searchLoading = false;
-  private searchSubject = new Subject<string>();
-  private destroy$ = new Subject<void>();
 
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private operations = inject(MailOperationService);
   private store = inject(MailStoreService);
-  private contactsService = inject(MailContactService);
 
-  async ngOnInit() {
-    this.route.queryParams.subscribe(async params => {
-      if (params['to']) {
-        this.addToRecipient(params['to']);
-      }
+  ngOnInit() {
+    this.route.queryParams.subscribe(params => {
+      if (params['to']) this.to = params['to'];
       if (params['subject']) this.subject = params['subject'];
-
-      if (params['draftId']) {
-        this.draftId = params['draftId'];
-        await this.loadDraft(this.draftId!);
-      }
+      // if (params['replyTo']) ... handle threading context if needed
     });
-
-    this.setupSearch();
-    this.setupAutoSave();
-  }
-
-  setupAutoSave() {
-    if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
-    this.autoSaveTimer = setInterval(() => {
-      // Autosave only if dirty, not sending, and not currently saving
-      if (this.isDirty() && !this.isSending && !this.savingDraft) {
-        // console.log('Autosave triggered');
-        this.saveDraft(true);
-      }
-    }, 10000); // 10 seconds
-  }
-
-  ngOnDestroy() {
-    if (this.autoSaveTimer) clearInterval(this.autoSaveTimer);
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  setupSearch() {
-    this.searchSubject.pipe(
-      debounceTime(300),
-      distinctUntilChanged(),
-      switchMap(term => {
-        this.searchLoading = true;
-        return this.contactsService.searchContacts(term);
-      }),
-      takeUntil(this.destroy$)
-    ).subscribe(results => {
-      this.searchResults = results;
-      this.searchLoading = false;
-    });
-  }
-
-  onSearch(term: string) {
-    this.searchSubject.next(term);
-  }
-
-  addToRecipient(email: string) {
-    // Simple parse if comma separated
-    const emails = email.split(',').map(e => e.trim()).filter(e => e);
-    emails.forEach(e => {
-      if (!this.toRecipients.some(r => r.value === e)) {
-        this.toRecipients.push({ label: e, value: e, type: 'contact' });
-      }
-    });
-  }
-
-  isDirty(): boolean {
-    return !!(this.toRecipients.length > 0 || this.subject || this.body);
-  }
-
-  async loadDraft(id: string) {
-    const msg = await this.store.getMessage(id);
-    if (msg) {
-      // Populate fields
-      if (msg.to && Array.isArray(msg.to)) {
-        this.toRecipients = msg.to.map((t: any) => ({
-          label: t.name || t.email,
-          value: t.email,
-          subLabel: t.email,
-          type: 'contact'
-        }));
-      }
-      this.subject = msg.subject || '';
-      this.body = msg.body_html || msg.body_text || '';
-    }
-  }
-
-  isDiscarding = false;
-
-  async saveDraft(silent = false) {
-    if (!this.store.currentAccount()) return;
-    if (this.isDiscarding) return;
-    if (!this.isDirty()) return;
-
-    this.savingDraft = true;
-    try {
-      const id = await this.operations.saveDraft({
-        id: this.draftId || undefined,
-        to: this.toRecipients.map(r => ({ email: r.value, name: r.label === r.value ? '' : r.label })),
-        subject: this.subject,
-        body_text: this.body,
-        body_html: this.body,
-        metadata: { confidential: this.isConfidential }
-      }, this.store.currentAccount()!.id);
-
-      if (this.isDiscarding) return;
-
-      this.draftId = id;
-      this.store.refreshCurrentFolder();
-      if (!silent) console.log('Draft saved');
-    } catch (error) {
-      if (!this.isDiscarding) {
-        console.error('Error saving draft:', error);
-      }
-    } finally {
-      this.savingDraft = false;
-    }
-  }
-
-  async discardDraft() {
-    this.isDiscarding = true; // Set flag immediately
-    if (this.autoSaveTimer) clearInterval(this.autoSaveTimer); // Stop timer
-
-    if (this.draftId) {
-      if (confirm('¿Estás seguro de que quieres descartar este borrador?')) {
-        try {
-          // Force hard delete for drafts
-          await this.operations.permanentDeleteMessages([this.draftId]);
-          this.close.emit();
-        } catch (error) {
-          console.error('Error deleting draft:', error);
-          alert('Error al descartar el borrador');
-          this.isDiscarding = false; // Revert if failed
-        }
-      } else {
-        this.isDiscarding = false; // Revert if cancelled
-        // Restart timer if needed?
-        this.setupAutoSave();
-      }
-    } else {
-      this.close.emit();
-    }
-  }
-
-  insertLink() {
-    this.editorComponent.addLink();
-  }
-
-  insertImage() {
-    this.editorComponent.addImage();
-  }
-
-  attachments: AttachmentItem[] = [];
-  isSending = false;
-
-  onDragOver(event: DragEvent) {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragOver = true;
-  }
-
-  onDragLeave(event: DragEvent) {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragOver = false;
-  }
-
-  onDrop(event: DragEvent) {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragOver = false;
-    const files = event.dataTransfer?.files;
-    if (files && files.length > 0) {
-      this.processFiles(files);
-    }
-  }
-
-  onFileSelected(event: any) {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      this.processFiles(files);
-    }
-  }
-
-  async processFiles(files: FileList) {
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.size > 25 * 1024 * 1024) { // 25MB limit
-        alert(`El archivo ${file.name} es demasiado grande. Máximo 25MB.`);
-        continue;
-      }
-
-      const attachment: AttachmentItem = {
-        file: file,
-        base64: '',
-        uploading: true
-      };
-      this.attachments.push(attachment);
-
-      // Read Base64 (for sending)
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        attachment.base64 = e.target.result.split(',')[1];
-      };
-      reader.readAsDataURL(file);
-
-      // Upload to Storage (for persistence)
-      try {
-        const { path, url } = await this.operations.uploadAttachment(file);
-        attachment.storagePath = path;
-        attachment.url = url;
-      } catch (error) {
-        console.error('Upload failed', error);
-        alert(`Error al subir ${file.name}`);
-        // Remove? Or keep as local only? 
-        // If upload fails, maybe we can't save it to sent items properly, but sending might still work via base64.
-      } finally {
-        attachment.uploading = false;
-      }
-    }
-  }
-
-  removeAttachment(index: number) {
-    this.attachments.splice(index, 1);
   }
 
   async send() {
-    if (this.toRecipients.length === 0 || !this.subject) return;
+    if (!this.to || !this.subject) return;
 
     const account = this.store.currentAccount();
     if (!account) {
@@ -298,80 +39,21 @@ export class MessageComposerComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Check if any uploads are pending
-    if (this.attachments.some(a => a.uploading)) {
-      alert('Por favor espera a que se suban los archivos adjuntos.');
-      return;
-    }
-
-    this.isSending = true;
-
     try {
-      const payload: any = {
-        to: this.toRecipients.map(r => ({ name: r.label === r.value ? '' : r.label, email: r.value })),
+      await this.operations.sendMessage({
+        to: [{ name: '', email: this.to }], // Parse proper name/email later if needed
         subject: this.subject,
-        body_text: this.body,
-        attachments: this.attachments.map(a => ({
-          filename: a.file.name,
-          content: a.base64,
-          contentType: a.file.type,
-          size: a.file.size,
-          storage_path: a.storagePath // Send the storage path for backend to link
-        })),
-        metadata: { confidential: this.isConfidential }
-      };
+        body_text: this.body
+      }, account);
 
-      await this.operations.sendMessage(payload, account, this.draftId || undefined);
-
-      this.close.emit(); // Emit close instead of navigating directly
+      this.router.navigate(['webmail/inbox']);
     } catch (e: any) {
       console.error(e);
       alert('Error al enviar: ' + (e.message || e));
-    } finally {
-      this.isSending = false;
     }
-  }
-
-  toggleScheduleMenu() {
-    this.showScheduleMenu = !this.showScheduleMenu;
-  }
-
-  toggleConfidential() {
-    this.isConfidential = !this.isConfidential;
-  }
-
-  toggleEmojiPicker() {
-    this.showEmojiPicker = !this.showEmojiPicker;
-  }
-
-  insertEmoji(emoji: string) {
-    const component = this.editorComponent;
-    if (component && component.editor) {
-      component.editor.commands.insertContent(emoji);
-    }
-    this.showEmojiPicker = false;
-  }
-
-  scheduleSend(option: string) {
-    this.showScheduleMenu = false;
-    // Mock implementation for now
-    if (option === 'custom') {
-      alert('Se abrirá el selector de fecha y hora. (Próximamente)');
-    } else {
-      alert(`Programado para: ${option} (Simulado)`);
-    }
-  }
-
-  confirmCustomSchedule() {
-    if (!this.customDateStr || !this.customTimeStr) return;
-    const date = new Date(this.customDateStr + 'T' + this.customTimeStr);
-    console.log('Scheduled for:', date);
-    this.scheduleSend('custom-confirmed');
-    this.showScheduleMenu = false;
-    this.showCustomScheduleDate = false;
   }
 
   cancel() {
-    this.close.emit();
+    this.router.navigate(['webmail/inbox']);
   }
 }

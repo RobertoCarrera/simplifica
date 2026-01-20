@@ -86,13 +86,13 @@ export class SupabaseModulesService {
   }
 
   // Admin list matrix of users, modules and assignments
-  adminListUserModules(companyId?: string): Observable<{ users: any[]; modules: any[]; assignments: any[] }> {
-    return from(this.executeAdminListUserModules(companyId));
+  adminListUserModules(ownerId?: string): Observable<{ users: any[]; modules: any[]; assignments: any[] }> {
+    return from(this.executeAdminListUserModules(ownerId));
   }
 
-  private async executeAdminListUserModules(companyId?: string): Promise<{ users: any[]; modules: any[]; assignments: any[] }> {
+  private async executeAdminListUserModules(ownerId?: string): Promise<{ users: any[]; modules: any[]; assignments: any[] }> {
     const { data, error } = await this.supabaseClient.instance.rpc('admin_list_user_modules', {
-      p_company_id: companyId || null
+      p_owner_id: ownerId || null
     });
 
     if (error) {
@@ -104,52 +104,18 @@ export class SupabaseModulesService {
     return data as { users: any[]; modules: any[]; assignments: any[] };
   }
 
-  // List all companies (platform-level admin use)
-  adminListCompanies(): Observable<{ companies: any[] }> {
-    return from(this.executeAdminListCompanies());
+  // List all owners (platform-level admin use)
+  adminListOwners(): Observable<{ owners: any[] }> {
+    return from(this.executeAdminListOwners());
   }
 
-  private async executeAdminListCompanies(): Promise<{ companies: any[] }> {
-    const { data, error } = await this.supabaseClient.instance.rpc('admin_list_companies');
+  private async executeAdminListOwners(): Promise<{ owners: any[] }> {
+    const { data, error } = await this.supabaseClient.instance.rpc('admin_list_owners');
     if (error) {
-      console.error('Error fetching companies via RPC:', error);
-      throw new Error(error.message || 'No se pudo obtener la lista de empresas via RPC');
+      console.error('Error fetching owners via RPC:', error);
+      throw new Error(error.message || 'No se pudo obtener la lista de owners via RPC');
     }
-    // RPC returns { companies: [...] }
-    return data as { companies: any[] };
-  }
-
-  // --- New Company Modules Logic ---
-
-  adminListCompanyModules(companyId: string): Observable<{ modules: any[] }> {
-    return from(this.executeAdminListCompanyModules(companyId));
-  }
-
-  private async executeAdminListCompanyModules(companyId: string): Promise<{ modules: any[] }> {
-    const { data, error } = await this.supabaseClient.instance.rpc('admin_list_company_modules', {
-      p_company_id: companyId
-    });
-    if (error) {
-      console.error('Error listing company modules via RPC:', error);
-      throw new Error(error.message || 'No se pudieron listar los módulos de la empresa');
-    }
-    return data as { modules: any[] };
-  }
-
-  adminToggleCompanyModule(companyId: string, moduleKey: string, status: 'active' | 'inactive'): Observable<{ success: boolean }> {
-    return from(this.executeAdminToggleCompanyModule(companyId, moduleKey, status));
-  }
-
-  private async executeAdminToggleCompanyModule(companyId: string, moduleKey: string, status: 'active' | 'inactive'): Promise<{ success: boolean }> {
-    const { data, error } = await this.supabaseClient.instance.rpc('admin_toggle_company_module', {
-      p_company_id: companyId,
-      p_module_key: moduleKey,
-      p_status: status
-    });
-    if (error) {
-      console.error('Error toggling company module via RPC:', error);
-      throw new Error(error.message || 'No se pudo actualizar el módulo de la empresa');
-    }
-    return { success: true };
+    // RPC returns { owners: [...] }
+    return data as { owners: any[] };
   }
 }

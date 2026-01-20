@@ -223,14 +223,7 @@ export class GlobalTagsService {
                     .select('id, label, color')
                     .order('label');
 
-                if (error || !data || data.length === 0) {
-                    // Fallback if table doesn't exist or is empty
-                    return [
-                        { id: 'clients', label: 'Clientes', color: '#10B981' },
-                        { id: 'tickets', label: 'Tickets', color: '#EF4444' },
-                        { id: 'services', label: 'Servicios', color: '#3B82F6' }
-                    ];
-                }
+                if (error) throw error;
                 return data;
             })()
         );

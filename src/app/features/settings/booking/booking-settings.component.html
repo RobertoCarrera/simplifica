@@ -20,13 +20,6 @@
 
                 <!-- Tabs -->
                 <nav class="flex space-x-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-xl overflow-x-auto">
-                    <button (click)="activeTab = 'calendar'"
-                        [class]="activeTab === 'calendar' 
-                                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' 
-                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'"
-                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <i class="fas fa-calendar-alt mr-2"></i> Calendario
-                    </button>
                     <button (click)="activeTab = 'services'"
                         [class]="activeTab === 'services' 
                                 ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' 
@@ -48,20 +41,6 @@
                         class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
                         <i class="fas fa-clock mr-2"></i> Horarios
                     </button>
-                    <button (click)="activeTab = 'preferences'"
-                        [class]="activeTab === 'preferences' 
-                                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' 
-                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'"
-                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <i class="fas fa-sliders-h mr-2"></i> Configuración
-                    </button>
-                    <button (click)="activeTab = 'resources'"
-                        [class]="activeTab === 'resources' 
-                                ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm' 
-                                : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50'"
-                        class="px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap">
-                        <i class="fas fa-cubes mr-2"></i> Recursos
-                    </button>
                 </nav>
             </div>
         </div>
@@ -69,19 +48,6 @@
 
     <!-- Content -->
     <div class="container mx-auto px-4 py-6">
-        <!-- Calendar Tab -->
-        <div *ngIf="activeTab === 'calendar'" class="animate-fadeIn h-[calc(100vh-200px)] flex flex-col">
-            <div class="flex justify-between items-center mb-4 px-1">
-                <a [routerLink]="['/configuracion']" [queryParams]="{tab: 'integrations'}"
-                    class="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
-                    <i class="fas fa-cog mr-1"></i> Configurar integración
-                </a>
-            </div>
-            <div class="flex-1 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                <app-calendar-page [isEmbedded]="true"></app-calendar-page>
-            </div>
-        </div>
-
         <!-- Services Tab: Read-only list of bookable services with link to /servicios -->
         <div *ngIf="activeTab === 'services'" class="animate-fadeIn space-y-6">
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -197,16 +163,6 @@
         <!-- Availability Tab -->
         <div *ngIf="activeTab === 'availability'" class="animate-fadeIn">
             <app-booking-availability></app-booking-availability>
-        </div>
-
-        <!-- Preferences Tab -->
-        <div *ngIf="activeTab === 'preferences'" class="animate-fadeIn">
-            <app-booking-preferences></app-booking-preferences>
-        </div>
-
-        <!-- Resources Tab -->
-        <div *ngIf="activeTab === 'resources'" class="animate-fadeIn">
-            <app-resources-settings></app-resources-settings>
         </div>
     </div>
 </div>

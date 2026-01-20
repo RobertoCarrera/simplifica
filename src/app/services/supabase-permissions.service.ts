@@ -2,23 +2,14 @@ import { Injectable, inject, signal } from '@angular/core';
 import { SupabaseClientService } from './supabase-client.service';
 import { AuthService } from './auth.service';
 
-export interface AppRole {
-    id: string;
-    name: string; // 'owner', 'admin', 'member', etc.
-    label: string;
-    description?: string;
-}
-
 export interface RolePermission {
     id: string;
     company_id: string;
-    role: string; // Deprecated: legacy text role
-    role_id?: string; // New: foreign key to app_roles
+    role: string;
     permission: string;
     granted: boolean;
     created_at: string;
     updated_at: string;
-    app_roles?: AppRole; // Joined data
 }
 
 export interface PermissionDefinition {
@@ -36,18 +27,12 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     { key: 'clients.edit', label: 'Editar clientes', description: 'Puede modificar datos de clientes', category: 'Clientes' },
     { key: 'clients.delete', label: 'Eliminar clientes', description: 'Puede eliminar clientes', category: 'Clientes' },
 
-    // CRM (Leads)
-    { key: 'leads.view', label: 'Ver leads', description: 'Puede ver el tablero de leads', category: 'CRM' },
-    { key: 'leads.create', label: 'Crear leads', description: 'Puede crear nuevos leads manualmente', category: 'CRM' },
-    { key: 'leads.edit', label: 'Editar leads', description: 'Puede editar información de leads', category: 'CRM' },
-    { key: 'leads.delete', label: 'Eliminar leads', description: 'Puede eliminar leads', category: 'CRM' },
-
     // Invoices
     { key: 'invoices.view', label: 'Ver facturas', description: 'Puede ver facturas', category: 'Facturación' },
     { key: 'invoices.create', label: 'Crear facturas', description: 'Puede crear facturas', category: 'Facturación' },
 
     // Bookings
-    { key: 'bookings.view', label: 'Ver calendario', description: 'Puede ver todas las reservas y el calendario', category: 'Reservas' },
+    { key: 'bookings.view', label: 'Ver reservas', description: 'Puede ver todas las reservas', category: 'Reservas' },
     { key: 'bookings.view_own', label: 'Ver propias', description: 'Solo ve sus propias reservas', category: 'Reservas' },
     { key: 'bookings.manage_own', label: 'Gestionar propias', description: 'Puede gestionar sus reservas', category: 'Reservas' },
     { key: 'bookings.manage_all', label: 'Gestionar todas', description: 'Puede gestionar cualquier reserva', category: 'Reservas' },
@@ -55,136 +40,59 @@ export const AVAILABLE_PERMISSIONS: PermissionDefinition[] = [
     // Tickets
     { key: 'tickets.view', label: 'Ver tickets', description: 'Puede ver tickets', category: 'Tickets' },
     { key: 'tickets.create', label: 'Crear tickets', description: 'Puede crear tickets', category: 'Tickets' },
-    { key: 'tickets.assignable', label: 'Asignable en tickets', description: 'Puede ser asignado a tickets', category: 'Tickets' },
-    { key: 'tickets.ai', label: 'Uso de IA (Tickets)', description: 'Puede usar IA para generar/resumir tickets', category: 'Inteligencia Artificial' },
-
-    // Products
-    { key: 'products.view', label: 'Ver productos', description: 'Puede ver el catálogo de productos', category: 'Productos' },
-    { key: 'products.create', label: 'Crear productos', description: 'Puede crear productos', category: 'Productos' },
-    { key: 'products.edit', label: 'Editar productos', description: 'Puede editar productos', category: 'Productos' },
-    { key: 'products.delete', label: 'Eliminar productos', description: 'Puede eliminar productos', category: 'Productos' },
-    { key: 'products.ai', label: 'Uso de IA (Productos)', description: 'Generar descripciones con IA', category: 'Inteligencia Artificial' },
-
-    // Quotes
-    { key: 'quotes.view', label: 'Ver presupuestos', description: 'Puede ver presupuestos', category: 'Presupuestos' },
-    { key: 'quotes.create', label: 'Crear presupuestos', description: 'Puede crear presupuestos', category: 'Presupuestos' },
-    { key: 'quotes.edit', label: 'Editar presupuestos', description: 'Puede editar presupuestos', category: 'Presupuestos' },
-    { key: 'quotes.approve', label: 'Aprobar/Rechazar', description: 'Puede cambiar estado manualmente', category: 'Presupuestos' },
-
-    // Chat
-    { key: 'chat.access', label: 'Acceso Chat', description: 'Puede usar el chat interno', category: 'Chat' },
-    { key: 'chat.ai', label: 'Asistente IA (Chat)', description: 'Puede consultar al asistente IA', category: 'Inteligencia Artificial' },
-
-    // Services
-    { key: 'services.view', label: 'Ver servicios', description: 'Puede ver catálogo de servicios', category: 'Servicios' },
-    { key: 'services.create', label: 'Crear servicios', description: 'Puede crear servicios', category: 'Servicios' },
-    { key: 'services.edit', label: 'Editar servicios', description: 'Puede editar servicios', category: 'Servicios' },
-
-    // Analytics
-    { key: 'analytics.view', label: 'Ver analíticas', description: 'Puede ver el dashboard', category: 'Analíticas' },
-    { key: 'analytics.export', label: 'Exportar datos', description: 'Puede exportar reportes', category: 'Analíticas' },
-    { key: 'analytics.ai', label: 'Insights IA (Analíticas)', description: 'Ver recomendaciones de IA', category: 'Inteligencia Artificial' },
-
-    // Marketing 
-    { key: 'marketing.view', label: 'Ver Marketing', description: 'Acceso a módulo de Marketing', category: 'Marketing' },
-    { key: 'marketing.manage', label: 'Gestionar Campañas', description: 'Crear y enviar campañas', category: 'Marketing' },
-
-    // HR (Empleadas)
-    { key: 'employees.view', label: 'Ver empleadas', description: 'Puede ver el listado de empleadas', category: 'Recursos Humanos' },
-    { key: 'employees.create', label: 'Crear empleadas', description: 'Puede dar de alta nuevas empleadas', category: 'Recursos Humanos' },
-    { key: 'employees.edit', label: 'Editar empleadas', description: 'Puede modificar datos de empleadas', category: 'Recursos Humanos' },
-    { key: 'employees.delete', label: 'Eliminar empleadas', description: 'Puede eliminar registros de empleadas', category: 'Recursos Humanos' },
-
-    // Notifications
-    { key: 'notifications.view', label: 'Ver notificaciones', description: 'Puede ver notificaciones globales de la empresa', category: 'Notificaciones' },
 
     // Settings
     { key: 'settings.manage', label: 'Gestión configuración', description: 'Acceso a ajustes avanzados del sistema', category: 'Sistema' },
     { key: 'settings.billing', label: 'Gestión facturación', description: 'Acceso a configuración de facturación', category: 'Facturación' },
 ];
 
+// All available roles
 export const AVAILABLE_ROLES = ['super_admin', 'owner', 'admin', 'member', 'professional', 'agent'] as const;
 export type Role = typeof AVAILABLE_ROLES[number];
 
-// Default permissions per role (fallback and initial values)
-export const DEFAULT_PERMISSIONS: Record<string, Record<string, boolean>> = {
+// Default permissions per role (used when no custom permissions exist)
+export const DEFAULT_PERMISSIONS: Record<Role, Record<string, boolean>> = {
     super_admin: {
         'clients.view': true, 'clients.view_own': true, 'clients.edit': true, 'clients.delete': true,
         'invoices.view': true, 'invoices.create': true,
         'bookings.view': true, 'bookings.view_own': true, 'bookings.manage_own': true, 'bookings.manage_all': true,
-        'tickets.view': true, 'tickets.create': true, 'tickets.assignable': true,
+        'tickets.view': true, 'tickets.create': true,
         'settings.manage': true, 'settings.billing': true,
-        'products.view': true, 'products.create': true, 'products.edit': true, 'products.delete': true, 'products.ai': true,
-        'quotes.view': true, 'quotes.create': true, 'quotes.edit': true, 'quotes.approve': true,
-        'chat.access': true, 'chat.ai': true,
-        'services.view': true, 'services.create': true, 'services.edit': true,
-        'analytics.view': true, 'analytics.export': true, 'analytics.ai': true,
-        'marketing.view': true, 'marketing.manage': true,
-        'notifications.view': true
     },
     owner: {
         'clients.view': true, 'clients.edit': true, 'clients.delete': true,
         'invoices.view': true, 'invoices.create': true,
         'bookings.view': true, 'bookings.manage_all': true,
-        'tickets.view': true, 'tickets.create': true, 'tickets.assignable': true, 'tickets.ai': true,
+        'tickets.view': true, 'tickets.create': true,
         'settings.manage': true, 'settings.billing': true,
-        'products.view': true, 'products.create': true, 'products.edit': true, 'products.delete': true, 'products.ai': true,
-        'quotes.view': true, 'quotes.create': true, 'quotes.edit': true, 'quotes.approve': true,
-        'chat.access': true, 'chat.ai': true,
-        'services.view': true, 'services.create': true, 'services.edit': true,
-        'analytics.view': true, 'analytics.export': true, 'analytics.ai': true,
-        'marketing.view': true, 'marketing.manage': true,
-        'leads.view': true, 'leads.create': true, 'leads.edit': true, 'leads.delete': true,
-        'employees.view': true, 'employees.create': true, 'employees.edit': true, 'employees.delete': true,
-        'notifications.view': true
     },
     admin: {
         'clients.view': true, 'clients.edit': true, 'clients.delete': false,
         'invoices.view': true, 'invoices.create': true,
         'bookings.view': true, 'bookings.manage_all': true,
-        'tickets.view': true, 'tickets.create': true, 'tickets.assignable': true, 'tickets.ai': true,
+        'tickets.view': true, 'tickets.create': true,
         'settings.manage': true, 'settings.billing': false,
-        'products.view': true, 'products.create': true, 'products.edit': true, 'products.delete': false, 'products.ai': true,
-        'quotes.view': true, 'quotes.create': true, 'quotes.edit': true, 'quotes.approve': false,
-        'chat.access': true, 'chat.ai': true,
-        'services.view': true, 'services.create': true, 'services.edit': true,
-        'analytics.view': true, 'analytics.export': false, 'analytics.ai': true,
-        'leads.view': true, 'leads.create': true, 'leads.edit': true, 'leads.delete': false,
-        'employees.view': true, 'employees.create': true, 'employees.edit': true, 'employees.delete': false,
-        'notifications.view': true
     },
     member: {
         'clients.view': true, 'clients.edit': false, 'clients.delete': false,
         'invoices.view': false, 'invoices.create': false,
         'bookings.view': true, 'bookings.view_own': true, 'bookings.manage_own': false,
-        'tickets.view': true, 'tickets.create': true, 'tickets.assignable': true, 'tickets.ai': false,
+        'tickets.view': true, 'tickets.create': true,
         'settings.manage': false, 'settings.billing': false,
-        'products.view': true, 'products.create': false, 'products.edit': false, 'products.delete': false, 'products.ai': false,
-        'quotes.view': true, 'quotes.create': false, 'quotes.edit': false, 'quotes.approve': false,
-        'chat.access': true, 'chat.ai': false,
-        'services.view': true, 'services.create': false, 'services.edit': false
     },
     professional: {
         'clients.view_own': true, 'clients.view': false, 'clients.edit': false, 'clients.delete': false,
         'invoices.view': false, 'invoices.create': false,
         'bookings.view_own': true, 'bookings.manage_own': true, 'bookings.view': false,
-        'tickets.view': true, 'tickets.create': true, 'tickets.assignable': true, 'tickets.ai': true,
+        'tickets.view': true, 'tickets.create': true,
         'settings.manage': false, 'settings.billing': false,
-        'products.view': true, 'products.create': false, 'products.edit': false, 'products.delete': false, 'products.ai': false,
-        'quotes.view': false, 'quotes.create': false, 'quotes.edit': false, 'quotes.approve': false,
-        'chat.access': true, 'chat.ai': false,
-        'services.view': true, 'services.create': false, 'services.edit': false
     },
     agent: {
         'clients.view': true, 'clients.edit': false, 'clients.delete': false,
         'invoices.view': false, 'invoices.create': false,
         'bookings.view': false, 'bookings.manage_own': false,
-        'tickets.view': true, 'tickets.create': true, 'tickets.assignable': true, 'tickets.ai': false,
+        'tickets.view': true, 'tickets.create': true,
         'settings.manage': false, 'settings.billing': false,
-        'products.view': false, 'products.create': false, 'products.edit': false, 'products.delete': false, 'products.ai': false,
-        'quotes.view': false, 'quotes.create': false, 'quotes.edit': false, 'quotes.approve': false,
-        'chat.access': true, 'chat.ai': false,
-        'services.view': false, 'services.create': false, 'services.edit': false
     }
 };
 
@@ -200,21 +108,7 @@ export class SupabasePermissionsService {
     }
 
     /**
-     * Get all defined system roles
-     */
-    async getRoles(): Promise<AppRole[]> {
-        const { data, error } = await this.supabase
-            .from('app_roles')
-            .select('*')
-            .order('name'); // Or order by some 'rank' column if it existed
-
-        if (error) throw error;
-        return data || [];
-    }
-
-    /**
      * Get all permissions for current company
-     * Now fetching app_roles relation to get the role names
      */
     async getCompanyPermissions(): Promise<RolePermission[]> {
         const companyId = this.companyId;
@@ -222,42 +116,31 @@ export class SupabasePermissionsService {
 
         const { data, error } = await this.supabase
             .from('role_permissions')
-            .select('*, app_roles(name, label)')
-            .eq('company_id', companyId);
+            .select('*')
+            .eq('company_id', companyId)
+            .order('role')
+            .order('permission');
 
         if (error) throw error;
         return data || [];
     }
 
     /**
-     * Get permission matrix (role.name -> permission -> granted)
-     * Now dynamic based on available AppRoles
+     * Get permission matrix (role -> permission -> granted)
      */
     async getPermissionMatrix(): Promise<Record<string, Record<string, boolean>>> {
-        const [permissions, roles] = await Promise.all([
-            this.getCompanyPermissions(),
-            this.getRoles()
-        ]);
+        const permissions = await this.getCompanyPermissions();
 
-        // Start with defaults matching the roles found in DB
+        // Start with defaults
         const matrix: Record<string, Record<string, boolean>> = {};
-
-        for (const role of roles) {
-            // Initialize with default values if they exist in our code constant, else false
-            matrix[role.name] = { ...(DEFAULT_PERMISSIONS[role.name] || {}) };
+        for (const role of AVAILABLE_ROLES) {
+            matrix[role] = { ...DEFAULT_PERMISSIONS[role] };
         }
 
-        // Override with company custom permissions
+        // Override with custom permissions
         for (const p of permissions) {
-            // p.app_roles might be null if the link is broken, but p.role (text) might assume legacy
-            // We prefer p.app_roles.name if available, else fallback to p.role
-            const roleName = p.app_roles?.name || p.role;
-
-            // Only process if this role is relevant (exists in matrix or we want to show it)
-            if (roleName) {
-                if (!matrix[roleName]) matrix[roleName] = {};
-                matrix[roleName][p.permission] = p.granted;
-            }
+            if (!matrix[p.role]) matrix[p.role] = {};
+            matrix[p.role][p.permission] = p.granted;
         }
 
         return matrix;
@@ -265,33 +148,21 @@ export class SupabasePermissionsService {
 
     /**
      * Set a permission for a role
-     * Uses role_id lookup
      */
-    async setPermission(roleName: string, permission: string, granted: boolean): Promise<void> {
+    async setPermission(role: string, permission: string, granted: boolean): Promise<void> {
         const companyId = this.companyId;
         if (!companyId) throw new Error('No company selected');
-
-        // We need the role_id for this roleName
-        // Optimization: We could cache roles, but for now a quick lookup is safer
-        const { data: roleData, error: roleError } = await this.supabase
-            .from('app_roles')
-            .select('id')
-            .eq('name', roleName)
-            .single();
-
-        if (roleError || !roleData) throw new Error(`Role ${roleName} not found`);
 
         const { error } = await this.supabase
             .from('role_permissions')
             .upsert({
                 company_id: companyId,
-                role: roleName, // Keep populating legacy text column for now if needed by other RLS
-                role_id: roleData.id,
+                role,
                 permission,
                 granted,
                 updated_at: new Date().toISOString()
             }, {
-                onConflict: 'company_id,role,permission' // The unique constraint usually involves these
+                onConflict: 'company_id,role,permission'
             });
 
         if (error) throw error;
@@ -300,18 +171,16 @@ export class SupabasePermissionsService {
     /**
      * Reset a role to default permissions
      */
-    async resetRoleToDefaults(roleName: string): Promise<void> {
+    async resetRoleToDefaults(role: string): Promise<void> {
         const companyId = this.companyId;
         if (!companyId) throw new Error('No company selected');
 
         // Delete all custom permissions for this role
-        // We delete by role string name to be safe with current RLS/constraints, 
-        // or we could find the ID. The 'role' column is likely still part of the PK/Unique index in DB.
         const { error } = await this.supabase
             .from('role_permissions')
             .delete()
             .eq('company_id', companyId)
-            .eq('role', roleName);
+            .eq('role', role);
 
         if (error) throw error;
     }
@@ -328,8 +197,13 @@ export class SupabasePermissionsService {
             this._permissionMatrix.set(matrix);
         } catch (e) {
             console.error('Failed to load permissions matrix:', e);
-            // Fallback to static defaults
-            this._permissionMatrix.set(JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS)));
+            // On error we might want to keep null or set defaults?
+            // Let's set defaults so the UI doesn't break completely
+            const defaults: Record<string, Record<string, boolean>> = {};
+            for (const role of AVAILABLE_ROLES) {
+                defaults[role] = { ...DEFAULT_PERMISSIONS[role] };
+            }
+            this._permissionMatrix.set(defaults);
         }
     }
 
@@ -340,13 +214,13 @@ export class SupabasePermissionsService {
         const matrix = this._permissionMatrix();
         if (!matrix) return false; // Not loaded yet
 
-        const role = this.authService.userRole(); // This returns string name likely
+        const role = this.authService.userRole();
         if (!role) return false;
 
         // Owner and Super Admin always have access
         if (role === 'owner' || role === 'super_admin') return true;
 
-        return matrix[role]?.[permission] ?? DEFAULT_PERMISSIONS[role]?.[permission] ?? false;
+        return matrix[role]?.[permission] ?? DEFAULT_PERMISSIONS[role as Role]?.[permission] ?? false;
     }
 
     /**
@@ -375,24 +249,11 @@ export class SupabasePermissionsService {
             .eq('company_id', companyId)
             .eq('role', role)
             .eq('permission', permission)
-            .maybeSingle();
+            .single();
 
         if (data) return data.granted;
 
         // Fall back to default
-        return DEFAULT_PERMISSIONS[role]?.[permission] ?? false;
-    }
-
-    isAdminOrOwner(): boolean {
-        const role = this.authService.userRole();
-        return role === 'owner' || role === 'super_admin' || role === 'admin';
-    }
-
-    isClient(): boolean {
-        // Assuming client users have role 'client' or null (if public user) but standard auth flow usually sets role.
-        // If not set, we might check profile. For now, check role 'client'.
-        const role = this.authService.userRole();
-        // Also check if they are NOT staff
-        return role === 'client' || (!this.isAdminOrOwner() && role !== 'professional' && role !== 'agent' && role !== 'member');
+        return DEFAULT_PERMISSIONS[role as Role]?.[permission] ?? false;
     }
 }
