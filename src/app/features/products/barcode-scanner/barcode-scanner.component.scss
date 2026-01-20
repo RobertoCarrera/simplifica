@@ -1,0 +1,20 @@
+/* Basic styles for scanner container */
+:host {
+    display: block;
+}
+
+::ng-deep #reader {
+    border: none !important;
+}
+
+::ng-deep #reader__scan_region {
+    background: transparent !important;
+}
+
+::ng-deep #reader__dashboard_section_csr button {
+    @apply bg-blue-600 text-white px-4 py-2 rounded-lg mt-2;
+}
+
+::ng-deep #reader__dashboard_section_swaplink {
+    @apply text-blue-600 underline mt-2 inline-block;
+}

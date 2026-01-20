@@ -54,6 +54,24 @@
         </div>
         }
 
+        <!-- Bookings KPI -->
+        @if (bookingMetrics(); as metrics) {
+        <div
+            class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i class="fas fa-calendar-check text-4xl text-rose-500"></i>
+            </div>
+            <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Reservas (Mes)</p>
+            <p class="text-2xl font-bold text-rose-600 dark:text-rose-400 mt-1">
+                {{ metrics[0].value || '0' }}
+            </p>
+            <div class="mt-2 text-xs text-slate-400 flex items-center gap-1">
+                <i class="fas fa-clock text-rose-500"></i>
+                <span>{{ metrics[2].value }} ocupadas</span>
+            </div>
+        </div>
+        }
+
         <!-- Customers KPI placeholder (using analytics metric if available or hardcoded/computed) -->
         <div
             class="bg-white dark:bg-slate-800 rounded-xl p-5 shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
@@ -69,6 +87,8 @@
             </div>
         </div>
     </div>
+
+
 
     <!-- Main Content Areas -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -177,10 +197,78 @@
                 </div>
             </div>
 
+            <!-- Top Services -->
+            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                <div
+                    class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 rounded-t-xl">
+                    <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-crown text-amber-400"></i> Servicios Top
+                    </h3>
+                </div>
+                <div class="p-0">
+                    @if (topServices().length === 0) {
+                    <div class="p-8 text-center text-slate-400">No hay datos de servicios este mes</div>
+                    } @else {
+                    <div class="divide-y divide-slate-100 dark:divide-slate-700">
+                        @for (service of topServices(); track service.service_id) {
+                        <div
+                            class="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group">
+                            <div class="flex items-center gap-4">
+                                <div
+                                    class="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                                    {{ $index + 1 }}
+                                </div>
+                                <div>
+                                    <p class="font-medium text-slate-900 dark:text-slate-100">
+                                        {{ service.service_name }}
+                                    </p>
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                                        {{ service.bookings_count }} reservas
+                                    </p>
+                                </div>
+                            </div>
+                            <span class="font-semibold text-slate-700 dark:text-slate-300">
+                                {{ service.total_revenue | currency:'EUR':'symbol':'1.0-0' }}
+                            </span>
+                        </div>
+                        }
+                    </div>
+                    }
+                </div>
+            </div>
+
         </div>
 
         <!-- Right Column: Quick Actions & System -->
         <div class="space-y-6">
+
+            <!-- Leads by Channel (CRM) -->
+            <div
+                class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-4">
+                <h3 class="font-semibold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
+                    <i class="fas fa-chart-pie text-emerald-500"></i> Leads por Canal
+                </h3>
+
+                @if (leadsByChannel().length === 0) {
+                <div class="p-4 text-center text-slate-400 text-sm">Sin datos de leads</div>
+                } @else {
+                <div class="space-y-3">
+                    @for (item of leadsByChannel(); track item.source) {
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-slate-600 dark:text-slate-300 font-medium">{{ item.source | titlecase
+                                }}</span>
+                            <span class="text-slate-500 dark:text-slate-400 font-bold">{{ item.count }}</span>
+                        </div>
+                        <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2">
+                            <div class="bg-emerald-500 h-2 rounded-full"
+                                [style.width.%]="(item.count / leadsByChannel()[0].count) * 100"></div>
+                        </div>
+                    </div>
+                    }
+                </div>
+                }
+            </div>
 
             <!-- Quick Actions Grid -->
             <div class="lg:col-span-1">

@@ -2,11 +2,12 @@ import { Component, signal, computed, OnInit, OnDestroy, ElementRef, ViewChild, 
 import { CommonModule } from '@angular/common';
 import { OnboardingService } from '../../../features/services/onboarding.service';
 import { TourStep } from '../../../features/interfaces/onboarding.interface';
+import { SafeHtmlPipe } from '../../../core/pipes/safe-html.pipe';
 
 @Component({
   selector: 'app-tour-overlay',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SafeHtmlPipe],
   template: `
     @if (isVisible()) {
       <!-- Overlay de fondo -->
@@ -68,7 +69,7 @@ import { TourStep } from '../../../features/interfaces/onboarding.interface';
 
             <!-- Contenido -->
             <div class="mb-6">
-              <p class="text-gray-700 leading-relaxed" [innerHTML]="currentStep()!.content"></p>
+              <p class="text-gray-700 leading-relaxed" [innerHTML]="currentStep()!.content | safeHtml"></p>
             </div>
 
             <!-- Barra de progreso -->
