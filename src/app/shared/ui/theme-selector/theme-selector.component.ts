@@ -17,10 +17,11 @@ import { AnimationService } from '../../../services/animation.service';
       <!-- Toggle de tema oscuro/claro -->
       <div class="mb-6">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Tema</h3>
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-4" role="group" aria-label="Selección de tema">
           <button
-            (click)="toggleTheme()"
+            (click)="setLightTheme()"
             [class.active]="currentTheme() === 'light'"
+            [attr.aria-pressed]="currentTheme() === 'light'"
             class="theme-toggle-btn"
             @buttonPress
             #lightBtn
@@ -37,6 +38,7 @@ import { AnimationService } from '../../../services/animation.service';
           <button
             (click)="setDarkTheme()"
             [class.active]="currentTheme() === 'dark'"
+            [attr.aria-pressed]="currentTheme() === 'dark'"
             class="theme-toggle-btn"
             @buttonPress
             #darkBtn
@@ -55,11 +57,13 @@ import { AnimationService } from '../../../services/animation.service';
       <!-- Selector de esquema de colores -->
       <div>
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">Esquema de Colores</h3>
-        <div class="grid grid-cols-5 gap-3">
+        <div class="grid grid-cols-5 gap-3" role="group" aria-label="Selección de esquema de colores">
           <button
             *ngFor="let color of colorSchemes"
             (click)="setColorScheme(color.value)"
             [class.active]="currentColorScheme() === color.value"
+            [attr.aria-pressed]="currentColorScheme() === color.value"
+            [attr.aria-label]="'Activar esquema de color ' + color.name"
             [style.background-color]="color.preview"
             class="color-scheme-btn group"
             @cardHover
@@ -139,8 +143,8 @@ export class ThemeSelectorComponent {
     { name: 'Rojo', value: 'red' as ColorScheme, preview: '#dc2626' }
   ];
 
-  toggleTheme(): void {
-    this.themeService.toggleTheme();
+  setLightTheme(): void {
+    this.themeService.setTheme('light');
   }
 
   setDarkTheme(): void {

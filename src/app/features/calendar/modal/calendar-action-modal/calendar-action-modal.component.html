@@ -1,0 +1,456 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" *ngIf="isOpen()">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" (click)="close()"></div>
+
+    <!-- Modal Panel -->
+    <div
+        class="relative w-full max-w-lg p-2 transform overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-2xl transition-all animate-fade-in-up">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-gray-100 dark:border-slate-700 p-6">
+            <h3 class="text-xl font-bold text-gray-900 dark:text-white">
+                {{ activeTab() === 'booking' ? 'Nueva Cita' : 'Bloquear Horario' }}
+            </h3>
+            <button (click)="close()" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex border-b border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-900/50">
+            <!-- Booking Tab -->
+            <button *ngIf="!forcedMode() || forcedMode() === 'booking'"
+                class="flex-1 py-3 text-sm font-medium text-center transition-colors relative"
+                [class.text-blue-600]="activeTab() === 'booking'" [class.dark:text-blue-400]="activeTab() === 'booking'"
+                [class.text-gray-500]="activeTab() !== 'booking'" (click)="activeTab.set('booking')">
+                {{ isEditMode() ? 'Editar Cita' : 'Agendar Cita' }}
+                <div *ngIf="activeTab() === 'booking'"
+                    class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400"></div>
+            </button>
+
+            <!-- Block Tab -->
+            <button *ngIf="!forcedMode() || forcedMode() === 'block'"
+                class="flex-1 py-3 text-sm font-medium text-center transition-colors relative"
+                [class.text-red-600]="activeTab() === 'block'" [class.dark:text-red-400]="activeTab() === 'block'"
+                [class.text-gray-500]="activeTab() !== 'block'" (click)="activeTab.set('block')">
+                {{ isEditMode() ? 'Editar Bloqueo' : 'Bloquear Horario' }}
+                <div *ngIf="activeTab() === 'block'"
+                    class="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600 dark:bg-red-400"></div>
+            </button>
+
+            <!-- History Tab -->
+            <button *ngIf="existingId()" class="flex-1 py-3 text-sm font-medium text-center transition-colors relative"
+                [class.text-purple-600]="activeTab() === 'history'"
+                [class.dark:text-purple-400]="activeTab() === 'history'"
+                [class.text-gray-500]="activeTab() !== 'history'" (click)="setTab('history')">
+                Actividad
+                <div *ngIf="activeTab() === 'history'"
+                    class="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 dark:bg-purple-400"></div>
+            </button>
+        </div>
+
+        <!-- Body -->
+        <div class="p-6 space-y-4">
+
+            <!-- Pending Approval Banner -->
+            <div *ngIf="activeTab() === 'booking' && bookingStatus() === 'pending'"
+                class="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4 rounded-r-lg animate-fade-in">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-clock text-yellow-400"></i>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-yellow-700 dark:text-yellow-200 font-medium">
+                            Reserva Pendiente de Aprobación
+                        </p>
+                        <p class="text-xs text-yellow-600 dark:text-yellow-300 mt-1">
+                            Este servicio requiere confirmación manual.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common Date & Time (Only for Booking, Block uses its own logic below) -->
+            <div *ngIf="activeTab() === 'booking'" class="grid grid-cols-1 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha y Hora</label>
+                    <input type="datetime-local" [ngModel]="startTimeStr()" (ngModelChange)="updateStartTime($event)"
+                        class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+                </div>
+                <!-- End Date hidden because it is calculated by Service Duration -->
+            </div>
+
+            <!-- Booking Fields -->
+            <div *ngIf="activeTab() === 'booking'" class="space-y-4 animate-fade-in">
+                <!-- Grid for Client & Service -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Client Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cliente</label>
+                        <select [(ngModel)]="clientId"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+                            <option [ngValue]="null">Seleccionar cliente...</option>
+                            <option *ngFor="let client of clients()" [value]="client.id">
+                                {{ client.name }} {{ client.apellidos || '' }}
+                            </option>
+                        </select>
+                    </div>
+                    <!-- Service Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Servicio</label>
+                        <select [(ngModel)]="serviceId" (ngModelChange)="updateEndTimeBasedOnService()"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+                            <option [ngValue]="null">Seleccionar servicio...</option>
+                            <option *ngFor="let service of services()" [value]="service.id">
+                                {{ service.name }} ({{ service.duration_minutes }}m) - {{ service.display_price |
+                                currency:'EUR' }}
+                            </option>
+                        </select>
+                        <div *ngIf="computedBuffer() && computedBuffer()! > 0"
+                            class="mt-1 flex items-center text-xs text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 p-2 rounded">
+                            <i class="fas fa-hourglass-half mr-2"></i>
+                            <span>Incluye <strong>{{ computedBuffer() }}m</strong> de limpieza/preparación.</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Price Display -->
+                <!-- Price Display -->
+                <div *ngIf="computedPrice() !== null"
+                    class="col-span-1 sm:col-span-2 flex flex-col items-end space-y-2">
+                    <div class="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-lg text-right w-full sm:w-auto">
+                        <span class="text-xs text-gray-500 dark:text-gray-400 block">Total Estimado</span>
+                        <span class="text-lg font-bold text-blue-600 dark:text-blue-400">{{ computedPrice() |
+                            currency:'EUR' }}</span>
+                    </div>
+
+                    <!-- Deposit Section -->
+                    <div *ngIf="hasDepositRequirement()"
+                        class="bg-yellow-50 dark:bg-yellow-900/20 px-4 py-2 rounded-lg text-right w-full sm:w-auto animate-fade-in border border-yellow-100 dark:border-yellow-800">
+                        <span class="text-xs text-yellow-700 dark:text-yellow-400 block font-medium">Requiere
+                            Depósito</span>
+                        <span class="text-sm font-bold text-yellow-600 dark:text-yellow-500 mb-2 block">
+                            {{ computedDeposit() | currency:'EUR' }}
+                        </span>
+
+                        <div
+                            class="flex items-center justify-end space-x-2 mt-2 pt-2 border-t border-yellow-100 dark:border-yellow-800">
+                            <label class="text-xs text-gray-600 dark:text-gray-300">Cobrado:</label>
+                            <input type="number" [ngModel]="depositPaidInput()"
+                                (ngModelChange)="depositPaidInput.set($event)"
+                                class="w-24 text-right text-sm rounded border-gray-300 dark:border-slate-600 dark:bg-slate-700 py-1 px-2 focus:ring-yellow-500">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Coupon Section -->
+            <div *ngIf="activeTab() === 'booking'"
+                class="pt-2 border-t border-gray-100 dark:border-slate-700 animate-fade-in">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cupón de
+                    Descuento</label>
+                <div class="flex space-x-2">
+                    <input type="text" [ngModel]="couponCode()" (ngModelChange)="couponCode.set($event)"
+                        placeholder="Ingresa tu código" [disabled]="!!appliedCoupon()" (keyup.enter)="validateCoupon()"
+                        class="flex-1 rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400 disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-slate-800">
+
+                    <button *ngIf="!appliedCoupon()" (click)="validateCoupon()"
+                        class="px-3 py-2 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors text-sm font-medium">
+                        Aplicar
+                    </button>
+                    <button *ngIf="appliedCoupon()" (click)="removeCoupon()"
+                        class="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors text-sm font-medium">
+                        Quitar
+                    </button>
+                </div>
+
+                <!-- Feedback Message -->
+                <div *ngIf="couponMessage()" class="mt-2 text-xs"
+                    [class.text-green-600]="couponMessage()?.type === 'success'"
+                    [class.dark:text-green-400]="couponMessage()?.type === 'success'"
+                    [class.text-red-600]="couponMessage()?.type === 'error'"
+                    [class.dark:text-red-400]="couponMessage()?.type === 'error'">
+                    <i class="fas mr-1" [class.fa-check-circle]="couponMessage()?.type === 'success'"
+                        [class.fa-exclamation-circle]="couponMessage()?.type === 'error'"></i>
+                    {{ couponMessage()?.text }}
+                </div>
+            </div>
+
+            <!-- Form Responses (Additional Info) -->
+            <div *ngIf="activeTab() === 'booking' && hasFormResponses()"
+                class="pt-4 border-t border-gray-100 dark:border-slate-700 animate-fade-in">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Información
+                    Adicional</label>
+                <div class="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-3 space-y-2">
+                    <div *ngFor="let item of formResponses() | keyvalue" class="text-sm">
+                        <div class="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider font-semibold">
+                            {{ getQuestionLabel(item.key) }}
+                        </div>
+                        <div class="text-gray-900 dark:text-gray-200 mt-0.5">
+                            {{ formatResponseValue(item.value) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recurrence Options (Moved inside Booking Section or made conditional) -->
+            <div *ngIf="activeTab() === 'booking'"
+                class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100 dark:border-slate-700 animate-fade-in">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Repetir</label>
+                    <select [ngModel]="recurrenceType()" (ngModelChange)="recurrenceType.set($event)"
+                        class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+                        <option value="none">No repetir</option>
+                        <option value="daily">Todos los días</option>
+                        <option value="weekly">Cada semana</option>
+                        <option value="monthly">Cada mes</option>
+                    </select>
+                </div>
+                <div *ngIf="recurrenceType() !== 'none'" class="animate-fade-in">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Termina el</label>
+                    <input type="date" [ngModel]="recurrenceEndDateStr()"
+                        (ngModelChange)="recurrenceEndDateStr.set($event)"
+                        class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-blue-500 dark:focus:ring-blue-400">
+                </div>
+            </div>
+        </div>
+
+        <!-- Block Fields -->
+        <div *ngIf="activeTab() === 'block'" class="space-y-4 animate-fade-in">
+
+            <!-- Professional/Resource Selector -->
+            <div class="bg-gray-50 dark:bg-slate-700/50 p-4 rounded-xl border border-gray-100 dark:border-slate-600">
+                <label class="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                    <i class="fas fa-user-tie text-gray-400 mr-1"></i> A quién bloquear
+                </label>
+                <select [(ngModel)]="resourceId"
+                    class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm focus:ring-indigo-500 transition-shadow shadow-sm cursor-pointer">
+                    <option [ngValue]="null">🏢 Todo el Equipo (Cierre General)</option>
+                    <option *ngFor="let res of resources()" [value]="res.id">
+                        👤 {{ res.title }}
+                    </option>
+                </select>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 ml-1">
+                    {{ !resourceId ? 'Se bloqueará el horario para toda la empresa.' : 'Solo este profesional mostrará
+                    el horario como no disponible.' }}
+                </p>
+            </div>
+
+            <!-- Block Type Selector -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Tipo de Bloqueo</label>
+                <div class="grid grid-cols-3 gap-3">
+                    <button
+                        class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 gap-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+                        [class.bg-indigo-50]="blockType() === 'time'" [class.border-indigo-500]="blockType() === 'time'"
+                        [class.text-indigo-700]="blockType() === 'time'" [class.bg-white]="blockType() !== 'time'"
+                        [class.dark:bg-slate-800]="blockType() !== 'time'"
+                        [class.dark:border-slate-600]="blockType() !== 'time'"
+                        [class.hover:border-indigo-300]="blockType() !== 'time'" (click)="blockType.set('time')">
+                        <i class="fas fa-clock text-lg mb-1"></i>
+                        <span class="text-xs font-medium">Horas</span>
+                    </button>
+
+                    <button
+                        class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 gap-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+                        [class.bg-indigo-50]="blockType() === 'day'" [class.border-indigo-500]="blockType() === 'day'"
+                        [class.text-indigo-700]="blockType() === 'day'" [class.bg-white]="blockType() !== 'day'"
+                        [class.dark:bg-slate-800]="blockType() !== 'day'"
+                        [class.dark:border-slate-600]="blockType() !== 'day'"
+                        [class.hover:border-indigo-300]="blockType() !== 'day'" (click)="blockType.set('day')">
+                        <i class="fas fa-calendar-day text-lg mb-1"></i>
+                        <span class="text-xs font-medium">Día</span>
+                    </button>
+
+                    <button
+                        class="flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 gap-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+                        [class.bg-indigo-50]="blockType() === 'range'"
+                        [class.border-indigo-500]="blockType() === 'range'"
+                        [class.text-indigo-700]="blockType() === 'range'" [class.bg-white]="blockType() !== 'range'"
+                        [class.dark:bg-slate-800]="blockType() !== 'range'"
+                        [class.dark:border-slate-600]="blockType() !== 'range'"
+                        [class.hover:border-indigo-300]="blockType() !== 'range'" (click)="blockType.set('range')">
+                        <i class="fas fa-plane-departure text-lg mb-1"></i>
+                        <span class="text-xs font-medium">Rango</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Conditional Date Inputs for Block -->
+            <div [ngSwitch]="blockType()">
+                <!-- Time Range -->
+                <div *ngSwitchCase="'time'" class="grid grid-cols-2 gap-4 animate-fade-in">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Desde</label>
+                        <input type="datetime-local" [ngModel]="startTimeStr()"
+                            (ngModelChange)="updateStartTime($event)"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hasta</label>
+                        <input type="datetime-local" [ngModel]="endTimeStr()" (ngModelChange)="endTimeStr.set($event)"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
+                    </div>
+                </div>
+
+                <!-- Full Day -->
+                <div *ngSwitchCase="'day'" class="animate-fade-in">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Día</label>
+                    <input type="date" [ngModel]="blockDateStr()" (ngModelChange)="blockDateStr.set($event)"
+                        class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
+                </div>
+
+                <!-- Date Range -->
+                <div *ngSwitchCase="'range'" class="grid grid-cols-2 gap-4 animate-fade-in">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Desde el
+                            día</label>
+                        <input type="date" [ngModel]="blockStartDateStr()"
+                            (ngModelChange)="blockStartDateStr.set($event)"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hasta el
+                            día</label>
+                        <input type="date" [ngModel]="blockEndDateStr()" (ngModelChange)="blockEndDateStr.set($event)"
+                            class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500">
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Motivo del
+                    Bloqueo</label>
+                <input type="text" [(ngModel)]="blockReason" placeholder="Ej: Vacaciones, Médico, Personal..."
+                    class="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm focus:ring-red-500 dark:focus:ring-red-400">
+            </div>
+            <div class="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg text-xs text-orange-800 dark:text-orange-200">
+                <i class="fas fa-exclamation-triangle mr-1"></i>
+                Este horario no estará disponible para reservas online.
+            </div>
+        </div>
+
+
+
+        <!-- History/Activity Log -->
+        <div *ngIf="activeTab() === 'history'" class="p-6 h-96 overflow-y-auto animate-fade-in custom-scrollbar">
+
+            <div *ngIf="isLoadingHistory()" class="flex justify-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            </div>
+
+            <div *ngIf="!isLoadingHistory() && history().length === 0" class="text-center py-8 text-gray-500">
+                No hay actividad registrada.
+            </div>
+
+            <div *ngIf="!isLoadingHistory() && history().length > 0" class="space-y-6 relative ml-3">
+                <!-- Vertical Line -->
+                <div class="absolute left-0 top-0 bottom-0 w-px bg-gray-200 dark:bg-slate-700 ml-2"></div>
+
+                <div *ngFor="let item of history()" class="relative flex gap-4">
+                    <!-- Icon -->
+                    <div class="flex-shrink-0 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 z-10 mt-1.5"
+                        [ngClass]="{
+                            'bg-blue-500': item.change_type === 'create',
+                            'bg-amber-500': item.change_type === 'update' || item.change_type === 'reschedule',
+                            'bg-red-500': item.change_type === 'cancel',
+                            'bg-green-500': item.change_type === 'status_change' && item.new_status === 'confirmed',
+                            'bg-purple-500': item.change_type === 'status_change' && item.new_status !== 'confirmed'
+                        }">
+                    </div>
+
+                    <!-- Content -->
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {{ item.change_type === 'create' ? 'Reserva Creada' :
+                                item.change_type === 'cancel' ? 'Cancelada' :
+                                item.change_type === 'reschedule' ? 'Reprogramada' :
+                                item.change_type === 'status_change' ? 'Cambio de Estado' : 'Actualización' }}
+                            </span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">
+                                {{ item.created_at | date:'medium' }}
+                            </span>
+                        </div>
+
+                        <!-- User -->
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            Por: {{ item.modifier?.name || 'Sistema' }}
+                        </div>
+
+                        <!-- Details Log -->
+                        <div *ngIf="item.details"
+                            class="mt-2 text-xs bg-gray-50 dark:bg-slate-700/50 p-2 rounded text-gray-600 dark:text-gray-300 font-mono">
+
+                            <ng-container *ngIf="item.change_type === 'status_change'">
+                                <span class="font-bold text-gray-700 dark:text-gray-200">{{ item.details.old_status
+                                    }}</span>
+                                <i class="fas fa-arrow-right mx-1 text-gray-400"></i>
+                                <span class="font-bold text-gray-700 dark:text-gray-200">{{ item.details.new_status
+                                    }}</span>
+                            </ng-container>
+
+                            <ng-container *ngIf="item.change_type === 'reschedule'">
+                                <div><span class="text-gray-500">Ant:</span> {{ item.details.old_start | date:'short' }}
+                                </div>
+                                <div><span class="text-gray-500">Nue:</span> {{ item.details.new_start | date:'short' }}
+                                </div>
+                            </ng-container>
+                            <ng-container *ngIf="item.change_type === 'create'">
+                                <div><span class="text-gray-500">Detalles:</span> Creada exitosamente</div>
+                            </ng-container>
+                            <!-- Default Fallback if simple text or unknown -->
+                            <div
+                                *ngIf="!item.details.old_status && !item.details.old_start && item.change_type !== 'create'">
+                                {{ item.details | json }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div
+            class="bg-gray-50 dark:bg-slate-900/50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-100 dark:border-slate-700">
+            <button (click)="close()"
+                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                Cancelar
+            </button>
+
+            <!-- Standard Save Buttons -->
+            <button
+                *ngIf="activeTab() !== 'history' && (activeTab() === 'block' || bookingStatus() !== 'pending') && !isFullCapacity()"
+                (click)="save()" [class.bg-blue-600]="activeTab() === 'booking'"
+                [class.hover:bg-blue-700]="activeTab() === 'booking'" [class.bg-red-600]="activeTab() === 'block'"
+                [class.hover:bg-red-700]="activeTab() === 'block'"
+                class="px-4 py-2 text-sm font-medium text-white rounded-lg shadow-sm transition-colors flex items-center">
+                <i class="fas fa-check mr-2"></i>
+                {{ activeTab() === 'booking' ? 'Confirmar Cita' : 'Crear Bloqueo' }}
+            </button>
+
+            <!-- Waitlist Button -->
+            <button *ngIf="activeTab() === 'booking' && isFullCapacity()" (click)="onJoinWaitlist()"
+                [disabled]="joiningWaitlist()"
+                class="px-4 py-2 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-lg shadow-sm transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                <i *ngIf="!joiningWaitlist()" class="fas fa-clock mr-2"></i>
+                <i *ngIf="joiningWaitlist()" class="fas fa-spinner fa-spin mr-2"></i>
+                Unirse a Lista de Espera/Waitlist
+            </button>
+
+            <!-- Approval Actions -->
+            <ng-container *ngIf="activeTab() === 'booking' && bookingStatus() === 'pending'">
+                <button (click)="rejectBooking()"
+                    class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm transition-colors flex items-center">
+                    <i class="fas fa-times mr-2"></i>
+                    Rechazar
+                </button>
+                <button (click)="approveBooking()"
+                    class="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition-colors flex items-center">
+                    <i class="fas fa-check mr-2"></i>
+                    Aprobar
+                </button>
+            </ng-container>
+        </div>
+
+    </div>
+</div>

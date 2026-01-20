@@ -56,12 +56,10 @@ export class BtnNewComponent implements AfterViewInit {
       case 'person':
         this.personType = true;
         this.businessType = false;
-        alert(this.formStep);
         this.formStep++;
-        alert(this.formStep);
         break;
       default:
-        alert("Error en la elección");
+        console.error("Error en la elección");
         break;
     }
   }
@@ -105,7 +103,6 @@ export class BtnNewComponent implements AfterViewInit {
   addStep() {
     if (this.formStep < this.maxSteps) {
       this.formStep++;
-      alert(this.formStep);
     }
   }
 
@@ -132,7 +129,6 @@ export class BtnNewComponent implements AfterViewInit {
           this.customerService.createCustomer(customer).subscribe({
             next: (createdCustomer) => {
               this.customerExists = true;
-              alert(this.formStep);
               setTimeout(() => {
                 this.creating = false;
                 this.clearFormFromParent();
