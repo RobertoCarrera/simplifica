@@ -1,15 +1,17 @@
-import { Component, OnInit, inject, effect } from '@angular/core';
+import { Component, OnInit, inject, effect, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { MailStoreService } from '../../services/mail-store.service';
-import { MailFolder } from '../../../../core/interfaces/webmail.interface';
+import { MailFolder, MailMessage } from '../../../../core/interfaces/webmail.interface';
 
 @Component({
   selector: 'app-message-list',
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './message-list.component.html',
-  styleUrl: './message-list.component.scss'
+  styleUrl: './message-list.component.scss',
+  // ⚡ Bolt Optimization: Use OnPush strategy to minimize unnecessary change detection cycles.
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MessageListComponent implements OnInit {
   private store = inject(MailStoreService);
@@ -57,5 +59,10 @@ export class MessageListComponent implements OnInit {
         // Just triggered on load?
       }
     }
+  }
+
+  // ⚡ Bolt Optimization: trackBy function for *ngFor to optimize DOM updates
+  trackByMessage(index: number, message: MailMessage): string {
+    return message.id;
   }
 }
