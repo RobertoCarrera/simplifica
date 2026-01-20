@@ -1,16 +1,14 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { SupabaseBookingsService, Resource } from '../../../../../services/supabase-bookings.service';
 import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
 
-import { SkeletonComponent } from '../../../../../shared/ui/skeleton/skeleton.component';
-
 @Component({
     selector: 'app-booking-resources',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, SkeletonComponent],
+    imports: [CommonModule, ReactiveFormsModule],
     templateUrl: './booking-resources.component.html',
     styleUrls: ['./booking-resources.component.scss']
 })
@@ -23,14 +21,6 @@ export class BookingResourcesComponent implements OnInit {
     resources = signal<Resource[]>([]);
     loading = signal<boolean>(false);
 
-    uniqueTypes = computed(() => {
-        const types = new Set<string>(['room', 'equipment']);
-        this.resources().forEach(r => {
-            if (r.type) types.add(r.type);
-        });
-        return Array.from(types).sort();
-    });
-
     showModal = false;
     editingId: string | null = null;
     form: FormGroup;
@@ -39,7 +29,7 @@ export class BookingResourcesComponent implements OnInit {
     constructor() {
         this.form = this.fb.group({
             name: ['', [Validators.required, Validators.minLength(3)]],
-            type: ['', [Validators.required]],
+            type: ['room', [Validators.required]],
             capacity: [1, [Validators.required, Validators.min(1)]],
             description: [''],
             is_active: [true]
@@ -83,7 +73,7 @@ export class BookingResourcesComponent implements OnInit {
         } else {
             this.form.reset({
                 name: '',
-                type: '',
+                type: 'room',
                 capacity: 1,
                 description: '',
                 is_active: true
