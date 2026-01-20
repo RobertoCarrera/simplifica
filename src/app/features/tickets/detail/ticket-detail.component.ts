@@ -1,6 +1,6 @@
 import { Component, OnInit, inject, ElementRef, ViewChild, OnDestroy, AfterViewInit, AfterViewChecked, ChangeDetectorRef, computed, Renderer2, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DomSanitizer } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import DOMPurify from 'dompurify';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -3534,13 +3534,20 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   // UI helpers
-  formatDescription(description?: string): string {
+  formatDescription(description?: string): SafeHtml {
     const text = String(description || '');
-    return text
+    const html = text
       .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="mt-2 rounded-lg max-w-full h-auto border border-gray-200 dark:border-gray-700 block" />')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/\n/g, '<br/>');
+
+    // Sanitize the HTML while allowing the classes we added for styling
+    const cleanHtml = DOMPurify.sanitize(html, {
+      ADD_ATTR: ['class']
+    });
+
+    return this.sanitizer.bypassSecurityTrustHtml(cleanHtml);
   }
 
   getPriorityClasses(priority?: string): string {
