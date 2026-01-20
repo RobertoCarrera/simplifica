@@ -66,7 +66,7 @@
         <div class="p-6">
             <app-skeleton type="card-grid" [count]="6"></app-skeleton>
         </div>
-        } @else if (filteredCustomers().length === 0) {
+        } @else if (enrichedCustomers().length === 0) {
         <div
             class="h-full flex flex-col items-center justify-center p-8 text-center text-gray-500 dark:text-gray-400 animate-fade-in">
             <div class="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
@@ -97,7 +97,7 @@
 
             <!-- Scrollable Grid -->
             <div class="customers-grid">
-                @for (customer of filteredCustomers(); track customer.id; let i = $index) {
+                @for (customer of enrichedCustomers(); track customer.id; let i = $index) {
                 <div class="customer-card relative bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow h-full flex flex-col"
                     [style.animation-delay]="i * 50 + 'ms'">
 
@@ -157,21 +157,21 @@
                             <div class="flex items-start gap-4 mb-4 pr-8">
                                 <div class="relative shrink-0">
                                     <div class="w-12 h-12 rounded-full flex items-center justify-center text-gray-600 font-bold text-lg shadow-sm"
-                                        [style.background]="getAvatarGradient(customer)">
-                                        {{ getCustomerInitials(customer) }}
+                                        [style.background]="customer.avatarGradient">
+                                        {{ customer.initials }}
                                     </div>
                                     <!-- Online/Active Indicator could go here -->
                                 </div>
 
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="font-semibold text-gray-900 dark:text-white truncate cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                                        [title]="getDisplayName(customer)" (click)="viewCustomer(customer)">
-                                        {{ getDisplayName(customer) }}
+                                    <h3 class="font-semibold text-gray-900 dark:text-white truncate"
+                                        [title]="customer.displayName">
+                                        {{ customer.displayName }}
                                     </h3>
                                     <!-- Incomplete warning -->
-                                    @if (!isCustomerComplete(customer)) {
+                                    @if (!customer.isComplete) {
                                     <div class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200"
-                                        [title]="formatAttentionReasons(customer)">
+                                        [title]="customer.attentionReasons">
                                         <i class="fas fa-exclamation-triangle"></i>
                                         Faltan datos
                                     </div>
@@ -212,14 +212,14 @@
                                 class="mt-auto pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
                                 <!-- Portal Access Toggle -->
                                 <button
-                                    (click)="togglePortalAccess(customer, !hasPortalAccess(customer, customer.email), $event)"
+                                    (click)="togglePortalAccess(customer, !customer.hasPortalAccess, $event)"
                                     class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium transition-colors"
-                                    [class]="hasPortalAccess(customer, customer.email) 
+                                    [class]="customer.hasPortalAccess
                     ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300' 
                     : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700/50 dark:text-gray-400'">
-                                    <i class="fas" [class.fa-key]="hasPortalAccess(customer, customer.email)"
-                                        [class.fa-lock]="!hasPortalAccess(customer, customer.email)"></i>
-                                    {{ hasPortalAccess(customer, customer.email) ? 'Acceso Portal' : 'Sin Acceso' }}
+                                    <i class="fas" [class.fa-key]="customer.hasPortalAccess"
+                                        [class.fa-lock]="!customer.hasPortalAccess"></i>
+                                    {{ customer.hasPortalAccess ? 'Acceso Portal' : 'Sin Acceso' }}
                                 </button>
 
                                 <!-- Points Badge -->
@@ -234,8 +234,8 @@
                                 </div>
 
                                 <!-- GDPR Status Badge -->
-                                @let badge = getGdprBadgeConfig(customer);
-                                <div class="flex items-center gap-1.5 ml-1" [title]="badge.label">
+                                @let badge = customer.gdprBadge;
+                                <div class="flex items-center gap-1.5 ml-2" [title]="badge.label">
                                     <span
                                         [class]="badge.classes + ' flex items-center justify-center w-6 h-6 rounded-full'">
                                         <i [class]="'fas ' + badge.icon"></i>
