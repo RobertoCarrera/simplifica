@@ -30,8 +30,8 @@
 
       <!-- Search Box (Order 1 always) -->
       <div class="relative flex-1 min-w-[200px] order-1">
-        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 text-sm"></i>
-        <input type="text" name="searchTerm" placeholder="Buscar..." [(ngModel)]="searchTerm" (input)="onSearch()"
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 text-sm" aria-hidden="true"></i>
+        <input type="text" name="searchTerm" placeholder="Buscar..." aria-label="Buscar tickets" [(ngModel)]="searchTerm" (input)="onSearch()"
           class="w-full pl-9 pr-3 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all">
       </div>
 
@@ -40,9 +40,10 @@
       <button type="button"
         class="order-2 md:order-4 w-auto md:w-auto px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm whitespace-nowrap flex items-center justify-center gap-2"
         [class]="showCompleted ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300'"
+        [attr.aria-label]="showCompleted ? 'Ocultar tickets completados' : 'Mostrar tickets completados'"
         (click)="toggleShowCompleted()">
         <i class="fas fa-check-double" [class.text-green-600]="showCompleted"
-          [class.text-gray-400]="!showCompleted"></i>
+          [class.text-gray-400]="!showCompleted" aria-hidden="true"></i>
         <span class="ml-1 hidden md:inline">{{ showCompleted ? 'Ocultar Completados' : 'Mostrar Completados' }}</span>
       </button>
 
@@ -50,8 +51,9 @@
       <button type="button"
         class="order-2 md:order-4 w-auto md:w-auto px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm whitespace-nowrap flex items-center justify-center gap-2"
         [class]="showDeleted ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300'"
+        [attr.aria-label]="showDeleted ? 'Ocultar tickets eliminados' : 'Mostrar tickets eliminados'"
         (click)="toggleShowDeleted()">
-        <i class="fas" [class.fa-trash-restore]="showDeleted" [class.fa-trash]="!showDeleted"></i>
+        <i class="fas" [class.fa-trash-restore]="showDeleted" [class.fa-trash]="!showDeleted" aria-hidden="true"></i>
         <span class="ml-1 hidden md:inline">{{ showDeleted ? 'Ocultar Eliminados' : 'Mostrar Eliminados' }}</span>
       </button>
 
@@ -63,6 +65,7 @@
       <!-- Stage Dropdown Button -->
       <div class="relative order-4 md:order-2 flex-1 md:flex-none">
         <button type="button" (click)="toggleStageDropdown()"
+          [attr.aria-label]="'Filtrar por estado: ' + getSelectedStageLabel()"
           class="w-full md:w-auto px-3 md:px-4 py-2.5 text-left bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:border-orange-400 dark:hover:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all flex items-center justify-between md:justify-start gap-2">
           <div class="flex items-center gap-2 truncate">
             <svg class="w-5 h-5 text-gray-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,9 +113,10 @@
       <!-- Priority Dropdown Button -->
       <div class="relative order-4 md:order-2 flex-1 md:flex-none">
         <button type="button" (click)="togglePriorityDropdown()"
+          [attr.aria-label]="'Filtrar por prioridad: ' + getSelectedPriorityLabel()"
           class="w-full md:w-auto px-3 md:px-4 py-2.5 text-left bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg hover:border-orange-400 dark:hover:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all flex items-center justify-between md:justify-start gap-2">
           <div class="flex items-center gap-2 truncate">
-            <i class="fas fa-arrow-down-wide-short text-gray-500 flex-shrink-0"></i>
+            <i class="fas fa-arrow-down-wide-short text-gray-500 flex-shrink-0" aria-hidden="true"></i>
             <!-- Text visible on mobile now -->
             <span class="text-gray-700 dark:text-slate-200 text-sm font-medium truncate">{{
               getSelectedPriorityLabel() }}</span>
@@ -378,21 +382,22 @@
           <button
             class="px-3 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
             (click)="viewTicketDetail(ticket)">
-            <i class="fas fa-eye"></i>
+            <i class="fas fa-eye" aria-hidden="true"></i>
             Ver Detalle
           </button>
           <!-- Edit button - ADMIN ONLY -->
           <button *ngIf="!isClient()"
             class="px-3 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
             (click)="openForm(ticket)">
-            <i class="fas fa-edit"></i>
+            <i class="fas fa-edit" aria-hidden="true"></i>
             Editar
           </button>
           <!-- Delete button - Shows reason modal for clients -->
           <button
             class="px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+            aria-label="Eliminar ticket"
             (click)="isClient() ? openDeleteReasonModal(ticket) : deleteTicket(ticket)">
-            <i class="fas fa-trash"></i>
+            <i class="fas fa-trash" aria-hidden="true"></i>
             <span class="hidden md:inline">Eliminar</span>
           </button>
         </div>
@@ -492,8 +497,8 @@
     (ticketCreated)="onWizardTicketCreated()"></app-portal-ticket-wizard>
 
   <!-- Floating Action Button (FAB) -->
-  <button (click)="openForm()" class="fab-button" title="Nuevo Ticket" [disabled]="loading">
-    <i class="fas fa-plus"></i>
+  <button (click)="openForm()" class="fab-button" title="Nuevo Ticket" aria-label="Nuevo ticket" [disabled]="loading">
+    <i class="fas fa-plus" aria-hidden="true"></i>
   </button>
 
   <!-- Delete Reason Modal (Client Portal) -->
@@ -535,16 +540,16 @@
   }
   <ng-container *ngIf="canUseAiTicket()">
     <!-- Floating Audio Button (AI) -->
-    <button (click)="toggleRecording()" class="fab-button fab-audio" title="Crear Ticket por voz"
+    <button (click)="toggleRecording()" class="fab-button fab-audio" title="Crear Ticket por voz" aria-label="Crear ticket por voz"
       [class.recording]="isRecording" [disabled]="isProcessingAudio">
       <i class="fas" [class.fa-microphone]="!isRecording && !isProcessingAudio" [class.fa-stop]="isRecording"
-        [class.fa-spinner]="isProcessingAudio" [class.fa-spin]="isProcessingAudio"></i>
+        [class.fa-spinner]="isProcessingAudio" [class.fa-spin]="isProcessingAudio" aria-hidden="true"></i>
     </button>
   </ng-container>
 
   <!-- Floating New Ticket Button -->
-  <button (click)="openForm()" class="fab-button" title="Nuevo Ticket">
-    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <button (click)="openForm()" class="fab-button" title="Nuevo Ticket" aria-label="Nuevo ticket">
+    <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
     </svg>
   </button>
