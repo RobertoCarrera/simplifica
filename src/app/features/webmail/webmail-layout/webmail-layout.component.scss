@@ -23,9 +23,8 @@ $radius: 12px;
     transition: width 0.3s ease;
 
     .sidebar-header {
-      padding: 1.25rem 1rem;
-      border-bottom: 1px solid transparent;
-      position: relative; // Context for dropdown
+      padding: 1.25rem 1rem; // Match settings header
+      border-bottom: 1px solid transparent; // Placeholder for alignment
 
       .header-content {
         display: flex;
@@ -33,44 +32,9 @@ $radius: 12px;
         align-items: center;
       }
 
-      .account-selector {
-        cursor: pointer;
-        border-radius: 8px;
-        padding: 4px 8px;
-        margin-left: -8px;
-        transition: background-color $transition-speed;
-
-        &:hover, &.active {
-          background-color: var(--bg-tertiary);
-        }
-
-        .current-account {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-
-        .account-email {
-          font-size: 0.8rem;
-          color: var(--text-secondary);
-          display: flex;
-          align-items: center;
-          gap: 4px;
-
-          i {
-            font-size: 0.7rem;
-            transition: transform $transition-speed;
-          }
-        }
-
-        &.active .account-email i {
-          transform: rotate(180deg);
-        }
-      }
-
       .app-title {
         margin: 0;
-        font-size: 1.1rem;
+        font-size: 1.25rem;
         font-weight: 700;
         color: var(--text-primary);
         display: flex;
@@ -83,94 +47,24 @@ $radius: 12px;
         }
       }
 
-      .account-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 10px;
-        width: 260px;
-        background: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        border-radius: $radius;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-        z-index: 100;
-        padding: 8px;
-        animation: fadeIn 0.1s ease-out;
+      .settings-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 1rem;
+        transition: all $transition-speed;
 
-        .dropdown-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 10px;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: background $transition-speed;
+        &:hover {
+          background: var(--bg-tertiary);
           color: var(--text-primary);
-
-          &:hover {
-            background-color: var(--bg-tertiary);
-          }
-
-          &.active {
-            background-color: var(--bg-secondary);
-            font-weight: 500;
-          }
-
-          .avt {
-            width: 32px;
-            height: 32px;
-            background: var(--color-primary-100);
-            color: var(--color-primary-600);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 0.9rem;
-          }
-
-          .info {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            min-width: 0;
-
-            .email {
-              font-size: 0.9rem;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-            }
-
-            .provider {
-              font-size: 0.75rem;
-              color: var(--text-secondary);
-            }
-          }
-
-          i.fa-check {
-             color: var(--color-primary-600);
-             font-size: 0.8rem;
-          }
-
-          &.action {
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-            
-            i {
-                width: 32px;
-                text-align: center;
-            }
-
-            &:hover {
-                color: var(--text-primary);
-            }
-          }
-        }
-
-        .dropdown-divider {
-            height: 1px;
-            background: var(--border-color);
-            margin: 4px 0;
+          transform: rotate(45deg); // Playful interaction
         }
       }
     }

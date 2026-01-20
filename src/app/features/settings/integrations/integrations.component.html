@@ -59,61 +59,9 @@
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>
-
-                    <!-- Configuration Section -->
-                    <div *ngIf="googleIntegration() && calendars().length > 0"
-                        class="mt-6 pt-6 border-t border-gray-100 dark:border-gray-600 w-full animate-fade-in">
-                        <h4 class="font-semibold text-gray-800 dark:text-gray-200 mb-4 flex items-center gap-2">
-                            <i class="fas fa-cog text-gray-400"></i> Configuración de Sincronización
-                        </h4>
-
-                        <div class="grid gap-6 md:grid-cols-2">
-                            <!-- Availability Calendar -->
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Consultar disponibilidad en
-                                    <i class="fas fa-info-circle text-gray-400 ml-1"
-                                        title="Evitaremos reservar cuando tengas eventos en este calendario"></i>
-                                </label>
-                                <select [value]="calendarConfig()?.calendar_id || ''"
-                                    (change)="saveCalendarConfig($any($event.target).value, calendarConfig()?.calendar_id_booking)"
-                                    [disabled]="savingConfig()"
-                                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="" disabled>Selecciona un calendario</option>
-                                    <option *ngFor="let cal of calendars()" [value]="cal.id">
-                                        {{ cal.summary }} {{ cal.primary ? '(Principal)' : '' }}
-                                    </option>
-                                </select>
-                            </div>
-
-                            <!-- Booking Calendar -->
-                            <div class="space-y-2">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Guardar nuevas reservas en
-                                    <i class="fas fa-info-circle text-gray-400 ml-1"
-                                        title="Aquí se crearán los eventos de las nuevas reservas"></i>
-                                </label>
-                                <select [value]="calendarConfig()?.calendar_id_booking || ''"
-                                    (change)="saveCalendarConfig(calendarConfig()?.calendar_id, $any($event.target).value)"
-                                    [disabled]="savingConfig()"
-                                    class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="" disabled>Selecciona un calendario</option>
-                                    <option *ngFor="let cal of calendars()" [value]="cal.id">
-                                        {{ cal.summary }} {{ cal.primary ? '(Principal)' : '' }}
-                                    </option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div *ngIf="savingConfig()" class="mt-2 text-xs text-indigo-600 flex items-center gap-1">
-                            <i class="fas fa-spinner fa-spin"></i> Guardando cambios...
-                        </div>
-                    </div>
                 </ng-template>
             </div>
         </div>
 
     </div>
 </div>
-
-<app-confirm-modal></app-confirm-modal>

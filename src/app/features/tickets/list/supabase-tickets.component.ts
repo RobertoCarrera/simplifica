@@ -104,18 +104,6 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.initializeComponent();
-
-    // Subscribe to GLOBAL company changes (Header dropdown)
-    this.simpleSupabase.company$.subscribe(companyId => {
-      // Only react if we have a valid ID and it's different (or if we are just starting and need to sync)
-      if (companyId && companyId !== this.selectedCompanyId) {
-        console.log('TicketList: Company changed globally to', companyId);
-        this.selectedCompanyId = companyId;
-        this.loadStages(); // Reload stages for the new company
-        this.loadTickets(1); // Reload tickets
-        this.loadStats(); // Reload stats
-      }
-    });
   }
 
   ngOnDestroy() {
@@ -144,26 +132,17 @@ export class SupabaseTicketsComponent implements OnInit, OnDestroy {
   private async initializeComponent() {
     this.loading = true;
     try {
-      // 1. Check if we already have a global company selected
-      const globalCompanyId = this.simpleSupabase.currentCompanyId;
-
-      // Load Companies (Dev Mode) - always needed for the dev dropdown
+      // Load Companies (Dev Mode) or resolve current
       const { data } = await this.simpleSupabase.getCompanies();
       this.companies = data || [];
 
-      if (globalCompanyId) {
-        this.selectedCompanyId = globalCompanyId;
-      } else if (!this.selectedCompanyId && this.companies.length > 0) {
-        // Fallback for Devs/First load without global state
+      if (!this.selectedCompanyId && this.companies.length > 0) {
         this.selectedCompanyId = this.companies[0].id;
+        // Try resolve from user... (simplified for brevity, assume first or user's)
       }
 
       if (this.selectedCompanyId) {
-        // Ensure global state matches if we set default
-        if (!globalCompanyId) {
-          await this.simpleSupabase.setCurrentCompany(this.selectedCompanyId);
-        }
-
+        await this.simpleSupabase.setCurrentCompany(this.selectedCompanyId);
         await this.loadStages();
         await this.loadTickets(1);
         this.loadStats();
