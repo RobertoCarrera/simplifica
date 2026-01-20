@@ -394,14 +394,36 @@ export class AdvancedSearchService {
     this.suggestions.set(suggestions.slice(0, 8));
   }
 
-  // Resaltar coincidencias en el texto
+  // Resaltar coincidencias en el texto de forma segura (escapando HTML)
   highlightMatches(text: string, query: string): string {
+    if (!text) return '';
+
+    // Función auxiliar para escapar HTML
+    const escapeHtml = (str: string) => {
+      return str.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+    };
+
     if (!this.options.highlightMatches || !query.trim()) {
-      return text;
+      return escapeHtml(text);
     }
 
     const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">$1</mark>');
+
+    // Split using capturing group to keep matches
+    const parts = text.split(regex);
+
+    return parts.map((part, index) => {
+      // Los índices impares son las coincidencias capturadas
+      if (index % 2 === 1) {
+         return `<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">${escapeHtml(part)}</mark>`;
+      } else {
+         return escapeHtml(part);
+      }
+    }).join('');
   }
 
   // Estadísticas de búsqueda
