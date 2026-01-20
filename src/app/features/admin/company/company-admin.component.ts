@@ -591,15 +591,21 @@ export class CompanyAdminComponent implements OnInit {
 
     this.busy = true;
     try {
-      const { error } = await this.auth.client
+      const { error, count } = await this.auth.client
         .from('company_invitations')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('id', id);
 
       if (error) throw error;
 
+      if (count === 0) {
+        throw new Error('No se pudo borrar la invitación (posiblemente ya no existe o no tienes permisos)');
+      }
+
+      this.invitations = this.invitations.filter((inv) => inv.id !== id);
       this.toast.success('Éxito', 'Invitación cancelada correctamente');
-      await this.loadInvitations();
+      // await this.loadInvitations(); // No need to reload immediately if we trust the delete? Better to reload but maybe detached?
+      this.loadInvitations();
     } catch (e: any) {
       this.toast.error('Error', e.message || 'Error al cancelar invitación');
     } finally {
@@ -617,7 +623,13 @@ export class CompanyAdminComponent implements OnInit {
         message: this.inviteForm.message || undefined,
       });
       if (!res.success) throw new Error(res.error || 'No se pudo enviar la invitación');
-      this.toast.success('Éxito', 'Invitación enviada correctamente');
+
+      if (res.mode === 'existing_user') {
+        this.toast.success('Usuario Existente', 'El usuario ya tiene cuenta. Se le ha enviado un enlace de acceso.');
+      } else {
+        this.toast.success('Éxito', 'Invitación enviada correctamente');
+      }
+
       this.inviteForm = { email: '', role: 'member', message: '' };
       await this.loadInvitations();
     } catch (e: any) {

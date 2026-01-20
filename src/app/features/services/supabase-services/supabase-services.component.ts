@@ -2,6 +2,7 @@ import { Component, OnInit, inject, HostListener, OnDestroy, ViewChild, ElementR
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseServicesService, Service, ServiceCategory, ServiceVariant } from '../../../services/supabase-services.service';
+import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
 import { SimpleSupabaseService, SimpleCompany } from '../../../services/simple-supabase.service';
 import { DevRoleService } from '../../../services/dev-role.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
@@ -96,7 +97,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     timeQuantity: false,
     difficulty: false,
     booking: false,       // Reservas section
-    visibility: false
+    visibility: false,
+    intakeForm: false
   };
 
   // Form validation
@@ -107,13 +109,42 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
   private toastService = inject(ToastService);
   private unitsService = inject(SupabaseUnitsService);
   private globalTagsService = inject(GlobalTagsService);
+  private bookingsService = inject(SupabaseBookingsService);
 
   // Units of measure for dynamic select
   units: UnitOfMeasure[] = [];
+  availableResourceTypes: string[] = [];
   unitsLoaded = false;
 
   // History management for modals
   private popStateListener: any = null;
+
+  // --- Accordion & Intake Form Methods ---
+  toggleAccordion(section: keyof typeof this.accordionState) {
+    this.accordionState[section] = !this.accordionState[section];
+  }
+
+  addQuestion() {
+    if (!this.formData.form_schema) {
+      this.formData.form_schema = [];
+    }
+    this.formData.form_schema.push({
+      id: this.generateId(),
+      type: 'text',
+      label: 'Nueva Pregunta',
+      required: false
+    });
+  }
+
+  removeQuestion(index: number) {
+    if (this.formData.form_schema) {
+      this.formData.form_schema.splice(index, 1);
+    }
+  }
+
+  private generateId(): string {
+    return Math.random().toString(36).substring(2, 9);
+  }
 
   ngOnInit() {
     this.loadCompanies().then(() => {
@@ -186,6 +217,23 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       this.units = [];
       this.unitsLoaded = true;
     }
+  }
+
+  loadResourceTypes() {
+    if (!this.selectedCompanyId) {
+      console.warn('loadResourceTypes: No company ID');
+      return;
+    }
+    console.log('loadResourceTypes: fetching for', this.selectedCompanyId);
+    this.bookingsService.getResources(this.selectedCompanyId).subscribe(resources => {
+      console.log('loadResourceTypes: resources found', resources);
+      const types = new Set<string>(['room', 'equipment']);
+      resources.forEach(r => {
+        if (r.type) types.add(r.type);
+      });
+      this.availableResourceTypes = Array.from(types).sort();
+      console.log('loadResourceTypes: available types', this.availableResourceTypes);
+    });
   }
 
   updateCategoryFilter() {
@@ -436,7 +484,16 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       has_variants: false,
       is_bookable: false,
       duration_minutes: 60,
-      booking_color: '#3b82f6'
+      buffer_minutes: 0,
+      min_notice_minutes: 60, // 1 hora por defecto
+      max_lead_days: 90,      // 3 meses por defecto
+      booking_color: '#3b82f6',
+      required_resource_type: undefined,
+      max_capacity: 1,
+      requires_confirmation: false,
+      form_schema: [],
+      // Public fields
+      is_public: false
     };
 
     // Inicializar tags seleccionados (pendingTags used for new services)
@@ -462,6 +519,7 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     this.loadServiceCategories();
     // this.loadServiceTags(); // Removed
     this.loadUnits();
+    this.loadResourceTypes();
 
     // Añadir entrada al historial para que el botón "atrás" cierre el modal
     history.pushState({ modal: 'service-form' }, '');
@@ -506,7 +564,8 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       timeQuantity: false,
       difficulty: false,
       booking: false,
-      visibility: false
+      visibility: false,
+      intakeForm: false
     };
 
     // Restaurar scroll de la página principal
@@ -578,6 +637,26 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
 
     if (this.formData.warranty_days && this.formData.warranty_days < 0) {
       this.formErrors['warranty_days'] = 'Los días de garantía no pueden ser negativos';
+    }
+
+    if (this.formData.warranty_days && this.formData.warranty_days < 0) {
+      this.formErrors['warranty_days'] = 'Los días de garantía no pueden ser negativos';
+    }
+
+    if (this.formData.buffer_minutes && this.formData.buffer_minutes < 0) {
+      this.formErrors['buffer_minutes'] = 'El tiempo de buffer no puede ser negativo';
+    }
+
+    if (this.formData.min_notice_minutes && this.formData.min_notice_minutes < 0) {
+      this.formErrors['min_notice_minutes'] = 'El tiempo mínimo de antelación no puede ser negativo';
+    }
+
+    if (this.formData.max_lead_days && this.formData.max_lead_days < 1) {
+      this.formErrors['max_lead_days'] = 'Los días de antelación máxima deben ser al menos 1';
+    }
+
+    if (this.formData.max_capacity && this.formData.max_capacity < 1) {
+      this.formErrors['max_capacity'] = 'La capacidad debe ser al menos 1';
     }
 
     return Object.keys(this.formErrors).length === 0;
@@ -814,6 +893,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
       // For new services, just clear variants if disabled
       if (!newValue) {
         this.serviceVariants = [];
+      } else {
+        // If enabling for new service, auto-open the section
+        this.openOnlySection('variants');
       }
       return;
     }
@@ -829,6 +911,9 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
         };
         await this.servicesService.enableServiceVariants(this.editingService.id, baseFeatures);
         await this.loadServiceVariants(this.editingService.id);
+
+        // Auto-open variants section and close others
+        this.openOnlySection('variants');
       } else {
         // Disable variants
         await this.servicesService.updateService(this.editingService.id, { has_variants: false });
@@ -850,9 +935,15 @@ export class SupabaseServicesComponent implements OnInit, OnDestroy {
     }
   }
 
-  toggleAccordion(section: keyof typeof this.accordionState) {
-    this.accordionState[section] = !this.accordionState[section];
+  // Helper to open only one section
+  private openOnlySection(section: keyof typeof this.accordionState) {
+    Object.keys(this.accordionState).forEach(key => {
+      this.accordionState[key as keyof typeof this.accordionState] = false;
+    });
+    this.accordionState[section] = true;
   }
+
+
 
   formatCurrency(amount: number): string {
     return this.servicesService.formatCurrency(amount);
