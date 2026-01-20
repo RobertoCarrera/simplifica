@@ -5,10 +5,11 @@ import DOMPurify from 'dompurify';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
-import { SupabaseTicketsService, Ticket } from '../../../services/supabase-tickets.service';
+import { SupabaseTicketsService, Ticket, TicketTimelineEvent, TicketMacro } from '../../../services/supabase-tickets.service';
 import { SupabaseTicketStagesService, TicketStage as ConfigStage } from '../../../services/supabase-ticket-stages.service';
 import { DevicesService, Device } from '../../../services/devices.service';
 import { ProductsService } from '../../../services/products.service';
+import { ProductMetadataService } from '../../../services/product-metadata.service';
 import { TicketModalService } from '../../../services/ticket-modal.service';
 
 import { environment } from '../../../../environments/environment';
@@ -55,1364 +56,16 @@ interface TicketComment {
 }
 
 import { ClientDevicesModalComponent } from '../../../features/devices/client-devices-modal/client-devices-modal.component';
+import { ProductCreateModalComponent } from '../../../features/products/product-create-modal/product-create-modal.component';
 import { SkeletonLoaderComponent } from '../../../shared/components/skeleton-loader/skeleton-loader.component';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
 
 @Component({
   selector: 'app-ticket-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, ClientDevicesModalComponent, SkeletonLoaderComponent, TagManagerComponent],
+  imports: [CommonModule, FormsModule, ClientDevicesModalComponent, SkeletonLoaderComponent, TagManagerComponent, ProductCreateModalComponent],
   styleUrls: ['./ticket-detail.component.scss'],
-  template: `
-    <div class="min-h-0 bg-gray-50 dark:bg-gray-900">
-      <div class="mx-auto">
-        
-        <!-- Header con navegación -->
-        <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 mb-6">
-          <div class="flex flex-col sm:flex-row sm:justify-between gap-3">
-            <!-- Botón Atrás -->
-            <button (click)="goBack()" 
-                    class="btn btn-secondary text-sm">
-              <i class="fas fa-arrow-left mr-2"></i>
-              <span>Atrás</span>
-            </button>
-
-            <!-- Right Side Actions Wrapper -->
-            <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto mt-3 sm:mt-0">
-              
-              <!-- Client Actions -->
-              <ng-container *ngIf="isClient()">
-                <button *ngIf="!ticketConfig || ticketConfig.ticket_client_can_create_devices !== false" (click)="openCreateDeviceForm()" 
-                        class="btn btn-primary text-sm px-4 w-full sm:w-auto">
-                  <i class="fas fa-plus mr-2"></i>
-                  <span>Añadir Dispositivo</span>
-                </button>
-
-                <button (click)="scrollToComment()" 
-                        class="btn btn-secondary text-sm px-4 w-full sm:w-auto">
-                  <i class="fas fa-comment mr-2"></i>
-                  <span>Añadir Comentario</span>
-                </button>
-
-                <button *ngIf="!isTicketSolved() && (!ticketConfig || ticketConfig.ticket_client_can_close !== false)" (click)="markAsSolved()" 
-                        class="btn btn-success text-sm px-4 w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white border-transparent">
-                  <i class="fas fa-check mr-2"></i>
-                  <span>Marcar como Solucionado</span>
-                </button>
-              </ng-container>
-              
-              <!-- Admin Actions -->
-              <div *ngIf="!loading && !error && ticket && !isClient()" class="grid grid-cols-3 sm:flex gap-2 sm:gap-3 w-full sm:w-auto">
-                <button (click)="convertToQuoteFromTicket()"
-                        [disabled]="!ticket || ticketServices.length === 0 || !(ticket && ticket.client && ticket.client.id)"
-                        class="btn btn-primary text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
-                  <i class="fas fa-file-invoice text-base sm:text-sm"></i>
-                  <span class="text-[10px] sm:text-sm">{{ activeQuoteId ? 'Ir a Presup.' : 'Convertir' }}</span>
-                </button>
-                <button (click)="printTicket()" 
-                        class="btn btn-secondary text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
-                  <i class="fas fa-print text-base sm:text-sm"></i>
-                  <span class="text-[10px] sm:text-sm">Imprimir</span>
-                </button>
-                <button (click)="deleteTicket()" 
-                        class="btn btn-danger text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
-                  <i class="fas fa-trash text-base sm:text-sm"></i>
-                  <span class="text-[10px] sm:text-sm">Eliminar</span>
-                </button>
-              </div>
-
-            </div>
-          </div>
-        </div>
-
-        <!-- Loading State -->
-        <!-- Loading State Skeletons -->
-        <div *ngIf="loading" class="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-pulse">
-            <!-- Main Content Skeleton -->
-            <div class="space-y-6 lg:col-span-3">
-                <!-- Header Skeleton -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 h-64">
-                    <app-skeleton-loader type="text" height="2rem" width="60%" styleClass="mb-4"></app-skeleton-loader>
-                    <app-skeleton-loader type="text" height="1rem" width="40%" styleClass="mb-6"></app-skeleton-loader>
-                    <app-skeleton-loader type="block" height="6rem" width="100%"></app-skeleton-loader>
-                </div>
-                <!-- Progress Skeleton -->
-                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 h-32">
-                    <app-skeleton-loader type="text" height="1.5rem" width="30%" styleClass="mb-4"></app-skeleton-loader>
-                    <app-skeleton-loader type="block" height="2rem" width="100%"></app-skeleton-loader>
-                </div>
-            </div>
-
-            <!-- Sidebar Skeleton -->
-             <div class="space-y-6 lg:col-span-1">
-                <div class="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-6 h-48">
-                    <app-skeleton-loader type="circle" height="3rem" width="3rem" styleClass="mb-4"></app-skeleton-loader>
-                     <app-skeleton-loader type="text" height="1.2rem" width="70%" styleClass="mb-2"></app-skeleton-loader>
-                     <app-skeleton-loader type="text" height="1rem" width="50%"></app-skeleton-loader>
-                </div>
-                <div class="bg-green-50 dark:bg-green-900/10 rounded-xl p-6 h-64">
-                    <app-skeleton-loader type="text" height="1.5rem" width="40%" styleClass="mb-4"></app-skeleton-loader>
-                     <app-skeleton-loader type="block" count="3" height="2rem" styleClass="mb-2"></app-skeleton-loader>
-                </div>
-             </div>
-        </div>
-
-        <!-- Error State -->
-        <div *ngIf="error" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-6">
-          <div class="flex">
-            <div class="flex-shrink-0">
-              <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-xl"></i>
-            </div>
-            <div class="ml-3">
-              <h3 class="text-sm font-medium text-red-800 dark:text-red-300">Error</h3>
-              <p class="mt-1 text-sm text-red-700 dark:text-red-400">{{ error }}</p>
-            </div>
-          </div>
-        </div>
-
-  <!-- Ticket Detail -->
-  <div *ngIf="!loading && !error && ticket" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          
-          <!-- Main Content (Left Side) -->
-          <div class="space-y-6 lg:col-span-3">
-            
-            <!-- Ticket Header -->
-            <div class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 lg:p-8 hover:shadow-xl transition-shadow duration-300">
-              <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-4 sm:mb-6">
-                <div class="flex-1">
-                  <div class="flex items-start sm:items-center gap-3 mb-3">
-                    <div class="bg-gradient-to-br from-orange-400 to-orange-600 text-white p-2 sm:p-3 rounded-lg shadow-md flex-shrink-0">
-                      <i class="fas fa-ticket-alt text-xl sm:text-2xl"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-gray-100 break-words">
-                        {{ ticket.title }}
-                      </h1>
-                      <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        <span class="font-mono font-semibold">#{{ ticket.ticket_number }}</span>
-                        <span class="mx-2">•</span>
-                        <span class="hidden sm:inline">Creado {{ formatDate(ticket.created_at) }}</span>
-                      </p>
-                    </div>
-                  </div>
-                  <!-- Initial Attachment Preview REMOVED (Legacy) -->
-                  
-                  <div class="ticket-description mt-4 ml-0 sm:ml-1 text-gray-800 dark:text-gray-200 text-sm leading-relaxed" 
-                       [innerHTML]="formatDescription(ticket.description)"
-                       (click)="handleDescriptionClick($event)"></div>
-                </div>
-                <div class="flex flex-row lg:flex-col items-center lg:items-end gap-2 sm:gap-3">
-                  <span [class]="getPriorityClasses(ticket.priority)"
-                        class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold shadow-sm">
-                    <i class="fas {{ getPriorityIcon(ticket.priority) }}"></i>
-                    <span class="hidden sm:inline">{{ getPriorityLabel(ticket.priority) }}</span>
-                  </span>
-                  
-                  <!-- Assignment Dropdown (Staff Only) -->
-                  <div *ngIf="!isClient()" class="ml-0 lg:ml-4">
-                    <select 
-                        [ngModel]="ticket.assigned_to" 
-                        (ngModelChange)="assignTicket($event)"
-                        class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
-                        <option [ngValue]="null">Sin Asignar</option>
-                        <option *ngFor="let user of staffUsers" [ngValue]="user.id">{{ user.name }}</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Progress Section -->
-              <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                <div class="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  <span class="flex items-center gap-2">
-                    <i class="fas fa-chart-line text-blue-500"></i>
-                    Progreso del Ticket
-                  </span>
-                  <span class="text-lg font-bold" [style.color]="getCurrentStageColor()">{{ getProgressPercentage() | number:'1.0-0' }}%</span>
-                </div>
-                <div class="relative">
-                  <!-- Progress Bar Background -->
-                  <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 relative overflow-hidden shadow-inner">
-                    <div 
-                      class="h-4 rounded-full transition-all duration-500 ease-out"
-                      [style.width.%]="getProgressPercentage()"
-                      [style.background]="getCurrentStageColor()"
-                    ></div>
-                    
-                    <!-- Stage Markers -->
-                    <div *ngFor="let stage of allStages; let i = index" 
-                         class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 z-10"
-                         [style.left.%]="getStagePosition(i)">
-                      <div 
-                        [class]="getStageMarkerClass(stage)"
-                        class="w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center shadow-sm cursor-pointer hover:scale-125 transition-all duration-300"
-                        [title]="stage.name"
-                        (click)="!isClient() && (showChangeStageModal = true); !isClient() && (selectedStageId = stage.id)"
-                      >
-                        <div *ngIf="isStageCompleted(stage)" class="w-1.5 h-1.5 bg-white rounded-full"></div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- Stage Labels -->
-                  <div class="flex justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
-                    <div *ngFor="let stage of getVisibleStages(); let i = index" 
-                         class="text-center flex-1 transition-all duration-200"
-                         [class.font-semibold]="stage.id === ticket.stage_id"
-                         [class.text-blue-600]="stage.id === ticket.stage_id"
-                         [class.dark:text-blue-400]="stage.id === ticket.stage_id"
-                         [class.scale-105]="stage.id === ticket.stage_id">
-                      {{ stage.name }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Tabs Navigation -->
-            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-              <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-x-auto">
-                <!-- Comments Tab - FIRST for clients -->
-                <button 
-                  (click)="activeTab = 'comments'"
-                  [class.active-tab]="activeTab === 'comments'"
-                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
-                  <i class="fas fa-comments mr-1 sm:mr-2"></i>
-                  <span class="hidden xs:inline">Comentarios</span>
-                  <span class="xs:hidden">Comt.</span>
-                  <span *ngIf="activeCommentsCount > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
-                    {{ activeCommentsCount }}
-                  </span>
-                </button>
-                <button 
-                  (click)="activeTab = 'services'"
-                  [class.active-tab]="activeTab === 'services'"
-                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
-                  <i class="fas fa-wrench mr-1 sm:mr-2"></i>
-                  <span class="hidden xs:inline">Servicios</span>
-                  <span class="xs:hidden">Serv.</span>
-                  <span *ngIf="ticketServices.length > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                    {{ ticketServices.length }}
-                  </span>
-                </button>
-                <button 
-                  (click)="activeTab = 'products'"
-                  [class.active-tab]="activeTab === 'products'"
-                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
-                  <i class="fas fa-box mr-1 sm:mr-2"></i>
-                  <span class="hidden xs:inline">Productos</span>
-                  <span class="xs:hidden">Prod.</span>
-                  <span *ngIf="ticketProducts.length > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
-                    {{ ticketProducts.length }}
-                  </span>
-                </button>
-                <button 
-                  (click)="activeTab = 'devices'"
-                  [class.active-tab]="activeTab === 'devices'"
-                  class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
-                  <i class="fas fa-mobile-alt mr-1 sm:mr-2"></i>
-                  <span class="hidden xs:inline">Dispositivos</span>
-                  <span class="xs:hidden">Disp.</span>
-                  <span *ngIf="linkedDeviceIds.size > 0" class="ml-1 sm:ml-2 inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 text-[10px] sm:text-xs font-bold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                    {{ linkedDeviceIds.size }}
-                  </span>
-                </button>
-              </div>
-
-              <!-- Tab Content -->
-              <div class="p-6">
-                <!-- Services Tab -->
-                @if (activeTab === 'services') {
-                  <div class="tab-content-animate">
-                    <div class="flex justify-between items-center mb-4">
-                      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Servicios Asignados</h3>
-                      <button *ngIf="!isClient()" (click)="openServicesModal()"
-                              class="btn btn-primary">
-                        <i class="fas fa-wrench"></i>
-                        Modificar Servicios
-                      </button>
-                    </div>
-                    <div *ngIf="ticketServices.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
-                      <i class="fas fa-wrench text-5xl mb-4 opacity-50"></i>
-                      <p class="text-lg">No hay servicios asignados a este ticket</p>
-                      <button *ngIf="!isClient()" (click)="openServicesModal()" class="mt-4 btn btn-secondary">
-                        <i class="fas fa-plus mr-2"></i>
-                        Añadir Servicios
-                      </button>
-                    </div>
-                    <div *ngIf="ticketServices.length > 0" class="space-y-4">
-                      <div *ngFor="let serviceItem of ticketServices" 
-                           class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md dark:hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200">
-                        <div class="flex justify-between items-start">
-                          <div class="flex-1">
-                            <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ serviceItem.service?.name || 'Servicio no especificado' }}</h4>
-                            <p *ngIf="serviceItem.service?.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              {{ serviceItem.service.description }}
-                            </p>
-                            <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
-                              <!-- Quantity controls - ADMIN ONLY -->
-                              <div *ngIf="!isClient()" class="flex items-center space-x-2">
-                                <div class="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
-                                  <button class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="decreaseAssignedQty(serviceItem)">-</button>
-                                  <input type="number" class="w-16 text-center bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-x border-gray-300 dark:border-gray-600" [(ngModel)]="serviceItem.quantity" (ngModelChange)="onAssignedQuantityChange(serviceItem, $event)" />
-                                  <button class="px-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600" [disabled]="savingAssignedServiceIds.has(serviceItem.service?.id)" (click)="increaseAssignedQty(serviceItem)">+</button>
-                                </div>
-                                <span *ngIf="savingAssignedServiceIds.has(serviceItem.service?.id)" class="text-xs text-gray-500 dark:text-gray-400">Guardando...</span>
-                              </div>
-                              <!-- Read-only quantity for clients -->
-                              <span *ngIf="isClientPortal"><i class="fas fa-boxes w-4"></i> Cantidad: {{ serviceItem.quantity }}</span>
-                              <span *ngIf="!isClient() || ticketConfig?.ticket_client_view_estimated_hours !== false"><i class="fas fa-clock w-4"></i> {{ getLineEstimatedHours(serviceItem) }}h</span>
-                              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
-                                <i class="fas fa-tag w-3"></i>
-                                {{ serviceItem.service?.category_name || serviceItem.service?.category || 'Sin categoría' }}
-                              </span>
-                            </div>
-                          </div>
-                          <div class="text-right">
-                            <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatPrice(getUnitPrice(serviceItem)) }}</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Total: {{ formatPrice(getLineTotal(serviceItem)) }}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                }
-
-                <!-- Products Tab -->
-                @if (activeTab === 'products') {
-                  <div class="tab-content-animate">
-                    <div class="flex justify-between items-center mb-4">
-                      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Productos Asignados</h3>
-                      <button *ngIf="!isClient()" (click)="openProductsModal()"
-                              class="btn btn-primary">
-                        <i class="fas fa-box"></i>
-                        Modificar Productos
-                      </button>
-                    </div>
-                    <div *ngIf="ticketProducts.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
-                      <i class="fas fa-box text-5xl mb-4 opacity-50"></i>
-                      <p class="text-lg">No hay productos asignados a este ticket</p>
-                      <button *ngIf="!isClient()" (click)="openProductsModal()" class="mt-4 btn btn-secondary">
-                        <i class="fas fa-plus mr-2"></i>
-                        Añadir Productos
-                      </button>
-                    </div>
-                    <div *ngIf="ticketProducts.length > 0" class="space-y-4">
-                      <div *ngFor="let productItem of ticketProducts" 
-                           class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md dark:hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-200">
-                        <div class="flex justify-between items-start">
-                          <div class="flex-1">
-                            <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ productItem.product?.name || 'Producto no especificado' }}</h4>
-                            <p *ngIf="productItem.product?.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                              {{ productItem.product.description }}
-                            </p>
-                            <div class="mt-2 flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
-                              <span><i class="fas fa-boxes w-4"></i> Cantidad: {{ productItem.quantity }}</span>
-                              <span *ngIf="productItem.product?.brand" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300">
-                                <i class="fas fa-copyright w-3"></i>
-                                {{ productItem.product.brand }}
-                              </span>
-                              <span *ngIf="productItem.product?.category" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300">
-                                <i class="fas fa-tag w-3"></i>
-                                {{ productItem.product.category }}
-                              </span>
-                            </div>
-                          </div>
-                          <div class="text-right">
-                            <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatPrice(getProductUnitPrice(productItem)) }}</p>
-                            <p class="text-sm text-gray-600 dark:text-gray-400">Total: {{ formatPrice(getProductLineTotal(productItem)) }}</p>
-                            <button *ngIf="!isClient()" (click)="removeProductFromTicket(productItem.product?.id)"
-                                    class="mt-2 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">
-                              <i class="fas fa-trash"></i>
-                              Eliminar
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                }
-
-                <!-- Devices Tab -->
-                @if (activeTab === 'devices') {
-                  <div class="tab-content-animate">
-                    <div class="flex justify-between items-center mb-4">
-                      <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Dispositivos Vinculados</h3>
-                      <div class="flex items-center gap-4">
-                        <label *ngIf="!isClient()" class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer select-none">
-                          <input type="checkbox" [checked]="showDeletedDevices" (change)="toggleDeletedDevices()" class="form-checkbox rounded text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700">
-                          Ver eliminados
-                        </label>
-                        <button *ngIf="!isClient()" (click)="openDevicesModal()" class="btn btn-primary">
-                          <i class="fas fa-mobile-alt"></i>
-                          Modificar Dispositivos
-                        </button>
-
-                      </div>
-                    </div>
-                    <div *ngIf="ticketDevices.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
-                      <i class="fas fa-mobile-alt text-5xl mb-4 opacity-50"></i>
-                      <p class="text-lg">No hay dispositivos vinculados a este ticket</p>
-
-                    </div>
-                    <div *ngIf="ticketDevices.length > 0" class="space-y-4">
-                      <div *ngFor="let device of ticketDevices" 
-                           class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex justify-between items-start hover:shadow-md dark:hover:shadow-lg hover:border-green-300 dark:hover:border-green-700 transition-all duration-200">
-                        <div class="flex-1">
-
-                          <div class="flex items-center space-x-2">
-                            <h4 class="font-medium text-gray-900 dark:text-gray-100">{{ device.brand }} {{ device.model }}</h4>
-                            <span *ngIf="isDeviceLinked(device.id)" class="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded">Vinculado</span>
-                          </div>
-                          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ device.device_type }}</p>
-                          <p *ngIf="device.imei" class="text-sm text-gray-600 dark:text-gray-400">IMEI: {{ device.imei }}</p>
-                          <p *ngIf="device.color" class="text-sm text-gray-600 dark:text-gray-400">Color: {{ device.color }}</p>
-                          <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                            <span class="font-medium">Problema reportado:</span> {{ device.reported_issue }}
-                          </p>
-
-                          <!-- Device Images -->
-                          <div *ngIf="device.media?.length" class="mt-3">
-                            <h5 class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Imágenes adjuntas:</h5>
-                            <div class="flex flex-wrap gap-2">
-                              <div *ngFor="let media of device.media" class="relative group cursor-pointer" (click)="openLightbox(media.file_url)">
-                                <div class="block w-16 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-colors">
-                                  <img [src]="media.file_url" [alt]="media.description || 'Imagen del dispositivo'" class="w-full h-full object-cover">
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="flex flex-col items-end gap-2">
-                          <div class="text-right">
-                             <span [class]="getDeviceStatusClass(device.status)"
-                                   class="inline-block px-2 py-1 text-xs font-medium rounded">
-                               {{ getDeviceStatusLabel(device.status) }}
-                             </span>
-                             <p *ngIf="device.deleted_at" class="text-xs text-red-500 font-medium mt-1">ELIMINADO</p>
-                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ formatDate(device.received_at) }}</p>
-                          </div>
-                          <div *ngIf="!isClient() && !device.deleted_at" class="flex items-center gap-1">
-                             <button (click)="editDevice(device); $event.stopPropagation()" class="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Editar">
-                               <i class="fas fa-edit"></i>
-                             </button>
-                             <button (click)="deleteConfirmDevice(device); $event.stopPropagation()" class="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Eliminar">
-                               <i class="fas fa-trash"></i>
-                             </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                }
-
-                <!-- Comments Tab -->
-                @if (activeTab === 'comments') {
-                  <div class="tab-content-animate">
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Comentarios</h3>
-                    
-                    <!-- Add Comment Form -->
-                    <div class="mb-6">
-                      <!-- TipTap Editor -->
-                      <div class="relative">
-                        <div 
-                          #editorElement
-                          id="editorElement"
-                          class="tiptap-editor w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[100px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent cursor-text"
-                          (click)="focusEditor()"
-                          (dragover)="onNativeDragOver($event)"
-                          (drop)="onNativeDrop($event)"
-                        >
-                        </div>
-                      </div>
-                      
-                      <div class="mt-2 flex justify-between items-center">
-                        <!-- Internal comment checkbox - ADMIN ONLY -->
-                        <label *ngIf="!isClient()" class="flex items-center text-sm text-gray-600 dark:text-gray-400">
-                          <input type="checkbox" [(ngModel)]="isInternalComment" class="mr-2 w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
-                          Comentario interno (no visible para el cliente)
-                        </label>
-                        <div *ngIf="isClient()"></div><!-- Spacer for flexbox -->
-                        <div class="flex items-center gap-2 sm:gap-3">
-                          <span *ngIf="isUploadingImage" class="text-xs text-gray-500 dark:text-gray-400">Subiendo archivo...</span>
-                          <!-- File attachment button -->
-                          <input #commentFileInput type="file" (change)="onCommentFileSelect($event)" class="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
-                          <button (click)="commentFileInput.click()" 
-                                  [disabled]="isUploadingImage"
-                                  class="btn btn-secondary px-3 py-2 text-sm"
-                                  title="Adjuntar archivo">
-                            <i class="fas fa-paperclip"></i>
-                            <span class="hidden sm:inline ml-1">Adjuntar</span>
-                          </button>
-                          <div class="flex items-center shadow-sm rounded-lg relative">
-                            <button (click)="addComment()" 
-                                    [disabled]="isUploadingImage || !hasEditorContent() || isSubmitting"
-                                    [ngClass]="{'rounded-r-none border-r border-white/20': !isClient() && activeCommentsCount > 0, 'rounded-lg': isClient() || activeCommentsCount === 0}"
-                                    class="btn btn-primary">
-                              <i class="fas fa-comment"></i>
-                              <span class="hidden sm:inline ml-2">Enviar</span>
-                            </button>
-                            <button *ngIf="!isClient() && activeCommentsCount > 0"
-                                    class="btn btn-primary rounded-l-none px-2 border-l border-white/10" 
-                                    [disabled]="isUploadingImage || !hasEditorContent() || isSubmitting"
-                                    (click)="toggleSmartSendDropdown()">
-                              <i class="fas fa-chevron-down"></i>
-                            </button>
-                            
-                            <!-- Check dropup vs dropdown based on position? Usually fixed is safer or standard absolute -->
-                             <div *ngIf="showSmartSendDropdown" class="fixed inset-0 z-40" (click)="showSmartSendDropdown = false"></div>
-                             
-                            <div *ngIf="showSmartSendDropdown" class="absolute bottom-full right-0 mb-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
-                              
-                              <!-- Send & Solve -->
-                              <button *ngIf="solvedStage" 
-                                      (click)="replyAndSetStage(solvedStage.id)"
-                                      [disabled]="isSubmitting" 
-                                      class="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors">
-                                  <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 flex items-center justify-center shrink-0">
-                                      <i class="fas fa-check text-xs"></i>
-                                  </div>
-                                  <div>
-                                      <div class="text-sm font-medium text-gray-900 dark:text-gray-100">Enviar y Solucionar</div>
-                                      <div class="text-[10px] text-gray-500 uppercase tracking-wide">Cambiar a {{solvedStage.name}}</div>
-                                  </div>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Comments List -->
-                    <div *ngIf="activeCommentsCount === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
-                      <i class="fas fa-comments text-5xl mb-4 opacity-50"></i>
-                      <p class="text-lg">No hay comentarios aún</p>
-                    </div>
-                    <div *ngIf="activeCommentsCount > 0" class="space-y-4">
-                      <!-- Recursive Template for Comments -->
-                      <ng-template #commentNode let-comment="comment" let-level="level">
-                        <div class="mb-4 relative transition-all duration-300" 
-                             [style.margin-left.px]="level * 24"
-                             [class.pl-6]="level > 0">
-                            
-                            <!-- Thread connector lines (only for depth > 0) -->
-                            <div *ngIf="level > 0" 
-                                 class="absolute left-0 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700 -ml-3 rounded-full"></div>
-                            
-                            <div *ngIf="level > 0" 
-                                 class="absolute left-0 top-8 w-6 h-[2px] bg-gray-200 dark:bg-gray-700 -ml-3 rounded-r-full"></div>
-
-                            <!-- Comment Body -->
-                            <div *ngIf="!comment.deleted_at || (!isClient() && showDeletedComments)"
-                                 [ngClass]="{
-                                   'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700/50': comment.is_internal,
-                                   'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 shadow-sm': !comment.is_internal && !comment.client_id,
-                                   'bg-blue-50/40 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800/30': !comment.is_internal && comment.client_id
-                                 }"
-                                 [class.opacity-60]="comment.deleted_at"
-                                 class="rounded-2xl p-4 border relative group overflow-hidden transition-shadow"> 
-                                
-                                <!-- Accent Bars -->
-                                <div *ngIf="comment.is_internal" class="absolute left-0 top-0 bottom-0 w-1 bg-amber-400/80"></div>
-                                <div *ngIf="!comment.is_internal && comment.client_id" class="absolute left-0 top-0 bottom-0 w-1 bg-blue-400/80"></div>
-
-                                <!-- Header -->
-                                <div class="flex justify-between items-start mb-3 pl-2">
-                                  <div class="flex items-center gap-3">
-                                    <!-- Avatar -->
-                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm shrink-0 border border-white/20"
-                                         [ngClass]="{
-                                           'bg-amber-100 text-amber-900 dark:bg-amber-800 dark:text-amber-100': comment.is_internal,
-                                           'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300': !comment.is_internal && !comment.client_id,
-                                           'bg-blue-100 text-blue-900 dark:bg-blue-800 dark:text-blue-100': !comment.is_internal && comment.client_id
-                                         }">
-                                         {{ getAuthorInitials(comment) }}
-                                    </div>
-
-                                    <div class="flex flex-col">
-                                      <div class="flex items-center gap-2">
-                                        <span class="font-bold text-sm text-gray-900 dark:text-white">
-                                          {{ getCommentAuthorName(comment) }}
-                                        </span>
-                                        <span *ngIf="comment.is_internal" 
-                                              class="px-1.5 py-0.5 text-[8px] bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 rounded border border-amber-200 dark:border-amber-700/50 uppercase font-bold tracking-wider">
-                                          Interno
-                                        </span>
-                                        <!-- Hide "Cliente" tag if viewer is client (isClient() is true) -->
-                                        <span *ngIf="comment.client_id && !isClient()" 
-                                              class="px-1.5 py-0.5 text-[8px] bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 rounded border border-blue-200 dark:border-blue-700/50 uppercase font-bold tracking-wider">
-                                          Cliente
-                                        </span>
-                                        <span *ngIf="comment.deleted_at" class="px-1.5 py-0.5 text-[8px] bg-red-100 text-red-700 rounded uppercase font-bold">
-                                          Eliminado
-                                        </span>
-                                      </div>
-                                      <div class="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
-                                        <span>{{ formatDate(comment.created_at) }}</span>
-                                        <span *ngIf="comment.edited_at" class="italic" title="{{ formatDate(comment.edited_at) }}">• Editado</span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  <!-- Actions (Always visible) -->
-                                  <div class="flex items-center gap-1">
-                                      <button *ngIf="!isClient()" (click)="openVisibilityModal(comment); $event.stopPropagation()" 
-                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors" 
-                                              [title]="comment.is_internal ? 'Hacer público' : 'Hacer interno'">
-                                        <i class="fas" [ngClass]="comment.is_internal ? 'fa-eye-slash' : 'fa-eye'"></i>
-                                      </button>
-
-                                      <button (click)="toggleReply(comment)" 
-                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors" 
-                                              title="Responder">
-                                        <i class="fas fa-reply text-xs"></i>
-                                      </button>
-                                      
-                                      <ng-container *ngIf="!comment.deleted_at"> 
-                                          <button (click)="toggleEdit(comment)" 
-                                                  class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-orange-600 transition-colors" 
-                                                  title="Editar">
-                                            <i class="fas fa-pencil-alt text-xs"></i>
-                                          </button>
-                                          <button *ngIf="!isClient()" 
-                                                  (click)="softDeleteComment(comment)" 
-                                                  class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 transition-colors" 
-                                                  title="Eliminar">
-                                            <i class="fas fa-trash text-xs"></i>
-                                          </button>
-                                      </ng-container>
-
-                                      <button *ngIf="comment.deleted_at && !isClient()" 
-                                              (click)="restoreComment(comment)" 
-                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-green-100 text-green-600 transition-colors" 
-                                              title="Restaurar">
-                                        <i class="fas fa-undo text-xs"></i>
-                                      </button>
-                                  </div>
-                                </div>
-
-                                <!-- Content -->
-                                <div *ngIf="!comment.isEditing" 
-                                     class="pl-11 prose prose-sm max-w-none text-gray-900 dark:text-gray-100 [&>*]:text-gray-900 dark:[&>*]:text-gray-100 leading-relaxed text-[13.5px] font-normal" 
-                                     [innerHTML]="getProcessedContent(comment.comment)"></div>
-                                
-                                <!-- Edit Mode -->
-                                <div *ngIf="comment.isEditing" class="mt-3 pl-11">
-                                    <textarea [(ngModel)]="comment.editContent" class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800/80 focus:ring-2 focus:ring-blue-500 min-h-[100px] text-sm shadow-inner" rows="3"></textarea>
-                                    <div class="flex justify-end gap-2 mt-3">
-                                        <button (click)="toggleEdit(comment)" class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Cancelar</button>
-                                        <button (click)="saveEdit(comment)" class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors shadow-sm">Guardar cambios</button>
-                                    </div>
-                                </div>
-
-                                <!-- Reply Editor -->
-                                <div *ngIf="comment.showReplyEditor" class="mt-4 pt-4 ml-11 border-t border-gray-100 dark:border-gray-700/50">
-                                    <div class="flex gap-3">
-                                      <div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0">
-                                        <i class="fas fa-reply text-gray-400 text-xs"></i>
-                                      </div>
-                                      <div class="flex-1">
-                                        <textarea [id]="'reply-input-' + comment.id" #replyInput class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800/50 focus:ring-2 focus:ring-blue-500 min-h-[80px] text-sm shadow-inner" placeholder="Escribe tu respuesta..."></textarea>
-                                        <div class="flex justify-end gap-2 mt-2">
-                                            <button (click)="toggleReply(comment)" class="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">Cancelar</button>
-                                            <button (click)="replyTo(comment, replyInput.value)" class="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1 shadow-sm">
-                                              <i class="fas fa-paper-plane text-[10px]"></i> Responder
-                                            </button>
-                                        </div>
-                                      </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Recursively render children -->
-                        <div *ngIf="comment.children && comment.children.length > 0">
-                            <ng-container *ngFor="let child of comment.children">
-                                <ng-container *ngTemplateOutlet="commentNode; context:{comment: child, level: level + 1}"></ng-container>
-                            </ng-container>
-                        </div>
-                      </ng-template>
-
-                      <!-- Main List Loop -->
-                      <div class="space-y-4">
-                        <div *ngIf="!isClient()" class="flex justify-end mb-2">
-                           <label class="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
-                               <input type="checkbox" [(ngModel)]="showDeletedComments" class="rounded border-gray-300">
-                               Mostrar eliminados
-                           </label>
-                        </div>
-
-                        <ng-container *ngFor="let comment of comments">
-                           <ng-container *ngTemplateOutlet="commentNode; context:{comment: comment, level: 0}"></ng-container>
-                        </ng-container>
-
-                        <!-- Load More / Fade Section -->
-                        <div *ngIf="!commentsExpanded && totalCommentsCount > visibleCommentsLimit" class="relative mt-2 text-center">
-                           <!-- Fade Overlay -->
-                           <div class="absolute -top-24 left-0 right-0 h-24 bg-gradient-to-t from-white dark:from-gray-800 to-transparent pointer-events-none"></div>
-                           
-                           <button (click)="toggleCommentsExpansion()" 
-                                   class="relative z-10 px-4 py-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-full text-xs font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors shadow-sm cursor-pointer hover:shadow-md">
-                             <i class="fas fa-history mr-1"></i> Ver historial completo
-                           </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                }
-              </div>
-            </div>
-          </div>
-
-          <!-- Sidebar (Right Side) -->
-          <div class="space-y-4 sm:space-y-6 lg:col-span-1">
-
-            <!-- Tags Card -->
-            <div *ngIf="!isClient()" class="bg-white dark:bg-gray-800 shadow-md border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
-              <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                <div class="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 p-2 sm:p-3 rounded-lg shadow-md">
-                  <i class="fas fa-tags text-lg sm:text-xl"></i>
-                </div>
-                <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Etiquetas</h3>
-              </div>
-              <app-tag-manager [entityId]="ticket.id" entityType="tickets"></app-tag-manager>
-            </div>
-
-            <!-- Client Contact - ADMIN ONLY (clients shouldn't see their own info card) -->
-            <div *ngIf="!isClient()" class="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 shadow-md border border-blue-200 dark:border-blue-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
-              <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                <div class="bg-blue-500 text-white p-2 sm:p-3 rounded-lg shadow-md">
-                  <i class="fas fa-user text-lg sm:text-xl"></i>
-                </div>
-                <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Cliente</h3>
-              </div>
-              <div *ngIf="ticket?.client as client; else noClientInfo">
-                <div class="text-sm sm:text-base text-gray-900 dark:text-gray-100 font-semibold mb-2 sm:mb-3">{{ client.name }}</div>
-                <div class="space-y-1.5 sm:space-y-2">
-                  <div *ngIf="client.email" class="flex items-center gap-2 text-xs sm:text-sm">
-                    <i class="fas fa-envelope text-blue-600 dark:text-blue-400 w-3 sm:w-4"></i>
-                    <a [href]="'mailto:' + client.email" class="text-blue-600 dark:text-blue-400 hover:underline truncate">{{ client.email }}</a>
-                  </div>
-                  <div *ngIf="client.phone" class="flex items-center gap-2 text-xs sm:text-sm">
-                    <i class="fas fa-phone text-blue-600 dark:text-blue-400 w-3 sm:w-4"></i>
-                    <a [href]="'tel:' + client.phone" class="text-blue-600 dark:text-blue-400 hover:underline">{{ client.phone }}</a>
-                  </div>
-                </div>
-              </div>
-              <ng-template #noClientInfo>
-                <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">No hay información del cliente</div>
-              </ng-template>
-              
-              <!-- View Devices Button -->
-              <div *ngIf="ticket?.client?.id" class="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700/50">
-                <button (click)="openClientDevicesModal()" class="w-full btn btn-sm bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-blue-300 dark:border-blue-800 transition-colors flex items-center justify-center gap-2">
-                  <i class="fas fa-mobile-alt"></i>
-                  Ver Dispositivos
-                </button>
-              </div>
-            </div>
-            
-            <!-- Quick Stats -->
-            <div class="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-800/20 shadow-md border border-green-200 dark:border-green-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
-              <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-                <div class="bg-green-500 text-white p-2 sm:p-3 rounded-lg shadow-md">
-                  <i class="fas fa-chart-pie text-lg sm:text-xl"></i>
-                </div>
-                <h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100">Resumen</h3>
-              </div>
-              <div class="space-y-3 sm:space-y-4">
-                <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm">
-                  <div class="flex justify-between items-center">
-                    <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Servicios</span>
-                    <span class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">{{ formatPrice(calculateServicesTotal()) }}</span>
-                  </div>
-                  <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <span class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Productos</span>
-                    <span class="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">{{ formatPrice(calculateProductsTotal()) }}</span>
-                  </div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-lg p-2.5 sm:p-3 shadow-sm border-2 border-green-500 dark:border-green-600">
-                  <div class="flex justify-between items-center">
-                    <span class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Total Ticket</span>
-                    <span class="text-gray-900 dark:text-gray-100 font-medium">{{ formatPrice(ticket.total_amount || calculateServicesTotal()) }}</span>
-                </div>
-                
-                <!-- Hours Estimated vs Real -->
-                <div class="flex justify-between items-center text-sm border-t border-gray-100 dark:border-slate-600 pt-2">
-                  <span class="text-gray-500 dark:text-gray-400">Horas Estimadas</span>
-                  <span class="font-medium text-gray-900 dark:text-gray-100">{{ ticket.estimated_hours || 0 }}h</span>
-                </div>
-
-                <div class="flex justify-between items-center text-sm">
-                  <span class="text-gray-500 dark:text-gray-400">Horas Reales</span>
-                  <span class="font-medium" [class.text-green-600]="getActualHours() <= (ticket.estimated_hours || 0)" 
-                                            [class.text-orange-500]="getActualHours() > (ticket.estimated_hours || 0)">
-                    {{ getActualHours() }}h
-                  </span>
-                </div>
-              </div>
-            </div>
-            </div>
-
-            <!-- Timeline -->
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6">
-              <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
-                  <i class="fas fa-history"></i>
-                </div>
-                Timeline
-              </h3>
-
-              <div class="relative border-l-2 border-gray-100 dark:border-gray-700 ml-3 space-y-6">
-                <!-- Creation -->
-                <div class="ml-6 relative">
-                  <div class="absolute -left-[31px] bg-green-500 h-4 w-4 rounded-full border-4 border-white dark:border-gray-800"></div>
-                  <h4 class="font-bold text-gray-900 dark:text-gray-100 text-sm">Ticket creado</h4>
-                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ formatDate(ticket.created_at) }}</p>
-                </div>
-                
-                <!-- Last Update -->
-                <div class="ml-6 relative">
-                   <div class="absolute -left-[31px] bg-blue-500 h-4 w-4 rounded-full border-4 border-white dark:border-gray-800"></div>
-                  <h4 class="font-bold text-gray-900 dark:text-gray-100 text-sm">Última actualización</h4>
-                  <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(ticket.updated_at) }}</p>
-                  </div>
-
-                
-                <div *ngFor="let activity of recentActivity" class="flex items-start space-x-3">
-                  <div class="flex-shrink-0 w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full mt-2"></div>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ activity.action }}</p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(activity.created_at) }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <!-- Tags Section (moved from header) -->
-            <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6 mt-4">
-              <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Etiquetas</h3>
-              <app-tag-manager *ngIf="ticketId" 
-                  [entityType]="'tickets'" 
-                  [entityId]="ticketId">
-              </app-tag-manager>
-            </div>
-          </div>
-        </div>
-      </div>
-      </div>
-
-      <!-- Change Stage Modal -->
-      @if (showChangeStageModal) {
-        <div class="modal-overlay" (click)="closeChangeStageModal()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2 class="modal-title">
-                <i class="fas fa-exchange-alt"></i>
-                Cambiar Estado del Ticket
-              </h2>
-              <button (click)="closeChangeStageModal()" class="modal-close">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-            <div class="modal-body">
-              <div class="form-group">
-                <label for="stageSelect" class="form-label">Nuevo Estado</label>
-                <select
-                  id="stageSelect"
-                  [(ngModel)]="selectedStageId"
-                  class="form-input"
-                >
-                  <option value="">Seleccionar estado...</option>
-                  <option 
-                    *ngFor="let stage of allStages" 
-                    [value]="stage.id"
-                    [selected]="stage.id === ticket?.stage_id"
-                  >
-                    {{ stage.name }}
-                  </option>
-                </select>
-              </div>
-              <div class="modal-actions">
-                <button 
-                  type="button" 
-                  (click)="closeChangeStageModal()" 
-                  class="btn btn-secondary"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="button" 
-                  (click)="saveStageChange()" 
-                  class="btn btn-primary"
-                  [disabled]="!selectedStageId"
-                >
-                  <i class="fas fa-save"></i>
-                  Guardar Cambio
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- Update Hours Modal -->
-      @if (showUpdateHoursModal) {
-        <div class="modal-overlay" (click)="closeUpdateHoursModal()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2 class="modal-title">
-                <i class="fas fa-clock"></i>
-                Actualizar Horas Trabajadas
-              </h2>
-              <button (click)="closeUpdateHoursModal()" class="modal-close">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-            <div class="modal-body">
-              <div class="form-group">
-                <label for="hoursInput" class="form-label">Horas Reales Trabajadas</label>
-                <input
-                  type="number"
-                  id="hoursInput"
-                  [(ngModel)]="newHoursValue"
-                  min="0"
-                  step="0.25"
-                  class="form-input"
-                  placeholder="0.00"
-                />
-                <small class="form-help">
-                  Horas estimadas: {{ getEstimatedHours() }}h
-                </small>
-              </div>
-              <div class="modal-actions">
-                <button 
-                  type="button" 
-                  (click)="closeUpdateHoursModal()" 
-                  class="btn btn-secondary"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="button" 
-                  (click)="saveHoursUpdate()" 
-                  class="btn btn-primary"
-                  [disabled]="newHoursValue < 0"
-                >
-                  <i class="fas fa-save"></i>
-                  Actualizar Horas
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- Attachment Modal -->
-      @if (showAttachmentModal) {
-        <div class="modal-overlay" (click)="closeAttachmentModal()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2 class="modal-title">
-                <i class="fas fa-paperclip"></i>
-                Adjuntar Archivo
-              </h2>
-              <button (click)="closeAttachmentModal()" class="modal-close">
-                <i class="fas fa-times"></i>
-              </button>
-            </div>
-            <div class="modal-body">
-              <div class="form-group">
-                <label for="fileInput" class="form-label">Seleccionar Archivo</label>
-                <input
-                  type="file"
-                  id="fileInput"
-                  (change)="onFileSelected($event)"
-                  class="form-input"
-                  accept="image/*,.pdf,.doc,.docx,.txt"
-                />
-                <small class="form-help">
-                  Formatos permitidos: imágenes, PDF, documentos de Word, texto
-                </small>
-              </div>
-              <div *ngIf="selectedFile" class="file-preview">
-                <div class="flex items-center space-x-2 p-3 bg-gray-50 rounded-lg">
-                  <i class="fas fa-file text-blue-500"></i>
-                  <span class="text-sm font-medium">{{ selectedFile.name }}</span>
-                  <span class="text-xs text-gray-500">({{ (selectedFile.size / 1024 / 1024).toFixed(2) }} MB)</span>
-                </div>
-              </div>
-              <div class="modal-actions">
-                <button 
-                  type="button" 
-                  (click)="closeAttachmentModal()" 
-                  class="btn btn-secondary"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="button" 
-                  (click)="uploadAttachment()" 
-                  class="btn btn-primary"
-                  [disabled]="!selectedFile"
-                >
-                  <i class="fas fa-upload"></i>
-                  Subir Archivo
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- Services Selection Modal -->
-      @if (showServicesModal) {
-        <div class="modal-overlay">
-          <div class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2 class="modal-title">Seleccionar Servicios</h2>
-              <button (click)="closeServicesModal()" class="modal-close"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body space-y-3">
-              <div>
-                <input type="text" class="form-input" placeholder="Buscar servicios..." [(ngModel)]="serviceSearchText" (input)="filterServices()" />
-              </div>
-              <div class="max-h-80 overflow-auto divide-y">
-                <div *ngFor="let svc of filteredServices" class="py-3 px-2 hover:bg-gray-50 cursor-pointer" (click)="toggleServiceSelection(svc)">
-                  <div class="flex items-center justify-between">
-                    <div class="min-w-0 pr-4">
-                      <div class="font-medium">{{ svc.name }}</div>
-                      <div class="text-xs text-gray-500 line-clamp-2">{{ svc.description }}</div>
-                      <div class="text-xs text-gray-500 mt-1">
-                        <ng-container *ngIf="svc.tags?.length; else showCategory">
-                          <i class="fas fa-tag"></i>
-                          <span *ngFor="let t of svc.tags; let i = index">{{ t }}<span *ngIf="i < (svc.tags.length - 1)">, </span></span>
-                        </ng-container>
-                        <ng-template #showCategory>🏷️ {{ svc.category || 'Sin categoría' }}</ng-template>
-                      </div>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                      <div class="text-right text-sm text-gray-800 dark:text-gray-200">
-                        <div class="font-medium">{{ formatPrice(getServiceUnitPrice(svc)) }}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">Unidad</div>
-                      </div>
-                      <div class="pl-3">
-                        <input type="checkbox" [checked]="isServiceIdSelected(svc.id)" (click)="$event.stopPropagation(); toggleServiceSelection(svc)" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="modal-footer flex justify-end space-x-2 p-2">
-                <button class="btn btn-secondary" (click)="closeServicesModal()">Cancelar</button>
-                <button class="btn btn-primary" [disabled]="selectedServiceIds.size === 0" (click)="saveServicesSelection()">Guardar</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- Client Devices Modal -->
-      @if (showClientDevicesModal && ticket?.client?.id) {
-        <app-client-devices-modal
-          [companyId]="ticket?.company_id!"
-          [client]="ticket?.client"
-          [mode]="clientDevicesModalMode"
-          (close)="closeClientDevicesModal()"
-          (editDevice)="closeClientDevicesModalAndEdit($event)"
-          (selectDevices)="onSelectDevices($event)"
-          (createNewDevice)="onCreateNewDeviceFromModal()"
-        ></app-client-devices-modal>
-      }
-
-      <!-- Products Selection Modal -->
-      @if (showProductsModal) {
-        <div class="modal-overlay">
-          <div class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2 class="modal-title">📦 Seleccionar Productos</h2>
-              <button (click)="closeProductsModal()" class="modal-close"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body space-y-3">
-              <div>
-                <input type="text" class="form-input" placeholder="Buscar productos..." [(ngModel)]="productSearchText" (input)="filterProductsList()" />
-              </div>
-              <div class="max-h-80 overflow-auto divide-y">
-                <div *ngFor="let product of filteredProducts" class="py-3 px-2 hover:bg-gray-50">
-                  <div class="flex items-center justify-between">
-                    <div class="min-w-0 pr-4 flex-1">
-                      <div class="font-medium">{{ product.name }}</div>
-                      <div class="text-xs text-gray-500 line-clamp-2">{{ product.description }}</div>
-                      <div class="flex gap-2 mt-1">
-                        <span *ngIf="product.brand" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
-                          {{ product.brand }}
-                        </span>
-                        <span *ngIf="product.category" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                          {{ product.category }}
-                        </span>
-                      </div>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                      <div class="text-right text-sm text-gray-800 dark:text-gray-200">
-                        <div class="font-medium">{{ formatPrice(getProductUnitPrice(product)) }}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">Unidad</div>
-                      </div>
-                      @if (selectedProductIds.has(product.id)) {
-                        <div class="flex items-center space-x-2 border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1">
-                          <button type="button" (click)="decreaseProductQty(product.id)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                            <i class="fas fa-minus text-xs"></i>
-                          </button>
-                          <input type="number" min="1" [value]="getProductQuantity(product.id)" (input)="setProductQuantity(product.id, $any($event.target).value)" 
-                                 class="w-12 text-center border-0 focus:ring-0 text-sm bg-transparent text-gray-900 dark:text-gray-100" />
-                          <button type="button" (click)="increaseProductQty(product.id)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
-                            <i class="fas fa-plus text-xs"></i>
-                          </button>
-                        </div>
-                      }
-                      <div class="pl-3">
-                        <input type="checkbox" [checked]="selectedProductIds.has(product.id)" (change)="toggleProductSelection(product)" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="modal-footer flex justify-end space-x-2 p-2">
-              <button class="btn btn-secondary" (click)="closeProductsModal()">Cancelar</button>
-              <button class="btn btn-primary" [disabled]="selectedProductIds.size === 0" (click)="saveProductsSelection()">Guardar</button>
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- Devices Selection Modal -->
-      @if (showDevicesModal) {
-        <div class="modal-overlay">
-          <div class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2 class="modal-title">💻 Seleccionar Dispositivos</h2>
-              <div class="flex items-center gap-2">
-                <button (click)="openCreateDeviceForm()" class="btn btn-sm btn-primary shadow-sm hover:shadow-md transition-all">
-                  <i class="fas fa-plus mr-1"></i> Nuevo Dispositivo
-                </button>
-                <button (click)="closeDevicesModal()" class="modal-close"><i class="fas fa-times"></i></button>
-              </div>
-            </div>
-            <div class="modal-body space-y-3">
-              <div>
-                <input type="text" class="form-input" placeholder="Buscar dispositivos..." [(ngModel)]="deviceSearchText" (input)="filterDevicesList()" />
-              </div>
-              <div class="max-h-80 overflow-auto divide-y">
-                <div *ngFor="let device of filteredDevices" class="py-3 px-2 hover:bg-gray-50">
-                  <div class="flex items-center justify-between">
-                    <div class="min-w-0 pr-4 flex-1">
-                      <div class="font-medium">{{ device.brand }} {{ device.model }}</div>
-                      <div class="text-xs text-gray-500">
-                        <span *ngIf="device.serial_number">SN: {{ device.serial_number }}</span>
-                        <span *ngIf="device.imei"> • IMEI: {{ device.imei }}</span>
-                      </div>
-                      <div class="flex gap-2 mt-1">
-                        <span *ngIf="device.status" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                              [ngClass]="{
-                                'bg-gray-100 text-gray-800': device.status === 'received',
-                                'bg-blue-100 text-blue-800': device.status === 'in_progress',
-                                'bg-green-100 text-green-800': device.status === 'completed',
-                                'bg-purple-100 text-purple-800': device.status === 'delivered',
-                                'bg-red-100 text-red-800': device.status === 'cancelled'
-                              }">
-                          {{ device.status }}
-                        </span>
-                        <span *ngIf="linkedDeviceIds.has(device.id)" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          <i class="fas fa-link mr-1"></i> Ya vinculado
-                        </span>
-                      </div>
-                    </div>
-                    <div class="pl-3">
-                      <input type="checkbox" [checked]="selectedDeviceIds.has(device.id)" (change)="toggleDeviceSelection(device)" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="modal-footer flex justify-end space-x-2 p-2">
-              <button class="btn btn-secondary" (click)="closeDevicesModal()">Cancelar</button>
-              <button class="btn btn-primary" (click)="saveDevicesSelection()">Guardar</button>
-            </div>
-          </div>
-        </div>
-      }
-
-  <!-- Modal para crear dispositivo (Full "Perfect" Modal) -->
-  <div *ngIf="showCreateDeviceForm" class="fixed inset-0 flex items-center justify-center bg-black/60" style="z-index: 100000;">
-    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto" (click)="$event.stopPropagation()">
-      <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-600 to-indigo-600">
-        <div>
-          <h2 class="text-xl font-bold text-white flex items-center gap-2">
-            <i class="fas fa-mobile-alt"></i>
-            {{ editingDeviceId ? 'Editar Dispositivo' : (isClient() ? 'Añadir mi dispositivo' : 'Nuevo Dispositivo') }}
-          </h2>
-          <p class="text-blue-100 text-sm mt-0.5">{{ isClient() ? 'Registre su dispositivo' : 'Registre el dispositivo del cliente' }}</p>
-        </div>
-        <button (click)="cancelCreateDevice()" class="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-2 transition-all">
-          <i class="fas fa-times text-lg"></i>
-        </button>
-      </div>
-
-      <!-- Body -->
-      <div class="p-6 overflow-y-auto flex-1 space-y-5">
-        <!-- Row 1: Brand + Model -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="space-y-1.5">
-            <label for="device_brand" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Marca *</label>
-            <input type="text" id="device_brand" [(ngModel)]="deviceFormData.brand" name="device_brand"
-              class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              placeholder="Ej: Apple, Samsung, Xiaomi">
-          </div>
-          <div class="space-y-1.5">
-            <label for="device_model" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Modelo *</label>
-            <input type="text" id="device_model" [(ngModel)]="deviceFormData.model" name="device_model"
-              class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              placeholder="Ej: iPhone 14, Galaxy S23">
-          </div>
-        </div>
-
-        <!-- Row 2: IMEI + Color + Type -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div *ngIf="!isClient()" class="space-y-1.5">
-            <label for="device_imei" class="block text-sm font-medium text-gray-700 dark:text-gray-300">IMEI</label>
-            <input type="text" id="device_imei" [(ngModel)]="deviceFormData.imei" name="device_imei"
-              class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              placeholder="Número IMEI">
-          </div>
-          <div class="space-y-1.5">
-            <label for="device_color" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Color</label>
-            <input type="text" id="device_color" [(ngModel)]="deviceFormData.color" name="device_color"
-              class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-              placeholder="Color">
-          </div>
-          <div class="space-y-1.5">
-            <label for="device_type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tipo *</label>
-            <select id="device_type" [(ngModel)]="deviceFormData.device_type" name="device_type"
-              class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all">
-              <option value="">Seleccionar tipo</option>
-              <option value="smartphone">Smartphone</option>
-              <option value="tablet">Tablet</option>
-              <option value="laptop">Portátil</option>
-              <option value="desktop">Ordenador</option>
-              <option value="console">Consola</option>
-              <option value="other">Otro</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Row 3: Reported Issue -->
-        <div class="space-y-1.5">
-          <label for="reported_issue" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Problema Reportado *</label>
-          <textarea id="reported_issue" [(ngModel)]="deviceFormData.reported_issue" name="reported_issue"
-            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
-            rows="2" placeholder="Describe el problema reportado por el cliente"></textarea>
-        </div>
-
-        <!-- Row 4: Condition on Arrival -->
-        <div *ngIf="!isClient()" class="space-y-1.5">
-          <label for="device_notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Estado al llegar</label>
-          <textarea id="device_notes" [(ngModel)]="deviceFormData.condition_on_arrival" name="device_notes"
-            class="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none"
-            rows="2" placeholder="Estado inicial, accesorios incluidos, etc."></textarea>
-        </div>
-
-        <!-- Row 5: Image Upload -->
-        <div class="space-y-1.5">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Imágenes del dispositivo</label>
-          <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer bg-gray-50 dark:bg-gray-700/50">
-            <input type="file" id="device_images" (change)="onDeviceImagesSelected($event)" name="device_images"
-              accept="image/*" multiple class="hidden">
-            <label for="device_images" class="cursor-pointer flex flex-col items-center gap-2">
-              <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 dark:text-gray-500"></i>
-              <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Agregar imágenes</span>
-              <span class="text-xs text-gray-400 dark:text-gray-500">Arrastra archivos aquí o haz click para seleccionar</span>
-            </label>
-          </div>
-          <div *ngIf="selectedDeviceImages.length > 0" class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3">
-            <div *ngFor="let image of selectedDeviceImages; let i = index" class="relative group rounded-lg overflow-hidden aspect-square bg-gray-100 dark:bg-gray-700">
-              <img [src]="image.preview" [alt]="image.file.name" class="w-full h-full object-cover">
-              <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <button type="button" (click)="removeDeviceImage(i)" class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors">
-                  <i class="fas fa-trash text-sm"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Footer -->
-      <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-        <button (click)="cancelCreateDevice()" class="px-5 py-2.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium transition-all">
-          <i class="fas fa-times mr-2"></i>Cancelar
-        </button>
-        <button (click)="createAndSelectDevice()"
-          [disabled]="!deviceFormData.brand || !deviceFormData.model || !deviceFormData.device_type || !deviceFormData.reported_issue"
-          class="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30">
-          <i class="fas fa-check mr-2"></i>{{ editingDeviceId ? 'Guardar Cambios' : 'Crear Dispositivo' }}
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Image Lightbox Modal -->
-  <div *ngIf="selectedImage" 
-       class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-       (click)="closeLightbox()">
-    
-    <!-- Close Button -->
-    <button (click)="closeLightbox()" 
-            class="absolute top-4 right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-50">
-      <i class="fas fa-times text-2xl"></i>
-    </button>
-
-    <!-- Image Container -->
-    <div class="relative max-w-full max-h-full flex items-center justify-center" (click)="$event.stopPropagation()">
-      <img [src]="selectedImage" 
-           class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl animate-in zoom-in-95 duration-200"
-           alt="Full size view">
-    </div>
-  </div>
-
-  <!-- Visibility Confirmation Modal -->
-  <div *ngIf="showVisibilityModal" class="fixed inset-0 z-[100001] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" (click)="showVisibilityModal = false">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 border border-gray-200 dark:border-gray-700" (click)="$event.stopPropagation()">
-          <div class="p-6">
-              <div class="flex items-center gap-4 mb-4">
-                  <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-                      <i class="fas" [ngClass]="commentToToggle?.is_internal ? 'fa-eye' : 'fa-eye-slash'" class="text-blue-600 dark:text-blue-400 text-xl"></i>
-                  </div>
-                  <div>
-                      <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ visibilityModalTitle }}</h3>
-                      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Confirmar cambio de visibilidad</p>
-                  </div>
-              </div>
-              
-              <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700">
-                  <p class="text-sm text-gray-600 dark:text-gray-300">{{ visibilityModalMessage }}</p>
-                  <div *ngIf="commentToToggle" class="mt-3 text-xs text-gray-500 dark:text-gray-500 italic border-l-2 border-gray-300 dark:border-gray-600 pl-3 line-clamp-2">
-                      "{{ commentToToggle.comment | slice:0:100 }}"
-                  </div>
-              </div>
-
-              <div class="flex items-center justify-end gap-3">
-                  <button (click)="showVisibilityModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                      Cancelar
-                  </button>
-                  <button (click)="confirmVisibilityChange()" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-lg shadow-blue-500/30 transition-all transform hover:scale-105">
-                      Confirmar
-                  </button>
-              </div>
-          </div>
-      </div>
-  </div>
-
-  `
+  templateUrl: './ticket-detail.component.html'
 })
 export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
   @Input() inputTicketId?: string;
@@ -1456,7 +109,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // Edit modal form data (handled by central modal)
   // Advanced Config & Agents
   staffUsers: { id: string, name: string, email: string }[] = [];
+  macros: any[] = []; // TicketMacro[]
   ticketConfig: any = {};
+
 
   // Visibility Modal
   showVisibilityModal = false;
@@ -1471,6 +126,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private servicesService = inject(SupabaseServicesService);
   private devicesService = inject(DevicesService);
   private productsService = inject(ProductsService);
+  private productMetadataService = inject(ProductMetadataService); // Injected
   private settingsService = inject(SupabaseSettingsService);
   private ticketModalService = inject(TicketModalService);
 
@@ -1480,11 +136,19 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   private tenantService = inject(TenantService);
   private authService = inject(AuthService);
 
+  // Brand Autocomplete state
+  availableBrands: any[] = [];
+  filteredBrands: any[] = [];
+  brandSearchText: string = '';
+  showBrandInput = false;
+
   // Track if there is an existing active quote derived from this ticket
   activeQuoteId: string | null = null;
 
   // Client portal mode - using computed signal based on user role (like supabase-tickets)
   isClient = computed(() => this.authService.userRole() === 'client');
+
+  activeTab: string = 'comments';
 
   // Legacy property for backward compatibility (will be removed)
   isClientPortal = false;
@@ -1511,6 +175,9 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   deviceSearchText = '';
   selectedDeviceIds: Set<string> = new Set();
 
+  // Create Product Modal state
+  showCreateProductModal = false;
+
   // History management for modals
   private popStateListener: any = null;
   // Keep quantities for selected services
@@ -1531,7 +198,7 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   selectedDeviceImages: { file: File, preview: string }[] = [];
 
   // Tab management for content organization (Comments first as it's most used)
-  activeTab: 'services' | 'products' | 'devices' | 'comments' = 'comments';
+
 
   // TipTap Editor
   editor: Editor | null = null;
@@ -1704,19 +371,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       this.openLightbox(img.src);
     }
   }
-
   openLightbox(imageUrl: string) {
     if (!imageUrl) return;
     this.selectedImage = imageUrl;
     this.lockBodyScroll();
-    this.loadStaff();
     this.loadConfig();
   }
 
-  async loadStaff() {
-    const user = this.authService.userProfile;
-    if (user?.role && user.role !== 'client' && user.company_id) {
-      this.staffUsers = await this.ticketsService.getCompanyStaff(user.company_id);
+  async loadStaff(companyId?: string) {
+    const cid = companyId || this.ticket?.company_id || this.ticket?.company?.id || this.authService.userProfile?.company_id;
+    if (cid) {
+      this.staffUsers = await this.ticketsService.getCompanyStaff(cid);
     }
   }
 
@@ -2781,6 +1446,42 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
   }
 
+
+  insertMacro(macro: TicketMacro) {
+    if (this.editor) {
+      this.editor.commands.insertContent(macro.content);
+      this.toggleMacrosDropdown();
+    }
+  }
+
+  toggleMacrosDropdown() {
+    this.showMacrosDropdown = !this.showMacrosDropdown;
+  }
+
+  get showMacrosDropdown(): boolean {
+    return this._showMacrosDropdown;
+  }
+  set showMacrosDropdown(val: boolean) {
+    this._showMacrosDropdown = val;
+  }
+  private _showMacrosDropdown = false;
+
+
+
+  // SLA Helpers
+  get firstResponseTime(): string | null {
+    if (!this.ticket?.first_response_at) return null;
+    const start = new Date(this.ticket.created_at).getTime();
+    const end = new Date(this.ticket.first_response_at).getTime();
+    const diffMins = Math.round((end - start) / 60000);
+    return `${diffMins} min`;
+  }
+
+  get resolutionTime(): string | null {
+    if (!this.ticket?.resolution_time_mins) return null;
+    return `${this.ticket.resolution_time_mins} min`;
+  }
+
   changeStage() {
     if (!this.ticket) return;
     this.selectedStageId = this.ticket.stage_id || '';
@@ -2859,7 +1560,8 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
           *,
           client:clients(id, name, email, phone),
           stage:ticket_stages(id, name, position, color),
-          company:companies(id, name)
+          company:companies(id, name),
+          assigned_user:users(id, name, email)
         `)
         .eq('id', this.ticketId)
         .single();
@@ -2874,13 +1576,17 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         await this.checkActiveQuoteForTicket();
       } catch { }
 
+      // Determine company ID early
+      const companyId = ticketData.company_id || ticketData.company?.id || this.authService.userProfile?.company_id;
+
       // Parallelize independent data loading
       await Promise.all([
         this.loadTicketServices(),
         this.loadTicketProducts(),
-
         this.loadTicketDevices(),
-        this.loadComments()
+        this.loadComments(),
+        this.loadMacros(),
+        this.loadStaff(companyId) // Use the company ID from the ticket
       ]);
 
       // Cargar estados visibles (genéricos no ocultos + específicos de empresa)
@@ -2926,51 +1632,46 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
   }
 
+  async loadMacros() {
+    if (!this.ticket?.company_id) return;
+    try {
+      this.macros = await this.ticketsService.getMacros(this.ticket.company_id);
+    } catch (err) {
+      console.warn('Error loading macros:', err);
+    }
+  }
+
   async loadTicketHistory() {
     this.recentActivity = [];
+    if (!this.ticketId) return;
 
-    // 1. Initial Creation
-    if (this.ticket?.created_at) {
-      this.recentActivity.push({
-        action: 'Ticket creado',
-        created_at: this.ticket.created_at,
-        icon: 'fas fa-plus-circle',
-        color: 'text-green-500'
-      });
-    }
-
-    // 2. Fetch history from system comments (Stage changes, file attachments, etc.)
-    // We filter for specific system messages to build the timeline
     try {
-      const { data: historyComments } = await this.supabase.getClient()
-        .from('ticket_comments')
-        .select('comment, created_at')
-        .eq('ticket_id', this.ticketId)
-        .eq('is_internal', true)
-        .or('comment.ilike.Cambiado a:%,comment.ilike.Servicio añadido:%,comment.ilike.Archivo adjuntado:%')
-        .order('created_at', { ascending: false })
-        .limit(20);
+      // Use the new Enterprise Timeline Service
+      const timelineEvents = await this.ticketsService.getTicketTimeline(this.ticketId);
 
-      if (historyComments) {
-        historyComments.forEach(h => {
-          this.recentActivity.push({
-            action: h.comment,
-            created_at: h.created_at,
-            icon: 'fas fa-history', // Default icon
-            color: 'text-blue-500'
-          });
-        });
-      }
+      this.recentActivity = timelineEvents.map(event => ({
+        event_type: event.event_type,
+        created_at: event.created_at,
+        actor: event.actor,
+        metadata: event.metadata,
+        description: this.getEventDescription(event) // Helper to generate text if needed
+      }));
+
     } catch (err) {
-      console.warn('Error fetching history:', err);
+      console.warn('Error loading timeline:', err);
+      // Fallback or leave empty
     }
+  }
 
-    // 3. Add services from ticket_services creation time (if not covered by comments)
-    // We already do this in loadTicketServices, but that pushes to this array.
-    // If we want a unified sort, we should sort afterwards.
-
-    // Sort all activity by date descending
-    this.recentActivity.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  getEventDescription(event: any): string {
+    switch (event.event_type) {
+      case 'creation': return 'Ticket creado';
+      case 'stage_change': return `Cambió estado a ${event.metadata?.new_stage}`;
+      case 'assignment_change': return `Asignó a ${event.metadata?.new_assignee || 'nadie'}`;
+      case 'priority_change': return 'Cambió prioridad';
+      case 'comment': return 'Añadió un comentario';
+      default: return 'Actividad registrada';
+    }
   }
 
   /**
@@ -3306,11 +2007,14 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
       const sid = it?.service?.id; if (sid) this.selectedServiceQuantities.set(sid, Math.max(1, Number(it.quantity || 1)));
     }
     // Ensure at least one selected for safety
+    // Ensure at least one selected for safety - REMOVED to avoid misleading logic
+    /*
     if (this.selectedServiceIds.size === 0 && this.servicesCatalog.length > 0) {
       this.selectedServiceIds.add(this.servicesCatalog[0].id);
       // default quantity
       this.selectedServiceQuantities.set(this.servicesCatalog[0].id, 1);
     }
+    */
     this.showServicesModal = true;
     document.body.classList.add('modal-open');
     this.lockBodyScroll();
@@ -3334,7 +2038,24 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         const sid = it?.service?.id; const q = it?.quantity || 1; if (sid) existingQty.set(sid, q);
       }
       // Use quantities from selectedServiceQuantities if available, otherwise keep existing or 1
-      const items = Array.from(this.selectedServiceIds).map(id => ({ service_id: id, quantity: this.selectedServiceQuantities.get(id) || existingQty.get(id) || 1 }));
+      const items = Array.from(this.selectedServiceIds).map(id => {
+        const qty = this.selectedServiceQuantities.get(id) || existingQty.get(id) || 1;
+        // Lookup service to get base price
+        const svcInfo = this.servicesCatalog.find(s => s.id === id);
+        let unitPrice = 0;
+        if (svcInfo && typeof svcInfo.base_price === 'number') {
+          unitPrice = svcInfo.base_price;
+        } else {
+          // Fallback to existing price if service not in catalog (e.g. hidden/inactive)
+          const existing = (this.ticketServices || []).find(ts => ts.service?.id === id);
+          unitPrice = (existing?.unit_price || existing?.service?.base_price) || 0;
+        }
+        return {
+          service_id: id,
+          quantity: qty,
+          unit_price: unitPrice
+        };
+      });
       const companyIdForReplace = String((this.ticket as any).company_id || (this.ticket as any).company?.id || '');
       await this.ticketsService.replaceTicketServices(this.ticket.id, companyIdForReplace, items);
       await this.loadTicketServices();
@@ -3490,13 +2211,23 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
       this.ticketServices = (items as any[]).map((it: any) => {
         const svc = it?.service || {};
-        // Ensure estimated_hours is a number (DB might return string)
+
+        // Ensure estimated_hours is a number
         if (svc && svc.estimated_hours !== undefined && svc.estimated_hours !== null) {
           const n = Number(svc.estimated_hours);
           svc.estimated_hours = Number.isFinite(n) ? n : 0;
         } else {
           svc.estimated_hours = 0;
         }
+
+        // Ensure base_price is a number
+        if (svc && svc.base_price !== undefined && svc.base_price !== null) {
+          const n = Number(svc.base_price);
+          svc.base_price = Number.isFinite(n) ? n : 0;
+        } else {
+          svc.base_price = 0;
+        }
+
         const cat = svc?.category;
         const isUuid = typeof cat === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cat);
         const category_name = isUuid ? (categoriesById[cat]?.name || 'Sin categoría') : (cat || 'Sin categoría');
@@ -3743,9 +2474,34 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
 
   // Pricing helpers: prefer persisted values from ticket_services with fallback to service.base_price
   getUnitPrice(item: any): number {
-    const fromRelation = typeof item?.price_per_unit === 'number' ? item.price_per_unit : null;
-    const fromService = typeof item?.service?.base_price === 'number' ? item.service.base_price : 0;
-    return (fromRelation ?? fromService) || 0;
+    let fromRelation: number | null = null;
+    if (item?.price_per_unit !== undefined && item?.price_per_unit !== null) {
+      fromRelation = Number(item.price_per_unit);
+    } else if (item?.unit_price !== undefined && item?.unit_price !== null) {
+      fromRelation = Number(item.unit_price);
+    }
+
+    let fromService = 0;
+    if (item?.service?.base_price !== undefined && item?.service?.base_price !== null) {
+      fromService = Number(item.service.base_price);
+    }
+
+    // If fromRelation is a valid number, use it. Otherwise fallback.
+    // Note: If stored price is 0, we trust it IF it was a valid number, 
+    // BUT given the bug context, if it's 0 we might want to fallback if base_price > 0.
+    // However, intentional 0 price is possible.
+    // For the specific bug fix: The bug caused 0 to be stored. 
+    // We'll use the fallback if fromRelation is falsy (0) AND fromService is truthy (>0),
+    // which implies the stored 0 is likely an error. 
+    // However, to be safe and allow intentional free items, we usually shouldn't override 0.
+    // But due to the widespread issue, we will allow fallback if 0 to fix the display for existing tickets.
+    // This is a trade-off: intentional free items need to be handled carefully, but 
+    // likely services usually have a price.
+    if (fromRelation && !isNaN(fromRelation)) return fromRelation;
+    // If 0 or NaN, try fallback
+    if (fromService && !isNaN(fromService)) return fromService;
+
+    return fromRelation || 0;
   }
 
   getLineTotal(item: any): number {
@@ -3808,6 +2564,51 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
   }
 
+  // --- Product Creation Modal (create new product) ---
+
+  openCreateProductModal() {
+    console.log('openCreateProductModal called!');
+    this.showCreateProductModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closeCreateProductModal() {
+    this.showCreateProductModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async onProductCreated(product?: any) {
+    this.closeCreateProductModal();
+
+    if (product && this.ticket?.id) {
+      // If we have a valid product and ticket context, link it immediately
+      try {
+        const payload = {
+          ticket_id: this.ticket.id,
+          product_id: product.id,
+          quantity: 1,
+          price_per_unit: product.price || 0,
+          company_id: (this.ticket as any).company_id
+        };
+
+        const { error } = await this.supabase.getClient()
+          .from('ticket_products')
+          .insert(payload);
+
+        if (error) throw error;
+
+        this.toastService.success('Éxito', 'Producto creado y añadido al ticket');
+        await this.loadTicketProducts();
+      } catch (err: any) {
+        console.error('Error linking new product to ticket:', err);
+        // Fallback message if linking fails but creation succeeded
+        this.toastService.warning('Producto creado', 'El producto se creó pero no se pudo vincular automáticamente al ticket.');
+      }
+    } else {
+      this.toastService.success('Éxito', 'Producto creado correctamente');
+    }
+  }
+
   filterProductsList() {
     if (!this.productSearchText.trim()) {
       this.filteredProducts = [...this.productsCatalog];
@@ -3854,10 +2655,22 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     if (!this.ticket) return;
     try {
       // Build items array
-      const items = Array.from(this.selectedProductIds).map(productId => ({
-        product_id: productId,
-        quantity: this.tempProductQuantities.get(productId) || 1
-      }));
+      const items = Array.from(this.selectedProductIds).map(productId => {
+        const prod = this.productsCatalog.find(p => p.id === productId);
+        let unitPrice = 0;
+        if (prod && typeof prod.price === 'number') {
+          unitPrice = prod.price;
+        } else {
+          // Fallback if product not in catalog (e.g. archived)
+          const existing = (this.ticketProducts || []).find(tp => tp.product?.id === productId);
+          unitPrice = (existing?.price_per_unit || existing?.product?.price) || 0;
+        }
+        return {
+          product_id: productId,
+          quantity: this.tempProductQuantities.get(productId) || 1,
+          unit_price: unitPrice
+        };
+      });
 
       // Get company ID
       const companyId = String((this.ticket as any).company_id || (this.ticket as any).company?.id || '');
@@ -3883,7 +2696,16 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
         .eq('ticket_id', this.ticket.id);
 
       if (error) throw error;
-      this.ticketProducts = data || [];
+
+      // Coerce product prices
+      this.ticketProducts = (data || []).map((tp: any) => {
+        const prod = tp.product || {};
+        if (prod.price !== undefined && prod.price !== null) {
+          prod.price = Number(prod.price) || 0;
+        }
+        return tp;
+      });
+
     } catch (err) {
       console.error('Error loading ticket products:', err);
       this.ticketProducts = [];
@@ -3891,7 +2713,12 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   }
 
   getProductUnitPrice(item: any): number {
-    return item?.price_per_unit ?? item?.product?.price ?? 0;
+    const p1 = Number(item?.price_per_unit);
+    const p2 = Number(item?.product?.price);
+    const v1 = !isNaN(p1) ? p1 : 0;
+    const v2 = !isNaN(p2) ? p2 : 0;
+    // Fallback if 0 (bug fix heuristic)
+    return v1 || v2 || 0;
   }
 
   getProductLineTotal(item: any): number {
@@ -4030,6 +2857,123 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
   // CREATE DEVICE MODAL LOGIC (Ported)
   // ============================================
 
+
+  // ============================================
+  // BRAND AUTOCOMPLETE LOGIC
+  // ============================================
+
+  loadBrands() {
+    this.productMetadataService.getBrands().subscribe(brands => {
+      this.availableBrands = brands;
+      this.filterBrandsList();
+    });
+  }
+
+  filterBrandsList() {
+    const search = (this.deviceFormData.brand || '').toLowerCase();
+    this.filteredBrands = this.availableBrands.filter(b =>
+      b.name.toLowerCase().includes(search)
+    );
+    this.showBrandInput = true;
+  }
+
+  selectBrand(brand: any) {
+    this.deviceFormData.brand = brand.name;
+    this.deviceFormData.brand_id = brand.id; // Store brand_id for filtering models
+    this.showBrandInput = false;
+    this.deviceFormData.model = ''; // Reset model when brand changes
+    this.loadModels(brand.id);
+  }
+
+  onBrandEnter() {
+    // If exact match in filtered, select it
+    const exactMatch = this.filteredBrands.find(b => b.name.toLowerCase() === (this.deviceFormData.brand || '').toLowerCase());
+    if (exactMatch) {
+      this.selectBrand(exactMatch);
+    } else {
+      // Allow custom brand (will be created in createAndSelectDevice)
+      this.showBrandInput = false;
+      this.deviceFormData.brand_id = null; // New brand, no ID yet
+      this.availableModels = []; // No models for new brand
+      this.filteredModels = [];
+    }
+  }
+
+  // Close brand dropdown on blur (delayed to allow click)
+  onBrandBlur() {
+    setTimeout(() => {
+      this.showBrandInput = false;
+    }, 200);
+  }
+
+  onBrandFocus() {
+    this.loadBrands();
+    this.filterBrandsList();
+    this.showBrandInput = true;
+  }
+
+
+  // ============================================
+  // MODEL AUTOCOMPLETE LOGIC
+  // ============================================
+
+  // Model Autocomplete state
+  availableModels: any[] = [];
+  filteredModels: any[] = [];
+  showModelInput = false;
+
+
+  loadModels(brandId: string) {
+    if (!brandId) {
+      this.availableModels = [];
+      this.filteredModels = [];
+      return;
+    }
+    this.productMetadataService.getModels(brandId).subscribe(models => {
+      this.availableModels = models;
+      this.filterModelsList();
+    });
+  }
+
+  filterModelsList() {
+    const search = (this.deviceFormData.model || '').toLowerCase();
+    this.filteredModels = this.availableModels.filter(m =>
+      m.name.toLowerCase().includes(search)
+    );
+    this.showModelInput = true;
+  }
+
+  selectModel(model: any) {
+    this.deviceFormData.model = model.name;
+    this.showModelInput = false;
+  }
+
+  onModelEnter() {
+    const exactMatch = this.filteredModels.find(m => m.name.toLowerCase() === (this.deviceFormData.model || '').toLowerCase());
+    if (exactMatch) {
+      this.selectModel(exactMatch);
+    } else {
+      this.showModelInput = false;
+    }
+  }
+
+  onModelFocus() {
+    // Only load/show if we have models or if we want to confirm no models
+    if (this.availableModels.length > 0 || this.deviceFormData.brand_id) {
+      if (this.availableModels.length === 0 && this.deviceFormData.brand_id) {
+        this.loadModels(this.deviceFormData.brand_id);
+      }
+      this.filterModelsList();
+      this.showModelInput = true;
+    }
+  }
+
+  onModelBlur() {
+    setTimeout(() => {
+      this.showModelInput = false;
+    }, 200);
+  }
+
   openCreateDeviceForm() {
     if (this.isClient()) {
       this.clientDevicesModalMode = 'select';
@@ -4127,6 +3071,20 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     }
 
     try {
+      // 1. Ensure brand exists in shared table
+      if (this.deviceFormData.brand && this.deviceFormData.company_id) {
+        // We use createBrand from metadata service which handles get-or-create logic
+        try {
+          // Fire and forget or await? Better await to ensure it exists for future queries
+          await this.productMetadataService.createBrand(
+            this.deviceFormData.brand,
+            this.deviceFormData.company_id
+          );
+        } catch (e) {
+          console.warn('Could not sync brand to shared table, proceeding with device creation', e);
+        }
+      }
+
       let deviceData = {
         ...this.deviceFormData,
         // Ensure authoritative IDs
@@ -4280,3 +3238,4 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     this.selectedDeviceImages.splice(index, 1);
   }
 }
+

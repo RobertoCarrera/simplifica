@@ -6,12 +6,13 @@ import { SupabaseNotificationsService, AppNotification } from '../../services/su
 import { TicketDetailComponent } from '../../features/tickets/detail/ticket-detail.component';
 import { GdprRequestDetailComponent } from '../customers/gdpr-request-detail/gdpr-request-detail.component';
 import { NotificationsSettingsComponent } from './settings/notifications-settings.component';
+import { ClientNotificationPreferencesComponent } from './client-settings/client-notification-preferences.component';
 import { SupabasePermissionsService } from '../../services/supabase-permissions.service';
 
 @Component({
     selector: 'app-notifications',
     standalone: true,
-    imports: [CommonModule, LucideAngularModule, TicketDetailComponent, GdprRequestDetailComponent, NotificationsSettingsComponent],
+    imports: [CommonModule, LucideAngularModule, TicketDetailComponent, GdprRequestDetailComponent, NotificationsSettingsComponent, ClientNotificationPreferencesComponent],
     providers: [{ provide: LUCIDE_ICONS, useValue: new LucideIconProvider({ Bell, CheckCheck, Clock, Check, X, Tag, MessageCircle, AlertCircle, Filter, Inbox, ClipboardList, Settings }) }],
     templateUrl: './notifications.component.html',
     styles: [`

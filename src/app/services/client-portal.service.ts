@@ -4,6 +4,20 @@ import { AuthService } from './auth.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { firstValueFrom } from 'rxjs';
 
+export interface ClientPortalBooking {
+  id: string;
+  start_time: string;
+  end_time: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'rescheduled';
+  service_name: string;
+  service_duration: number;
+  professional_name?: string;
+  total_price: number;
+  payment_status: string;
+  form_responses?: any;   // Added
+  form_schema?: any[];    // Added
+}
+
 export interface ClientPortalTicket {
   id: string;
   title: string;
@@ -106,6 +120,58 @@ export class ClientPortalService {
       .order('updated_at', { ascending: false });
     return { data: (data || []) as any, error };
   }
+
+  async listBookings(): Promise<{ data: ClientPortalBooking[]; error?: any }> {
+    const client = this.sb.instance;
+    // Query main table directly, relying on RLS
+    const { data: allData, error: allError } = await client
+      .from('bookings')
+      .select(`
+        id,
+        start_time,
+        end_time,
+        status,
+        form_responses,
+        service:services ( name, duration_minutes, form_schema )
+      `)
+      .order('start_time', { ascending: false });
+
+    if (allError) return { data: [], error: allError };
+
+    // Map to ClientPortalBooking interface
+    const mapped: ClientPortalBooking[] = (allData || []).map((b: any) => ({
+      id: b.id,
+      start_time: b.start_time,
+      end_time: b.end_time,
+      status: b.status,
+      service_name: b.service?.name,
+      service_duration: b.service?.duration_minutes,
+      professional_name: 'Asignado', // Placeholder until DB sync is confirmed
+      total_price: 0, // Placeholder
+      payment_status: 'pending', // Placeholder
+      form_responses: b.form_responses,
+      form_schema: b.service?.form_schema
+    }));
+
+    return { data: mapped, error: null };
+  }
+
+  async cancelBooking(bookingId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data, error } = await this.sb.instance.rpc('client_cancel_booking', {
+        p_booking_id: bookingId,
+        p_reason: reason || null
+      });
+
+      if (error) return { success: false, error: error.message };
+      if (data && !data.success) return { success: false, error: data.error };
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
 
   async listPublicServices(): Promise<{ data: any[]; error?: any }> {
     const user = await firstValueFrom(this.auth.userProfile$);
@@ -594,5 +660,105 @@ export class ClientPortalService {
       console.error('❌ Error cancelling service:', e);
       return { success: false, error: e.message || 'Error inesperado al cancelar servicio' };
     }
+  }
+
+  async getAvailabilityData(companyId: string, startDate: Date, endDate: Date): Promise<{ data: any; error?: any }> {
+    try {
+      const { data, error } = await this.sb.instance.rpc('get_availability_data', {
+        p_company_id: companyId,
+        p_start_date: startDate.toISOString(),
+        p_end_date: endDate.toISOString()
+      });
+      return { data, error };
+    } catch (e: any) {
+      return { data: null, error: e.message };
+    }
+  }
+
+  async rescheduleBooking(bookingId: string, newStartTime: string, newEndTime: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data, error } = await this.sb.instance.rpc('client_reschedule_booking', {
+        p_booking_id: bookingId,
+        p_new_start_time: newStartTime,
+        p_new_end_time: newEndTime
+      });
+
+      if (error) return { success: false, error: error.message };
+      if (data && !data.success) return { success: false, error: data.error };
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async createSelfBooking(booking: { service_id: string, start_time: string, end_time: string, form_responses?: any }): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const user = await firstValueFrom(this.auth.userProfile$);
+      if (!user?.company_id) return { success: false, error: 'No company context' };
+
+      const { data, error } = await this.sb.instance.rpc('client_create_booking', {
+        p_company_id: user.company_id,
+        p_service_id: booking.service_id,
+        p_start_time: booking.start_time,
+        p_end_time: booking.end_time,
+        p_form_responses: booking.form_responses || null
+      });
+
+      if (error) return { success: false, error: error.message };
+      if (data && !data.success) return { success: false, error: data.error };
+
+      return { success: true, data: data };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async convertQuoteToInvoice(quoteId: string): Promise<{ success: boolean; invoiceId?: string; error?: string }> {
+    try {
+      const { data, error } = await this.sb.instance.rpc('convert_quote_to_invoice', {
+        p_quote_id: quoteId
+      });
+
+      if (error) return { success: false, error: error.message };
+      // RPC usually returns the new invoice ID or row.
+      // Based on previous issues, it might return just the ID or UUID.
+      // Let's assume it returns UUID directly or object { id: ... }
+      // Checks needed.
+      console.log('Invoice conversion result:', data);
+      return { success: true, invoiceId: data };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  // --- Profile & Preferences ---
+
+  async updateProfile(fullName: string, phone: string, avatarUrl?: string): Promise<{ success: boolean; error: any }> {
+    const { data, error } = await this.sb.instance.rpc('client_update_profile', {
+      p_full_name: fullName,
+      p_phone: phone,
+      p_avatar_url: avatarUrl || null
+    });
+    return { success: !error, error };
+  }
+
+  async getPreferences(): Promise<{ data: any; error: any }> {
+    const { data, error } = await this.sb.instance.rpc('client_get_preferences');
+    return { data, error };
+  }
+
+  async updatePreferences(prefs: { email_notifications: boolean; sms_notifications: boolean; marketing_accepted: boolean }): Promise<{ success: boolean; error: any }> {
+    const { error } = await this.sb.instance.rpc('client_update_preferences', {
+      p_email_notifications: prefs.email_notifications,
+      p_sms_notifications: prefs.sms_notifications,
+      p_marketing_accepted: prefs.marketing_accepted
+    });
+    return { success: !error, error };
+  }
+
+  async changePassword(newPassword: string): Promise<{ success: boolean; error: any }> {
+    const { error } = await this.sb.instance.auth.updateUser({ password: newPassword });
+    return { success: !error, error };
   }
 }

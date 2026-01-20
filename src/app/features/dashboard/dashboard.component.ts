@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -25,7 +25,10 @@ import { FormNewCustomerComponent } from "../customers/form-new-customer/form-ne
         FormNewCustomerComponent
     ],
     templateUrl: './dashboard.component.html',
-    styleUrls: ['./dashboard.component.scss']
+    styleUrls: ['./dashboard.component.scss'],
+    // ⚡ Bolt Optimization: Use OnPush strategy to minimize unnecessary change detection cycles.
+    // This component relies on Signals for reactivity, which works perfectly with OnPush.
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DashboardComponent implements OnInit {
     private analyticsService = inject(AnalyticsService);
@@ -45,6 +48,7 @@ export class DashboardComponent implements OnInit {
     recentTickets = signal<Ticket[]>([]);
     recentCustomers = signal<Customer[]>([]);
     loadingRecents = signal(true);
+
 
     // Modal State
     showTicketForm = signal(false);
@@ -93,10 +97,25 @@ export class DashboardComponent implements OnInit {
                 this.recentCustomers.set(customers);
             }
 
+            // 3. Fetch Leads Stats
+            this.loadLeadsStats();
+
         } catch (err) {
             console.error('Error loading dashboard recents', err);
         } finally {
             this.loadingRecents.set(false);
+        }
+    }
+
+    leadsByChannel = signal<{ source: string; count: number }[]>([]);
+
+    async loadLeadsStats() {
+        try {
+            // Pasamos undefined para cargar histórico completo en dashboard principal
+            const stats = await this.analyticsService.getLeadsByChannel(undefined, undefined);
+            this.leadsByChannel.set(stats);
+        } catch (e) {
+            console.error('Error loading leads stats', e);
         }
     }
 

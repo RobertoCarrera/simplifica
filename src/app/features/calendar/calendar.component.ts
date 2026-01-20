@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, OnInit, signal, computed, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
+import { CdkDragDrop, DragDropModule, CdkDragMove, CdkDragStart, CdkDragEnd } from '@angular/cdk/drag-drop';
 import { CalendarEvent, CalendarView, CalendarDateClick, CalendarEventClick, CalendarDay, CalendarResource } from './calendar.interface';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { ContextMenuComponent, MenuAction } from '../../shared/components/context-menu/context-menu.component';
@@ -60,6 +60,18 @@ import { AnimationService } from '../../services/animation.service';
             
             <!-- Add event button -->
             <div class="flex space-x-2">
+                <button
+                *ngIf="showWaitlistButton"
+                (click)="onWaitlistClick()"
+                class="inline-flex items-center px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-md hover:bg-amber-600 transition-colors shadow-sm"
+                title="Lista de Espera">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="hidden sm:inline">Espera</span>
+                <span *ngIf="waitlistCount > 0" class="ml-2 bg-white text-amber-600 text-xs font-bold px-1.5 py-0.5 rounded-full">{{ waitlistCount }}</span>
+                </button>
+
                 <button
                 *ngIf="showBlockButton"
                 (click)="onBlockTime()"
@@ -138,6 +150,7 @@ import { AnimationService } from '../../services/animation.service';
                           class="px-2 py-1 text-xs rounded-md truncate cursor-pointer hover:opacity-80 transition-opacity border-l-2"
                           [style.background-color]="getEventColor(event) + '20'"
                           [style.border-left-color]="getEventColor(event)"
+                          [style.border-left-style]="event.meta?.original?.status === 'pending' ? 'dashed' : 'solid'"
                           [style.color]="'inherit'"
                           (click)="onEventClick(event, $event)"
                           (contextmenu)="onEventContextMenu($event, event)"
@@ -226,6 +239,7 @@ import { AnimationService } from '../../services/animation.service';
                                            [style.height.px]="getEventHeight(event)"
                                            [style.background-color]="getEventColor(event) + '20'"
                                            [style.border-left-color]="getEventColor(event)"
+                                           [style.border-left-style]="event.meta?.original?.status === 'pending' ? 'dashed' : 'solid'"
                                            [style.color]="'inherit'"
                                            (click)="onEventClick(event, $event)"
                                            (contextmenu)="onEventContextMenu($event, event)"
@@ -241,16 +255,31 @@ import { AnimationService } from '../../services/animation.service';
                                               {{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}
                                            </div>
                                            
-                                           <div *cdkDragPreview class="bg-indigo-600 text-white shadow-xl rounded-md p-2 w-48 opacity-90 h-16">
-                                              {{ event.start | date:'HH:mm' }} - {{ event.title }}
+                                           <!-- Custom Drag Preview -->
+                                           <div *cdkDragPreview
+                                                class="rounded px-2 py-1 text-xs shadow-2xl opacity-90 border-l-4 overflow-hidden z-50 pointer-events-none"
+                                                [style.height.px]="getEventHeight(event)"
+                                                [style.background-color]="getEventColor(event) + 'F2'"
+                                                [style.border-left-color]="getEventColor(event)"
+                                                [style.color]="getTextColor(getEventColor(event))">
+                                                <div class="font-semibold truncate">
+                                                    {{ event.title }}
+                                                </div>
+                                                <div class="opacity-90 truncate">
+                                                    {{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}
+                                                </div>
                                            </div>
                                            
                                            <!-- Resize Handle -->
-                                           <div class="absolute bottom-0 inset-x-0 h-2 cursor-ns-resize z-30 opacity-0 hover:opacity-100 hover:bg-indigo-400"
+                                           <div class="absolute bottom-0 inset-x-0 h-3 cursor-ns-resize z-30 opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity bg-white/20 hover:bg-white/40 rounded-b"
                                                 cdkDrag
                                                 cdkDragLockAxis="y"
+                                                (cdkDragStarted)="onResizeStart($event, event)"
+                                                (cdkDragMoved)="onResizeMoved($event, event)"
                                                 (cdkDragEnded)="onResizeEnd($event, event)"
                                                 (click)="$event.stopPropagation()">
+                                                <!-- Visual grip functionality -->
+                                                <div class="w-8 h-1 bg-black/20 rounded-full mx-auto mt-1"></div>
                                            </div>
                                       </div>
                                   }
@@ -305,6 +334,7 @@ import { AnimationService } from '../../services/animation.service';
                                      [style.height.px]="getEventHeight(event)"
                                      [style.background-color]="getEventColor(event) + '20'"
                                      [style.border-left-color]="getEventColor(event)"
+                                     [style.border-left-style]="event.meta?.original?.status === 'pending' ? 'dashed' : 'solid'"
                                      (click)="onEventClick(event, $event)"
                                      (contextmenu)="onEventContextMenu($event, event)"
                                      cdkDrag
@@ -318,16 +348,29 @@ import { AnimationService } from '../../services/animation.service';
                                         {{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}
                                      </div>
                                      
-                                     <div *cdkDragPreview class="bg-indigo-600 text-white shadow-xl rounded-md p-2 w-full opacity-90">
-                                          {{ event.start | date:'HH:mm' }} - {{ event.title }}
+                                     <div *cdkDragPreview
+                                          class="rounded px-3 py-2 text-sm shadow-2xl opacity-90 border-l-4 overflow-hidden z-50 pointer-events-none"
+                                          [style.height.px]="getEventHeight(event)"
+                                          [style.background-color]="getEventColor(event) + 'F2'"
+                                          [style.border-left-color]="getEventColor(event)"
+                                          [style.color]="getTextColor(getEventColor(event))">
+                                          <div class="font-bold truncate">
+                                              {{ event.title }}
+                                          </div>
+                                          <div class="opacity-90 truncate">
+                                              {{ event.start | date:'HH:mm' }} - {{ event.end | date:'HH:mm' }}
+                                          </div>
                                      </div>
 
                                      <!-- Resize Handle -->
-                                     <div class="absolute bottom-0 inset-x-0 h-2 cursor-ns-resize z-30 opacity-0 hover:opacity-100 hover:bg-indigo-400"
+                                     <div class="absolute bottom-0 inset-x-0 h-3 cursor-ns-resize z-30 opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity bg-white/20 hover:bg-white/40 rounded-b"
                                           cdkDrag
                                           cdkDragLockAxis="y"
+                                          (cdkDragStarted)="onResizeStart($event, event)"
+                                          (cdkDragMoved)="onResizeMoved($event, event)"
                                           (cdkDragEnded)="onResizeEnd($event, event)"
                                           (click)="$event.stopPropagation()">
+                                          <div class="w-8 h-1 bg-black/20 rounded-full mx-auto mt-1"></div>
                                      </div>
                                 </div>
                             }
@@ -392,6 +435,7 @@ import { AnimationService } from '../../services/animation.service';
                                            [style.width.%]="getUserEventWidthPercent(calEvent)"
                                            [style.background-color]="getEventColor(calEvent) + '20'"
                                            [style.border-left-color]="getEventColor(calEvent)"
+                                           [style.border-left-style]="calEvent.meta?.original?.status === 'pending' ? 'dashed' : 'solid'"
                                            (click)="onEventClick(calEvent, $event)"
                                            (contextmenu)="onEventContextMenu($event, calEvent)"
                                            cdkDrag
@@ -457,6 +501,8 @@ export class CalendarComponent implements OnInit {
   @Input() selectable = true;
   @Input() showAddButton = true;
   @Input() showBlockButton = false;
+  @Input() showWaitlistButton = false;
+  @Input() waitlistCount = 0;
   @Input() startHour = 8;
   @Input() endHour = 22;
   @Input() resources: CalendarResource[] = [];
@@ -470,6 +516,7 @@ export class CalendarComponent implements OnInit {
   @Output() eventDrop = new EventEmitter<{ event: CalendarEvent, newStart: Date, newResource?: string }>();
   @Output() eventResize = new EventEmitter<{ event: CalendarEvent, newEnd: Date }>();
   @Output() eventAction = new EventEmitter<{ action: string, event: CalendarEvent }>();
+  @Output() waitlistClick = new EventEmitter<void>();
 
   // Context Menu State
   contextMenuVisible = false;
@@ -499,6 +546,11 @@ export class CalendarComponent implements OnInit {
   weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
   hourSlots: number[] = [];
   hourHeight = 60;
+
+  // New state for fluidity
+  resizingEventId: string | null = null;
+  currentResizeHeight: number = 0;
+  originalResizeDuration: number = 0;
 
   ngOnChanges() {
     this.updateHourSlots();
@@ -621,6 +673,33 @@ export class CalendarComponent implements OnInit {
     this.eventClick.emit({ event: calendarEvent, nativeEvent: event });
   }
 
+  onEventContextMenu(event: MouseEvent, calendarEvent: CalendarEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.selectedEvent = calendarEvent;
+
+    // Position relative to viewport
+    this.contextMenuPosition = {
+      x: event.clientX,
+      y: event.clientY
+    };
+
+    this.contextMenuVisible = true;
+  }
+
+  closeContextMenu() {
+    this.contextMenuVisible = false;
+    this.selectedEvent = null;
+  }
+
+  onMenuAction(item: MenuAction) {
+    if (this.selectedEvent) {
+      this.eventAction.emit({ action: item.action, event: this.selectedEvent });
+    }
+    this.closeContextMenu();
+  }
+
   getEventColor(event: CalendarEvent): string {
     if (this.colorMode === 'static') {
       return event.color || '#6366f1';
@@ -648,26 +727,7 @@ export class CalendarComponent implements OnInit {
     return event.color || '#6366f1';
   }
 
-  onEventContextMenu(event: MouseEvent, calendarEvent: CalendarEvent) {
-    event.preventDefault();
-    event.stopPropagation();
 
-    this.selectedEvent = calendarEvent;
-    this.contextMenuPosition = { x: event.clientX, y: event.clientY };
-    this.contextMenuVisible = true;
-  }
-
-  onMenuAction(action: MenuAction) {
-    if (this.selectedEvent) {
-      this.eventAction.emit({ action: action.action, event: this.selectedEvent });
-    }
-    this.closeContextMenu();
-  }
-
-  closeContextMenu() {
-    this.contextMenuVisible = false;
-    this.selectedEvent = null;
-  }
 
   // UPDATED METHODS FOR WEEK/DAY VIEW LOGIC
 
@@ -709,6 +769,11 @@ export class CalendarComponent implements OnInit {
   }
 
   getEventHeight(event: CalendarEvent): number {
+    // If we are currently resizing THIS event, use the dynamic height
+    if (this.resizingEventId === event.id && this.currentResizeHeight > 0) {
+      return Math.max(this.currentResizeHeight, 20);
+    }
+
     const durationMs = event.end.getTime() - event.start.getTime();
     const durationMins = durationMs / (1000 * 60);
     return Math.max((durationMins / 60) * this.hourHeight, 20); // Min height 20px
@@ -753,8 +818,17 @@ export class CalendarComponent implements OnInit {
     );
   }
 
-  onAddEvent() { this.addEvent.emit(); }
-  onBlockTime() { this.blockTime.emit(); }
+  onAddEvent() {
+    this.addEvent.emit();
+  }
+
+  onBlockTime() {
+    this.blockTime.emit();
+  }
+
+  onWaitlistClick() {
+    this.waitlistClick.emit();
+  }
 
   // DRAG AND DROP HANDLER
   onEventDrop(event: CdkDragDrop<any>) {
@@ -794,13 +868,20 @@ export class CalendarComponent implements OnInit {
     // 5. Vertical Time Change (Week/Day)
     if ((this.currentView().type === 'week' || this.currentView().type === 'day') && !targetData.isTimeline) {
       const deltaY = event.distance.y;
-      const deltaMins = Math.round((deltaY / this.hourHeight) * 60);
-      // Apply delta to original time
-      newStart.setHours(movedEvent.start.getHours(), movedEvent.start.getMinutes() + deltaMins);
-    }
+      // Calculate minutes based on pixel distance
+      const deltaMins = (deltaY / this.hourHeight) * 60;
 
-    // Only emit if changed
-    if (newStart.getTime() !== movedEvent.start.getTime() || newResource !== movedEvent.resourceId) {
+      // Apply delta
+      newStart.setMinutes(newStart.getMinutes() + deltaMins);
+
+      // Snap to grid
+      newStart = this.roundToNearest15Minutes(newStart);
+    }
+    // 6. Timeline Horizontal Drag could be added here if needed, currently assumes day/resource change only for simplicity or standard vertical drag
+    // If timeline supported horizontal time dragging, we'd use event.distance.x
+
+    // Only emit if changed (and ensure valid date)
+    if (!isNaN(newStart.getTime()) && (newStart.getTime() !== movedEvent.start.getTime() || newResource !== movedEvent.resourceId)) {
       this.eventDrop.emit({ event: movedEvent, newStart, newResource });
     }
   }
@@ -822,16 +903,62 @@ export class CalendarComponent implements OnInit {
     return (durationHours / totalHours) * 100;
   }
 
+  // --- RESIZE HANDLERS ---
+
+  onResizeStart(dragEvent: CdkDragStart, event: CalendarEvent) {
+    this.resizingEventId = event.id;
+    // Calculate initial height based on current duration
+    const durationMs = event.end.getTime() - event.start.getTime();
+    const durationMins = durationMs / (1000 * 60);
+    this.currentResizeHeight = (durationMins / 60) * this.hourHeight;
+    this.originalResizeDuration = durationMins;
+  }
+
+  onResizeMoved(dragEvent: CdkDragMove, event: CalendarEvent) {
+    if (this.resizingEventId !== event.id) return;
+
+    const deltaY = dragEvent.distance.y;
+    // Calculate original height + delta
+    const originalHeight = (this.originalResizeDuration / 60) * this.hourHeight;
+    const newHeight = originalHeight + deltaY;
+
+    // Apply snap-to-grid visually if desired, or keep smooth. 
+    // For smoothness, we keep raw pixels but maybe limit minimum.
+    this.currentResizeHeight = Math.max(newHeight, 20); // Min 20px
+  }
+
   onResizeEnd(dragEvent: any, calendarEvent: CalendarEvent) {
     const deltaY = dragEvent.distance.y;
-    const deltaMins = Math.round((deltaY / this.hourHeight) * 60);
+    // Calculate exact minutes change based on final distance
+    const deltaMins = (deltaY / this.hourHeight) * 60;
 
-    const newEnd = new Date(calendarEvent.end);
-    if (deltaMins !== 0) {
-      newEnd.setMinutes(newEnd.getMinutes() + deltaMins);
+    let newEnd = new Date(calendarEvent.end);
+    newEnd.setMinutes(newEnd.getMinutes() + deltaMins);
+
+    // Snap to grid (Round to nearest 15m)
+    newEnd = this.roundToNearest15Minutes(newEnd);
+
+    // Minimum duration check (15 mins)
+    const start = new Date(calendarEvent.start);
+    if (newEnd.getTime() <= start.getTime()) {
+      newEnd = new Date(start.getTime() + 15 * 60000);
+    }
+
+    if (newEnd.getTime() !== calendarEvent.end.getTime()) {
       this.eventResize.emit({ event: calendarEvent, newEnd });
     }
+
+    // Cleanup
+    this.resizingEventId = null;
+    this.currentResizeHeight = 0;
+    this.originalResizeDuration = 0;
+
     dragEvent.source.reset();
+  }
+
+  private roundToNearest15Minutes(date: Date): Date {
+    const ms = 1000 * 60 * 15;
+    return new Date(Math.round(date.getTime() / ms) * ms);
   }
 
   getTextColor(backgroundColor: string): string {

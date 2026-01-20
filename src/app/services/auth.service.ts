@@ -159,6 +159,8 @@ export class AuthService {
 
 
 
+
+
   // Método auxiliar para operaciones que requieren sesión válida
   private async retryWithSession<T>(
     operation: () => Promise<T>,
@@ -435,13 +437,18 @@ export class AuthService {
         activeMembership = allMemberships.find(m => m.company_id === storedCid);
       }
 
-      // Fallback: Default to Owner/Admin role if available, otherwise first one
+      // Fallback: Default to priority role if available (Owner > Super Admin > Admin > Member > Client)
       if (!activeMembership) {
-        // Prefer non-client roles first
-        activeMembership = allMemberships.find(m => m.role !== 'client');
-        if (!activeMembership) {
-          activeMembership = allMemberships[0];
-        }
+        const rolePriority = { 'owner': 1, 'super_admin': 2, 'admin': 3, 'member': 4, 'client': 5 };
+
+        // Sort memberships by priority
+        const sorted = [...allMemberships].sort((a, b) => {
+          const pA = rolePriority[a.role as keyof typeof rolePriority] || 99;
+          const pB = rolePriority[b.role as keyof typeof rolePriority] || 99;
+          return pA - pB;
+        });
+
+        activeMembership = sorted[0]; // Best match
       }
 
       // 4. Construct AppUser based on Active Context
@@ -754,6 +761,11 @@ export class AuthService {
   // MÉTODOS PÚBLICOS DE AUTENTICACIÓN
   // ==========================================
 
+  async getUser(): Promise<User | null> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    return user;
+  }
+
   async login(credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> {
     try {
       console.log('🔐 Attempting login (email):', credentials.email);
@@ -795,7 +807,13 @@ export class AuthService {
             email: registerData.email,
             password: registerData.password,
             options: {
-              data: { full_name: registerData.full_name },
+              data: { 
+                full_name: registerData.full_name,
+                given_name: registerData.given_name,
+                surname: registerData.surname,
+                company_name: registerData.company_name,
+                company_nif: registerData.company_nif
+              },
               emailRedirectTo: `${window.location.origin}/auth/callback`
             }
           });

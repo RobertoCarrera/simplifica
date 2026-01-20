@@ -143,6 +143,9 @@ export class AnalyticsService {
     hours: number;
   }>>([]);
 
+  // Leads By Channel (Signal)
+  // We can either expose a signal or just a method. Let's expose a method to simple fetch for now as it's not time-series critical yet.
+
   // Loading state
   private loading = signal<boolean>(true);
   private error = signal<string | null>(null);
@@ -451,31 +454,77 @@ export class AnalyticsService {
   }
 
   // Refresh analytics data (can be called manually or on interval)
+  // Refresh analytics data (can be called manually or on interval)
   async refreshAnalytics(): Promise<void> {
-    this.loading.set(true);
-    this.error.set(null);
     try {
+      this.loading.set(true);
+      this.error.set(null);
+
+      // Load all data in parallel
       await Promise.all([
-        // Consolidar: quotes kpis + trend en una llamada
         this.loadQuoteKpisAndTrend(),
+        this.loadQuoteMonthlyAnalytics(),
         this.loadAllDraftQuotes(),
         this.loadRecurringMonthly(),
         this.loadCurrentPipeline(),
-        // Consolidar: invoice kpis + trend en una llamada
-        // Consolidar: invoice kpis + trend en una llamada
+
         this.loadInvoiceKpisAndTrend(),
+
         this.loadTicketKpisAndTrend(),
         this.loadTicketCurrentStatus(),
-        // Consolidar: booking kpis + trend + top services
+
         this.loadBookingKpisAndTrend(),
         this.loadTopServices()
       ]);
-    } catch (err: any) {
-      console.error('[AnalyticsService] Failed to load analytics', err);
-      this.error.set(err?.message || 'Error al cargar analíticas');
+
+    } catch (err) {
+      console.error('[AnalyticsService] Error refreshing analytics:', err);
+      this.error.set('Hubo un problema al cargar los datos. Por favor intenta de nuevo.');
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /**
+   * Get Leads by Channel (Source)
+   */
+  /**
+   * Get Leads by Channel (Source)
+   */
+  async getLeadsByChannel(startDate?: string, endDate?: string): Promise<{ source: string; count: number }[]> {
+    // We rely on RLS to filter leads by the user's company.
+
+    let query = this.supabase.instance
+      .from('leads')
+      .select('source');
+
+    if (startDate) {
+      query = query.gte('created_at', startDate);
+    }
+    if (endDate) {
+      // Asume endDate es inclusivo hasta el final del día si es YYYY-MM-DD, 
+      // pero si es string simple, mejor asegurar que cubra el día. 
+      // Si el input es '2025-01-30', le agregamos time si es necesario o usamos lte.
+      // Supabase lte funcionará bien con fechas ISO.
+      query = query.lte('created_at', endDate + 'T23:59:59');
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[AnalyticsService] Error fetching leads stats:', error);
+      return [];
+    }
+
+    const counts: Record<string, number> = {};
+    (data || []).forEach((lead: any) => {
+      const src = lead.source || 'other';
+      counts[src] = (counts[src] || 0) + 1;
+    });
+
+    return Object.entries(counts)
+      .map(([source, count]) => ({ source, count }))
+      .sort((a, b) => b.count - a.count);
   }
 
   // --- PRESUPUESTOS: Consolidado KPIs + Trend en una sola llamada ---

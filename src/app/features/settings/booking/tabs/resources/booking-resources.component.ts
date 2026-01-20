@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { SupabaseBookingsService, Resource } from '../../../../../services/supabase-bookings.service';
@@ -23,6 +23,14 @@ export class BookingResourcesComponent implements OnInit {
     resources = signal<Resource[]>([]);
     loading = signal<boolean>(false);
 
+    uniqueTypes = computed(() => {
+        const types = new Set<string>(['room', 'equipment']);
+        this.resources().forEach(r => {
+            if (r.type) types.add(r.type);
+        });
+        return Array.from(types).sort();
+    });
+
     showModal = false;
     editingId: string | null = null;
     form: FormGroup;
@@ -31,7 +39,7 @@ export class BookingResourcesComponent implements OnInit {
     constructor() {
         this.form = this.fb.group({
             name: ['', [Validators.required, Validators.minLength(3)]],
-            type: ['room', [Validators.required]],
+            type: ['', [Validators.required]],
             capacity: [1, [Validators.required, Validators.min(1)]],
             description: [''],
             is_active: [true]
@@ -75,7 +83,7 @@ export class BookingResourcesComponent implements OnInit {
         } else {
             this.form.reset({
                 name: '',
-                type: 'room',
+                type: '',
                 capacity: 1,
                 description: '',
                 is_active: true

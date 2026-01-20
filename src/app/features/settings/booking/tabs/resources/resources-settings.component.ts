@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SupabaseBookingsService, Resource } from '../../../../../services/supabase-bookings.service';
@@ -22,20 +22,30 @@ export class ResourcesSettingsComponent implements OnInit {
     loading = signal<boolean>(false);
     saving = signal<boolean>(false);
 
+    uniqueTypes = computed(() => {
+        const types = new Set<string>(['room', 'equipment']);
+        this.resources().forEach(r => {
+            if (r.type) types.add(r.type);
+        });
+        return Array.from(types).sort();
+    });
+
+    // Dropdown state
+    showTypeDropdown = signal<boolean>(false);
+    filteredTypes = computed(() => {
+        const input = (this.form?.get('type')?.value || '').toLowerCase();
+        return this.uniqueTypes().filter(t => t.toLowerCase().includes(input));
+    });
+
     // Modal state
     showModal = false;
     editingId: string | null = null;
     form: FormGroup;
 
-    resourceTypes = [
-        { value: 'room', label: 'Sala / Cabina' },
-        { value: 'equipment', label: 'Máquina / Equipo' }
-    ];
-
     constructor() {
         this.form = this.fb.group({
             name: ['', Validators.required],
-            type: ['room', Validators.required],
+            type: ['', Validators.required],
             capacity: [1, [Validators.required, Validators.min(1)]],
             description: [''],
             is_active: [true]
@@ -77,7 +87,7 @@ export class ResourcesSettingsComponent implements OnInit {
         } else {
             this.form.reset({
                 name: '',
-                type: 'room',
+                type: '',
                 capacity: 1,
                 description: '',
                 is_active: true
@@ -135,5 +145,21 @@ export class ResourcesSettingsComponent implements OnInit {
         } catch (e: any) {
             this.toast.error('Error', 'No se pudo eliminar');
         }
+    }
+
+    selectType(type: string) {
+        this.form.patchValue({ type });
+        this.showTypeDropdown.set(false);
+    }
+
+    onTypeFocus() {
+        this.showTypeDropdown.set(true);
+    }
+
+    onTypeBlur() {
+        // Small delay to allow click event to register
+        setTimeout(() => {
+            this.showTypeDropdown.set(false);
+        }, 200);
     }
 }

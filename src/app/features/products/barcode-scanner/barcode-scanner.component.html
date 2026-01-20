@@ -1,0 +1,43 @@
+<div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+
+        <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" aria-hidden="true" (click)="onClose()">
+        </div>
+
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+        <div
+            class="relative inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6 card-premium">
+
+            <div class="absolute top-0 right-0 pt-4 pr-4">
+                <button type="button" (click)="onClose()"
+                    class="text-gray-400 bg-white rounded-md hover:text-gray-500 focus:outline-none">
+                    <span class="sr-only">Close</span>
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="sm:flex sm:items-start">
+                <div class="w-full mt-3 text-center sm:mt-0 sm:text-left">
+                    <h3 class="text-lg font-medium leading-6 text-gray-900" id="modal-title">
+                        Escanear Código de Barras
+                    </h3>
+                    <div class="mt-4">
+                        <div id="reader" style="width: 100%"></div>
+                        <p class="mt-2 text-sm text-gray-500">
+                            Apunta la cámara al código de barras o QR.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+                <button type="button" (click)="onClose()"
+                    class="inline-flex justify-center w-full px-4 py-2 text-base font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none sm:mt-0 sm:w-auto sm:text-sm">
+                    Cancelar
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>

@@ -23,7 +23,7 @@ interface MenuItem {
   module?: string; // 'core' | 'production' | 'development'
   moduleKey?: string; // Optional key to check in modules_catalog
   // roleOnly can be used to restrict visibility to specific roles
-  roleOnly?: 'ownerAdmin' | 'adminOnly' | 'adminEmployeeClient' | 'adminOnlyWebmail';
+  roleOnly?: 'ownerAdmin' | 'adminOnly' | 'adminEmployeeClient' | 'adminOnlyWebmail' | 'superAdminOnly';
   requiredPermission?: string | string[]; // Permission key(s) required (OR logic)
 }
 
@@ -241,6 +241,15 @@ export class ResponsiveSidebarComponent implements OnInit {
       requiredPermission: 'services.view' // New permission
     },
     {
+      id: 12,
+      label: 'Marketing',
+      icon: 'sparkles',
+      route: '/marketing',
+      module: 'production',
+      moduleKey: 'moduloMarketing',
+      requiredPermission: 'marketing.view'
+    },
+    {
       id: 11,
       label: 'Reservas',
       icon: 'calendar', // Lucide icon
@@ -248,6 +257,15 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'production',
       moduleKey: 'moduloReservas',
       requiredPermission: ['bookings.view', 'bookings.view_own', 'bookings.manage_own', 'bookings.manage_all']
+    },
+    {
+      id: 13,
+      label: 'Leads (CRM)',
+      icon: 'users',
+      route: '/leads',
+      module: 'production',
+      moduleKey: 'moduloMarketing',
+      requiredPermission: 'leads.view'
     },
     {
       id: 95,
@@ -273,6 +291,14 @@ export class ResponsiveSidebarComponent implements OnInit {
       roleOnly: 'adminOnlyWebmail' // Specific role for admin webmail
     },
     {
+      id: 96,
+      label: 'Logs',
+      icon: 'shield',
+      route: '/logs',
+      module: 'core',
+      roleOnly: 'superAdminOnly'
+    },
+    {
       id: 99,
       label: 'Gestión Módulos',
       icon: 'sparkles',
@@ -280,7 +306,15 @@ export class ResponsiveSidebarComponent implements OnInit {
       module: 'core',
       roleOnly: 'adminOnly'
     },
-    // Empresa y Ayuda se integran en Configuración para simplificar el menú
+    {
+      id: 14,
+      label: 'RRHH',
+      icon: 'users',
+      route: '/rrhh/empleadas',
+      module: 'production',
+      moduleKey: 'moduloRRHH',
+      requiredPermission: 'employees.view'
+    },
   ];
 
   // Computed menu items based on user role
@@ -343,6 +377,9 @@ export class ResponsiveSidebarComponent implements OnInit {
         }
         if (item.roleOnly === 'adminOnlyWebmail') {
           return isAdmin;
+        }
+        if (item.roleOnly === 'superAdminOnly') {
+          return false; // Since isSuperAdmin check above handles visibility, this block hides it from others
         }
         return true;
       }
@@ -526,6 +563,8 @@ export class ResponsiveSidebarComponent implements OnInit {
         return 'moduloFacturas';
       case '/chat':
         return 'moduloChat';
+      case '/leads':
+        return 'moduloMarketing';
       default:
         return null; // elementos sin control por módulo
     }
