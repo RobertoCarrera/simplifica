@@ -807,7 +807,13 @@ export class AuthService {
             email: registerData.email,
             password: registerData.password,
             options: {
-              data: { full_name: registerData.full_name },
+              data: { 
+                full_name: registerData.full_name,
+                given_name: registerData.given_name,
+                surname: registerData.surname,
+                company_name: registerData.company_name,
+                company_nif: registerData.company_nif
+              },
               emailRedirectTo: `${window.location.origin}/auth/callback`
             }
           });
