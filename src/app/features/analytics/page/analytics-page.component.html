@@ -1,0 +1,187 @@
+<div class="p-6 max-w-7xl mx-auto space-y-6">
+
+    <!-- Header & Filters -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Reportes y Analítica</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Desempeño de tu negocio en tiempo real</p>
+        </div>
+
+        <div
+            class="flex items-center space-x-2 bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700">
+            <input type="date" [ngModel]="startDate()" (ngModelChange)="startDate.set($event); onDateChange()"
+                class="border-none bg-transparent text-sm focus:ring-0 text-gray-700 dark:text-gray-200">
+            <span class="text-gray-400">-</span>
+            <input type="date" [ngModel]="endDate()" (ngModelChange)="endDate.set($event); onDateChange()"
+                class="border-none bg-transparent text-sm focus:ring-0 text-gray-700 dark:text-gray-200">
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Revenue Card -->
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Ingresos Totales</h3>
+                <div class="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                    <i class="fas fa-euro-sign text-green-600 dark:text-green-400"></i>
+                </div>
+            </div>
+            <div class="flex items-baseline">
+                <span class="text-3xl font-bold text-gray-900 dark:text-white">{{ totalRevenue() |
+                    currency:'EUR':'symbol':'1.0-0' }}</span>
+                <!-- <span class="ml-2 text-sm text-green-600 font-medium">+12%</span> -->
+            </div>
+        </div>
+
+        <!-- Bookings Card -->
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Citas Confirmadas</h3>
+                <div class="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <i class="fas fa-calendar-check text-blue-600 dark:text-blue-400"></i>
+                </div>
+            </div>
+            <div class="flex items-baseline">
+                <span class="text-3xl font-bold text-gray-900 dark:text-white">{{ totalBookings() }}</span>
+            </div>
+        </div>
+
+        <!-- Average Ticket (Calculated) -->
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-400">Ticket Promedio</h3>
+                <div class="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                    <i class="fas fa-receipt text-purple-600 dark:text-purple-400"></i>
+                </div>
+            </div>
+            <div class="flex items-baseline">
+                <span class="text-3xl font-bold text-gray-900 dark:text-white">
+                    {{ (totalBookings() > 0 ? totalRevenue() / totalBookings() : 0) | currency:'EUR':'symbol':'1.0-0' }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- BI Command Center -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Revenue Forecast -->
+        <div class="lg:col-span-1">
+            <app-revenue-forecast></app-revenue-forecast>
+        </div>
+
+        <!-- Occupancy Heatmap -->
+        <div class="lg:col-span-2">
+            <app-occupancy-heatmap [startDate]="startDate()" [endDate]="endDate()"></app-occupancy-heatmap>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Revenue Chart -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+            <h3 class="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                <i class="fas fa-chart-area text-emerald-500"></i> Evolución de Ingresos
+            </h3>
+            <div id="chart-revenue" *ngIf="revenueChartOptions()?.series">
+                <apx-chart [series]="revenueChartOptions()!.series!" [chart]="revenueChartOptions()!.chart!"
+                    [xaxis]="revenueChartOptions()!.xaxis!" [stroke]="revenueChartOptions()!.stroke!"
+                    [tooltip]="revenueChartOptions()!.tooltip!" [dataLabels]="revenueChartOptions()!.dataLabels!"
+                    [legend]="revenueChartOptions()!.legend!" [grid]="revenueChartOptions()!.grid!"
+                    [fill]="revenueChartOptions()!.fill!" [colors]="revenueChartOptions()!.colors!"
+                    [yaxis]="revenueChartOptions()!.yaxis!"></apx-chart>
+            </div>
+            <div *ngIf="dailyRevenue().length === 0" class="text-center py-10 text-gray-500 text-sm">
+                No hay datos para mostrar en este rango de fechas.
+            </div>
+        </div>
+
+        <!-- Bookings Chart -->
+        <div class="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-100 dark:border-slate-700">
+            <h3 class="font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                <i class="fas fa-chart-bar text-indigo-500"></i> Evolución de Citas
+            </h3>
+            <div id="chart-bookings" *ngIf="bookingsChartOptions()?.series">
+                <apx-chart [series]="bookingsChartOptions()!.series!" [chart]="bookingsChartOptions()!.chart!"
+                    [xaxis]="bookingsChartOptions()!.xaxis!" [plotOptions]="bookingsChartOptions()!.plotOptions!"
+                    [tooltip]="bookingsChartOptions()!.tooltip!" [dataLabels]="bookingsChartOptions()!.dataLabels!"
+                    [grid]="bookingsChartOptions()!.grid!" [colors]="bookingsChartOptions()!.colors!"
+                    [yaxis]="bookingsChartOptions()!.yaxis!"></apx-chart>
+            </div>
+            <div *ngIf="dailyRevenue().length === 0" class="text-center py-10 text-gray-500 text-sm">
+                No hay datos para mostrar en este rango de fechas.
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Top Services -->
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-4">Servicios Top</h3>
+            <div class="space-y-4">
+                <div *ngFor="let item of serviceRevenue()" class="group">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-700 dark:text-gray-300 font-medium">{{ item.service_name }}</span>
+                        <span class="text-gray-900 dark:text-white font-bold">{{ item.revenue |
+                            currency:'EUR':'symbol':'1.0-0' }}</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-slate-700 rounded-full h-2.5">
+                        <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
+                            [style.width.%]="(item.revenue / totalRevenue()) * 100"></div>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1">{{ item.bookings_count }} citas</div>
+                </div>
+                <div *ngIf="serviceRevenue().length === 0" class="text-center py-8 text-gray-500">
+                    No hay datos disponibles
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Professionals (New Widget) -->
+        <div class="h-full">
+            <app-top-performers [selectedDate]="startDate()"></app-top-performers>
+        </div>
+
+    </div>
+
+
+
+    <!-- Daily Breakdown Table -->
+    <div
+        class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 overflow-hidden">
+        <div class="p-6 border-b border-gray-100 dark:border-slate-700">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Desglose Diario</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-slate-700 dark:text-gray-400">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Fecha</th>
+                        <th scope="col" class="px-6 py-3 text-right">Citas</th>
+                        <th scope="col" class="px-6 py-3 text-right">Ingresos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let item of dailyRevenue()"
+                        class="bg-white border-b dark:bg-slate-800 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600">
+                        <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                            {{ item.day | date:'fullDate' }}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            {{ item.bookings_count }}
+                        </td>
+                        <td class="px-6 py-4 text-right font-bold text-gray-900 dark:text-white">
+                            {{ item.revenue | currency:'EUR' }}
+                        </td>
+                    </tr>
+                    <tr *ngIf="dailyRevenue().length === 0">
+                        <td colspan="3" class="px-6 py-8 text-center">No hay datos en este periodo</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>

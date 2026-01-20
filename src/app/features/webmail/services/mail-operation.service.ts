@@ -21,6 +21,24 @@ export class MailOperationService {
     if (error) throw error;
   }
 
+  async moveThreads(threadIds: string[], targetFolderId: string) {
+    const { error } = await this.supabase
+      .from('mail_messages')
+      .update({ folder_id: targetFolderId })
+      .in('thread_id', threadIds);
+
+    if (error) throw error;
+  }
+
+  async permanentDeleteMessages(messageIds: string[]) {
+    if (!messageIds.length) return;
+    const { error } = await this.supabase
+      .from('mail_messages')
+      .delete()
+      .in('id', messageIds);
+    if (error) throw error;
+  }
+
   async deleteMessages(messageIds: string[]) {
     if (!messageIds.length) return;
 
@@ -89,10 +107,41 @@ export class MailOperationService {
     if (error) throw error;
   }
 
+  async uploadAttachment(file: File): Promise<{ path: string, url: string }> {
+    const userId = (await this.supabase.auth.getUser()).data.user?.id;
+    if (!userId) throw new Error('Usuario no autenticado');
+
+    const filePath = `${userId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
+
+    const { data, error } = await this.supabase
+      .storage
+      .from('mail-attachments')
+      .upload(filePath, file, {
+        upsert: false
+      });
+
+    if (error) throw error;
+
+    const { data: { publicUrl } } = this.supabase
+      .storage
+      .from('mail-attachments')
+      .getPublicUrl(filePath);
+
+    return { path: filePath, url: publicUrl };
+  }
+
   // Placeholder for sending
   // Placeholder for sending
-  async sendMessage(message: Partial<MailMessage>, account?: any) {
+  async sendMessage(message: Partial<MailMessage>, account?: any, draftId?: string) {
     if (!account) throw new Error('Account required to send email');
+
+    let htmlBody = message.body_html || '';
+
+    // Append signature if exists
+    if (account.settings && account.settings.signature) {
+      // Basic separator, can be improved or made customizable
+      htmlBody += `<br><br>--<br>${account.settings.signature}`;
+    }
 
     const payload = {
       accountId: account.id,
@@ -100,8 +149,11 @@ export class MailOperationService {
       fromEmail: account.email,
       to: message.to,
       subject: message.subject,
-      body: message.body_text,
-      html_body: message.body_html
+      body: message.body_text, // Should we strip HTML for fallback? Edge function might handle it.
+      html_body: htmlBody,
+      attachments: (message as any).attachments, // Pass attachments
+      trackingId: (message as any).trackingId, // Pass tracking ID
+      threadId: (message as any).thread_id // Pass thread ID
     };
 
     console.log('📧 Sending email payload:', payload);
@@ -128,6 +180,191 @@ export class MailOperationService {
       }
       throw error;
     }
+
+    // If sent successfully and it was a draft, delete the draft
+    if (draftId) {
+      try {
+        await this.permanentDeleteMessages([draftId]);
+        console.log('Draft deleted after sending');
+      } catch (delError) {
+        console.warn('Failed to delete draft after sending', delError);
+      }
+    }
+
     return data;
   }
+
+  async saveDraft(message: Partial<MailMessage>, accountId: string): Promise<string> {
+    // 1. Find Drafts folder
+    const { data: draftsFolder, error: folderError } = await this.supabase
+      .from('mail_folders')
+      .select('id')
+      .eq('account_id', accountId)
+      .eq('system_role', 'drafts')
+      .single();
+
+    if (folderError || !draftsFolder) throw new Error('Drafts folder not found');
+
+    // 2. Prepare Payload
+    const payload: any = {
+      account_id: accountId,
+      folder_id: draftsFolder.id,
+      to: message.to || [],
+      subject: message.subject || '',
+      body_text: message.body_text || '',
+      body_html: message.body_html || '',
+      snippet: (message.body_text || '').substring(0, 100),
+      is_read: true,
+      updated_at: new Date().toISOString(),
+      metadata: message.metadata || {} // Store metadata (e.g. confidential)
+    };
+
+    // If ID exists, it's an update
+    if (message.id) {
+      const { data, error } = await this.supabase
+        .from('mail_messages')
+        .update(payload)
+        .eq('id', message.id)
+        .select('*, thread_id');
+
+      if (error) throw error;
+
+      const updatedMessage = data && data.length > 0 ? data[0] : null;
+
+      if (!updatedMessage) {
+        // If update failed (e.g. deleted), we can try to Insert or just throw specific error
+        console.warn('Draft update failed - row not found (possibly deleted).');
+        // Option: Fallback to INSERT if we want to ensure save?
+        // For now, let's just return message.id so we don't break the flow, but warn.
+        return message.id;
+      }
+
+      // Force update of thread to reflect new snippet/subject
+      if (updatedMessage.thread_id) {
+        const { error: threadError } = await this.supabase
+          .from('mail_threads')
+          .update({
+            last_message_at: new Date().toISOString(),
+            snippet: payload.snippet,
+            subject: payload.subject
+          })
+          .eq('id', updatedMessage.thread_id);
+
+        if (threadError) console.warn('Failed to update thread summary:', threadError);
+      }
+
+      return updatedMessage.id;
+    } else {
+      // New Draft
+      const { data, error } = await this.supabase
+        .from('mail_messages')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data.id;
+    }
+  }
+
+  // THREADS SUPPORT
+  async getThreads(folderId: string, accountId: string, limit = 20, offset = 0) {
+    const { data, error } = await this.supabase
+      .rpc('f_mail_get_threads', {
+        p_account_id: accountId,
+        p_folder_id: folderId,
+        p_limit: limit,
+        p_offset: offset
+      });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getThreadMessages(threadId: string): Promise<MailMessage[]> {
+    const { data, error } = await this.supabase
+      .rpc('f_mail_get_thread_messages', {
+        p_thread_id: threadId
+      });
+
+    if (error) throw error;
+    return data || [];
+  }
+  // BULK THREAD OPERATIONS
+  async bulkMarkReadThreads(threadIds: string[], isRead: boolean) {
+    const { error } = await this.supabase
+      .from('mail_messages')
+      .update({ is_read: isRead })
+      .in('thread_id', threadIds);
+
+    if (error) throw error;
+  }
+
+  async bulkTrashThreads(threadIds: string[], currentFolderSystemRole: string, accountId: string) {
+    // 1. Find Trash folder for this account
+    const { data: trashFolder, error: trashError } = await this.supabase
+      .from('mail_folders')
+      .select('id')
+      .eq('account_id', accountId)
+      .eq('system_role', 'trash')
+      .single();
+
+    if (trashError || !trashFolder) throw new Error('Trash folder not found');
+
+    if (currentFolderSystemRole === 'trash') {
+      // HARD DELETE
+      // first delete messages
+      const { error: msgError } = await this.supabase
+        .from('mail_messages')
+        .delete()
+        .in('thread_id', threadIds);
+
+      if (msgError) throw msgError;
+
+      // then delete threads
+      const { error: threadError } = await this.supabase
+        .from('mail_threads')
+        .delete()
+        .in('id', threadIds);
+
+      if (threadError) throw threadError;
+
+    } else {
+      // MOVE TO TRASH
+      const { error } = await this.supabase
+        .from('mail_messages')
+        .update({ folder_id: trashFolder.id })
+        .in('thread_id', threadIds);
+
+      if (error) throw error;
+    }
+  }
+
+  async createFolder(name: string, accountId: string, parentId?: string | null): Promise<void> {
+    // Generate simple slug for path. In a real app, might want to ensure uniqueness or hierarchy.
+    // For now, we assume top level or simple hierarchy.
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const path = parentId ? `${parentId}/${slug}` : slug;
+
+    // Should check if path exists or let DB constraints handle it? 
+    // We'll trust the UI/DB for now.
+
+    // Check if path is taken by system folder (optional safety)
+    if (['inbox', 'sent', 'drafts', 'trash', 'spam'].includes(slug)) {
+      throw new Error('El nombre de la carpeta está reservado.');
+    }
+
+    const { error } = await this.supabase
+      .from('mail_folders')
+      .insert({
+        account_id: accountId,
+        name: name,
+        path: path, // Note: This might collide, ideally we'd uniqueify it
+        type: 'user',
+        parent_id: parentId || null
+      });
+
+    if (error) throw error;
+  }
 }
+

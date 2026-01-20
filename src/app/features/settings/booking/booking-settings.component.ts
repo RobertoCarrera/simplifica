@@ -5,20 +5,26 @@ import { BookingAvailabilityComponent } from './tabs/availability/booking-availa
 import { ProfessionalsComponent } from './tabs/professionals/professionals.component';
 import { SupabaseServicesService, Service } from '../../../services/supabase-services.service';
 import { AuthService } from '../../../services/auth.service';
+import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
+
+import { CalendarPageComponent } from '../../calendar/page/calendar-page.component';
+import { BookingPreferencesComponent } from './tabs/preferences/booking-preferences.component';
+import { ResourcesSettingsComponent } from './tabs/resources/resources-settings.component';
 
 @Component({
     selector: 'app-booking-settings',
     standalone: true,
-    imports: [CommonModule, RouterModule, BookingAvailabilityComponent, ProfessionalsComponent, SkeletonComponent],
+    imports: [CommonModule, RouterModule, BookingAvailabilityComponent, ProfessionalsComponent, SkeletonComponent, CalendarPageComponent, BookingPreferencesComponent, ResourcesSettingsComponent],
     templateUrl: './booking-settings.component.html',
     styleUrls: ['./booking-settings.component.scss']
 })
 export class BookingSettingsComponent implements OnInit {
     private servicesService = inject(SupabaseServicesService);
     private authService = inject(AuthService);
+    private bookingsService = inject(SupabaseBookingsService); // Added injection
 
-    activeTab: 'services' | 'professionals' | 'availability' = 'services';
+    activeTab: 'calendar' | 'services' | 'professionals' | 'availability' | 'schedules' | 'preferences' | 'resources' = 'calendar';
     bookableServices: Service[] = [];
     loading = true;
     error: string | null = null;

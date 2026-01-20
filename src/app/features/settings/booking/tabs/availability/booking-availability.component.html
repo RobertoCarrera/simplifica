@@ -16,8 +16,13 @@
         </button>
     </div>
 
+    <!-- Loading State -->
+    <div *ngIf="loading()" class="mb-6">
+        <app-skeleton type="list" [count]="7"></app-skeleton>
+    </div>
+
     <!-- Schedule List -->
-    <div
+    <div *ngIf="!loading()"
         class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
         <div *ngFor="let day of days()" class="p-4 sm:p-6 transition-colors hover:bg-gray-50 dark:hover:bg-gray-750">
             <div class="flex flex-col sm:flex-row gap-4 sm:items-start">

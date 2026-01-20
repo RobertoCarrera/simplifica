@@ -15,8 +15,10 @@ export class MailStoreService {
 
   folders = signal<MailFolder[]>([]); // Flat list
   folderTree = computed(() => this.buildFolderTree(this.folders()));
+  currentFolder = signal<MailFolder | null>(null);
 
   messages = signal<MailMessage[]>([]);
+  threads = signal<any[]>([]); // MailThread[] but avoiding circular dependency issues if any
   selectedMessage = signal<MailMessage | null>(null);
 
   isLoading = signal<boolean>(false);
@@ -85,22 +87,42 @@ export class MailStoreService {
     return roots;
   }
 
-  // --- Message Logic ---
-  async loadMessages(folder: MailFolder) {
+  // --- Message/Thread Logic ---
+  async loadThreads(folder: MailFolder, searchQuery: string = '') {
     if (!this.currentAccount()) return;
 
+    this.currentFolder.set(folder); // Track current folder
+
     this.isLoading.set(true);
-    const { data, error } = await this.supabase
-      .from('mail_messages')
-      .select('*')
-      .eq('account_id', this.currentAccount()!.id)
-      .eq('folder_id', folder.id)
-      .order('received_at', { ascending: false });
+    try {
+      const { data, error } = await this.supabase
+        .rpc('f_mail_get_threads', {
+          p_account_id: this.currentAccount()!.id,
+          p_folder_id: folder.id,
+          p_limit: 20,
+          p_offset: 0,
+          p_search: searchQuery || null
+        });
 
-    if (error) console.error('Error fetching messages:', error);
-    if (data) this.messages.set(data);
+      if (error) throw error;
+      this.threads.set(data || []);
+    } catch (e) {
+      console.error('Error fetching threads:', e);
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
 
-    this.isLoading.set(false);
+  async refreshCurrentFolder() {
+    const folder = this.currentFolder();
+    if (folder) {
+      await this.loadThreads(folder);
+    }
+  }
+
+  // kept for backward compatibility if needed, using threads now
+  async loadMessages(folder: MailFolder) {
+    this.loadThreads(folder);
   }
 
   async getMessage(id: string) {

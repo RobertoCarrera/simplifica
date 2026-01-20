@@ -23,6 +23,7 @@ export class ThemeService {
   constructor() {
     this.loadThemeFromStorage();
     this.applyTheme();
+    this.listenToSystemTheme();
   }
 
   private loadThemeFromStorage(): void {

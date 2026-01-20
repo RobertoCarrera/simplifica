@@ -5,7 +5,8 @@ import { Observable, from, map } from 'rxjs';
 
 export interface Professional {
     id: string;
-    user_id: string;
+    user_id?: string;
+    email?: string;
     company_id: string;
     display_name: string;
     title?: string;
@@ -69,7 +70,8 @@ export class SupabaseProfessionalsService {
         const { data, error } = await this.supabase
             .from('professionals')
             .insert({
-                user_id: professional.user_id,
+                user_id: professional.user_id || null,
+                email: professional.email || null,
                 company_id: professional.company_id || this.companyId,
                 display_name: professional.display_name,
                 title: professional.title,
@@ -140,13 +142,13 @@ export class SupabaseProfessionalsService {
 
     // --- Helpers ---
 
-    async getCompanyMembers(): Promise<{ id: string; user_id: string; full_name: string; email: string }[]> {
+    async getCompanyMembers(): Promise<{ id: string; user_id: string; full_name: string; email: string; role: string }[]> {
         const companyId = this.companyId;
         if (!companyId) return [];
 
         const { data, error } = await this.supabase
             .from('company_members')
-            .select('user_id, users:user_id(id, email, name, surname)')
+            .select('user_id, role, users:user_id(id, email, name, surname)')
             .eq('company_id', companyId)
             .in('role', ['owner', 'admin', 'member', 'professional']);
 
@@ -156,7 +158,8 @@ export class SupabaseProfessionalsService {
             id: m.user_id,
             user_id: m.user_id,
             full_name: [m.users?.name, m.users?.surname].filter(Boolean).join(' ') || '',
-            email: m.users?.email || ''
+            email: m.users?.email || '',
+            role: m.role
         }));
     }
 

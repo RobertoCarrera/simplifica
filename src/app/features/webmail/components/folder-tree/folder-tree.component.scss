@@ -36,7 +36,8 @@
             background-color: var(--bg-secondary);
         }
 
-        &.active {
+        &.active,
+        &.drag-over {
             background-color: rgba(37, 99, 235, 0.1);
             /* Keep some tint, or use var if available */
             color: var(--color-primary-600);
@@ -56,5 +57,73 @@
     .sub-folders {
         list-style: none;
         padding: 0;
+    }
+}
+
+.create-folder-container {
+    padding: 0.5rem 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
+
+    .btn-create {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        border: 1px dashed var(--border-color, #ccc);
+        border-radius: 0.5rem;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+            border-color: var(--color-primary-500);
+            color: var(--color-primary-600);
+            background: var(--bg-secondary);
+        }
+    }
+
+    .create-form {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        background: var(--bg-secondary);
+        border-radius: 0.5rem;
+
+        input {
+            flex: 1;
+            width: 100%;
+            min-width: 0;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+
+            &::placeholder {
+                color: var(--text-muted);
+            }
+        }
+
+        .btn-icon {
+            padding: 0.25rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 4px;
+
+            &:hover {
+                background: rgba(0, 0, 0, 0.05);
+            }
+
+            &:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+        }
     }
 }
