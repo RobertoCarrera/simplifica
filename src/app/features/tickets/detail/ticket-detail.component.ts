@@ -493,11 +493,11 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ formatDate(device.received_at) }}</p>
                           </div>
                           <div *ngIf="!isClient() && !device.deleted_at" class="flex items-center gap-1">
-                             <button (click)="editDevice(device); $event.stopPropagation()" class="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Editar">
-                               <i class="fas fa-edit"></i>
+                             <button (click)="editDevice(device); $event.stopPropagation()" class="p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Editar" aria-label="Editar dispositivo">
+                               <i class="fas fa-edit" aria-hidden="true"></i>
                              </button>
-                             <button (click)="deleteConfirmDevice(device); $event.stopPropagation()" class="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Eliminar">
-                               <i class="fas fa-trash"></i>
+                             <button (click)="deleteConfirmDevice(device); $event.stopPropagation()" class="p-1 text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Eliminar" aria-label="Eliminar dispositivo">
+                               <i class="fas fa-trash" aria-hidden="true"></i>
                              </button>
                           </div>
                         </div>
@@ -656,37 +656,42 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
 
                                   <!-- Actions (Always visible) -->
                                   <div class="flex items-center gap-1">
-                                      <button *ngIf="!isClient()" (click)="openVisibilityModal(comment); $event.stopPropagation()"
-                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors"
-                                              [title]="comment.is_internal ? 'Hacer público' : 'Hacer interno'">
-                                        <i class="fas" [ngClass]="comment.is_internal ? 'fa-eye-slash' : 'fa-eye'"></i>
+                                      <button *ngIf="!isClient()" (click)="openVisibilityModal(comment); $event.stopPropagation()" 
+                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors" 
+                                              [title]="comment.is_internal ? 'Hacer público' : 'Hacer interno'"
+                                              [attr.aria-label]="comment.is_internal ? 'Hacer público' : 'Hacer interno'">
+                                        <i class="fas" [ngClass]="comment.is_internal ? 'fa-eye-slash' : 'fa-eye'" aria-hidden="true"></i>
                                       </button>
 
-                                      <button (click)="toggleReply(comment)"
-                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors"
-                                              title="Responder">
-                                        <i class="fas fa-reply text-xs"></i>
+                                      <button (click)="toggleReply(comment)" 
+                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 transition-colors" 
+                                              title="Responder"
+                                              aria-label="Responder">
+                                        <i class="fas fa-reply text-xs" aria-hidden="true"></i>
                                       </button>
-
-                                      <ng-container *ngIf="!comment.deleted_at">
-                                          <button (click)="toggleEdit(comment)"
-                                                  class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-orange-600 transition-colors"
-                                                  title="Editar">
-                                            <i class="fas fa-pencil-alt text-xs"></i>
+                                      
+                                      <ng-container *ngIf="!comment.deleted_at"> 
+                                          <button (click)="toggleEdit(comment)" 
+                                                  class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-orange-600 transition-colors" 
+                                                  title="Editar"
+                                                  aria-label="Editar comentario">
+                                            <i class="fas fa-pencil-alt text-xs" aria-hidden="true"></i>
                                           </button>
-                                          <button *ngIf="!isClient()"
-                                                  (click)="softDeleteComment(comment)"
-                                                  class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 transition-colors"
-                                                  title="Eliminar">
-                                            <i class="fas fa-trash text-xs"></i>
+                                          <button *ngIf="!isClient()" 
+                                                  (click)="softDeleteComment(comment)" 
+                                                  class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 transition-colors" 
+                                                  title="Eliminar"
+                                                  aria-label="Eliminar comentario">
+                                            <i class="fas fa-trash text-xs" aria-hidden="true"></i>
                                           </button>
                                       </ng-container>
 
-                                      <button *ngIf="comment.deleted_at && !isClient()"
-                                              (click)="restoreComment(comment)"
-                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-green-100 text-green-600 transition-colors"
-                                              title="Restaurar">
-                                        <i class="fas fa-undo text-xs"></i>
+                                      <button *ngIf="comment.deleted_at && !isClient()" 
+                                              (click)="restoreComment(comment)" 
+                                              class="w-7 h-7 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-green-100 text-green-600 transition-colors" 
+                                              title="Restaurar"
+                                              aria-label="Restaurar comentario">
+                                        <i class="fas fa-undo text-xs" aria-hidden="true"></i>
                                       </button>
                                   </div>
                                 </div>
@@ -910,8 +915,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 <i class="fas fa-exchange-alt"></i>
                 Cambiar Estado del Ticket
               </h2>
-              <button (click)="closeChangeStageModal()" class="modal-close">
-                <i class="fas fa-times"></i>
+              <button (click)="closeChangeStageModal()" class="modal-close" aria-label="Cerrar modal">
+                <i class="fas fa-times" aria-hidden="true"></i>
               </button>
             </div>
             <div class="modal-body">
@@ -964,8 +969,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 <i class="fas fa-clock"></i>
                 Actualizar Horas Trabajadas
               </h2>
-              <button (click)="closeUpdateHoursModal()" class="modal-close">
-                <i class="fas fa-times"></i>
+              <button (click)="closeUpdateHoursModal()" class="modal-close" aria-label="Cerrar modal">
+                <i class="fas fa-times" aria-hidden="true"></i>
               </button>
             </div>
             <div class="modal-body">
@@ -1016,8 +1021,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 <i class="fas fa-paperclip"></i>
                 Adjuntar Archivo
               </h2>
-              <button (click)="closeAttachmentModal()" class="modal-close">
-                <i class="fas fa-times"></i>
+              <button (click)="closeAttachmentModal()" class="modal-close" aria-label="Cerrar modal">
+                <i class="fas fa-times" aria-hidden="true"></i>
               </button>
             </div>
             <div class="modal-body">
@@ -1070,7 +1075,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
           <div class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]" (click)="$event.stopPropagation()">
             <div class="modal-header">
               <h2 class="modal-title">Seleccionar Servicios</h2>
-              <button (click)="closeServicesModal()" class="modal-close"><i class="fas fa-times"></i></button>
+              <button (click)="closeServicesModal()" class="modal-close" aria-label="Cerrar modal"><i class="fas fa-times" aria-hidden="true"></i></button>
             </div>
             <div class="modal-body space-y-3">
               <div>
@@ -1130,7 +1135,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
           <div class="modal-content w-full max-w-[1100px] lg:max-w-[1000px]" (click)="$event.stopPropagation()">
             <div class="modal-header">
               <h2 class="modal-title">📦 Seleccionar Productos</h2>
-              <button (click)="closeProductsModal()" class="modal-close"><i class="fas fa-times"></i></button>
+              <button (click)="closeProductsModal()" class="modal-close" aria-label="Cerrar modal"><i class="fas fa-times" aria-hidden="true"></i></button>
             </div>
             <div class="modal-body space-y-3">
               <div>
@@ -1192,9 +1197,9 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
               <h2 class="modal-title">💻 Seleccionar Dispositivos</h2>
               <div class="flex items-center gap-2">
                 <button (click)="openCreateDeviceForm()" class="btn btn-sm btn-primary shadow-sm hover:shadow-md transition-all">
-                  <i class="fas fa-plus mr-1"></i> Nuevo Dispositivo
+                  <i class="fas fa-plus mr-1" aria-hidden="true"></i> Nuevo Dispositivo
                 </button>
-                <button (click)="closeDevicesModal()" class="modal-close"><i class="fas fa-times"></i></button>
+                <button (click)="closeDevicesModal()" class="modal-close" aria-label="Cerrar modal"><i class="fas fa-times" aria-hidden="true"></i></button>
               </div>
             </div>
             <div class="modal-body space-y-3">
@@ -1337,8 +1342,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
             <div *ngFor="let image of selectedDeviceImages; let i = index" class="relative group rounded-lg overflow-hidden aspect-square bg-gray-100 dark:bg-gray-700">
               <img [src]="image.preview" [alt]="image.file.name" class="w-full h-full object-cover">
               <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <button type="button" (click)="removeDeviceImage(i)" class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors">
-                  <i class="fas fa-trash text-sm"></i>
+                <button type="button" (click)="removeDeviceImage(i)" class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors" aria-label="Eliminar imagen">
+                  <i class="fas fa-trash text-sm" aria-hidden="true"></i>
                 </button>
               </div>
             </div>
@@ -1366,9 +1371,10 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
        (click)="closeLightbox()">
 
     <!-- Close Button -->
-    <button (click)="closeLightbox()"
-            class="absolute top-4 right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-50">
-      <i class="fas fa-times text-2xl"></i>
+    <button (click)="closeLightbox()" 
+            class="absolute top-4 right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-50"
+            aria-label="Cerrar vista previa">
+      <i class="fas fa-times text-2xl" aria-hidden="true"></i>
     </button>
 
     <!-- Image Container -->
