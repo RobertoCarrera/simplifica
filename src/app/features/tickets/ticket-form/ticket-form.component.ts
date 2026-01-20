@@ -13,6 +13,7 @@ import { AuthService } from '../../../services/auth.service';
 import { ProductMetadataService } from '../../../services/product-metadata.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
+import { SupabasePermissionsService } from '../../../services/supabase-permissions.service';
 import { firstValueFrom } from 'rxjs';
 
 export interface TicketTag {
@@ -63,6 +64,10 @@ export class TicketFormComponent implements OnInit, OnChanges, OnDestroy {
     private devicesService = inject(DevicesService);
     private productMetadataService = inject(ProductMetadataService);
     private globalTagsService = inject(GlobalTagsService);
+    public permissionsService = inject(SupabasePermissionsService); // Permissions
+    // Not actually importing SupabasePermissionsService, I need to check imports. It is usually available if exported.
+    // Wait, I should add the import line too. But `replace_file_content` checks contiguous blocks.
+    // I'll assume I need to add import too.
 
     // Form State
     formData: Partial<Ticket> = {};
