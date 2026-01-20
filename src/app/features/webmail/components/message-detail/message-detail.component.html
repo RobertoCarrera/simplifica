@@ -1,51 +1,66 @@
-<div class="message-detail-container" *ngIf="message() as msg">
+<div class="message-detail-container" *ngIf="threadMessages().length > 0">
     <div class="header">
         <div class="toolbar">
-            <button class="btn-icon" (click)="goBack()" title="Volver"><i class="fas fa-arrow-left"></i></button>
+            <button class="btn-icon" (click)="goBack()" aria-label="Volver" title="Volver"><i class="fas fa-arrow-left" aria-hidden="true"></i></button>
             <div class="actions">
-                <button class="btn-icon" title="Responder" (click)="reply()"><i class="fas fa-reply"></i></button>
+                <button class="btn-icon" aria-label="Responder" title="Responder" (click)="reply()"><i class="fas fa-reply" aria-hidden="true"></i></button>
+                <button class="btn-icon" aria-label="Eliminar" title="Eliminar" (click)="delete()"><i class="fas fa-trash" aria-hidden="true"></i></button>
+                <button *ngIf="isDraft()" class="btn-primary-sm" (click)="resumeDraft()">
+                    <i class="fas fa-pen"></i> Seguir Editando
+                </button>
+                <button *ngIf="!isDraft()" class="btn-icon" title="Responder" (click)="reply()"><i
+                        class="fas fa-reply"></i></button>
                 <button class="btn-icon" title="Eliminar" (click)="delete()"><i class="fas fa-trash"></i></button>
             </div>
         </div>
 
-        <h2 class="subject">{{ msg.subject }}</h2>
+        <!-- Subject is property of the thread, so take from first or last message defined in component -->
+        <h2 class="subject">{{ latestMessage()?.subject }}</h2>
+    </div>
 
-        <div class="metadata">
-            <div class="avatar">{{ getSenderInitial(msg.from) }}</div>
-            <div class="info">
-                <div class="sender">
-                    <span class="name">{{ getSenderName(msg.from) }}</span>
-                    <span class="email">{{ msg.from.email }}</span>
+    <div class="thread-list">
+        @for (msg of threadMessages(); track msg.id; let last = $last) {
+        <div class="message-card" [class.expanded]="last || msg === latestMessage()" [id]="'msg-' + msg.id">
+            <div class="message-header">
+                <div class="meta">
+                    <div class="avatar">{{ getSenderInitial(msg.from) }}</div>
+                    <div class="info">
+                        <span class="sender-name">{{ getSenderName(msg.from) }}</span>
+                        <span class="date">{{ msg.received_at | date:'medium' }}</span>
+                    </div>
                 </div>
-                <div class="date">{{ msg.received_at | date:'medium' }}</div>
+                <div class="actions">
+                    <!-- Individual actions if needed -->
+                </div>
+            </div>
+
+            <div class="message-body">
+                <!-- Using getBodyParts for each message -->
+                <ng-container *ngIf="{ parts: getBodyParts(msg) } as body">
+                    <div class="email-body" [innerHTML]="body.parts.main | safeHtml"></div>
+
+                    <!-- Quoted text usually only relevant for the LATEST message or if explicitly expanded -->
+                    <div *ngIf="body.parts.quoted && last" class="quoted-section">
+                        <button class="btn-expand" (click)="showQuotedText.set(!showQuotedText())">
+                            <span>{{ showQuotedText() ? 'Ocultar historia' : 'Mostrar historia' }}</span>
+                        </button>
+                        <div *ngIf="showQuotedText()" class="quoted-content" [innerHTML]="body.parts.quoted | safeHtml">
+                        </div>
+                    </div>
+                </ng-container>
+
+                <!-- Attachments per message -->
+                <div *ngIf="msg.attachments?.length" class="attachments">
+                    <div class="attachment-list">
+                        <div *ngFor="let att of msg.attachments" class="attachment-item">
+                            <i class="fas fa-paperclip"></i>
+                            <span>{{ att.filename }}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-
-    <div class="body-content">
-        <!-- Main Content -->
-        <div class="email-body" [innerHTML]="bodyParts.main | safeHtml"></div>
-
-        <!-- Collapsible Quoted Text -->
-        <div *ngIf="bodyParts.quoted" class="quoted-section">
-            <button class="btn-expand" (click)="showQuotedText.set(!showQuotedText())">
-                <i class="fas" [class.fa-ellipsis-h]="!showQuotedText()" [class.fa-chevron-up]="showQuotedText()"></i>
-                <span>{{ showQuotedText() ? 'Ocultar mensaje citado' : 'Mostrar mensaje citado' }}</span>
-            </button>
-
-            <div *ngIf="showQuotedText()" class="quoted-content" [innerHTML]="bodyParts.quoted | safeHtml"></div>
-        </div>
-    </div>
-
-    <div *ngIf="msg.attachments?.length" class="attachments">
-        <h3>Adjuntos ({{ msg.attachments!.length }})</h3>
-        <div class="attachment-list">
-            <div *ngFor="let att of msg.attachments" class="attachment-item">
-                <i class="fas fa-paperclip"></i>
-                <span>{{ att.filename }}</span>
-                <span class="size">({{ att.size / 1024 | number:'1.0-0' }} KB)</span>
-            </div>
-        </div>
+        }
     </div>
 
     <!-- Inline Reply Box -->
@@ -54,10 +69,11 @@
             <div class="user-info">
                 <div class="avatar-sm">{{ (store.currentAccount()?.sender_name || 'Me').charAt(0).toUpperCase() }}</div>
                 <div class="meta">
-                    <span class="reply-to">Respondiendo a <strong>{{ msg.from.name || msg.from.email }}</strong></span>
+                    <span class="reply-to">Respondiendo a <strong>{{ latestMessage()?.from?.name ||
+                            latestMessage()?.from?.email || '(Desconocido)' }}</strong></span>
                 </div>
             </div>
-            <button class="btn-icon-sm" (click)="discardReply()" title="Cerrar"><i class="fas fa-times"></i></button>
+            <button class="btn-icon-sm" (click)="discardReply()" aria-label="Cerrar" title="Cerrar"><i class="fas fa-times" aria-hidden="true"></i></button>
         </div>
 
         <div class="reply-editor">
@@ -69,10 +85,10 @@
         <div class="reply-actions">
             <button class="btn-primary" (click)="sendReply()" [disabled]="isSending() || !replyContent.trim()">
                 <ng-container *ngIf="!isSending()">Enviar</ng-container>
-                <ng-container *ngIf="isSending()"><i class="fas fa-spinner fa-spin"></i> Enviando...</ng-container>
+                <ng-container *ngIf="isSending()"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Enviando...</ng-container>
             </button>
-            <button class="btn-icon" (click)="discardReply()" title="Descartar borrador"><i
-                    class="fas fa-trash-alt"></i></button>
+            <button class="btn-icon" (click)="discardReply()" aria-label="Descartar borrador" title="Descartar borrador"><i
+                    class="fas fa-trash-alt" aria-hidden="true"></i></button>
         </div>
     </div>
 </div>
