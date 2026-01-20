@@ -28,7 +28,7 @@ import { ToastService } from '../../../services/toast.service';
               </svg>
             }
           </div>
-          
+
           <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
             @if (loading) {
               Procesando autenticación...
@@ -38,7 +38,7 @@ import { ToastService } from '../../../services/toast.service';
               ¡Autenticación exitosa!
             }
           </h2>
-          
+
           <p class="mt-2 text-center text-sm text-gray-600">
             @if (loading) {
               Por favor espera mientras procesamos tu solicitud
@@ -48,7 +48,7 @@ import { ToastService } from '../../../services/toast.service';
               Redirigiendo al dashboard...
             }
           </p>
-          
+
           @if (error) {
             <div class="mt-4 space-y-2">
               <button

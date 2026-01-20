@@ -91,9 +91,9 @@ export class ProductMetadataService {
     try {
       // Try to use the helper function first
       const { data: brandId, error: rpcError } = await this.supabase.getClient()
-        .rpc('get_or_create_brand', { 
-          p_brand_name: name.trim(), 
-          p_company_id: companyId 
+        .rpc('get_or_create_brand', {
+          p_brand_name: name.trim(),
+          p_company_id: companyId
         });
 
       if (!rpcError && brandId) {
@@ -198,9 +198,9 @@ export class ProductMetadataService {
     try {
       // Try to use the helper function first
       const { data: categoryId, error: rpcError } = await this.supabase.getClient()
-        .rpc('get_or_create_category', { 
-          p_category_name: name.trim(), 
-          p_company_id: companyId 
+        .rpc('get_or_create_category', {
+          p_category_name: name.trim(),
+          p_company_id: companyId
         });
 
       if (!rpcError && categoryId) {
