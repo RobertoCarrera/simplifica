@@ -49,7 +49,7 @@ export class BookingAvailabilityComponent implements OnInit {
 
     get userId() {
         return this.authService.userProfile?.id; // Or auth_user_id? Table uses user_id references public.users(id).
-        // AuthService userProfile usually has 'id'. 
+        // AuthService userProfile usually has 'id'.
     }
 
     async loadAvailability() {

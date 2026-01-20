@@ -66,12 +66,12 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
   template: `
     <div class="min-h-0 bg-gray-50 dark:bg-gray-900">
       <div class="mx-auto">
-        
+
         <!-- Header con navegación -->
         <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 mb-6">
           <div class="flex flex-col sm:flex-row sm:justify-between gap-3">
             <!-- Botón Atrás -->
-            <button (click)="goBack()" 
+            <button (click)="goBack()"
                     class="btn btn-secondary text-sm">
               <i class="fas fa-arrow-left mr-2"></i>
               <span>Atrás</span>
@@ -79,28 +79,28 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
 
             <!-- Right Side Actions Wrapper -->
             <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto mt-3 sm:mt-0">
-              
+
               <!-- Client Actions -->
               <ng-container *ngIf="isClient()">
-                <button *ngIf="!ticketConfig || ticketConfig.ticket_client_can_create_devices !== false" (click)="openCreateDeviceForm()" 
+                <button *ngIf="!ticketConfig || ticketConfig.ticket_client_can_create_devices !== false" (click)="openCreateDeviceForm()"
                         class="btn btn-primary text-sm px-4 w-full sm:w-auto">
                   <i class="fas fa-plus mr-2"></i>
                   <span>Añadir Dispositivo</span>
                 </button>
 
-                <button (click)="scrollToComment()" 
+                <button (click)="scrollToComment()"
                         class="btn btn-secondary text-sm px-4 w-full sm:w-auto">
                   <i class="fas fa-comment mr-2"></i>
                   <span>Añadir Comentario</span>
                 </button>
 
-                <button *ngIf="!isTicketSolved() && (!ticketConfig || ticketConfig.ticket_client_can_close !== false)" (click)="markAsSolved()" 
+                <button *ngIf="!isTicketSolved() && (!ticketConfig || ticketConfig.ticket_client_can_close !== false)" (click)="markAsSolved()"
                         class="btn btn-success text-sm px-4 w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white border-transparent">
                   <i class="fas fa-check mr-2"></i>
                   <span>Marcar como Solucionado</span>
                 </button>
               </ng-container>
-              
+
               <!-- Admin Actions -->
               <div *ngIf="!loading && !error && ticket && !isClient()" class="grid grid-cols-3 sm:flex gap-2 sm:gap-3 w-full sm:w-auto">
                 <button (click)="convertToQuoteFromTicket()"
@@ -109,12 +109,12 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                   <i class="fas fa-file-invoice text-base sm:text-sm"></i>
                   <span class="text-[10px] sm:text-sm">{{ activeQuoteId ? 'Ir a Presup.' : 'Convertir' }}</span>
                 </button>
-                <button (click)="printTicket()" 
+                <button (click)="printTicket()"
                         class="btn btn-secondary text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
                   <i class="fas fa-print text-base sm:text-sm"></i>
                   <span class="text-[10px] sm:text-sm">Imprimir</span>
                 </button>
-                <button (click)="deleteTicket()" 
+                <button (click)="deleteTicket()"
                         class="btn btn-danger text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
                   <i class="fas fa-trash text-base sm:text-sm"></i>
                   <span class="text-[10px] sm:text-sm">Eliminar</span>
@@ -172,10 +172,10 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
 
   <!-- Ticket Detail -->
   <div *ngIf="!loading && !error && ticket" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          
+
           <!-- Main Content (Left Side) -->
           <div class="space-y-6 lg:col-span-3">
-            
+
             <!-- Ticket Header -->
             <div class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 lg:p-8 hover:shadow-xl transition-shadow duration-300">
               <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-4 sm:mb-6">
@@ -196,8 +196,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     </div>
                   </div>
                   <!-- Initial Attachment Preview REMOVED (Legacy) -->
-                  
-                  <div class="ticket-description mt-4 ml-0 sm:ml-1 text-gray-800 dark:text-gray-200 text-sm leading-relaxed" 
+
+                  <div class="ticket-description mt-4 ml-0 sm:ml-1 text-gray-800 dark:text-gray-200 text-sm leading-relaxed"
                        [innerHTML]="formatDescription(ticket.description)"
                        (click)="handleDescriptionClick($event)"></div>
                 </div>
@@ -207,11 +207,11 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     <i class="fas {{ getPriorityIcon(ticket.priority) }}"></i>
                     <span class="hidden sm:inline">{{ getPriorityLabel(ticket.priority) }}</span>
                   </span>
-                  
+
                   <!-- Assignment Dropdown (Staff Only) -->
                   <div *ngIf="!isClient()" class="ml-0 lg:ml-4">
-                    <select 
-                        [ngModel]="ticket.assigned_to" 
+                    <select
+                        [ngModel]="ticket.assigned_to"
                         (ngModelChange)="assignTicket($event)"
                         class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
                         <option [ngValue]="null">Sin Asignar</option>
@@ -220,7 +220,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                   </div>
                 </div>
               </div>
-              
+
               <!-- Progress Section -->
               <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                 <div class="flex justify-between text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
@@ -233,17 +233,17 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 <div class="relative">
                   <!-- Progress Bar Background -->
                   <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 relative overflow-hidden shadow-inner">
-                    <div 
+                    <div
                       class="h-4 rounded-full transition-all duration-500 ease-out"
                       [style.width.%]="getProgressPercentage()"
                       [style.background]="getCurrentStageColor()"
                     ></div>
-                    
+
                     <!-- Stage Markers -->
-                    <div *ngFor="let stage of allStages; let i = index" 
+                    <div *ngFor="let stage of allStages; let i = index"
                          class="absolute top-1/2 transform -translate-y-1/2 -translate-x-1/2 z-10"
                          [style.left.%]="getStagePosition(i)">
-                      <div 
+                      <div
                         [class]="getStageMarkerClass(stage)"
                         class="w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center shadow-sm cursor-pointer hover:scale-125 transition-all duration-300"
                         [title]="stage.name"
@@ -253,10 +253,10 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                       </div>
                     </div>
                   </div>
-                  
+
                   <!-- Stage Labels -->
                   <div class="flex justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
-                    <div *ngFor="let stage of getVisibleStages(); let i = index" 
+                    <div *ngFor="let stage of getVisibleStages(); let i = index"
                          class="text-center flex-1 transition-all duration-200"
                          [class.font-semibold]="stage.id === ticket.stage_id"
                          [class.text-blue-600]="stage.id === ticket.stage_id"
@@ -273,7 +273,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
             <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
               <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-x-auto">
                 <!-- Comments Tab - FIRST for clients -->
-                <button 
+                <button
                   (click)="activeTab = 'comments'"
                   [class.active-tab]="activeTab === 'comments'"
                   class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
@@ -284,7 +284,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     {{ activeCommentsCount }}
                   </span>
                 </button>
-                <button 
+                <button
                   (click)="activeTab = 'services'"
                   [class.active-tab]="activeTab === 'services'"
                   class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
@@ -295,7 +295,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     {{ ticketServices.length }}
                   </span>
                 </button>
-                <button 
+                <button
                   (click)="activeTab = 'products'"
                   [class.active-tab]="activeTab === 'products'"
                   class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
@@ -306,7 +306,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     {{ ticketProducts.length }}
                   </span>
                 </button>
-                <button 
+                <button
                   (click)="activeTab = 'devices'"
                   [class.active-tab]="activeTab === 'devices'"
                   class="tab-button flex-1 px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-medium transition-all duration-200 relative whitespace-nowrap">
@@ -341,7 +341,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                       </button>
                     </div>
                     <div *ngIf="ticketServices.length > 0" class="space-y-4">
-                      <div *ngFor="let serviceItem of ticketServices" 
+                      <div *ngFor="let serviceItem of ticketServices"
                            class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md dark:hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-200">
                         <div class="flex justify-between items-start">
                           <div class="flex-1">
@@ -398,7 +398,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                       </button>
                     </div>
                     <div *ngIf="ticketProducts.length > 0" class="space-y-4">
-                      <div *ngFor="let productItem of ticketProducts" 
+                      <div *ngFor="let productItem of ticketProducts"
                            class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md dark:hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-200">
                         <div class="flex justify-between items-start">
                           <div class="flex-1">
@@ -456,7 +456,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
 
                     </div>
                     <div *ngIf="ticketDevices.length > 0" class="space-y-4">
-                      <div *ngFor="let device of ticketDevices" 
+                      <div *ngFor="let device of ticketDevices"
                            class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex justify-between items-start hover:shadow-md dark:hover:shadow-lg hover:border-green-300 dark:hover:border-green-700 transition-all duration-200">
                         <div class="flex-1">
 
@@ -510,12 +510,12 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 @if (activeTab === 'comments') {
                   <div class="tab-content-animate">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Comentarios</h3>
-                    
+
                     <!-- Add Comment Form -->
                     <div class="mb-6">
                       <!-- TipTap Editor -->
                       <div class="relative">
-                        <div 
+                        <div
                           #editorElement
                           id="editorElement"
                           class="tiptap-editor w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[100px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent cursor-text"
@@ -525,7 +525,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                         >
                         </div>
                       </div>
-                      
+
                       <div class="mt-2 flex justify-between items-center">
                         <!-- Internal comment checkbox - ADMIN ONLY -->
                         <label *ngIf="!isClient()" class="flex items-center text-sm text-gray-600 dark:text-gray-400">
@@ -537,7 +537,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                           <span *ngIf="isUploadingImage" class="text-xs text-gray-500 dark:text-gray-400">Subiendo archivo...</span>
                           <!-- File attachment button -->
                           <input #commentFileInput type="file" (change)="onCommentFileSelect($event)" class="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
-                          <button (click)="commentFileInput.click()" 
+                          <button (click)="commentFileInput.click()"
                                   [disabled]="isUploadingImage"
                                   class="btn btn-secondary px-3 py-2 text-sm"
                                   title="Adjuntar archivo">
@@ -545,7 +545,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                             <span class="hidden sm:inline ml-1">Adjuntar</span>
                           </button>
                           <div class="flex items-center shadow-sm rounded-lg relative">
-                            <button (click)="addComment()" 
+                            <button (click)="addComment()"
                                     [disabled]="isUploadingImage || !hasEditorContent() || isSubmitting"
                                     [ngClass]="{'rounded-r-none border-r border-white/20': !isClient() && activeCommentsCount > 0, 'rounded-lg': isClient() || activeCommentsCount === 0}"
                                     class="btn btn-primary">
@@ -553,21 +553,21 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                               <span class="hidden sm:inline ml-2">Enviar</span>
                             </button>
                             <button *ngIf="!isClient() && activeCommentsCount > 0"
-                                    class="btn btn-primary rounded-l-none px-2 border-l border-white/10" 
+                                    class="btn btn-primary rounded-l-none px-2 border-l border-white/10"
                                     [disabled]="isUploadingImage || !hasEditorContent() || isSubmitting"
                                     (click)="toggleSmartSendDropdown()">
                               <i class="fas fa-chevron-down"></i>
                             </button>
-                            
+
                             <!-- Check dropup vs dropdown based on position? Usually fixed is safer or standard absolute -->
                              <div *ngIf="showSmartSendDropdown" class="fixed inset-0 z-40" (click)="showSmartSendDropdown = false"></div>
-                             
+
                             <div *ngIf="showSmartSendDropdown" class="absolute bottom-full right-0 mb-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
-                              
+
                               <!-- Send & Solve -->
-                              <button *ngIf="solvedStage" 
+                              <button *ngIf="solvedStage"
                                       (click)="replyAndSetStage(solvedStage.id)"
-                                      [disabled]="isSubmitting" 
+                                      [disabled]="isSubmitting"
                                       class="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors">
                                   <div class="w-8 h-8 rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 flex items-center justify-center shrink-0">
                                       <i class="fas fa-check text-xs"></i>
@@ -591,15 +591,15 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     <div *ngIf="activeCommentsCount > 0" class="space-y-4">
                       <!-- Recursive Template for Comments -->
                       <ng-template #commentNode let-comment="comment" let-level="level">
-                        <div class="mb-4 relative transition-all duration-300" 
+                        <div class="mb-4 relative transition-all duration-300"
                              [style.margin-left.px]="level * 24"
                              [class.pl-6]="level > 0">
-                            
+
                             <!-- Thread connector lines (only for depth > 0) -->
-                            <div *ngIf="level > 0" 
+                            <div *ngIf="level > 0"
                                  class="absolute left-0 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700 -ml-3 rounded-full"></div>
-                            
-                            <div *ngIf="level > 0" 
+
+                            <div *ngIf="level > 0"
                                  class="absolute left-0 top-8 w-6 h-[2px] bg-gray-200 dark:bg-gray-700 -ml-3 rounded-r-full"></div>
 
                             <!-- Comment Body -->
@@ -610,8 +610,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                                    'bg-blue-50/40 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800/30': !comment.is_internal && comment.client_id
                                  }"
                                  [class.opacity-60]="comment.deleted_at"
-                                 class="rounded-2xl p-4 border relative group overflow-hidden transition-shadow"> 
-                                
+                                 class="rounded-2xl p-4 border relative group overflow-hidden transition-shadow">
+
                                 <!-- Accent Bars -->
                                 <div *ngIf="comment.is_internal" class="absolute left-0 top-0 bottom-0 w-1 bg-amber-400/80"></div>
                                 <div *ngIf="!comment.is_internal && comment.client_id" class="absolute left-0 top-0 bottom-0 w-1 bg-blue-400/80"></div>
@@ -634,12 +634,12 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                                         <span class="font-bold text-sm text-gray-900 dark:text-white">
                                           {{ getCommentAuthorName(comment) }}
                                         </span>
-                                        <span *ngIf="comment.is_internal" 
+                                        <span *ngIf="comment.is_internal"
                                               class="px-1.5 py-0.5 text-[8px] bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 rounded border border-amber-200 dark:border-amber-700/50 uppercase font-bold tracking-wider">
                                           Interno
                                         </span>
                                         <!-- Hide "Cliente" tag if viewer is client (isClient() is true) -->
-                                        <span *ngIf="comment.client_id && !isClient()" 
+                                        <span *ngIf="comment.client_id && !isClient()"
                                               class="px-1.5 py-0.5 text-[8px] bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 rounded border border-blue-200 dark:border-blue-700/50 uppercase font-bold tracking-wider">
                                           Cliente
                                         </span>
@@ -697,10 +697,10 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                                 </div>
 
                                 <!-- Content -->
-                                <div *ngIf="!comment.isEditing" 
-                                     class="pl-11 prose prose-sm max-w-none text-gray-900 dark:text-gray-100 [&>*]:text-gray-900 dark:[&>*]:text-gray-100 leading-relaxed text-[13.5px] font-normal" 
+                                <div *ngIf="!comment.isEditing"
+                                     class="pl-11 prose prose-sm max-w-none text-gray-900 dark:text-gray-100 [&>*]:text-gray-900 dark:[&>*]:text-gray-100 leading-relaxed text-[13.5px] font-normal"
                                      [innerHTML]="getProcessedContent(comment.comment)"></div>
-                                
+
                                 <!-- Edit Mode -->
                                 <div *ngIf="comment.isEditing" class="mt-3 pl-11">
                                     <textarea [(ngModel)]="comment.editContent" class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-800/80 focus:ring-2 focus:ring-blue-500 min-h-[100px] text-sm shadow-inner" rows="3"></textarea>
@@ -729,7 +729,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Recursively render children -->
                         <div *ngIf="comment.children && comment.children.length > 0">
                             <ng-container *ngFor="let child of comment.children">
@@ -755,8 +755,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                         <div *ngIf="!commentsExpanded && totalCommentsCount > visibleCommentsLimit" class="relative mt-2 text-center">
                            <!-- Fade Overlay -->
                            <div class="absolute -top-24 left-0 right-0 h-24 bg-gradient-to-t from-white dark:from-gray-800 to-transparent pointer-events-none"></div>
-                           
-                           <button (click)="toggleCommentsExpansion()" 
+
+                           <button (click)="toggleCommentsExpansion()"
                                    class="relative z-10 px-4 py-1.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-full text-xs font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors shadow-sm cursor-pointer hover:shadow-md">
                              <i class="fas fa-history mr-1"></i> Ver historial completo
                            </button>
@@ -807,7 +807,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
               <ng-template #noClientInfo>
                 <div class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">No hay información del cliente</div>
               </ng-template>
-              
+
               <!-- View Devices Button -->
               <div *ngIf="ticket?.client?.id" class="mt-4 pt-3 border-t border-blue-200 dark:border-blue-700/50">
                 <button (click)="openClientDevicesModal()" class="w-full btn btn-sm bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-blue-300 dark:border-blue-800 transition-colors flex items-center justify-center gap-2">
@@ -816,7 +816,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 </button>
               </div>
             </div>
-            
+
             <!-- Quick Stats -->
             <div class="bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-900/20 dark:to-emerald-800/20 shadow-md border border-green-200 dark:border-green-700 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow duration-300">
               <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
@@ -841,7 +841,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     <span class="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">Total Ticket</span>
                     <span class="text-gray-900 dark:text-gray-100 font-medium">{{ formatPrice(ticket.total_amount || calculateServicesTotal()) }}</span>
                 </div>
-                
+
                 <!-- Hours Estimated vs Real -->
                 <div class="flex justify-between items-center text-sm border-t border-gray-100 dark:border-slate-600 pt-2">
                   <span class="text-gray-500 dark:text-gray-400">Horas Estimadas</span>
@@ -850,7 +850,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
 
                 <div class="flex justify-between items-center text-sm">
                   <span class="text-gray-500 dark:text-gray-400">Horas Reales</span>
-                  <span class="font-medium" [class.text-green-600]="getActualHours() <= (ticket.estimated_hours || 0)" 
+                  <span class="font-medium" [class.text-green-600]="getActualHours() <= (ticket.estimated_hours || 0)"
                                             [class.text-orange-500]="getActualHours() > (ticket.estimated_hours || 0)">
                     {{ getActualHours() }}h
                   </span>
@@ -875,7 +875,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                   <h4 class="font-bold text-gray-900 dark:text-gray-100 text-sm">Ticket creado</h4>
                   <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ formatDate(ticket.created_at) }}</p>
                 </div>
-                
+
                 <!-- Last Update -->
                 <div class="ml-6 relative">
                    <div class="absolute -left-[31px] bg-blue-500 h-4 w-4 rounded-full border-4 border-white dark:border-gray-800"></div>
@@ -883,7 +883,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                   <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(ticket.updated_at) }}</p>
                   </div>
 
-                
+
                 <div *ngFor="let activity of recentActivity" class="flex items-start space-x-3">
                   <div class="flex-shrink-0 w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full mt-2"></div>
                   <div>
@@ -896,8 +896,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
             <!-- Tags Section (moved from header) -->
             <div class="bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 rounded-lg p-6 mt-4">
               <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Etiquetas</h3>
-              <app-tag-manager *ngIf="ticketId" 
-                  [entityType]="'tickets'" 
+              <app-tag-manager *ngIf="ticketId"
+                  [entityType]="'tickets'"
                   [entityId]="ticketId">
               </app-tag-manager>
             </div>
@@ -928,8 +928,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                   class="form-input"
                 >
                   <option value="">Seleccionar estado...</option>
-                  <option 
-                    *ngFor="let stage of allStages" 
+                  <option
+                    *ngFor="let stage of allStages"
                     [value]="stage.id"
                     [selected]="stage.id === ticket?.stage_id"
                   >
@@ -938,16 +938,16 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 </select>
               </div>
               <div class="modal-actions">
-                <button 
-                  type="button" 
-                  (click)="closeChangeStageModal()" 
+                <button
+                  type="button"
+                  (click)="closeChangeStageModal()"
                   class="btn btn-secondary"
                 >
                   Cancelar
                 </button>
-                <button 
-                  type="button" 
-                  (click)="saveStageChange()" 
+                <button
+                  type="button"
+                  (click)="saveStageChange()"
                   class="btn btn-primary"
                   [disabled]="!selectedStageId"
                 >
@@ -990,16 +990,16 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 </small>
               </div>
               <div class="modal-actions">
-                <button 
-                  type="button" 
-                  (click)="closeUpdateHoursModal()" 
+                <button
+                  type="button"
+                  (click)="closeUpdateHoursModal()"
                   class="btn btn-secondary"
                 >
                   Cancelar
                 </button>
-                <button 
-                  type="button" 
-                  (click)="saveHoursUpdate()" 
+                <button
+                  type="button"
+                  (click)="saveHoursUpdate()"
                   class="btn btn-primary"
                   [disabled]="newHoursValue < 0"
                 >
@@ -1047,16 +1047,16 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 </div>
               </div>
               <div class="modal-actions">
-                <button 
-                  type="button" 
-                  (click)="closeAttachmentModal()" 
+                <button
+                  type="button"
+                  (click)="closeAttachmentModal()"
                   class="btn btn-secondary"
                 >
                   Cancelar
                 </button>
-                <button 
-                  type="button" 
-                  (click)="uploadAttachment()" 
+                <button
+                  type="button"
+                  (click)="uploadAttachment()"
                   class="btn btn-primary"
                   [disabled]="!selectedFile"
                 >
@@ -1166,7 +1166,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                           <button type="button" (click)="decreaseProductQty(product.id)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
                             <i class="fas fa-minus text-xs"></i>
                           </button>
-                          <input type="number" min="1" [value]="getProductQuantity(product.id)" (input)="setProductQuantity(product.id, $any($event.target).value)" 
+                          <input type="number" min="1" [value]="getProductQuantity(product.id)" (input)="setProductQuantity(product.id, $any($event.target).value)"
                                  class="w-12 text-center border-0 focus:ring-0 text-sm bg-transparent text-gray-900 dark:text-gray-100" />
                           <button type="button" (click)="increaseProductQty(product.id)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300">
                             <i class="fas fa-plus text-xs"></i>
@@ -1366,10 +1366,10 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
   </div>
 
   <!-- Image Lightbox Modal -->
-  <div *ngIf="selectedImage" 
+  <div *ngIf="selectedImage"
        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
        (click)="closeLightbox()">
-    
+
     <!-- Close Button -->
     <button (click)="closeLightbox()" 
             class="absolute top-4 right-4 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors z-50"
@@ -1379,7 +1379,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
 
     <!-- Image Container -->
     <div class="relative max-w-full max-h-full flex items-center justify-center" (click)="$event.stopPropagation()">
-      <img [src]="selectedImage" 
+      <img [src]="selectedImage"
            class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl animate-in zoom-in-95 duration-200"
            alt="Full size view">
     </div>
@@ -1398,7 +1398,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                       <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Confirmar cambio de visibilidad</p>
                   </div>
               </div>
-              
+
               <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 mb-6 border border-gray-100 dark:border-gray-700">
                   <p class="text-sm text-gray-600 dark:text-gray-300">{{ visibilityModalMessage }}</p>
                   <div *ngIf="commentToToggle" class="mt-3 text-xs text-gray-500 dark:text-gray-500 italic border-l-2 border-gray-300 dark:border-gray-600 pl-3 line-clamp-2">

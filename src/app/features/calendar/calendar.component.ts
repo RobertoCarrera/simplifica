@@ -156,12 +156,12 @@ import { AnimationService } from '../../services/animation.service';
                     {{ formatHour(hour) }}
                   </div>
                   @for (day of weekDays; track day) {
-                    <div 
+                    <div
                       class="bg-white dark:bg-gray-800 min-h-[60px] p-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-r border-gray-200 dark:border-gray-700"
                       (click)="onTimeSlotClick(day, hour, $event)">
                       <!-- Hour events will be rendered here -->
                       @for (event of getHourEvents(day, hour); track event.id) {
-                        <div 
+                        <div
                           class="text-xs p-1 rounded mb-1 cursor-pointer hover:opacity-80 transition-opacity"
                           [style.background-color]="event.color || '#6366f1'"
                           [style.color]="getTextColor(event.color || '#6366f1')"
@@ -185,7 +185,7 @@ import { AnimationService } from '../../services/animation.service';
                   {{ formatDayHeader() }}
                 </h3>
               </div>
-              
+
               <!-- Day timeline -->
               <div class="space-y-1">
                 @for (hour of hourSlots; track hour) {
@@ -193,11 +193,11 @@ import { AnimationService } from '../../services/animation.service';
                     <div class="w-20 flex-shrink-0 text-sm text-gray-500 dark:text-gray-400 pt-2">
                       {{ formatHour(hour) }}
                     </div>
-                    <div 
+                    <div
                       class="flex-1 min-h-[60px] p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors"
                       (click)="onTimeSlotClick('day', hour, $event)">
                       @for (event of getDayHourEvents(hour); track event.id) {
-                        <div 
+                        <div
                           class="text-sm p-2 rounded mb-2 cursor-pointer hover:opacity-80 transition-opacity"
                           [style.background-color]="event.color || '#6366f1'"
                           [style.color]="getTextColor(event.color || '#6366f1')"
@@ -222,15 +222,15 @@ import { AnimationService } from '../../services/animation.service';
     :host {
       display: block;
     }
-    
+
     .month-view .grid {
       min-height: 600px;
     }
-    
+
     .week-view .grid {
       min-height: 800px;
     }
-    
+
     .day-view {
       max-height: 800px;
       overflow-y: auto;
@@ -241,7 +241,7 @@ export class CalendarComponent implements OnInit {
   @Input() events: CalendarEvent[] = [];
   @Input() editable = true;
   @Input() selectable = true;
-  
+
   @Output() eventClick = new EventEmitter<CalendarEventClick>();
   @Output() dateClick = new EventEmitter<CalendarDateClick>();
   @Output() addEvent = new EventEmitter<void>();
@@ -261,24 +261,24 @@ export class CalendarComponent implements OnInit {
     const view = this.currentView();
     const year = view.date.getFullYear();
     const month = view.date.getMonth();
-    
+
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
-    
+
     const days: CalendarDay[] = [];
     const today = new Date();
     const selected = this.selectedDate();
-    
+
     for (let i = 0; i < 42; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
-      
-      const dayEvents = this.events.filter(event => 
+
+      const dayEvents = this.events.filter(event =>
         this.isSameDay(event.start, date)
       );
-      
+
       days.push({
         date,
         isCurrentMonth: date.getMonth() === month,
@@ -287,7 +287,7 @@ export class CalendarComponent implements OnInit {
         events: dayEvents
       });
     }
-    
+
     return days;
   });
 
@@ -298,32 +298,32 @@ export class CalendarComponent implements OnInit {
   formatHeaderDate(): string {
     const view = this.currentView();
     const date = view.date;
-    
+
     switch (view.type) {
       case 'month':
-        return date.toLocaleDateString('es-CL', { 
-          year: 'numeric', 
-          month: 'long' 
+        return date.toLocaleDateString('es-CL', {
+          year: 'numeric',
+          month: 'long'
         });
       case 'week':
         const weekStart = this.getWeekStart(date);
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekEnd.getDate() + 6);
-        
-        return `${weekStart.toLocaleDateString('es-CL', { 
-          day: 'numeric', 
-          month: 'short' 
-        })} - ${weekEnd.toLocaleDateString('es-CL', { 
-          day: 'numeric', 
+
+        return `${weekStart.toLocaleDateString('es-CL', {
+          day: 'numeric',
+          month: 'short'
+        })} - ${weekEnd.toLocaleDateString('es-CL', {
+          day: 'numeric',
           month: 'short',
           year: 'numeric'
         })}`;
       case 'day':
-        return date.toLocaleDateString('es-CL', { 
+        return date.toLocaleDateString('es-CL', {
           weekday: 'long',
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
         });
       default:
         return '';
@@ -357,7 +357,7 @@ export class CalendarComponent implements OnInit {
   previousPeriod() {
     const view = this.currentView();
     const newDate = new Date(view.date);
-    
+
     switch (view.type) {
       case 'month':
         newDate.setMonth(newDate.getMonth() - 1);
@@ -369,7 +369,7 @@ export class CalendarComponent implements OnInit {
         newDate.setDate(newDate.getDate() - 1);
         break;
     }
-    
+
     this.currentView.update(v => ({ ...v, date: newDate }));
     this.viewChange.emit(this.currentView());
   }
@@ -377,7 +377,7 @@ export class CalendarComponent implements OnInit {
   nextPeriod() {
     const view = this.currentView();
     const newDate = new Date(view.date);
-    
+
     switch (view.type) {
       case 'month':
         newDate.setMonth(newDate.getMonth() + 1);
@@ -389,7 +389,7 @@ export class CalendarComponent implements OnInit {
         newDate.setDate(newDate.getDate() + 1);
         break;
     }
-    
+
     this.currentView.update(v => ({ ...v, date: newDate }));
     this.viewChange.emit(this.currentView());
   }
@@ -407,9 +407,9 @@ export class CalendarComponent implements OnInit {
 
   onEventClick(calendarEvent: CalendarEvent, event: MouseEvent) {
     event.stopPropagation();
-    this.eventClick.emit({ 
-      event: calendarEvent, 
-      nativeEvent: event 
+    this.eventClick.emit({
+      event: calendarEvent,
+      nativeEvent: event
     });
   }
 

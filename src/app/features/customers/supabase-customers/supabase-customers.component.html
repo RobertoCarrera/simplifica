@@ -143,16 +143,16 @@
                             <div class="flex items-start gap-4 mb-4 pr-8">
                                 <div class="relative shrink-0">
                                     <div class="w-12 h-12 rounded-full flex items-center justify-center text-gray-600 font-bold text-lg shadow-sm"
-                                        [style.background]="getAvatarGradient(customer)">
-                                        {{ getCustomerInitials(customer) }}
+                                        [style.background]="customer.avatarGradient">
+                                        {{ customer.initials }}
                                     </div>
                                     <!-- Online/Active Indicator could go here -->
                                 </div>
 
                                 <div class="min-w-0 flex-1">
                                     <h3 class="font-semibold text-gray-900 dark:text-white truncate"
-                                        [title]="getDisplayName(customer)">
-                                        {{ getDisplayName(customer) }}
+                                        [title]="customer.displayName">
+                                        {{ customer.displayName }}
                                     </h3>
                                     <!-- Incomplete warning -->
                                     @if (!isCustomerComplete(customer)) {
@@ -188,7 +188,7 @@
                                 </div>
                                 <div class="flex flex-col">
                                     <span class="text-gray-400 dark:text-gray-500 mb-0.5">Alta</span>
-                                    <span class="text-gray-700 dark:text-gray-300">{{ formatDate(customer.created_at)
+                                    <span class="text-gray-700 dark:text-gray-300">{{ customer.formattedDate
                                         }}</span>
                                 </div>
                             </div>
@@ -200,7 +200,7 @@
                                 <button
                                     (click)="togglePortalAccess(customer, !hasPortalAccess(customer, customer.email), $event)"
                                     class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium transition-colors"
-                                    [class]="hasPortalAccess(customer, customer.email) 
+                                    [class]="hasPortalAccess(customer, customer.email)
                     ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300' 
                     : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700/50 dark:text-gray-400'">
                                     <i class="fas" [class.fa-key]="hasPortalAccess(customer, customer.email)"
