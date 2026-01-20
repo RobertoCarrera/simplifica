@@ -51,6 +51,12 @@ export interface CompanySettings {
   ticket_auto_assign_on_reply?: boolean | null;
   allow_local_payment?: boolean | null; // Allow clients to select "pay in person/cash" option
   agent_module_access?: string[] | null; // List of modules accessible to agents
+  booking_preferences?: any | null; // JSONB: { slot_interval, buffer_before, buffer_after, etc }
+  automation?: {
+    reminder_24h?: { enabled: boolean; offset_hours: number; channel?: 'email' };
+    reminder_1h?: { enabled: boolean; offset_hours: number; channel?: 'email' };
+    review_request?: { enabled: boolean; offset_hours: number; channel?: 'email' };
+  } | null;
   updated_at?: string;
 }
 
