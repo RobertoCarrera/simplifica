@@ -11,7 +11,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOW_ALL_ORIGINS = Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
-const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "default-dev-key-change-in-prod";
+const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY");
+
+if (!ENCRYPTION_KEY) {
+  console.error("CRITICAL: Missing ENCRYPTION_KEY environment variable");
+}
 
 function getCorsHeaders(origin: string | null): HeadersInit {
   const headers: HeadersInit = {
@@ -36,6 +40,10 @@ async function decrypt(encryptedBase64: string): Promise<{ success: boolean; dat
   try {
     if (!encryptedBase64) {
       return { success: false, data: "", error: "No encrypted data provided" };
+    }
+
+    if (!ENCRYPTION_KEY) {
+      return { success: false, data: "", error: "Configuration error: Missing encryption key" };
     }
     
     const encoder = new TextEncoder();
