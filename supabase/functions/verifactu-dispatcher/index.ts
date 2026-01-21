@@ -1155,7 +1155,7 @@ serve(async (req)=>{
         global: { headers: { Authorization: `Bearer ${token}` } }
       });
       
-      // Get user's company_id from public.users
+      // Get user's company_id from company_members (multi-tenant safe)
       const { data: { user }, error: authError } = await userClient.auth.getUser();
       if (authError || !user) {
         return new Response(JSON.stringify({ ok: false, error: 'Invalid token' }), {
@@ -1165,20 +1165,53 @@ serve(async (req)=>{
 
       const { data: userProfile, error: profileError } = await userClient
         .from('users')
-        .select('company_id')
+        .select('id')
         .eq('auth_user_id', user.id)
         .single();
 
-      if (profileError || !userProfile?.company_id) {
+      if (profileError || !userProfile) {
         return new Response(JSON.stringify({ 
           ok: false, 
-          error: 'No se pudo determinar la empresa del usuario' 
+          error: 'Usuario no encontrado'
         }), {
           status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
         });
       }
       
-      const companyId = userProfile.company_id;
+      let companyId = body.company_id;
+
+      if (companyId) {
+         // Verify membership
+         const { data: member } = await userClient
+           .from('company_members')
+           .select('company_id')
+           .eq('user_id', userProfile.id)
+           .eq('company_id', companyId)
+           .eq('status', 'active')
+           .maybeSingle();
+
+         if (!member) {
+            return new Response(JSON.stringify({ ok: false, error: 'No tienes acceso a esta empresa' }), {
+               status: 403, headers: { ...headers, 'Content-Type': 'application/json' }
+            });
+         }
+      } else {
+         // Auto-resolve: Get first active company
+         const { data: members } = await userClient
+           .from('company_members')
+           .select('company_id')
+           .eq('user_id', userProfile.id)
+           .eq('status', 'active')
+           .limit(1);
+
+         if (members && members.length > 0) {
+            companyId = members[0].company_id;
+         } else {
+            return new Response(JSON.stringify({ ok: false, error: 'No perteneces a ninguna empresa activa' }), {
+               status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
+            });
+         }
+      }
       
       // Pagination params
       const page = Number(body.page || 1);
