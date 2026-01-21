@@ -87,22 +87,18 @@ function computeLine(item: any, settings: TaxSettings) {
     };
 }
 
-// Genera el QR code como data URL para pdfmake usando servicio externo
+// Genera el QR code como data URL localmente para privacidad
 async function generateQRDataURL(text: string, size = 200): Promise<string> {
     try {
-        // Usar API pública de QR Server para generar PNG
-        const encodedText = encodeURIComponent(text);
-        const url = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&format=png&data=${encodedText}`;
-
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`QR API failed: ${response.status}`);
-        }
-
-        const arrayBuffer = await response.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-
-        return `data:image/png;base64,${base64}`;
+        // @ts-ignore: qrcode-generator types might be missing in Deno env
+        const qr = qrcodeGenerator(0, 'M'); // Auto detection, Medium Error Correction
+        qr.addData(text);
+        qr.make();
+        // createDataURL(cellSize, margin)
+        // Adjust cell size roughly to match requested size
+        const moduleCount = qr.getModuleCount();
+        const cellSize = Math.max(2, Math.floor(size / moduleCount));
+        return qr.createDataURL(cellSize, 0);
     } catch (error) {
         console.error('QR generation failed:', error);
         // Fallback: return a simple placeholder
@@ -692,21 +688,11 @@ serve(async (req) => {
             );
         }
 
-        let { data: items, error: itErr } = await user
+        const { data: items, error: itErr } = await user
             .from('invoice_items')
             .select('*')
             .eq('invoice_id', invoiceId)
             .order('line_order', { ascending: true });
-
-        // Fallback: if RLS trimmed items, fetch with service role
-        if (!itErr && items && items.length <= 1) {
-            const { data: adminItems } = await admin
-                .from('invoice_items')
-                .select('*')
-                .eq('invoice_id', invoiceId)
-                .order('line_order', { ascending: true });
-            if (adminItems && adminItems.length > items.length) items = adminItems;
-        }
 
         if (itErr) {
             return new Response(
