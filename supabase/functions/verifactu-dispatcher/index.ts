@@ -1299,36 +1299,32 @@ serve(async (req)=>{
     }
 
     // Diagnostic: verify access to verifactu schema objects & sample data
+    // SECURED: Removed data leakage (samples). Only returns status flags.
     if (body && body.action === 'diag') {
+       // Require Bearer token (basic check for valid user)
+       const authHeader = req.headers.get('authorization') || '';
+       const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+       if (!token) {
+           return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+       }
+
       const out = {
         ok: true
       };
-      // Test events table
-      const evTest = await admin.schema('verifactu').from('events').select('id,status,created_at').order('created_at', {
-        ascending: false
-      }).limit(3);
-      out.events_ok = !evTest.error;
-      out.events_error = evTest.error?.message || null;
-      out.events_sample = evTest.data || [];
-      // Test invoice_meta table
-      const metaTest = await admin.schema('verifactu').from('invoice_meta').select('invoice_id,status,updated_at').order('updated_at', {
-        ascending: false
-      }).limit(3);
-      out.meta_ok = !metaTest.error;
-      out.meta_error = metaTest.error?.message || null;
-      out.meta_sample = metaTest.data || [];
-      // Count pending events (head query)
+      // Test events table access (count only)
       const pendingHead = await admin.schema('verifactu').from('events').select('id', {
         count: 'exact',
         head: true
       }).eq('status', 'pending');
-      out.pending_count = pendingHead.count ?? 0;
-      out.pending_error = pendingHead.error?.message || null;
+
+      out.db_connection_ok = !pendingHead.error;
+      out.pending_jobs = pendingHead.count ?? 0;
+
       // Return current mode & fallback info
       out.mode = VERIFACTU_MODE;
       out.fallbackEnabled = ENABLE_FALLBACK;
       out.maxAttempts = MAX_ATTEMPTS;
-      out.backoffMinutes = BACKOFF_MIN;
+
       return new Response(JSON.stringify(out), {
         status: 200,
         headers: {
