@@ -87,26 +87,19 @@ function computeLine(item: any, settings: TaxSettings) {
     };
 }
 
-// Genera el QR code como data URL para pdfmake usando servicio externo
-async function generateQRDataURL(text: string, size = 200): Promise<string> {
+// Genera el QR code como SVG string para pdfmake usando servicio local
+async function generateQRSvg(text: string): Promise<string> {
     try {
-        // Usar API pública de QR Server para generar PNG
-        const encodedText = encodeURIComponent(text);
-        const url = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&format=png&data=${encodedText}`;
-
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`QR API failed: ${response.status}`);
-        }
-
-        const arrayBuffer = await response.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-
-        return `data:image/png;base64,${base64}`;
+        // Usar librería local para evitar fuga de datos a APIs externas
+        // 0 = Auto detect type number, 'M' = Medium error correction
+        const qr = qrcodeGenerator(0, 'M');
+        qr.addData(text);
+        qr.make();
+        // createSvgTag(cellSize, margin)
+        return qr.createSvgTag(4, 0);
     } catch (error) {
         console.error('QR generation failed:', error);
-        // Fallback: return a simple placeholder
-        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        return '';
     }
 }
 
@@ -283,7 +276,7 @@ async function generateInvoicePdf(payload: { invoice: any, items: any[], client:
         }
     }
 
-    const qrDataURL = await generateQRDataURL(qrText, 200);
+    const qrSvg = qrText ? await generateQRSvg(qrText) : '';
 
     // Prefer persisted aggregates when they are present and coherent
     const aggSubtotal = Number(invoice?.subtotal);
@@ -446,12 +439,12 @@ async function generateInvoicePdf(payload: { invoice: any, items: any[], client:
                         // Columna derecha: QR Code VeriFactu
                         width: 110,
                         stack: [
-                            {
-                                image: qrDataURL,
+                            qrSvg ? {
+                                svg: qrSvg,
                                 width: 90,
                                 height: 90,
                                 alignment: 'center'
-                            },
+                            } : { text: 'QR Error', fontSize: 8 },
                             {
                                 text: 'VeriFactu',
                                 fontSize: 8,
