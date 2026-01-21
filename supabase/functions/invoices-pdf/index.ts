@@ -87,26 +87,18 @@ function computeLine(item: any, settings: TaxSettings) {
     };
 }
 
-// Genera el QR code como data URL para pdfmake usando servicio externo
-async function generateQRDataURL(text: string, size = 200): Promise<string> {
+// Genera el QR code como SVG para pdfmake de forma local
+function generateQRSvg(text: string): string {
     try {
-        // Usar API pública de QR Server para generar PNG
-        const encodedText = encodeURIComponent(text);
-        const url = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&format=png&data=${encodedText}`;
-
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`QR API failed: ${response.status}`);
-        }
-
-        const arrayBuffer = await response.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-
-        return `data:image/png;base64,${base64}`;
+        const qr = qrcodeGenerator(0, 'L'); // Type 0 (auto), 'L' correction
+        qr.addData(text);
+        qr.make();
+        // createSvgTag(cellSize, margin)
+        return qr.createSvgTag(2, 0);
     } catch (error) {
         console.error('QR generation failed:', error);
-        // Fallback: return a simple placeholder
-        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        // Fallback SVG
+        return '<svg width="100" height="100"><rect width="100" height="100" fill="#f2f2f2"/><text x="10" y="50" font-family="sans-serif" font-size="10">QR Error</text></svg>';
     }
 }
 
@@ -283,7 +275,7 @@ async function generateInvoicePdf(payload: { invoice: any, items: any[], client:
         }
     }
 
-    const qrDataURL = await generateQRDataURL(qrText, 200);
+    const qrSvg = generateQRSvg(qrText || 'Error');
 
     // Prefer persisted aggregates when they are present and coherent
     const aggSubtotal = Number(invoice?.subtotal);
@@ -447,7 +439,7 @@ async function generateInvoicePdf(payload: { invoice: any, items: any[], client:
                         width: 110,
                         stack: [
                             {
-                                image: qrDataURL,
+                                svg: qrSvg,
                                 width: 90,
                                 height: 90,
                                 alignment: 'center'
