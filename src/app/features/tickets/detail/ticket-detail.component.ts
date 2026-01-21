@@ -1893,7 +1893,16 @@ export class TicketDetailComponent implements OnInit, AfterViewInit, AfterViewCh
     // Create a temporary DOM element to parse content
     const div = document.createElement('div');
     div.innerHTML = cleanHtml;
-    div.innerHTML = cleanHtml;
+
+    // Prevent Reverse Tabnabbing
+    const links = div.querySelectorAll('a[target="_blank"]');
+    links.forEach((link: Element) => {
+      const currentRel = link.getAttribute('rel') || '';
+      const rels = new Set(currentRel.split(/\s+/).filter(s => s));
+      rels.add('noopener');
+      rels.add('noreferrer');
+      link.setAttribute('rel', Array.from(rels).join(' '));
+    });
 
     const images = div.querySelectorAll('img');
     images.forEach((img: HTMLImageElement) => {
