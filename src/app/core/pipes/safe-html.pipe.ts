@@ -12,13 +12,27 @@ export class SafeHtmlPipe implements PipeTransform {
     transform(value: string | null | undefined): SafeHtml {
         if (!value) return '';
 
-        // 1. Sanitize the HTML to remove scripts/unsafe tags
-        const cleanHtml = DOMPurify.sanitize(value, {
-            // Optional: Add specific config here if needed (e.g., allowing specific tags)
+        // 1. Sanitize to DocumentFragment to manipulate DOM safely
+        const cleanHtmlFragment = DOMPurify.sanitize(value, {
             ADD_ATTR: ['target'], // Allow target="_blank"
+            RETURN_DOM_FRAGMENT: true
+        }) as DocumentFragment;
+
+        // 2. Prevent Reverse Tabnabbing: Enforce rel="noopener noreferrer" on all target="_blank" links
+        const links = cleanHtmlFragment.querySelectorAll('a[target="_blank"]');
+        links.forEach((link: Element) => {
+            const currentRel = link.getAttribute('rel') || '';
+            const rels = new Set(currentRel.split(/\s+/).filter(s => s));
+            rels.add('noopener');
+            rels.add('noreferrer');
+            link.setAttribute('rel', Array.from(rels).join(' '));
         });
 
-        // 2. Trust the sanitized HTML (bypassing Angular's default stripper)
-        return this.sanitizer.bypassSecurityTrustHtml(cleanHtml);
+        // 3. Serialize back to HTML string
+        const div = document.createElement('div');
+        div.appendChild(cleanHtmlFragment);
+
+        // 4. Trust the sanitized HTML
+        return this.sanitizer.bypassSecurityTrustHtml(div.innerHTML);
     }
 }
