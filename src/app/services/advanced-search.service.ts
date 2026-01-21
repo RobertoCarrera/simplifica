@@ -397,11 +397,34 @@ export class AdvancedSearchService {
   // Resaltar coincidencias en el texto
   highlightMatches(text: string, query: string): string {
     if (!this.options.highlightMatches || !query.trim()) {
-      return text;
+      // Escape HTML even if not highlighting to ensure consistency and safety
+      // when the output is bound to [innerHTML]
+      return this.escapeHtml(text);
     }
 
     const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">$1</mark>');
+
+    // Split text by query (capturing the separator due to parentheses in regex)
+    // "Text Match Text".split(/(Match)/) -> ["Text ", "Match", " Text"]
+    const parts = text.split(regex);
+
+    return parts.map((part, index) => {
+      // Odd indices are the captured matches from the regex
+      if (index % 2 === 1) {
+        return `<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">${this.escapeHtml(part)}</mark>`;
+      }
+      return this.escapeHtml(part);
+    }).join('');
+  }
+
+  private escapeHtml(text: string): string {
+    if (!text) return '';
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
   // Estadísticas de búsqueda
