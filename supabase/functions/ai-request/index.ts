@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.14.0";
 
 const corsHeaders = {
@@ -18,6 +19,20 @@ serve(async (req) => {
             throw new Error('Missing Authorization header')
         }
 
+        // Create a Supabase client with the user's token
+        const supabase = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: authHeader } } }
+        );
+
+        // Verify the user is valid and authenticated
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            throw new Error('Invalid or expired token');
+        }
+
         // 2. Get Input
         const { task, prompt, images, model } = await req.json()
         const apiKey = Deno.env.get('GOOGLE_AI_API_KEY')
@@ -25,8 +40,7 @@ serve(async (req) => {
             throw new Error('GOOGLE_AI_API_KEY is not set')
         }
 
-        // 3. Initialize Gemini (Explicitly using v1beta often helps with newer models on this SDK, but 1.5-flash is stable on v1 if using latest SDK. 
-        // Note: For now, standard initialization defaults to what the SDK considers stable.)
+        // 3. Initialize Gemini
         const genAI = new GoogleGenerativeAI(apiKey);
 
         // Use user requested model or default to gemini-2.5-flash-lite
@@ -49,12 +63,10 @@ serve(async (req) => {
         }
 
         if (images && Array.isArray(images)) {
-            // images expected to be base64 strings without data:image/xxx;base64, prefix if possible, 
-            // or we strip it.
             for (const img of images) {
-                // Extract base64 and mime type. Support images, audio, and video.
+                // Extract base64 and mime type.
                 const match = img.match(/^data:((?:image|audio|video)\/[a-zA-Z0-9-+.]+);base64,(.+)$/);
-                let mimeType = 'image/jpeg'; // Default fallback, though unlikely to work for audio if unmatched
+                let mimeType = 'image/jpeg';
                 let data = img;
 
                 if (match) {
@@ -80,10 +92,10 @@ serve(async (req) => {
             JSON.stringify({ result: text }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
-    } catch (error) {
+    } catch (error: any) {
         return new Response(
             JSON.stringify({ error: error.message }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 } // Return 401/400
         )
     }
 })
