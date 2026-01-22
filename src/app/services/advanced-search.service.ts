@@ -394,14 +394,40 @@ export class AdvancedSearchService {
     this.suggestions.set(suggestions.slice(0, 8));
   }
 
-  // Resaltar coincidencias en el texto
+  // Resaltar coincidencias en el texto de forma segura (previene XSS)
   highlightMatches(text: string, query: string): string {
+    if (!text) return '';
+
+    // Si no hay búsqueda o está deshabilitado el resaltado, devolvemos el texto escapado
+    // IMPORTANTE: Siempre escapar porque el componente usa [innerHTML]
     if (!this.options.highlightMatches || !query.trim()) {
-      return text;
+      return this.escapeHtml(text);
     }
 
-    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">$1</mark>');
+    const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${safeQuery})`, 'gi');
+
+    // Separamos el texto en partes (coincidencias y no coincidencias)
+    const parts = text.split(regex);
+
+    return parts.map(part => {
+      // Si la parte coincide con la query (ignorando mayúsculas), la envolvemos en mark
+      // Nota: split con regex y grupo de captura incluye las capturas en el array
+      if (part.toLowerCase() === query.toLowerCase()) {
+        return `<mark class="bg-yellow-200 text-yellow-800 px-1 rounded">${this.escapeHtml(part)}</mark>`;
+      }
+      return this.escapeHtml(part);
+    }).join('');
+  }
+
+  // Helper para escapar HTML y prevenir XSS
+  private escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
   // Estadísticas de búsqueda
