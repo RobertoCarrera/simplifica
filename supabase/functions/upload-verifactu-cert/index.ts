@@ -68,24 +68,45 @@ Deno.serve(async (req: Request) => {
   }
   const authUserId = userData.user.id;
 
-  // Map auth user -> company + role
-  const { data: appUser, error: mapErr } = await serviceClient
+  // Map auth user -> public user id
+  const { data: publicUser, error: userLookupErr } = await serviceClient
     .from('users')
-    .select('id, company_id, role, deleted_at')
+    .select('id')
     .eq('auth_user_id', authUserId)
     .is('deleted_at', null)
     .maybeSingle();
 
-  if (mapErr) {
-    return new Response(JSON.stringify({ error: 'USER_LOOKUP_FAILED', details: mapErr.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+  if (userLookupErr || !publicUser) {
+    return new Response(JSON.stringify({ error: 'USER_LOOKUP_FAILED' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
   }
-  if (!appUser?.company_id) {
-    return new Response(JSON.stringify({ error: 'NO_COMPANY' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
+
+  // Check company membership (Owner/Admin only)
+  // We strictly require an active membership.
+  // Since the payload doesn't specify company_id, we look for a single valid administrative membership.
+  const { data: memberships, error: memberErr } = await serviceClient
+    .from('company_members')
+    .select('company_id, role')
+    .eq('user_id', publicUser.id)
+    .eq('status', 'active')
+    .in('role', ['owner', 'admin']);
+
+  if (memberErr) {
+     return new Response(JSON.stringify({ error: 'MEMBERSHIP_LOOKUP_FAILED', details: memberErr.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
   }
-  const role = (appUser.role || '').toLowerCase();
-  if (!['owner','admin'].includes(role)) {
-    return new Response(JSON.stringify({ error: 'FORBIDDEN_ROLE' }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
+
+  if (!memberships || memberships.length === 0) {
+    return new Response(JSON.stringify({ error: 'FORBIDDEN_ROLE', details: 'No active owner/admin membership found.' }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
   }
+
+  if (memberships.length > 1) {
+    // Ambiguous context: User manages multiple companies but API doesn't support company selection yet.
+    return new Response(JSON.stringify({ error: 'AMBIGUOUS_CONTEXT', details: 'User manages multiple companies. Please contact support.' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
+  }
+
+  const appUser = {
+    company_id: memberships[0].company_id,
+    role: memberships[0].role
+  };
 
   let body: UploadPayload;
   try {
