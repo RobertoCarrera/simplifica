@@ -7,6 +7,7 @@ import { provideHttpClient, withInterceptors, HTTP_INTERCEPTORS } from '@angular
 import { csrfInterceptor } from './interceptors/csrf.interceptor';
 import { HttpErrorInterceptor } from './interceptors/http-error.interceptor';
 import { RuntimeConfigService } from './services/runtime-config.service';
+import { initializeDomPurify } from './core/config/dompurify.config';
 
 import { inject } from '@angular/core';
 
@@ -28,6 +29,11 @@ export const appConfig: ApplicationConfig = {
     {
       provide: APP_INITIALIZER,
       useFactory: initRuntimeConfig,
+      multi: true
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: () => initializeDomPurify,
       multi: true
     },
     // Interceptor de errores HTTP global

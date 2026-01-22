@@ -10,3 +10,7 @@
 **Vulnerability:** Text highlighting using regex replacement and `[innerHTML]` can break HTML structure or allow injection if the source text is not escaped.
 **Learning:** Angular's default sanitization protects against XSS (script execution) in `[innerHTML]`, but it does not prevent HTML injection that breaks layout or confuses the parser (e.g. `<` becoming start of tag). Even if XSS is blocked, broken HTML is a quality issue and potentially a phishing vector.
 **Prevention:** Always escape the source text (HTML entities) *before* wrapping matches in `<mark>` tags when using manual highlighting logic bound to `[innerHTML]`. Use a split-escape-wrap approach to handle regex matches correctly.
+
+## 2026-02-19 - Global Reverse Tabnabbing Protection
+**Vulnerability:** Links with `target="_blank"` sanitized by `DOMPurify` do not automatically receive `rel="noopener noreferrer"`, exposing users to Reverse Tabnabbing attacks.
+**Prevention:** Implemented a global `DOMPurify` hook via an `APP_INITIALIZER` (`src/app/core/config/dompurify.config.ts`) that intercepts all sanitization calls and enforces the secure `rel` attribute on external links.
