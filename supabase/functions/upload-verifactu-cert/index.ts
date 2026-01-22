@@ -68,24 +68,35 @@ Deno.serve(async (req: Request) => {
   }
   const authUserId = userData.user.id;
 
-  // Map auth user -> company + role
-  const { data: appUser, error: mapErr } = await serviceClient
+  // 1. Get public user ID from users table (auth.uid() -> public.users.id)
+  const { data: userRow, error: userErr2 } = await serviceClient
     .from('users')
-    .select('id, company_id, role, deleted_at')
+    .select('id, deleted_at')
     .eq('auth_user_id', authUserId)
     .is('deleted_at', null)
     .maybeSingle();
 
-  if (mapErr) {
-    return new Response(JSON.stringify({ error: 'USER_LOOKUP_FAILED', details: mapErr.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+  if (userErr2 || !userRow) {
+    return new Response(JSON.stringify({ error: 'USER_NOT_FOUND', details: userErr2?.message }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
   }
-  if (!appUser?.company_id) {
-    return new Response(JSON.stringify({ error: 'NO_COMPANY' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
+
+  // 2. Get active company membership with privilege from company_members
+  // Note: users.company_id and users.role are deprecated. We must check company_members.
+  // Since the payload doesn't specify company_id, we default to the first active company where user is admin/owner.
+  const { data: membership, error: memberErr } = await serviceClient
+    .from('company_members')
+    .select('company_id, role')
+    .eq('user_id', userRow.id)
+    .in('role', ['owner', 'admin'])
+    .in('status', ['active'])
+    .limit(1)
+    .maybeSingle();
+
+  if (memberErr || !membership) {
+    return new Response(JSON.stringify({ error: 'NO_COMPANY_ACCESS', details: 'User must be an owner or admin of an active company.' }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
   }
-  const role = (appUser.role || '').toLowerCase();
-  if (!['owner','admin'].includes(role)) {
-    return new Response(JSON.stringify({ error: 'FORBIDDEN_ROLE' }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
-  }
+
+  const companyId = membership.company_id;
 
   let body: UploadPayload;
   try {
@@ -132,7 +143,7 @@ Deno.serve(async (req: Request) => {
   const { data: existing, error: fetchExistingErr } = await serviceClient
     .from('verifactu_settings')
     .select('company_id, cert_pem_enc, key_pem_enc, key_pass_enc')
-    .eq('company_id', appUser.company_id)
+    .eq('company_id', companyId)
     .maybeSingle();
 
   if (fetchExistingErr) {
@@ -145,7 +156,7 @@ Deno.serve(async (req: Request) => {
     const { data: maxRow } = await serviceClient
       .from('verifactu_cert_history')
       .select('version')
-      .eq('company_id', appUser.company_id)
+      .eq('company_id', companyId)
       .order('version', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -154,7 +165,7 @@ Deno.serve(async (req: Request) => {
     const integrityHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(integritySource))
       .then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join(''));
     const historyRow = {
-      company_id: appUser.company_id,
+      company_id: companyId,
       version: nextVersion,
       rotated_by: authUserId,
       cert_pem_enc: existing.cert_pem_enc || null,
@@ -183,7 +194,7 @@ Deno.serve(async (req: Request) => {
   const key_pass_enc = body.key_pass ? await encryptText(body.key_pass, aesKey) : null;
 
   const upsertRow: any = {
-    company_id: appUser.company_id,
+    company_id: companyId,
     software_code: body.software_code.trim(),
     issuer_nif: issuerNif,
     environment: body.environment || 'pre',
