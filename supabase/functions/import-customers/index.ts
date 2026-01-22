@@ -100,13 +100,31 @@ serve(async (req: Request) => {
 
     let authoritativeCompanyId: string | null = null;
     try {
-      const { data: appUsers, error: appUsersErr } = await supabaseAdmin
+      // 1. Get public user ID
+      const { data: userResult, error: userErr } = await supabaseAdmin
         .from("users")
-        .select("company_id")
+        .select("id")
         .eq("auth_user_id", authUserId)
-        .limit(1);
-      if (appUsersErr) console.error("import-customers: users mapping error", appUsersErr);
-      if (appUsers && appUsers.length) authoritativeCompanyId = appUsers[0].company_id || null;
+        .limit(1)
+        .maybeSingle();
+
+      if (userErr) {
+        console.error("import-customers: users mapping error", userErr);
+      } else if (userResult) {
+        // 2. Get active company membership
+        const { data: memberResult, error: memberErr } = await supabaseAdmin
+          .from("company_members")
+          .select("company_id")
+          .eq("user_id", userResult.id)
+          .eq("status", "active")
+          .limit(1);
+
+        if (memberErr) {
+          console.error("import-customers: company_members lookup error", memberErr);
+        } else if (memberResult && memberResult.length > 0) {
+          authoritativeCompanyId = memberResult[0].company_id;
+        }
+      }
     } catch (mapErr) {
       console.error("import-customers: users mapping exception", mapErr);
     }
