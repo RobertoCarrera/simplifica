@@ -12,6 +12,24 @@ serve(async (req) => {
         return new Response('ok', { headers: corsHeaders });
     }
 
+    // 1. SECURITY VALIDATION: Enforce Webhook Secret
+    const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
+    if (!WEBHOOK_SECRET) {
+        console.error('Missing WEBHOOK_SECRET configuration');
+        return new Response(JSON.stringify({ error: 'Server misconfiguration' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+    }
+
+    const signature = req.headers.get('x-webhook-secret');
+    if (signature !== WEBHOOK_SECRET) {
+         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+             status: 401,
+             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+         });
+    }
+
     try {
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
