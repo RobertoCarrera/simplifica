@@ -13,6 +13,18 @@ serve(async (req) => {
     }
 
     try {
+        // SECURITY CHECK: Verify Webhook Secret
+        const webhookSecret = Deno.env.get('WEBHOOK_SECRET');
+        const requestSecret = req.headers.get('x-webhook-secret');
+
+        if (!webhookSecret || requestSecret !== webhookSecret) {
+            console.error('Unauthorized access attempt: Invalid or missing webhook secret');
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
