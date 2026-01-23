@@ -117,6 +117,12 @@ serve(async (req: Request) => {
     updated_at: nowIso
   };
 
+  // Security: Validate company_id is a valid UUID to prevent injection
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID_REGEX.test(payload.company_id)) {
+    return jsonResponse(400, { error: 'Invalid company_id format', code: 'invalid_uuid' }, origin || '*');
+  }
+
   // Validate priority
   const allowedPriorities = ['low', 'normal', 'high', 'critical'];
   if (!allowedPriorities.includes(payload.priority)) payload.priority = 'normal';
@@ -178,16 +184,30 @@ serve(async (req: Request) => {
     if (services.length === 0 && products.length === 0) {
       return jsonResponse(400, { error: 'At least one service or product is required', code: 'no_line_items' }, origin || '*');
     }
-    // Validate user belongs to the company via public.users (single-company membership)
+    // Validate user belongs to the company via public.company_members
+    // 1. Get user ID from users table
     const { data: userRow, error: userErr } = await supabaseAdmin
       .from('users')
       .select('id')
       .eq('auth_user_id', authUserId)
-      .eq('company_id', payload.company_id)
-      .eq('active', true)
       .maybeSingle();
+
     if (userErr || !userRow) {
-      if (userErr) console.warn(`[${FUNCTION_NAME}] membership query error (users)`, userErr);
+      if (userErr) console.warn(`[${FUNCTION_NAME}] user query error`, userErr);
+      return jsonResponse(403, { error: 'User not found', code: 'user_not_found' }, origin || '*');
+    }
+
+    // 2. Check active membership
+    const { data: memberRow, error: memberErr } = await supabaseAdmin
+      .from('company_members')
+      .select('id, status')
+      .eq('user_id', userRow.id)
+      .eq('company_id', payload.company_id)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (memberErr || !memberRow) {
+      if (memberErr) console.warn(`[${FUNCTION_NAME}] membership query error (company_members)`, memberErr);
       return jsonResponse(403, { error: 'User not allowed for this company', code: 'not_company_member' }, origin || '*');
     }
 
@@ -212,6 +232,7 @@ serve(async (req: Request) => {
           .from('ticket_stages')
           .select('id, deleted_at')
           .eq('id', payload.stage_id)
+          .or(`company_id.eq.${payload.company_id},company_id.is.null`)
           .single();
         if (stageRow && stageRow.deleted_at == null) {
           finalStageId = stageRow.id;
@@ -223,6 +244,7 @@ serve(async (req: Request) => {
       const { data: stageList, error: listErr } = await supabaseAdmin
         .from('ticket_stages')
         .select('id, name, position, deleted_at, created_at')
+        .or(`company_id.eq.${payload.company_id},company_id.is.null`)
         .is('deleted_at', null)
         .order('position', { ascending: true })
         .order('created_at', { ascending: true })
@@ -253,6 +275,7 @@ serve(async (req: Request) => {
           const { data: refreshed } = await supabaseAdmin
             .from('ticket_stages')
             .select('id, name, position, deleted_at, created_at')
+            .or(`company_id.eq.${payload.company_id},company_id.is.null`)
             .is('deleted_at', null)
             .order('position', { ascending: true })
             .order('created_at', { ascending: true })
