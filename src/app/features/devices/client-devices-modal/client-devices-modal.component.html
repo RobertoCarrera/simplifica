@@ -436,7 +436,7 @@
             <!-- Form Actions (Sticky Footer) -->
             <div
                 class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-end gap-3 shrink-0">
-                <button (click)="cancelEdit()" class="btn btn-secondary text-sm" [disabled]="isSaving">
+                <button (click)="cancelEdit()" class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" [disabled]="isSaving">
                     Cancelar
                 </button>
                 <button (click)="saveDevice()"
@@ -456,7 +456,7 @@
             class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 shrink-0">
 
             <!-- Left: Create New -->
-            <button (click)="onCreateNew()" class="btn btn-secondary flex items-center justify-center gap-2 text-sm">
+            <button (click)="onCreateNew()" class="inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                 <i class="fas fa-plus"></i>
                 <span>Crear Nuevo</span>
             </button>
@@ -464,7 +464,7 @@
             <!-- Right: Cancel + Submit -->
             <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
                 <button (click)="closeModal()"
-                    class="btn btn-ghost text-gray-600 dark:text-gray-400 text-sm order-2 sm:order-1">
+                    class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none order-2 sm:order-1">
                     Cancelar
                 </button>
                 <button (click)="submitSelection()" [disabled]="selectedDevicesForAdd.size === 0"

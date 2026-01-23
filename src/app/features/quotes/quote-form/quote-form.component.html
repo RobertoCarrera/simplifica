@@ -1,5 +1,5 @@
 <div [class.modal-overlay]="isModal" (click)="isModal && close.emit()">
-  <div [class.modal-content]="isModal" [class.container-fluid]="!isModal" [class.h-full]="!isModal"
+  <div [class.modal-content]="isModal" [class.w-full]="!isModal" [class.px-4]="!isModal" [class.mx-auto]="!isModal" [class.h-full]="!isModal"
     [class.flex]="!isModal" [class.flex-col]="!isModal" [class.overflow-hidden]="!isModal" [class.pb-20]="!isModal"
     [class.md:pb-8]="!isModal" [class.bg-gray-50]="!isModal" [class.dark:bg-gray-900]="!isModal"
     [class.text-gray-900]="!isModal" [class.dark:text-gray-100]="!isModal" (click)="$event.stopPropagation()">

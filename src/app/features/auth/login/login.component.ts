@@ -28,16 +28,16 @@ import { ToastService } from '../../../services/toast.service';
         </div>
       </div>
 
-      <div class="form-side d-flex flex-column justify-content-center">
-        <div class="form-wrapper mx-auto w-100">
-          <div class="mobile-header text-center d-lg-none">
+      <div class="form-side flex flex-col justify-center">
+        <div class="form-wrapper mx-auto w-full">
+          <div class="mobile-header text-center lg:hidden">
             <div class="logo-circle small"><i class="bi bi-gear-fill"></i></div>
             <h2>Simplifica</h2>
             <p class="subtitle">Inicia sesión en tu cuenta</p>
           </div>
           <h3 class="form-title">Accede a tu panel</h3>
           <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
-            <div class="mb-3">
+            <div class="mb-4">
               <label class="form-label">Email</label>
               <div class="input-wrapper" [class.invalid]="emailInvalid()">
                 <i class="bi bi-at"></i>
@@ -46,7 +46,7 @@ import { ToastService } from '../../../services/toast.service';
               @if (emailInvalid()) { <div class="field-error">Email válido requerido</div> }
             </div>
             <div class="mb-2">
-              <label class="form-label d-flex justify-content-between align-items-center">
+              <label class="form-label flex justify-between items-center">
                 <span>Contraseña</span>
                 <a routerLink="/recuperar-password" class="link-forgot" style="text-transform: none;"> ¿Olvidaste tu contraseña?</a>
               </label>
@@ -60,10 +60,10 @@ import { ToastService } from '../../../services/toast.service';
               @if (passwordInvalid()) { <div class="field-error">Contraseña requerida</div> }
             </div>
             @if (errorMessage()) {
-              <div class="alert-error mb-3"><i class="bi bi-exclamation-triangle me-1"></i>{{ errorMessage() }}</div>
+              <div class="alert-error mb-4"><i class="bi bi-exclamation-triangle mr-1"></i>{{ errorMessage() }}</div>
             }
-            <button class="btn-primary w-100 mb-3" type="submit" [disabled]="loginForm.invalid || loading()">
-              @if (loading()) { <span class="spinner-border spinner-border-sm me-2"></span> Entrando... } @else { Iniciar Sesión }
+            <button class="btn-primary w-full mb-4" type="submit" [disabled]="loginForm.invalid || loading()">
+              @if (loading()) { <span class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block mr-2"></span> Entrando... } @else { Iniciar Sesión }
             </button>
             <!-- <div class="text-center small text-muted">¿No tienes cuenta? <a routerLink="/register">Crear una gratis</a></div> -->
           </form>
@@ -73,34 +73,38 @@ import { ToastService } from '../../../services/toast.service';
 
     <!-- Modal de recuperación de contraseña -->
     @if (showForgotPassword) {
-      <div class="modal d-block" style="background: rgba(0,0,0,0.5);" (click)="showForgotPassword = false">
-        <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Recuperar Contraseña</h5>
-              <button type="button" class="btn-close" (click)="showForgotPassword = false"></button>
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" (click)="showForgotPassword = false">
+        <div class="relative w-full max-w-md mx-4" (click)="$event.stopPropagation()">
+          <div class="modal-content bg-white rounded-xl shadow-2xl overflow-hidden">
+            <div class="modal-header flex items-center justify-between p-4 border-b border-gray-100">
+              <h5 class="modal-title text-lg font-semibold text-gray-800">Recuperar Contraseña</h5>
+              <button type="button" class="text-gray-400 hover:text-gray-600 transition-colors" (click)="showForgotPassword = false">
+                <i class="bi bi-x-lg"></i>
+              </button>
             </div>
             
             <form [formGroup]="resetForm" (ngSubmit)="onResetPassword()">
-              <div class="modal-body">
-                <div class="mb-3">
+              <div class="modal-body p-6">
+                <div class="mb-4">
                   <label class="form-label">Email</label>
-                  <input
-                    type="email"
-                    class="form-control"
-                    formControlName="email"
-                    placeholder="tu@empresa.com"
-                  />
+                  <div class="input-wrapper">
+                    <i class="bi bi-envelope"></i>
+                    <input
+                      type="email"
+                      formControlName="email"
+                      placeholder="tu@empresa.com"
+                    />
+                  </div>
                 </div>
               </div>
               
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" (click)="showForgotPassword = false">
+              <div class="modal-footer flex items-center justify-end gap-3 p-4 bg-gray-50 border-t border-gray-100">
+                <button type="button" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all" (click)="showForgotPassword = false">
                   Cancelar
                 </button>
-                <button type="submit" class="btn btn-primary" [disabled]="resetForm.invalid || resetting()">
+                <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center" [disabled]="resetForm.invalid || resetting()">
                   @if (resetting()) {
-                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    <span class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full inline-block mr-2"></span>
                     Enviando...
                   } @else {
                     Enviar
@@ -313,21 +317,7 @@ import { ToastService } from '../../../services/toast.service';
       gap: 0.5rem;
     }
     .btn-primary { 
-      width: 100%;
-      border: none; 
-      border-radius: 12px; 
-      padding: 1rem; 
-      font-weight: 600; 
-      font-size: 1rem; 
-      background: linear-gradient(145deg, #3b82f6, #2563eb); 
-      color: white; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      gap: 0.5rem; 
-      cursor: pointer; 
-      transition: all 0.2s ease;
-      margin-bottom: 1rem;
+      display: none; /* Handled by Tailwind now */
     }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn-primary:not(:disabled):hover { 
@@ -444,21 +434,6 @@ import { ToastService } from '../../../services/toast.service';
         border-color: rgba(59, 130, 246, 0.3);
         color: #60a5fa;
       }
-    }
-    
-    /* Loading animation */
-    .form-wrapper { 
-      animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
-    }
-    @keyframes slideIn { 
-      0% { 
-        transform: translateY(20px) scale(0.98); 
-        opacity: 0; 
-      } 
-      100% { 
-        transform: translateY(0) scale(1); 
-        opacity: 1; 
-      } 
     }
   `]
 })

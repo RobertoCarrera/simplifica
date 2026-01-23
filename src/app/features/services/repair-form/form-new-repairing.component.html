@@ -1,33 +1,33 @@
-<div class="row pb-3 pt-3 m-0">
-    <div class="col-2">
-        <label for="unidades" class="form-label">Unidades</label>
-        <input type="number" id="unidades" class="form-control text-center w-75" value="1" min="1" name="unidades" required>
+<div class="grid grid-cols-12 gap-4 pb-3 pt-3 m-0">
+    <div class="col-span-2">
+        <label for="unidades" class="block text-sm font-medium text-gray-700 mb-1">Unidades</label>
+        <input type="number" id="unidades" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-center" value="1" min="1" name="unidades" required>
     </div>
-    <div class="col-3">
-        <label for="tipo_service" class="form-label">Producto</label>
-        <select class="form-control" id="products" name="tipo_service" required [(ngModel)]="selectedProductName">
+    <div class="col-span-3">
+        <label for="tipo_service" class="block text-sm font-medium text-gray-700 mb-1">Producto</label>
+        <select class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" id="products" name="tipo_service" required [(ngModel)]="selectedProductName">
             <option value="" disabled hidden>Elige producto</option>
             <option *ngFor="let product of products" [value]="product">{{ product.nombre }}</option>
         </select>
-        <div *ngIf="selectedProduct === true" class="text-danger">El tipo de producto es obligatorio.</div>
+        <div *ngIf="selectedProduct === true" class="text-red-500 text-xs mt-1">El tipo de producto es obligatorio.</div>
     </div>
-    <div class="col-3">
-        <label for="tipo_service" class="form-label">Reparación</label>
-        <select class="form-control" id="categories" name="tipo_service" required [(ngModel)]="selectedCategoryName">
+    <div class="col-span-3">
+        <label for="tipo_service" class="block text-sm font-medium text-gray-700 mb-1">Reparación</label>
+        <select class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" id="categories" name="tipo_service" required [(ngModel)]="selectedCategoryName">
             <option value="" disabled hidden>Elige reparación</option>
             <option *ngFor="let work of works" [value]="work">{{ work.nombre }}</option>
         </select>
-        <div *ngIf="selectedCategory === true" class="text-danger">El tipo de categoría es obligatorio.</div>
+        <div *ngIf="selectedCategory === true" class="text-red-500 text-xs mt-1">El tipo de categoría es obligatorio.</div>
     </div>
-    <div class="col-3">
-        <label for="vencimiento_service" class="form-label">Vencimiento</label>
-        <input type="text" class="form-control" id="vencimiento_service" placeholder="Introducir vencimiento..." name="vencimiento_service" required>
-        <div *ngIf="selectedDueDate === true" class="text-danger">El vencimiento es obligatorio.</div>
+    <div class="col-span-3">
+        <label for="vencimiento_service" class="block text-sm font-medium text-gray-700 mb-1">Vencimiento</label>
+        <input type="text" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" id="vencimiento_service" placeholder="Introducir vencimiento..." name="vencimiento_service" required>
+        <div *ngIf="selectedDueDate === true" class="text-red-500 text-xs mt-1">El vencimiento es obligatorio.</div>
     </div>
-    <div class="col-1 d-flex align-items-end justify-content-center">
-        <button class="btn text-danger pb-0"
+    <div class="col-span-1 flex items-end justify-center pb-1">
+        <button class="text-red-500 hover:text-red-700 transition-colors"
         (click)="removeProduct()">
-            <i class="bi bi-x-circle fs-4"></i>
+            <i class="bi bi-x-circle text-xl"></i>
         </button>
     </div>
 </div>

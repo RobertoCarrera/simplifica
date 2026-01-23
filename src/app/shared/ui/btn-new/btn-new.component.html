@@ -1,6 +1,6 @@
 <div class="w-32 p-0 fixed bottom-0 mb-3 ml-2 bg-transparent z-30"
 [ngClass]="{'hidden': this.creating === true}">
-    <button class="btn w-3/4 bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+    <button class="px-4 py-2 font-medium rounded-lg transition-colors duration-200 w-3/4 bg-orange-500 hover:bg-orange-600 text-white"
     [ngClass]="{'bg-green-500 hidden': this.creating === true}" 
     (click)="isCreating()">
         <i class="bi bi-plus mr-1"></i>{{itemType}}
@@ -59,63 +59,63 @@
         <div class="flex items-center justify-between" *ngIf="this.formStep === 3">
             <h3 class="w-3/4 m-0 text-lg font-semibold text-gray-900">Cantidad de productos</h3>
         </div>
-        <div *ngIf="this.formStep === 4 && (this.businessType === false || this.personType === false)" class="row">
+        <div *ngIf="this.formStep === 4 && (this.businessType === false || this.personType === false)" class="grid grid-cols-12 gap-4">
             <div *ngFor="let product of [].constructor(totalProducts); let i = index">
                 <app-form-new-repairing (productRemoved)="removeProduct(i)"></app-form-new-repairing>
             </div>
         </div>
-        <div *ngIf="this.formStep === 5 && (this.businessType === false || this.personType === false)" class="row">
+        <div *ngIf="this.formStep === 5 && (this.businessType === false || this.personType === false)" class="grid grid-cols-12 gap-4">
             <div *ngFor="let product of [].constructor(totalProducts); let i = index">
                 <app-form-new-product></app-form-new-product>
             </div>
         </div>
-        <div *ngIf="this.formStep >= 2 && this.formStep <= maxSteps" class="col-12 pt-3">
-            <div class="row d-flex align-items-center justify-content-around">
-                <button class="btn btn-danger"
+        <div *ngIf="this.formStep >= 2 && this.formStep <= maxSteps" class="col-span-12 pt-3">
+            <div class="grid grid-cols-12 gap-4 flex items-center justify-around">
+                <button class="px-4 py-2 font-medium rounded-lg transition-colors duration-200 bg-red-600 hover:bg-red-700 text-white"
                 [ngClass]="{'btns-nuevo-servicio': this.creating === true}" 
                 (click)="removeStep()">
-                    <div class="col-2">
-                        <i class="bi bi-x fs-5"></i>
+                    <div class="col-span-2">
+                        <i class="bi bi-x text-xl"></i>
                     </div>
-                    <div class="col-10 align-content-center">
+                    <div class="col-span-10 flex items-center">
                         <span *ngIf="this.formStep === 2">Cancelar</span>
                         <span *ngIf="this.formStep > 2 ">Atrás</span>
                     </div>
                 </button>
                 <button *ngIf="this.formStep === 3" 
                     (click)="addProduct()"
-                    class="btn btn-primary btn-anadir-servicio">
+                    class="px-4 py-2 font-medium rounded-lg transition-colors duration-200 bg-blue-600 hover:bg-blue-700 text-white btn-anadir-servicio">
                     <i class="bi bi-plus-circle-fill"></i>
                 </button>
-                <button *ngIf="this.formStep === 2 && childBoolean" class="btn btn-warning"
+                <button *ngIf="this.formStep === 2 && childBoolean" class="px-4 py-2 font-medium rounded-lg transition-colors duration-200 bg-yellow-500 hover:bg-yellow-600 text-white"
                 [ngClass]="{'btns-nuevo-servicio': this.creating === true}"
                 (click)="openCustomerModal()">
-                    <div class="col-2">     
-                        <i class="bi bi-check fs-5"></i>
+                    <div class="col-span-2">     
+                        <i class="bi bi-check text-xl"></i>
                     </div>
-                    <div class="col-10 align-content-center">Ver Cliente</div>
+                    <div class="col-span-10 flex items-center">Ver Cliente</div>
                 </button>
                 <button
                 *ngIf="this.formStep >= 1 && this.formStep < maxSteps"
-                class="btn btn-success"
+                class="px-4 py-2 font-medium rounded-lg transition-colors duration-200 bg-green-600 hover:bg-green-700 text-white"
                 [ngClass]="{'btns-nuevo-servicio': this.creating === true}" 
                 (click)="addStep()">
-                    <div class="col-2">
-                        <i class="bi bi-check fs-5"></i> 
+                    <div class="col-span-2">
+                        <i class="bi bi-check text-xl"></i> 
                     </div>
-                    <div class="col-10 align-content-center">
+                    <div class="col-span-10 flex items-center">
                         <span>Siguiente</span>
                     </div>
                 </button>
                 <button 
                 *ngIf="this.formStep === maxSteps && !this.customerExists"
-                class="btn btn-success"
+                class="px-4 py-2 font-medium rounded-lg transition-colors duration-200 bg-green-600 hover:bg-green-700 text-white"
                 [ngClass]="{'btns-nuevo-servicio': this.creating === true}" 
                  (click)="addStep(); createCustomer()">
-                    <div class="col-2">
-                        <i class="bi bi-check fs-5"></i> 
+                    <div class="col-span-2">
+                        <i class="bi bi-check text-xl"></i> 
                     </div>
-                    <div class="col-10 align-content-center">
+                    <div class="col-span-10 flex items-center">
                         <span>Crear</span>
                     </div>
                 </button>

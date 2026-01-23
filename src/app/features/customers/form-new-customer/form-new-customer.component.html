@@ -225,7 +225,7 @@
                             </div>
                         </div>
                         <div *ngIf="addressLocalityName" class="mt-2">
-                            <button type="button" class="btn btn-sm btn-outline" (click)="openCreateLocality()">
+                            <button type="button" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="openCreateLocality()">
                                 <i class="fas fa-plus mr-1"></i> Crear nueva localidad
                             </button>
                         </div>
@@ -297,8 +297,8 @@
                 </div>
                 <div style="height:12px"></div>
                 <div class="modal-actions mt-3 flex justify-end gap-2">
-                    <button class="btn btn-secondary" type="button" (click)="closeCreateLocality()">Cancelar</button>
-                    <button class="btn btn-primary" type="button" (click)="createLocalityFromInput()"
+                    <button class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" type="button" (click)="closeCreateLocality()">Cancelar</button>
+                    <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" type="button" (click)="createLocalityFromInput()"
                         [disabled]="cpExists">Crear
                         localidad</button>
                 </div>
@@ -307,20 +307,20 @@
                     <div class="mt-1 font-medium">{{ existingLocalityByCP?.nombre }} (CP: {{ existingLocalityByCP?.CP
                         }})</div>
                     <div class="mt-2">
-                        <button class="btn btn-outline btn-sm mr-2"
+                        <button class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mr-2"
                             (click)="selectExistingFromName(existingLocalityByCP!)">Seleccionar esta localidad</button>
-                        <button class="btn btn-ghost btn-sm" (click)="closeCreateLocality()">Cancelar</button>
+                        <button class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none" (click)="closeCreateLocality()">Cancelar</button>
                     </div>
                 </div>
             </app-modal>
         </div>
 
         <div class="modal-actions">
-            <button type="button" (click)="closeForm()" class="btn-cancel" title="Cancelar">
+            <button type="button" (click)="closeForm()" class="inline-flex items-center justify-center gap-2 px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all" title="Cancelar">
                 <i class="fas fa-times"></i>
                 <span>Cancelar</span>
             </button>
-            <button type="button" (click)="saveCustomer()" class="btn-save"
+            <button type="button" (click)="saveCustomer()" class="inline-flex items-center justify-center gap-2 px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
                 [disabled]="isLoading() || (formData.client_type === 'business' ? !(formData.business_name && formData.cif_nif && formData.email) : !(formData.name && formData.email))"
                 [title]="customer ? 'Actualizar' : 'Crear'">
                 <i class="fas fa-check"></i>

@@ -4,22 +4,22 @@
     </div>
 
     <div class="composer-form">
-        <div class="form-group">
-            <input type="text" [(ngModel)]="to" placeholder="Destinatarios" class="form-control">
+        <div class="mb-4">
+            <input type="text" [(ngModel)]="to" placeholder="Destinatarios" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
         </div>
 
-        <div class="form-group">
-            <input type="text" [(ngModel)]="subject" placeholder="Asunto" class="form-control">
+        <div class="mb-4">
+            <input type="text" [(ngModel)]="subject" placeholder="Asunto" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
         </div>
 
-        <div class="form-group editor">
+        <div class="mb-4 editor">
             <textarea [(ngModel)]="body" placeholder="Escribe tu mensaje aquí..."
-                class="form-control body-input"></textarea>
+                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm body-input"></textarea>
         </div>
 
         <div class="composer-actions">
-            <button class="btn btn-primary" (click)="send()">Enviar</button>
-            <button class="btn btn-text" (click)="cancel()">Descartar draft</button>
+            <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="send()">Enviar</button>
+            <button class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 focus:outline-none" (click)="cancel()">Descartar draft</button>
         </div>
     </div>
 </div>

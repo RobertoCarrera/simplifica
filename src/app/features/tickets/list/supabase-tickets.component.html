@@ -166,7 +166,7 @@
     <div
       class="flex justify-between items-center text-gray-600 dark:text-slate-400 text-sm pt-2 border-t border-gray-100 dark:border-slate-700/50">
       <span class="font-medium">{{ filteredTickets.length }} ticket(s) encontrado(s)</span>
-      <button class="btn btn-secondary btn-sm" (click)="clearFilters()">
+      <button class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="clearFilters()">
         <i class="fas fa-times mr-1"></i>
         Limpiar
       </button>
@@ -294,7 +294,7 @@
       <i class="fas fa-exclamation-triangle text-4xl text-red-500 mb-4"></i>
       <h3 class="text-xl text-gray-900 dark:text-slate-50 font-semibold mb-2">Error al cargar tickets</h3>
       <p class="text-gray-600 dark:text-slate-400 mb-6">{{ error }}</p>
-      <button class="btn btn-primary" (click)="loadTickets()">
+      <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all" (click)="loadTickets()">
         <i class="fas fa-sync"></i>
         Reintentar
       </button>
@@ -409,7 +409,7 @@
         <i class="fas fa-ticket-alt text-6xl text-gray-300 dark:text-slate-600 mb-4"></i>
         <h3 class="text-xl text-gray-900 dark:text-slate-50 font-semibold mb-2">No hay tickets</h3>
         <p class="text-gray-600 dark:text-slate-400 mb-6">No se encontraron tickets con los filtros aplicados.</p>
-        <button class="btn btn-primary" (click)="openForm()">
+        <button class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all" (click)="openForm()">
           <i class="fas fa-plus"></i>
           Crear primer ticket
         </button>
