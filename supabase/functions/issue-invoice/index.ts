@@ -44,6 +44,47 @@ serve(async (req) => {
             });
         }
 
+        // 1.5. AUTHORIZATION VALIDATION (Role Check)
+        // Verify that the user is an active member of the company with sufficient privileges (admin/owner).
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (!user) {
+             return new Response(JSON.stringify({ error: 'Usuario no autenticado' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401
+            });
+        }
+
+        // Resolve Public ID from Auth ID
+        const { data: publicUser } = await supabaseClient
+             .from('users')
+             .select('id')
+             .eq('auth_user_id', user.id)
+             .maybeSingle();
+
+        if (!publicUser) {
+             return new Response(JSON.stringify({ error: 'Perfil de usuario no encontrado' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 403
+            });
+        }
+
+        // Check Membership Role
+        const { data: member, error: memberError } = await supabaseClient
+            .from('company_members')
+            .select('role')
+            .eq('company_id', invoiceCheck.company_id)
+            .eq('user_id', publicUser.id)
+            .maybeSingle();
+
+        if (memberError || !member || !['owner', 'admin'].includes(member.role)) {
+             return new Response(JSON.stringify({
+                error: 'No tienes permisos de administrador para emitir facturas en esta empresa',
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 403
+            });
+        }
+
         // 2. RPC EXECUTION (Now safe)
         // Call the RPC that handles the logic
         // Note: Based on SQL search, 'verifactu_preflight_issue' seems to contain the logic 
