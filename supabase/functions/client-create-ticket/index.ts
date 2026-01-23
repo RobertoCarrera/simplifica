@@ -289,6 +289,7 @@ serve(async (req: Request) => {
       const { data: svcRows, error: svcErr } = await supabaseAdmin
         .from('services')
         .select('id, base_price')
+        .eq('company_id', payload.company_id)
         .in('id', serviceIds);
       if (svcErr) {
         // cleanup the ticket to avoid orphan
@@ -425,6 +426,7 @@ serve(async (req: Request) => {
       const { data: prodRows, error: prodErr } = await supabaseAdmin
         .from('products')
         .select('id, price')
+        .eq('company_id', payload.company_id)
         .in('id', productIds);
       if (prodErr) {
         await supabaseAdmin.from('tickets').delete().eq('id', inserted.id);
