@@ -68,23 +68,52 @@ Deno.serve(async (req: Request) => {
   }
   const authUserId = userData.user.id;
 
-  // Map auth user -> company + role
-  const { data: appUser, error: mapErr } = await serviceClient
+  // 1. Get user ID and legacy company_id
+  // We need to resolve the user's ID first to check memberships.
+  const { data: userRow, error: userLookupErr } = await serviceClient
     .from('users')
-    .select('id, company_id, role, deleted_at')
+    .select('id, company_id, deleted_at')
     .eq('auth_user_id', authUserId)
     .is('deleted_at', null)
     .maybeSingle();
 
-  if (mapErr) {
-    return new Response(JSON.stringify({ error: 'USER_LOOKUP_FAILED', details: mapErr.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+  if (userLookupErr || !userRow) {
+    // Avoid leaking specific error details about user existence if possible, or log it securely
+    return new Response(JSON.stringify({ error: 'USER_LOOKUP_FAILED' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
   }
-  if (!appUser?.company_id) {
-    return new Response(JSON.stringify({ error: 'NO_COMPANY' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
+
+  // 2. Get active memberships for this user with owner/admin role
+  const { data: members, error: memErr } = await serviceClient
+    .from('company_members')
+    .select('company_id, role, status')
+    .eq('user_id', userRow.id)
+    .eq('status', 'active')
+    .in('role', ['owner', 'admin']);
+
+  if (memErr) {
+    return new Response(JSON.stringify({ error: 'MEMBERSHIP_LOOKUP_FAILED' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
   }
-  const role = (appUser.role || '').toLowerCase();
-  if (!['owner','admin'].includes(role)) {
+
+  let targetCompanyId: string | null = null;
+  const validMembers = members || [];
+
+  if (validMembers.length === 0) {
     return new Response(JSON.stringify({ error: 'FORBIDDEN_ROLE' }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
+  } else if (validMembers.length === 1) {
+    // Exact match
+    targetCompanyId = validMembers[0].company_id;
+  } else {
+    // Ambiguity resolution: Try to match legacy users.company_id if present
+    if (userRow.company_id) {
+       const match = validMembers.find(m => m.company_id === userRow.company_id);
+       if (match) {
+         targetCompanyId = match.company_id;
+       }
+    }
+  }
+
+  if (!targetCompanyId) {
+     return new Response(JSON.stringify({ error: 'AMBIGUOUS_COMPANY_CONTEXT', hint: 'User has multiple admin roles but no specific context derived.' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
   }
 
   let body: UploadPayload;
@@ -132,11 +161,11 @@ Deno.serve(async (req: Request) => {
   const { data: existing, error: fetchExistingErr } = await serviceClient
     .from('verifactu_settings')
     .select('company_id, cert_pem_enc, key_pem_enc, key_pass_enc')
-    .eq('company_id', appUser.company_id)
+    .eq('company_id', targetCompanyId)
     .maybeSingle();
 
   if (fetchExistingErr) {
-    return new Response(JSON.stringify({ error: 'FETCH_EXISTING_FAILED', details: fetchExistingErr.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'FETCH_EXISTING_FAILED' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
   }
 
   // If existing encrypted cert present, store in history BEFORE overwrite.
@@ -145,7 +174,7 @@ Deno.serve(async (req: Request) => {
     const { data: maxRow } = await serviceClient
       .from('verifactu_cert_history')
       .select('version')
-      .eq('company_id', appUser.company_id)
+      .eq('company_id', targetCompanyId)
       .order('version', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -154,7 +183,7 @@ Deno.serve(async (req: Request) => {
     const integrityHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(integritySource))
       .then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join(''));
     const historyRow = {
-      company_id: appUser.company_id,
+      company_id: targetCompanyId,
       version: nextVersion,
       rotated_by: authUserId,
       cert_pem_enc: existing.cert_pem_enc || null,
@@ -183,7 +212,7 @@ Deno.serve(async (req: Request) => {
   const key_pass_enc = body.key_pass ? await encryptText(body.key_pass, aesKey) : null;
 
   const upsertRow: any = {
-    company_id: appUser.company_id,
+    company_id: targetCompanyId,
     software_code: body.software_code.trim(),
     issuer_nif: issuerNif,
     environment: body.environment || 'pre',
@@ -198,7 +227,7 @@ Deno.serve(async (req: Request) => {
     .upsert(upsertRow, { onConflict: 'company_id' });
 
   if (upsertErr) {
-    return new Response(JSON.stringify({ error: 'UPSERT_FAILED', details: upsertErr.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+    return new Response(JSON.stringify({ error: 'UPSERT_FAILED' }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
   }
 
   return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json', ...cors } });
