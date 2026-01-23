@@ -11,37 +11,37 @@ import { ToastService } from '../../../services/toast.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <div class="container mt-5">
-      <div class="row justify-content-center">
-        <div class="col-md-6">
-          <div class="card">
-            <div class="card-header">
-              <h4>🔍 Debug: Prueba de Login Directo</h4>
+    <div class="max-w-4xl mx-auto px-4 mt-12">
+      <div class="flex justify-center">
+        <div class="w-full md:w-2/3">
+          <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <h4 class="text-lg font-medium text-gray-900 m-0">🔍 Debug: Prueba de Login Directo</h4>
             </div>
-            <div class="card-body">
+            <div class="p-6">
               <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-                <div class="mb-3">
-                  <label class="form-label">Email:</label>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Email:</label>
                   <input 
                     type="email" 
-                    class="form-control" 
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
                     formControlName="email"
                     placeholder="robertocarreratech@gmail.com">
                 </div>
-                <div class="mb-3">
-                  <label class="form-label">Contraseña:</label>
+                <div class="mb-4">
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña:</label>
                   <input 
                     type="password" 
-                    class="form-control" 
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" 
                     formControlName="password"
                     placeholder="Tu contraseña">
                 </div>
                 <button 
                   type="submit" 
-                  class="btn btn-primary"
+                  class="inline-flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors text-white bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
                   [disabled]="loading() || loginForm.invalid">
                   @if (loading()) {
-                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    <span class="animate-spin -ml-1 mr-2 h-4 w-4 text-white border-2 border-white border-t-transparent rounded-full"></span>
                     Intentando login...
                   } @else {
                     🔐 Probar Login Directo
@@ -51,25 +51,25 @@ import { ToastService } from '../../../services/toast.service';
 
               @if (result()) {
                 <div class="mt-4">
-                  <h5>Resultado:</h5>
-                  <pre class="bg-light p-3 rounded">{{ result() | json }}</pre>
+                  <h5 class="text-sm font-medium text-gray-700 mb-2">Resultado:</h5>
+                  <pre class="bg-gray-50 border border-gray-200 p-3 rounded-md text-xs overflow-auto">{{ result() | json }}</pre>
                 </div>
               }
 
-              <hr class="my-4">
+              <hr class="my-6 border-gray-200">
               
-              <div class="row">
-                <div class="col-md-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="col-span-1">
                   <button 
-                    class="btn btn-info w-100"
+                    class="inline-flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors text-white bg-cyan-600 hover:bg-cyan-700 focus:ring-cyan-500 w-full"
                     (click)="checkSession()"
                     [disabled]="loading()">
                     📋 Verificar Sesión Actual
                   </button>
                 </div>
-                <div class="col-md-6">
+                <div class="col-span-1">
                   <button 
-                    class="btn btn-warning w-100"
+                    class="inline-flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors text-white bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500 w-full"
                     (click)="resetPassword()"
                     [disabled]="loading() || !loginForm.get('email')?.value">
                     📧 Reset Password
@@ -79,20 +79,20 @@ import { ToastService } from '../../../services/toast.service';
 
               @if (sessionInfo()) {
                 <div class="mt-4">
-                  <h5>Información de Sesión:</h5>
-                  <pre class="bg-light p-3 rounded">{{ sessionInfo() | json }}</pre>
+                  <h5 class="text-sm font-medium text-gray-700 mb-2">Información de Sesión:</h5>
+                  <pre class="bg-gray-50 border border-gray-200 p-3 rounded-md text-xs overflow-auto">{{ sessionInfo() | json }}</pre>
                 </div>
               }
 
               @if (resetResult()) {
                 <div class="mt-4">
-                  <h5>Resultado Reset Password:</h5>
-                  <pre class="bg-light p-3 rounded">{{ resetResult() | json }}</pre>
+                  <h5 class="text-sm font-medium text-gray-700 mb-2">Resultado Reset Password:</h5>
+                  <pre class="bg-gray-50 border border-gray-200 p-3 rounded-md text-xs overflow-auto">{{ resetResult() | json }}</pre>
                 </div>
               }
 
               <div class="mt-4">
-                <small class="text-muted">
+                <small class="text-gray-500">
                   <strong>Instrucciones:</strong><br>
                   1. Usa las credenciales del registro fallido<br>
                   2. Si login falla, prueba reset password<br>

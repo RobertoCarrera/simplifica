@@ -72,7 +72,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
           <div class="flex flex-col sm:flex-row sm:justify-between gap-3">
             <!-- Botón Atrás -->
             <button (click)="goBack()"
-                    class="btn btn-secondary text-sm">
+                    class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
               <i class="fas fa-arrow-left mr-2"></i>
               <span>Atrás</span>
             </button>
@@ -83,19 +83,19 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
               <!-- Client Actions -->
               <ng-container *ngIf="isClient()">
                 <button *ngIf="!ticketConfig || ticketConfig.ticket_client_can_create_devices !== false" (click)="openCreateDeviceForm()"
-                        class="btn btn-primary text-sm px-4 w-full sm:w-auto">
+                        class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto">
                   <i class="fas fa-plus mr-2"></i>
                   <span>Añadir Dispositivo</span>
                 </button>
 
                 <button (click)="scrollToComment()"
-                        class="btn btn-secondary text-sm px-4 w-full sm:w-auto">
+                        class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto">
                   <i class="fas fa-comment mr-2"></i>
                   <span>Añadir Comentario</span>
                 </button>
 
                 <button *ngIf="!isTicketSolved() && (!ticketConfig || ticketConfig.ticket_client_can_close !== false)" (click)="markAsSolved()"
-                        class="btn btn-success text-sm px-4 w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white border-transparent">
+                        class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 w-full sm:w-auto">
                   <i class="fas fa-check mr-2"></i>
                   <span>Marcar como Solucionado</span>
                 </button>
@@ -105,17 +105,17 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
               <div *ngIf="!loading && !error && ticket && !isClient()" class="grid grid-cols-3 sm:flex gap-2 sm:gap-3 w-full sm:w-auto">
                 <button (click)="convertToQuoteFromTicket()"
                         [disabled]="!ticket || ticketServices.length === 0 || !(ticket && ticket.client && ticket.client.id)"
-                        class="btn btn-primary text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+                        class="inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-3 py-2 border border-transparent text-xs sm:text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                   <i class="fas fa-file-invoice text-base sm:text-sm"></i>
                   <span class="text-[10px] sm:text-sm">{{ activeQuoteId ? 'Ir a Presup.' : 'Convertir' }}</span>
                 </button>
                 <button (click)="printTicket()"
-                        class="btn btn-secondary text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+                        class="inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-3 py-2 border border-gray-300 shadow-sm text-xs sm:text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                   <i class="fas fa-print text-base sm:text-sm"></i>
                   <span class="text-[10px] sm:text-sm">Imprimir</span>
                 </button>
                 <button (click)="deleteTicket()"
-                        class="btn btn-danger text-xs sm:text-sm px-3 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+                        class="inline-flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-3 py-2 border border-transparent text-xs sm:text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                   <i class="fas fa-trash text-base sm:text-sm"></i>
                   <span class="text-[10px] sm:text-sm">Eliminar</span>
                 </button>
@@ -327,7 +327,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     <div class="flex justify-between items-center mb-4">
                       <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Servicios Asignados</h3>
                       <button *ngIf="!isClient()" (click)="openServicesModal()"
-                              class="btn btn-primary">
+                              class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <i class="fas fa-wrench"></i>
                         Modificar Servicios
                       </button>
@@ -335,7 +335,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     <div *ngIf="ticketServices.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
                       <i class="fas fa-wrench text-5xl mb-4 opacity-50"></i>
                       <p class="text-lg">No hay servicios asignados a este ticket</p>
-                      <button *ngIf="!isClient()" (click)="openServicesModal()" class="mt-4 btn btn-secondary">
+                      <button *ngIf="!isClient()" (click)="openServicesModal()" class="mt-4 inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <i class="fas fa-plus mr-2"></i>
                         Añadir Servicios
                       </button>
@@ -384,7 +384,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     <div class="flex justify-between items-center mb-4">
                       <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">Productos Asignados</h3>
                       <button *ngIf="!isClient()" (click)="openProductsModal()"
-                              class="btn btn-primary">
+                              class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <i class="fas fa-box"></i>
                         Modificar Productos
                       </button>
@@ -392,7 +392,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                     <div *ngIf="ticketProducts.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
                       <i class="fas fa-box text-5xl mb-4 opacity-50"></i>
                       <p class="text-lg">No hay productos asignados a este ticket</p>
-                      <button *ngIf="!isClient()" (click)="openProductsModal()" class="mt-4 btn btn-secondary">
+                      <button *ngIf="!isClient()" (click)="openProductsModal()" class="mt-4 inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <i class="fas fa-plus mr-2"></i>
                         Añadir Productos
                       </button>
@@ -443,7 +443,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                           <input type="checkbox" [checked]="showDeletedDevices" (change)="toggleDeletedDevices()" class="form-checkbox rounded text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700">
                           Ver eliminados
                         </label>
-                        <button *ngIf="!isClient()" (click)="openDevicesModal()" class="btn btn-primary">
+                        <button *ngIf="!isClient()" (click)="openDevicesModal()" class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                           <i class="fas fa-mobile-alt"></i>
                           Modificar Dispositivos
                         </button>
@@ -539,7 +539,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                           <input #commentFileInput type="file" (change)="onCommentFileSelect($event)" class="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
                           <button (click)="commentFileInput.click()"
                                   [disabled]="isUploadingImage"
-                                  class="btn btn-secondary px-3 py-2 text-sm"
+                                  class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                                   title="Adjuntar archivo">
                             <i class="fas fa-paperclip"></i>
                             <span class="hidden sm:inline ml-1">Adjuntar</span>
@@ -548,12 +548,12 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                             <button (click)="addComment()"
                                     [disabled]="isUploadingImage || !hasEditorContent() || isSubmitting"
                                     [ngClass]="{'rounded-r-none border-r border-white/20': !isClient() && activeCommentsCount > 0, 'rounded-lg': isClient() || activeCommentsCount === 0}"
-                                    class="btn btn-primary">
+                                    class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                               <i class="fas fa-comment"></i>
                               <span class="hidden sm:inline ml-2">Enviar</span>
                             </button>
                             <button *ngIf="!isClient() && activeCommentsCount > 0"
-                                    class="btn btn-primary rounded-l-none px-2 border-l border-white/10"
+                                    class="inline-flex items-center justify-center px-2 py-2 border border-transparent text-sm font-medium rounded-r-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-l-none border-l border-blue-700"
                                     [disabled]="isUploadingImage || !hasEditorContent() || isSubmitting"
                                     (click)="toggleSmartSendDropdown()">
                               <i class="fas fa-chevron-down"></i>
@@ -941,14 +941,14 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 <button
                   type="button"
                   (click)="closeChangeStageModal()"
-                  class="btn btn-secondary"
+                  class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   (click)="saveStageChange()"
-                  class="btn btn-primary"
+                  class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   [disabled]="!selectedStageId"
                 >
                   <i class="fas fa-save"></i>
@@ -993,14 +993,14 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 <button
                   type="button"
                   (click)="closeUpdateHoursModal()"
-                  class="btn btn-secondary"
+                  class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   (click)="saveHoursUpdate()"
-                  class="btn btn-primary"
+                  class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   [disabled]="newHoursValue < 0"
                 >
                   <i class="fas fa-save"></i>
@@ -1050,14 +1050,14 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 <button
                   type="button"
                   (click)="closeAttachmentModal()"
-                  class="btn btn-secondary"
+                  class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   (click)="uploadAttachment()"
-                  class="btn btn-primary"
+                  class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   [disabled]="!selectedFile"
                 >
                   <i class="fas fa-upload"></i>
@@ -1108,8 +1108,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
                 </div>
               </div>
               <div class="modal-footer flex justify-end space-x-2 p-2">
-                <button class="btn btn-secondary" (click)="closeServicesModal()">Cancelar</button>
-                <button class="btn btn-primary" [disabled]="selectedServiceIds.size === 0" (click)="saveServicesSelection()">Guardar</button>
+                <button class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="closeServicesModal()">Cancelar</button>
+                <button class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" [disabled]="selectedServiceIds.size === 0" (click)="saveServicesSelection()">Guardar</button>
               </div>
             </div>
           </div>
@@ -1182,8 +1182,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
               </div>
             </div>
             <div class="modal-footer flex justify-end space-x-2 p-2">
-              <button class="btn btn-secondary" (click)="closeProductsModal()">Cancelar</button>
-              <button class="btn btn-primary" [disabled]="selectedProductIds.size === 0" (click)="saveProductsSelection()">Guardar</button>
+              <button class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="closeProductsModal()">Cancelar</button>
+              <button class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" [disabled]="selectedProductIds.size === 0" (click)="saveProductsSelection()">Guardar</button>
             </div>
           </div>
         </div>
@@ -1196,7 +1196,7 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
             <div class="modal-header">
               <h2 class="modal-title">💻 Seleccionar Dispositivos</h2>
               <div class="flex items-center gap-2">
-                <button (click)="openCreateDeviceForm()" class="btn btn-sm btn-primary shadow-sm hover:shadow-md transition-all">
+                <button (click)="openCreateDeviceForm()" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm hover:shadow-md transition-all">
                   <i class="fas fa-plus mr-1" aria-hidden="true"></i> Nuevo Dispositivo
                 </button>
                 <button (click)="closeDevicesModal()" class="modal-close" aria-label="Cerrar modal"><i class="fas fa-times" aria-hidden="true"></i></button>
@@ -1239,8 +1239,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
               </div>
             </div>
             <div class="modal-footer flex justify-end space-x-2 p-2">
-              <button class="btn btn-secondary" (click)="closeDevicesModal()">Cancelar</button>
-              <button class="btn btn-primary" (click)="saveDevicesSelection()">Guardar</button>
+              <button class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="closeDevicesModal()">Cancelar</button>
+              <button class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="saveDevicesSelection()">Guardar</button>
             </div>
           </div>
         </div>

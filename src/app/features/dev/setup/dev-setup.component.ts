@@ -11,34 +11,37 @@ import { environment } from '../../../../environments/environment';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="container-fluid p-4">
-      <div class="row">
-        <div class="col-12">
-          <h2>🔧 Configuración de Desarrollo</h2>
-          <p class="text-muted">Herramientas para configurar roles y accesos de desarrollo</p>
+    <div class="w-full p-4">
+      <div class="grid grid-cols-12 gap-6">
+        <div class="col-span-12">
+          <h2 class="text-2xl font-bold mb-2">🔧 Configuración de Desarrollo</h2>
+          <p class="text-gray-500 mb-6">Herramientas para configurar roles y accesos de desarrollo</p>
           
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5>Estado del Sistema</h5>
+          <div class="bg-white rounded-lg shadow mb-6">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+              <h5 class="text-lg font-medium text-gray-900">Estado del Sistema</h5>
             </div>
-            <div class="card-body">
-              <div class="row">
-                <div class="col-md-6">
-                  <p><strong>Modo:</strong> 
-                    <span class="badge" [ngClass]="!isProduction ? 'bg-warning' : 'bg-success'">
+            <div class="p-6">
+              <div class="grid grid-cols-12 gap-6">
+                <div class="col-span-12 md:col-span-6">
+                  <p class="mb-2"><strong>Modo:</strong> 
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ml-2" 
+                      [ngClass]="!isProduction ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'">
                       {{ !isProduction ? 'Desarrollo' : 'Producción' }}
                     </span>
                   </p>
-                  <p><strong>Usuario Dev:</strong> 
-                    <span class="badge" [ngClass]="isDev ? 'bg-success' : 'bg-secondary'">
+                  <p class="mb-2"><strong>Usuario Dev:</strong> 
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ml-2" 
+                      [ngClass]="isDev ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
                       {{ isDev ? 'Activo' : 'No activo' }}
                     </span>
                   </p>
                   <p><strong>Role actual:</strong> {{ currentRole }}</p>
                 </div>
-                <div class="col-md-6">
+                <div class="col-span-12 md:col-span-6">
                   <p><strong>Puede ver herramientas dev:</strong> 
-                    <span class="badge" [ngClass]="canSeeDevTools ? 'bg-success' : 'bg-danger'">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ml-2" 
+                      [ngClass]="canSeeDevTools ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
                       {{ canSeeDevTools ? 'Sí' : 'No' }}
                     </span>
                   </p>
@@ -47,20 +50,20 @@ import { environment } from '../../../../environments/environment';
             </div>
           </div>
 
-          <div class="card mb-4">
-            <div class="card-header">
-              <h5>Configurar Base de Datos</h5>
+          <div class="bg-white rounded-lg shadow mb-6">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+              <h5 class="text-lg font-medium text-gray-900">Configurar Base de Datos</h5>
             </div>
-            <div class="card-body">
+            <div class="p-6">
               <button 
-                class="btn btn-primary me-2"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mr-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 (click)="setupDatabase()"
                 [disabled]="isSettingUp">
                 {{ isSettingUp ? 'Configurando...' : '⚙️ Crear Sistema de Roles' }}
               </button>
               
               <button 
-                class="btn btn-success me-2"
+                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mr-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 (click)="testDevUser()"
                 [disabled]="isSettingUp">
                 🧪 Probar Usuario Dev
@@ -68,20 +71,20 @@ import { environment } from '../../../../environments/environment';
             </div>
           </div>
 
-          <div class="card" *ngIf="messages.length > 0">
-            <div class="card-header">
-              <h5>Log de Operaciones</h5>
+          <div class="bg-white rounded-lg shadow" *ngIf="messages.length > 0">
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+              <h5 class="text-lg font-medium text-gray-900">Log de Operaciones</h5>
             </div>
-            <div class="card-body">
+            <div class="p-6">
               <div 
                 *ngFor="let message of messages" 
-                class="alert"
+                class="rounded-md p-4 mb-2 border-l-4"
                 [ngClass]="{
-                  'alert-success': message.type === 'success',
-                  'alert-danger': message.type === 'error',
-                  'alert-info': message.type === 'info'
+                  'bg-green-50 text-green-700 border-green-400': message.type === 'success',
+                  'bg-red-50 text-red-700 border-red-400': message.type === 'error',
+                  'bg-blue-50 text-blue-700 border-blue-400': message.type === 'info'
                 }">
-                <small class="text-muted">{{ message.timestamp | date:'short' }}</small><br>
+                <small class="text-gray-500 block mb-1">{{ message.timestamp | date:'short' }}</small>
                 {{ message.text }}
               </div>
             </div>
@@ -90,17 +93,7 @@ import { environment } from '../../../../environments/environment';
       </div>
     </div>
   `,
-  styles: [`
-    .card {
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .badge {
-      font-size: 0.8em;
-    }
-    .alert {
-      margin-bottom: 0.5rem;
-    }
-  `]
+  styles: []
 })
 export class DevSetupComponent implements OnInit {
   isProduction = environment.production;

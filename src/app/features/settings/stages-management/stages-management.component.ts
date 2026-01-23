@@ -13,34 +13,34 @@ import { ToastService } from '../../../services/toast.service';
   imports: [CommonModule, FormsModule, RouterLink, DragDropModule, TextContrastPipe],
   template: `
     <!-- Header -->
-    <div class="header">
-      <div class="header-top">
-        <button class="btn-back" routerLink="/configuracion" title="Volver a Configuración">
+    <div class="mb-6">
+      <div class="flex justify-between items-center mb-4">
+        <button class="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" routerLink="/configuracion" title="Volver a Configuración">
           <i class="fas fa-arrow-left"></i> Volver
         </button>
       </div>
     </div>
-    <div class="two-columns-layout">
-      <div class="section">
-        <div class="section-header">
-          <h3><i class="fas fa-globe"></i> Estados del Sistema</h3>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2"><i class="fas fa-globe"></i> Estados del Sistema</h3>
           <button
-            class="btn btn-outline"
+            class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             (click)="hideAllSystemStages()"
             [disabled]="hidingAllGenericStages"
             title="Ocultar todos los estados del sistema"
             [style.color]="newStage.color | textContrast"
             [style.background-color]="(newStage.color | textContrast) === '#000' ? '#fff' : '#000'"
           >
-            <i class="fas fa-eye-slash"></i> Ocultar Todos
+            <i class="fas fa-eye-slash mr-1"></i> Ocultar Todos
           </button>
         </div>
-        <p class="info-text">
+        <p class="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 mb-4 flex items-center gap-2">
           <i class="fas fa-info-circle"></i>
-          Estados predeterminados. Puedes reordenarlos arrastrando (solo los visibles; los ocultos quedan al final) y ocultarlos si no los necesitas.
+          Estados predeterminados. Puedes reordenarlos arrastrando (solo los visibles; los ocultos quedan al final) y ocultarlos si no las necesitas.
         </p>
         <div 
-          class="stages-grid" 
+          class="grid grid-cols-1 md:grid-cols-2 gap-4 relative" 
           cdkDropList 
           [cdkDropListData]="visibleGenericStages" 
           (cdkDropListDropped)="onDropGeneric($event)"
@@ -49,32 +49,32 @@ import { ToastService } from '../../../services/toast.service';
         >
           @for (stage of visibleGenericStages; track stage.id) {
             <div
-              class="stage-card generic"
+              class="flex items-center gap-3 p-4 rounded-lg border border-gray-200 transition-all hover:shadow-md"
               cdkDrag
               [style.background-color]="stage.color"
               [style.color]="stage.color | textContrast"
             >
-              <div class="drag-handle" cdkDragHandle [style.color]="stage.color | textContrast">
+              <div class="cursor-grab p-2 flex items-center justify-center transition-colors hover:text-blue-600 active:cursor-grabbing" cdkDragHandle [style.color]="stage.color | textContrast">
                 <i class="fas fa-grip-vertical"></i>
               </div>
 
               <ng-template cdkDragPreview>
-                <div class="stage-card generic drag-preview" [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
-                  <div class="drag-handle" [style.color]="stage.color | textContrast">
+                <div class="flex items-center gap-3 p-4 rounded-lg border border-gray-200 transition-all hover:shadow-md drag-preview" [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
+                  <div class="cursor-grab p-2 flex items-center justify-center transition-colors hover:text-blue-600 active:cursor-grabbing" [style.color]="stage.color | textContrast">
                     <i class="fas fa-grip-vertical"></i>
                   </div>
-                  <div class="card-body">
-                    <div class="title-row">
-                      <div class="name">{{ stage.name }}</div>
-                      <div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-start mb-2">
+                      <div class="font-semibold text-gray-900">{{ stage.name }}</div>
+                      <div class="flex gap-1">
                         <span
-                          class="badge"
+                          class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                           [style.color]="stage.color | textContrast"
                           [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
                           Pos: {{ stage.position }}
                         </span>
                         <span
-                          class="badge badge-system"
+                          class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                           [style.color]="stage.color | textContrast"
                           [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
                           Sistema
@@ -86,14 +86,14 @@ import { ToastService } from '../../../services/toast.service';
               </ng-template>
 
               <ng-template cdkDragPlaceholder>
-                <div class="stage-card generic placeholder"></div>
+                <div class="flex items-center gap-3 p-4 rounded-lg border border-gray-200 transition-all hover:shadow-md placeholder bg-transparent border-dashed border-2 border-blue-500 opacity-0 min-h-[84px] scale-95 transition-all duration-200"></div>
               </ng-template>
 
-              <div class="stage-info">
-                <div class="stage-name">{{ stage.name }}</div>
-                <div class="stage-meta">
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold truncate">{{ stage.name }}</div>
+                <div class="flex gap-1 mt-1">
                   <span
-                    class="badge"
+                    class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
                     [style.color]="stage.color | textContrast"
                     [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
                     Posición: {{ stage.position }}
@@ -101,9 +101,9 @@ import { ToastService } from '../../../services/toast.service';
                 </div>
               </div>
 
-              <div class="stage-actions">
+              <div class="ml-auto flex gap-2">
                 <button
-                  class="btn-icon btn-secondary"
+                  class="w-9 h-9 flex items-center justify-center rounded-md transition-colors"
                   (click)="hideStage(stage)"
                   [disabled]="!!togglingVisibilityById[stage.id]"
                   title="Ocultar este estado"
@@ -119,9 +119,9 @@ import { ToastService } from '../../../services/toast.service';
           }
         </div>
         @if (hiddenGenericStages.length > 0) {
-          <div class="hidden-divider">
+          <div class="my-6 border-t border-gray-100 pt-4 flex items-center gap-2 text-sm font-medium text-gray-500">
             <button
-              class="btn btn-outline btn-sm"
+              class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               (click)="toggleHiddenGenerics()"
               [attr.aria-expanded]="!hiddenGenericsCollapsed"
               (mouseenter)="setBtnHover('hidden-toggle', true)"
@@ -129,28 +129,28 @@ import { ToastService } from '../../../services/toast.service';
               [style.color]="btnHoverById['hidden-toggle'] ? ((((newStage.color || '#6366f1') | textContrast) === '#000') ? '#fff' : '#000') : ((newStage.color || '#6366f1') | textContrast)"
               [style.background-color]="btnHoverById['hidden-toggle'] ? ((((newStage.color || '#6366f1') | textContrast) === '#000') ? '#000' : '#fff') : ((((newStage.color || '#6366f1') | textContrast) === '#000') ? 'transparent' : '#000')"
             >
-              <i class="fas" [class.fa-chevron-down]="hiddenGenericsCollapsed" [class.fa-chevron-up]="!hiddenGenericsCollapsed"></i>
+              <i class="fas mr-1" [class.fa-chevron-down]="hiddenGenericsCollapsed" [class.fa-chevron-up]="!hiddenGenericsCollapsed"></i>
               Estados ocultos ({{ hiddenGenericStages.length }})
             </button>
           </div>
           @if (!hiddenGenericsCollapsed) {
-            <div class="stages-grid hidden-list">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden-list">
               @for (stage of hiddenGenericStages; track stage.id) {
-                  <div class="stage-card generic hidden-stage" [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
-                    <div class="stage-info">
-                      <div class="stage-name">{{ stage.name }}</div>
-                      <div class="stage-meta">
+                  <div class="flex items-center gap-3 p-4 rounded-lg border border-gray-200 transition-all hover:shadow-md opacity-60 bg-gray-50" [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
+                    <div class="flex-1 min-w-0">
+                      <div class="font-semibold truncate">{{ stage.name }}</div>
+                      <div class="flex gap-1 mt-1">
                         <span
-                          class="badge"
+                          class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
                           [style.color]="stage.color | textContrast"
                           [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
                           Posición: {{ stage.position }}
                         </span>
                       </div>
                     </div>
-                    <div class="stage-actions">
+                    <div class="ml-auto flex gap-2">
                       <button
-                        class="btn-icon btn-secondary"
+                        class="w-9 h-9 flex items-center justify-center rounded-md transition-colors"
                         (click)="unhideStage(stage)"
                         [disabled]="!!togglingVisibilityById[stage.id]"
                         title="Mostrar este estado"
@@ -170,90 +170,86 @@ import { ToastService } from '../../../services/toast.service';
       </div>
 
         <!-- Company-Specific Stages Section -->
-
-        <!-- Company-Specific Stages Section -->
-        <div class="section">
-          <div class="section-header">
-            <h3><i class="fas fa-building"></i> Estados Personalizados</h3>
-            <button class="btn btn-primary" (click)="showCreateForm = !showCreateForm">
-              <i class="fas" [class.fa-plus]="!showCreateForm" [class.fa-times]="showCreateForm"></i>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2"><i class="fas fa-building"></i> Estados Personalizados</h3>
+            <button class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="showCreateForm = !showCreateForm">
+              <i class="fas mr-1" [class.fa-plus]="!showCreateForm" [class.fa-times]="showCreateForm"></i>
               {{ showCreateForm ? 'Cancelar' : 'Nuevo Estado' }}
             </button>
           </div>
 
           <!-- Create Form -->
           @if (showCreateForm) {
-            <div class="form-card">
-              <h4>Crear Nuevo Estado</h4>
-              <form (ngSubmit)="createStage()" class="stage-form">
-                <div class="form-group">
-                  <label for="newName">Nombre del Estado *</label>
+            <div class="border border-gray-200 rounded-lg p-4 mb-4 bg-white shadow-sm">
+              <h4 class="text-gray-900 font-medium mb-4">Crear Nuevo Estado</h4>
+              <form (ngSubmit)="createStage()" class="space-y-4">
+                <div class="flex flex-col gap-1">
+                  <label for="newName" class="text-sm font-medium text-gray-700">Nombre del Estado *</label>
                   <input
                     type="text"
                     id="newName"
                     [(ngModel)]="newStage.name"
                     name="newName"
-                    class="form-control"
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     placeholder="Ej: En Revisión"
                     required
                   />
                 </div>
 
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="newPosition">Posición *</label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="flex flex-col gap-1">
+                    <label for="newPosition" class="text-sm font-medium text-gray-700">Posición *</label>
                     <input
                       type="number"
                       id="newPosition"
                       [(ngModel)]="newStage.position"
                       name="newPosition"
-                      class="form-control"
+                      class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       min="0"
                       required
                     />
-                    <small class="form-hint">Orden en que aparece en la lista</small>
+                    <small class="text-xs text-gray-500">Orden en que aparece en la lista</small>
                   </div>
 
-                  <div class="form-group">
-                    <label for="newColor">Color *</label>
+                  <div class="flex flex-col gap-1">
+                    <label for="newColor" class="text-sm font-medium text-gray-700">Color *</label>
                     <input
                       type="color"
                       id="newColor"
                       [(ngModel)]="newStage.color"
                       name="newColor"
-                      class="form-control color-input"
+                      class="block w-full h-10 p-1 border border-gray-300 rounded-md cursor-pointer"
                       required
                     />
                   </div>
                 </div>
 
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="newWorkflowCategory">Categoría de flujo *</label>
-                    <select
-                      id="newWorkflowCategory"
-                      [(ngModel)]="newStage.workflow_category"
-                      name="newWorkflowCategory"
-                      class="form-control"
-                      required
-                    >
-                      <option value="waiting">Espera (Abierto)</option>
-                      <option value="analysis">Análisis (En Progreso)</option>
-                      <option value="action">Acción (En Progreso)</option>
-                      <option value="final">Final (Completado)</option>
-                      <option value="cancel">Cancelación (Completado)</option>
-                    </select>
-                    <small class="form-hint">Define cómo cuenta este estado en las estadísticas</small>
-                  </div>
+                <div class="flex flex-col gap-1">
+                  <label for="newWorkflowCategory" class="text-sm font-medium text-gray-700">Categoría de flujo *</label>
+                  <select
+                    id="newWorkflowCategory"
+                    [(ngModel)]="newStage.workflow_category"
+                    name="newWorkflowCategory"
+                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    required
+                  >
+                    <option value="waiting">Espera (Abierto)</option>
+                    <option value="analysis">Análisis (En Progreso)</option>
+                    <option value="action">Acción (En Progreso)</option>
+                    <option value="final">Final (Completado)</option>
+                    <option value="cancel">Cancelación (Completado)</option>
+                  </select>
+                  <small class="text-xs text-gray-500">Define cómo cuenta este estado en las estadísticas</small>
                 </div>
 
-                <div class="form-actions">
-                  <button type="submit" class="btn btn-success" [disabled]="creating">
-                    <i class="fas" [class.fa-spinner]="creating" [class.fa-spin]="creating" [class.fa-save]="!creating"></i>
-                    {{ creating ? 'Guardando...' : 'Guardar Estado' }}
-                  </button>
-                  <button type="button" class="btn btn-secondary" (click)="cancelCreate()">
+                <div class="flex gap-2 justify-end pt-2">
+                  <button type="button" class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="cancelCreate()">
                     Cancelar
+                  </button>
+                  <button type="submit" class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" [disabled]="creating">
+                    <i class="fas mr-1" [class.fa-spinner]="creating" [class.fa-spin]="creating" [class.fa-save]="!creating"></i>
+                    {{ creating ? 'Guardando...' : 'Guardar Estado' }}
                   </button>
                 </div>
               </form>
@@ -262,36 +258,36 @@ import { ToastService } from '../../../services/toast.service';
 
           <!-- Company Stages List -->
           @if (companyStages.length === 0) {
-            <div class="empty-state">
-              <i class="fas fa-inbox fa-3x"></i>
+            <div class="text-center py-12 text-gray-400">
+              <i class="fas fa-inbox fa-3x mb-2"></i>
               <p>No tienes estados personalizados aún</p>
-              <p class="small">Crea estados específicos para las necesidades de tu empresa</p>
+              <p class="text-xs">Crea estados específicos para las necesidades de tu empresa</p>
             </div>
           } @else {
-            <div class="stages-grid" cdkDropList (cdkDropListDropped)="onDropCompany($event)">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative" cdkDropList (cdkDropListDropped)="onDropCompany($event)">
               @for (stage of companyStages; track stage.id) {
-                  <div class="stage-card company" cdkDrag [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
-                    <div class="drag-handle" cdkDragHandle [style.color]="stage.color | textContrast">
+                  <div class="flex items-center gap-3 p-4 rounded-lg border border-gray-200 transition-all hover:shadow-md bg-white" cdkDrag [style.background-color]="stage.color" [style.color]="stage.color | textContrast">
+                    <div class="cursor-grab p-2 flex items-center justify-center transition-colors hover:text-blue-600 active:cursor-grabbing" cdkDragHandle [style.color]="stage.color | textContrast">
                         <i class="fas fa-grip-vertical"></i>
                       </div>
                   @if (editingStageId === stage.id) {
                     <!-- Edit Form -->
-                    <form (ngSubmit)="saveEdit()" class="edit-form">
-                      <div class="form-group-inline">
+                    <form (ngSubmit)="saveEdit()" class="flex flex-col gap-3 w-full">
+                      <div class="w-full">
                         <input
                           type="text"
                           [(ngModel)]="editStage.name"
                           name="editName"
-                          class="form-control"
+                          class="block w-full px-2 py-1 border border-gray-300 rounded-md text-sm text-gray-900"
                           required
                         />
                       </div>
-                      <div class="form-row-inline">
+                      <div class="flex gap-2">
                         <input
                           type="number"
                           [(ngModel)]="editStage.position"
                           name="editPosition"
-                          class="form-control-small"
+                          class="block w-16 px-2 py-1 border border-gray-300 rounded-md text-sm text-gray-900"
                           min="0"
                           required
                         />
@@ -299,13 +295,13 @@ import { ToastService } from '../../../services/toast.service';
                           type="color"
                           [(ngModel)]="editStage.color"
                           name="editColor"
-                          class="form-control-small"
+                          class="block w-10 h-8 p-1 border border-gray-300 rounded-md text-gray-900"
                           required
                         />
                         <select
                           [(ngModel)]="editStage.workflow_category"
                           name="editWorkflowCategory"
-                          class="form-control-small"
+                          class="block flex-1 px-2 py-1 border border-gray-300 rounded-md text-xs text-gray-900"
                           required
                         >
                           <option value="waiting">Espera</option>
@@ -315,10 +311,10 @@ import { ToastService } from '../../../services/toast.service';
                           <option value="cancel">Cancelación</option>
                         </select>
                       </div>
-                      <div class="edit-actions">
+                      <div class="flex gap-2 justify-end">
                         <button
                           type="submit"
-                          class="btn-icon btn-success"
+                          class="p-2 transition-colors rounded-full"
                           title="Guardar"
                           (mouseenter)="setBtnHover(stage.id + '-save', true)"
                           (mouseleave)="setBtnHover(stage.id + '-save', false)"
@@ -328,7 +324,7 @@ import { ToastService } from '../../../services/toast.service';
                         </button>
                         <button
                           type="button"
-                          class="btn-icon btn-secondary"
+                          class="p-2 transition-colors rounded-full"
                           (click)="cancelEdit()"
                           title="Cancelar"
                           (mouseenter)="setBtnHover(stage.id + '-cancel', true)"
@@ -341,20 +337,20 @@ import { ToastService } from '../../../services/toast.service';
                     </form>
                   } @else {
                     <!-- View Mode -->
-                    <div class="stage-info">
-                      <div class="stage-name">{{ stage.name }}</div>
-                      <div class="stage-meta">
+                    <div class="flex-1 min-w-0">
+                      <div class="font-semibold truncate">{{ stage.name }}</div>
+                      <div class="flex gap-1 mt-1">
                         <span
-                          class="badge"
+                          class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium"
                           [style.color]="stage.color | textContrast"
                           [style.background-color]="(stage.color | textContrast) === '#000' ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)'">
                           Posición: {{ stage.position }}
                         </span>
                       </div>
                     </div>
-                    <div class="stage-actions">
+                    <div class="ml-auto flex gap-1">
                       <button
-                        class="btn-icon btn-primary"
+                        class="p-2 transition-colors rounded-full"
                         (click)="startEdit(stage)"
                         title="Editar"
                         (mouseenter)="setBtnHover(stage.id + '-edit', true)"
@@ -365,7 +361,7 @@ import { ToastService } from '../../../services/toast.service';
                         <i class="fas fa-edit"></i>
                       </button>
                       <button
-                        class="btn-icon btn-danger"
+                        class="p-2 transition-colors rounded-full"
                         (click)="deleteStage(stage.id)"
                         title="Eliminar"
                         (mouseenter)="setBtnHover(stage.id + '-delete', true)"
@@ -381,27 +377,25 @@ import { ToastService } from '../../../services/toast.service';
               }
             </div>
             @if (showingReassignPicker && pendingDeleteStageId) {
-              <div class="form-card" style="margin-top:1rem">
-                <h4>Reasignar tickets antes de eliminar</h4>
-                <p>Este estado tiene tickets asociados. Selecciona a qué estado moverlos para poder eliminarlo.</p>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="reassignTarget">Mover tickets a</label>
-                    <select id="reassignTarget" class="form-control" [(ngModel)]="reassignTargetId" name="reassignTarget">
-                      <option [ngValue]="null" disabled>Selecciona un estado</option>
-                      @for (s of getReassignOptions(pendingDeleteStageId); track s.id) {
-                        <option [ngValue]="s.id">{{ s.name }}</option>
-                      }
-                    </select>
-                    <small class="form-hint">No puedes reasignar a un estado genérico oculto</small>
-                  </div>
+              <div class="border border-gray-200 rounded-lg p-4 mt-4 bg-white shadow-sm">
+                <h4 class="text-gray-900 font-medium mb-2">Reasignar tickets antes de eliminar</h4>
+                <p class="text-sm text-gray-600 mb-4">Este estado tiene tickets asociados. Selecciona a qué estado moverlos para poder eliminarlo.</p>
+                <div class="flex flex-col gap-1 mb-4">
+                  <label for="reassignTarget" class="text-sm font-medium text-gray-700">Mover tickets a</label>
+                  <select id="reassignTarget" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" [(ngModel)]="reassignTargetId" name="reassignTarget">
+                    <option [ngValue]="null" disabled>Selecciona un estado</option>
+                    @for (s of getReassignOptions(pendingDeleteStageId); track s.id) {
+                      <option [ngValue]="s.id">{{ s.name }}</option>
+                    }
+                  </select>
+                  <small class="text-xs text-gray-500">No puedes reasignar a un estado genérico oculto</small>
                 </div>
-                <div class="form-actions">
-                  <button class="btn btn-success" [disabled]="!reassignTargetId" (click)="confirmReassignAndDelete()">
-                    <i class="fas fa-check"></i> Confirmar y eliminar
-                  </button>
-                  <button class="btn btn-secondary" (click)="cancelReassign()">
+                <div class="flex gap-2 justify-end">
+                  <button class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" (click)="cancelReassign()">
                     Cancelar
+                  </button>
+                  <button class="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" [disabled]="!reassignTargetId" (click)="confirmReassignAndDelete()">
+                    <i class="fas fa-check mr-1"></i> Confirmar y eliminar
                   </button>
                 </div>
               </div>
@@ -411,607 +405,19 @@ import { ToastService } from '../../../services/toast.service';
       </div>
 
       <!-- Info Box -->
-      <div class="info-box">
-        <h4><i class="fas fa-lightbulb"></i> Información Importante</h4>
-        <ul>
-          <li><strong>Estados del Sistema:</strong> Son comunes para todas las empresas y no se pueden modificar ni eliminar, pero puedes ocultarlos si no los necesitas.</li>
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <h4 class="text-blue-800 font-bold mb-4 flex items-center gap-2"><i class="fas fa-lightbulb"></i> Información Importante</h4>
+        <ul class="list-disc pl-5 space-y-2 text-blue-900">
+          <li><strong>Estados del Sistema:</strong> Son comunes para todas las empresas y no se pueden modificar ni eliminar, pero puedes ocultarlos si no las necesitas.</li>
           <li><strong>Ocultar Estados:</strong> Los estados del sistema que ocultes no aparecerán en tus listas y formularios, pero seguirán disponibles para otras empresas.</li>
           <li><strong>Estados Personalizados:</strong> Puedes crear estados específicos para tu empresa que complementen los del sistema.</li>
           <li><strong>Posición:</strong> Determina el orden en que aparecen los estados en las listas y tableros.</li>
           <li><strong>Color:</strong> Ayuda a identificar visualmente cada estado en el sistema.</li>
         </ul>
       </div>
+
   `,
-  styles: [`
-    .header {
-      margin-bottom: 2rem;
-    }
-
-    .header-top {
-      margin-bottom: 1rem;
-    }
-
-    .btn-back {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 1rem;
-      background: #f3f4f6;
-      border: 1px solid #d1d5db;
-      border-radius: 0.375rem;
-      color: #374151;
-      font-size: 0.875rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-decoration: none;
-    }
-
-    .btn-back:hover {
-      background: #e5e7eb;
-      border-color: #9ca3af;
-      color: #1f2937;
-    }
-
-    .btn-back i {
-      font-size: 0.875rem;
-    }
-
-    .header h2 {
-      color: #1f2937;
-      margin-bottom: 0.5rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .subtitle {
-      color: #6b7280;
-      margin: 0;
-    }
-
-    .alert {
-      padding: 1rem;
-      border-radius: 0.5rem;
-      margin-bottom: 1.5rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .alert-success {
-      background-color: #d1fae5;
-      border: 1px solid #10b981;
-      color: #065f46;
-    }
-
-    .alert-danger {
-      background-color: #fee2e2;
-      border: 1px solid #ef4444;
-      color: #991b1b;
-    }
-
-    .loading-container {
-      text-align: center;
-      padding: 4rem 2rem;
-      color: #6b7280;
-    }
-
-    /* Two Column Layout */
-    .two-columns-layout {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2rem;
-      margin-bottom: 2rem;
-    }
-
-    @media (max-width: 1024px) {
-      .two-columns-layout {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .section {
-      background: white;
-      border-radius: 0.75rem;
-      padding: 1.5rem;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .section h3 {
-      color: #1f2937;
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 1.125rem;
-    }
-
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-    }
-
-    .section-header h3 {
-      margin: 0;
-    }
-
-    .info-text {
-      color: #4b5563;
-      padding: 0.75rem;
-      background: #f3f4f6;
-      border-radius: 0.5rem;
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.875rem;
-    }
-
-    .stages-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-      position: relative;
-    }
-
-    .stages-grid.cdk-drop-list-dragging {
-      position: relative;
-    }
-
-    @media (max-width: 768px) {
-      .stages-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .stage-card {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1rem;
-      border-radius: 0.5rem;
-      border: 2px solid #e5e7eb;
-      transition: all 0.2s;
-      background: white;
-    }
-
-    .stage-card:hover {
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Drag and Drop styles */
-    .drag-handle {
-      cursor: grab;
-      color: #9ca3af;
-      padding: 0.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: color 0.2s;
-    }
-
-    .drag-handle:hover {
-      color: #6366f1;
-    }
-
-    .drag-handle:active {
-      cursor: grabbing;
-    }
-
-    .cdk-drag-preview {
-      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.3), 0 2px 8px rgba(0, 0, 0, 0.15);
-      opacity: 0.92;
-      border-radius: 0.5rem;
-      transform: rotate(2deg) scale(1.05);
-      border: 2px solid #6366f1;
-    }
-
-    .cdk-drag-animating {
-      transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    .stages-grid.cdk-drop-list-dragging .stage-card:not(.cdk-drag-placeholder) {
-      transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    .cdk-drag-placeholder,
-    .stage-card.placeholder {
-      opacity: 0;
-      background: transparent;
-      border: 2px dashed #6366f1;
-      border-radius: 0.5rem;
-      min-height: 84px;
-      transform: scale(0.95);
-      transition: all 200ms ease;
-    }
-
-    .drag-preview {
-      will-change: transform;
-    }
-
-    .stage-card.hidden-stage {
-      opacity: 0.6;
-      border-color: #d1d5db;
-      background-color: #f9fafb;
-      cursor: not-allowed;
-    }
-
-    .stage-card.hidden-stage:hover {
-      opacity: 0.8;
-    }
-
-    .stage-card.generic {
-      background: #f9fafb;
-      cursor: move;
-      position: relative;
-      transition: transform 300ms cubic-bezier(0.34, 1.56, 0.64, 1), 
-                  box-shadow 200ms ease, 
-                  border-color 200ms ease,
-                  background 200ms ease;
-      will-change: transform;
-    }
-
-    .stage-card.generic:active {
-      cursor: grabbing;
-    }
-
-    .stage-card.generic.cdk-drag-dragging {
-      cursor: grabbing;
-    }
-
-    .hidden-list .stage-card {
-      cursor: default;
-    }
-
-    .hidden-list {
-      /* Hidden stages should appear in two columns on desktop for easier scanning */
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-
-    .hidden-divider {
-      margin: 1.5rem 0 0.75rem;
-      color: #6b7280;
-      font-size: 0.875rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-weight: 500;
-    }
-
-    .stage-card.company {
-      background: white;
-      cursor: move; /* draggable */
-    }
-
-
-
-    .stage-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .stage-name {
-      font-weight: 600;
-      color: inherit;
-      margin-bottom: 0.25rem;
-    }
-
-    .stage-meta {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 0.25rem 0.5rem;
-      border-radius: 0.25rem;
-      font-size: 0.75rem;
-      font-weight: 500;
-      background: #e5e7eb;
-      color: #4b5563;
-    }
-
-    .badge-system {
-      background: #dbeafe;
-      color: #1e40af;
-    }
-
-    .badge-hidden {
-      background: #fee2e2;
-      color: #991b1b;
-      margin-left: 0.5rem;
-    }
-
-    .stage-actions {
-      margin-left: auto;
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .badge-company {
-      background: #fef3c7;
-      color: #92400e;
-    }
-
-    .stage-actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .form-card {
-      background: #f9fafb;
-      border-radius: 0.5rem;
-      padding: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .form-card h4 {
-      color: #1f2937;
-      margin-bottom: 1rem;
-    }
-
-    .stage-form {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .form-group label {
-      font-weight: 500;
-      color: #374151;
-      margin-bottom: 0.5rem;
-    }
-
-    .form-control {
-      padding: 0.5rem;
-      border: 1px solid #d1d5db;
-      border-radius: 0.375rem;
-      font-size: 1rem;
-    }
-
-    .form-control:focus {
-      outline: none;
-      border-color: #6366f1;
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-
-    .color-input {
-      height: 45px;
-      cursor: pointer;
-    }
-
-    .form-hint {
-      font-size: 0.875rem;
-      color: #6b7280;
-      margin-top: 0.25rem;
-    }
-
-    .form-actions {
-      display: flex;
-      gap: 0.75rem;
-      margin-top: 0.5rem;
-    }
-
-    .btn {
-      padding: 0.625rem 1.25rem;
-      border: none;
-      border-radius: 0.375rem;
-      font-weight: 500;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      transition: all 0.2s;
-    }
-
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .btn-primary {
-      background: #6366f1;
-      color: white;
-    }
-
-    .btn-primary:hover:not(:disabled) {
-      background: #4f46e5;
-    }
-
-    .btn-ocultar {
-      background: transparent;
-      color: white;
-      border: 1px solid transparent;
-    }
-
-    .btn-ocultar:hover:not(:disabled) {
-      border: 1px solid white;
-      color: black;
-      background: white;
-    }
-
-    .btn-secondary {
-      background: #e5e7eb;
-      color: #374151;
-    }
-
-    .btn-secondary:hover {
-      background: #d1d5db;
-    }
-
-    .btn-danger {
-      background: #ef4444;
-      color: white;
-    }
-
-    .btn-danger:hover {
-      background: #dc2626;
-    }
-
-    .btn-sm {
-      padding: 0.375rem 0.75rem;
-      font-size: 0.875rem;
-    }
-
-    .btn-outline {
-      background: transparent;
-      border: 1px solid #d1d5db;
-      color: white;
-    }
-
-    .btn-outline:hover:not(:disabled) {
-      background: #f3f4f6;
-      border-color: #9ca3af;
-    }
-
-    .btn-icon {
-      width: 36px;
-      height: 36px;
-      padding: 0;
-      border: none;
-      border-radius: 0.375rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-    }
-
-    .btn-icon.btn-primary {
-      background: #6366f1;
-      color: white;
-    }
-
-    .btn-icon.btn-primary:hover {
-      background: #4f46e5;
-    }
-
-    .btn-icon.btn-danger {
-      background: #ef4444;
-      color: white;
-    }
-
-    .btn-icon.btn-danger:hover {
-      background: #dc2626;
-    }
-
-    .btn-icon.btn-success {
-      background: #10b981;
-      color: white;
-    }
-
-    .btn-icon.btn-secondary {
-      background: #e5e7eb;
-      color: #374151;
-    }
-
-    .edit-form {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      width: 100%;
-    }
-
-    .form-group-inline {
-      width: 100%;
-    }
-
-    .form-row-inline {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .form-control-small {
-      padding: 0.375rem;
-      border: 1px solid #d1d5db;
-      border-radius: 0.375rem;
-      font-size: 0.875rem;
-    }
-
-    .edit-actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 3rem 1rem;
-      color: #9ca3af;
-    }
-
-    .empty-state i {
-      color: #d1d5db;
-      margin-bottom: 1rem;
-    }
-
-    .empty-state p {
-      margin: 0.5rem 0;
-    }
-
-    .empty-state .small {
-      font-size: 0.875rem;
-    }
-
-    .info-box {
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
-      border-radius: 0.5rem;
-      padding: 1.5rem;
-    }
-
-    .info-box h4 {
-      color: #1e40af;
-      margin-bottom: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .info-box ul {
-      margin: 0;
-      padding-left: 1.5rem;
-      color: #1e3a8a;
-    }
-
-    .info-box li {
-      margin-bottom: 0.5rem;
-    }
-
-    @media (max-width: 768px) {
-      .stages-management-container {
-        padding: 1rem;
-      }
-
-      .stages-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .form-row {
-        grid-template-columns: 1fr;
-      }
-
-      .section-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-      }
-    }
-  `]
+  styles: []
 })
 export class StagesManagementComponent implements OnInit {
   private stagesService = inject(SupabaseTicketStagesService);
@@ -1464,4 +870,3 @@ export class StagesManagementComponent implements OnInit {
     await Promise.all(updates);
   }
 }
-

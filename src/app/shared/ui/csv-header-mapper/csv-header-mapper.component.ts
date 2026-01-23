@@ -117,30 +117,30 @@ export interface CsvMappingResult {
             <div class="auto-mapping-section">
               <button 
                 (click)="autoMapHeaders()" 
-                class="btn btn-secondary"
+                class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 type="button"
               >
-                <i class="fas fa-magic"></i>
+                <i class="fas fa-magic mr-2"></i>
                 Mapeo Automático
               </button>
-              <span class="auto-mapping-help">
+              <span class="auto-mapping-help ml-3 text-xs text-gray-500">
                 Intenta mapear automáticamente basándose en nombres comunes
               </span>
             </div>
           </div>
         </div>
 
-        <div class="modal-actions">
-          <button (click)="cancel()" class="btn btn-secondary">
-            <i class="fas fa-times"></i>
+        <div class="modal-actions flex justify-end gap-3 p-4 border-t border-gray-200 dark:border-gray-700">
+          <button (click)="cancel()" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <i class="fas fa-times mr-2"></i>
             Cancelar
           </button>
           <button 
             (click)="confirmMapping()" 
-            class="btn btn-primary"
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             [disabled]="!isValidMapping()"
           >
-            <i class="fas fa-check"></i>
+            <i class="fas fa-check mr-2"></i>
             Confirmar e Importar
           </button>
         </div>

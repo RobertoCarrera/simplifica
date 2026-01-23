@@ -91,7 +91,7 @@ import { TourStep } from '../../../features/interfaces/onboarding.interface';
                 @if (currentStep()!.showPrev && !isFirstStep()) {
                   <button
                     (click)="previousStep()"
-                    class="px-4 py-2 rounded-lg font-medium transition-colors duration-200 tour-button-secondary"
+                    class="px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                   >
                     <i class="bi bi-arrow-left mr-2"></i>
                     Anterior
@@ -103,7 +103,7 @@ import { TourStep } from '../../../features/interfaces/onboarding.interface';
                 @if (currentStep()!.showSkip && !isLastStep()) {
                   <button
                     (click)="skipTour()"
-                    class="px-4 py-2 font-medium transition-colors duration-200 tour-button-secondary"
+                    class="px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
                   >
                     Saltar
                   </button>
@@ -112,7 +112,7 @@ import { TourStep } from '../../../features/interfaces/onboarding.interface';
                 @if (currentStep()!.showNext) {
                   <button
                     (click)="nextStep()"
-                    class="px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl tour-button-primary"
+                    class="px-6 py-2 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl bg-blue-600 text-white hover:bg-blue-700"
                   >
                     @if (isLastStep()) {
                       <i class="bi bi-check-circle mr-2"></i>
@@ -168,24 +168,6 @@ import { TourStep } from '../../../features/interfaces/onboarding.interface';
         opacity: 1;
         transform: translateY(0) scale(1);
       }
-    }
-
-    /* Asegurar que los botones sean visibles */
-    .tour-button-primary {
-      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
-      color: white !important;
-      border: none !important;
-    }
-
-    .tour-button-secondary {
-      background: white !important;
-      color: #374151 !important;
-      border: 1px solid #d1d5db !important;
-    }
-
-    .tour-button-secondary:hover {
-      background: #f9fafb !important;
-      color: #111827 !important;
     }
   `]
 })
