@@ -11,7 +11,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOW_ALL_ORIGINS = Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
-const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "default-dev-key-change-in-prod";
+const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY");
+
+if (!ENCRYPTION_KEY) {
+  console.error("Missing ENCRYPTION_KEY environment variable");
+}
 
 function getCorsHeaders(origin: string | null): HeadersInit {
   const headers: HeadersInit = {
@@ -38,6 +42,10 @@ async function decrypt(encryptedBase64: string): Promise<{ success: boolean; dat
       return { success: false, data: "", error: "No encrypted data provided" };
     }
     
+    if (!ENCRYPTION_KEY) {
+       return { success: false, data: "", error: "Server configuration error" };
+    }
+
     const encoder = new TextEncoder();
     const keyData = encoder.encode(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));
     
@@ -199,20 +207,6 @@ serve(async (req) => {
       });
     }
 
-    // Get user profile
-    const { data: me } = await supabaseAdmin
-      .from("users")
-      .select("id, company_id, role, active")
-      .eq("auth_user_id", user.id)
-      .single();
-
-    if (!me?.company_id || !me.active || !["owner", "admin"].includes(me.role)) {
-      return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
-        status: 403,
-        headers: corsHeaders,
-      });
-    }
-
     const body = await req.json();
     const { company_id, provider } = body;
 
@@ -223,8 +217,33 @@ serve(async (req) => {
       });
     }
 
-    if (company_id !== me.company_id) {
-      return new Response(JSON.stringify({ error: "Access denied" }), {
+    // AUTH CHECK: Validate via company_members instead of legacy users columns
+    // 1. Get internal user ID
+    const { data: userData, error: userDataErr } = await supabaseAdmin
+      .from("users")
+      .select("id")
+      .eq("auth_user_id", user.id)
+      .single();
+
+    if (userDataErr || !userData) {
+      return new Response(JSON.stringify({ error: "User profile not found" }), {
+        status: 401,
+        headers: corsHeaders,
+      });
+    }
+
+    // 2. Check membership
+    const { data: member, error: memberErr } = await supabaseAdmin
+      .from("company_members")
+      .select("role, status")
+      .eq("user_id", userData.id)
+      .eq("company_id", company_id)
+      .eq("status", "active")
+      .in("role", ["owner", "admin"])
+      .maybeSingle();
+
+    if (memberErr || !member) {
+      return new Response(JSON.stringify({ error: "Insufficient permissions for this company" }), {
         status: 403,
         headers: corsHeaders,
       });
