@@ -10,3 +10,7 @@
 **Vulnerability:** Text highlighting using regex replacement and `[innerHTML]` can break HTML structure or allow injection if the source text is not escaped.
 **Learning:** Angular's default sanitization protects against XSS (script execution) in `[innerHTML]`, but it does not prevent HTML injection that breaks layout or confuses the parser (e.g. `<` becoming start of tag). Even if XSS is blocked, broken HTML is a quality issue and potentially a phishing vector.
 **Prevention:** Always escape the source text (HTML entities) *before* wrapping matches in `<mark>` tags when using manual highlighting logic bound to `[innerHTML]`. Use a split-escape-wrap approach to handle regex matches correctly.
+## 2026-04-XX - Insecure Default Encryption Keys
+**Vulnerability:** Multiple Edge Functions contained a hardcoded fallback encryption key ("default-dev-key-change-in-prod") which would be used if the `ENCRYPTION_KEY` environment variable was missing.
+**Learning:** Providing "convenient" defaults for security-critical secrets creates a silent vulnerability where production environments might accidentally run with publicly known keys if configuration fails.
+**Prevention:** Never provide default values for secrets. Use explicit checks: `if (!process.env.SECRET) throw new Error("Missing SECRET")`. Fail fast and loudly on startup rather than failing insecurely.
