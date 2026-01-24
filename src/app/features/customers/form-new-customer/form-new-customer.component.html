@@ -1,341 +1,447 @@
 <div class="modal-overlay">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-        <div class="modal-header">
+    <div class="modal-content bg-white dark:bg-gray-800 shadow-xl rounded-xl w-full max-w-4xl flex flex-col max-h-[90vh]"
+        (click)="$event.stopPropagation()">
+        <!-- HEADER -->
+        <div class="modal-header flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
             <div class="modal-title-group">
-                <h2 class="modal-title">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
                     <i class="fas" [class.fa-plus]="!customer" [class.fa-edit]="customer"></i>
                     {{ customer ? 'Editar Cliente' : 'Nuevo Cliente' }}
                 </h2>
-                <p class="modal-subtitle">{{ customer ? 'Modifica los datos del cliente' : 'Introduce los datos del
-                    nuevo cliente' }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ customer ? 'Modifica los datos del cliente'
+                    : 'Introduce los datos del nuevo cliente' }}</p>
             </div>
-            <button (click)="closeForm()" class="modal-close">
-                <i class="fas fa-times"></i>
+            <button (click)="closeForm()"
+                class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors">
+                <i class="fas fa-times text-xl"></i>
             </button>
         </div>
 
-        <!-- Customer Form -->
-        <div class="modal-body">
-            <form (ngSubmit)="saveCustomer()" #customerForm="ngForm" class="customer-form">
+        <!-- TABS HEADER -->
+        <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 px-6">
+            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                <button (click)="setTab('general')"
+                    [class]="activeTab === 'general' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'"
+                    class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 outline-none">
+                    <i class="fas fa-user mr-2" [class.text-primary-500]="activeTab==='general'"
+                        [class.dark:text-primary-400]="activeTab==='general'"></i>
+                    General
+                </button>
+                <button (click)="setTab('address')"
+                    [class]="activeTab === 'address' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'"
+                    class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 outline-none">
+                    <i class="fas fa-map-marker-alt mr-2" [class.text-primary-500]="activeTab==='address'"
+                        [class.dark:text-primary-400]="activeTab==='address'"></i>
+                    Dirección
+                </button>
+                <button (click)="setTab('billing')"
+                    [class]="activeTab === 'billing' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'"
+                    class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 outline-none">
+                    <i class="fas fa-file-invoice-dollar mr-2" [class.text-primary-500]="activeTab==='billing'"
+                        [class.dark:text-primary-400]="activeTab==='billing'"></i>
+                    Facturación
+                </button>
+                <button (click)="setTab('crm')"
+                    [class]="activeTab === 'crm' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'"
+                    class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 outline-none">
+                    <i class="fas fa-chart-line mr-2" [class.text-primary-500]="activeTab==='crm'"
+                        [class.dark:text-primary-400]="activeTab==='crm'"></i>
+                    CRM
+                </button>
+            </nav>
+        </div>
 
-                <div class="form-row">
-                    <div class="form-group client-type-dropdown-container">
-                        <label class="form-label">
-                            <i class="fas fa-user-tag"></i>
-                            Tipo de cliente
-                        </label>
-                        <button type="button" (click)="toggleClientTypeDropdown()"
-                            class="form-input client-type-button">
-                            <span class="client-type-selected">
-                                <i [class]="getClientTypeIcon()"></i>
-                                {{ getClientTypeLabel() }}
-                            </span>
-                            <i class="fas fa-chevron-down dropdown-arrow"
-                                [class.rotated]="clientTypeDropdownOpen()"></i>
-                        </button>
+        <!-- FORM BODY -->
+        <div class="modal-body bg-white dark:bg-gray-800 p-6 overflow-y-auto flex-1">
+            <form (ngSubmit)="saveCustomer()" #customerForm="ngForm" class="customer-form space-y-6">
 
-                        @if (clientTypeDropdownOpen()) {
-                        <div class="client-type-overlay" (click)="clientTypeDropdownOpen.set(false)"></div>
-                        <div class="client-type-dropdown">
-                            <div class="dropdown-header">
-                                <span>Seleccionar tipo de cliente</span>
-                                <button type="button" (click)="clientTypeDropdownOpen.set(false)"
-                                    class="dropdown-close">
-                                    <i class="fas fa-times"></i>
+                <!-- TAB: GENERAL -->
+                <div *ngIf="activeTab === 'general'" class="space-y-6 animate-fadeIn">
+                    <div class="form-row grid grid-cols-2 gap-6">
+                        <!-- Client Type Selector -->
+                        <div class="form-group client-type-dropdown-container col-span-2">
+                            <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <i class="fas fa-user-tag text-gray-400 dark:text-gray-500 mr-1"></i>
+                                Tipo de cliente
+                            </label>
+                            <div class="flex gap-4">
+                                <button type="button" *ngFor="let opt of clientTypeOptions"
+                                    (click)="selectClientType(opt.value)"
+                                    [class.ring-2]="formData.client_type === opt.value"
+                                    [class.ring-primary-500]="formData.client_type === opt.value"
+                                    [class.bg-primary-50]="formData.client_type === opt.value"
+                                    [class.dark:bg-primary-900]="formData.client_type === opt.value"
+                                    [class.border-primary-200]="formData.client_type === opt.value"
+                                    [class.dark:border-primary-700]="formData.client_type === opt.value"
+                                    class="flex-1 flex items-center justify-center gap-2 p-3 border dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all bg-white dark:bg-gray-700">
+                                    <i [class]="opt.icon" [class.text-primary-600]="formData.client_type === opt.value"
+                                        [class.dark:text-primary-400]="formData.client_type === opt.value"
+                                        class="text-gray-500 dark:text-gray-400"></i>
+                                    <span [class.font-semibold]="formData.client_type === opt.value"
+                                        class="text-gray-700 dark:text-gray-200">{{ opt.label }}</span>
                                 </button>
-                            </div>
-                            <div class="dropdown-options">
-                                @for (option of clientTypeOptions; track option.value) {
-                                <button type="button" (click)="selectClientType(option.value)" class="dropdown-option"
-                                    [class.selected]="formData.client_type === option.value">
-                                    <i [class]="option.icon"></i>
-                                    <span>{{ option.label }}</span>
-                                    @if (formData.client_type === option.value) {
-                                    <i class="fas fa-check check-icon"></i>
-                                    }
-                                </button>
-                                }
                             </div>
                         </div>
-                        }
-                    </div>
 
-                    <div class="form-group" *ngIf="formData.client_type === 'individual'">
-                        <label for="dni" class="form-label">
-                            <i class="fas fa-id-card"></i>
-                            DNI/NIF
-                        </label>
-                        <input type="text" id="dni" name="dni" [(ngModel)]="formData.dni" class="form-input"
-                            placeholder="12345678Z">
+                        <!-- General Fields (Conditional) -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 col-span-2">
+                            <!-- IF INDIVIDUAL -->
+                            <ng-container *ngIf="formData.client_type === 'individual'">
+                                <div class="form-group">
+                                    <label
+                                        class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre
+                                        *</label>
+                                    <input type="text" name="nombre" [(ngModel)]="formData.name" required
+                                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                        placeholder="Nombre">
+                                </div>
+                                <div class="form-group">
+                                    <label
+                                        class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Apellidos
+                                        *</label>
+                                    <input type="text" name="apellidos" [(ngModel)]="formData.apellidos" required
+                                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                        placeholder="Apellidos">
+                                </div>
+                                <div class="form-group">
+                                    <label
+                                        class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DNI/NIF</label>
+                                    <input type="text" name="dni" [(ngModel)]="formData.dni"
+                                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                        placeholder="12345678Z">
+                                </div>
+                            </ng-container>
 
-                        <!-- Honeypot field - hidden from users, detects bots -->
+                            <!-- IF BUSINESS -->
+                            <ng-container *ngIf="formData.client_type === 'business'">
+                                <div class="form-group md:col-span-2">
+                                    <label
+                                        class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Razón
+                                        Social *</label>
+                                    <input type="text" name="business_name" [(ngModel)]="formData.business_name"
+                                        required
+                                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                        placeholder="Empresa S.L.">
+                                </div>
+                                <div class="form-group">
+                                    <label
+                                        class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CIF/NIF
+                                        *</label>
+                                    <input type="text" name="cif_nif" [(ngModel)]="formData.cif_nif" required
+                                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                        placeholder="B12345678">
+                                </div>
+                                <div class="form-group">
+                                    <label
+                                        class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre
+                                        Comercial</label>
+                                    <input type="text" name="trade_name" [(ngModel)]="formData.trade_name"
+                                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                        placeholder="Marca conocida">
+                                </div>
+                            </ng-container>
+
+                            <!-- COMMON CONTACT fields -->
+                            <div class="form-group">
+                                <label
+                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email
+                                    *</label>
+                                <input type="email" name="email" [(ngModel)]="formData.email" required
+                                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                    placeholder="correo@ejemplo.com">
+                            </div>
+                            <div class="form-group">
+                                <label
+                                    class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Teléfono</label>
+                                <input type="tel" name="telefono" [(ngModel)]="formData.phone"
+                                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                    placeholder="+34 600 000 000">
+                            </div>
+                        </div>
+
+                        <!-- Honeypot -->
                         <input type="text" [(ngModel)]="formData.honeypot" [name]="honeypotFieldName"
-                            style="position:absolute;left:-9999px;width:0;height:0;opacity:0;pointer-events:none;"
-                            tabindex="-1" autocomplete="off" aria-hidden="true" [attr.data-honeypot]="true">
+                            class="hidden-honeypot" tabindex="-1" autocomplete="off" style="display:none">
                     </div>
                 </div>
 
-                <!-- Campos para EMPRESA -->
-                @if (formData.client_type === 'business') {
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="business_name" class="form-label">
-                            <i class="fas fa-building"></i>
-                            Razón social *
-                        </label>
-                        <input type="text" id="business_name" name="business_name" [(ngModel)]="formData.business_name"
-                            required class="form-input" placeholder="Mi Empresa S.L.">
-                    </div>
-                    <div class="form-group">
-                        <label for="cif_nif" class="form-label">
-                            <i class="fas fa-id-card"></i>
-                            CIF/NIF *
-                        </label>
-                        <input type="text" id="cif_nif" name="cif_nif" [(ngModel)]="formData.cif_nif" required
-                            class="form-input" placeholder="B12345678">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="trade_name" class="form-label">
-                            <i class="fas fa-store"></i>
-                            Nombre comercial
-                        </label>
-                        <input type="text" id="trade_name" name="trade_name" [(ngModel)]="formData.trade_name"
-                            class="form-input" placeholder="Comercial">
-                    </div>
-                    <div class="form-group">
-                        <label for="legal_representative_name" class="form-label">
-                            <i class="fas fa-user-tie"></i>
-                            Representante legal
-                        </label>
-                        <input type="text" id="legal_representative_name" name="legal_representative_name"
-                            [(ngModel)]="formData.legal_representative_name" class="form-input"
-                            placeholder="Nombre del representante">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="legal_representative_dni" class="form-label">
-                            <i class="fas fa-id-badge"></i>
-                            DNI representante
-                        </label>
-                        <input type="text" id="legal_representative_dni" name="legal_representative_dni"
-                            [(ngModel)]="formData.legal_representative_dni" class="form-input" placeholder="12345678Z">
-                    </div>
-                    <div class="form-group">
-                        <label for="mercantile_registry_data" class="form-label">
-                            <i class="fas fa-file-alt"></i>
-                            Registro mercantil (JSON)
-                        </label>
-                        <textarea id="mercantile_registry_data" name="mercantile_registry_data"
-                            [(ngModel)]="formData.mercantile_registry_data" class="form-textarea" rows="3"
-                            placeholder='{"tomo": "...", "folio": "..."}'></textarea>
-                    </div>
-                </div>
-                }
+                <!-- TAB: ADDRESS -->
+                <div *ngIf="activeTab === 'address'" class="space-y-6 animate-fadeIn">
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Dirección principal para envíos y
+                        facturación.</p>
 
-                <!-- Campos para PERSONA FÍSICA -->
-                @if (formData.client_type === 'individual') {
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="nombre" class="form-label">
-                            <i class="fas fa-user"></i>
-                            Nombre *
-                        </label>
-                        <input type="text" id="nombre" name="nombre" [(ngModel)]="formData.name" required
-                            class="form-input" placeholder="Introduce el nombre">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="apellidos" class="form-label">
-                            <i class="fas fa-user"></i>
-                            Apellidos *
-                        </label>
-                        <input type="text" id="apellidos" name="apellidos" [(ngModel)]="formData.apellidos" required
-                            class="form-input" placeholder="Introduce los apellidos">
-                    </div>
-                </div>
-                }
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="email" class="form-label">
-                            <i class="fas fa-envelope"></i>
-                            Email *
-                        </label>
-                        <input type="email" id="email" name="email" [(ngModel)]="formData.email" required
-                            class="form-input" placeholder="correo@ejemplo.com">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="telefono" class="form-label">
-                            <i class="fas fa-phone"></i>
-                            Teléfono
-                        </label>
-                        <input type="tel" id="telefono" name="telefono" [(ngModel)]="formData.phone" class="form-input"
-                            placeholder="666 123 456">
-                    </div>
-                </div>
-
-                <!-- Responsive address row: desktop -> four columns; mobile -> stacked -->
-                <div class="form-row grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="form-group relative">
-                        <label for="addressTipoVia" class="form-label">Tipo Vía</label>
-                        <input id="addressTipoVia" name="addressTipoVia" [(ngModel)]="formData.addressTipoVia"
-                            (input)="onAddressViaInput($event)" class="form-input"
-                            placeholder="Escribe para buscar tipo vía">
-                        <div class="category-input-container">
-                            <div *ngIf="viaDropdownOpen" class="category-dropdown">
-                                <div class="category-options">
-                                    <div *ngFor="let via of filteredVias" class="category-option"
-                                        (click)="selectVia(via)">
-                                        <span>{{ via }}</span>
-                                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                        <div class="md:col-span-3 form-group relative">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo
+                                Vía</label>
+                            <input name="addressTipoVia" [(ngModel)]="formData.addressTipoVia"
+                                (input)="onAddressViaInput($event)"
+                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                placeholder="Calle, Avda...">
+                            <!-- Dropdown for Via -->
+                            <div *ngIf="viaDropdownOpen"
+                                class="absolute z-10 w-full bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-md shadow-lg mt-1 max-h-40 overflow-y-auto">
+                                <div *ngFor="let via of filteredVias" (click)="selectVia(via)"
+                                    class="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-sm text-gray-800 dark:text-gray-200">
+                                    {{ via }}
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label for="addressNombre" class="form-label">Nombre Calle</label>
-                        <input type="text" id="addressNombre" name="addressNombre" [(ngModel)]="formData.addressNombre"
-                            class="form-input" placeholder="Calle, Avenida...">
-                    </div>
+                        <div class="md:col-span-7 form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre
+                                Vía</label>
+                            <input name="addressNombre" [(ngModel)]="formData.addressNombre"
+                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                placeholder="Nombre de la calle">
+                        </div>
 
-                    <div class="form-group">
-                        <label for="addressNumero" class="form-label">Número</label>
-                        <input type="text" id="addressNumero" name="addressNumero" [(ngModel)]="formData.addressNumero"
-                            class="form-input" placeholder="Número">
+                        <div class="md:col-span-2 form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Número</label>
+                            <input name="addressNumero" [(ngModel)]="formData.addressNumero"
+                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                placeholder="Nº">
+                        </div>
                     </div>
 
                     <div class="form-group relative">
-                        <label for="addressLocalidadId" class="form-label">Localidad</label>
-                        <input id="addressLocalidadId" name="addressLocalidadId" [(ngModel)]="addressLocalityName"
-                            (input)="onLocalityInput($event)" class="form-input"
-                            placeholder="Buscar por nombre o código postal">
-                        <div class="category-input-container">
-                            <div *ngIf="localityDropdownOpen" class="category-dropdown">
-                                <div class="category-options">
-                                    <div *ngFor="let loc of filteredLocalities" class="category-option"
-                                        (click)="selectLocality(loc)">
-                                        <span>{{ loc.nombre }} - {{ loc.provincia }} (CP: {{ loc.CP }})</span>
-                                    </div>
-                                </div>
+                        <label
+                            class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Localidad
+                            / Código Postal</label>
+                        <input name="localidad" [(ngModel)]="addressLocalityName" (input)="onLocalityInput($event)"
+                            class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                            placeholder="Buscar por nombre o CP...">
+
+                        <div *ngIf="localityDropdownOpen"
+                            class="absolute z-10 w-full bg-white dark:bg-gray-700 border dark:border-gray-600 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto">
+                            <div *ngFor="let loc of filteredLocalities" (click)="selectLocality(loc)"
+                                class="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-sm border-b border-gray-50 dark:border-gray-600 last:border-0 text-gray-800 dark:text-gray-200">
+                                <span class="font-medium">{{ loc.nombre }}</span>
+                                <span class="text-gray-400 dark:text-gray-500 text-xs ml-2">{{ loc.provincia }} ({{
+                                    loc.CP }})</span>
                             </div>
                         </div>
-                        <div *ngIf="addressLocalityName" class="mt-2">
-                            <button type="button"
-                                class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                (click)="openCreateLocality()">
-                                <i class="fas fa-plus mr-1"></i> Crear nueva localidad
+
+                        <!-- Create Locality Button -->
+                        <div *ngIf="addressLocalityName && !localityDropdownOpen && !formData.addressLocalidadId"
+                            class="mt-2">
+                            <button type="button" (click)="openCreateLocality()"
+                                class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 font-medium flex items-center gap-1">
+                                <i class="fas fa-plus-circle"></i> Crear '{{ addressLocalityName }}'
                             </button>
                         </div>
                     </div>
-
-                    <!-- create-locality modal moved below the form to avoid nested form/ngModel issues -->
                 </div>
 
+                <!-- TAB: BILLING -->
+                <div *ngIf="activeTab === 'billing'" class="space-y-6 animate-fadeIn">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Método
+                                de Pago Preferido</label>
+                            <select name="payment_method" [(ngModel)]="formData.payment_method"
+                                class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="">Seleccionar...</option>
+                                <option *ngFor="let pm of paymentMethodOptions" [value]="pm.value">{{ pm.label }}
+                                </option>
+                            </select>
+                        </div>
 
+                        <div class="form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plazos
+                                de Pago</label>
+                            <input name="payment_terms" [(ngModel)]="formData.payment_terms"
+                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                placeholder="Ej: Contado, 30 días...">
+                        </div>
 
-            </form>
+                        <div class="form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Región
+                                Fiscal</label>
+                            <select name="tax_region" [(ngModel)]="formData.tax_region"
+                                class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="">General (IVA 21%)</option>
+                                <option value="es_canarias">Canarias (IGIC)</option>
+                                <option value="eu_intra">Intracomunitario</option>
+                                <option value="export">Exportación</option>
+                            </select>
+                        </div>
 
-            <!-- Tags Section -->
-            <div class="mt-6 border-t border-gray-100 dark:border-gray-700 pt-6 px-1">
-                <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                    <i class="fas fa-tags text-indigo-500"></i>
-                    Etiquetas
-                </h3>
-                <app-tag-manager [entityId]="customer?.id" entityType="clients"
-                    (pendingTagsChange)="pendingTags = $event">
-                </app-tag-manager>
-            </div>
+                        <div class="form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Límite
+                                de Crédito (€)</label>
+                            <input type="number" name="credit_limit" [(ngModel)]="formData.credit_limit" min="0"
+                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                placeholder="0.00">
+                        </div>
 
-            <!-- create-locality modal (moved out of the parent <form> to avoid ngModel inside a form) -->
-            <app-modal [visible]="showCreateLocalityModal" (close)="closeCreateLocality()">
-                <h3 class="text-lg font-semibold mb-2">Crear nueva localidad</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="form-group">
-                        <label class="form-label">Nombre</label>
-                        <input #newLocalityNameInput name="newLocalityName" type="text" class="form-input"
-                            [(ngModel)]="newLocalityName" (input)="onNewLocalityNameInput($event)"
-                            placeholder="Nombre de la localidad">
-                        <ul *ngIf="filteredNameSuggestions.length"
-                            class="absolute bg-white border rounded mt-1 w-full max-h-40 overflow-auto">
-                            <li *ngFor="let s of filteredNameSuggestions" (click)="selectNameSuggestion(s)"
-                                class="px-2 py-1 hover:bg-gray-100 cursor-pointer">{{ s }}</li>
-                        </ul>
-                        <div *ngIf="nameMatchesList.length" class="mt-2 border rounded p-2 bg-gray-50">
-                            <div class="text-sm text-gray-600 mb-1">Localidades existentes con ese nombre (elige por CP
-                                si
-                                corresponde):</div>
-                            <ul class="max-h-32 overflow-auto">
-                                <li *ngFor="let m of nameMatchesList" (click)="selectExistingFromName(m)"
-                                    class="px-2 py-1 hover:bg-gray-100 cursor-pointer">{{ m.nombre }} (CP: {{ m.CP }})
-                                </li>
-                            </ul>
+                        <div class="form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descuento
+                                Defecto (%)</label>
+                            <input type="number" name="default_discount" [(ngModel)]="formData.default_discount" min="0"
+                                max="100"
+                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                placeholder="0">
+                        </div>
+
+                        <div class="form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IBAN</label>
+                            <input name="iban" [(ngModel)]="formData.iban"
+                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 font-mono"
+                                placeholder="ES00 0000 0000 0000 0000 0000">
+                        </div>
+
+                        <div class="form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SWIFT
+                                / BIC</label>
+                            <input name="bic" [(ngModel)]="formData.bic"
+                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 font-mono"
+                                placeholder="BICCODE">
+                        </div>
+
+                        <div class="form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email
+                                de Facturación</label>
+                            <input type="email" name="billing_email" [(ngModel)]="formData.billing_email"
+                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                placeholder="facturas@cliente.com">
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Si se deja vacío, se usará el email
+                                principal.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB: CRM -->
+                <div *ngIf="activeTab === 'crm'" class="space-y-6 animate-fadeIn">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado</label>
+                            <select name="status" [(ngModel)]="formData.status"
+                                class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option *ngFor="let s of statusOptions" [value]="s.value">{{ s.label }}</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Origen
+                                / Fuente</label>
+                            <input name="source" [(ngModel)]="formData.source"
+                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                placeholder="Ej: Web, Linkedin, Referido...">
+                        </div>
+
+                        <div class="form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Web
+                                Corporativa</label>
+                            <input name="website" [(ngModel)]="formData.website"
+                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                placeholder="https://...">
+                        </div>
+
+                        <div class="form-group">
+                            <label
+                                class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sector
+                                / Industria</label>
+                            <input name="industry" [(ngModel)]="formData.industry"
+                                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                                placeholder="Ej: Tecnología, Retail...">
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Provincia</label>
-                        <input name="newLocalityProvince" type="text" class="form-input"
-                            [(ngModel)]="newLocalityProvince" placeholder="Provincia">
+                        <label class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas
+                            Internas</label>
+                        <textarea name="internal_notes" [(ngModel)]="formData.internal_notes" rows="4"
+                            class="form-textarea w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                            placeholder="Anotaciones privadas sobre el cliente..."></textarea>
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Código Postal</label>
-                        <input #newLocalityCPInput name="newLocalityCP" type="text" class="form-input"
-                            [(ngModel)]="newLocalityCP" (input)="onNewLocalityCPInput($event)"
-                            placeholder="Código Postal">
+                    <!-- Tags Section -->
+                    <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
+                            <i class="fas fa-tags text-primary-500"></i>
+                            Etiquetas
+                        </h3>
+                        <app-tag-manager [entityId]="customer?.id" entityType="clients"
+                            (pendingTagsChange)="pendingTags = $event">
+                        </app-tag-manager>
+                    </div>
+                </div>
+            </form>
+
+            <app-modal [visible]="showCreateLocalityModal" (close)="closeCreateLocality()">
+                <div class="p-4 bg-white dark:bg-gray-800 rounded-lg">
+                    <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-white">Nueva Localidad</h3>
+                    <!-- Simplified locality form inside modal -->
+                    <div class="space-y-4">
+                        <input #newLocalityNameInput [(ngModel)]="newLocalityName"
+                            (input)="onNewLocalityNameInput($event)"
+                            class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            placeholder="Nombre (Ej: Madrid)">
+                        <!-- Suggestions -->
+                        <div *ngIf="filteredNameSuggestions.length"
+                            class="border dark:border-gray-600 rounded max-h-32 overflow-y-auto bg-white dark:bg-gray-700">
+                            <div *ngFor="let s of filteredNameSuggestions" (click)="selectNameSuggestion(s)"
+                                class="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200">
+                                {{ s }}</div>
+                        </div>
+
+                        <input [(ngModel)]="newLocalityProvince"
+                            class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            placeholder="Provincia">
+                        <input #newLocalityCPInput [(ngModel)]="newLocalityCP" (input)="onNewLocalityCPInput($event)"
+                            class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                            placeholder="C.P.">
+                        <input [value]="newLocalityCountry" readonly
+                            class="form-input w-full bg-gray-100 dark:bg-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-500 rounded-lg"
+                            placeholder="País">
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">País</label>
-                        <input name="newLocalityCountry" type="text" class="form-input"
-                            [value]="newLocalityCountry || 'España'" placeholder="España" readonly tabindex="-1"
-                            aria-readonly="true">
+                    <div *ngIf="cpExists"
+                        class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded border-l-4 border-yellow-400">
+                        <p class="font-bold">¡Atención!</p>
+                        <p>Ya existe una localidad con ese CP: {{ existingLocalityByCP?.nombre }}</p>
+                        <button (click)="selectExistingFromName(existingLocalityByCP!)"
+                            class="mt-2 text-primary-600 dark:text-primary-400 underline">Usar existente</button>
                     </div>
-                </div>
-                <div style="height:12px"></div>
-                <div class="modal-actions mt-3 flex justify-end gap-2">
-                    <button
-                        class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        type="button" (click)="closeCreateLocality()">Cancelar</button>
-                    <button
-                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        type="button" (click)="createLocalityFromInput()" [disabled]="cpExists">Crear
-                        localidad</button>
-                </div>
-                <div *ngIf="cpExists" class="mt-3 p-3 border-l-4 border-yellow-300 bg-yellow-50 rounded">
-                    <div class="text-sm">Ya existe una localidad con ese <strong>Código Postal</strong>:</div>
-                    <div class="mt-1 font-medium">{{ existingLocalityByCP?.nombre }} (CP: {{ existingLocalityByCP?.CP
-                        }})</div>
-                    <div class="mt-2">
-                        <button
-                            class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mr-2"
-                            (click)="selectExistingFromName(existingLocalityByCP!)">Seleccionar esta localidad</button>
-                        <button
-                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none"
-                            (click)="closeCreateLocality()">Cancelar</button>
+
+                    <div class="mt-6 flex justify-end gap-3">
+                        <button (click)="closeCreateLocality()"
+                            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
+                        <button (click)="createLocalityFromInput()" [disabled]="cpExists"
+                            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Crear</button>
                     </div>
                 </div>
             </app-modal>
         </div>
 
-        <div class="modal-actions">
+        <!-- FOOTER ACTIONS -->
+        <div
+            class="modal-actions border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 rounded-b-xl flex justify-end gap-3">
             <button type="button" (click)="closeForm()"
-                class="inline-flex items-center justify-center gap-2 px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all"
-                title="Cancelar">
-                <i class="fas fa-times"></i>
-                <span>Cancelar</span>
+                class="px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 font-medium transition-all">
+                Cancelar
             </button>
             <button type="button" (click)="saveCustomer()"
-                class="inline-flex items-center justify-center gap-2 px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all"
-                [disabled]="isLoading() || (formData.client_type === 'business' ? !(formData.business_name && formData.cif_nif && formData.email) : !(formData.name && formData.email))"
-                [title]="customer ? 'Actualizar' : 'Crear'">
-                <i class="fas fa-check"></i>
-                <span>{{ customer ? 'Actualizar' : 'Guardar Cliente' }}</span>
+                class="px-6 py-2.5 rounded-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:ring-2 focus:ring-blue-500 font-medium shadow-sm transition-all flex items-center gap-2"
+                [disabled]="isLoading()">
+                <i class="fas fa-save" *ngIf="!isLoading()"></i>
+                <i class="fas fa-spinner fa-spin" *ngIf="isLoading()"></i>
+                <span>{{ customer ? 'Actualizar Cliente' : 'Guardar Cliente' }}</span>
             </button>
         </div>
     </div>

@@ -28,7 +28,8 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   @Output() close = new EventEmitter<void>();
   @Output() saved = new EventEmitter<void>();
 
-
+  // UI State
+  activeTab: 'general' | 'address' | 'billing' | 'crm' = 'general';
 
   // Services
   private customersService = inject(SupabaseCustomersService);
@@ -54,6 +55,21 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     { value: 'business', label: 'Empresa', icon: 'fas fa-building' }
   ];
 
+  // Options for CRM/Billing dropdowns
+  statusOptions = [
+    { value: 'lead', label: 'Lead' },
+    { value: 'prospect', label: 'Prospecto' },
+    { value: 'customer', label: 'Cliente' },
+    { value: 'churned', label: 'Baja / Perdido' }
+  ];
+
+  paymentMethodOptions = [
+    { value: 'transfer', label: 'Transferencia Bancaria' },
+    { value: 'direct_debit', label: 'Domiciliación Bancaria' },
+    { value: 'card', label: 'Tarjeta Crédito/Débito' },
+    { value: 'cash', label: 'Efectivo' }
+  ];
+
   // Form data
   formData = {
     name: '',
@@ -73,6 +89,23 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     addressNombre: '',
     addressNumero: '',
     addressLocalidadId: '',
+
+    // CRM Fields
+    status: 'lead',
+    source: '',
+    website: '',
+    industry: '',
+    internal_notes: '',
+
+    // Billing Fields
+    payment_method: '',
+    payment_terms: '',
+    iban: '',
+    bic: '',
+    billing_email: '',
+    tax_region: '',
+    credit_limit: 0,
+    default_discount: 0,
 
     // Honeypot field (hidden from users, bots will fill it)
     honeypot: ''
@@ -177,6 +210,24 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       addressNombre: customer.direccion?.nombre || '',
       addressNumero: customer.direccion?.numero || '',
       addressLocalidadId: customer.direccion?.localidad_id || '',
+
+      // CRM
+      status: customer.status || 'lead',
+      source: customer.source || '',
+      website: customer.website || '',
+      industry: customer.industry || '',
+      internal_notes: customer.internal_notes || '',
+
+      // Billing
+      payment_method: customer.payment_method || '',
+      payment_terms: customer.payment_terms || '',
+      iban: customer.iban || '',
+      bic: customer.bic || '',
+      billing_email: customer.billing_email || '',
+      tax_region: customer.tax_region || '',
+      credit_limit: customer.credit_limit || 0,
+      default_discount: customer.default_discount || 0,
+
       honeypot: ''
     };
 
@@ -201,9 +252,31 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       addressNombre: '',
       addressNumero: '',
       addressLocalidadId: '',
+      // CRM
+      status: 'lead',
+      source: '',
+      website: '',
+      industry: '',
+      internal_notes: '',
+      // Billing
+      payment_method: '',
+      payment_terms: '',
+      iban: '',
+      bic: '',
+      billing_email: '',
+      tax_region: '',
+      credit_limit: 0,
+      default_discount: 0,
+
       honeypot: ''
     };
     this.addressLocalityName = '';
+    this.activeTab = 'general';
+  }
+
+  // Tab Switching
+  setTab(tab: 'general' | 'address' | 'billing' | 'crm') {
+    this.activeTab = tab;
   }
 
   // Client Type Helpers
@@ -420,7 +493,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
     this.isLoading.set(true);
 
-    const customerData: CreateCustomerDev = {
+    const customerData: any = {
       name: this.formData.name,
       apellidos: this.formData.apellidos,
       email: this.formData.email,
@@ -432,8 +505,24 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       trade_name: this.formData.trade_name,
       legal_representative_name: this.formData.legal_representative_name,
       legal_representative_dni: this.formData.legal_representative_dni,
-      mercantile_registry_data: this.formData.mercantile_registry_data
-      // Metadata fields can be passed if needed
+      mercantile_registry_data: this.formData.mercantile_registry_data,
+
+      // CRM
+      status: this.formData.status,
+      source: this.formData.source,
+      website: this.formData.website,
+      industry: this.formData.industry,
+      internal_notes: this.formData.internal_notes,
+
+      // Billing
+      payment_method: this.formData.payment_method,
+      payment_terms: this.formData.payment_terms,
+      iban: this.formData.iban,
+      bic: this.formData.bic,
+      billing_email: this.formData.billing_email,
+      tax_region: this.formData.tax_region,
+      credit_limit: this.formData.credit_limit,
+      default_discount: this.formData.default_discount
     };
 
     this.handleAddressAndSave(customerData);
@@ -496,9 +585,6 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       this.customersService.createCustomer(customerData).subscribe({
         next: (res: any) => {
           const newId = res.id || res.ID || res.Id;
-
-          // GDPR Consents Saving
-
 
           // If we have pending tags, save them now
           if (this.pendingTags.length > 0 && newId) {
