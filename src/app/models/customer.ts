@@ -35,6 +35,28 @@ export interface Customer {
   fecha_nacimiento?: string;
   profesion?: string;
   empresa?: string;
+  // CRM Fields
+  status?: 'lead' | 'prospect' | 'customer' | 'churned';
+  source?: string;
+  assigned_to?: string;
+  industry?: string;
+  tags?: string[];
+  website?: string;
+
+  // Billing Fields
+  payment_method?: string;
+  payment_terms?: string;
+  iban?: string;
+  bic?: string;
+  currency?: string;
+  tax_region?: string;
+  billing_email?: string;
+  credit_limit?: number;
+  default_discount?: number;
+
+  // Operational Fields
+  language?: string;
+  internal_notes?: string;
 
   // GDPR Compliance Fields
   marketing_consent?: boolean;
@@ -56,6 +78,17 @@ export interface Customer {
   last_accessed_at?: string;
   access_count?: number;
   devices?: { count?: number; id?: string; deleted_at?: string }[];
+}
+
+// Client Contact Interface
+export interface ClientContact {
+  id: string;
+  client_id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  is_primary?: boolean;
 }
 
 // Interface para crear cliente (sin ID)
