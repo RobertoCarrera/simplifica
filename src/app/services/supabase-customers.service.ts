@@ -315,6 +315,7 @@ export class SupabaseCustomersService {
       credit_limit: client.credit_limit || 0,
       default_discount: client.default_discount || 0,
       language: client.language || 'es',
+      tier: client.tier || 'C',
       internal_notes: client.internal_notes,
       // GDPR fields
       marketing_consent: client.marketing_consent ?? undefined,
@@ -617,6 +618,7 @@ export class SupabaseCustomersService {
       credit_limit: (customer as any).credit_limit ?? 0,
       default_discount: (customer as any).default_discount ?? 0,
       language: (customer as any).language ?? 'es',
+      tier: (customer as any).tier ?? 'C',
       internal_notes: (customer as any).internal_notes ?? null
     };
 
@@ -2047,9 +2049,68 @@ export class SupabaseCustomersService {
   }
 
   /**
-   * Llama a la importación de un lote usando el mismo camino que processBatchImport
+   * Process batch import with server-side function
    */
   private callImportBatch(batch: Partial<Customer>[]): Observable<Customer[]> {
     return this.processBatchImport(batch);
+  }
+
+  // ============================
+  // Contactos (CRM Pro)
+  // ============================
+
+  async saveClientContacts(clientId: string, contacts: any[]): Promise<any[]> {
+    if (!clientId) return [];
+
+    // Si no hay contactos, borrar todos (o dejarlo estar? Mejor borrar si el array viene vacío explícitamente)
+    // Para simplificar: Upsert los que vengan. La UI gestionará el borrado llamando a una función delete si hiciera falta,
+    // pero por ahora asumiremos que guardamos la lista vigente.
+    // Estrategia: Borrar previos y recrear (más limpio para no dejar huerfanos si se borran en UI)
+    // O Upsert. Vamos a hacer Upsert para no romper IDs, pero para el borrado necesitaríamos saber cuales borrar.
+
+    // Simplificación v1: Upsert de los recibidos.
+    if (!contacts || contacts.length === 0) return [];
+
+    const validContacts = contacts
+      .filter(c => c.name && c.name.trim() !== '')
+      .map(c => ({
+        ...c,
+        client_id: clientId,
+        // Limpiar ID temporal si existe (si es uuid valido se deja, si es 'new-...' se quita)
+        id: (c.id && c.id.length > 10 && !c.id.startsWith('new')) ? c.id : undefined
+      }));
+
+    if (validContacts.length === 0) return [];
+
+    const { data, error } = await this.supabase
+      .from('client_contacts')
+      .upsert(validContacts, { onConflict: 'id' })
+      .select();
+
+    if (error) {
+      devError('Error saving client contacts', error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  async getClientContacts(clientId: string): Promise<any[]> {
+    const { data, error } = await this.supabase
+      .from('client_contacts')
+      .select('*')
+      .eq('client_id', clientId);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  async deleteClientContact(contactId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('client_contacts')
+      .delete()
+      .eq('id', contactId);
+
+    if (error) throw error;
   }
 }

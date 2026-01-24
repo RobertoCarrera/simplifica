@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output, inject, signal, ViewChild, ElementRef, ChangeDetectorRef, SimpleChanges, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Customer, CreateCustomerDev } from '../../../models/customer';
+import { Customer, ClientContact } from '../../../models/customer';
 import { LocalitiesService } from '../../../services/localities.service';
 import { Locality } from '../../../models/locality';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
@@ -29,7 +29,8 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   @Output() saved = new EventEmitter<void>();
 
   // UI State
-  activeTab: 'general' | 'address' | 'billing' | 'crm' = 'general';
+  // UI State
+  activeTab: 'general' | 'address' | 'billing' | 'crm' | 'contactos' = 'general';
 
   // Services
   private customersService = inject(SupabaseCustomersService);
@@ -107,9 +108,16 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     credit_limit: 0,
     default_discount: 0,
 
+    // Pro CRM
+    tier: 'C',
+    contacts: [],
+
     // Honeypot field (hidden from users, bots will fill it)
     honeypot: ''
   };
+
+  public contactList: ClientContact[] = []; // Local state for contacts
+  public contactsToDelete: string[] = []; // Track IDs to delete on save
 
   // Honeypot tracking
   honeypotFieldName: string = '';
@@ -228,11 +236,49 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       credit_limit: customer.credit_limit || 0,
       default_discount: customer.default_discount || 0,
 
+      // Pro
+      tier: customer.tier || 'C',
+      contacts: [], // Contacts loaded separately via loadContacts
+
       honeypot: ''
     };
 
+    // Load contacts asynchronously if editing
+    if (this.customer && this.customer.id) {
+      this.loadContacts(this.customer.id);
+    } else {
+      this.contactList = [];
+      this.contactsToDelete = [];
+    }
+
     this.checkAddressLocality();
   }
+
+  async loadContacts(clientId: string) {
+    try {
+      const contacts = await this.customersService.getClientContacts(clientId);
+      this.contactList = contacts;
+    } catch (error) {
+      console.error('Error loading contacts', error);
+    }
+  }
+
+  addContact() {
+    this.contactList.push({
+      name: '',
+      email: '',
+      phone: '',
+      role: '',
+      is_primary: false,
+      client_id: this.customer?.id
+    } as any);
+  }
+
+  removeContact(index: number) {
+    this.contactList.splice(index, 1);
+  }
+
+
 
   resetForm() {
     this.formData = {
@@ -267,6 +313,8 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       tax_region: '',
       credit_limit: 0,
       default_discount: 0,
+      tier: 'C',
+      contacts: [],
 
       honeypot: ''
     };
@@ -275,7 +323,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   }
 
   // Tab Switching
-  setTab(tab: 'general' | 'address' | 'billing' | 'crm') {
+  setTab(tab: 'general' | 'address' | 'billing' | 'crm' | 'contactos') {
     this.activeTab = tab;
   }
 
@@ -528,7 +576,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     this.handleAddressAndSave(customerData);
   }
 
-  private handleAddressAndSave(customerData: CreateCustomerDev) {
+  private handleAddressAndSave(customerData: any) {
     // Logic to check if we need to create an address
     const needsAddressParams = !!(this.formData.addressNombre || this.formData.addressTipoVia || this.formData.addressNumero || this.formData.addressLocalidadId);
 
@@ -554,68 +602,74 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     }
   }
 
-  private performCustomerSave(customerData: CreateCustomerDev, addressId: string | null) {
-    if (this.customer && this.customer.id) {
-      const updateData: any = { ...customerData, id: this.customer.id };
-      if (addressId) updateData.direccion_id = addressId;
-      else if (this.customer.direccion_id) updateData.direccion_id = this.customer.direccion_id;
+  private async performCustomerSave(customerData: any, addressId: string | null) {
+    try {
+      let savedUser: any = null;
 
-      this.customersService.updateCustomer(this.customer.id, updateData).subscribe({
-        next: (res) => {
-          this.toastService.success('Cliente actualizado correctamente', 'Éxito');
-          this.saved.emit();
-          this.close.emit();
-          this.isLoading.set(false);
-        },
-        error: (err) => {
-          console.error('Error updating customer', err);
-          this.toastService.error(`Error: ${err.message || 'No se pudo actualizar'}`, 'Error');
-          this.isLoading.set(false);
+      if (this.customer && this.customer.id) {
+        // UPDATE
+        const updateData: any = { ...customerData, id: this.customer.id };
+        if (addressId) updateData.direccion_id = addressId;
+        else if (this.customer.direccion_id) updateData.direccion_id = this.customer.direccion_id;
+
+        // Convert Observable to Promise for easier sequencing
+        await new Promise<void>((resolve, reject) => {
+          this.customersService.updateCustomer(this.customer!.id!, updateData).subscribe({
+            next: (res) => {
+              savedUser = { ...res, id: this.customer!.id }; // Ensure ID preservation
+              resolve();
+            },
+            error: (err) => reject(err)
+          });
+        });
+
+        this.toastService.success('Cliente actualizado correctamente', 'Éxito');
+
+      } else {
+        // CREATE
+        if (addressId) (customerData as any).direccion_id = addressId;
+        if (this.companyId) (customerData as any).company_id = this.companyId;
+
+        savedUser = await new Promise<any>((resolve, reject) => {
+          this.customersService.createCustomer(customerData).subscribe({
+            next: (res) => resolve(res),
+            error: (err) => reject(err)
+          });
+        });
+
+        // Handle Tags
+        const newId = savedUser.id || savedUser.ID || savedUser.Id;
+        if (this.pendingTags.length > 0 && newId) {
+          try {
+            // We don't await tags strictly to block success, but good to try catch
+            await new Promise<void>((resolve) => {
+              this.tagsService.assignMultipleTags('clients', newId, this.pendingTags.map(t => t.id)).subscribe({
+                next: () => resolve(),
+                error: (e) => { console.error(e); resolve(); }
+              })
+            });
+          } catch (e) { console.error('Tag error', e); }
         }
-      });
-    } else {
-      // Creating
-      if (addressId) (customerData as any).direccion_id = addressId;
 
-      // inject company_id if available and not present? Service usually handles it but we have it as input
-      if (this.companyId) {
-        (customerData as any).company_id = this.companyId;
+        this.toastService.success('Cliente creado correctamente', 'Éxito');
       }
 
-      this.customersService.createCustomer(customerData).subscribe({
-        next: (res: any) => {
-          const newId = res.id || res.ID || res.Id;
+      // SAVE CONTACTS (Common for Create and Update)
+      // Use the ID from savedUser or existing customer
+      const finalId = savedUser?.id || this.customer?.id;
+      if (finalId) {
+        // Ensure contacts have the correct client_id
+        await this.customersService.saveClientContacts(finalId, this.contactList);
+      }
 
-          // If we have pending tags, save them now
-          if (this.pendingTags.length > 0 && newId) {
-            this.tagsService.assignMultipleTags('clients', newId, this.pendingTags.map(t => t.id)).subscribe({
-              next: () => {
-                this.toastService.success('Cliente creado correctamente', 'Éxito');
-                this.saved.emit();
-                this.close.emit();
-                this.isLoading.set(false);
-              },
-              error: (err) => {
-                console.error('Error saving tags', err);
-                this.toastService.warning('Cliente creado', 'Pero hubo un error al guardar las etiquetas');
-                this.saved.emit();
-                this.close.emit();
-                this.isLoading.set(false);
-              }
-            });
-          } else {
-            this.toastService.success('Cliente creado correctamente', 'Éxito');
-            this.saved.emit();
-            this.close.emit();
-            this.isLoading.set(false);
-          }
-        },
-        error: (err) => {
-          console.error('Error creating customer', err);
-          this.toastService.error(`Error: ${err.message || 'No se pudo crear'}`, 'Error');
-          this.isLoading.set(false);
-        }
-      });
+      this.saved.emit();
+      this.close.emit();
+
+    } catch (err: any) {
+      console.error('Error saving customer:', err);
+      this.toastService.error(`Error: ${err.message || 'No se pudo guardar'}`, 'Error');
+    } finally {
+      this.isLoading.set(false);
     }
   }
 

@@ -48,6 +48,13 @@
                         [class.dark:text-primary-400]="activeTab==='crm'"></i>
                     CRM
                 </button>
+                <button (click)="setTab('contactos')"
+                    [class]="activeTab === 'contactos' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'"
+                    class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 outline-none">
+                    <i class="fas fa-users mr-2" [class.text-primary-500]="activeTab==='contactos'"
+                        [class.dark:text-primary-400]="activeTab==='contactos'"></i>
+                    Contactos
+                </button>
             </nav>
         </div>
 
@@ -362,12 +369,29 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
+                    <div class="form-group md:col-span-2">
                         <label class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notas
                             Internas</label>
                         <textarea name="internal_notes" [(ngModel)]="formData.internal_notes" rows="4"
                             class="form-textarea w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                             placeholder="Anotaciones privadas sobre el cliente..."></textarea>
+                    </div>
+
+                    <!-- Pro fields -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="form-group">
+                            <label class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                <i class="fas fa-trophy text-yellow-500 mr-1"></i> Clasificación (Tier)
+                            </label>
+                            <select name="tier" [(ngModel)]="formData.tier"
+                                class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                <option value="A">A - VIP / Alto Valor</option>
+                                <option value="B">B - Recurrente / Estándar</option>
+                                <option value="C">C - Ocasional / Nuevo</option>
+                            </select>
+                        </div>
+                        <!-- Language (optional, assuming we might use it for notifications) -->
+                        <!-- If you don't use it, you can remove it, but user asked for it -->
                     </div>
 
                     <!-- Tags Section -->
@@ -379,6 +403,89 @@
                         <app-tag-manager [entityId]="customer?.id" entityType="clients"
                             (pendingTagsChange)="pendingTags = $event">
                         </app-tag-manager>
+                    </div>
+                </div>
+
+                <!-- TAB: CONTACTOS -->
+                <div *ngIf="activeTab === 'contactos'" class="space-y-6 animate-fadeIn">
+                    <div class="flex justify-between items-center mb-4">
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Gestiona las personas de contacto asociadas
+                            a este cliente.</p>
+                        <button type="button" (click)="addContact()"
+                            class="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors text-sm font-medium">
+                            <i class="fas fa-plus mr-1"></i> Añadir Contacto
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4">
+                        <div *ngFor="let contact of contactList; let i = index"
+                            class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 relative group transition-all hover:shadow-md">
+
+                            <!-- Delete Button -->
+                            <button type="button" (click)="removeContact(i)"
+                                class="absolute top-3 right-3 text-gray-400 hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white dark:hover:bg-gray-800 transition-all opacity-0 group-hover:opacity-100">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4">
+                                <!-- Name -->
+                                <div class="lg:col-span-3">
+                                    <label
+                                        class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Nombre</label>
+                                    <input [(ngModel)]="contact.name" [name]="'contact_name_' + i" required
+                                        class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                        placeholder="Nombre completo">
+                                </div>
+
+                                <!-- Email -->
+                                <div class="lg:col-span-3">
+                                    <label
+                                        class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Email</label>
+                                    <input [(ngModel)]="contact.email" [name]="'contact_email_' + i"
+                                        class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                        placeholder="email@contacto.com">
+                                </div>
+
+                                <!-- Phone -->
+                                <div class="lg:col-span-2">
+                                    <label
+                                        class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Teléfono</label>
+                                    <input [(ngModel)]="contact.phone" [name]="'contact_phone_' + i"
+                                        class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                        placeholder="+34...">
+                                </div>
+
+                                <!-- Role -->
+                                <div class="lg:col-span-2">
+                                    <label
+                                        class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Cargo/Rol</label>
+                                    <input [(ngModel)]="contact.role" [name]="'contact_role_' + i"
+                                        class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                        placeholder="Gerente, Admin...">
+                                </div>
+
+                                <!-- Primary Toggle -->
+                                <div class="lg:col-span-2 flex items-center justify-center pt-4">
+                                    <label class="inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" [(ngModel)]="contact.is_primary"
+                                            [name]="'contact_primary_' + i"
+                                            class="form-checkbox text-primary-600 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800">
+                                        <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Principal</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div *ngIf="contactList.length === 0"
+                            class="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
+                            <i class="fas fa-users text-gray-300 dark:text-gray-600 text-3xl mb-3"></i>
+                            <p class="text-gray-500 dark:text-gray-400 text-sm">No hay contactos añadidos.</p>
+                            <button type="button" (click)="addContact()"
+                                class="mt-2 text-primary-600 dark:text-primary-400 text-sm font-medium hover:underline">
+                                Añadir el primero
+                            </button>
+                        </div>
                     </div>
                 </div>
             </form>
