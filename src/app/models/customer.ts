@@ -58,6 +58,10 @@ export interface Customer {
   language?: string;
   internal_notes?: string;
 
+  // Pro CRM Fields
+  tier?: 'A' | 'B' | 'C';
+  contacts?: ClientContact[];
+
   // GDPR Compliance Fields
   marketing_consent?: boolean;
   marketing_consent_date?: string;
