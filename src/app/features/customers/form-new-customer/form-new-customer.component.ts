@@ -64,6 +64,15 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     { value: 'churned', label: 'Baja / Perdido' }
   ];
 
+  languageOptions = [
+    { value: 'es', label: 'Español' },
+    { value: 'en', label: 'Inglés' },
+    { value: 'fr', label: 'Francés' },
+    { value: 'de', label: 'Alemán' },
+    { value: 'it', label: 'Italiano' },
+    { value: 'pt', label: 'Portugués' }
+  ];
+
   paymentMethodOptions = [
     { value: 'transfer', label: 'Transferencia Bancaria' },
     { value: 'direct_debit', label: 'Domiciliación Bancaria' },
@@ -97,6 +106,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     website: '',
     industry: '',
     internal_notes: '',
+    language: 'es',
 
     // Billing Fields
     payment_method: '',
@@ -118,6 +128,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
   public contactList: ClientContact[] = []; // Local state for contacts
   public contactsToDelete: string[] = []; // Track IDs to delete on save
+
+  // Animation State
+  contentHeight: string | number = 'auto'; // Initial auto
+  @ViewChild('tabContentContainer') tabContentContainer!: ElementRef<HTMLDivElement>;
+
 
   // Honeypot tracking
   honeypotFieldName: string = '';
@@ -225,6 +240,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       website: customer.website || '',
       industry: customer.industry || '',
       internal_notes: customer.internal_notes || '',
+      language: customer.language || 'es',
 
       // Billing
       payment_method: customer.payment_method || '',
@@ -304,6 +320,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       website: '',
       industry: '',
       internal_notes: '',
+      language: 'es',
       // Billing
       payment_method: '',
       payment_terms: '',
@@ -324,7 +341,30 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
   // Tab Switching
   setTab(tab: 'general' | 'address' | 'billing' | 'crm' | 'contactos') {
+    if (this.activeTab === tab) return;
+
+    // 1. Measure current height
+    const currentH = this.tabContentContainer?.nativeElement?.offsetHeight;
+    if (currentH) {
+      this.contentHeight = currentH;
+    }
+
     this.activeTab = tab;
+
+    // 2. Wait for CD and measure new height
+    this.cdr.detectChanges(); // Force update to render new tab content
+
+    requestAnimationFrame(() => {
+      const newH = this.tabContentContainer?.nativeElement?.scrollHeight;
+      if (newH) {
+        this.contentHeight = newH; // Trigger transition
+      }
+
+      // 3. Reset to auto after transition ends
+      setTimeout(() => {
+        this.contentHeight = 'auto'; // Allow dynamic growth
+      }, 300);
+    });
   }
 
   // Client Type Helpers
@@ -561,6 +601,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       website: this.formData.website,
       industry: this.formData.industry,
       internal_notes: this.formData.internal_notes,
+      language: this.formData.language,
 
       // Billing
       payment_method: this.formData.payment_method,
