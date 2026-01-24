@@ -11,7 +11,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOW_ALL_ORIGINS = Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
-const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "default-dev-key-change-in-prod";
+const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY");
+
+// Fail fast if key is missing in production-like environments
+if (!ENCRYPTION_KEY) {
+  console.error("CRITICAL: ENCRYPTION_KEY is missing from environment variables.");
+}
 
 function getCorsHeaders(origin: string | null): HeadersInit {
   const headers: HeadersInit = {
@@ -34,6 +39,9 @@ function getCorsHeaders(origin: string | null): HeadersInit {
 
 async function decrypt(encryptedBase64: string): Promise<{ success: boolean; data: string; error?: string }> {
   try {
+    if (!ENCRYPTION_KEY) {
+        return { success: false, data: "", error: "Server configuration error: Missing encryption key" };
+    }
     if (!encryptedBase64) {
       return { success: false, data: "", error: "No encrypted data provided" };
     }
@@ -177,6 +185,11 @@ serve(async (req) => {
   }
 
   try {
+    // 1. Verify ENCRYPTION_KEY presence
+    if (!ENCRYPTION_KEY) {
+        throw new Error("Server misconfiguration: Missing encryption key.");
+    }
+
     const authHeader = req.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Missing authorization" }), {
@@ -190,7 +203,7 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-    // Verify user
+    // 2. Verify user from Auth
     const { data: { user }, error: userErr } = await supabaseAdmin.auth.getUser(token);
     if (userErr || !user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
@@ -199,20 +212,7 @@ serve(async (req) => {
       });
     }
 
-    // Get user profile
-    const { data: me } = await supabaseAdmin
-      .from("users")
-      .select("id, company_id, role, active")
-      .eq("auth_user_id", user.id)
-      .single();
-
-    if (!me?.company_id || !me.active || !["owner", "admin"].includes(me.role)) {
-      return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
-        status: 403,
-        headers: corsHeaders,
-      });
-    }
-
+    // 3. Parse Request
     const body = await req.json();
     const { company_id, provider } = body;
 
@@ -223,14 +223,37 @@ serve(async (req) => {
       });
     }
 
-    if (company_id !== me.company_id) {
-      return new Response(JSON.stringify({ error: "Access denied" }), {
+    // 4. Secure Authorization Check (using company_members)
+    // Get public user ID
+    const { data: userData, error: userDbErr } = await supabaseAdmin
+      .from("users")
+      .select("id")
+      .eq("auth_user_id", user.id)
+      .single();
+
+    if (userDbErr || !userData) {
+         return new Response(JSON.stringify({ error: "User profile not found" }), {
+            status: 403,
+            headers: corsHeaders,
+          });
+    }
+
+    // Check membership and role for the requested company
+    const { data: membership, error: membershipErr } = await supabaseAdmin
+        .from("company_members")
+        .select("role, status")
+        .eq("user_id", userData.id)
+        .eq("company_id", company_id)
+        .maybeSingle();
+
+    if (membershipErr || !membership || membership.status !== 'active' || !["owner", "admin"].includes(membership.role)) {
+      return new Response(JSON.stringify({ error: "Insufficient permissions: You must be an active admin/owner of this company." }), {
         status: 403,
         headers: corsHeaders,
       });
     }
 
-    // Get integration
+    // 5. Fetch Integration
     const { data: integration, error: intErr } = await supabaseAdmin
       .from("payment_integrations")
       .select("*")
@@ -252,7 +275,7 @@ serve(async (req) => {
       });
     }
 
-    // Decrypt credentials
+    // 6. Decrypt credentials
     const decryptResult = await decrypt(integration.credentials_encrypted);
     if (!decryptResult.success) {
       return new Response(JSON.stringify({ 
