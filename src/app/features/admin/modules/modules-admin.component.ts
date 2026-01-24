@@ -1,25 +1,11 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { AuthService, AppUser } from '../../../services/auth.service';
+import { AuthService } from '../../../services/auth.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
-
-interface CompanyUser {
-  id: string;
-  email: string;
-  name: string | null;
-  role: 'owner' | 'admin' | 'member' | 'client' | 'none';
-  app_role_name?: string;
-  active: boolean;
-}
-
-interface ModuleToggle {
-  key: string;
-  label: string;
-  state: 'activado' | 'desactivado' | 'heredado';
-}
+import { ToastService } from '../../../services/toast.service';
 
 @Component({
   selector: 'app-modules-admin',
@@ -32,103 +18,62 @@ export class ModulesAdminComponent implements OnInit {
   private sb: SupabaseClient = inject(SupabaseClientService).instance;
   private auth = inject(AuthService);
   private modulesService = inject(SupabaseModulesService);
+  private toast = inject(ToastService);
 
   loading = false;
-  users: CompanyUser[] = [];
-  modules = signal<Array<{ key: string; label: string }>>([]);
-  // assignments map: userId -> moduleKey -> state
-  private assignments = signal<Map<string, Map<string, ModuleToggle['state']>>>(new Map());
-  saveStatus: string | null = null;
-  owners: Array<{ id: string, email: string, name: string, company_id: string }> = [];
-  selectedOwnerId: string | null = null;
-  ownerQuery: string = '';
+  companies: any[] = [];
+  companyQuery: string = '';
 
   ngOnInit(): void {
-    this.loadOwnersAndMatrix();
+    this.loadCompanies();
   }
 
-  async loadOwnersAndMatrix() {
-    // Owners list (optional admin view across companies)
-    try {
-      const ownersRes = await this.modulesService.adminListOwners().toPromise();
-      this.owners = (ownersRes && ownersRes.owners) ? ownersRes.owners : [];
-      // Try to preselect my owner if present (same company)
-      const me = this.auth.userProfile;
-      const myOwner = this.owners.find(o => o.company_id === me?.company_id) || null;
-      this.selectedOwnerId = myOwner?.id || null;
-    } catch { }
-    await this.loadMatrix();
-  }
-
-  async loadMatrix() {
+  async loadCompanies() {
     this.loading = true;
     try {
-      const res = await this.modulesService.adminListUserModules(this.selectedOwnerId || undefined).toPromise();
-      this.users = (res?.users || []) as CompanyUser[];
-      const mods = (res?.modules || []).map((m: any) => ({ key: m.key, label: m.name }));
-      this.modules.set(mods);
-      const map = new Map<string, Map<string, ModuleToggle['state']>>();
-      for (const asg of (res?.assignments || [])) {
-        const u = asg.user_id as string;
-        const k = asg.module_key as string;
-        const s = (asg.status as string) as ModuleToggle['state'];
-        if (!map.has(u)) map.set(u, new Map());
-        map.get(u)!.set(k, s);
-      }
-      this.assignments.set(map);
+      const res = await this.modulesService.adminListCompanies().toPromise();
+      this.companies = (res?.companies || []);
     } catch (e) {
-      console.warn('Error loading matrix', e);
+      console.warn('Error loading companies', e);
+      this.toast.error('Error', 'No se pudieron cargar las empresas.');
     } finally {
       this.loading = false;
     }
   }
 
-  onOwnerChange() {
-    this.loadMatrix();
+  // Filtered companies for search box
+  get filteredCompanies() {
+    const q = (this.companyQuery || '').toLowerCase().trim();
+    if (!q) return this.companies;
+    return this.companies.filter(c =>
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.id || '').toLowerCase().includes(q)
+    );
   }
 
-  onOwnerChangeSelect(event: Event) {
-    const value = (event.target as HTMLSelectElement | null)?.value || '';
-    this.selectedOwnerId = value || null;
-    this.onOwnerChange();
-  }
+  async toggleCompanyModule(company: any, moduleKey: string) {
+    // Find the module in the company's list
+    const mod = company.modules.find((m: any) => m.key === moduleKey);
+    if (!mod) return;
 
-  stateFor(userId: string, modKey: string): ModuleToggle['state'] {
-    return this.assignments().get(userId)?.get(modKey) || 'heredado';
-  }
+    const currentStatus = mod.status;
+    const newStatus = (currentStatus === 'active' || currentStatus === 'activado') ? 'inactive' : 'active';
 
-  async setState(userId: string, modKey: string, state: ModuleToggle['state']) {
+    // Optimistic update
+    mod.status = newStatus;
+
     try {
-      if (state === 'heredado') {
-        // delete explicit override
-        await this.sb.from('user_modules').delete().eq('user_id', userId).eq('module_key', modKey);
-      } else {
-        this.saveStatus = 'saving';
-        await this.modulesService.adminSetUserModule(userId, modKey, state).toPromise();
-      }
-      // refresh local map
-      const map = new Map(this.assignments());
-      if (!map.has(userId)) map.set(userId, new Map());
-      if (state === 'heredado') map.get(userId)!.delete(modKey); else map.get(userId)!.set(modKey, state);
-      this.assignments.set(map);
-      this.saveStatus = 'ok';
-      setTimeout(() => this.saveStatus = null, 1200);
+      await this.modulesService.adminSetCompanyModule(company.id, moduleKey, newStatus).toPromise();
+      this.toast.success('Módulo actualizado', `El módulo se ha ${newStatus === 'active' ? 'activado' : 'desactivado'} correctamente.`);
     } catch (e) {
-      console.warn('Error updating state', e);
-      this.saveStatus = 'error';
-      setTimeout(() => this.saveStatus = null, 2000);
+      console.error('Error toggling module:', e);
+      // Revert on error
+      mod.status = currentStatus;
+      this.toast.error('Error', 'No se pudo actualizar el módulo.');
     }
   }
 
-  // Filtered owners for search box
-  get filteredOwners() {
-    const q = (this.ownerQuery || '').toLowerCase().trim();
-    if (!q) return this.owners;
-    return this.owners.filter(o =>
-      (o.name || '').toLowerCase().includes(q) ||
-      (o.email || '').toLowerCase().includes(q) ||
-      (o.company_id || '').toLowerCase().includes(q) ||
-      (o.id || '').toLowerCase().includes(q)
-    );
+  getLabel(mod: any) {
+    return mod.label || mod.key;
   }
 }

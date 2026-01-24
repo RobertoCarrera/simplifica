@@ -1,88 +1,113 @@
-<div class="p-4 space-y-6">
-  <h1 class="text-2xl font-semibold flex items-center gap-2">
-    <span
-      class="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow">
-      <i class="fas fa-cubes"></i>
-    </span>
-    Gestión de Módulos
-  </h1>
-  <p class="text-sm text-gray-600 dark:text-gray-400">Administra qué módulos están activados o desactivados por usuario.
-    Puedes filtrar por owner para ver sus usuarios (clients) asociados. Estados: activado, desactivado o heredado.</p>
-
-  <div *ngIf="owners.length > 0" class="space-y-2">
-    <label class="text-xs font-medium text-gray-500 dark:text-gray-400">Owner seleccionado</label>
-    <div class="flex items-center gap-2">
-      <input [(ngModel)]="ownerQuery" placeholder="Buscar owner por nombre, email o compañía"
-        class="flex-1 px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm" />
-      <select (change)="onOwnerChangeSelect($event)" [value]="selectedOwnerId || ''"
-        class="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm min-w-64">
-        <option value="">(Mi compañía)</option>
-        <option *ngFor="let o of filteredOwners" [value]="o.id">{{ o.name || o.email }} - {{ o.company_id | slice:0:8 }}
-        </option>
-      </select>
+<div class="p-6 space-y-8 bg-gray-50 min-h-screen">
+  <!-- Header Section -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+        <span
+          class="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30">
+          <i class="fas fa-building"></i>
+        </span>
+        Gestión de Módulos (Empresas)
+      </h1>
+      <p class="mt-2 text-gray-600 max-w-2xl">
+        Administra los módulos activados por empresa. Los permisos se aplican a todos los usuarios de la organización.
+      </p>
     </div>
   </div>
 
-  <div *ngIf="loading" class="text-sm text-gray-500">Cargando usuarios…</div>
-
-  <div class="space-y-4">
-    <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Matriz de módulos por usuario</h2>
-    <div class="overflow-auto border rounded-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-      <table class="min-w-full text-sm">
-        <thead class="bg-gray-50 dark:bg-gray-700">
-          <tr>
-            <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Usuario</th>
-            <th class="px-3 py-2" *ngFor="let m of modules()">{{ m.label }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let u of users" class="border-t border-gray-100 dark:border-gray-700">
-            <td class="px-3 py-2 whitespace-nowrap">
-              <div class="flex items-center justify-between gap-2">
-                <span class="truncate font-medium">{{ u.email }}</span>
-                <span class="text-[10px] px-1.5 py-0.5 rounded uppercase" [ngClass]="{
-                        'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200': u.role==='owner' && !u.app_role_name,
-                        'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200': u.app_role_name==='super_admin',
-                        'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': u.role==='admin' && u.app_role_name!=='super_admin',
-                        'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200': u.role==='member',
-                        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200': u.role==='client'
-                      }">{{ u.app_role_name || u.role }}</span>
-              </div>
-              <div class="text-[10px] mt-0.5" [ngClass]="u.active ? 'text-green-600' : 'text-red-600'">{{ u.active ?
-                'Activo' : 'Inactivo' }}</div>
-            </td>
-            <td class="px-3 py-2 text-center" *ngFor="let m of modules()">
-              <div class="flex flex-col items-center gap-1">
-                <span class="text-[10px] px-2 py-0.5 rounded-full" [ngClass]="{
-                        'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200': stateFor(u.id,m.key)==='activado',
-                        'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300': stateFor(u.id,m.key)==='desactivado',
-                        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200': stateFor(u.id,m.key)==='heredado'
-                      }">{{ stateFor(u.id,m.key) }}</span>
-                <div class="flex gap-1 flex-wrap justify-center">
-                  <button (click)="setState(u.id,m.key,'activado')" class="px-2 py-0.5 rounded text-[10px]"
-                    [class.bg-green-600]="stateFor(u.id,m.key)==='activado'"
-                    [class.text-white]="stateFor(u.id,m.key)==='activado'"
-                    [class.bg-green-100]="stateFor(u.id,m.key)!=='activado'"
-                    [class.text-green-700]="stateFor(u.id,m.key)!=='activado'">A</button>
-                  <button (click)="setState(u.id,m.key,'desactivado')" class="px-2 py-0.5 rounded text-[10px]"
-                    [class.bg-gray-600]="stateFor(u.id,m.key)==='desactivado'"
-                    [class.text-white]="stateFor(u.id,m.key)==='desactivado'"
-                    [class.bg-gray-100]="stateFor(u.id,m.key)!=='desactivado'"
-                    [class.text-gray-700]="stateFor(u.id,m.key)!=='desactivado'">D</button>
-                  <button (click)="setState(u.id,m.key,'heredado')" class="px-2 py-0.5 rounded text-[10px]"
-                    [class.bg-yellow-600]="stateFor(u.id,m.key)==='heredado'"
-                    [class.text-white]="stateFor(u.id,m.key)==='heredado'"
-                    [class.bg-yellow-100]="stateFor(u.id,m.key)!=='heredado'"
-                    [class.text-yellow-700]="stateFor(u.id,m.key)!=='heredado'">H</button>
-                </div>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+  <!-- Filters Section -->
+  <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+    <label class="block text-sm font-semibold text-gray-700 mb-2">Buscar Empresa</label>
+    <div class="relative">
+      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <i class="fas fa-search text-gray-400"></i>
+      </div>
+      <input [(ngModel)]="companyQuery"
+        class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-gray-50 text-sm transition-all"
+        placeholder="Nombre de la empresa, ID..." />
     </div>
-    <div *ngIf="saveStatus==='saving'" class="text-xs text-blue-600">Guardando cambios…</div>
-    <div *ngIf="saveStatus==='ok'" class="text-xs text-green-600">Cambios guardados.</div>
-    <div *ngIf="saveStatus==='error'" class="text-xs text-red-600">Error guardando cambios.</div>
   </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="flex flex-col items-center justify-center py-20 text-gray-400">
+    <div class="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+    <p>Cargando empresas...</p>
+  </div>
+
+  <!-- Companies Grid -->
+  <div *ngIf="!loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+    <div *ngFor="let c of filteredCompanies"
+      class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col transition-all hover:shadow-md">
+
+      <!-- Company Card Header -->
+      <div class="p-5 border-b border-gray-100 bg-gray-50/50">
+        <div class="flex items-start justify-between gap-3 mb-2">
+          <div class="flex-1 min-w-0">
+            <h3 class="font-bold text-gray-900 truncate" title="{{c.name}}">
+              {{ c.name || 'Sin Nombre' }}
+            </h3>
+            <p class="text-xs text-gray-500 font-mono truncate" title="{{c.id}}">ID: {{ c.id }}</p>
+          </div>
+          <div class="flex-shrink-0">
+            <span
+              class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wide bg-indigo-100 text-indigo-800">
+              {{ c.subscription_tier || 'Basic' }}
+            </span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-2 h-2 rounded-full"
+            [ngClass]="c.is_active ? 'bg-green-500' : 'bg-red-500'"></span>
+          <span class="text-xs font-medium" [ngClass]="c.is_active ? 'text-green-700' : 'text-red-700'">
+            {{ c.is_active ? 'Empresa Activa' : 'Empresa Inactiva' }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Modules List -->
+      <div class="p-5 flex-1 flex flex-col gap-4">
+        <div *ngFor="let m of c.modules" class="flex items-center justify-between group">
+          <div class="flex items-center gap-3 overflow-hidden">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors" [ngClass]="{
+                    'bg-green-100 text-green-600': m.status === 'active' || m.status === 'activado',
+                    'bg-gray-100 text-gray-400': m.status !== 'active' && m.status !== 'activado'
+                }">
+              <i class="fas fa-cube text-xs"></i>
+            </div>
+            <span class="text-sm font-medium text-gray-700 truncate" title="{{getLabel(m)}}">{{ getLabel(m) }}</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <!-- Toggle Switch -->
+            <button
+              class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              [class.bg-green-500]="m.status === 'active' || m.status === 'activado'"
+              [class.bg-gray-200]="m.status !== 'active' && m.status !== 'activado'"
+              (click)="toggleCompanyModule(c, m.key)">
+              <span class="sr-only">Toggle module</span>
+              <span
+                class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                [class.translate-x-5]="m.status === 'active' || m.status === 'activado'"
+                [class.translate-x-0]="m.status !== 'active' && m.status !== 'activado'">
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && filteredCompanies.length === 0"
+    class="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-300">
+    <div class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+      <i class="fas fa-building text-gray-400 text-2xl"></i>
+    </div>
+    <h3 class="text-lg font-medium text-gray-900">No se encontraron empresas</h3>
+    <p class="text-gray-500">Prueba con otro término de búsqueda.</p>
+  </div>
+
+  <!-- Status Toasts (Fixed Bottom) -->
+
 </div>
