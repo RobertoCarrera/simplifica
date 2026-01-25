@@ -13,6 +13,17 @@
         <span class="hidden sm:inline">Mi Perfil</span>
       </button>
 
+      <!-- Tab: Facturación (Clients only) -->
+      <button *ngIf="isClient" (click)="activeTab='facturacion'" role="tab"
+        [attr.aria-selected]="activeTab === 'facturacion'"
+        class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+        [class]="activeTab === 'facturacion' 
+          ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30' 
+          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white'">
+        <i class="fas fa-file-invoice-dollar text-sm"></i>
+        <span class="hidden sm:inline">Facturación</span>
+      </button>
+
       <!-- Tab: Privacidad (GDPR) -->
       <button *ngIf="isClient" (click)="activeTab='privacidad'" role="tab"
         [attr.aria-selected]="activeTab === 'privacidad'"
@@ -467,6 +478,114 @@
       </div>
     </div>
   </div> <!-- End Grid -->
+
+  <!-- Contenido: Facturación (Formulario) -->
+  <div *ngIf="isClient && activeTab==='facturacion'" class="w-full animate-fadeIn">
+
+    <!-- Header Title (Simple) -->
+    <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+        <i class="fas fa-file-invoice-dollar text-emerald-600"></i>
+        Datos de Facturación
+      </h2>
+      <p class="text-gray-500 dark:text-gray-400 mt-1">Completa tu información fiscal para la emisión de facturas</p>
+    </div>
+
+    <!-- Form Container (Full Width, No Shadow Card) -->
+    <div class="w-full">
+      <form [formGroup]="billingForm" (ngSubmit)="updateBilling()" class="space-y-8">
+
+        <!-- Section: Identificación Fiscal -->
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
+            <i class="fas fa-building mr-2 text-gray-400"></i> Identificación Fiscal
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="form-group">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Razón Social <span class="text-red-500">*</span>
+              </label>
+              <input type="text" formControlName="business_name"
+                class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+                placeholder="Ej: Mi Empresa S.L.">
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Nombre Comercial
+              </label>
+              <input type="text" formControlName="trade_name"
+                class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+                placeholder="Nombre visible al público">
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                CIF / NIF <span class="text-red-500">*</span>
+              </label>
+              <input type="text" formControlName="cif_nif"
+                class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white font-mono uppercase transition-colors"
+                placeholder="B12345678">
+            </div>
+          </div>
+          <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Email para Facturas
+            </label>
+            <input type="email" formControlName="billing_email"
+              class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white transition-colors"
+              placeholder="facturacion@miempresa.com">
+            <p class="text-xs text-gray-500 mt-1">Si se deja vacío se usará tu email de usuario.</p>
+          </div>
+        </div>
+
+        <!-- Section: Datos Bancarios -->
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
+            <i class="fas fa-university mr-2 text-gray-400"></i> Datos Bancarios y Pago
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="form-group">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Método de Pago
+              </label>
+              <select formControlName="payment_method"
+                class="form-select w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white cursor-pointer transition-colors">
+                <option value="">Seleccionar...</option>
+                <option *ngFor="let opt of paymentMethodOptions" [value]="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Región Fiscal
+              </label>
+              <select formControlName="tax_region"
+                class="form-select w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white cursor-pointer transition-colors">
+                <option *ngFor="let opt of taxRegionOptions" [value]="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+            <div class="form-group md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                IBAN <span class="text-xs text-gray-500 font-normal">(Para domiciliaciones)</span>
+              </label>
+              <input type="text" formControlName="iban"
+                class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white font-mono transition-colors"
+                placeholder="ES00 0000 0000 0000 0000 0000">
+            </div>
+          </div>
+        </div>
+
+        <!-- Sticky Bottom Bar or just a big button -->
+        <div class="flex justify-end pt-4 pb-8">
+          <button type="submit"
+            class="w-full md:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-emerald-500/30 flex items-center justify-center gap-2 transform active:scale-95"
+            [disabled]="loading || billingForm.invalid">
+            <span *ngIf="loading" class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+            <i class="fas fa-save text-lg" *ngIf="!loading"></i>
+            <span class="text-base">{{ loading ? 'Guardando...' : 'GUARDAR DATOS DE FACTURACIÓN' }}</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Contenido: Privacidad (GDPR) -->
   <div [class.hidden-panel]="activeTab!=='privacidad'" class="w-full">
