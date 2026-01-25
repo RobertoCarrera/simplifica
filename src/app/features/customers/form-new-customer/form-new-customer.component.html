@@ -1,6 +1,6 @@
 <div class="modal-overlay">
-    <div class="modal-content bg-white dark:bg-gray-800 shadow-xl rounded-xl w-full max-w-4xl flex flex-col max-h-[90vh]"
-        (click)="$event.stopPropagation()">
+    <div
+        class="modal-content bg-white dark:bg-gray-800 shadow-xl rounded-xl w-full max-w-4xl flex flex-col max-h-[90vh]">
         <!-- HEADER -->
         <div class="modal-header flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
             <div class="modal-title-group">
@@ -190,10 +190,10 @@
                                     <label
                                         class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo
                                         Vía</label>
-                                    <div class="relative">
+                                    <div class="relative" (click)="$event.stopPropagation()">
                                         <input name="addressTipoVia" [(ngModel)]="formData.addressTipoVia"
                                             (input)="onAddressViaInput($event)" (focus)="viaDropdownOpen = true"
-                                            (blur)="onDropdownBlur('via')" autocomplete="off"
+                                            autocomplete="off"
                                             class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                             placeholder="Calle, Avda...">
                                         <!-- Dropdown for Via -->
@@ -231,10 +231,10 @@
                                 <label
                                     class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Localidad
                                     / Código Postal</label>
-                                <div class="relative">
+                                <div class="relative" (click)="$event.stopPropagation()">
                                     <input name="localidad" [(ngModel)]="addressLocalityName"
                                         (input)="onLocalityInput($event)" (focus)="localityDropdownOpen = true"
-                                        (blur)="onDropdownBlur('locality')" autocomplete="off"
+                                        autocomplete="off"
                                         class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                         placeholder="Buscar por nombre o CP...">
 
@@ -374,10 +374,9 @@
                                     <label
                                         class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Origen
                                         / Fuente</label>
-                                    <div class="relative">
+                                    <div class="relative" (click)="$event.stopPropagation()">
                                         <input name="source" [(ngModel)]="formData.source"
-                                            (input)="onSourceInput($event)" (blur)="onDropdownBlur('source')"
-                                            autocomplete="off"
+                                            (input)="onSourceInput($event)" autocomplete="off"
                                             class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                             placeholder="Ej: Web, Linkedin, Referido...">
 
@@ -406,10 +405,9 @@
                                     <label
                                         class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sector
                                         / Industria</label>
-                                    <div class="relative">
+                                    <div class="relative" (click)="$event.stopPropagation()">
                                         <input name="industry" [(ngModel)]="formData.industry"
-                                            (input)="onIndustryInput($event)" (blur)="onDropdownBlur('industry')"
-                                            autocomplete="off"
+                                            (input)="onIndustryInput($event)" autocomplete="off"
                                             class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                             placeholder="Ej: Tecnología, Retail...">
 
