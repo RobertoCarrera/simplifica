@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai@0.14.0";
 
 const corsHeaders = {
@@ -18,6 +19,20 @@ serve(async (req) => {
             throw new Error('Missing Authorization header')
         }
 
+        // Initialize Supabase Client to validate token
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+
+        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } },
+        });
+
+        // Verify that the token belongs to a valid user
+        const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+        if (authError || !user) {
+            throw new Error('Invalid or expired token');
+        }
+
         // 2. Get Input
         const { task, prompt, images, model } = await req.json()
         const apiKey = Deno.env.get('GOOGLE_AI_API_KEY')
@@ -25,8 +40,7 @@ serve(async (req) => {
             throw new Error('GOOGLE_AI_API_KEY is not set')
         }
 
-        // 3. Initialize Gemini (Explicitly using v1beta often helps with newer models on this SDK, but 1.5-flash is stable on v1 if using latest SDK. 
-        // Note: For now, standard initialization defaults to what the SDK considers stable.)
+        // 3. Initialize Gemini
         const genAI = new GoogleGenerativeAI(apiKey);
 
         // Use user requested model or default to gemini-2.5-flash-lite
