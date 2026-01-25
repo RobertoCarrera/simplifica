@@ -562,6 +562,15 @@ export class SupabaseCustomersService {
     devLog('Creando cliente via RPC (upsert_client)', { companyId });
 
     return from(this.callUpsertClientRpc(customer)).pipe(
+      concatMap(newCustomer => {
+        // Save contacts if present
+        if (customer.contacts && customer.contacts.length > 0) {
+          return from(this.saveClientContacts(newCustomer.id, customer.contacts)).pipe(
+            map(() => newCustomer) // Return original customer
+          );
+        }
+        return of(newCustomer);
+      }),
       tap(newCustomer => {
         devSuccess('Cliente creado via RPC', newCustomer.id);
         const currentCustomers = this.customersSubject.value;
@@ -737,6 +746,10 @@ export class SupabaseCustomersService {
     delete payload.devices;
     delete payload.favicon;
 
+    // Remove contacts from payload to avoid schema error (handled separately)
+    const contacts = payload.contacts;
+    delete payload.contacts;
+
     // Explicitly remove undefined fields so Supabase/Postgrest ignores them
     Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
 
@@ -747,6 +760,15 @@ export class SupabaseCustomersService {
           throw error;
         }
         return this.toCustomerFromClient(data);
+      }),
+      concatMap(updatedCustomer => {
+        // Save contacts if present in updates
+        if (contacts && Array.isArray(contacts)) {
+          return from(this.saveClientContacts(id, contacts)).pipe(
+            map(() => updatedCustomer)
+          );
+        }
+        return of(updatedCustomer);
       }),
       tap(updatedCustomer => {
         devSuccess('Cliente actualizado (Standard)', updatedCustomer.id);

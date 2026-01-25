@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 99999;
+  z-index: 2147483640; /* Max Safe Z-Index */
   width: 100vw;
   height: var(--dvh, 100vh);
   padding: clamp(12px,4vw,24px) clamp(12px,4vw,24px) max(env(safe-area-inset-bottom), clamp(12px,4vw,24px)) clamp(12px,4vw,24px);
@@ -22,7 +22,7 @@
 }
 .app-modal-panel {
   position: relative;
-  z-index: 100000;
+  z-index: 2147483641; /* Max Safe Z-Index + 1 */
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 18px 40px rgba(15,23,42,0.18);

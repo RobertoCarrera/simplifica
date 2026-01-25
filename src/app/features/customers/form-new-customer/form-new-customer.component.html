@@ -261,7 +261,7 @@
                                         class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Método
                                         de Pago Preferido</label>
                                     <select name="payment_method" [(ngModel)]="formData.payment_method"
-                                        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5">
                                         <option value="">Seleccionar...</option>
                                         <option *ngFor="let pm of paymentMethodOptions" [value]="pm.value">{{ pm.label
                                             }}
@@ -283,7 +283,7 @@
                                         class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Región
                                         Fiscal</label>
                                     <select name="tax_region" [(ngModel)]="formData.tax_region"
-                                        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5">
                                         <option value="">General (IVA 21%)</option>
                                         <option value="es_canarias">Canarias (IGIC)</option>
                                         <option value="eu_intra">Intracomunitario</option>
@@ -348,7 +348,7 @@
                                     <label
                                         class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado</label>
                                     <select name="status" [(ngModel)]="formData.status"
-                                        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5">
                                         <option *ngFor="let s of statusOptions" [value]="s.value">{{ s.label }}</option>
                                     </select>
                                 </div>
@@ -398,8 +398,10 @@
                                         <i class="fas fa-trophy text-yellow-500 mr-1"></i> Clasificación (Tier)
                                     </label>
                                     <select name="tier" [(ngModel)]="formData.tier"
-                                        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
-                                        <option value="A">A - VIP / Alto Valor</option>
+                                        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5">
+                                        <option value="">Seleccionar...</option>
+                                        <option value="A" class="font-bold text-yellow-600 dark:text-yellow-400">★ A -
+                                            VIP / Alto Valor</option>
                                         <option value="B">B - Recurrente / Estándar</option>
                                         <option value="C">C - Ocasional / Nuevo</option>
                                     </select>
@@ -410,7 +412,7 @@
                                         <i class="fas fa-language text-gray-400 mr-1"></i> Idioma Preferido
                                     </label>
                                     <select name="language" [(ngModel)]="formData.language"
-                                        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white">
+                                        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 dark:focus:ring-primary-900 transition-all duration-200 cursor-pointer py-2.5">
                                         <option *ngFor="let l of languageOptions" [value]="l.value">{{ l.label }}
                                         </option>
                                     </select>
@@ -518,50 +520,7 @@
                 </div>
             </form>
 
-            <app-modal [visible]="showCreateLocalityModal" (close)="closeCreateLocality()">
-                <div class="p-4 bg-white dark:bg-gray-800 rounded-lg">
-                    <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-white">Nueva Localidad</h3>
-                    <!-- Simplified locality form inside modal -->
-                    <div class="space-y-4">
-                        <input #newLocalityNameInput [(ngModel)]="newLocalityName"
-                            (input)="onNewLocalityNameInput($event)"
-                            class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                            placeholder="Nombre (Ej: Madrid)">
-                        <!-- Suggestions -->
-                        <div *ngIf="filteredNameSuggestions.length"
-                            class="border dark:border-gray-600 rounded max-h-32 overflow-y-auto bg-white dark:bg-gray-700">
-                            <div *ngFor="let s of filteredNameSuggestions" (click)="selectNameSuggestion(s)"
-                                class="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200">
-                                {{ s }}</div>
-                        </div>
 
-                        <input [(ngModel)]="newLocalityProvince"
-                            class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                            placeholder="Provincia">
-                        <input #newLocalityCPInput [(ngModel)]="newLocalityCP" (input)="onNewLocalityCPInput($event)"
-                            class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                            placeholder="C.P.">
-                        <input [value]="newLocalityCountry" readonly
-                            class="form-input w-full bg-gray-100 dark:bg-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-500 rounded-lg"
-                            placeholder="País">
-                    </div>
-
-                    <div *ngIf="cpExists"
-                        class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded border-l-4 border-yellow-400">
-                        <p class="font-bold">¡Atención!</p>
-                        <p>Ya existe una localidad con ese CP: {{ existingLocalityByCP?.nombre }}</p>
-                        <button (click)="selectExistingFromName(existingLocalityByCP!)"
-                            class="mt-2 text-primary-600 dark:text-primary-400 underline">Usar existente</button>
-                    </div>
-
-                    <div class="mt-6 flex justify-end gap-3">
-                        <button (click)="closeCreateLocality()"
-                            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
-                        <button (click)="createLocalityFromInput()" [disabled]="cpExists"
-                            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">Crear</button>
-                    </div>
-                </div>
-            </app-modal>
         </div>
 
         <!-- FOOTER ACTIONS -->
@@ -581,3 +540,56 @@
         </div>
     </div>
 </div>
+
+<!-- CREATE LOCALITY MODAL (Moved outside to prevent form nesting issues) -->
+<app-modal [visible]="showCreateLocalityModal" (close)="closeCreateLocality()">
+    <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
+        <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-white">Nueva Localidad</h3>
+        <div class="space-y-4">
+            <input #newLocalityNameInput [(ngModel)]="newLocalityName" [ngModelOptions]="{standalone: true}"
+                (input)="onNewLocalityNameInput($event)"
+                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                placeholder="Nombre (Ej: Madrid)">
+
+            <div *ngIf="filteredNameSuggestions.length"
+                class="border dark:border-gray-600 rounded max-h-32 overflow-y-auto bg-white dark:bg-gray-700">
+                <div *ngFor="let s of filteredNameSuggestions" (click)="selectNameSuggestion(s)"
+                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200">
+                    {{ s }}</div>
+            </div>
+
+            <input [(ngModel)]="newLocalityProvince" [ngModelOptions]="{standalone: true}"
+                (input)="newLocalityProvince = $any($event.target).value"
+                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                placeholder="Provincia">
+
+            <input #newLocalityCPInput [(ngModel)]="newLocalityCP" [ngModelOptions]="{standalone: true}"
+                (input)="onNewLocalityCPInput($event)"
+                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                placeholder="C.P.">
+
+            <input [value]="newLocalityCountry" readonly
+                class="form-input w-full bg-gray-100 dark:bg-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-500 rounded-lg"
+                placeholder="País">
+        </div>
+
+        <div *ngIf="cpExists"
+            class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded border-l-4 border-yellow-400">
+            <p class="font-bold">¡Atención!</p>
+            <p>Ya existe una localidad con ese CP: {{ existingLocalityByCP?.nombre }}</p>
+            <button type="button" (click)="selectExistingFromName(existingLocalityByCP!)"
+                class="mt-2 text-primary-600 dark:text-primary-400 underline">Usar existente</button>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+            <button type="button" (click)="closeCreateLocality()"
+                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
+            <button type="button" (click)="createLocalityFromInput()" [disabled]="isCreatingLocality"
+                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                <i class="fas fa-spinner fa-spin" *ngIf="isCreatingLocality"></i>
+                <span *ngIf="!isCreatingLocality">Crear</span>
+                <span *ngIf="isCreatingLocality">Creando...</span>
+            </button>
+        </div>
+    </div>
+</app-modal>
