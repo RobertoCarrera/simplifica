@@ -60,9 +60,9 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
   // Options for CRM/Billing dropdowns
   statusOptions = [
+    { value: 'customer', label: 'Cliente' },
     { value: 'lead', label: 'Lead' },
     { value: 'prospect', label: 'Prospecto' },
-    { value: 'customer', label: 'Cliente' },
     { value: 'churned', label: 'Baja / Perdido' }
   ];
 
@@ -79,8 +79,19 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     { value: 'transfer', label: 'Transferencia Bancaria' },
     { value: 'direct_debit', label: 'Domiciliación Bancaria' },
     { value: 'card', label: 'Tarjeta Crédito/Débito' },
-    { value: 'cash', label: 'Efectivo' }
+    { value: 'cash', label: 'Efectivo' },
+    { value: 'paypal', label: 'PayPal' },
+    { value: 'stripe', label: 'Stripe' },
+    { value: 'bizum', label: 'Bizum' }
   ];
+
+  // Dynamic Autocomplete Lists
+  knownSources: string[] = [];
+  knownIndustries: string[] = [];
+  filteredSources: string[] = [];
+  filteredIndustries: string[] = [];
+  sourceDropdownOpen = false;
+  industryDropdownOpen = false;
 
   // Form data
   formData = {
@@ -103,7 +114,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     addressLocalidadId: '',
 
     // CRM Fields
-    status: 'lead',
+    status: 'customer', // Default to Customer as requested
     source: '',
     website: '',
     industry: '',
@@ -154,6 +165,19 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   viaDropdownOpen: boolean = false;
   localityDropdownOpen: boolean = false;
 
+
+  onDropdownBlur(type: 'via' | 'locality' | 'source' | 'industry') {
+    setTimeout(() => {
+      switch (type) {
+        case 'via': this.viaDropdownOpen = false; break;
+        case 'locality': this.localityDropdownOpen = false; break;
+        case 'source': this.sourceDropdownOpen = false; break;
+        case 'industry': this.industryDropdownOpen = false; break;
+      }
+    }, 200);
+  }
+
+
   // Create locality modal state
   showCreateLocalityModal: boolean = false;
   newLocalityName: string = '';
@@ -177,11 +201,56 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     this.formLoadTime = this.honeypotService.getFormLoadTime();
 
     this.loadLocalities();
+    this.loadDistinctValues();
 
     // If editing a customer, populate form
     if (this.customer) {
       this.populateForm(this.customer);
     }
+  }
+
+  loadDistinctValues() {
+    this.customersService.getDistinctColumnValues('source').subscribe(values => {
+      this.knownSources = values;
+      this.filteredSources = values;
+    });
+    this.customersService.getDistinctColumnValues('industry').subscribe(values => {
+      this.knownIndustries = values;
+      this.filteredIndustries = values;
+    });
+  }
+
+  // Filter handlers for new autocompletes
+  onSourceInput(event: Event) {
+    const v = (event.target as HTMLInputElement).value || '';
+    this.formData.source = v;
+    if (!v) {
+      this.filteredSources = [...this.knownSources];
+    } else {
+      this.filteredSources = this.knownSources.filter(s => s.toLowerCase().includes(v.toLowerCase()));
+    }
+    this.sourceDropdownOpen = true;
+  }
+
+  selectSource(s: string) {
+    this.formData.source = s;
+    this.sourceDropdownOpen = false;
+  }
+
+  onIndustryInput(event: Event) {
+    const v = (event.target as HTMLInputElement).value || '';
+    this.formData.industry = v;
+    if (!v) {
+      this.filteredIndustries = [...this.knownIndustries];
+    } else {
+      this.filteredIndustries = this.knownIndustries.filter(s => s.toLowerCase().includes(v.toLowerCase()));
+    }
+    this.industryDropdownOpen = true;
+  }
+
+  selectIndustry(s: string) {
+    this.formData.industry = s;
+    this.industryDropdownOpen = false;
   }
 
   ngOnChanges(changes: SimpleChanges) {

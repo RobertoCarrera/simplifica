@@ -846,3 +846,40 @@ html.dark app-admin-webmail .modal-overlay .modal-content {
     }
   }
 }
+
+/* ============================================
+   PREMIUM SCROLLBAR
+   ============================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  /* gray-400 equivalent */
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.8);
+  /* gray-500 equivalent */
+}
+
+/* Dark mode scrollbar */
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar-thumb {
+    background: rgba(71, 85, 105, 0.5);
+    /* slate-600 */
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.8);
+    /* slate-500 */
+  }
+}

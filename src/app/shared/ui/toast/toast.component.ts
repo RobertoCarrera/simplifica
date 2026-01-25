@@ -10,7 +10,7 @@ import { AnimationService } from '../../../services/animation.service';
   imports: [CommonModule],
   animations: [AnimationService.toastNotification],
   template: `
-    <div class="fixed top-4 right-4 z-50 space-y-3 max-w-sm">
+    <div class="fixed top-4 right-4 z-[9999] space-y-3 max-w-sm">
       @for (toast of toastService.toasts$(); track toast.id) {
         <div 
           @toastNotification

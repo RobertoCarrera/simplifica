@@ -801,6 +801,34 @@ export class SupabaseCustomersService {
   }
 
   /**
+   * Get distinct text values from a specific column (for autocomplete)
+   * e.g. source, industry
+   */
+  getDistinctColumnValues(column: 'source' | 'industry'): Observable<string[]> {
+    const companyId = this.authService.companyId();
+    if (!companyId) return of([]);
+
+    return from(
+      this.supabase
+        .from('clients')
+        .select(column)
+        .eq('company_id', companyId)
+        .not(column, 'is', null)
+        .order(column as any, { ascending: true })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) {
+          console.error(`Error fetching distinct ${column}:`, error);
+          return [];
+        }
+        // Extract unique non-empty values
+        const values = (data || []).map((row: any) => row[column]).filter(v => !!v);
+        return Array.from(new Set(values));
+      })
+    );
+  }
+
+  /**
    * Eliminar cliente usando RPC en desarrollo
    */
   private deleteCustomerRpc(id: string): Observable<void> {
