@@ -17,7 +17,7 @@ import { SupabaseSettingsService, type AppSettings, type CompanySettings } from 
 import { SupabaseModulesService, type EffectiveModule } from '../../../services/supabase-modules.service';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
 import { InvoiceSeries } from '../../../models/invoice.model';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 import { SupabasePermissionsService } from '../../../services/supabase-permissions.service';
 
 import { ClientGdprPanelComponent } from '../../customers/components/client-gdpr-panel/client-gdpr-panel.component';
@@ -207,12 +207,16 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         });
     }
 
+    private subs = new Subscription();
+
+    // Catálogo de módulos (labels) y estado desde user_modules (override explícito)
+    private _modulesCatalog: Array<{ key: string; name: string }> | null = null;
+    public modulesList: Array<{ key: string; label: string; status: ModuleStatus }> = [];
+
     ngOnInit() {
         this.loadUserProfile();
         this.loadUnits();
         this.loadUserModules();
-        this.loadModulesCatalog();
-        this.loadModulesDiagnostics();
         this.loadModulesCatalog();
         this.loadModulesDiagnostics();
         this.loadSettings();
@@ -231,6 +235,8 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy() {
+        this.subs.unsubscribe();
+
         // Asegurar que el scroll se restaure si el componente se destruye con modal abierto
         document.body.classList.remove('modal-open');
         document.body.style.overflow = '';
@@ -246,51 +252,71 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         }
     }
 
-    private loadUserProfile() {
-        this.authService.userProfile$.subscribe({
-            next: (profile: AppUser | null) => {
-                if (profile) {
-                    this.userProfile = profile;
-                    this.profileForm.patchValue({
-                        full_name: profile.full_name || '',
-                        email: profile.email
-                    });
-                    // Cargar NIF de la empresa si existe
-                    this.companyNifEdit = (profile.company as any)?.nif || '';
-                    // After user profile is available, ensure modules are loaded (in case of timing)
-                    this.loadUserModules();
+    private updateModulesList() {
+        const catalog = this._modulesCatalog || [];
+        const statusByKey: Record<string, ModuleStatus> = {} as any;
+        for (const um of (this.userModules || [])) {
+            statusByKey[um.module_key] = um.status;
+        }
+        this.modulesList = catalog.map(m => ({
+            key: m.key,
+            label: m.name,
+            // Si no hay fila en user_modules, mostrar Desactivado (según petición)
+            status: statusByKey[m.key] || 'desactivado'
+        }));
+    }
 
-                    // If user is client, load additional details (phone, address, etc.)
-                    if (profile.role === 'client' && profile.client_id) {
-                        this.clientDetailsLoading = true;
-                        this.customersService.getCustomer(profile.client_id).subscribe({
-                            next: (customer) => {
-                                this.clientDetails = customer;
-                                this.billingForm.patchValue({
-                                    business_name: customer.business_name || '',
-                                    trade_name: customer.trade_name || '',
-                                    cif_nif: customer.cif_nif || '',
-                                    billing_email: customer.billing_email || '',
-                                    payment_method: customer.payment_method || '',
-                                    iban: customer.iban || '',
-                                    bic: customer.bic || '',
-                                    tax_region: customer.tax_region || ''
-                                });
-                                this.clientDetailsLoading = false;
-                            },
-                            error: (err) => {
-                                console.warn('Error loading client details:', err);
-                                this.clientDetailsLoading = false;
-                            }
+    trackByModuleKey(index: number, item: any): string {
+        return item.key;
+    }
+
+    private loadUserProfile() {
+        this.subs.add(
+            this.authService.userProfile$.subscribe({
+                next: (profile: AppUser | null) => {
+                    if (profile) {
+                        this.userProfile = profile;
+                        this.profileForm.patchValue({
+                            full_name: profile.full_name || '',
+                            email: profile.email
                         });
+                        // Cargar NIF de la empresa si existe
+                        this.companyNifEdit = (profile.company as any)?.nif || '';
+                        // After user profile is available, ensure modules are loaded (in case of timing)
+                        this.loadUserModules();
+
+                        // If user is client, load additional details (phone, address, etc.)
+                        if (profile.role === 'client' && profile.client_id) {
+                            this.clientDetailsLoading = true;
+                            this.customersService.getCustomer(profile.client_id).subscribe({
+                                next: (customer) => {
+                                    this.clientDetails = customer;
+                                    this.billingForm.patchValue({
+                                        business_name: customer.business_name || '',
+                                        trade_name: customer.trade_name || '',
+                                        cif_nif: customer.cif_nif || '',
+                                        billing_email: customer.billing_email || '',
+                                        payment_method: customer.payment_method || '',
+                                        iban: customer.iban || '',
+                                        bic: customer.bic || '',
+                                        tax_region: customer.tax_region || ''
+                                    });
+                                    this.clientDetailsLoading = false;
+                                },
+                                error: (err) => {
+                                    console.warn('Error loading client details:', err);
+                                    this.clientDetailsLoading = false;
+                                }
+                            });
+                        }
                     }
+                },
+                error: (error: any) => {
+                    this.showMessage('Error al cargar el perfil de usuario', 'error');
+                    console.error('Error loading user profile:', error);
                 }
-            },
-            error: (error: any) => {
-                this.showMessage('Error al cargar el perfil de usuario', 'error');
-                console.error('Error loading user profile:', error);
-            }
-        });
+            })
+        );
     }
 
     async updateProfile() {
@@ -623,24 +649,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         }
     }
 
-    // Catálogo de módulos (labels) y estado desde user_modules (override explícito)
-    private _modulesCatalog: Array<{ key: string; name: string }> | null = null;
-
     // Devuelve lista basada en tabla modules_catalog y estado según user_modules
-    get modulesList(): Array<{ key: string; label: string; status: ModuleStatus }> {
-        const catalog = this._modulesCatalog || [];
-        const statusByKey: Record<string, ModuleStatus> = {} as any;
-        for (const um of (this.userModules || [])) {
-            statusByKey[um.module_key] = um.status;
-        }
-        return catalog.map(m => ({
-            key: m.key,
-            label: m.name,
-            // Si no hay fila en user_modules, mostrar Desactivado (según petición)
-            status: statusByKey[m.key] || 'desactivado'
-        }));
-    }
-
     // Carga el catálogo activo de módulos (labels dinámicos)
     private async loadModulesCatalog() {
         try {
@@ -663,6 +672,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
                 if (catalogError) throw catalogError;
                 if (catalogData && (catalogData as any[]).length > 0) {
                     this._modulesCatalog = (catalogData || []).map((d: any) => ({ key: d.key, name: d.label }));
+                    this.updateModulesList();
                     return;
                 }
             } catch (innerErr) {
@@ -678,12 +688,14 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
                 { key: 'moduloSAT', name: 'Tickets' }
             ];
         }
+        this.updateModulesList();
     }
 
     private async loadUserModules() {
         try {
             // Cargar estados de módulos del usuario actual
             this.userModules = await this.userModulesService.listForCurrentUser();
+            this.updateModulesList();
             // keep modules diagnostics up-to-date if already loaded
             if (this.effectiveModules && !this.allowedModuleKeysSet) {
                 this.allowedModuleKeysSet = new Set(this.effectiveModules.filter(m => m.enabled).map(m => m.key));
