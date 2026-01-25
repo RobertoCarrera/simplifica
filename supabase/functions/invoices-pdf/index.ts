@@ -698,15 +698,8 @@ serve(async (req) => {
             .eq('invoice_id', invoiceId)
             .order('line_order', { ascending: true });
 
-        // Fallback: if RLS trimmed items, fetch with service role
-        if (!itErr && items && items.length <= 1) {
-            const { data: adminItems } = await admin
-                .from('invoice_items')
-                .select('*')
-                .eq('invoice_id', invoiceId)
-                .order('line_order', { ascending: true });
-            if (adminItems && adminItems.length > items.length) items = adminItems;
-        }
+        // RLS is now enforced via database policies (see migration 20260620000000_ensure_child_rls.sql)
+        // Previous fallback to admin role has been removed for security.
 
         if (itErr) {
             return new Response(
