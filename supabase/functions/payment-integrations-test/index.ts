@@ -199,15 +199,15 @@ serve(async (req) => {
       });
     }
 
-    // Get user profile
-    const { data: me } = await supabaseAdmin
+    // Get user profile (resolve public.users id from auth id)
+    const { data: publicUser } = await supabaseAdmin
       .from("users")
-      .select("id, company_id, role, active")
+      .select("id")
       .eq("auth_user_id", user.id)
       .single();
 
-    if (!me?.company_id || !me.active || !["owner", "admin"].includes(me.role)) {
-      return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
+    if (!publicUser) {
+      return new Response(JSON.stringify({ error: "User profile not found" }), {
         status: 403,
         headers: corsHeaders,
       });
@@ -223,8 +223,16 @@ serve(async (req) => {
       });
     }
 
-    if (company_id !== me.company_id) {
-      return new Response(JSON.stringify({ error: "Access denied" }), {
+    // Verify membership and role using company_members
+    const { data: member } = await supabaseAdmin
+      .from("company_members")
+      .select("role, status")
+      .eq("user_id", publicUser.id)
+      .eq("company_id", company_id)
+      .single();
+
+    if (!member || member.status !== 'active' || !["owner", "admin"].includes(member.role)) {
+      return new Response(JSON.stringify({ error: "Insufficient permissions for this company" }), {
         status: 403,
         headers: corsHeaders,
       });

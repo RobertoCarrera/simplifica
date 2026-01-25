@@ -1163,22 +1163,62 @@ serve(async (req)=>{
         });
       }
 
-      const { data: userProfile, error: profileError } = await userClient
+      // Resolve public user id (using admin to avoid RLS circular dependencies)
+      const { data: userProfile, error: profileError } = await admin
         .from('users')
-        .select('company_id')
+        .select('id')
         .eq('auth_user_id', user.id)
         .single();
 
-      if (profileError || !userProfile?.company_id) {
+      if (profileError || !userProfile) {
         return new Response(JSON.stringify({ 
           ok: false, 
-          error: 'No se pudo determinar la empresa del usuario' 
+          error: 'Usuario no encontrado'
         }), {
           status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
         });
       }
+
+      // Determine company_id: prefer explicit param, fallback to first active membership
+      let companyId = body.company_id;
       
-      const companyId = userProfile.company_id;
+      if (!companyId) {
+        const { data: membership, error: memberError } = await admin
+            .from('company_members')
+            .select('company_id')
+            .eq('user_id', userProfile.id)
+            .eq('status', 'active')
+            .limit(1)
+            .maybeSingle();
+
+        if (memberError || !membership) {
+             return new Response(JSON.stringify({
+              ok: false,
+              error: 'No se pudo determinar la empresa del usuario (sin membresía activa)'
+            }), {
+              status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
+            });
+        }
+        companyId = membership.company_id;
+      } else {
+        // Verify access to the requested company
+        const { data: membership, error: memberError } = await admin
+            .from('company_members')
+            .select('company_id')
+            .eq('user_id', userProfile.id)
+            .eq('company_id', companyId)
+            .eq('status', 'active')
+            .maybeSingle();
+
+        if (memberError || !membership) {
+             return new Response(JSON.stringify({
+              ok: false,
+              error: 'No tienes acceso a la empresa solicitada'
+            }), {
+              status: 403, headers: { ...headers, 'Content-Type': 'application/json' }
+            });
+        }
+      }
       
       // Pagination params
       const page = Number(body.page || 1);
