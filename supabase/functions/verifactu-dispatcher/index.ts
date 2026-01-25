@@ -1163,22 +1163,40 @@ serve(async (req)=>{
         });
       }
 
-      const { data: userProfile, error: profileError } = await userClient
+      // Secure lookup: Map Auth ID -> Public User ID -> Active Company Member
+      const { data: publicUser, error: userError } = await userClient
         .from('users')
-        .select('company_id')
+        .select('id')
         .eq('auth_user_id', user.id)
         .single();
 
-      if (profileError || !userProfile?.company_id) {
+      if (userError || !publicUser) {
         return new Response(JSON.stringify({ 
           ok: false, 
-          error: 'No se pudo determinar la empresa del usuario' 
+          error: 'Usuario no encontrado en el sistema público'
         }), {
-          status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
+          status: 403, headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const { data: member, error: memberError } = await userClient
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', publicUser.id)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+
+      if (memberError || !member?.company_id) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: 'Usuario no tiene una membresía activa en ninguna empresa'
+        }), {
+          status: 403, headers: { ...headers, 'Content-Type': 'application/json' }
         });
       }
       
-      const companyId = userProfile.company_id;
+      const companyId = member.company_id;
       
       // Pagination params
       const page = Number(body.page || 1);
