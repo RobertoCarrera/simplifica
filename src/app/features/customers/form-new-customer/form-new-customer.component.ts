@@ -1,4 +1,7 @@
-import { Component, EventEmitter, Input, OnInit, Output, inject, signal, ViewChild, ElementRef, ChangeDetectorRef, SimpleChanges, OnChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject, signal, ViewChild, ElementRef, ChangeDetectorRef, SimpleChanges, OnChanges, HostListener } from '@angular/core';
+
+
+
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Customer, ClientContact } from '../../../models/customer';
@@ -166,16 +169,14 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   localityDropdownOpen: boolean = false;
 
 
-  onDropdownBlur(type: 'via' | 'locality' | 'source' | 'industry') {
-    setTimeout(() => {
-      switch (type) {
-        case 'via': this.viaDropdownOpen = false; break;
-        case 'locality': this.localityDropdownOpen = false; break;
-        case 'source': this.sourceDropdownOpen = false; break;
-        case 'industry': this.industryDropdownOpen = false; break;
-      }
-    }, 200);
+  @HostListener('document:click', ['$event'])
+  closeAllDropdowns(event: MouseEvent) {
+    this.viaDropdownOpen = false;
+    this.localityDropdownOpen = false;
+    this.sourceDropdownOpen = false;
+    this.industryDropdownOpen = false;
   }
+
 
 
   // Create locality modal state
