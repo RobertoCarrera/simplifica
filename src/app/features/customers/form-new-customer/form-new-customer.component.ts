@@ -12,6 +12,8 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
 import { AuthService } from '../../../services/auth.service';
 import { AddressesService } from '../../../services/addresses.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
+import { Observable, Subscription, of } from 'rxjs';
+import { finalize, switchMap, map } from 'rxjs/operators';
 import { GdprComplianceService } from '../../../services/gdpr-compliance.service';
 
 @Component({
@@ -445,6 +447,8 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     }, 50);
   }
 
+  isCreatingLocality = false;
+
   closeCreateLocality() {
     this.showCreateLocalityModal = false;
     this.newLocalityName = '';
@@ -458,6 +462,8 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   }
 
   createLocalityFromInput() {
+    if (this.isCreatingLocality) return;
+
     const name = (this.newLocalityName || this.addressLocalityName || '').trim();
     const cpRaw = (this.newLocalityCP || '').trim();
     const cp = cpRaw.replace(/\D+/g, '').trim();
@@ -467,13 +473,15 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       return;
     }
 
-    this.localitiesService.findByPostalCode(cp).subscribe({
-      next: (existing) => {
+    console.log('[CreateLocality] Starting creation process...', { name, cp });
+    this.isCreatingLocality = true;
+    this.cdr.detectChanges(); // Ensure UI updates to locked state immediately
+
+    this.localitiesService.findByPostalCode(cp).pipe(
+      switchMap((existing) => {
+        console.log('[CreateLocality] Checked existence result:', existing);
         if (existing) {
-          this.existingLocalityByCP = existing;
-          this.cpExists = true;
-          this.toastService.info('Código postal existente', `Ya existe una localidad con CP ${cp}: ${existing.nombre} `);
-          return;
+          return of({ type: 'EXISTING', data: existing });
         }
 
         const payload: any = {
@@ -481,28 +489,47 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
           province: this.newLocalityProvince.trim(),
           country: this.newLocalityCountry.trim() || 'España',
           postal_code: cp
-        } as any;
+        };
 
-        this.localitiesService.createLocality(payload as any).subscribe({
-          next: (created: any) => {
-            this.loadLocalities(); // Reload to get new one
-            const newId = created.id || created._id || created.ID || null;
-            if (newId) {
-              this.formData.addressLocalidadId = newId;
-            }
-            this.addressLocalityName = created.name || created.nombre || name;
-            this.toastService.success('Localidad creada', `${this.addressLocalityName} creada correctamente`);
-            this.closeCreateLocality();
-          },
-          error: (err: any) => {
-            console.error('Error creating locality:', err);
-            this.toastService.error('Error', 'No se pudo crear la localidad');
+        console.log('[CreateLocality] Sending create request...', payload);
+        return this.localitiesService.createLocality(payload).pipe(
+          map(created => {
+            console.log('[CreateLocality] Creation successful:', created);
+            return { type: 'CREATED', data: created };
+          })
+        );
+      }),
+      finalize(() => {
+        console.log('[CreateLocality] Finalizing process (resetting flag).');
+        this.isCreatingLocality = false;
+        this.cdr.detectChanges(); // FORCE UI UPDATE
+      })
+    ).subscribe({
+      next: (result: any) => {
+        console.log('[CreateLocality] Next emitted:', result);
+        if (result.type === 'EXISTING') {
+          const existing = result.data;
+          this.existingLocalityByCP = existing;
+          this.cpExists = true;
+          this.toastService.info('Código postal existente', `Ya existe una localidad con CP ${cp}: ${existing.nombre}`);
+        } else if (result.type === 'CREATED') {
+          const created = result.data;
+          this.loadLocalities(); // Reload cache
+          const newId = created.id || created._id || created.ID || null;
+          if (newId) {
+            this.formData.addressLocalidadId = newId;
           }
-        });
+          this.addressLocalityName = created.name || created.nombre || name;
+          this.toastService.success('Localidad creada', `${this.addressLocalityName} creada correctamente`);
+          // Note: closeCreateLocality might NOT be clearing the modal if logic is wrong, but it should.
+          this.closeCreateLocality();
+        }
       },
-      error: (err) => {
-        console.error('Error checking postal code:', err);
-        this.toastService.error('Error', 'Error al verificar código postal');
+      error: (err: any) => {
+        console.error('[CreateLocality] Error in process:', err);
+        // Check if it's actually an RLS or Supabase error
+        const msg = err.message || 'No se pudo crear la localidad';
+        this.toastService.error('Error', msg);
       }
     });
   }
@@ -611,7 +638,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       billing_email: this.formData.billing_email,
       tax_region: this.formData.tax_region,
       credit_limit: this.formData.credit_limit,
-      default_discount: this.formData.default_discount
+      default_discount: this.formData.default_discount,
+
+      // Pro Fields & Contacts (handled by service)
+      tier: this.formData.tier,
+      contacts: this.contactList
     };
 
     this.handleAddressAndSave(customerData);
