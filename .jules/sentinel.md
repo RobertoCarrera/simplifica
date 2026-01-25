@@ -10,3 +10,7 @@
 **Vulnerability:** Text highlighting using regex replacement and `[innerHTML]` can break HTML structure or allow injection if the source text is not escaped.
 **Learning:** Angular's default sanitization protects against XSS (script execution) in `[innerHTML]`, but it does not prevent HTML injection that breaks layout or confuses the parser (e.g. `<` becoming start of tag). Even if XSS is blocked, broken HTML is a quality issue and potentially a phishing vector.
 **Prevention:** Always escape the source text (HTML entities) *before* wrapping matches in `<mark>` tags when using manual highlighting logic bound to `[innerHTML]`. Use a split-escape-wrap approach to handle regex matches correctly.
+## 2026-06-01 - Fail Securely with Environment Variables
+**Vulnerability:** Hardcoded encryption keys used as fallbacks (`|| "default-key"`) exposed the system to cryptographic compromise if the environment variable was missing.
+**Learning:** "Fail Safe" defaults are dangerous for security credentials. It is better to crash the application (throw an Error) than to run with insecure defaults.
+**Prevention:** Explicitly check for the presence of sensitive environment variables (e.g., `ENCRYPTION_KEY`, `API_SECRET`) at the top of the function/module. If missing, throw an Error immediately to prevent execution in an insecure state.
