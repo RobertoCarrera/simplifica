@@ -35,9 +35,10 @@ import { IntegrationsComponent } from '../integrations/integrations.component';
 })
 export class ConfiguracionComponent implements OnInit, OnDestroy {
     // UI tabs
-    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' = 'perfil';
+    activeTab: 'perfil' | 'empresa' | 'ayuda' | 'ajustes' | 'privacidad' | 'import-export' | 'domains' | 'integrations' | 'facturacion' = 'perfil';
     userProfile: AppUser | null = null;
     profileForm: FormGroup;
+    billingForm: FormGroup;
     passwordForm: FormGroup;
     loading = false;
     // Migrated to toast service for notifications
@@ -83,6 +84,24 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     // Company NIF edit
     companyNifEdit = '';
     savingNif = false;
+
+    // Billing Options
+    paymentMethodOptions = [
+        { value: 'transfer', label: 'Transferencia Bancaria' },
+        { value: 'direct_debit', label: 'Domiciliación Bancaria' },
+        { value: 'card', label: 'Tarjeta Crédito/Débito' },
+        { value: 'cash', label: 'Efectivo' },
+        { value: 'paypal', label: 'PayPal' },
+        { value: 'stripe', label: 'Stripe' },
+        { value: 'bizum', label: 'Bizum' }
+    ];
+
+    taxRegionOptions = [
+        { value: '', label: 'General (IVA 21%)' },
+        { value: 'es_canarias', label: 'Canarias (IGIC)' },
+        { value: 'eu_intra', label: 'Intracomunitario' },
+        { value: 'export', label: 'Exportación' }
+    ];
 
     // Client role detection - hide tabs and simplify settings for clients
     // Client details (for profile view)
@@ -130,6 +149,17 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         this.profileForm = this.fb.group({
             full_name: ['', [Validators.required, Validators.minLength(2)]],
             email: ['', [Validators.required, Validators.email]]
+        });
+
+        this.billingForm = this.fb.group({
+            business_name: [''],
+            trade_name: [''],
+            cif_nif: [''],
+            billing_email: ['', [Validators.email]],
+            payment_method: [''],
+            iban: [''],
+            bic: [''],
+            tax_region: ['']
         });
 
         this.passwordForm = this.fb.group({
@@ -194,7 +224,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         const params = this.route.snapshot.queryParams;
         if (params && params['code']) {
             this.activeTab = 'integrations';
-        } else if (params && params['tab'] && ['perfil', 'empresa', 'ayuda', 'ajustes', 'privacidad', 'import-export', 'domains', 'integrations'].includes(params['tab'])) {
+        } else if (params && params['tab'] && ['perfil', 'empresa', 'ayuda', 'ajustes', 'privacidad', 'import-export', 'domains', 'integrations', 'facturacion'].includes(params['tab'])) {
             this.activeTab = params['tab'];
         }
     }
@@ -235,6 +265,16 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
                         this.customersService.getCustomer(profile.client_id).subscribe({
                             next: (customer) => {
                                 this.clientDetails = customer;
+                                this.billingForm.patchValue({
+                                    business_name: customer.business_name || '',
+                                    trade_name: customer.trade_name || '',
+                                    cif_nif: customer.cif_nif || '',
+                                    billing_email: customer.billing_email || '',
+                                    payment_method: customer.payment_method || '',
+                                    iban: customer.iban || '',
+                                    bic: customer.bic || '',
+                                    tax_region: customer.tax_region || ''
+                                });
                                 this.clientDetailsLoading = false;
                             },
                             error: (err) => {
@@ -283,6 +323,26 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
             } catch (error) {
                 this.showMessage('Error al actualizar el perfil', 'error');
                 console.error('Error updating profile:', error);
+            } finally {
+                this.loading = false;
+            }
+        }
+    }
+
+    async updateBilling() {
+        if (this.billingForm.valid && this.clientDetails) {
+            this.loading = true;
+            try {
+                const billingData = this.billingForm.value;
+                await firstValueFrom(this.customersService.updateCustomer(this.clientDetails.id, billingData));
+                this.showMessage('Datos de facturación actualizados', 'success');
+                // Refresh data
+                const updated = await firstValueFrom(this.customersService.getCustomer(this.clientDetails.id));
+                this.clientDetails = updated;
+                this.billingForm.patchValue(updated);
+            } catch (error) {
+                this.showMessage('Error al actualizar datos de facturación', 'error');
+                console.error('Error updating billing:', error);
             } finally {
                 this.loading = false;
             }
