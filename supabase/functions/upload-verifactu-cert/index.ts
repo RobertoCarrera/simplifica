@@ -68,24 +68,36 @@ Deno.serve(async (req: Request) => {
   }
   const authUserId = userData.user.id;
 
-  // Map auth user -> company + role
-  const { data: appUser, error: mapErr } = await serviceClient
+  // Map auth user -> company + role via company_members
+  // 1. Get user UUID from users table
+  const { data: userRecord, error: userRecErr } = await serviceClient
     .from('users')
-    .select('id, company_id, role, deleted_at')
+    .select('id')
     .eq('auth_user_id', authUserId)
-    .is('deleted_at', null)
     .maybeSingle();
 
-  if (mapErr) {
-    return new Response(JSON.stringify({ error: 'USER_LOOKUP_FAILED', details: mapErr.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+  if (userRecErr || !userRecord) {
+    return new Response(JSON.stringify({ error: 'USER_NOT_FOUND' }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
   }
-  if (!appUser?.company_id) {
-    return new Response(JSON.stringify({ error: 'NO_COMPANY' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
+
+  // 2. Check company membership via company_members
+  const { data: member, error: memberErr } = await serviceClient
+    .from('company_members')
+    .select('company_id, role')
+    .eq('user_id', userRecord.id)
+    .eq('status', 'active')
+    .in('role', ['owner', 'admin'])
+    .limit(1)
+    .maybeSingle();
+
+  if (memberErr) {
+    return new Response(JSON.stringify({ error: 'MEMBERSHIP_CHECK_FAILED', details: memberErr.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
   }
-  const role = (appUser.role || '').toLowerCase();
-  if (!['owner','admin'].includes(role)) {
-    return new Response(JSON.stringify({ error: 'FORBIDDEN_ROLE' }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
+  if (!member || !member.company_id) {
+    return new Response(JSON.stringify({ error: 'FORBIDDEN_ROLE', hint: 'Must be active owner/admin of a company' }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
   }
+
+  const appUser = { company_id: member.company_id };
 
   let body: UploadPayload;
   try {
