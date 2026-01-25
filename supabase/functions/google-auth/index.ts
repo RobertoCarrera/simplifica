@@ -6,6 +6,45 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function signState(payload: any, secret: string): Promise<string> {
+    const data = JSON.stringify(payload);
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+        "raw",
+        enc.encode(secret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"]
+    );
+    const signature = await crypto.subtle.sign("HMAC", key, enc.encode(data));
+    const sigBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+    return btoa(data + "|" + sigBase64);
+}
+
+async function verifyState(stateStr: string, secret: string): Promise<any> {
+    try {
+        const decoded = atob(stateStr);
+        const [data, sigBase64] = decoded.split("|");
+        if (!data || !sigBase64) return null;
+
+        const enc = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+            "raw",
+            enc.encode(secret),
+            { name: "HMAC", hash: "SHA-256" },
+            false,
+            ["sign"]
+        );
+        const signature = await crypto.subtle.sign("HMAC", key, enc.encode(data));
+        const expectedSig = btoa(String.fromCharCode(...new Uint8Array(signature)));
+
+        if (sigBase64 !== expectedSig) return null;
+        return JSON.parse(data);
+    } catch {
+        return null;
+    }
+}
+
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
@@ -28,7 +67,7 @@ serve(async (req) => {
             throw new Error('Unauthorized');
         }
 
-        const { action, code, redirect_uri } = await req.json();
+        const { action, code, redirect_uri, state } = await req.json();
 
         const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
         const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
@@ -46,7 +85,11 @@ serve(async (req) => {
             // Allow dynamic redirect URI from client or fallback
             const redirectUri = redirect_uri || 'http://localhost:4200/settings/profile';
 
-            const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes.join(' '))}&access_type=offline&prompt=consent`;
+            // Generate signed state to prevent CSRF
+            const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+            const state = await signState({ userId: user.id, timestamp: Date.now() }, secret);
+
+            const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes.join(' '))}&access_type=offline&prompt=consent&state=${encodeURIComponent(state)}`;
 
             return new Response(JSON.stringify({ url }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -56,6 +99,26 @@ serve(async (req) => {
         if (action === 'exchange-code') {
             if (!code || !redirect_uri) {
                 throw new Error('Code and redirect_uri are required');
+            }
+
+            if (!state) {
+                throw new Error('State parameter is required to prevent CSRF');
+            }
+
+            const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+            const verifiedState = await verifyState(state, secret);
+
+            if (!verifiedState) {
+                throw new Error('Invalid or manipulated state');
+            }
+
+            if (verifiedState.userId !== user.id) {
+                throw new Error('State belongs to a different user');
+            }
+
+            // 15 minutes expiration
+            if (Date.now() - verifiedState.timestamp > 15 * 60 * 1000) {
+                throw new Error('State expired');
             }
 
             // Exchange code for tokens
