@@ -25,11 +25,12 @@ import { SupabaseCustomersService } from '../../../services/supabase-customers.s
 import { DataExportImportComponent } from '../data-export-import/data-export-import.component';
 import { DomainsComponent } from '../domains/domains.component';
 import { IntegrationsComponent } from '../integrations/integrations.component';
+import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 
 @Component({
     selector: 'app-configuracion',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent],
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent],
     templateUrl: './configuracion.component.html',
     styleUrls: ['./configuracion.component.scss']
 })
