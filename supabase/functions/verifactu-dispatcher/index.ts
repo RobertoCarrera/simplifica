@@ -507,9 +507,36 @@ serve(async (req)=>{
         ok: true
       };
     }
+
+    async function requireCompanyAccess(company_id) {
+      const authHeader = req.headers.get('authorization') || '';
+      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+      if (!token) return { error: 'Missing Bearer token', status: 401 };
+
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+      const userClient = createClient(url, anonKey, {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${token}` } }
+      });
+
+      const { data, error } = await userClient
+        .from('company_members')
+        .select('id, status')
+        .eq('company_id', company_id)
+        .maybeSingle();
+
+      if (error) return { error: error.message, status: 500 };
+      if (!data) return { error: 'Access denied: You are not a member of this company', status: 403 };
+      if (data.status !== 'active') return { error: 'Access denied: Inactive membership', status: 403 };
+
+      return { ok: true };
+    }
     
     // DEBUG: Test update operation on events
     if (body && body.action === 'debug-test-update' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -580,6 +607,9 @@ serve(async (req)=>{
     
     // DEBUG: Get last event for a company
     if (body && body.action === 'debug-last-event' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -598,6 +628,9 @@ serve(async (req)=>{
     
     // DEBUG: Test AEAT process steps for a specific company
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const steps: any = { step: 'init' };
       try {
         // Step 0: Check verifactu_settings directly
@@ -745,6 +778,9 @@ serve(async (req)=>{
     // Safe manual retry: reset last rejected event to pending for an invoice
     if (body && body.action === 'retry' && body.invoice_id) {
       const invoice_id = String(body.invoice_id);
+      const access = await requireInvoiceAccess(invoice_id);
+      if (access.error) return new Response(JSON.stringify({ ok: false, error: access.error }), { status: access.status || 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       // Find most recent rejected event for this invoice
       const { data: ev, error: evErr } = await admin.schema('verifactu').from('events').select('*').eq('invoice_id', invoice_id).eq('status', 'rejected').order('created_at', {
         ascending: false
@@ -823,6 +859,9 @@ serve(async (req)=>{
     // Test certificate: validates that the certificate can be decrypted and used
     // Requires company_id in body. Returns certificate status without exposing sensitive data.
     if (body && body.action === 'test-cert' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const company_id = String(body.company_id);
       
       // Helper to return error response in consistent format
@@ -1163,22 +1202,24 @@ serve(async (req)=>{
         });
       }
 
-      const { data: userProfile, error: profileError } = await userClient
-        .from('users')
+      // Get user's company_id from company_members (active membership)
+      const { data: member, error: memberErr } = await userClient
+        .from('company_members')
         .select('company_id')
-        .eq('auth_user_id', user.id)
-        .single();
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
 
-      if (profileError || !userProfile?.company_id) {
+      if (memberErr || !member?.company_id) {
         return new Response(JSON.stringify({ 
           ok: false, 
-          error: 'No se pudo determinar la empresa del usuario' 
+          error: 'No se pudo determinar la empresa del usuario (o no es miembro activo)'
         }), {
           status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
         });
       }
       
-      const companyId = userProfile.company_id;
+      const companyId = member.company_id;
       
       // Pagination params
       const page = Number(body.page || 1);
@@ -1299,19 +1340,22 @@ serve(async (req)=>{
     }
 
     // Diagnostic: verify access to verifactu schema objects & sample data
-    if (body && body.action === 'diag') {
+    if (body && body.action === 'diag' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const out = {
         ok: true
       };
       // Test events table
-      const evTest = await admin.schema('verifactu').from('events').select('id,status,created_at').order('created_at', {
+      const evTest = await admin.schema('verifactu').from('events').select('id,status,created_at').eq('company_id', body.company_id).order('created_at', {
         ascending: false
       }).limit(3);
       out.events_ok = !evTest.error;
       out.events_error = evTest.error?.message || null;
       out.events_sample = evTest.data || [];
       // Test invoice_meta table
-      const metaTest = await admin.schema('verifactu').from('invoice_meta').select('invoice_id,status,updated_at').order('updated_at', {
+      const metaTest = await admin.schema('verifactu').from('invoice_meta').select('invoice_id,status,updated_at').eq('company_id', body.company_id).order('updated_at', {
         ascending: false
       }).limit(3);
       out.meta_ok = !metaTest.error;
@@ -1321,7 +1365,7 @@ serve(async (req)=>{
       const pendingHead = await admin.schema('verifactu').from('events').select('id', {
         count: 'exact',
         head: true
-      }).eq('status', 'pending');
+      }).eq('company_id', body.company_id).eq('status', 'pending');
       out.pending_count = pendingHead.count ?? 0;
       out.pending_error = pendingHead.error?.message || null;
       // Return current mode & fallback info
