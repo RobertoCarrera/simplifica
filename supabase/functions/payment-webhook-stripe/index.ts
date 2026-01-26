@@ -207,7 +207,12 @@ serve(async (req) => {
       .single();
 
     // Verify webhook signature if configured
-    if (integration?.webhook_secret_encrypted && stripeSignature) {
+    if (integration?.webhook_secret_encrypted) {
+      if (!stripeSignature) {
+        console.error("[stripe-webhook] Missing signature header but secret is configured");
+        return new Response(JSON.stringify({ error: "Missing signature" }), { status: 401, headers });
+      }
+
       const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
       const isValid = await verifyStripeWebhook(body, stripeSignature, webhookSecret);
       
