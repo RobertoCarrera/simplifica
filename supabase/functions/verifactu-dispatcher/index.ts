@@ -507,9 +507,46 @@ serve(async (req)=>{
         ok: true
       };
     }
+
+    // Helper: Validate that the authenticated user is a member of the target company
+    async function requireCompanyAccess(company_id) {
+      const authHeader = req.headers.get('authorization') || '';
+      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+      if (!token) return { error: 'Missing Bearer token' };
+
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+      if (!anonKey) return { error: 'Missing SUPABASE_ANON_KEY' };
+
+      const userClient = createClient(url, anonKey, {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${token}` } }
+      });
+
+      // Check if we can find a membership for this company
+      // This relies on RLS policies on company_members allowing users to see their own memberships
+      const { data, error } = await userClient
+        .from('company_members')
+        .select('id, status')
+        .eq('company_id', company_id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (error) return { error: error.message };
+      if (!data) return { error: 'Access denied: You are not an active member of this company', status: 403 };
+
+      return { ok: true, userClient };
+    }
     
     // DEBUG: Test update operation on events
     if (body && body.action === 'debug-test-update' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({ ok: false, error: access.error }), {
+          status: access.status || 401,
+          headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
+
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -580,6 +617,14 @@ serve(async (req)=>{
     
     // DEBUG: Get last event for a company
     if (body && body.action === 'debug-last-event' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({ ok: false, error: access.error }), {
+          status: access.status || 401,
+          headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
+
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -598,6 +643,14 @@ serve(async (req)=>{
     
     // DEBUG: Test AEAT process steps for a specific company
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({ ok: false, error: access.error }), {
+          status: access.status || 401,
+          headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
+
       const steps: any = { step: 'init' };
       try {
         // Step 0: Check verifactu_settings directly
@@ -824,6 +877,13 @@ serve(async (req)=>{
     // Requires company_id in body. Returns certificate status without exposing sensitive data.
     if (body && body.action === 'test-cert' && body.company_id) {
       const company_id = String(body.company_id);
+      const access = await requireCompanyAccess(company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({ ok: false, error: access.error }), {
+          status: access.status || 401,
+          headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
       
       // Helper to return error response in consistent format
       const errorResponse = (decryptionError?: string, certError?: string, aeatError?: string) => {
@@ -1140,7 +1200,9 @@ serve(async (req)=>{
     // List all invoices with VeriFactu status for user's company (Registro AEAT)
     // Implements Art. 12 - Obligation to provide consultation of registered records
     if (body && body.action === 'list-registry') {
-      // Get user from token to find their company
+      let companyId = body.company_id;
+
+      // 1. Get user client (needed for RLS checks)
       const authHeader = req.headers.get('authorization') || '';
       const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
       if (!token) {
@@ -1154,31 +1216,41 @@ serve(async (req)=>{
         auth: { persistSession: false },
         global: { headers: { Authorization: `Bearer ${token}` } }
       });
-      
-      // Get user's company_id from public.users
-      const { data: { user }, error: authError } = await userClient.auth.getUser();
-      if (authError || !user) {
-        return new Response(JSON.stringify({ ok: false, error: 'Invalid token' }), {
-          status: 401, headers: { ...headers, 'Content-Type': 'application/json' }
-        });
-      }
 
-      const { data: userProfile, error: profileError } = await userClient
-        .from('users')
-        .select('company_id')
-        .eq('auth_user_id', user.id)
-        .single();
+      // 2. Resolve or Validate company_id
+      if (companyId) {
+        // Validate access
+        const { data, error } = await userClient
+          .from('company_members')
+          .select('id')
+          .eq('company_id', companyId)
+          .eq('status', 'active')
+          .maybeSingle();
 
-      if (profileError || !userProfile?.company_id) {
-        return new Response(JSON.stringify({ 
-          ok: false, 
-          error: 'No se pudo determinar la empresa del usuario' 
-        }), {
-          status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
-        });
+        if (error || !data) {
+           return new Response(JSON.stringify({ ok: false, error: 'Access denied or company not found' }), {
+            status: 403, headers: { ...headers, 'Content-Type': 'application/json' }
+          });
+        }
+      } else {
+        // Infer: Get first active company
+        const { data, error } = await userClient
+          .from('company_members')
+          .select('company_id')
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle();
+
+        if (error || !data) {
+          return new Response(JSON.stringify({
+            ok: false,
+            error: 'No se pudo determinar la empresa del usuario. Por favor especifique company_id.'
+          }), {
+            status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
+          });
+        }
+        companyId = data.company_id;
       }
-      
-      const companyId = userProfile.company_id;
       
       // Pagination params
       const page = Number(body.page || 1);
