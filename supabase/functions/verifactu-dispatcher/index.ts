@@ -507,9 +507,61 @@ serve(async (req)=>{
         ok: true
       };
     }
+
+    // Secure helper: Validate that the caller is an admin/owner of the company
+    async function requireCompanyAccess(company_id) {
+      const authHeader = req.headers.get('authorization') || '';
+      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+      if (!token) return { error: 'Missing Bearer token', status: 401 };
+
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+      if (!anonKey) return { error: 'Missing SUPABASE_ANON_KEY', status: 500 };
+
+      const userClient = createClient(url, anonKey, {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${token}` } }
+      });
+
+      // 1. Get authenticated user
+      const { data: { user }, error: authError } = await userClient.auth.getUser();
+      if (authError || !user) return { error: 'Invalid token', status: 401 };
+
+      // 2. Get public user ID
+      const { data: publicUser, error: userErr } = await userClient
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+      if (userErr || !publicUser) return { error: 'User profile not found', status: 403 };
+
+      // 3. Verify membership and role (owner/admin)
+      const { data: member, error: memErr } = await userClient
+        .from('company_members')
+        .select('role')
+        .eq('company_id', company_id)
+        .eq('user_id', publicUser.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (memErr || !member) return { error: 'Access denied to this company', status: 403 };
+
+      // Allow only admin/owner for debug operations
+      const allowedRoles = ['owner', 'admin'];
+      if (!allowedRoles.includes(member.role)) {
+        return { error: 'Insufficient permissions (admin/owner required)', status: 403 };
+      }
+
+      return { ok: true };
+    }
     
     // DEBUG: Test update operation on events
     if (body && body.action === 'debug-test-update' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({ ok: false, error: access.error }), { status: access.status || 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -580,6 +632,11 @@ serve(async (req)=>{
     
     // DEBUG: Get last event for a company
     if (body && body.action === 'debug-last-event' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({ ok: false, error: access.error }), { status: access.status || 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -598,6 +655,11 @@ serve(async (req)=>{
     
     // DEBUG: Test AEAT process steps for a specific company
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({ ok: false, error: access.error }), { status: access.status || 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const steps: any = { step: 'init' };
       try {
         // Step 0: Check verifactu_settings directly
@@ -823,6 +885,11 @@ serve(async (req)=>{
     // Test certificate: validates that the certificate can be decrypted and used
     // Requires company_id in body. Returns certificate status without exposing sensitive data.
     if (body && body.action === 'test-cert' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({ ok: false, error: access.error }), { status: access.status || 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const company_id = String(body.company_id);
       
       // Helper to return error response in consistent format
