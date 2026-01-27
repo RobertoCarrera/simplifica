@@ -507,9 +507,54 @@ serve(async (req)=>{
         ok: true
       };
     }
+
+    async function requireCompanyAccess(target_company_id) {
+      const authHeader = req.headers.get('authorization') || '';
+      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+      if (!token) return { error: 'Missing Bearer token' };
+
+      const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+
+      const userClient = createClient(supabaseUrl, anonKey, {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${token}` } }
+      });
+
+      const { data: { user }, error: authError } = await userClient.auth.getUser();
+      if (authError || !user) return { error: 'Invalid token' };
+
+      // Get internal user ID from public.users
+      const { data: userData, error: userError } = await userClient
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (userError || !userData) return { error: 'User profile not found' };
+
+      // Check membership in the target company
+      const { data: membership } = await userClient
+        .from('company_members')
+        .select('id')
+        .eq('user_id', userData.id)
+        .eq('company_id', target_company_id)
+        .eq('status', 'active')
+        .in('role', ['owner', 'admin'])
+        .maybeSingle();
+
+      if (!membership) {
+        return { error: 'Unauthorized: You do not belong to this company or lack permissions', status: 403 };
+      }
+
+      return { ok: true };
+    }
     
     // DEBUG: Test update operation on events
     if (body && body.action === 'debug-test-update' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status || 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -580,6 +625,9 @@ serve(async (req)=>{
     
     // DEBUG: Get last event for a company
     if (body && body.action === 'debug-last-event' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status || 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -598,6 +646,9 @@ serve(async (req)=>{
     
     // DEBUG: Test AEAT process steps for a specific company
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status || 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const steps: any = { step: 'init' };
       try {
         // Step 0: Check verifactu_settings directly
@@ -823,6 +874,9 @@ serve(async (req)=>{
     // Test certificate: validates that the certificate can be decrypted and used
     // Requires company_id in body. Returns certificate status without exposing sensitive data.
     if (body && body.action === 'test-cert' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status || 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const company_id = String(body.company_id);
       
       // Helper to return error response in consistent format
