@@ -6,3 +6,8 @@
 2. Sanitize using `DOMPurify.sanitize(html, { ADD_ATTR: ['class'] })`.
 3. Wrap in `sanitizer.bypassSecurityTrustHtml(...)`.
 4. Return `SafeHtml` type.
+
+## 2028-05-23 - Recurring Debug Endpoints Regression
+**Vulnerability:** Insecure debug endpoints (`debug-test-update`, `debug-env`, etc.) in `verifactu-dispatcher` allow unauthenticated IDOR and data manipulation. These recur due to environment sync issues.
+**Learning:** The codebase has a tendency to revert to an insecure state (Jan 2026 snapshot). "Deleted" code reappears.
+**Prevention:** Regularly audit `verifactu-dispatcher` for the presence of `debug-` endpoints and re-delete them.
