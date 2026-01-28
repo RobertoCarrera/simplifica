@@ -10,3 +10,8 @@
 **Vulnerability:** Text highlighting using regex replacement and `[innerHTML]` can break HTML structure or allow injection if the source text is not escaped.
 **Learning:** Angular's default sanitization protects against XSS (script execution) in `[innerHTML]`, but it does not prevent HTML injection that breaks layout or confuses the parser (e.g. `<` becoming start of tag). Even if XSS is blocked, broken HTML is a quality issue and potentially a phishing vector.
 **Prevention:** Always escape the source text (HTML entities) *before* wrapping matches in `<mark>` tags when using manual highlighting logic bound to `[innerHTML]`. Use a split-escape-wrap approach to handle regex matches correctly.
+
+## 2028-02-18 - AWS Manager Auth Regression
+**Vulnerability:** Unauthenticated access to `aws-manager` allowed arbitrary domain registration and availability checks. Stack traces leaked internal details.
+**Learning:** File synchronization issues can silently revert critical security patches. The function regressed to a completely insecure state, missing all auth logic added in previous months.
+**Prevention:** Always verify `Authorization` header and validate with `supabase.auth.getUser()` at the entry point of sensitive Edge Functions. Do not rely on "implied" security or previous patches persisting without verification.
