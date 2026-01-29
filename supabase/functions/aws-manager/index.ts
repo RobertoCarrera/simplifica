@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Route53DomainsClient, CheckDomainAvailabilityCommand, RegisterDomainCommand } from "npm:@aws-sdk/client-route-53-domains";
 import { SESv2Client, CreateEmailIdentityCommand } from "npm:@aws-sdk/client-sesv2";
 import { Route53Client, ChangeResourceRecordSetsCommand } from "npm:@aws-sdk/client-route-53";
@@ -16,6 +17,35 @@ serve(async (req) => {
     }
 
     try {
+        // Auth check
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+
+        if (!supabaseUrl || !supabaseAnonKey) {
+            throw new Error('Missing Supabase configuration');
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } },
+            auth: { persistSession: false }
+        });
+
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized', details: authError?.message }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
         const { action, payload } = await req.json();
 
         // AWS Config
@@ -70,7 +100,7 @@ serve(async (req) => {
                     CountryCode: 'US',
                     ZipCode: '10001',
                     PhoneNumber: '+1.5555555555',
-                    Email: 'admin@simplifica.com' // Should be the user's email
+                    Email: user.email || 'admin@simplifica.com' // Use verified user email if available
                 };
 
                 const command = new RegisterDomainCommand({
