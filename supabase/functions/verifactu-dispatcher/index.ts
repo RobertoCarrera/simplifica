@@ -444,6 +444,43 @@ async function processEvent(admin, ev) {
     }
   }
 }
+
+// For actions that require validating the caller against RLS (per-invoice access),
+// create a user-scoped client from the Authorization header and ensure the invoice exists for them.
+async function requireInvoiceAccess(req, invoice_id) {
+  const authHeader = req.headers.get('authorization') || '';
+  const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+  if (!token) return {
+    error: 'Missing Bearer token'
+  };
+  const url = Deno.env.get('SUPABASE_URL') || '';
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+  if (!anonKey) return {
+    error: 'Missing SUPABASE_ANON_KEY'
+  };
+  const userClient = createClient(url, anonKey, {
+    auth: {
+      persistSession: false
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  });
+  const { data: inv, error: invErr } = await userClient.from('invoices').select('id').eq('id', invoice_id).maybeSingle();
+  if (invErr) return {
+    error: invErr.message
+  };
+  if (!inv) return {
+    error: 'Invoice not found',
+    status: 404
+  };
+  return {
+    ok: true
+  };
+}
+
 serve(async (req)=>{
   const origin = req.headers.get('Origin') || undefined;
   const headers = cors(origin);
@@ -473,278 +510,25 @@ serve(async (req)=>{
       const txt = await req.text();
       body = txt ? JSON.parse(txt) : null;
     } catch (_) {}
-    // For actions that require validating the caller against RLS (per-invoice access),
-    // create a user-scoped client from the Authorization header and ensure the invoice exists for them.
-    async function requireInvoiceAccess(invoice_id) {
-      const authHeader = req.headers.get('authorization') || '';
-      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
-      if (!token) return {
-        error: 'Missing Bearer token'
-      };
-      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-      if (!anonKey) return {
-        error: 'Missing SUPABASE_ANON_KEY'
-      };
-      const userClient = createClient(url, anonKey, {
-        auth: {
-          persistSession: false
-        },
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      });
-      const { data: inv, error: invErr } = await userClient.from('invoices').select('id').eq('id', invoice_id).maybeSingle();
-      if (invErr) return {
-        error: invErr.message
-      };
-      if (!inv) return {
-        error: 'Invoice not found',
-        status: 404
-      };
-      return {
-        ok: true
-      };
-    }
-    
-    // DEBUG: Test update operation on events
-    if (body && body.action === 'debug-test-update' && body.company_id) {
-      const { data: lastEvent, error: getErr } = await admin
-        .schema('verifactu')
-        .from('events')
-        .select('*')
-        .eq('company_id', body.company_id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      if (getErr || !lastEvent) {
-        return new Response(JSON.stringify({
-          ok: false,
-          error: getErr?.message || 'No event found'
-        }), { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } });
-      }
-      
-      const testAttempts = (lastEvent.attempts ?? 0) + 99;
-      const testError = 'debug-test-' + Date.now();
-      
-      const { data: updateData, error: updateErr } = await admin
-        .schema('verifactu')
-        .from('events')
-        .update({
-          attempts: testAttempts,
-          last_error: testError
-        })
-        .eq('id', lastEvent.id)
-        .select()
-        .single();
-      
-      // Now read it back
-      const { data: readBack, error: readErr } = await admin
-        .schema('verifactu')
-        .from('events')
-        .select('*')
-        .eq('id', lastEvent.id)
-        .single();
-      
-      return new Response(JSON.stringify({
-        ok: !updateErr,
-        before: { attempts: lastEvent.attempts, last_error: lastEvent.last_error },
-        tried: { attempts: testAttempts, last_error: testError },
-        updateResult: updateData,
-        updateError: updateErr?.message,
-        after: readBack ? { attempts: readBack.attempts, last_error: readBack.last_error } : null,
-        readError: readErr?.message
-      }), { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } });
-    }
-    
-    // DEBUG: Show current environment configuration
-    if (body && body.action === 'debug-env') {
-      return new Response(JSON.stringify({
-        ok: true,
-        env: {
-          VERIFACTU_MODE,
-          ENABLE_FALLBACK,
-          MAX_ATTEMPTS,
-          BACKOFF_MIN,
-          HAS_CERT_KEY: !!VERIFACTU_CERT_ENC_KEY,
-          CERT_KEY_LENGTH: VERIFACTU_CERT_ENC_KEY?.length || 0
-        },
-        timestamp: new Date().toISOString()
-      }), {
-        status: 200,
-        headers: { ...headers, 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // DEBUG: Get last event for a company
-    if (body && body.action === 'debug-last-event' && body.company_id) {
-      const { data: lastEvent, error: evErr } = await admin
-        .schema('verifactu')
-        .from('events')
-        .select('*')
-        .eq('company_id', body.company_id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      
-      return new Response(JSON.stringify({
-        ok: true,
-        event: lastEvent,
-        error: evErr?.message
-      }), { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } });
-    }
-    
-    // DEBUG: Test AEAT process steps for a specific company
-    if (body && body.action === 'debug-aeat-process' && body.company_id) {
-      const steps: any = { step: 'init' };
-      try {
-        // Step 0: Check verifactu_settings directly
-        steps.step = 'check_settings';
-        const { data: rawSettings, error: rawErr } = await admin
-          .from('verifactu_settings')
-          .select('company_id, issuer_nif, environment, cert_pem_enc, key_pem_enc')
-          .eq('company_id', body.company_id)
-          .maybeSingle();
-        
-        steps.settingsFound = !!rawSettings;
-        steps.settingsError = rawErr?.message || null;
-        steps.hasCertEnc = rawSettings?.cert_pem_enc ? 'yes' : 'no';
-        steps.hasKeyEnc = rawSettings?.key_pem_enc ? 'yes' : 'no';
-        steps.settingsNif = rawSettings?.issuer_nif || null;
-        steps.settingsEnv = rawSettings?.environment || null;
-        
-        // Step 1: Get certificate
-        steps.step = 'get_certificate';
-        const cert = await getCertificateForCompany(admin, body.company_id);
-        if (!cert) {
-          return new Response(JSON.stringify({
-            ok: false,
-            error: 'Certificate not found for company',
-            steps
-          }), { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } });
-        }
-        steps.certOk = true;
-        steps.certEnv = cert.environment;
-        steps.certNif = cert.nifEmisor;
-        
-        // Step 2: Find a pending event for this company (or reset last one if requested)
-        steps.step = 'find_event';
-        
-        let events: any[] = [];
-        let evErr: any = null;
-        
-        if (body.reset) {
-          // Find last event regardless of status and reset it
-          const { data: lastEvents, error: lastErr } = await admin
-            .schema('verifactu')
-            .from('events')
-            .select('*')
-            .eq('company_id', body.company_id)
-            .order('created_at', { ascending: false })
-            .limit(1);
-          
-          if (lastErr) {
-            evErr = lastErr;
-          } else if (lastEvents && lastEvents.length > 0) {
-            // Reset to pending - with confirmation
-            const resetResult = await admin
-              .schema('verifactu')
-              .from('events')
-              .update({ status: 'pending', attempts: 0, response: null, sent_at: null, last_error: null })
-              .eq('id', lastEvents[0].id)
-              .select()
-              .single();
-            
-            if (resetResult.error) {
-              console.error(`[VeriFactu] Reset failed: ${resetResult.error.message}`);
-              steps.resetError = resetResult.error.message;
-            } else {
-              console.log(`[VeriFactu] Reset successful, event now: ${JSON.stringify(resetResult.data).substring(0, 200)}`);
-              steps.resetSuccess = true;
-            }
-            
-            // Use reset data if available, otherwise use manual override
-            events = [resetResult.data || { ...lastEvents[0], status: 'pending', attempts: 0, last_error: null }];
-            steps.wasReset = true;
-            steps.previousStatus = lastEvents[0].status;
-          }
-        } else {
-          const { data: pendingEvents, error: pendErr } = await admin
-            .schema('verifactu')
-            .from('events')
-            .select('*')
-            .eq('company_id', body.company_id)
-            .eq('status', 'pending')
-            .order('created_at', { ascending: true })
-            .limit(1);
-          
-          events = pendingEvents || [];
-          evErr = pendErr;
-        }
-        
-        if (evErr) {
-          return new Response(JSON.stringify({
-            ok: false,
-            error: `Event query error: ${evErr.message}`,
-            steps
-          }), { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } });
-        }
-        
-        if (!events || events.length === 0) {
-          return new Response(JSON.stringify({
-            ok: false,
-            error: 'No pending events for this company',
-            steps
-          }), { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } });
-        }
-        
-        const ev = events[0];
-        steps.eventId = ev.id;
-        steps.eventType = ev.event_type;
-        steps.invoiceId = ev.invoice_id;
-        
-        // Step 3: Process the event using processEvent
-        steps.step = 'process_event';
-        steps.mode = VERIFACTU_MODE;
-        steps.fallback = ENABLE_FALLBACK;
-        
-        const result = await processEvent(admin, ev);
-        
-        // Step 4: Get updated event
-        steps.step = 'get_result';
-        const { data: updatedEv } = await admin
-          .schema('verifactu')
-          .from('events')
-          .select('*')
-          .eq('id', ev.id)
-          .single();
-        
-        return new Response(JSON.stringify({
-          ok: true,
-          result,
-          updatedEvent: updatedEv,
-          steps,
-          config: {
-            VERIFACTU_MODE,
-            ENABLE_FALLBACK
-          }
-        }), { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } });
-        
-      } catch (err) {
-        return new Response(JSON.stringify({
-          ok: false,
-          error: err.message,
-          stack: err.stack,
-          steps
-        }), { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } });
-      }
-    }
     
     // Safe manual retry: reset last rejected event to pending for an invoice
     if (body && body.action === 'retry' && body.invoice_id) {
       const invoice_id = String(body.invoice_id);
+      // FIX: Require access
+      const access = await requireInvoiceAccess(req, invoice_id);
+      if (access.error) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: access.error
+        }), {
+          status: access.status || 401,
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
       // Find most recent rejected event for this invoice
       const { data: ev, error: evErr } = await admin.schema('verifactu').from('events').select('*').eq('invoice_id', invoice_id).eq('status', 'rejected').order('created_at', {
         ascending: false
@@ -1059,7 +843,7 @@ serve(async (req)=>{
     // Secure proxy: per-invoice VeriFactu metadata (requires caller to have RLS access to the invoice)
     if (body && body.action === 'meta' && body.invoice_id) {
       const invoice_id = String(body.invoice_id);
-      const access = await requireInvoiceAccess(invoice_id);
+      const access = await requireInvoiceAccess(req, invoice_id);
       if (access.error) {
         const status = access.status || 401;
         return new Response(JSON.stringify({
@@ -1099,7 +883,7 @@ serve(async (req)=>{
     if (body && body.action === 'events' && body.invoice_id) {
       const invoice_id = String(body.invoice_id);
       const limit = Number(body.limit || 5);
-      const access = await requireInvoiceAccess(invoice_id);
+      const access = await requireInvoiceAccess(req, invoice_id);
       if (access.error) {
         const status = access.status || 401;
         return new Response(JSON.stringify({
@@ -1298,45 +1082,6 @@ serve(async (req)=>{
       });
     }
 
-    // Diagnostic: verify access to verifactu schema objects & sample data
-    if (body && body.action === 'diag') {
-      const out = {
-        ok: true
-      };
-      // Test events table
-      const evTest = await admin.schema('verifactu').from('events').select('id,status,created_at').order('created_at', {
-        ascending: false
-      }).limit(3);
-      out.events_ok = !evTest.error;
-      out.events_error = evTest.error?.message || null;
-      out.events_sample = evTest.data || [];
-      // Test invoice_meta table
-      const metaTest = await admin.schema('verifactu').from('invoice_meta').select('invoice_id,status,updated_at').order('updated_at', {
-        ascending: false
-      }).limit(3);
-      out.meta_ok = !metaTest.error;
-      out.meta_error = metaTest.error?.message || null;
-      out.meta_sample = metaTest.data || [];
-      // Count pending events (head query)
-      const pendingHead = await admin.schema('verifactu').from('events').select('id', {
-        count: 'exact',
-        head: true
-      }).eq('status', 'pending');
-      out.pending_count = pendingHead.count ?? 0;
-      out.pending_error = pendingHead.error?.message || null;
-      // Return current mode & fallback info
-      out.mode = VERIFACTU_MODE;
-      out.fallbackEnabled = ENABLE_FALLBACK;
-      out.maxAttempts = MAX_ATTEMPTS;
-      out.backoffMinutes = BACKOFF_MIN;
-      return new Response(JSON.stringify(out), {
-        status: 200,
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json'
-        }
-      });
-    }
     // Pull a batch of pending events
     const { data: events, error } = await admin.schema('verifactu').from('events').select('*').eq('status', 'pending').order('created_at', {
       ascending: true
