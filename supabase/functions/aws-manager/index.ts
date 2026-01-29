@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Route53DomainsClient, CheckDomainAvailabilityCommand, RegisterDomainCommand } from "npm:@aws-sdk/client-route-53-domains";
 import { SESv2Client, CreateEmailIdentityCommand } from "npm:@aws-sdk/client-sesv2";
 import { Route53Client, ChangeResourceRecordSetsCommand } from "npm:@aws-sdk/client-route-53";
@@ -16,6 +17,26 @@ serve(async (req) => {
     }
 
     try {
+        // SECURITY: Verify User
+        const authHeader = req.headers.get('authorization') || '';
+        const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+        if (!token) {
+            return new Response(JSON.stringify({ error: 'Missing Bearer token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: `Bearer ${token}` } },
+            auth: { persistSession: false }
+        });
+
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+             return new Response(JSON.stringify({ error: 'Unauthorized', details: authError?.message }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
         const { action, payload } = await req.json();
 
         // AWS Config
