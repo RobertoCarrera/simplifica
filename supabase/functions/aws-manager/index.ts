@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Route53DomainsClient, CheckDomainAvailabilityCommand, RegisterDomainCommand } from "npm:@aws-sdk/client-route-53-domains";
 import { SESv2Client, CreateEmailIdentityCommand } from "npm:@aws-sdk/client-sesv2";
 import { Route53Client, ChangeResourceRecordSetsCommand } from "npm:@aws-sdk/client-route-53";
@@ -16,6 +17,29 @@ serve(async (req) => {
     }
 
     try {
+        // Authenticate User
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const client = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: authHeader } } }
+        );
+
+        const { data: { user }, error: userError } = await client.auth.getUser();
+        if (userError || !user) {
+            return new Response(JSON.stringify({ error: 'Invalid token' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
         const { action, payload } = await req.json();
 
         // AWS Config
@@ -59,6 +83,7 @@ serve(async (req) => {
 
                 // DEFAULT CONTACT - In a real app, this should come from Company Profile
                 // AWS requires valid fields.
+                // TODO: Fetch user profile to fill this correctly
                 const defaultContact = {
                     FirstName: 'Admin',
                     LastName: 'User',
@@ -70,7 +95,7 @@ serve(async (req) => {
                     CountryCode: 'US',
                     ZipCode: '10001',
                     PhoneNumber: '+1.5555555555',
-                    Email: 'admin@simplifica.com' // Should be the user's email
+                    Email: user.email || 'admin@simplifica.com' // Use authenticated user email
                 };
 
                 const command = new RegisterDomainCommand({
