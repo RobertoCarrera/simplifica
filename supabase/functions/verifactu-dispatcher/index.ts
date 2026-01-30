@@ -444,6 +444,37 @@ async function processEvent(admin, ev) {
     }
   }
 }
+
+// Top-level helper for invoice access
+async function requireInvoiceAccess(invoice_id, authHeader, supabaseUrl, supabaseAnonKey) {
+  const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+  if (!token) return {
+    error: 'Missing Bearer token'
+  };
+
+  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  });
+  const { data: inv, error: invErr } = await userClient.from('invoices').select('id').eq('id', invoice_id).maybeSingle();
+  if (invErr) return {
+    error: invErr.message
+  };
+  if (!inv) return {
+    error: 'Invoice not found',
+    status: 404
+  };
+  return {
+    ok: true
+  };
+}
+
 serve(async (req)=>{
   const origin = req.headers.get('Origin') || undefined;
   const headers = cors(origin);
@@ -462,6 +493,8 @@ serve(async (req)=>{
   try {
     const url = Deno.env.get('SUPABASE_URL') || '';
     const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+
     const admin = createClient(url, key, {
       auth: {
         persistSession: false
@@ -473,40 +506,6 @@ serve(async (req)=>{
       const txt = await req.text();
       body = txt ? JSON.parse(txt) : null;
     } catch (_) {}
-    // For actions that require validating the caller against RLS (per-invoice access),
-    // create a user-scoped client from the Authorization header and ensure the invoice exists for them.
-    async function requireInvoiceAccess(invoice_id) {
-      const authHeader = req.headers.get('authorization') || '';
-      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
-      if (!token) return {
-        error: 'Missing Bearer token'
-      };
-      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-      if (!anonKey) return {
-        error: 'Missing SUPABASE_ANON_KEY'
-      };
-      const userClient = createClient(url, anonKey, {
-        auth: {
-          persistSession: false
-        },
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      });
-      const { data: inv, error: invErr } = await userClient.from('invoices').select('id').eq('id', invoice_id).maybeSingle();
-      if (invErr) return {
-        error: invErr.message
-      };
-      if (!inv) return {
-        error: 'Invoice not found',
-        status: 404
-      };
-      return {
-        ok: true
-      };
-    }
     
     // DEBUG: Test update operation on events
     if (body && body.action === 'debug-test-update' && body.company_id) {
@@ -1059,7 +1058,7 @@ serve(async (req)=>{
     // Secure proxy: per-invoice VeriFactu metadata (requires caller to have RLS access to the invoice)
     if (body && body.action === 'meta' && body.invoice_id) {
       const invoice_id = String(body.invoice_id);
-      const access = await requireInvoiceAccess(invoice_id);
+      const access = await requireInvoiceAccess(invoice_id, req.headers.get('authorization') || '', url, anonKey);
       if (access.error) {
         const status = access.status || 401;
         return new Response(JSON.stringify({
@@ -1099,7 +1098,7 @@ serve(async (req)=>{
     if (body && body.action === 'events' && body.invoice_id) {
       const invoice_id = String(body.invoice_id);
       const limit = Number(body.limit || 5);
-      const access = await requireInvoiceAccess(invoice_id);
+      const access = await requireInvoiceAccess(invoice_id, req.headers.get('authorization') || '', url, anonKey);
       if (access.error) {
         const status = access.status || 401;
         return new Response(JSON.stringify({
@@ -1163,22 +1162,39 @@ serve(async (req)=>{
         });
       }
 
-      const { data: userProfile, error: profileError } = await userClient
+      // FIX: Get public user ID then check company_members
+      const { data: publicUser, error: userError } = await userClient
         .from('users')
-        .select('company_id')
+        .select('id')
         .eq('auth_user_id', user.id)
         .single();
 
-      if (profileError || !userProfile?.company_id) {
+      if (userError || !publicUser) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: 'User not found'
+        }), {
+          status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
+
+      const { data: member, error: memberError } = await userClient
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', publicUser.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (memberError || !member) {
         return new Response(JSON.stringify({ 
           ok: false, 
-          error: 'No se pudo determinar la empresa del usuario' 
+          error: 'No se pudo determinar la empresa del usuario (sin membresía activa)'
         }), {
           status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
         });
       }
       
-      const companyId = userProfile.company_id;
+      const companyId = member.company_id;
       
       // Pagination params
       const page = Number(body.page || 1);
