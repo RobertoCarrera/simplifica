@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Route53DomainsClient, CheckDomainAvailabilityCommand, RegisterDomainCommand } from "npm:@aws-sdk/client-route-53-domains";
 import { SESv2Client, CreateEmailIdentityCommand } from "npm:@aws-sdk/client-sesv2";
 import { Route53Client, ChangeResourceRecordSetsCommand } from "npm:@aws-sdk/client-route-53";
@@ -16,11 +17,37 @@ serve(async (req) => {
     }
 
     try {
+        // 1. SECURITY CHECK: Verify Authentication
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            throw new Error('Missing Authorization header');
+        }
+
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } }
+        });
+
+        // Get user from the token
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized', details: authError?.message }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        // 2. Parse Request
         const { action, payload } = await req.json();
 
         // AWS Config
         const ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID');
         const SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY');
+
+        if (!ACCESS_KEY_ID || !SECRET_ACCESS_KEY) {
+             throw new Error('AWS credentials not configured');
+        }
 
         // Route53 Domains is GLOBAL (us-east-1)
         const r53DomainsClient = new Route53DomainsClient({
@@ -54,6 +81,10 @@ serve(async (req) => {
             }
 
             case 'register-domain': {
+                // Critical action: ensure the user is allowed to register domains.
+                // Ideally, we should check company_id and payment status here.
+                // For now, at least we know who they are (authenticated).
+
                 const { domain } = payload;
                 if (!domain) throw new Error('Domain is required');
 
@@ -70,7 +101,7 @@ serve(async (req) => {
                     CountryCode: 'US',
                     ZipCode: '10001',
                     PhoneNumber: '+1.5555555555',
-                    Email: 'admin@simplifica.com' // Should be the user's email
+                    Email: user.email || 'admin@simplifica.com' // Use authenticated user email if available
                 };
 
                 const command = new RegisterDomainCommand({
@@ -98,7 +129,8 @@ serve(async (req) => {
 
     } catch (error: any) {
         console.error('Error in aws-manager:', error);
-        return new Response(JSON.stringify({ error: error.message, details: error.stack }), {
+        // Do not expose stack trace to client
+        return new Response(JSON.stringify({ error: error.message }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
