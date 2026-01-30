@@ -507,9 +507,53 @@ serve(async (req)=>{
         ok: true
       };
     }
+
+    // Security Helper: Ensure caller is an admin/owner of the target company
+    async function requireCompanyAccess(targetCompanyId) {
+      const authHeader = req.headers.get('authorization') || '';
+      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+      if (!token) throw new Error('Missing Bearer token');
+
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+      // Use anon client to validate token and get auth user
+      const authClient = createClient(url, anonKey, {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${token}` } }
+      });
+
+      const { data: { user }, error: authErr } = await authClient.auth.getUser();
+      if (authErr || !user) throw new Error('Invalid token');
+
+      // Use admin client to lookup internal ID and verify membership
+      const { data: userData, error: userErr } = await admin
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (userErr || !userData) throw new Error('User record not found');
+
+      const { data: member, error: memberErr } = await admin
+        .from('company_members')
+        .select('role')
+        .eq('user_id', userData.id)
+        .eq('company_id', targetCompanyId)
+        .single();
+
+      if (memberErr || !member) throw new Error('Access denied: Not a member of this company');
+      if (!['owner', 'admin'].includes(member.role)) throw new Error('Access denied: Insufficient role');
+
+      return true;
+    }
     
     // DEBUG: Test update operation on events
     if (body && body.action === 'debug-test-update' && body.company_id) {
+      try {
+        await requireCompanyAccess(body.company_id);
+      } catch (err) {
+        return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -559,27 +603,17 @@ serve(async (req)=>{
       }), { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } });
     }
     
-    // DEBUG: Show current environment configuration
-    if (body && body.action === 'debug-env') {
-      return new Response(JSON.stringify({
-        ok: true,
-        env: {
-          VERIFACTU_MODE,
-          ENABLE_FALLBACK,
-          MAX_ATTEMPTS,
-          BACKOFF_MIN,
-          HAS_CERT_KEY: !!VERIFACTU_CERT_ENC_KEY,
-          CERT_KEY_LENGTH: VERIFACTU_CERT_ENC_KEY?.length || 0
-        },
-        timestamp: new Date().toISOString()
-      }), {
-        status: 200,
-        headers: { ...headers, 'Content-Type': 'application/json' }
-      });
-    }
+    // DEBUG: Show current environment configuration - REMOVED for security
+    // if (body && body.action === 'debug-env') { ... }
     
     // DEBUG: Get last event for a company
     if (body && body.action === 'debug-last-event' && body.company_id) {
+      try {
+        await requireCompanyAccess(body.company_id);
+      } catch (err) {
+        return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -598,6 +632,12 @@ serve(async (req)=>{
     
     // DEBUG: Test AEAT process steps for a specific company
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
+      try {
+        await requireCompanyAccess(body.company_id);
+      } catch (err) {
+        return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const steps: any = { step: 'init' };
       try {
         // Step 0: Check verifactu_settings directly
@@ -823,6 +863,12 @@ serve(async (req)=>{
     // Test certificate: validates that the certificate can be decrypted and used
     // Requires company_id in body. Returns certificate status without exposing sensitive data.
     if (body && body.action === 'test-cert' && body.company_id) {
+      try {
+        await requireCompanyAccess(body.company_id);
+      } catch (err) {
+        return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const company_id = String(body.company_id);
       
       // Helper to return error response in consistent format
