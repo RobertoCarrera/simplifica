@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
   // Map auth user -> company + role
   const { data: appUser, error: mapErr } = await serviceClient
     .from('users')
-    .select('id, company_id, role, deleted_at')
+    .select('id, company_id, app_roles(name), deleted_at')
     .eq('auth_user_id', authUserId)
     .is('deleted_at', null)
     .maybeSingle();
@@ -82,7 +82,8 @@ Deno.serve(async (req: Request) => {
   if (!appUser?.company_id) {
     return new Response(JSON.stringify({ error: 'NO_COMPANY' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
   }
-  const role = (appUser.role || '').toLowerCase();
+  // @ts-ignore: PostgREST join
+  const role = (appUser.app_roles?.name || '').toLowerCase();
   if (!['owner','admin'].includes(role)) {
     return new Response(JSON.stringify({ error: 'FORBIDDEN_ROLE' }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
   }
