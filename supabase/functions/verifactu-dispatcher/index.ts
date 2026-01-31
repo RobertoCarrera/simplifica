@@ -507,9 +507,50 @@ serve(async (req)=>{
         ok: true
       };
     }
+
+    // Secure helper: Verify caller belongs to the company (anti-IDOR)
+    async function requireCompanyAccess(company_id) {
+      const authHeader = req.headers.get('authorization') || '';
+      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+      if (!token) return { error: 'Missing Bearer token' };
+
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+      const userClient = createClient(url, anonKey, {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${token}` } }
+      });
+
+      const { data: { user }, error: authError } = await userClient.auth.getUser();
+      if (authError || !user) return { error: 'Invalid token' };
+
+      // Check membership via admin client (to bypass potential RLS recursive issues or just for certainty)
+      // First map auth_user_id to public.users.id
+      const { data: publicUser, error: userError } = await admin
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (userError || !publicUser) return { error: 'User profile not found' };
+
+      const { data: membership, error: memError } = await admin
+        .from('company_members')
+        .select('role')
+        .eq('company_id', company_id)
+        .eq('user_id', publicUser.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (memError || !membership) return { error: 'Access denied: You are not an active member of this company' };
+
+      return { ok: true, role: membership.role };
+    }
     
     // DEBUG: Test update operation on events
     if (body && body.action === 'debug-test-update' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify({ ok: false, error: access.error }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -580,6 +621,9 @@ serve(async (req)=>{
     
     // DEBUG: Get last event for a company
     if (body && body.action === 'debug-last-event' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify({ ok: false, error: access.error }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -598,6 +642,9 @@ serve(async (req)=>{
     
     // DEBUG: Test AEAT process steps for a specific company
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify({ ok: false, error: access.error }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const steps: any = { step: 'init' };
       try {
         // Step 0: Check verifactu_settings directly
@@ -744,7 +791,18 @@ serve(async (req)=>{
     
     // Safe manual retry: reset last rejected event to pending for an invoice
     if (body && body.action === 'retry' && body.invoice_id) {
+      // already protected because it finds event by invoice_id, but good to check access
+      // But here we rely on invoice_id...
+      // The original code:
+      // const { data: ev, error: evErr } = await admin.schema('verifactu').from('events').select('*').eq('invoice_id', invoice_id)...
+      // It DOES NOT check if user owns invoice_id.
+      // I should add `requireInvoiceAccess` here too!
+
       const invoice_id = String(body.invoice_id);
+      const access = await requireInvoiceAccess(invoice_id);
+      if (access.error) return new Response(JSON.stringify({ ok: false, error: access.error }), { status: access.status || 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+
+      // ... existing code ...
       // Find most recent rejected event for this invoice
       const { data: ev, error: evErr } = await admin.schema('verifactu').from('events').select('*').eq('invoice_id', invoice_id).eq('status', 'rejected').order('created_at', {
         ascending: false
@@ -824,6 +882,8 @@ serve(async (req)=>{
     // Requires company_id in body. Returns certificate status without exposing sensitive data.
     if (body && body.action === 'test-cert' && body.company_id) {
       const company_id = String(body.company_id);
+      const access = await requireCompanyAccess(company_id);
+      if (access.error) return new Response(JSON.stringify({ ok: false, error: access.error }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
       
       // Helper to return error response in consistent format
       const errorResponse = (decryptionError?: string, certError?: string, aeatError?: string) => {
