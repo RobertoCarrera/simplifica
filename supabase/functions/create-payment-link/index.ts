@@ -228,20 +228,6 @@ serve(async (req) => {
       });
     }
 
-    // Get user profile
-    const { data: me } = await supabase
-      .from("users")
-      .select("id, company_id, role, active")
-      .eq("auth_user_id", user.id)
-      .single();
-
-    if (!me?.company_id || !me.active) {
-      return new Response(JSON.stringify({ error: "User not found or inactive" }), {
-        status: 400,
-        headers: corsHeaders,
-      });
-    }
-
     const body = await req.json();
     const { invoice_id, provider, expires_in_days = 7 } = body;
 
@@ -259,7 +245,7 @@ serve(async (req) => {
       });
     }
 
-    // Get invoice
+    // Get invoice (Service Role)
     const { data: invoice, error: invErr } = await supabase
       .from("invoices")
       .select(`
@@ -269,12 +255,42 @@ serve(async (req) => {
         companies!inner(name)
       `)
       .eq("id", invoice_id)
-      .eq("company_id", me.company_id)
       .single();
 
     if (invErr || !invoice) {
       return new Response(JSON.stringify({ error: "Invoice not found" }), {
         status: 404,
+        headers: corsHeaders,
+      });
+    }
+
+    // AUTH CHECK: Verify multi-tenancy via company_members
+    // 1. Get internal user ID
+    const { data: userData, error: uErr } = await supabase
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+
+    if (uErr || !userData) {
+         return new Response(JSON.stringify({ error: "User not found" }), {
+        status: 401,
+        headers: corsHeaders,
+      });
+    }
+
+    // 2. Check membership in invoice's company
+    const { data: member, error: memErr } = await supabase
+        .from('company_members')
+        .select('id, status')
+        .eq('company_id', invoice.company_id)
+        .eq('user_id', userData.id)
+        .eq('status', 'active')
+        .maybeSingle();
+
+    if (memErr || !member) {
+        return new Response(JSON.stringify({ error: "Unauthorized: You are not an active member of this company" }), {
+        status: 403,
         headers: corsHeaders,
       });
     }
@@ -290,7 +306,7 @@ serve(async (req) => {
     const { data: integration, error: intErr } = await supabase
       .from("payment_integrations")
       .select("*")
-      .eq("company_id", me.company_id)
+      .eq("company_id", invoice.company_id)
       .eq("provider", provider)
       .eq("is_active", true)
       .single();
