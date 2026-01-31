@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Route53DomainsClient, CheckDomainAvailabilityCommand, RegisterDomainCommand } from "npm:@aws-sdk/client-route-53-domains";
 import { SESv2Client, CreateEmailIdentityCommand } from "npm:@aws-sdk/client-sesv2";
 import { Route53Client, ChangeResourceRecordSetsCommand } from "npm:@aws-sdk/client-route-53";
@@ -16,6 +17,55 @@ serve(async (req) => {
     }
 
     try {
+        // 1. AUTHENTICATION & AUTHORIZATION
+        const authHeader = req.headers.get('authorization');
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!; // Needed to query roles if RLS blocks reading own role (though usually users can read own)
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+        if (authError || !user) {
+            return new Response(JSON.stringify({ error: 'Invalid token' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Check Permissions (Super Admin or Owner)
+        // We check public.users -> app_roles
+        const { data: userProfile, error: profileError } = await supabase
+            .from('users')
+            .select('id, app_role_id, app_roles:app_roles(name)')
+            .eq('auth_user_id', user.id)
+            .single();
+
+        if (profileError || !userProfile) {
+            return new Response(JSON.stringify({ error: 'User profile not found' }), {
+                status: 403,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Access Check
+        // Accessing 'name' from the joined relation. Note: Supabase JS returns array or object depending on relationship type,
+        // usually object for single relation.
+        const roleName = userProfile.app_roles?.name;
+        if (!['super_admin', 'owner'].includes(roleName)) {
+             return new Response(JSON.stringify({ error: 'Forbidden: Insufficient permissions' }), {
+                status: 403,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
         const { action, payload } = await req.json();
 
         // AWS Config

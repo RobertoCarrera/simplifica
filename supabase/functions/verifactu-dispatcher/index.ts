@@ -507,9 +507,38 @@ serve(async (req)=>{
         ok: true
       };
     }
+
+    // Secure Company Access Helper for debug endpoints
+    async function requireCompanyAccess(company_id) {
+       const authHeader = req.headers.get('authorization');
+       const token = (authHeader && authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+       if (!token) return { error: 'Missing Bearer token', status: 401 };
+
+       // Use admin client to verify without relying on potentially broken RLS for self-view
+       const { data: { user }, error: authErr } = await admin.auth.getUser(token);
+       if (authErr || !user) return { error: 'Invalid token', status: 401 };
+
+       // Map Auth ID to Internal ID
+       const { data: internalUser } = await admin.from('users').select('id').eq('auth_user_id', user.id).single();
+       if (!internalUser) return { error: 'User not found', status: 403 };
+
+       // Check Membership
+       const { data: member } = await admin.from('company_members')
+          .select('status, role')
+          .eq('user_id', internalUser.id)
+          .eq('company_id', company_id)
+          .maybeSingle();
+
+       if (!member || member.status !== 'active') {
+          return { error: 'Access denied to company', status: 403 };
+       }
+       return { ok: true };
+    }
     
     // DEBUG: Test update operation on events
     if (body && body.action === 'debug-test-update' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status, headers: { ...headers, 'Content-Type': 'application/json' } });
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -580,6 +609,9 @@ serve(async (req)=>{
     
     // DEBUG: Get last event for a company
     if (body && body.action === 'debug-last-event' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -598,6 +630,9 @@ serve(async (req)=>{
     
     // DEBUG: Test AEAT process steps for a specific company
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const steps: any = { step: 'init' };
       try {
         // Step 0: Check verifactu_settings directly
@@ -823,6 +858,9 @@ serve(async (req)=>{
     // Test certificate: validates that the certificate can be decrypted and used
     // Requires company_id in body. Returns certificate status without exposing sensitive data.
     if (body && body.action === 'test-cert' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const company_id = String(body.company_id);
       
       // Helper to return error response in consistent format
