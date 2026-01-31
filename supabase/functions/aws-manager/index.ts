@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Route53DomainsClient, CheckDomainAvailabilityCommand, RegisterDomainCommand } from "npm:@aws-sdk/client-route-53-domains";
 import { SESv2Client, CreateEmailIdentityCommand } from "npm:@aws-sdk/client-sesv2";
 import { Route53Client, ChangeResourceRecordSetsCommand } from "npm:@aws-sdk/client-route-53";
@@ -16,6 +17,42 @@ serve(async (req) => {
     }
 
     try {
+        // 1. AUTHENTICATION & AUTHORIZATION
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            throw new Error('Missing Authorization header');
+        }
+
+        const supabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: authHeader } } }
+        );
+
+        const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+        if (authError || !user) {
+            throw new Error('Invalid token');
+        }
+
+        // Check Role (Must be owner or super_admin)
+        const { data: userProfile, error: profileError } = await supabaseClient
+            .from('users')
+            .select('id, app_roles(name)')
+            .eq('auth_user_id', user.id)
+            .single();
+
+        if (profileError || !userProfile) {
+            throw new Error('User profile not found or access denied');
+        }
+
+        const roleName = Array.isArray(userProfile.app_roles)
+            ? userProfile.app_roles[0]?.name
+            : userProfile.app_roles?.name;
+
+        if (!['super_admin', 'owner'].includes(roleName)) {
+            throw new Error('Insufficient permissions: Requires super_admin or owner role');
+        }
+
         const { action, payload } = await req.json();
 
         // AWS Config
