@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Route53DomainsClient, CheckDomainAvailabilityCommand, RegisterDomainCommand } from "npm:@aws-sdk/client-route-53-domains";
 import { SESv2Client, CreateEmailIdentityCommand } from "npm:@aws-sdk/client-sesv2";
 import { Route53Client, ChangeResourceRecordSetsCommand } from "npm:@aws-sdk/client-route-53";
@@ -16,6 +17,37 @@ serve(async (req) => {
     }
 
     try {
+        // 1. Verify Authentication
+        const authHeader = req.headers.get('authorization');
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing authorization header' }), { status: 401, headers: corsHeaders });
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+        if (userError || !user) {
+            return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: corsHeaders });
+        }
+
+        // 2. Verify Authorization (Role Check)
+        const { data: userData, error: roleError } = await supabase
+            .from('users')
+            .select('app_role:app_roles(name)')
+            .eq('auth_user_id', user.id)
+            .single();
+
+        // @ts-ignore
+        const roleName = userData?.app_role?.name;
+
+        if (roleError || !roleName || !['super_admin', 'owner'].includes(roleName)) {
+            console.error('[aws-manager] Unauthorized access attempt:', user.id, roleName);
+            return new Response(JSON.stringify({ error: 'Unauthorized: Insufficient privileges' }), { status: 403, headers: corsHeaders });
+        }
+
         const { action, payload } = await req.json();
 
         // AWS Config
@@ -98,7 +130,7 @@ serve(async (req) => {
 
     } catch (error: any) {
         console.error('Error in aws-manager:', error);
-        return new Response(JSON.stringify({ error: error.message, details: error.stack }), {
+        return new Response(JSON.stringify({ error: error.message }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
