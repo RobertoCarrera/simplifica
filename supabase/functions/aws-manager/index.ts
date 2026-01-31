@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Route53DomainsClient, CheckDomainAvailabilityCommand, RegisterDomainCommand } from "npm:@aws-sdk/client-route-53-domains";
 import { SESv2Client, CreateEmailIdentityCommand } from "npm:@aws-sdk/client-sesv2";
 import { Route53Client, ChangeResourceRecordSetsCommand } from "npm:@aws-sdk/client-route-53";
@@ -16,6 +17,51 @@ serve(async (req) => {
     }
 
     try {
+        // 1. AUTHENTICATION & AUTHORIZATION
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            throw new Error('Missing Authorization header');
+        }
+
+        const supabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: authHeader } } }
+        );
+
+        // Verify User
+        const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+        if (authError || !user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized', details: authError?.message }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Verify Role (Must be super_admin or owner)
+        // We join with app_roles to check the global role
+        const { data: userData, error: userError } = await supabaseClient
+            .from('users')
+            .select('id, app_roles(name)')
+            .eq('auth_user_id', user.id)
+            .single();
+
+        if (userError || !userData) {
+             return new Response(JSON.stringify({ error: 'User profile not found' }), {
+                status: 403,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const roleName = userData.app_roles?.name;
+        if (roleName !== 'super_admin' && roleName !== 'owner') {
+             return new Response(JSON.stringify({ error: 'Forbidden: Insufficient privileges' }), {
+                status: 403,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        // 2. PAYLOAD PROCESSING
         const { action, payload } = await req.json();
 
         // AWS Config
