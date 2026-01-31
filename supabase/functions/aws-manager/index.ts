@@ -1,7 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { Route53DomainsClient, CheckDomainAvailabilityCommand, RegisterDomainCommand } from "npm:@aws-sdk/client-route-53-domains";
-import { SESv2Client, CreateEmailIdentityCommand } from "npm:@aws-sdk/client-sesv2";
-import { Route53Client, ChangeResourceRecordSetsCommand } from "npm:@aws-sdk/client-route-53";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -18,30 +17,54 @@ serve(async (req) => {
     try {
         const { action, payload } = await req.json();
 
+        // 1. Authentication & Authorization
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+
+        if (!supabaseUrl || !supabaseAnonKey) {
+            console.error('Missing Supabase configuration');
+            throw new Error('Server configuration error');
+        }
+
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } }
+        });
+
+        // Get User
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user) {
+             return new Response(JSON.stringify({ error: 'Invalid Token' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
         // AWS Config
         const ACCESS_KEY_ID = Deno.env.get('AWS_ACCESS_KEY_ID');
         const SECRET_ACCESS_KEY = Deno.env.get('AWS_SECRET_ACCESS_KEY');
 
+        if (!ACCESS_KEY_ID || !SECRET_ACCESS_KEY) {
+             console.error('Missing AWS credentials');
+             throw new Error('Server configuration error');
+        }
+
         // Route53 Domains is GLOBAL (us-east-1)
         const r53DomainsClient = new Route53DomainsClient({
             region: "us-east-1",
-            credentials: { accessKeyId: ACCESS_KEY_ID!, secretAccessKey: SECRET_ACCESS_KEY! }
-        });
-
-        // SES & Route53 DNS are REGIONAL (eu-west-3 as per our setup)
-        const SES_REGION = 'eu-west-3';
-        const sesClient = new SESv2Client({
-            region: SES_REGION,
-            credentials: { accessKeyId: ACCESS_KEY_ID!, secretAccessKey: SECRET_ACCESS_KEY! }
-        });
-
-        const route53Client = new Route53Client({
-            region: "us-east-1", // Route53 global endpoint
-            credentials: { accessKeyId: ACCESS_KEY_ID!, secretAccessKey: SECRET_ACCESS_KEY! }
+            credentials: { accessKeyId: ACCESS_KEY_ID, secretAccessKey: SECRET_ACCESS_KEY }
         });
 
         switch (action) {
             case 'check-availability': {
+                // Allowed for any authenticated user
                 const { domain } = payload;
                 if (!domain) throw new Error('Domain is required');
 
@@ -54,11 +77,36 @@ serve(async (req) => {
             }
 
             case 'register-domain': {
+                // Restricted to super_admin or owner
+                // We fetch the role only when needed to save DB calls on simpler actions
+                const { data: userData, error: userError } = await supabase
+                    .from('users')
+                    .select(`app_role:app_roles(name)`)
+                    .eq('auth_user_id', user.id)
+                    .single();
+
+                if (userError || !userData) {
+                     console.error('Error fetching user role:', userError);
+                     return new Response(JSON.stringify({ error: 'Unauthorized: Could not verify role' }), {
+                        status: 403,
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                    });
+                }
+
+                // @ts-ignore
+                const userRole = userData.app_role?.name;
+
+                if (userRole !== 'super_admin' && userRole !== 'owner') {
+                    return new Response(JSON.stringify({ error: 'Unauthorized: Insufficient privileges' }), {
+                        status: 403,
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                    });
+                }
+
                 const { domain } = payload;
                 if (!domain) throw new Error('Domain is required');
 
                 // DEFAULT CONTACT - In a real app, this should come from Company Profile
-                // AWS requires valid fields.
                 const defaultContact = {
                     FirstName: 'Admin',
                     LastName: 'User',
@@ -70,7 +118,7 @@ serve(async (req) => {
                     CountryCode: 'US',
                     ZipCode: '10001',
                     PhoneNumber: '+1.5555555555',
-                    Email: 'admin@simplifica.com' // Should be the user's email
+                    Email: user.email || 'admin@simplifica.com'
                 };
 
                 const command = new RegisterDomainCommand({
@@ -98,7 +146,8 @@ serve(async (req) => {
 
     } catch (error: any) {
         console.error('Error in aws-manager:', error);
-        return new Response(JSON.stringify({ error: error.message, details: error.stack }), {
+        // SECURITY: Do not leak stack traces
+        return new Response(JSON.stringify({ error: error.message || 'An unexpected error occurred' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
