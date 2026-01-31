@@ -199,20 +199,6 @@ serve(async (req) => {
       });
     }
 
-    // Get user profile
-    const { data: me } = await supabaseAdmin
-      .from("users")
-      .select("id, company_id, role, active")
-      .eq("auth_user_id", user.id)
-      .single();
-
-    if (!me?.company_id || !me.active || !["owner", "admin"].includes(me.role)) {
-      return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
-        status: 403,
-        headers: corsHeaders,
-      });
-    }
-
     const body = await req.json();
     const { company_id, provider } = body;
 
@@ -223,8 +209,30 @@ serve(async (req) => {
       });
     }
 
-    if (company_id !== me.company_id) {
-      return new Response(JSON.stringify({ error: "Access denied" }), {
+    // Get user profile (id and active status only)
+    const { data: userData } = await supabaseAdmin
+      .from("users")
+      .select("id, active")
+      .eq("auth_user_id", user.id)
+      .single();
+
+    if (!userData || !userData.active) {
+      return new Response(JSON.stringify({ error: "User inactive or not found" }), {
+        status: 403,
+        headers: corsHeaders,
+      });
+    }
+
+    // Verify company membership and role via company_members
+    const { data: membership } = await supabaseAdmin
+      .from("company_members")
+      .select("role, status")
+      .eq("user_id", userData.id)
+      .eq("company_id", company_id)
+      .maybeSingle();
+
+    if (!membership || membership.status !== 'active' || !["owner", "admin"].includes(membership.role)) {
+      return new Response(JSON.stringify({ error: "Insufficient permissions for this company" }), {
         status: 403,
         headers: corsHeaders,
       });
