@@ -507,9 +507,42 @@ serve(async (req)=>{
         ok: true
       };
     }
+
+    // Secure proxy: Verify user belongs to the company
+    async function requireCompanyAccess(target_company_id) {
+      const authHeader = req.headers.get('authorization') || '';
+      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+      if (!token) return { error: 'Missing Bearer token', status: 401 };
+
+      const { data: { user }, error: userErr } = await admin.auth.getUser(token);
+      if (userErr || !user) return { error: 'Invalid token', status: 401 };
+
+      const { data: member, error: memberErr } = await admin
+        .from('company_members')
+        .select('role, users!inner(auth_user_id)')
+        .eq('company_id', target_company_id)
+        .eq('users.auth_user_id', user.id)
+        .maybeSingle();
+
+      if (memberErr) {
+        console.error('Membership check error:', memberErr);
+        return { error: 'Error checking permission', status: 500 };
+      }
+
+      if (!member) {
+        return { error: 'Access denied: You are not a member of this company', status: 403 };
+      }
+
+      return { ok: true, user, role: member.role };
+    }
     
     // DEBUG: Test update operation on events
     if (body && body.action === 'debug-test-update' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({ ok: false, error: access.error }), { status: access.status, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -580,6 +613,11 @@ serve(async (req)=>{
     
     // DEBUG: Get last event for a company
     if (body && body.action === 'debug-last-event' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({ ok: false, error: access.error }), { status: access.status, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -598,6 +636,11 @@ serve(async (req)=>{
     
     // DEBUG: Test AEAT process steps for a specific company
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({ ok: false, error: access.error }), { status: access.status, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const steps: any = { step: 'init' };
       try {
         // Step 0: Check verifactu_settings directly
@@ -825,6 +868,11 @@ serve(async (req)=>{
     if (body && body.action === 'test-cert' && body.company_id) {
       const company_id = String(body.company_id);
       
+      const access = await requireCompanyAccess(company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({ ok: false, error: access.error }), { status: access.status, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       // Helper to return error response in consistent format
       const errorResponse = (decryptionError?: string, certError?: string, aeatError?: string) => {
         return new Response(JSON.stringify({
@@ -1021,6 +1069,7 @@ serve(async (req)=>{
     }
 
     // Health summary for UI without exposing verifactu schema over PostgREST
+    // ... existing code ...
     if (body && body.action === 'health') {
       const evTable = admin.schema('verifactu').from('events');
       const [pendingRes, lastRes, lastAccRes, lastRejRes] = await Promise.all([
