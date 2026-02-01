@@ -231,7 +231,7 @@ serve(async (req) => {
     // Get user profile
     const { data: me } = await supabase
       .from("users")
-      .select("id, company_id, role, active")
+      .select("id, company_id, active")
       .eq("auth_user_id", user.id)
       .single();
 

@@ -41,12 +41,14 @@ serve(async (req) => {
     
     const { data: userData, error: userErr } = await admin
       .from('users')
-      .select('id, email, role, company_id')
+      .select('id, email, company_id, app_roles(name)')
       .eq('auth_user_id', user.id)
       .maybeSingle();
     
-    if (userData && userData.role === 'client') {
-      appUser = userData;
+    const userRole = userData?.app_roles?.name;
+
+    if (userData && userRole === 'client') {
+      appUser = { ...userData, role: 'client' };
     } else {
       // If not found in users or not client role, try clients table
       const { data: clientData, error: clientErr } = await admin
