@@ -202,11 +202,13 @@ serve(async (req) => {
     // Get user profile
     const { data: me } = await supabaseAdmin
       .from("users")
-      .select("id, company_id, role, active")
+      .select("id, company_id, active, app_roles(name)")
       .eq("auth_user_id", user.id)
       .single();
 
-    if (!me?.company_id || !me.active || !["owner", "admin"].includes(me.role)) {
+    const role = me?.app_roles?.name;
+
+    if (!me?.company_id || !me.active || !["owner", "admin"].includes(role)) {
       return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
         status: 403,
         headers: corsHeaders,
