@@ -190,7 +190,7 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
-    // Verify user
+    // Verify user token validity
     const { data: { user }, error: userErr } = await supabaseAdmin.auth.getUser(token);
     if (userErr || !user) {
       return new Response(JSON.stringify({ error: "Invalid token" }), {
@@ -199,21 +199,13 @@ serve(async (req) => {
       });
     }
 
-    // Get user profile
-    const { data: me } = await supabaseAdmin
-      .from("users")
-      .select("id, company_id, role, active")
-      .eq("auth_user_id", user.id)
-      .single();
-
-    if (!me?.company_id || !me.active || !["owner", "admin"].includes(me.role)) {
-      return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
-        status: 403,
-        headers: corsHeaders,
-      });
+    // Parse body first to know which company is being accessed
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
     }
-
-    const body = await req.json();
     const { company_id, provider } = body;
 
     if (!company_id || !provider) {
@@ -223,8 +215,31 @@ serve(async (req) => {
       });
     }
 
-    if (company_id !== me.company_id) {
-      return new Response(JSON.stringify({ error: "Access denied" }), {
+    // Verify user membership and permissions via company_members
+    const { data: member, error: memberErr } = await supabaseAdmin
+      .from('company_members')
+      .select('role, status, users!inner(auth_user_id)')
+      .eq('company_id', company_id)
+      .eq('users.auth_user_id', user.id)
+      .maybeSingle();
+
+    if (memberErr) {
+      console.error("Membership check failed:", memberErr);
+      return new Response(JSON.stringify({ error: "Internal server error checking permissions" }), {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+
+    if (!member) {
+      return new Response(JSON.stringify({ error: "Access denied: You are not a member of this company" }), {
+        status: 403,
+        headers: corsHeaders,
+      });
+    }
+
+    if (member.status !== 'active' || !['owner', 'admin'].includes(member.role)) {
+      return new Response(JSON.stringify({ error: "Insufficient permissions: Owner or Admin required" }), {
         status: 403,
         headers: corsHeaders,
       });
