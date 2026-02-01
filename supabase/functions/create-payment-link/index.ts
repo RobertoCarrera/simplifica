@@ -229,13 +229,13 @@ serve(async (req) => {
     }
 
     // Get user profile
-    const { data: me } = await supabase
+    const { data: userData } = await supabase
       .from("users")
-      .select("id, company_id, role, active")
+      .select("id, active")
       .eq("auth_user_id", user.id)
       .single();
 
-    if (!me?.company_id || !me.active) {
+    if (!userData?.active) {
       return new Response(JSON.stringify({ error: "User not found or inactive" }), {
         status: 400,
         headers: corsHeaders,
@@ -269,12 +269,26 @@ serve(async (req) => {
         companies!inner(name)
       `)
       .eq("id", invoice_id)
-      .eq("company_id", me.company_id)
       .single();
 
     if (invErr || !invoice) {
       return new Response(JSON.stringify({ error: "Invoice not found" }), {
         status: 404,
+        headers: corsHeaders,
+      });
+    }
+
+    // Verify company membership
+    const { data: membership, error: memErr } = await supabase
+      .from("company_members")
+      .select("id")
+      .eq("user_id", userData.id)
+      .eq("company_id", invoice.company_id)
+      .single();
+
+    if (memErr || !membership) {
+      return new Response(JSON.stringify({ error: "Access denied" }), {
+        status: 403,
         headers: corsHeaders,
       });
     }
@@ -290,7 +304,7 @@ serve(async (req) => {
     const { data: integration, error: intErr } = await supabase
       .from("payment_integrations")
       .select("*")
-      .eq("company_id", me.company_id)
+      .eq("company_id", invoice.company_id)
       .eq("provider", provider)
       .eq("is_active", true)
       .single();
