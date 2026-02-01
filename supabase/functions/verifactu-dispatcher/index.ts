@@ -473,6 +473,47 @@ serve(async (req)=>{
       const txt = await req.text();
       body = txt ? JSON.parse(txt) : null;
     } catch (_) {}
+    // Helper to validate caller has access to the requested company
+    async function requireCompanyAccess(company_id) {
+      if (!company_id) return { error: 'Missing company_id', status: 400 };
+
+      const authHeader = req.headers.get('authorization') || '';
+      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+      if (!token) return { error: 'Missing Bearer token', status: 401 };
+
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+      const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+
+      if (!anonKey || !supabaseUrl) return { error: 'Server configuration error', status: 500 };
+
+      const userClient = createClient(supabaseUrl, anonKey, {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${token}` } }
+      });
+
+      // Verify user identity
+      const { data: { user }, error: authErr } = await userClient.auth.getUser();
+      if (authErr || !user) return { error: 'Invalid token', status: 401 };
+
+      // Verify company access via public.users
+      // Join with app_roles to check for super_admin if needed, though usually company_id match is sufficient
+      const { data: profile, error: profErr } = await userClient
+        .from('users')
+        .select('company_id, app_roles(name)')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (profErr || !profile) return { error: 'Access denied: User profile not found', status: 403 };
+
+      const roleName = profile.app_roles?.name;
+      // Allow if strict company match OR super_admin
+      if (profile.company_id !== company_id && roleName !== 'super_admin') {
+         return { error: 'Access denied: Company mismatch', status: 403 };
+      }
+
+      return { ok: true };
+    }
+
     // For actions that require validating the caller against RLS (per-invoice access),
     // create a user-scoped client from the Authorization header and ensure the invoice exists for them.
     async function requireInvoiceAccess(invoice_id) {
@@ -510,6 +551,9 @@ serve(async (req)=>{
     
     // DEBUG: Test update operation on events
     if (body && body.action === 'debug-test-update' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status || 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -560,7 +604,11 @@ serve(async (req)=>{
     }
     
     // DEBUG: Show current environment configuration
-    if (body && body.action === 'debug-env') {
+    // Secure this: require a company_id to be provided and validated, proving the user is authenticated and belongs to a company
+    if (body && body.action === 'debug-env' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status || 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       return new Response(JSON.stringify({
         ok: true,
         env: {
@@ -580,6 +628,9 @@ serve(async (req)=>{
     
     // DEBUG: Get last event for a company
     if (body && body.action === 'debug-last-event' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status || 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -598,6 +649,9 @@ serve(async (req)=>{
     
     // DEBUG: Test AEAT process steps for a specific company
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status || 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const steps: any = { step: 'init' };
       try {
         // Step 0: Check verifactu_settings directly
@@ -824,6 +878,8 @@ serve(async (req)=>{
     // Requires company_id in body. Returns certificate status without exposing sensitive data.
     if (body && body.action === 'test-cert' && body.company_id) {
       const company_id = String(body.company_id);
+      const access = await requireCompanyAccess(company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status || 403, headers: { ...headers, 'Content-Type': 'application/json' } });
       
       // Helper to return error response in consistent format
       const errorResponse = (decryptionError?: string, certError?: string, aeatError?: string) => {
