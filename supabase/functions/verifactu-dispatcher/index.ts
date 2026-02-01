@@ -507,9 +507,56 @@ serve(async (req)=>{
         ok: true
       };
     }
+
+    // Authorization helper for company-scoped actions
+    async function requireCompanyAccess(company_id) {
+      if (!company_id) return { error: 'Missing company_id' };
+
+      const url = Deno.env.get('SUPABASE_URL') || '';
+      const authHeader = req.headers.get('authorization') || '';
+      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+      if (!token) return {
+        error: 'Missing Bearer token'
+      };
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+      if (!anonKey) return {
+        error: 'Missing SUPABASE_ANON_KEY'
+      };
+      const userClient = createClient(url, anonKey, {
+        auth: {
+          persistSession: false
+        },
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      });
+      // RLS on companies table allows access only to members
+      const { data: comp, error: compErr } = await userClient.from('companies').select('id').eq('id', company_id).maybeSingle();
+      if (compErr) return {
+        error: compErr.message
+      };
+      if (!comp) return {
+        error: 'Company not found or access denied',
+        status: 403
+      };
+      return {
+        ok: true
+      };
+    }
     
     // DEBUG: Test update operation on events
     if (body && body.action === 'debug-test-update' && body.company_id) {
+      // Secure endpoint
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: access.error
+        }), { status: access.status || 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -559,27 +606,19 @@ serve(async (req)=>{
       }), { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } });
     }
     
-    // DEBUG: Show current environment configuration
-    if (body && body.action === 'debug-env') {
-      return new Response(JSON.stringify({
-        ok: true,
-        env: {
-          VERIFACTU_MODE,
-          ENABLE_FALLBACK,
-          MAX_ATTEMPTS,
-          BACKOFF_MIN,
-          HAS_CERT_KEY: !!VERIFACTU_CERT_ENC_KEY,
-          CERT_KEY_LENGTH: VERIFACTU_CERT_ENC_KEY?.length || 0
-        },
-        timestamp: new Date().toISOString()
-      }), {
-        status: 200,
-        headers: { ...headers, 'Content-Type': 'application/json' }
-      });
-    }
+    // REMOVED: debug-env (exposed env vars)
     
     // DEBUG: Get last event for a company
     if (body && body.action === 'debug-last-event' && body.company_id) {
+      // Secure endpoint
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: access.error
+        }), { status: access.status || 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -598,6 +637,16 @@ serve(async (req)=>{
     
     // DEBUG: Test AEAT process steps for a specific company
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
+      // Secure endpoint
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: access.error,
+          steps: { step: 'auth', error: access.error }
+        }), { status: access.status || 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const steps: any = { step: 'init' };
       try {
         // Step 0: Check verifactu_settings directly
@@ -823,6 +872,18 @@ serve(async (req)=>{
     // Test certificate: validates that the certificate can be decrypted and used
     // Requires company_id in body. Returns certificate status without exposing sensitive data.
     if (body && body.action === 'test-cert' && body.company_id) {
+      // Secure endpoint
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) {
+        return new Response(JSON.stringify({
+          ok: false,
+          decryption: { success: false, error: access.error },
+          certificate: { valid: false, error: 'Acceso denegado' },
+          aeatConnection: { success: false, error: 'Acceso denegado' },
+          config: { environment: 'unknown', issuerNif: '', softwareCode: '' }
+        }), { status: access.status || 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+      }
+
       const company_id = String(body.company_id);
       
       // Helper to return error response in consistent format
@@ -1020,42 +1081,9 @@ serve(async (req)=>{
       });
     }
 
-    // Health summary for UI without exposing verifactu schema over PostgREST
-    if (body && body.action === 'health') {
-      const evTable = admin.schema('verifactu').from('events');
-      const [pendingRes, lastRes, lastAccRes, lastRejRes] = await Promise.all([
-        evTable.select('id', {
-          count: 'exact',
-          head: true
-        }).eq('status', 'pending'),
-        evTable.select('created_at').order('created_at', {
-          ascending: false
-        }).limit(1),
-        evTable.select('created_at').eq('status', 'accepted').order('created_at', {
-          ascending: false
-        }).limit(1),
-        evTable.select('created_at').eq('status', 'rejected').order('created_at', {
-          ascending: false
-        }).limit(1)
-      ]);
-      const pending = pendingRes.count || 0;
-      const lastEventAt = lastRes.data && lastRes.data[0]?.created_at || null;
-      const lastAcceptedAt = lastAccRes.data && lastAccRes.data[0]?.created_at || null;
-      const lastRejectedAt = lastRejRes.data && lastRejRes.data[0]?.created_at || null;
-      return new Response(JSON.stringify({
-        ok: true,
-        pending,
-        lastEventAt,
-        lastAcceptedAt,
-        lastRejectedAt
-      }), {
-        status: 200,
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json'
-        }
-      });
-    }
+    // REMOVED: health (exposed global events)
+    // REMOVED: diag (exposed global events)
+
     // Secure proxy: per-invoice VeriFactu metadata (requires caller to have RLS access to the invoice)
     if (body && body.action === 'meta' && body.invoice_id) {
       const invoice_id = String(body.invoice_id);
@@ -1298,45 +1326,6 @@ serve(async (req)=>{
       });
     }
 
-    // Diagnostic: verify access to verifactu schema objects & sample data
-    if (body && body.action === 'diag') {
-      const out = {
-        ok: true
-      };
-      // Test events table
-      const evTest = await admin.schema('verifactu').from('events').select('id,status,created_at').order('created_at', {
-        ascending: false
-      }).limit(3);
-      out.events_ok = !evTest.error;
-      out.events_error = evTest.error?.message || null;
-      out.events_sample = evTest.data || [];
-      // Test invoice_meta table
-      const metaTest = await admin.schema('verifactu').from('invoice_meta').select('invoice_id,status,updated_at').order('updated_at', {
-        ascending: false
-      }).limit(3);
-      out.meta_ok = !metaTest.error;
-      out.meta_error = metaTest.error?.message || null;
-      out.meta_sample = metaTest.data || [];
-      // Count pending events (head query)
-      const pendingHead = await admin.schema('verifactu').from('events').select('id', {
-        count: 'exact',
-        head: true
-      }).eq('status', 'pending');
-      out.pending_count = pendingHead.count ?? 0;
-      out.pending_error = pendingHead.error?.message || null;
-      // Return current mode & fallback info
-      out.mode = VERIFACTU_MODE;
-      out.fallbackEnabled = ENABLE_FALLBACK;
-      out.maxAttempts = MAX_ATTEMPTS;
-      out.backoffMinutes = BACKOFF_MIN;
-      return new Response(JSON.stringify(out), {
-        status: 200,
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json'
-        }
-      });
-    }
     // Pull a batch of pending events
     const { data: events, error } = await admin.schema('verifactu').from('events').select('*').eq('status', 'pending').order('created_at', {
       ascending: true
