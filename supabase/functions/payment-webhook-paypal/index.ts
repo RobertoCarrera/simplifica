@@ -240,24 +240,28 @@ serve(async (req) => {
       .eq("is_active", true)
       .single();
 
-    if (integration?.webhook_secret_encrypted && integration?.credentials_encrypted) {
-      // Verify webhook signature
-      const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
-      const credentials = JSON.parse(await decrypt(integration.credentials_encrypted));
-      
-      const isValid = await verifyPayPalWebhook(
-        req, 
-        body, 
-        webhookSecret, 
-        credentials.clientId, 
-        credentials.clientSecret,
-        integration.is_sandbox
-      );
+    // Verify webhook signature (Fail Closed)
+    if (!integration?.webhook_secret_encrypted || !integration?.credentials_encrypted) {
+      console.error("[paypal-webhook] Missing signature or credentials configuration");
+      return new Response(JSON.stringify({ error: "Missing signature or configuration" }), { status: 401, headers });
+    }
 
-      if (!isValid) {
-        console.error("[paypal-webhook] Invalid webhook signature");
-        return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers });
-      }
+    // Verify webhook signature
+    const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
+    const credentials = JSON.parse(await decrypt(integration.credentials_encrypted));
+
+    const isValid = await verifyPayPalWebhook(
+      req,
+      body,
+      webhookSecret,
+      credentials.clientId,
+      credentials.clientSecret,
+      integration.is_sandbox
+    );
+
+    if (!isValid) {
+      console.error("[paypal-webhook] Invalid webhook signature");
+      return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers });
     }
 
     // Process based on event type
