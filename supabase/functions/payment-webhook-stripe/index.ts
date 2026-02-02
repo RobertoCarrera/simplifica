@@ -206,15 +206,23 @@ serve(async (req) => {
       .eq("is_active", true)
       .single();
 
-    // Verify webhook signature if configured
-    if (integration?.webhook_secret_encrypted && stripeSignature) {
-      const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
-      const isValid = await verifyStripeWebhook(body, stripeSignature, webhookSecret);
+    // Verify webhook signature (Fail Closed)
+    if (!integration) {
+      console.error("[stripe-webhook] No active Stripe integration found for company:", invoice.company_id);
+      return new Response(JSON.stringify({ error: "Configuration missing" }), { status: 401, headers });
+    }
+
+    if (!integration.webhook_secret_encrypted || !stripeSignature) {
+      console.error("[stripe-webhook] Missing webhook secret or signature");
+      return new Response(JSON.stringify({ error: "Configuration missing" }), { status: 401, headers });
+    }
+
+    const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
+    const isValid = await verifyStripeWebhook(body, stripeSignature, webhookSecret);
       
-      if (!isValid) {
-        console.error("[stripe-webhook] Invalid webhook signature");
-        return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers });
-      }
+    if (!isValid) {
+      console.error("[stripe-webhook] Invalid webhook signature");
+      return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers });
     }
 
     const obj = event.data.object;
