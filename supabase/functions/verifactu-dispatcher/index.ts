@@ -507,9 +507,50 @@ serve(async (req)=>{
         ok: true
       };
     }
+
+    // Helper to verify company access (admin/owner)
+    async function requireCompanyAccess(company_id) {
+      const authHeader = req.headers.get('authorization') || '';
+      const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+      if (!token) return { error: 'Missing Bearer token' };
+
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+      const userClient = createClient(url, anonKey, {
+        auth: { persistSession: false },
+        global: { headers: { Authorization: `Bearer ${token}` } }
+      });
+
+      const { data: { user }, error: authErr } = await userClient.auth.getUser();
+      if (authErr || !user) return { error: 'Invalid token', status: 401 };
+
+      // Check public.users table for role and company_id
+      const { data: userData, error: userErr } = await admin
+        .from('users')
+        .select(`
+          company_id,
+          app_roles:app_role_id (name)
+        `)
+        .eq('auth_user_id', user.id)
+        .eq('company_id', company_id)
+        .single();
+
+      if (userErr || !userData) {
+        return { error: 'Access denied: User not found in company', status: 403 };
+      }
+
+      const roleName = userData.app_roles?.name;
+      if (!['owner', 'admin', 'super_admin'].includes(roleName)) {
+        return { error: 'Access denied: Insufficient privileges', status: 403 };
+      }
+
+      return { ok: true };
+    }
     
     // DEBUG: Test update operation on events
     if (body && body.action === 'debug-test-update' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status || 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -560,26 +601,15 @@ serve(async (req)=>{
     }
     
     // DEBUG: Show current environment configuration
-    if (body && body.action === 'debug-env') {
-      return new Response(JSON.stringify({
-        ok: true,
-        env: {
-          VERIFACTU_MODE,
-          ENABLE_FALLBACK,
-          MAX_ATTEMPTS,
-          BACKOFF_MIN,
-          HAS_CERT_KEY: !!VERIFACTU_CERT_ENC_KEY,
-          CERT_KEY_LENGTH: VERIFACTU_CERT_ENC_KEY?.length || 0
-        },
-        timestamp: new Date().toISOString()
-      }), {
-        status: 200,
-        headers: { ...headers, 'Content-Type': 'application/json' }
-      });
-    }
+    // if (body && body.action === 'debug-env') {
+    //   // DISABLED for security
+    // }
     
     // DEBUG: Get last event for a company
     if (body && body.action === 'debug-last-event' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status || 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -598,6 +628,9 @@ serve(async (req)=>{
     
     // DEBUG: Test AEAT process steps for a specific company
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
+      const access = await requireCompanyAccess(body.company_id);
+      if (access.error) return new Response(JSON.stringify(access), { status: access.status || 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+
       const steps: any = { step: 'init' };
       try {
         // Step 0: Check verifactu_settings directly
@@ -1299,44 +1332,9 @@ serve(async (req)=>{
     }
 
     // Diagnostic: verify access to verifactu schema objects & sample data
-    if (body && body.action === 'diag') {
-      const out = {
-        ok: true
-      };
-      // Test events table
-      const evTest = await admin.schema('verifactu').from('events').select('id,status,created_at').order('created_at', {
-        ascending: false
-      }).limit(3);
-      out.events_ok = !evTest.error;
-      out.events_error = evTest.error?.message || null;
-      out.events_sample = evTest.data || [];
-      // Test invoice_meta table
-      const metaTest = await admin.schema('verifactu').from('invoice_meta').select('invoice_id,status,updated_at').order('updated_at', {
-        ascending: false
-      }).limit(3);
-      out.meta_ok = !metaTest.error;
-      out.meta_error = metaTest.error?.message || null;
-      out.meta_sample = metaTest.data || [];
-      // Count pending events (head query)
-      const pendingHead = await admin.schema('verifactu').from('events').select('id', {
-        count: 'exact',
-        head: true
-      }).eq('status', 'pending');
-      out.pending_count = pendingHead.count ?? 0;
-      out.pending_error = pendingHead.error?.message || null;
-      // Return current mode & fallback info
-      out.mode = VERIFACTU_MODE;
-      out.fallbackEnabled = ENABLE_FALLBACK;
-      out.maxAttempts = MAX_ATTEMPTS;
-      out.backoffMinutes = BACKOFF_MIN;
-      return new Response(JSON.stringify(out), {
-        status: 200,
-        headers: {
-          ...headers,
-          'Content-Type': 'application/json'
-        }
-      });
-    }
+    // if (body && body.action === 'diag') {
+    //   // DISABLED for security
+    // }
     // Pull a batch of pending events
     const { data: events, error } = await admin.schema('verifactu').from('events').select('*').eq('status', 'pending').order('created_at', {
       ascending: true
