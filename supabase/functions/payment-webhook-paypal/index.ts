@@ -240,24 +240,33 @@ serve(async (req) => {
       .eq("is_active", true)
       .single();
 
-    if (integration?.webhook_secret_encrypted && integration?.credentials_encrypted) {
-      // Verify webhook signature
-      const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
-      const credentials = JSON.parse(await decrypt(integration.credentials_encrypted));
-      
-      const isValid = await verifyPayPalWebhook(
-        req, 
-        body, 
-        webhookSecret, 
-        credentials.clientId, 
-        credentials.clientSecret,
-        integration.is_sandbox
-      );
+    if (!integration) {
+      console.error("[paypal-webhook] Integration not found or inactive for company:", invoice.company_id);
+      return new Response(JSON.stringify({ error: "Integration not found" }), { status: 404, headers });
+    }
 
-      if (!isValid) {
-        console.error("[paypal-webhook] Invalid webhook signature");
-        return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers });
-      }
+    // SECURITY: Fail Closed - Webhook secret and Credentials MUST be configured
+    if (!integration.webhook_secret_encrypted || !integration.credentials_encrypted) {
+      console.error("[paypal-webhook] Webhook secret or credentials not configured for company:", invoice.company_id);
+      return new Response(JSON.stringify({ error: "Configuration missing" }), { status: 500, headers });
+    }
+
+    // SECURITY: Verify webhook signature
+    const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
+    const credentials = JSON.parse(await decrypt(integration.credentials_encrypted));
+
+    const isValid = await verifyPayPalWebhook(
+      req,
+      body,
+      webhookSecret,
+      credentials.clientId,
+      credentials.clientSecret,
+      integration.is_sandbox
+    );
+
+    if (!isValid) {
+      console.error("[paypal-webhook] Invalid webhook signature");
+      return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers });
     }
 
     // Process based on event type
