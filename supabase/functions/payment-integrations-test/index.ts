@@ -201,7 +201,7 @@ serve(async (req) => {
 
     // Get user profile
     const { data: me } = await supabaseAdmin
-      .from("users")
+      .from("valid_users_view")
       .select("id, company_id, role, active")
       .eq("auth_user_id", user.id)
       .single();
