@@ -13,8 +13,8 @@
         <span class="hidden sm:inline">Mi Perfil</span>
       </button>
 
-      <!-- Tab: Facturación (Clients only) -->
-      <button *ngIf="isClient" (click)="activeTab='facturacion'" role="tab"
+      <!-- Tab: Facturación (Clients & Owners) -->
+      <button *ngIf="hasBillingTab" (click)="activeTab='facturacion'" role="tab"
         [attr.aria-selected]="activeTab === 'facturacion'"
         class="tab-button flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
         [class]="activeTab === 'facturacion' 
@@ -123,27 +123,23 @@
         </h3>
 
         <form [formGroup]="profileForm" (ngSubmit)="updateProfile()" class="space-y-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Nombre -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Full Name -->
             <div class="form-group">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Nombre completo <span class="text-red-500">*</span>
+                Nombre Completo
               </label>
               <div class="relative">
-                <input type="text" formControlName="full_name" readonly
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                  placeholder="Ingresa tu nombre completo">
+                <input type="text" [value]="userProfile.full_name" readonly
+                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
                 <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
               </div>
-              <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                <i class="fas fa-info-circle"></i> Solicita cambios desde Privacidad
-              </p>
             </div>
 
             <!-- Email -->
             <div class="form-group">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Email <span class="text-red-500">*</span>
+                Email <span class="text-xs text-gray-500 font-normal">(Es también tu usuario de acceso)</span>
               </label>
               <div class="relative">
                 <input type="email" formControlName="email" readonly
@@ -153,36 +149,17 @@
               </div>
             </div>
 
-            <!-- Detalles Cliente (Read Only) -->
-            <ng-container *ngIf="isClient && clientDetails">
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Teléfono</label>
-                <div class="relative">
-                  <input type="text" [value]="clientDetails.phone || 'No registrado'" readonly
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
-                </div>
+            <!-- Phone -->
+            <div class="form-group">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Teléfono
+              </label>
+              <div class="relative">
+                <input type="text" [value]="clientDetails?.phone || 'No registrado'" readonly
+                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
               </div>
-              <div class="form-group">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">DNI / NIF</label>
-                <div class="relative">
-                  <input type="text" [value]="clientDetails.dni || clientDetails.cif_nif || 'No registrado'" readonly
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
-                </div>
-              </div>
-              <div class="form-group md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Dirección
-                  Principal</label>
-                <div class="relative">
-                  <input type="text"
-                    [value]="clientDetails.direccion ? (clientDetails.direccion.street + ', ' + clientDetails.direccion.locality) : 'No registrada'"
-                    readonly
-                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed">
-                  <i class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
-                </div>
-              </div>
-            </ng-container>
+            </div>
           </div>
 
           <!-- Info Box -->
@@ -194,7 +171,7 @@
               <p class="text-sm text-blue-700 dark:text-blue-400 mb-2">
                 Por seguridad, los datos de identidad no son modificables directamente.
               </p>
-              <button type="button" (click)="openRectificationModal()"
+              <button type="button" (click)="openRectificationModal('personal')"
                 class="text-sm font-semibold text-blue-700 hover:text-blue-900 underline">
                 Solicitar rectificación de datos >
               </button>
@@ -332,7 +309,7 @@
   </div> <!-- End Perfil -->
 
   <!-- Contenido: Facturación (Formulario) -->
-  <div *ngIf="isClient && activeTab==='facturacion'" class="w-full animate-fadeIn">
+  <div *ngIf="hasBillingTab && activeTab==='facturacion'" class="w-full animate-fadeIn">
 
     <!-- SKELETON: Shown when userProfile or billingForm not ready -->
     <div *ngIf="!userProfile" class="w-full space-y-6">
@@ -342,6 +319,22 @@
 
     <!-- CONTENT -->
     <ng-container *ngIf="userProfile">
+      <!-- Read-Only Message for Clients (Moved to top of page) -->
+      <div *ngIf="isClient"
+        class="mb-6 flex items-start gap-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-100 dark:border-yellow-800">
+        <i class="fas fa-lock text-yellow-600 dark:text-yellow-500 mt-1"></i>
+        <div class="text-sm">
+          <p class="font-semibold text-yellow-800 dark:text-yellow-400">Datos protegidos</p>
+          <p class="text-yellow-700 dark:text-yellow-500 mt-1">
+            Por seguridad, estos datos no son modificables directamente.
+          </p>
+          <button type="button" (click)="openRectificationModal('billing')"
+            class="mt-2 text-yellow-800 dark:text-yellow-400 underline font-semibold hover:text-yellow-900">
+            Solicitar cambio
+          </button>
+        </div>
+      </div>
+
       <!-- Header Title (Simple) -->
       <div class="mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
@@ -360,40 +353,60 @@
             <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
               <i class="fas fa-building mr-2 text-gray-400"></i> Identificación Fiscal
             </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Razón Social <span class="text-red-500">*</span>
+                  Razón Social <span class="text-red-500" *ngIf="!isClient">*</span>
                 </label>
-                <input type="text" formControlName="business_name"
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white transition-colors"
-                  placeholder="Ej: Mi Empresa S.L.">
+                <div class="relative">
+                  <input type="text" formControlName="business_name" [readonly]="isClient"
+                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
+                    [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
+                    [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient" [class.bg-white]="!isClient"
+                    [class.focus:bg-white]="!isClient" placeholder="Ej: Mi Empresa S.L.">
+                  <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                </div>
               </div>
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Nombre Comercial
                 </label>
-                <input type="text" formControlName="trade_name"
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white transition-colors"
-                  placeholder="Nombre visible al público">
+                <div class="relative">
+                  <input type="text" formControlName="trade_name" [readonly]="isClient"
+                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
+                    [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
+                    [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient" [class.bg-white]="!isClient"
+                    [class.focus:bg-white]="!isClient" placeholder="Nombre visible al público">
+                  <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                </div>
               </div>
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  CIF / NIF <span class="text-red-500">*</span>
+                  CIF / NIF <span class="text-red-500" *ngIf="!isClient">*</span>
                 </label>
-                <input type="text" formControlName="cif_nif"
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white font-mono uppercase transition-colors"
-                  placeholder="B12345678">
+                <div class="relative">
+                  <input type="text" formControlName="cif_nif" [readonly]="isClient"
+                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white font-mono uppercase"
+                    [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
+                    [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient" [class.bg-white]="!isClient"
+                    [class.focus:bg-white]="!isClient" placeholder="B12345678">
+                  <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                </div>
               </div>
-            </div>
-            <div class="mt-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                Email para Facturas
-              </label>
-              <input type="email" formControlName="billing_email"
-                class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white transition-colors"
-                placeholder="facturacion@miempresa.com">
-              <p class="text-xs text-gray-500 mt-1">Si se deja vacío se usará tu email de usuario.</p>
+              <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  Email para Facturas
+                </label>
+                <div class="relative">
+                  <input type="email" formControlName="billing_email" [readonly]="isClient"
+                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
+                    [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
+                    [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient" [class.bg-white]="!isClient"
+                    [class.focus:bg-white]="!isClient" placeholder="facturacion@miempresa.com">
+                  <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Si se deja vacío se usará tu email de usuario.</p>
+              </div>
             </div>
           </div>
 
@@ -402,13 +415,18 @@
             <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
               <i class="fas fa-university mr-2 text-gray-400"></i> Datos Bancarios y Pago
             </h3>
+
+
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="form-group">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Método de Pago
                 </label>
                 <select formControlName="payment_method"
-                  class="form-select w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white cursor-pointer transition-colors">
+                  class="form-select w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
+                  [attr.disabled]="isClient ? true : null" [class.cursor-not-allowed]="isClient"
+                  [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient">
                   <option value="">Seleccionar...</option>
                   <option *ngFor="let opt of paymentMethodOptions" [value]="opt.value">{{ opt.label }}</option>
                 </select>
@@ -418,23 +436,102 @@
                   Región Fiscal
                 </label>
                 <select formControlName="tax_region"
-                  class="form-select w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white cursor-pointer transition-colors">
+                  class="form-select w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
+                  [attr.disabled]="isClient ? true : null" [class.cursor-not-allowed]="isClient"
+                  [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient">
                   <option *ngFor="let opt of taxRegionOptions" [value]="opt.value">{{ opt.label }}</option>
                 </select>
-              </div>
-              <div class="form-group md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   IBAN <span class="text-xs text-gray-500 font-normal">(Para domiciliaciones)</span>
                 </label>
-                <input type="text" formControlName="iban"
-                  class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-white font-mono transition-colors"
-                  placeholder="ES00 0000 0000 0000 0000 0000">
+                <div class="relative">
+                  <input [type]="showIban() ? 'text' : 'password'" formControlName="iban" [readonly]="isClient"
+                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white font-mono pr-10"
+                    [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
+                    [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient" [class.bg-white]="!isClient"
+                    [class.focus:bg-white]="!isClient" placeholder="ES00 0000 0000 0000 0000 0000">
+                  <button type="button" (click)="toggleIban()"
+                    class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none">
+                    <i class="fas" [class.fa-eye]="!showIban()" [class.fa-eye-slash]="showIban()"></i>
+                  </button>
+                  <i *ngIf="isClient" class="fas fa-lock absolute right-10 top-3 text-gray-400"></i>
+                </div>
               </div>
             </div>
           </div>
 
-          <!-- Sticky Bottom Bar or just a big button -->
-          <div class="flex justify-end pt-4 pb-8">
+          <!-- Section: Dirección Fiscal -->
+          <div class="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
+            formGroupName="address">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4 flex items-center">
+              <i class="fas fa-map-marker-alt mr-2 text-gray-400"></i> Dirección Fiscal
+            </h3>
+
+            <div class="space-y-4">
+              <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Dirección</label>
+                <div class="relative">
+                  <input type="text" formControlName="street" [readonly]="isClient"
+                    class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
+                    [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
+                    [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient" [class.bg-white]="!isClient"
+                    [class.focus:bg-white]="!isClient" placeholder="Calle, Número, Piso...">
+                  <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="form-group">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Ciudad</label>
+                  <div class="relative">
+                    <input type="text" formControlName="city" [readonly]="isClient"
+                      class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
+                      [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
+                      [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient"
+                      [class.bg-white]="!isClient" [class.focus:bg-white]="!isClient">
+                    <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Código Postal</label>
+                  <div class="relative">
+                    <input type="text" formControlName="zip" [readonly]="isClient"
+                      class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
+                      [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
+                      [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient"
+                      [class.bg-white]="!isClient" [class.focus:bg-white]="!isClient">
+                    <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label
+                    class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Provincia/Estado</label>
+                  <div class="relative">
+                    <input type="text" formControlName="province" [readonly]="isClient"
+                      class="form-input w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 transition-colors text-gray-900 dark:text-white"
+                      [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient"
+                      [class.cursor-not-allowed]="isClient" [class.text-gray-500]="isClient"
+                      [class.bg-white]="!isClient" [class.focus:bg-white]="!isClient">
+                    <i *ngIf="isClient" class="fas fa-lock absolute right-3 top-3 text-gray-400"></i>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">País</label>
+                <select formControlName="country"
+                  class="form-select w-full px-4 py-2.5 rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
+                  [attr.disabled]="isClient ? true : null" [class.cursor-not-allowed]="isClient"
+                  [class.bg-gray-100]="isClient" [class.dark:bg-gray-700]="isClient">
+                  <option value="ESP">España</option>
+                  <!-- Add more countries if needed -->
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sticky Bottom Bar or just a big button (Hidden for Client, Visible for Owner) -->
+          <div class="flex justify-end pt-4 pb-8" *ngIf="!isClient">
             <button type="submit"
               class="w-full md:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-emerald-500/30 flex items-center justify-center gap-2 transform active:scale-95"
               [disabled]="loading || billingForm.invalid">
@@ -448,8 +545,8 @@
     </ng-container>
   </div>
 
-  <!-- Contenido: Privacidad (GDPR) -->
-  <div *ngIf="activeTab==='privacidad'" class="w-full animate-fadeIn">
+  <!-- Contenido: Privacidad (GDPR) - Always loaded but hidden to allow modal access -->
+  <div [hidden]="activeTab!=='privacidad'" class="w-full animate-fadeIn">
     <app-client-gdpr-panel #gdprPanel *ngIf="userProfile" [clientId]="$any(userProfile).client_id || userProfile.id"
       [clientEmail]="userProfile.email" [clientName]="userProfile.full_name || ''" [clientPhone]="clientDetails?.phone"
       [clientDni]="clientDetails?.dni || clientDetails?.cif_nif"
@@ -815,3 +912,13 @@
 <div *ngIf="!isClient && activeTab==='import-export'">
   <app-data-export-import></app-data-export-import>
 </div>
+
+<!-- Global Rectification Modal (Independent of Privacy Tab) -->
+<ng-container *ngIf="userProfile">
+  <app-gdpr-request-modal #rectificationModal [clientId]="$any(userProfile).client_id || userProfile.id"
+    [clientEmail]="userProfile.email" [clientName]="userProfile.full_name || ''" [clientPhone]="clientDetails?.phone"
+    [clientDni]="clientDetails?.dni || clientDetails?.cif_nif"
+    [clientAddress]="clientDetails?.direccion ? (clientDetails.direccion.street + ', ' + clientDetails.direccion.locality) : ''"
+    [billingData]="billingForm.value" [context]="rectificationContext" (requestCreated)="activeTab='privacidad'">
+  </app-gdpr-request-modal>
+</ng-container>

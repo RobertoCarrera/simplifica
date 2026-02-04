@@ -328,9 +328,17 @@
                                 <div class="form-group">
                                     <label
                                         class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IBAN</label>
-                                    <input name="iban" [(ngModel)]="formData.iban"
-                                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 font-mono"
-                                        placeholder="ES00 0000 0000 0000 0000 0000">
+                                    <div class="relative">
+                                        <input [type]="showIban() ? 'text' : 'password'" name="iban"
+                                            [(ngModel)]="formData.iban"
+                                            class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 font-mono pr-10"
+                                            placeholder="ES00 0000 0000 0000 0000 0000">
+                                        <button type="button" (click)="toggleIban()"
+                                            class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none">
+                                            <i class="fas" [class.fa-eye]="!showIban()"
+                                                [class.fa-eye-slash]="showIban()"></i>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div class="form-group">

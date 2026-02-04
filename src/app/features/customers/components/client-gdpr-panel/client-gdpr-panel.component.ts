@@ -467,6 +467,8 @@ export class ClientGdprPanelComponent implements OnInit {
     this.anonymizeError = '';
   }
 
+
+
   processAnonymization() {
     if (this.anonymizeConfirmationInput !== 'BORRAR') {
       this.anonymizeError = 'Debes escribir "BORRAR" para confirmar.';

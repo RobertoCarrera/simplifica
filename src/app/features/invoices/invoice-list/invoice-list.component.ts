@@ -1,11 +1,11 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SupabaseInvoicesService } from '../../../services/supabase-invoices.service';
 import { SupabaseModulesService } from '../../../services/supabase-modules.service';
 import { SupabaseSettingsService } from '../../../services/supabase-settings.service';
-import { Invoice, formatInvoiceNumber } from '../../../models/invoice.model';
+import { Invoice, formatInvoiceNumber, InvoiceStatus } from '../../../models/invoice.model';
 import { environment } from '../../../../environments/environment';
 import { firstValueFrom } from 'rxjs';
 
@@ -52,6 +52,16 @@ import { firstValueFrom } from 'rxjs';
           Registro AEAT
         </a>
       </div>
+
+      <!-- Manual Invoice Button -->
+      <button 
+        (click)="createDraft()"
+        class="ml-auto flex items-center gap-2 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Nueva Factura
+      </button>
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
@@ -100,7 +110,8 @@ export class InvoiceListComponent implements OnInit {
   private invoicesService = inject(SupabaseInvoicesService);
   private modulesService = inject(SupabaseModulesService);
   private settingsService = inject(SupabaseSettingsService);
-  
+  private router = inject(Router);
+
   invoices = signal<Invoice[]>([]);
   searchTerm = signal<string>('');
   statusFilter = signal<string>('');
@@ -119,31 +130,30 @@ export class InvoiceListComponent implements OnInit {
   // Filtered and sorted invoices
   filteredInvoices = computed(() => {
     let filtered = this.invoices();
-    
+
     // Apply search filter
     const search = this.searchTerm().toLowerCase();
     if (search) {
-      filtered = filtered.filter(inv => 
+      filtered = filtered.filter(inv =>
         this.formatNumber(inv).toLowerCase().includes(search) ||
         (inv.client?.name || '').toLowerCase().includes(search) ||
         inv.client_id?.toLowerCase().includes(search)
       );
     }
-    
+
     // Apply status filter
     const status = this.statusFilter();
     if (status === 'rectificative') {
       filtered = filtered.filter(inv => inv.invoice_type === 'rectificative' || (inv.total || 0) < 0);
     } else if (status === 'issued') {
-      filtered = filtered.filter(inv => 
-        inv.status === 'issued' || 
-
+      filtered = filtered.filter(inv =>
+        inv.status === 'issued' ||
         (inv.verifactu_status === 'accepted' && ['draft', 'approved'].includes(inv.status))
       );
     } else if (status) {
       filtered = filtered.filter(inv => inv.status === status);
     }
-    
+
     // Apply sorting
     const sort = this.sortBy();
     return filtered.sort((a, b) => {
@@ -203,6 +213,7 @@ export class InvoiceListComponent implements OnInit {
   }
 
   downloadPdf(invoiceId: string) {
+
     this.invoicesService.getInvoicePdfUrl(invoiceId).subscribe({
       next: (signed) => window.open(signed, '_blank'),
       error: (e) => console.error('PDF error', e)
@@ -210,27 +221,17 @@ export class InvoiceListComponent implements OnInit {
   }
 
   getDisplayAmount(invoice: Invoice): number {
-    // SIEMPRE mostramos el total real (lo que paga el cliente)
     return invoice.total || 0;
   }
-
-  // runDispatcher(){
-  //   this.invoicesService.runDispatcherNow().subscribe({
-  //     next: () => this.invoicesService.getDispatcherHealth().subscribe(h => this.dispatcherHealth.set(h)),
-  //     error: (e) => console.error('Dispatcher error', e)
-  //   });
-  // }
 
   formatNumber(inv: Invoice): string {
     return formatInvoiceNumber(inv);
   }
 
   getStatusLabel(inv: Invoice): string {
-    // Si es una factura rectificativa (importe negativo o tipo rectificative)
     if (inv.invoice_type === 'rectificative' || (inv.total || 0) < 0) {
       return 'Rectificativa';
     }
-    // Si está aceptada por VeriFactu y el estado es borrador o aprobada, mostrar como Emitida
     if (inv.verifactu_status === 'accepted' && ['draft', 'approved'].includes(inv.status)) {
       return 'Emitida';
     }
@@ -271,4 +272,22 @@ export class InvoiceListComponent implements OnInit {
     };
     return map[status] || 'bg-gray-100 text-gray-800';
   }
+
+  createDraft() {
+    this.invoicesService.createInvoice({
+      client_id: null as any,
+      invoice_date: new Date().toISOString().split('T')[0],
+      invoice_type: 'normal' as any,
+      items: []
+    }).subscribe({
+      next: (inv: Invoice) => {
+        this.router.navigate(['/facturacion', inv.id]);
+      },
+      error: (err: any) => {
+        console.error('Error creating draft invoice', err);
+        alert('No se pudo crear el borrador de factura. Verifica tus permisos.');
+      }
+    });
+  }
 }
+
