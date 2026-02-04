@@ -9,7 +9,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "default-dev-key-change-in-prod";
+const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY");
 
 // PayPal webhook event types we care about
 const PAYMENT_COMPLETED_EVENTS = [
@@ -27,6 +27,11 @@ const REFUND_EVENTS = [
 ];
 
 async function decrypt(encryptedBase64: string): Promise<string> {
+  if (!ENCRYPTION_KEY) {
+    console.error("Missing ENCRYPTION_KEY configuration");
+    throw new Error("Missing ENCRYPTION_KEY configuration");
+  }
+
   try {
     const encoder = new TextEncoder();
     const keyData = encoder.encode(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));

@@ -11,7 +11,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOW_ALL_ORIGINS = Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
-const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "default-dev-key-change-in-prod";
+const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY");
 const PUBLIC_SITE_URL = Deno.env.get("PUBLIC_SITE_URL") || "https://app.simplificacrm.es";
 
 function getCorsHeaders(origin: string | null): HeadersInit {
@@ -34,6 +34,11 @@ function getCorsHeaders(origin: string | null): HeadersInit {
 }
 
 async function decrypt(encryptedBase64: string): Promise<string> {
+  if (!ENCRYPTION_KEY) {
+    console.error("Missing ENCRYPTION_KEY configuration");
+    throw new Error("Missing ENCRYPTION_KEY configuration");
+  }
+
   try {
     const encoder = new TextEncoder();
     const keyData = encoder.encode(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));
