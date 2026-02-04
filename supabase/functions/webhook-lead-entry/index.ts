@@ -44,16 +44,29 @@ serve(async (req) => {
         else if (originLower.includes('telef')) source = 'phone';
 
         // Must determine company_id
-        let company_id = payload.company_id;
+        const company_id = payload.company_id;
 
-        if (!company_id) {
-            // Fallback: Get the first company
-            const { data: companies } = await supabaseClient.from('companies').select('id').limit(1);
-            if (companies && companies.length > 0) {
-                company_id = companies[0].id;
-            } else {
-                throw new Error('No company_id found or provided.');
-            }
+        // SECURITY FIX: Remove dangerous fallback to first company
+        // VALIDATION: company_id is strictly required and must be a UUID
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!company_id || !uuidRegex.test(company_id)) {
+            throw new Error('Valid company_id is required.');
+        }
+
+        // VALIDATION: Input length limits to prevent DoS/Storage issues
+        const MAX_TEXT_LENGTH = 500;
+        const MAX_MSG_LENGTH = 5000;
+
+        if ((first_name && first_name.length > MAX_TEXT_LENGTH) ||
+            (last_name && last_name.length > MAX_TEXT_LENGTH) ||
+            (email && email.length > MAX_TEXT_LENGTH) ||
+            (phone && phone.length > MAX_TEXT_LENGTH) ||
+            (interest && interest.length > MAX_TEXT_LENGTH)) {
+             throw new Error('Input fields exceed maximum allowed length.');
+        }
+
+        if (message && message.length > MAX_MSG_LENGTH) {
+            throw new Error('Message exceeds maximum allowed length.');
         }
 
         // Insert Lead
