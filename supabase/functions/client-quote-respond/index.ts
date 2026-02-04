@@ -296,6 +296,7 @@ serve(async (req) => {
             }
             const payload = { quote_id: quoteId, policy: effectivePolicy, delay_days: delayDays };
             await supabaseAdmin.from('scheduled_jobs').insert({
+              company_id: company_id,
               scheduled_at: when!.toISOString(),
               job_type: 'convert_quote_to_invoice',
               payload,
