@@ -206,8 +206,18 @@ serve(async (req) => {
       .eq("is_active", true)
       .single();
 
+    if (!integration) {
+      console.error("[stripe-webhook] No active Stripe integration found for company:", invoice.company_id);
+      return new Response(JSON.stringify({ error: "Integration disabled" }), { status: 403, headers });
+    }
+
     // Verify webhook signature if configured
-    if (integration?.webhook_secret_encrypted && stripeSignature) {
+    if (integration.webhook_secret_encrypted) {
+      if (!stripeSignature) {
+        console.error("[stripe-webhook] Missing Stripe signature");
+        return new Response(JSON.stringify({ error: "Missing signature" }), { status: 400, headers });
+      }
+
       const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
       const isValid = await verifyStripeWebhook(body, stripeSignature, webhookSecret);
       
