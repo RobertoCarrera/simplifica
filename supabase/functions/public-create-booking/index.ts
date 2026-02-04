@@ -3,6 +3,10 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
+function isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
@@ -25,6 +29,10 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Faltan datos obligatorios.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
+        if (!isValidEmail(customerEmail)) {
+            return new Response(JSON.stringify({ error: 'Formato de email inválido.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -41,7 +49,17 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Servicio no encontrado.' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
+        // SECURITY: Verify service belongs to the requested company to prevent IDOR
+        if (service.company_id !== companyId) {
+            console.error(`IDOR Attempt: Service ${serviceId} belongs to ${service.company_id}, but requested for ${companyId}`);
+            return new Response(JSON.stringify({ error: 'Servicio no válido para esta empresa.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
         const start = new Date(startTime);
+        if (isNaN(start.getTime())) {
+            return new Response(JSON.stringify({ error: 'Fecha inválida.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
         const end = new Date(start.getTime() + (service.duration_minutes * 60000));
         const now = new Date();
 
@@ -64,15 +82,10 @@ serve(async (req) => {
         let assignedResourceId = professionalId;
 
         if (!assignedResourceId && service.required_resource_type) {
-            // Find available resource logic (Simplified for MVP, ideally assume UI passed a valid slot/pro)
-            // If the UI is "Widget", it usually asks user to pick a time, which implies picking a pro implicitly if logic is smart.
-            // For now, if no pro is sent, we error or pick random?
-            // Let's assume the Frontend sends the ID.
             return new Response(JSON.stringify({ error: 'No se ha seleccionado un profesional.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
         // 4. Check Conflicts (Server Side Authority)
-        // Re-implement checkProfessionalConflict logic
         const startStr = start.toISOString();
         const endStr = end.toISOString();
         const bufferMinutes = service.buffer_minutes || 0;
@@ -174,7 +187,8 @@ serve(async (req) => {
         return new Response(JSON.stringify(booking), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     } catch (err) {
-        console.error(err);
-        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        console.error("Internal Error in public-create-booking:", err);
+        // SECURITY: Do not leak internal error details (stack traces, SQL errors) to the client
+        return new Response(JSON.stringify({ error: 'Ocurrió un error interno al procesar la reserva.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 });
