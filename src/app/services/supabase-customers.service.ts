@@ -296,7 +296,15 @@ export class SupabaseCustomersService {
       updated_at: client.updated_at,
       activo: client.is_active === false ? false : !client.deleted_at,
       direccion_id: client.direccion_id || null,
-      direccion: client.direccion || null,
+      direccion: client.direccion ? {
+        _id: client.direccion.id,
+        created_at: client.direccion.created_at,
+        tipo_via: client.direccion.tipo_via || '',
+        nombre: client.direccion.direccion || client.direccion.nombre || '', // Map DB 'direccion' col to model 'nombre'
+        numero: client.direccion.numero || '',
+        localidad_id: client.direccion.localidad_id || client.direccion.locality_id || '',
+        localidad: client.direccion.localidad || client.direccion.locality || undefined
+      } : null,
       metadata: client.metadata || undefined,
       // CRM & Billing
       status: client.status || 'lead',
@@ -450,33 +458,77 @@ export class SupabaseCustomersService {
    * Obtener un cliente por ID
    */
   getCustomer(id: string): Observable<Customer> {
-    // Intentar cargar con relación de dirección; usando LEFT JOIN para permitir NULL
+    // Attempt load with relation
     const withRelation = this.supabase
       .from('clients')
-      .select('*, direccion:addresses(*)')  // ← LEFT JOIN: permite NULL
+      .select('*, direccion:addresses(*, localidad:localities(*))')
       .eq('id', id)
       .single();
 
     return from(withRelation).pipe(
-      switchMap(({ data, error }) => {
-        if (!error) {
-          return of(this.toCustomerFromClient(data));
-        }
-        if ((error as any)?.code === 'PGRST200') {
-          return from(
-            this.supabase
-              .from('clients')
+      switchMap(async ({ data, error }) => {
+        if (!error && data) {
+          // Check if direccion is missing but we have an ID
+          if (!data.direccion && data.direccion_id) {
+            const { data: addrData } = await this.supabase
+              .from('addresses')
               .select('*')
-              .eq('id', id)
-              .single()
-          ).pipe(
-            map(({ data: d2, error: e2 }) => {
-              if (e2) throw e2;
-              return this.toCustomerFromClient({ ...d2, direccion: null });
-            })
-          );
+              .eq('id', data.direccion_id)
+              .maybeSingle();
+
+            if (addrData) {
+              if (addrData.locality_id) {
+                const { data: locData } = await this.supabase
+                  .from('localities')
+                  .select('*')
+                  .eq('id', addrData.locality_id)
+                  .maybeSingle();
+                if (locData) {
+                  addrData.localidad = locData;
+                }
+              }
+              data.direccion = addrData;
+            }
+          }
+          return this.toCustomerFromClient(data);
         }
-        return throwError(() => error);
+
+        // Error handling or fallback
+        if ((error as any)?.code === 'PGRST200' || error) {
+          console.warn('Error loading client with join, trying fallback:', error);
+          const { data: d2, error: e2 } = await this.supabase
+            .from('clients')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+          if (e2) throw e2;
+
+          // Manual fetch of address
+          if (d2.direccion_id) {
+            const { data: addrData } = await this.supabase
+              .from('addresses')
+              .select('*')
+              .eq('id', d2.direccion_id)
+              .maybeSingle();
+
+            if (addrData) {
+              if (addrData.locality_id) {
+                const { data: locData } = await this.supabase
+                  .from('localities')
+                  .select('*')
+                  .eq('id', addrData.locality_id)
+                  .maybeSingle();
+                if (locData) {
+                  addrData.localidad = locData;
+                }
+              }
+              (d2 as any).direccion = addrData;
+            }
+          }
+          return this.toCustomerFromClient({ ...d2, direccion: (d2 as any).direccion || null });
+        }
+        throw error;
       }),
       catchError(error => {
         this.handleError('Error al cargar cliente', error);

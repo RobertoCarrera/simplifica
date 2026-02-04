@@ -1,7 +1,5 @@
 import { Component, EventEmitter, Input, OnInit, Output, inject, signal, ViewChild, ElementRef, ChangeDetectorRef, SimpleChanges, OnChanges, HostListener } from '@angular/core';
 
-
-
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Customer, ClientContact } from '../../../models/customer';
@@ -18,6 +16,7 @@ import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags
 import { Observable, Subscription, of } from 'rxjs';
 import { finalize, switchMap, map } from 'rxjs/operators';
 import { GdprComplianceService } from '../../../services/gdpr-compliance.service';
+import { AuditLoggerService } from '../../../services/audit-logger.service';
 
 @Component({
   selector: 'app-form-new-customer',
@@ -47,6 +46,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   private cdr = inject(ChangeDetectorRef);
   private tagsService = inject(GlobalTagsService);
   private gdprService = inject(GdprComplianceService);
+  private auditLogger = inject(AuditLoggerService);
 
   // States
   pendingTags: GlobalTag[] = [];
@@ -95,6 +95,23 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   filteredIndustries: string[] = [];
   sourceDropdownOpen = false;
   industryDropdownOpen = false;
+
+  // Billing Security
+  showIban = signal(false);
+
+  toggleIban() {
+    const newState = !this.showIban();
+    this.showIban.set(newState);
+    if (newState && this.customer) {
+      // Log unmasking by Admin
+      this.auditLogger.logAction(
+        'VIEW_IBAN_ADMIN',
+        'customer',
+        this.customer.id,
+        { viewed_customer_email: this.customer.email }
+      );
+    }
+  }
 
   // Form data
   formData = {
@@ -281,7 +298,10 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
   checkAddressLocality() {
     // If editing a customer, try to set the addressLocalityName for the existing direccion
-    if (this.customer?.direccion?.localidad_id) {
+    if (this.customer?.direccion?.localidad) {
+      this.addressLocalityName = this.customer.direccion.localidad.nombre;
+      this.formData.addressLocalidadId = this.customer.direccion.localidad._id;
+    } else if (this.customer?.direccion?.localidad_id) {
       const match = this.localities.find(l => l._id === this.customer!.direccion!.localidad_id);
       if (match) this.addressLocalityName = match.nombre;
     }

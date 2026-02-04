@@ -7,10 +7,12 @@ import { SupabaseServicesService, Service } from '../../../services/supabase-ser
 import { AuthService } from '../../../services/auth.service';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 
+import { CalendarComponent } from '../../calendar/calendar.component';
+
 @Component({
     selector: 'app-booking-settings',
     standalone: true,
-    imports: [CommonModule, RouterModule, BookingAvailabilityComponent, ProfessionalsComponent, SkeletonComponent],
+    imports: [CommonModule, RouterModule, BookingAvailabilityComponent, ProfessionalsComponent, SkeletonComponent, CalendarComponent],
     templateUrl: './booking-settings.component.html',
     styleUrls: ['./booking-settings.component.scss']
 })
@@ -18,7 +20,7 @@ export class BookingSettingsComponent implements OnInit {
     private servicesService = inject(SupabaseServicesService);
     private authService = inject(AuthService);
 
-    activeTab: 'services' | 'professionals' | 'availability' = 'services';
+    activeTab: 'services' | 'professionals' | 'availability' | 'calendar' = 'services';
     bookableServices: Service[] = [];
     loading = true;
     error: string | null = null;

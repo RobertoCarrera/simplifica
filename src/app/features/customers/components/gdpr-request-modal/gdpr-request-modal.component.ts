@@ -1,5 +1,5 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, Input, Output, EventEmitter, inject, ElementRef, OnInit, OnDestroy, Inject } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GdprComplianceService, GdprAccessRequest } from '../../../../services/gdpr-compliance.service';
 import { ToastService } from '../../../../services/toast.service';
@@ -9,7 +9,7 @@ import { ToastService } from '../../../../services/toast.service';
     standalone: true,
     imports: [CommonModule, FormsModule],
     template: `
-    <div *ngIf="showModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-[10000] flex items-center justify-center modal-backdrop">
+    <div *ngIf="showModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-[99999] flex items-center justify-center modal-backdrop">
       <div class="relative p-6 border w-11/12 md:w-1/2 lg:w-2/5 rounded-xl bg-white dark:bg-slate-800 dark:border-slate-600 modal-content-box" (click)="$event.stopPropagation()">
         
         <!-- Header -->
@@ -113,13 +113,25 @@ import { ToastService } from '../../../../services/toast.service';
     }
   `]
 })
-export class GdprRequestModalComponent {
+export class GdprRequestModalComponent implements OnInit, OnDestroy {
     @Input() clientId!: string;
     @Input() clientEmail!: string;
     @Input() clientName!: string;
     @Input() clientPhone?: string;
     @Input() clientDni?: string;
     @Input() clientAddress?: string;
+
+    // Billing Data Inputs
+    @Input() billingData?: {
+        business_name?: string;
+        trade_name?: string;
+        cif_nif?: string;
+        billing_email?: string;
+        iban?: string;
+        address?: string;
+    };
+
+    @Input() context: 'personal' | 'billing' = 'personal';
 
     @Output() requestCreated = new EventEmitter<void>();
 
@@ -144,6 +156,18 @@ export class GdprRequestModalComponent {
 
     private gdprService = inject(GdprComplianceService);
     private toastService = inject(ToastService);
+    private el = inject(ElementRef);
+    private document = inject(DOCUMENT);
+
+    ngOnInit() {
+        this.document.body.appendChild(this.el.nativeElement);
+    }
+
+    ngOnDestroy() {
+        if (this.el.nativeElement.parentNode) {
+            this.el.nativeElement.parentNode.removeChild(this.el.nativeElement);
+        }
+    }
 
     open(type: 'rectification' | 'restriction' | 'objection') {
         let title = '';
@@ -151,7 +175,7 @@ export class GdprRequestModalComponent {
 
         switch (type) {
             case 'rectification':
-                title = 'Solicitar Rectificación de Datos';
+                title = this.context === 'billing' ? 'Rectificar Datos de Facturación' : 'Rectificar Datos Personales';
                 description = 'Indica qué datos son incorrectos y cuáles son los valores correctos.';
                 this.initRectificationForm();
                 break;
@@ -180,13 +204,23 @@ export class GdprRequestModalComponent {
     }
 
     initRectificationForm() {
-        this.rectificationFields = [
-            { key: 'name', label: 'Nombre Completo', currentValue: this.clientName || '', newValue: '', selected: false },
-            { key: 'email', label: 'Email', currentValue: this.clientEmail || '', newValue: '', selected: false },
-            { key: 'phone', label: 'Teléfono', currentValue: this.clientPhone || 'No registrado', newValue: '', selected: false },
-            { key: 'dni', label: 'DNI / NIF', currentValue: this.clientDni || 'No registrado', newValue: '', selected: false },
-            { key: 'address', label: 'Dirección', currentValue: this.clientAddress || 'No registrada', newValue: '', selected: false }
-        ];
+        if (this.context === 'billing') {
+            this.rectificationFields = [
+                { key: 'business_name', label: 'Razón Social', currentValue: this.billingData?.business_name || '', newValue: '', selected: false },
+                { key: 'trade_name', label: 'Nombre Comercial', currentValue: this.billingData?.trade_name || '', newValue: '', selected: false },
+                { key: 'cif_nif', label: 'CIF / NIF', currentValue: this.billingData?.cif_nif || '', newValue: '', selected: false },
+                { key: 'billing_email', label: 'Email Facturación', currentValue: this.billingData?.billing_email || '', newValue: '', selected: false },
+                { key: 'iban', label: 'IBAN / Cuenta', currentValue: this.billingData?.iban || '***', newValue: '', selected: false },
+                { key: 'address', label: 'Dirección Fiscal', currentValue: this.billingData?.address || '', newValue: '', selected: false }
+            ];
+        } else {
+            // Personal Context
+            this.rectificationFields = [
+                { key: 'name', label: 'Nombre Completo', currentValue: this.clientName || '', newValue: '', selected: false },
+                { key: 'email', label: 'Email', currentValue: this.clientEmail || '', newValue: '', selected: false },
+                { key: 'phone', label: 'Teléfono', currentValue: this.clientPhone || 'No registrado', newValue: '', selected: false }
+            ];
+        }
     }
 
     hasSelectedFields(): boolean {

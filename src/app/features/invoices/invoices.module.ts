@@ -12,9 +12,9 @@ import { RecurringQuotesComponent } from './recurring-quotes/recurring-quotes.co
     RouterModule,
     InvoicesRoutingModule,
     // Standalone components
-    InvoiceListComponent,
+    // InvoiceListComponent, // Removed to avoid circular/ref error
     InvoiceDetailComponent,
     RecurringQuotesComponent
   ]
 })
-export class InvoicesModule {}
+export class InvoicesModule { }

@@ -320,7 +320,7 @@ export class AuthService {
       const [userRes, clientRes] = await Promise.all([
         this.supabase
           .from('users')
-          .select(`*, app_role:app_roles(*)`)
+          .select(`id, company_id, email, name, surname, active, permissions, auth_user_id, app_role_id, app_role:app_roles(*)`)
           .eq('auth_user_id', authId)
           .limit(1)
           .maybeSingle(),
@@ -472,6 +472,9 @@ export class AuthService {
         // If super_admin, override the company-specific role
         const effectiveRole = globalRoleName === 'super_admin' ? 'super_admin' : (activeMembership?.role || 'member');
 
+        // Try to find if this internal user is also a client (for owner/admin billing)
+        const linkedClient = clientRes.data?.find((c: any) => c.auth_user_id === userRes.data?.auth_user_id);
+
         appUser = {
           id: userRes.data.id, // User ID
           auth_user_id: userRes.data.auth_user_id,
@@ -485,7 +488,8 @@ export class AuthService {
           company: activeMembership?.company || null,
           full_name: `${userRes.data.name || ''} ${userRes.data.surname || ''}`.trim() || userRes.data.email,
           is_super_admin: globalRoleName === 'super_admin',
-          app_role_id: userRes.data.app_role_id
+          app_role_id: userRes.data.app_role_id,
+          client_id: linkedClient?.id || null // Populate client_id if found
         };
         console.log('✅ Active Context: STAFF', appUser.role, appUser.company?.name);
       }
@@ -764,7 +768,7 @@ export class AuthService {
             email: registerData.email,
             password: registerData.password,
             options: {
-              data: { 
+              data: {
                 full_name: registerData.full_name,
                 given_name: registerData.given_name,
                 surname: registerData.surname,

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ElementRef, ViewChild, Inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ElementRef, ViewChild, Inject, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -19,8 +19,10 @@ import { SupabaseInvoicesService } from '../../../services/supabase-invoices.ser
 import { InvoiceSeries } from '../../../models/invoice.model';
 import { firstValueFrom, Subscription } from 'rxjs';
 import { SupabasePermissionsService } from '../../../services/supabase-permissions.service';
+import { AuditLoggerService } from '../../../services/audit-logger.service';
 
 import { ClientGdprPanelComponent } from '../../customers/components/client-gdpr-panel/client-gdpr-panel.component';
+import { GdprRequestModalComponent } from '../../customers/components/gdpr-request-modal/gdpr-request-modal.component';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { DataExportImportComponent } from '../data-export-import/data-export-import.component';
 import { DomainsComponent } from '../domains/domains.component';
@@ -30,7 +32,7 @@ import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.componen
 @Component({
     selector: 'app-configuracion',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent],
+    imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule, CompanyAdminComponent, HelpComponent, ClientGdprPanelComponent, GdprRequestModalComponent, DataExportImportComponent, DomainsComponent, IntegrationsComponent, SkeletonComponent],
     templateUrl: './configuracion.component.html',
     styleUrls: ['./configuracion.component.scss']
 })
@@ -105,6 +107,16 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     ];
 
     // Client role detection - hide tabs and simplify settings for clients
+    // Estados de carga
+    savingProfile = false;
+    savingBilling = false;
+    // savingNif = false; // Already exists
+    // loading = false; // Already exists
+    // clientDetailsLoading = false; // Already exists
+
+    // Billing Security
+    showIban = signal(false);
+
     // Client details (for profile view)
     clientDetails: any | null = null;
     clientDetailsLoading = false;
@@ -113,7 +125,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         return this.authService.userRole() === 'client';
     }
 
-    @ViewChild(ClientGdprPanelComponent) gdprPanel!: ClientGdprPanelComponent;
+    @ViewChild('rectificationModal') rectificationModal!: GdprRequestModalComponent;
 
     // Permissions Getters
     get canManageSettings(): boolean {
@@ -130,6 +142,12 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         return this.permissionsService.hasPermissionSync('settings.billing');
     }
 
+    get hasBillingTab(): boolean {
+        // Show for client AND owner (if they have client_id linked)
+        const role = this.authService.userRole();
+        return role === 'client' || (role === 'owner' && !!this.userProfile?.client_id);
+    }
+
     constructor(
         private fb: FormBuilder,
         private authService: AuthService,
@@ -144,7 +162,8 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         @Inject(SupabaseModulesService) private modulesService: SupabaseModulesService,
         private invoicesService: SupabaseInvoicesService,
         private customersService: SupabaseCustomersService,
-        private permissionsService: SupabasePermissionsService // Injected service
+        private permissionsService: SupabasePermissionsService,
+        private auditLogger: AuditLoggerService
     ) {
         this.supabase = this.sbClient.instance;
         this.profileForm = this.fb.group({
@@ -160,7 +179,14 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
             payment_method: [''],
             iban: [''],
             bic: [''],
-            tax_region: ['']
+            tax_region: [''],
+            address: this.fb.group({
+                street: [''],
+                city: [''],
+                zip: [''],
+                province: [''],
+                country: ['ESP']
+            })
         });
 
         this.passwordForm = this.fb.group({
@@ -252,6 +278,35 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         }
     }
 
+    toggleIban() {
+        const newState = !this.showIban();
+        this.showIban.set(newState);
+        if (newState) {
+            // Log unmasking
+            this.auditLogger.logAction(
+                'VIEW_IBAN_CONFIG',
+                'client_profile',
+                this.userProfile?.id,
+                { email: this.userProfile?.email }
+            );
+        }
+    }
+    // Context for global modal
+    rectificationContext: 'personal' | 'billing' = 'personal';
+
+    // Handle request for billing data change (Rectification)
+    openRectificationModal(context: 'personal' | 'billing' = 'personal') {
+        this.rectificationContext = context;
+        // Give Angular a moment to propagate input binding if calling synchronously
+        setTimeout(() => {
+            if (this.rectificationModal) {
+                this.rectificationModal.open('rectification');
+            } else {
+                this.toast.error('Componente de rectificación no inicializado.', 'Error interno');
+            }
+        });
+    }
+
     private updateModulesList() {
         const catalog = this._modulesCatalog || [];
         const statusByKey: Record<string, ModuleStatus> = {} as any;
@@ -285,12 +340,20 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
                         // After user profile is available, ensure modules are loaded (in case of timing)
                         this.loadUserModules();
 
-                        // If user is client, load additional details (phone, address, etc.)
-                        if (profile.role === 'client' && profile.client_id) {
+                        // If user is client OR owner with client_id, load additional details
+                        if ((profile.role === 'client' || profile.role === 'owner') && profile.client_id) {
+                            // Enforce Read-Only for billing ONLY if client (owners can edit)
+                            if (profile.role === 'client') {
+                                this.billingForm.disable(); // Disable entire form
+                            } else {
+                                this.billingForm.enable(); // Owners can edit
+                            }
+
                             this.clientDetailsLoading = true;
                             this.customersService.getCustomer(profile.client_id).subscribe({
                                 next: (customer) => {
                                     this.clientDetails = customer;
+                                    const addressData = (customer as any).direccion || {};
                                     this.billingForm.patchValue({
                                         business_name: customer.business_name || '',
                                         trade_name: customer.trade_name || '',
@@ -299,7 +362,14 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
                                         payment_method: customer.payment_method || '',
                                         iban: customer.iban || '',
                                         bic: customer.bic || '',
-                                        tax_region: customer.tax_region || ''
+                                        tax_region: customer.tax_region || '',
+                                        address: {
+                                            street: addressData.nombre || '',
+                                            city: addressData.localidad?.nombre || '',
+                                            zip: addressData.localidad?.CP || '',
+                                            province: addressData.localidad?.provincia || '',
+                                            country: addressData.localidad?.pais || 'ESP'
+                                        }
                                     });
                                     this.clientDetailsLoading = false;
                                 },
@@ -376,11 +446,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
         }
     }
 
-    openRectificationModal() {
-        if (this.gdprPanel) {
-            this.gdprPanel.openRequestModal('rectification');
-        }
-    }
+
 
     async changePassword() {
         if (this.passwordForm.valid) {
