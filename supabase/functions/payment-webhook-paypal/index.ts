@@ -240,7 +240,12 @@ serve(async (req) => {
       .eq("is_active", true)
       .single();
 
-    if (integration?.webhook_secret_encrypted && integration?.credentials_encrypted) {
+    if (!integration) {
+      console.error("[paypal-webhook] No active PayPal integration found for company:", invoice.company_id);
+      return new Response(JSON.stringify({ error: "Integration disabled" }), { status: 403, headers });
+    }
+
+    if (integration.webhook_secret_encrypted && integration.credentials_encrypted) {
       // Verify webhook signature
       const webhookSecret = await decrypt(integration.webhook_secret_encrypted);
       const credentials = JSON.parse(await decrypt(integration.credentials_encrypted));
