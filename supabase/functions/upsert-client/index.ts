@@ -233,16 +233,38 @@ serve(async (req) => {
             }
         });
 
-        // Resolve company_id from users table using user context
+        // Resolve company_id from company_members table using user context
+        // 1. Get public user ID
+        let publicUserId = null;
+        try {
+            const { data: urows, error: uerr } = await supabaseUser.from('users').select('id').eq('auth_user_id', authUserId).limit(1).maybeSingle();
+            if (!uerr && urows && urows.id) publicUserId = urows.id;
+        } catch (e) {
+            console.error('[upsert-client] Error resolving user ID:', e);
+        }
+
+        if (!publicUserId) {
+             return new Response(JSON.stringify({ error: 'Unable to determine user identity' }), { status: 403, headers });
+        }
+
+        // 2. Get active company membership
         let company_id = null;
         try {
-            const { data: urows, error: uerr } = await supabaseUser.from('users').select('company_id').eq('auth_user_id', authUserId).limit(1).maybeSingle();
-            if (!uerr && urows && urows.company_id) company_id = urows.company_id;
+            const { data: mrows, error: merr } = await supabaseUser
+                .from('company_members')
+                .select('company_id')
+                .eq('user_id', publicUserId)
+                .eq('status', 'active')
+                .limit(1)
+                .maybeSingle();
+
+            if (!merr && mrows && mrows.company_id) company_id = mrows.company_id;
         } catch (e) {
-            console.error('[upsert-client] Error resolving company:', e);
+            console.error('[upsert-client] Error resolving company membership:', e);
         }
+
         if (!company_id) {
-            return new Response(JSON.stringify({ error: 'Unable to determine company for authenticated user' }), { status: 403, headers });
+            return new Response(JSON.stringify({ error: 'User does not belong to an active company' }), { status: 403, headers });
         }
 
         // Parse body
