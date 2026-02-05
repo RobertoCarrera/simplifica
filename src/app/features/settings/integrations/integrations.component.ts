@@ -49,6 +49,7 @@ export class IntegrationsComponent implements OnInit {
     async checkCallback() {
         const code = this.route.snapshot.queryParams['code'];
         const error = this.route.snapshot.queryParams['error'];
+        const state = this.route.snapshot.queryParams['state'];
 
         if (error) {
             this.toast.error('Error de Google', error);
@@ -59,7 +60,7 @@ export class IntegrationsComponent implements OnInit {
             this.processingCode.set(true);
             // Remove code from URL immediately to prevent re-use
             this.router.navigate([], {
-                queryParams: { code: null, scope: null, prompt: null, authuser: null, hd: null },
+                queryParams: { code: null, scope: null, prompt: null, authuser: null, hd: null, state: null },
                 queryParamsHandling: 'merge'
             });
 
@@ -70,6 +71,7 @@ export class IntegrationsComponent implements OnInit {
                     body: {
                         action: 'exchange-code',
                         code,
+                        state,
                         redirect_uri: redirectUri
                     }
                 });
