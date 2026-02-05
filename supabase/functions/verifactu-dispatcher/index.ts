@@ -1163,22 +1163,37 @@ serve(async (req)=>{
         });
       }
 
-      const { data: userProfile, error: profileError } = await userClient
+      // Get public user ID from auth ID
+      const { data: publicUser, error: userError } = await userClient
         .from('users')
-        .select('company_id')
+        .select('id')
         .eq('auth_user_id', user.id)
         .single();
 
-      if (profileError || !userProfile?.company_id) {
+      if (userError || !publicUser) {
+         return new Response(JSON.stringify({ ok: false, error: 'User profile not found' }), {
+          status: 401, headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Get company from members
+      const { data: member, error: memberError } = await userClient
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', publicUser.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (memberError || !member) {
         return new Response(JSON.stringify({ 
           ok: false, 
-          error: 'No se pudo determinar la empresa del usuario' 
+          error: 'No se pudo determinar la empresa del usuario (sin membresía activa)'
         }), {
           status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
         });
       }
       
-      const companyId = userProfile.company_id;
+      const companyId = member.company_id;
       
       // Pagination params
       const page = Number(body.page || 1);
