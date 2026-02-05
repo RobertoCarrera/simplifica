@@ -86,18 +86,22 @@ import { AnimationService } from '../../services/animation.service';
               <div class="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
                 @for (day of monthDays(); track day.date.getTime()) {
                   <div 
-                    class="bg-white dark:bg-gray-800 min-h-[120px] p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    class="min-h-[120px] p-2 transition-colors border-b border-r border-gray-100 dark:border-gray-700"
                     [ngClass]="{
-                      'opacity-50': !day.isCurrentMonth,
-                      'ring-2 ring-indigo-500': day.isSelected,
-                      'bg-indigo-50 dark:bg-indigo-900': day.isToday
+                      'bg-white dark:bg-gray-800': isDayWorking(day.date),
+                      'bg-gray-100 dark:bg-gray-950': !isDayWorking(day.date), 
+                      'cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-900': isDayWorking(day.date),
+                      'cursor-not-allowed': !isDayWorking(day.date),
+                      'ring-2 ring-indigo-500 z-10': day.isSelected,
+                      'relative': true
                     }"
-                    (click)="onDateClick(day.date, true, $event)">
+                    (click)="isDayWorking(day.date) && onDateClick(day.date, true, $event)">
                     
-                    <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center justify-between mb-1"
+                         [class.opacity-40]="!isDayWorking(day.date)">
                       <span class="text-sm font-medium"
                             [ngClass]="{
-                              'text-indigo-600 dark:text-indigo-400': day.isToday,
+                              'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded-full': day.isToday,
                               'text-gray-900 dark:text-white': day.isCurrentMonth && !day.isToday,
                               'text-gray-400 dark:text-gray-600': !day.isCurrentMonth
                             }">
@@ -111,19 +115,18 @@ import { AnimationService } from '../../services/animation.service';
                     </div>
                     
                     <!-- Events preview -->
-                    <div class="space-y-1">
+                    <div class="space-y-1" [class.opacity-50]="!isDayWorking(day.date)">
                       @for (event of day.events.slice(0, 3); track event.id) {
                         <div 
-                          class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity"
+                          class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity text-white"
                           [style.background-color]="event.color || '#6366f1'"
-                          [style.color]="getTextColor(event.color || '#6366f1')"
                           (click)="onEventClick(event, $event)"
                           [title]="event.title + (event.description ? ' - ' + event.description : '')">
                           {{ event.title }}
                         </div>
                       }
                       @if (day.events.length > 3) {
-                        <div class="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                        <div class="text-xs text-gray-500 dark:text-gray-400 font-medium pl-1">
                           +{{ day.events.length - 3 }} más
                         </div>
                       }
@@ -137,9 +140,10 @@ import { AnimationService } from '../../services/animation.service';
           @case ('week') {
             <div class="week-view h-[600px] overflow-y-auto" @slideIn>
               <!-- Week header -->
-              <div class="grid grid-cols-8 gap-px mb-4 sticky top-0 bg-white dark:bg-gray-800 z-20 border-b border-gray-200 dark:border-gray-700 pb-2">
+              <div class="grid mb-4 sticky top-0 bg-white dark:bg-gray-800 z-20 border-b border-gray-200 dark:border-gray-700 pb-2"
+                   [style.grid-template-columns]="'minmax(3rem, auto) repeat(' + currentWeekDays.length + ', 1fr)'">
                 <div class="p-2"></div> <!-- Time column header -->
-                @for (day of weekDays; track day) {
+                @for (day of currentWeekDays; track day) {
                   <div class="p-2 text-center">
                     <div class="text-sm font-medium text-gray-500 dark:text-gray-400">{{ day }}</div>
                     <div class="text-lg font-semibold text-gray-900 dark:text-white mt-1">
@@ -150,11 +154,12 @@ import { AnimationService } from '../../services/animation.service';
               </div>
               
               <!-- Week grid Container -->
-              <div class="relative grid grid-cols-8 gap-px bg-white dark:bg-gray-800">
+              <div class="relative grid bg-white dark:bg-gray-800"
+                   [style.grid-template-columns]="'minmax(3rem, auto) repeat(' + currentWeekDays.length + ', 1fr)'">
                 
                 <!-- Time Column -->
                 <div class="col-span-1 border-r border-gray-100 dark:border-gray-700">
-                    @for (hour of hourSlots; track hour) {
+                    @for (hour of currentHourSlots; track hour) {
                          <!-- Hour Marker -->
                          <div class="h-[60px] text-xs text-gray-400 text-right pr-2 sticky left-0 -mt-2">
                             {{ formatHour(hour) }}
@@ -163,24 +168,32 @@ import { AnimationService } from '../../services/animation.service';
                 </div>
 
                 <!-- Day Columns -->
-                @for (day of weekDays; track day) {
-                    <div class="col-span-1 relative border-r border-gray-100 dark:border-gray-700 min-h-[1440px]">
+                @for (day of currentWeekDays; track day) {
+                    <div class="col-span-1 relative border-r border-gray-100 dark:border-gray-700"
+                         [style.min-height]="(currentHourSlots.length * 60) + 'px'">
                         <!-- Background Grid Lines -->
-                        @for (hour of hourSlots; track hour) {
+                        @for (hour of currentHourSlots; track hour) {
                             <div class="h-[60px] border-b border-gray-50 dark:border-gray-700 pointer-events-none"></div>
                         }
 
                         <!-- Click Overlay (for creating events) -->
-                        <div class="absolute inset-0 z-0">
-                             @for (hour of hourSlots; track hour) {
-                                <div class="h-[60px]" (click)="onTimeSlotClick(day, hour, $event)"></div>
+                        <div class="absolute inset-0 z-0 flex flex-col">
+                             @for (hour of currentHourSlots; track hour) {
+                                <div class="h-[60px] border-b border-transparent transition-colors"
+                                     [ngClass]="{
+                                        'bg-gray-200 dark:bg-gray-900': !isSlotAvailable(getWeekDayIndex(day), hour),
+                                        'cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-800': isSlotAvailable(getWeekDayIndex(day), hour),
+                                        'cursor-not-allowed': !isSlotAvailable(getWeekDayIndex(day), hour)
+                                     }"
+                                     (click)="onTimeSlotClick(day, hour, $event)">
+                                </div>
                             }
                         </div>
 
                         <!-- Absolute Events -->
                         @for (event of getEventsForDay(day); track event.id) {
                             <div class="absolute inset-x-0 mx-1 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 shadow-sm border-l-4"
-                                 [style.top]="getEventStyle(event).top"
+                                 [style.top]="getEventTopRelative(event)"
                                  [style.height]="getEventStyle(event).height"
                                  [style.background-color]="getEventStyle(event).backgroundColor"
                                  [style.color]="getEventStyle(event).color"
@@ -209,10 +222,11 @@ import { AnimationService } from '../../services/animation.service';
                 </h3>
               </div>
 
-              <div class="flex relative min-h-[1440px]">
+              <div class="flex relative"
+                   [style.min-height]="(currentHourSlots.length * 60) + 'px'">
                   <!-- Time Column -->
                   <div class="w-16 flex-shrink-0 border-r border-gray-100 dark:border-gray-700">
-                     @for (hour of hourSlots; track hour) {
+                     @for (hour of currentHourSlots; track hour) {
                          <div class="h-[60px] text-xs text-gray-400 text-right pr-2 -mt-2">
                             {{ formatHour(hour) }}
                          </div>
@@ -222,21 +236,28 @@ import { AnimationService } from '../../services/animation.service';
                   <!-- Day Content -->
                   <div class="flex-1 relative">
                        <!-- Background Lines -->
-                       @for (hour of hourSlots; track hour) {
+                       @for (hour of currentHourSlots; track hour) {
                             <div class="h-[60px] border-b border-gray-50 dark:border-gray-700 pointer-events-none"></div>
                         }
 
                         <!-- Click Overlay -->
-                        <div class="absolute inset-0 z-0">
-                             @for (hour of hourSlots; track hour) {
-                                <div class="h-[60px]" (click)="onTimeSlotClick('day', hour, $event)"></div>
+                        <div class="absolute inset-0 z-0 flex flex-col">
+                             @for (hour of currentHourSlots; track hour) {
+                                <div class="h-[60px] border-b border-transparent transition-colors"
+                                     [ngClass]="{
+                                        'bg-gray-200 dark:bg-gray-900': !isSlotAvailable(currentView().date.getDay(), hour),
+                                        'cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-800': isSlotAvailable(currentView().date.getDay(), hour),
+                                        'cursor-not-allowed': !isSlotAvailable(currentView().date.getDay(), hour)
+                                     }"
+                                     (click)="onTimeSlotClick('day', hour, $event)">
+                                </div>
                             }
                         </div>
 
                          <!-- Events -->
                         @for (event of getCurrentDayEvents(); track event.id) {
                             <div class="absolute left-1 right-1 rounded p-2 text-sm overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 shadow-sm border-l-4"
-                                 [style.top]="getEventStyle(event).top"
+                                 [style.top]="getEventTopRelative(event)"
                                  [style.height]="getEventStyle(event).height"
                                  [style.background-color]="getEventStyle(event).backgroundColor"
                                  [style.color]="getEventStyle(event).color"
@@ -281,21 +302,64 @@ export class CalendarComponent implements OnInit {
   @Input() events: CalendarEvent[] = [];
   @Input() editable = true;
   @Input() selectable = true;
+  @Input() constraints: { minHour: number; maxHour: number; workingDays: number[]; schedules?: any[] } | null = null;
 
   @Output() eventClick = new EventEmitter<CalendarEventClick>();
   @Output() dateClick = new EventEmitter<CalendarDateClick>();
   @Output() addEvent = new EventEmitter<void>();
   @Output() viewChange = new EventEmitter<CalendarView>();
 
-  currentView = signal<CalendarView>({
-    type: 'month',
-    date: new Date()
-  });
+  currentView = signal<CalendarView>(
+    {
+      type: 'month',
+      date: new Date()
+    }
+  );
 
   selectedDate = signal<Date | null>(null);
 
-  weekDays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  hourSlots = Array.from({ length: 24 }, (_, i) => i);
+  // Computed properties for constraints
+
+  // Map day index (0-6) to day name
+  private dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+  weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']; // Start on Monday
+
+  // Computed days for week view based on constraints
+  visibleWeekDays = computed(() => {
+    // User wants to SEE the blocked days as gray, so we should NOT filter them out.
+    // We return full weekDays. The slot validation will handle the gray background.
+    return this.weekDays;
+  });
+
+  // Computed hours based on constraints
+  hourSlots = Array.from({ length: 24 }, (_, i) => i); // Default fallback
+
+  visibleHourSlots = computed(() => {
+    let min = 0;
+    let max = 24;
+
+    if (this.constraints) {
+      min = this.constraints.minHour;
+      max = this.constraints.maxHour;
+    }
+
+    // Ensure valid range
+    if (max <= min) { min = 0; max = 24; }
+
+    // Allow a small buffer? User said "reduce to schedule".
+    // Let's create array from min to max-1 (if max is exclusive end hour)
+    // e.g. 9 to 17. 17 is end time. Last slot is 16:00.
+    // But availability usually means "Open until 17:00". So slots are 9, 10... 16.
+    // If max is 17 (5 PM), and slot is 1 hour, then 16:00-17:00 is the last slot.
+    // Array should be min to max.
+
+    const slots = [];
+    for (let i = min; i < max; i++) {
+      slots.push(i);
+    }
+    return slots;
+  });
 
   monthDays = computed(() => {
     const view = this.currentView();
@@ -303,13 +367,22 @@ export class CalendarComponent implements OnInit {
     const month = view.date.getMonth();
 
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
+    // Find absolute start date (Monday of the first week)
+    const startDay = firstDay.getDay(); // 0=Sun, 1=Mon
+    const diff = startDay === 0 ? 6 : startDay - 1;
+
     const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    startDate.setDate(startDate.getDate() - diff);
 
     const days: CalendarDay[] = [];
     const today = new Date();
     const selected = this.selectedDate();
+
+    // Determine if we should show days based on constraints? 
+    // Usually month view shows all days to keep grid 7x6 sanity.
+    // If we hide week columns in month view it looks broken (jagged).
+    // So we keep month view as is, maybe just dim non-working days?
+    // Constraints mainly affect Week/Day view vertical/horizontal rendering.
 
     for (let i = 0; i < 42; i++) {
       const date = new Date(startDate);
@@ -340,6 +413,11 @@ export class CalendarComponent implements OnInit {
   ngOnInit() {
     this.checkMobile();
   }
+
+  // Update template iteration variables
+  get currentWeekDays() { return this.visibleWeekDays(); }
+  get currentHourSlots() { return this.visibleHourSlots(); }
+
 
   @HostListener('window:resize')
   onResize() {
@@ -484,13 +562,23 @@ export class CalendarComponent implements OnInit {
     if (dayOrView !== 'day' && this.weekDays.includes(dayOrView)) {
       const view = this.currentView();
       const weekStart = this.getWeekStart(view.date);
-      const dayIndex = this.weekDays.indexOf(dayOrView);
+      const dayIndex = this.weekDays.indexOf(dayOrView); // matches Monday-based index
       slotDate.setTime(weekStart.getTime());
       slotDate.setDate(weekStart.getDate() + dayIndex);
     } else {
       // If it's day view, use current view date
       const view = this.currentView();
       slotDate.setTime(view.date.getTime());
+    }
+
+    // Now determine the actual JS day index (0=Sun, 1=Mon) from the DATE itself
+    // DO NOT rely on the loop index which might be shifted if we changed weekDays order.
+    const jsDayIndex = slotDate.getDay();
+
+    // STRICT VALIDATION: Check if slot is strictly available (handling breaks)
+    if (!this.isSlotAvailable(jsDayIndex, hour)) {
+      console.warn('🚫 Slot unavailable:', jsDayIndex, hour);
+      return;
     }
 
     slotDate.setHours(hour, 0, 0, 0);
@@ -504,10 +592,12 @@ export class CalendarComponent implements OnInit {
   getWeekStart(date: Date): Date {
     const start = new Date(date);
     const day = start.getDay(); // 0 is Sunday
-    // Adjust to make Monday the first day? Standard is Sunday=0. 
-    // If your weekDays array starts with 'Dom' (Sunday), this is correct.
-    // start.setDate(date.getDate() - day);
-    start.setDate(date.getDate() - day);
+    // Adjust to make Monday the first day
+    // If day is 0 (Sunday), diff is 6.
+    // If day is 1 (Monday), diff is 0.
+    const diff = day === 0 ? 6 : day - 1;
+
+    start.setDate(date.getDate() - diff);
     start.setHours(0, 0, 0, 0);
     return start;
   }
@@ -556,6 +646,19 @@ export class CalendarComponent implements OnInit {
     );
   }
 
+  getEventTopRelative(event: CalendarEvent): string {
+    let minHour = 0;
+    if (this.constraints) {
+      minHour = this.constraints.minHour;
+    }
+
+    const startMinutes = event.start.getHours() * 60 + event.start.getMinutes();
+    const offsetMinutes = minHour * 60;
+
+    const top = Math.max(0, startMinutes - offsetMinutes);
+    return `${top}px`;
+  }
+
   getEventStyle(event: CalendarEvent): any {
     const startMinutes = event.start.getHours() * 60 + event.start.getMinutes();
     const endMinutes = event.end.getHours() * 60 + event.end.getMinutes();
@@ -565,11 +668,11 @@ export class CalendarComponent implements OnInit {
     if (duration < 15) duration = 15;
 
     // 60px per hour => 1px per minute
-    const top = startMinutes;
+    // Top is calculated via getEventTopRelative for the view
+    // But we keep height calculation generic
     const height = duration;
 
     return {
-      top: `${top}px`,
       height: `${height}px`,
       backgroundColor: event.color || '#6366f1',
       color: this.getTextColor(event.color || '#6366f1')
@@ -596,7 +699,46 @@ export class CalendarComponent implements OnInit {
     return brightness > 128 ? '#000000' : '#ffffff';
   }
 
-  private isSameDay(date1: Date, date2: Date): boolean {
+  // Check if a specific slot is available
+  isSlotAvailable(dayIndex: number, hour: number): boolean {
+    if (!this.constraints || !this.constraints.schedules || this.constraints.schedules.length === 0) {
+      return true; // If no constraints, assume available or rely on workingDays
+    }
+
+    // First check workingDays
+    if (this.constraints.workingDays && !this.constraints.workingDays.includes(dayIndex)) {
+      return false;
+    }
+
+    const schedules = this.constraints.schedules.filter((s: any) => s.day_of_week === dayIndex);
+    if (schedules.length === 0) return false;
+
+    // Check if hour falls within ANY schedule
+    // Schedules are like 09:00:00 to 13:00:00
+    // If hour is 9, it is valid if start <= 9 and end > 9.
+
+    return schedules.some((s: any) => {
+      const startH = parseInt(s.start_time.split(':')[0], 10);
+      let endH = parseInt(s.end_time.split(':')[0], 10);
+      const endM = parseInt(s.end_time.split(':')[1], 10);
+      if (endM > 0) endH++;
+
+      return hour >= startH && hour < endH;
+    });
+  }
+
+  isDayWorking(date: Date): boolean {
+    if (!this.constraints || !this.constraints.workingDays) return true;
+    return this.constraints.workingDays.includes(date.getDay());
+  }
+
+  getWeekDayIndex(dayName: string): number {
+    // Map 'Dom' -> 0, etc.
+    // this.dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    return this.dayNames.indexOf(dayName);
+  }
+
+  isSameDay(date1: Date, date2: Date): boolean {
     return (
       date1.getFullYear() === date2.getFullYear() &&
       date1.getMonth() === date2.getMonth() &&
