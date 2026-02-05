@@ -317,7 +317,18 @@ import { ToastService } from '../../../services/toast.service';
       gap: 0.5rem;
     }
     .btn-primary { 
-      display: none; /* Handled by Tailwind now */
+      background: #2563eb; /* blue-600 */
+      color: white;
+      border: none;
+      padding: 0.875rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn-primary:not(:disabled):hover { 
@@ -545,7 +556,7 @@ export class LoginComponent implements OnDestroy, OnInit {
           try {
             // Decode and normalize the path
             let normalized = decodeURIComponent(returnTo);
-            
+
             // SECURITY: Prevent Open Redirect attacks
             // Ensure the path is strictly a local relative path starting with /
             // and NOT starting with // (which browsers interpret as protocol-relative)
