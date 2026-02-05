@@ -1,5 +1,28 @@
 <div class="webmail-container">
-    <aside class="sidebar">
+    <!-- Mobile Overlay -->
+    <div class="fixed inset-0 bg-black/50 z-20 md:hidden transition-opacity" *ngIf="isSidebarOpen()"
+        (click)="closeSidebar()">
+    </div>
+
+    <!-- Mobile Header (Visible only on mobile) -->
+    <div
+        class="md:hidden h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 z-10 shrink-0">
+        <div class="flex items-center gap-3">
+            <button (click)="toggleSidebar()" class="text-gray-600 dark:text-gray-300 p-1">
+                <i class="fas fa-bars text-xl"></i>
+            </button>
+            <span class="font-semibold text-gray-800 dark:text-white">Webmail</span>
+        </div>
+        <button routerLink="composer" class="text-blue-600 dark:text-blue-400 font-medium text-sm">
+            Redactar
+        </button>
+    </div>
+
+    <aside class="sidebar" [class.open]="isSidebarOpen()">
+        <!-- Close Button (Mobile) -->
+        <button class="absolute top-2 right-2 md:hidden text-gray-500 p-2 z-50" (click)="closeSidebar()">
+            <i class="fas fa-times text-lg"></i>
+        </button>
         <!-- HEADER -->
         <div class="sidebar-header" *ngIf="!showSettings()">
             <div class="header-content">
