@@ -93,12 +93,23 @@ export class ResponsiveSidebarComponent implements OnInit {
   isSwitcherOpen = signal(false);
 
   availableCompanies = computed(() => {
-    return this.authService.companyMemberships().map(m => ({
-      id: m.company_id,
-      name: m.company?.name || 'Empresa Sin Nombre',
-      role: m.role,
-      isCurrent: m.company_id === this.authService.currentCompanyId()
-    }));
+    const uniqueMap = new Map();
+    this.authService.companyMemberships().forEach(m => {
+      if (!uniqueMap.has(m.company_id)) {
+        uniqueMap.set(m.company_id, {
+          id: m.company_id,
+          name: m.company?.name || 'Empresa Sin Nombre',
+          role: m.role,
+          isCurrent: m.company_id === this.authService.currentCompanyId()
+        });
+      } else {
+        // If already exists, maybe upgrade role if current is 'client' and new is 'owner' etc?
+        // For now, simple first-wins or we can implement priority. 
+        // Assuming memberships might be ordered or random.
+        // Let's just keep the first one found for now to fix the visual bug.
+      }
+    });
+    return Array.from(uniqueMap.values());
   });
 
   currentCompanyName = computed(() => {

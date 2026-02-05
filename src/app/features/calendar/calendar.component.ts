@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, computed, signal, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, computed, signal, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CalendarEvent, CalendarView, CalendarDay, CalendarEventClick, CalendarDateClick } from './calendar.interface';
 import { AnimationService } from '../../services/animation.service';
@@ -43,7 +43,7 @@ import { AnimationService } from '../../services/animation.service';
           <div class="flex items-center space-x-2">
             <!-- View selector -->
             <div class="flex bg-white bg-opacity-20 rounded-md p-1">
-              @for (viewType of ['month', 'week', 'day']; track viewType) {
+              @for (viewType of availableViews(); track viewType) {
                 <button
                   (click)="setView(viewType)"
                   class="px-3 py-1 text-sm font-medium text-white rounded transition-colors"
@@ -291,8 +291,30 @@ export class CalendarComponent implements OnInit {
     return days;
   });
 
+  isMobile = signal(false);
+
+  availableViews = computed(() => {
+    return this.isMobile() ? ['month', 'day'] : ['month', 'week', 'day'];
+  });
+
   ngOnInit() {
-    // Initialize calendar
+    this.checkMobile();
+  }
+
+  @HostListener('window:resize')
+  onResize() {
+    this.checkMobile();
+  }
+
+  private checkMobile() {
+    if (typeof window !== 'undefined') {
+      const mobile = window.innerWidth < 768;
+      this.isMobile.set(mobile);
+      // Force day view if invalid view for mobile is active
+      if (mobile && this.currentView().type === 'week') {
+        this.setView('day');
+      }
+    }
   }
 
   formatHeaderDate(): string {
