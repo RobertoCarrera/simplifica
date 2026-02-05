@@ -6,3 +6,8 @@
 2. Sanitize using `DOMPurify.sanitize(html, { ADD_ATTR: ['class'] })`.
 3. Wrap in `sanitizer.bypassSecurityTrustHtml(...)`.
 4. Return `SafeHtml` type.
+
+## 2026-05-26 - Integrity Check Missing in Multi-Tenant Edge Functions
+**Vulnerability:** IDOR/Integrity violation in `public-create-booking`. The function accepted `companyId` and `serviceId` but failed to verify their relationship, allowing cross-tenant bookings.
+**Learning:** Accepting multiple IDs without cross-referencing ownership allows attackers to mix-and-match resources across tenants.
+**Prevention:** Always validate that dependent resources (like Services) belong to the primary parent resource (like Company) before processing.
