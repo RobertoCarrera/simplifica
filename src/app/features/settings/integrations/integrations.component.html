@@ -48,16 +48,63 @@
                         Conectar
                     </button>
 
-                    <div *ngIf="googleIntegration()" class="flex items-center gap-3">
-                        <span
-                            class="px-3 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs font-bold uppercase rounded-full flex items-center gap-1">
-                            <i class="fas fa-check-circle"></i> Conectado
-                        </span>
-                        <button (click)="disconnectGoogle()"
-                            class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                            title="Desconectar">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
+                    <div *ngIf="googleIntegration()" class="space-y-4">
+                        <div class="flex items-center gap-3 justify-end">
+                            <span
+                                class="px-3 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs font-bold uppercase rounded-full flex items-center gap-1">
+                                <i class="fas fa-check-circle"></i> Conectado
+                            </span>
+                            <button (click)="disconnectGoogle()"
+                                class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                title="Desconectar">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+
+                        <!-- Configuration Section -->
+                        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-600 animate-fade-in">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="form-group">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Calendario de Citas
+                                    </label>
+                                    <select [disabled]="loadingCalendars() || savingConfig()"
+                                        [ngModel]="selectedCalendarAppointments()"
+                                        (ngModelChange)="selectedCalendarAppointments.set($event)"
+                                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                        <option value="" disabled>Selecciona un calendario</option>
+                                        <option *ngFor="let cal of calendars()" [value]="cal.id">
+                                            {{ cal.summary }} {{ cal.primary ? '(Principal)' : '' }}
+                                        </option>
+                                    </select>
+                                    <p class="text-xs text-gray-500 mt-1">Donde se crearán las nuevas citas</p>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        Calendario de Disponibilidad
+                                    </label>
+                                    <select [disabled]="loadingCalendars() || savingConfig()"
+                                        [ngModel]="selectedCalendarAvailability()"
+                                        (ngModelChange)="selectedCalendarAvailability.set($event)"
+                                        class="w-full rounded-lg border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                        <option value="" disabled>Selecciona un calendario</option>
+                                        <option *ngFor="let cal of calendars()" [value]="cal.id">
+                                            {{ cal.summary }} {{ cal.primary ? '(Principal)' : '' }}
+                                        </option>
+                                    </select>
+                                    <p class="text-xs text-gray-500 mt-1">Donde consultar disponiblidad</p>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end mt-3">
+                                <button (click)="saveConfiguration()" [disabled]="savingConfig() || loadingCalendars()"
+                                    class="text-sm px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+                                    <i *ngIf="savingConfig()" class="fas fa-spinner fa-spin mr-1"></i>
+                                    Guardar Configuración
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </ng-template>
             </div>

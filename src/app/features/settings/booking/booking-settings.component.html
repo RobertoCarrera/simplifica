@@ -174,7 +174,7 @@
 
         <!-- Calendar Tab -->
         <div *ngIf="activeTab === 'calendar'" class="animate-fadeIn h-[800px]">
-            <app-calendar [editable]="true" [selectable]="true"></app-calendar>
+            <app-calendar [events]="calendarEvents" [editable]="true" [selectable]="true"></app-calendar>
         </div>
     </div>
 </div>
