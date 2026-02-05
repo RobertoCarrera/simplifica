@@ -68,10 +68,10 @@ Deno.serve(async (req: Request) => {
   }
   const authUserId = userData.user.id;
 
-  // Map auth user -> company + role
+  // Map auth user -> company
   const { data: appUser, error: mapErr } = await serviceClient
     .from('users')
-    .select('id, company_id, role, deleted_at')
+    .select('id, company_id, deleted_at')
     .eq('auth_user_id', authUserId)
     .is('deleted_at', null)
     .maybeSingle();
@@ -82,7 +82,24 @@ Deno.serve(async (req: Request) => {
   if (!appUser?.company_id) {
     return new Response(JSON.stringify({ error: 'NO_COMPANY' }), { status: 400, headers: { 'Content-Type': 'application/json', ...cors } });
   }
-  const role = (appUser.role || '').toLowerCase();
+
+  // Check role in company_members
+  const { data: member, error: memberErr } = await serviceClient
+    .from('company_members')
+    .select('role')
+    .eq('user_id', appUser.id)
+    .eq('company_id', appUser.company_id)
+    .maybeSingle();
+
+  if (memberErr) {
+    return new Response(JSON.stringify({ error: 'MEMBERSHIP_LOOKUP_FAILED', details: memberErr.message }), { status: 500, headers: { 'Content-Type': 'application/json', ...cors } });
+  }
+
+  if (!member) {
+    return new Response(JSON.stringify({ error: 'NO_MEMBERSHIP' }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
+  }
+
+  const role = (member.role || '').toLowerCase();
   if (!['owner','admin'].includes(role)) {
     return new Response(JSON.stringify({ error: 'FORBIDDEN_ROLE' }), { status: 403, headers: { 'Content-Type': 'application/json', ...cors } });
   }
