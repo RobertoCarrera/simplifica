@@ -190,17 +190,34 @@ export class MobileBottomNavComponent implements OnInit {
 
     if (!isClient) {
       // Módulos de producción (solo si están habilitados)
+
+      // Productos (New)
+      if (allowed?.has('moduloProductos')) {
+        items.push({ id: 'productos', label: 'Productos', icon: 'box-open', route: '/productos' });
+      }
+
+      // Dispositivos (New)
+      if (allowed?.has('moduloSAT')) {
+        items.push({ id: 'dispositivos', label: 'Dispositivos', icon: 'mobile-alt', route: '/dispositivos' });
+      }
+
+      // Servicios
       if (allowed?.has('moduloServicios')) {
         items.push({ id: 'servicios', label: 'Servicios', icon: 'tools', route: '/servicios' });
       }
 
+      // Reservas (New)
+      if (allowed?.has('moduloReservas')) {
+        items.push({ id: 'reservas', label: 'Reservas', icon: 'calendar-alt', route: '/reservas' });
+      }
+
       // Analíticas (visible para owner/admin/dev)
-      if (isOwnerOrAdmin || isDev) {
+      if ((isOwnerOrAdmin || isDev) && allowed?.has('moduloAnaliticas')) {
         items.push({ id: 'analytics', label: 'Analíticas', icon: 'chart-line', route: '/analytics' });
       }
 
       // Facturación (visible para owner/admin/dev)
-      if (isOwnerOrAdmin || isDev) {
+      if ((isOwnerOrAdmin || isDev) && allowed?.has('moduloFacturas')) {
         items.push({ id: 'facturacion', label: 'Facturación', icon: 'file-invoice-dollar', route: '/facturacion' });
       }
 
@@ -209,11 +226,22 @@ export class MobileBottomNavComponent implements OnInit {
         items.push({ id: 'chat', label: 'Chat', icon: 'comments', route: '/chat' });
       }
 
+      // Webmail (Core)
+      items.push({ id: 'webmail', label: 'Webmail', icon: 'envelope', route: '/webmail' });
+
+      // Admin Webmail (Specific role)
+      if (role === 'admin' || role === 'super_admin' || isDev) { // Adjusted logic to match sidebar generic admin check roughly
+        // Check if they have access to admin webmail route if it exists
+        // Sidebar uses roleOnly: 'adminOnlyWebmail'. Assuming admin is enough here or exact role.
+        // Let's rely on role === 'admin' as a safe bet for now.
+        items.push({ id: 'webmail-admin', label: 'Admin Webmail', icon: 'shield-alt', route: '/webmail-admin', roleOnly: 'adminOnly' });
+      }
+
       // Notificaciones
       items.push({ id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() });
 
       // Gestión Módulos (solo admin)
-      if (role === 'admin') {
+      if (role === 'admin' || role === 'super_admin') {
         items.push({ id: 'modules', label: 'Gestión Módulos', icon: 'sliders-h', route: '/admin/modulos' });
       }
 
@@ -229,6 +257,9 @@ export class MobileBottomNavComponent implements OnInit {
       }
       if (allowed?.has('moduloServicios')) {
         items.push({ id: 'servicios', label: 'Mis Servicios', icon: 'tools', route: '/portal/servicios' });
+      }
+      if (allowed?.has('moduloSAT')) {
+        items.push({ id: 'dispositivos', label: 'Mis Dispositivos', icon: 'mobile-alt', route: '/portal/dispositivos' });
       }
       items.push(
         { id: 'notifications', label: 'Notificaciones', icon: 'bell', route: '/inicio', queryParams: { openNotifications: 'true' }, badge: this.unreadCount() },

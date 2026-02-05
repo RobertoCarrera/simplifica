@@ -263,24 +263,29 @@
             <div class="h-20 sm:h-0"></div>
 
             <!-- Floating Action Buttons (FABs) -->
-            <div class="fixed bottom-6 right-6 flex flex-col gap-3 z-40 items-end">
-                <!-- Audio Client FAB -->
-                <button (click)="toggleRecording()" [class.bg-red-500]="isRecording()"
-                    [class.animate-pulse]="isRecording()" [class.bg-purple-600]="!isRecording()"
-                    class="p-3 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 hover:bg-purple-700 flex items-center justify-center w-12 h-12"
-                    [title]="isRecording() ? 'Detener grabación' : 'Crear cliente por voz (IA)'">
-                    @if(isProcessingAudio()) {
-                    <i class="fas fa-circle-notch fa-spin text-lg"></i>
-                    } @else {
-                    <i class="fas text-lg" [class.fa-microphone]="!isRecording()" [class.fa-stop]="isRecording()"></i>
-                    }
-                </button>
+            <div class="fixed bottom-0 right-0 z-50 pointer-events-none">
+                <!-- Wrapper for positioning -->
+                <div class="absolute bottom-6 right-6 flex flex-col items-end gap-4 pointer-events-auto">
+                    <!-- Audio Client FAB -->
+                    <button (click)="toggleRecording()"
+                        class="w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white transition-all transform hover:scale-105"
+                        [ngClass]="{
+                            'bg-red-500 animate-pulse': isRecording(), 
+                            'bg-purple-600 hover:bg-purple-700': !isRecording() 
+                        }" [title]="isRecording() ? 'Detener grabación' : 'Crear cliente por voz (IA)'">
+                        @if(isProcessingAudio()) {
+                        <i class="fas fa-circle-notch fa-spin text-lg"></i>
+                        } @else {
+                        <i class="fas text-lg" [class.fa-microphone]="!isRecording()"
+                            [class.fa-stop]="isRecording()"></i>
+                        }
+                    </button>
 
-                <!-- New Customer FAB -->
-                <button (click)="openForm()"
-                    class="p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1 flex items-center justify-center w-14 h-14">
-                    <i class="fas fa-plus text-xl"></i>
-                </button>
+                    <!-- New Customer FAB -->
+                    <button (click)="openForm()" class="fab-button relative static-fab" title="Crear Cliente">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
             </div>
         </div>
         }

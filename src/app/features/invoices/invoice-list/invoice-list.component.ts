@@ -54,14 +54,7 @@ import { firstValueFrom } from 'rxjs';
       </div>
 
       <!-- Action Button -->
-      <button 
-        (click)="createDraft()"
-        class="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Nueva Factura
-      </button>
+
     </div>
 
     <!-- VeriFactu Badge (if enabled) -->
@@ -182,6 +175,10 @@ import { firstValueFrom } from 'rxjs';
         </div>
       }
     </div>
+    <!-- Floating Action Button -->
+    <button (click)="createDraft()" class="fab-button" title="Nueva Factura">
+      <i class="fas fa-plus"></i>
+    </button>
   </div>
   `
 })
