@@ -507,9 +507,52 @@ serve(async (req)=>{
         ok: true
       };
     }
+
+    // Helper to validate user access to company via company_members
+    async function validateUserCompany(userClient: any, companyId: string) {
+      const { data: { user }, error: authError } = await userClient.auth.getUser();
+      if (authError || !user) throw new Error('Unauthorized');
+
+      // Get public user id
+      const { data: publicUser, error: userError } = await userClient
+        .from('users')
+        .select('id')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (userError || !publicUser) throw new Error('User profile not found');
+
+      // Check membership
+      const { data: member, error: memberError } = await userClient
+        .from('company_members')
+        .select('role, status')
+        .eq('user_id', publicUser.id)
+        .eq('company_id', companyId)
+        .eq('status', 'active')
+        .maybeSingle();
+
+      if (memberError || !member) throw new Error('Access to company denied');
+
+      return { user, member };
+    }
     
     // DEBUG: Test update operation on events
     if (body && body.action === 'debug-test-update' && body.company_id) {
+       // Validate access
+       const authHeader = req.headers.get('authorization') || '';
+       const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+       if (!token) return new Response(JSON.stringify({ error: 'Missing token' }), { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+
+       const userClient = createClient(url, Deno.env.get('SUPABASE_ANON_KEY') || '', {
+         global: { headers: { Authorization: `Bearer ${token}` } }
+       });
+
+       try {
+         await validateUserCompany(userClient, body.company_id);
+       } catch (e) {
+         return new Response(JSON.stringify({ error: e.message }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+       }
+
       const { data: lastEvent, error: getErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -580,6 +623,21 @@ serve(async (req)=>{
     
     // DEBUG: Get last event for a company
     if (body && body.action === 'debug-last-event' && body.company_id) {
+       // Validate access
+       const authHeader = req.headers.get('authorization') || '';
+       const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+       if (!token) return new Response(JSON.stringify({ error: 'Missing token' }), { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+
+       const userClient = createClient(url, Deno.env.get('SUPABASE_ANON_KEY') || '', {
+         global: { headers: { Authorization: `Bearer ${token}` } }
+       });
+
+       try {
+         await validateUserCompany(userClient, body.company_id);
+       } catch (e) {
+         return new Response(JSON.stringify({ error: e.message }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+       }
+
       const { data: lastEvent, error: evErr } = await admin
         .schema('verifactu')
         .from('events')
@@ -598,6 +656,21 @@ serve(async (req)=>{
     
     // DEBUG: Test AEAT process steps for a specific company
     if (body && body.action === 'debug-aeat-process' && body.company_id) {
+       // Validate access
+       const authHeader = req.headers.get('authorization') || '';
+       const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+       if (!token) return new Response(JSON.stringify({ error: 'Missing token' }), { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+
+       const userClient = createClient(url, Deno.env.get('SUPABASE_ANON_KEY') || '', {
+         global: { headers: { Authorization: `Bearer ${token}` } }
+       });
+
+       try {
+         await validateUserCompany(userClient, body.company_id);
+       } catch (e) {
+         return new Response(JSON.stringify({ error: e.message }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+       }
+
       const steps: any = { step: 'init' };
       try {
         // Step 0: Check verifactu_settings directly
@@ -824,6 +897,21 @@ serve(async (req)=>{
     // Requires company_id in body. Returns certificate status without exposing sensitive data.
     if (body && body.action === 'test-cert' && body.company_id) {
       const company_id = String(body.company_id);
+
+       // Validate access
+       const authHeader = req.headers.get('authorization') || '';
+       const token = (authHeader.match(/^Bearer\s+(.+)$/i) || [])[1];
+       if (!token) return new Response(JSON.stringify({ error: 'Missing token' }), { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } });
+
+       const userClient = createClient(url, Deno.env.get('SUPABASE_ANON_KEY') || '', {
+         global: { headers: { Authorization: `Bearer ${token}` } }
+       });
+
+       try {
+         await validateUserCompany(userClient, company_id);
+       } catch (e) {
+         return new Response(JSON.stringify({ error: e.message }), { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } });
+       }
       
       // Helper to return error response in consistent format
       const errorResponse = (decryptionError?: string, certError?: string, aeatError?: string) => {
@@ -1163,22 +1251,39 @@ serve(async (req)=>{
         });
       }
 
-      const { data: userProfile, error: profileError } = await userClient
+      const { data: publicUser, error: profileError } = await userClient
         .from('users')
-        .select('company_id')
+        .select('id')
         .eq('auth_user_id', user.id)
         .single();
 
-      if (profileError || !userProfile?.company_id) {
+      if (profileError || !publicUser) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: 'No se pudo determinar el perfil del usuario'
+        }), {
+          status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Get first active company (assuming single company context or default)
+      const { data: members, error: memError } = await userClient
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', publicUser.id)
+        .eq('status', 'active')
+        .limit(1);
+
+      if (memError || !members || members.length === 0) {
         return new Response(JSON.stringify({ 
           ok: false, 
-          error: 'No se pudo determinar la empresa del usuario' 
+          error: 'El usuario no pertenece a ninguna empresa activa'
         }), {
           status: 400, headers: { ...headers, 'Content-Type': 'application/json' }
         });
       }
       
-      const companyId = userProfile.company_id;
+      const companyId = members[0].company_id;
       
       // Pagination params
       const page = Number(body.page || 1);
