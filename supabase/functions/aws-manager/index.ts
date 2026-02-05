@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Route53DomainsClient, CheckDomainAvailabilityCommand, RegisterDomainCommand } from "npm:@aws-sdk/client-route-53-domains";
 import { SESv2Client, CreateEmailIdentityCommand } from "npm:@aws-sdk/client-sesv2";
 import { Route53Client, ChangeResourceRecordSetsCommand } from "npm:@aws-sdk/client-route-53";
@@ -16,6 +17,38 @@ serve(async (req) => {
     }
 
     try {
+        // Initialize Supabase Client
+        const supabaseClient = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+        );
+
+        // Verify User
+        const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+        if (authError || !user) throw new Error('Unauthorized');
+
+        // Verify Permission (Must be Admin/Owner of at least one active company)
+        const { data: publicUser } = await supabaseClient
+            .from('users')
+            .select('id')
+            .eq('auth_user_id', user.id)
+            .single();
+
+        if (!publicUser) throw new Error('User profile not found');
+
+        const { data: memberships } = await supabaseClient
+            .from('company_members')
+            .select('id')
+            .eq('user_id', publicUser.id)
+            .eq('status', 'active')
+            .in('role', ['owner', 'admin'])
+            .limit(1);
+
+        if (!memberships || memberships.length === 0) {
+            throw new Error('Forbidden: Insufficient permissions');
+        }
+
         const { action, payload } = await req.json();
 
         // AWS Config
@@ -54,12 +87,12 @@ serve(async (req) => {
             }
 
             case 'register-domain': {
-                const { domain } = payload;
+                const { domain, contact } = payload;
                 if (!domain) throw new Error('Domain is required');
 
                 // DEFAULT CONTACT - In a real app, this should come from Company Profile
                 // AWS requires valid fields.
-                const defaultContact = {
+                const defaultContact = contact || {
                     FirstName: 'Admin',
                     LastName: 'User',
                     ContactType: 'COMPANY',
@@ -98,7 +131,7 @@ serve(async (req) => {
 
     } catch (error: any) {
         console.error('Error in aws-manager:', error);
-        return new Response(JSON.stringify({ error: error.message, details: error.stack }), {
+        return new Response(JSON.stringify({ error: error.message }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
