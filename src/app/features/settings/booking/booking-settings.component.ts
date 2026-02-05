@@ -7,6 +7,7 @@ import { SupabaseServicesService, Service } from '../../../services/supabase-ser
 import { AuthService } from '../../../services/auth.service';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
 import { SupabaseProfessionalsService, Professional } from '../../../services/supabase-professionals.service';
+import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 
 
@@ -48,9 +49,94 @@ export class BookingSettingsComponent implements OnInit {
         const end = this.addMonths(new Date(), 2);
         this.loadCalendarEvents(start, end);
         this.loadProfessionals();
+        this.loadAvailabilityConstraints();
     }
 
     // ... helper methods ...
+
+    // ... helper methods ...
+
+    // Availability Constraints
+    bookingConstraints = signal<{
+        minHour: number;
+        maxHour: number;
+        workingDays: number[];
+        schedules?: any[];
+    }>({
+        minHour: 0,
+        maxHour: 24,
+        workingDays: [0, 1, 2, 3, 4, 5, 6],
+        schedules: []
+    });
+
+    private bookingsService = inject(SupabaseBookingsService);
+
+    async loadAvailabilityConstraints() {
+        const client = this.supabase.getClient();
+        const { data: { user } } = await client.auth.getUser();
+        if (!user) return;
+
+        // We need the public user id again - technically we could cache this public user ID
+        // But for cleaner flow, let's just reuse the service if available or fetch again.
+        // Actually, we can use the bookingsService directly which requires 'userId' (public UUID).
+        // Let's get the public ID first clearly.
+
+        const { data: publicUser } = await client
+            .from('users')
+            .select('id')
+            .eq('auth_user_id', user.id)
+            .single();
+
+        if (!publicUser) return;
+
+        this.bookingsService.getAvailabilitySchedules(publicUser.id).subscribe({
+            next: (schedules) => {
+                if (schedules.length === 0) return; // Keep defaults
+
+                // Find active days
+                const workingDays = [...new Set(schedules.map(s => s.day_of_week))];
+
+                // Find global min/max hours
+                // Format is "HH:MM:SS"
+                let minH = 24;
+                let maxH = 0;
+
+                schedules.forEach(s => {
+                    const startH = parseInt(s.start_time.split(':')[0], 10);
+                    // For end time, if it's 17:00, we want to show until 17:00 block? 
+                    // Usually end_time 17:00 means the slot 16:00-17:00 is the last one?
+                    // Or if it visualizes "up to".
+                    // Let's parse end hours.
+                    let endH = parseInt(s.end_time.split(':')[0], 10);
+                    const endM = parseInt(s.end_time.split(':')[1], 10);
+
+                    if (endM > 0) endH++; // If 17:30, we need to show hour 17 (and maybe 18 depending on logic)
+                    // Actually, if I show hour 17, it renders 17:00 - 18:00.
+                    // If schedule ends at 17:00, the last block is 16:00-17:00.
+                    // So we probably want maxH to be the `ceil` hour.
+
+                    if (startH < minH) minH = startH;
+                    if (endH > maxH) maxH = endH;
+                });
+
+                // Add some buffer? or strict?
+                // User said "hours ... must be reduced to the schedule".
+                // So strict.
+
+                this.bookingConstraints.set({
+                    minHour: minH,
+                    maxHour: maxH,
+                    workingDays: workingDays,
+                    schedules: schedules // Pass raw schedules for detailed slot validation
+                });
+
+                console.log('🔒 Availability Constraints:', this.bookingConstraints());
+            },
+            error: (err: any) => console.error('Error loading constraints', err)
+        });
+    }
+
+
 
     loadProfessionals() {
         this.professionalsService.getProfessionals().subscribe({
@@ -67,6 +153,17 @@ export class BookingSettingsComponent implements OnInit {
     closeModal() {
         this.showEventModal = false;
         this.selectedDate = null;
+    }
+
+    onEventClick(eventClick: any) {
+        // Handle event click - maybe open modal to edit?
+        // For now user just said "create event", but usually we want to edit.
+        // We can reuse showEventModal if we pass event data?
+        // Current event modal is for creation. 
+        // Let's at least log it or just ignore if not requested?
+        // The error was that template calls it. So we need it.
+        // We can just log for now to fix error.
+        console.log('Event clicked:', eventClick);
     }
 
     onEventCreated() {

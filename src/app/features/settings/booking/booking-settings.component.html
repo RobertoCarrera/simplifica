@@ -174,8 +174,9 @@
 
         <!-- Calendar Tab -->
         <div *ngIf="activeTab === 'calendar'" class="animate-fadeIn h-[800px]">
-            <app-calendar [events]="calendarEvents" [editable]="true" [selectable]="true" (addEvent)="createEvent()"
-                (dateClick)="createEvent($event.date)">
+            <app-calendar [events]="calendarEvents" [editable]="true" [constraints]="bookingConstraints()"
+                (dateClick)="createEvent($event.date)" (eventClick)="onEventClick($event)" (addEvent)="createEvent()"
+                (viewChange)="onViewChange($event)">
             </app-calendar>
         </div>
     </div>
