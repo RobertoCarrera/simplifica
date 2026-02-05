@@ -189,16 +189,9 @@ serve(async (req: Request) => {
     }
 
     // Validate client belongs to same company
-    const { data: clientRow, error: clientErr } = await supabaseAdmin
-      .from('clients')
-      .select('id, company_id')
-      .eq('id', payload.client_id)
-      .single();
-    if (clientErr || !clientRow) {
-      return jsonResponse(400, { error: 'Invalid client_id' }, origin || '*');
-    }
-    if (clientRow.company_id !== payload.company_id) {
-      return jsonResponse(400, { error: 'Client does not belong to the provided company' }, origin || '*');
+    // SECURITY: IDOR Prevention - Enforce that the authenticated user can only create tickets for their own client ID
+    if (clientRowCheck.id !== payload.client_id) {
+      return jsonResponse(403, { error: 'You can only create tickets for yourself', code: 'idor_prevention' }, origin || '*');
     }
 
     // Validate or auto-select stage (current schema: global stages, no company_id / is_active columns)
