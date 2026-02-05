@@ -62,12 +62,7 @@
                             <i
                                 class="fas fa-chevron-down absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                         </div>
-                        <!-- Create New Button (View Mode Only) -->
-                        <button *ngIf="mode === 'view'" (click)="onCreateNew()"
-                            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg shadow-sm transition-all">
-                            <i class="fas fa-plus"></i>
-                            <span>Nuevo Dispositivo</span>
-                        </button>
+
                     </div>
 
                     <!-- Scrollable List -->
@@ -436,7 +431,9 @@
             <!-- Form Actions (Sticky Footer) -->
             <div
                 class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-end gap-3 shrink-0">
-                <button (click)="cancelEdit()" class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" [disabled]="isSaving">
+                <button (click)="cancelEdit()"
+                    class="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    [disabled]="isSaving">
                     Cancelar
                 </button>
                 <button (click)="saveDevice()"
@@ -456,7 +453,8 @@
             class="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 shrink-0">
 
             <!-- Left: Create New -->
-            <button (click)="onCreateNew()" class="inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <button (click)="onCreateNew()"
+                class="inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                 <i class="fas fa-plus"></i>
                 <span>Crear Nuevo</span>
             </button>
@@ -479,6 +477,12 @@
 
     <app-camera-capture *ngIf="showCamera" (imageCaptured)="handleCameraCapture($event)" (close)="showCamera = false">
     </app-camera-capture>
+
+    <!-- Floating Action Button (View Mode Only) -->
+    <button *ngIf="viewMode === 'list' && mode === 'view'" (click)="onCreateNew()" class="fab-button"
+        title="Nuevo Dispositivo">
+        <i class="fas fa-plus"></i>
+    </button>
 </ng-template>
 
 <ng-container *ngIf="isModal; else embedded">

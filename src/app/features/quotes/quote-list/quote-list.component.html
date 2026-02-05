@@ -170,19 +170,28 @@
     </div>
     }
 
-    <!-- Floating Audio Button (Only if AI Module enabled) -->
-    <button *ngIf="hasAiModule()" (click)="toggleRecording()" class="fab-button fab-audio" title="Crear por voz"
-      [class.recording]="isRecording()" [disabled]="loading() || isProcessingAudio()">
-      <i class="fas" [class.fa-microphone]="!isRecording() && !isProcessingAudio()" [class.fa-stop]="isRecording()"
-        [class.fa-spinner]="isProcessingAudio()" [class.fa-pulse]="isProcessingAudio()"></i>
-    </button>
+    <!-- Floating Action Buttons -->
+    <div class="fixed bottom-0 right-0 z-50 pointer-events-none">
+      <!-- Wrapper for positioning -->
+      <div class="absolute bottom-6 right-6 flex flex-col items-end gap-4 pointer-events-auto">
+        <!-- Audio FAB (Only if AI Module available) -->
+        <button *ngIf="hasAiModule()" (click)="toggleRecording()"
+          class="w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white transition-all transform hover:scale-105"
+          [ngClass]="{
+                    'bg-red-500 animate-pulse': isRecording(), 
+                    'bg-purple-600 hover:bg-purple-700': !isRecording() 
+                }" [title]="isRecording() ? 'Detener grabación' : 'Crear por voz (IA)'"
+          [disabled]="loading() || isProcessingAudio()">
+          <i class="fas" [class.fa-microphone]="!isRecording() && !isProcessingAudio()" [class.fa-stop]="isRecording()"
+            [class.fa-spinner]="isProcessingAudio()" [class.fa-pulse]="isProcessingAudio()"></i>
+        </button>
 
-    <!-- Floating New Button -->
-    <button (click)="createQuote()" class="fab-button" title="Nuevo Presupuesto">
-      <svg class="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-      </svg>
-    </button>
+        <!-- Floating New Button -->
+        <button (click)="createQuote()" class="fab-button" title="Nuevo Presupuesto">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+    </div>
 
     <!-- Loading State (Skeletons) -->
     @if (loading()) {
