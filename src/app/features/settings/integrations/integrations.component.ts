@@ -36,9 +36,10 @@ export class IntegrationsComponent implements OnInit {
             .select('*')
             .eq('user_id', user.id)
             .eq('provider', 'google_calendar')
-            .single();
+            .eq('provider', 'google_calendar')
+            .maybeSingle();
 
-        if (error && error.code !== 'PGRST116') {
+        if (error) {
             console.error('Error loading integrations:', error);
         }
 
