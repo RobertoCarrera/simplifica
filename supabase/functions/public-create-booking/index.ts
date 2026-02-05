@@ -41,6 +41,11 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Servicio no encontrado.' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
+        // Security Check: Ensure Service belongs to the requested Company
+        if (service.company_id !== companyId) {
+            return new Response(JSON.stringify({ error: 'El servicio no pertenece a la empresa indicada.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
         const start = new Date(startTime);
         const end = new Date(start.getTime() + (service.duration_minutes * 60000));
         const now = new Date();
@@ -174,7 +179,7 @@ serve(async (req) => {
         return new Response(JSON.stringify(booking), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
     } catch (err) {
-        console.error(err);
-        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        console.error('Error in public-create-booking:', err);
+        return new Response(JSON.stringify({ error: 'Ha ocurrido un error interno al procesar la reserva.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 });
