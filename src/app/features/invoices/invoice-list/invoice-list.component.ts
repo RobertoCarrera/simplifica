@@ -14,49 +14,49 @@ import { firstValueFrom } from 'rxjs';
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule],
   template: `
-  <div>
+  <div class="px-4 py-6 md:px-0">
     <!-- Filters and Search -->
-    <div class="mb-4 flex flex-wrap gap-3 items-center">
-      <input type="text" placeholder="Buscar por cliente o número..." [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" 
-             class="flex-1 min-w-[200px] px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent" />
+    <div class="mb-6 flex flex-col md:flex-row md:items-center gap-4">
+      <!-- Search -->
+      <div class="w-full md:flex-1">
+        <div class="relative">
+          <input type="text" 
+                 placeholder="Buscar factura..." 
+                 [ngModel]="searchTerm()" (ngModelChange)="searchTerm.set($event)" 
+                 class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent" />
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+        </div>
+      </div>
       
-      <select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
-        <option value="">Todos los estados</option>
-        <option value="draft">Borrador</option>
-        <option value="issued">Emitida</option>
-        <option value="sent">Enviada</option>
-        <option value="paid">Pagada</option>
-        <option value="overdue">Vencida</option>
-        <option value="rectificative">Rectificativa</option>
-      </select>
+      <!-- Filters Group -->
+      <div class="flex flex-col sm:flex-row gap-3">
+        <select [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)" class="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
+          <option value="">Estado: Todos</option>
+          <option value="draft">Borrador</option>
+          <option value="issued">Emitida</option>
+          <option value="sent">Enviada</option>
+          <option value="paid">Pagada</option>
+          <option value="overdue">Vencida</option>
+          <option value="rectificative">Rectificativa</option>
+        </select>
 
-      <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)" class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
-        <option value="date-desc">Fecha (más reciente)</option>
-        <option value="date-asc">Fecha (más antigua)</option>
-        <option value="amount-desc">Importe (mayor)</option>
-        <option value="amount-asc">Importe (menor)</option>
-        <option value="client-asc">Cliente (A-Z)</option>
-      </select>
-      <!-- Dispatcher health - only show if Verifactu module is enabled -->
-      <div *ngIf="isVerifactuEnabled()" class="flex items-center gap-3">
-        <span *ngIf="dispatcherHealth() as h" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-              [ngClass]="h.pending > 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'">
-          <span class="w-2 h-2 rounded-full mr-1.5" [ngClass]="h.pending > 0 ? 'bg-amber-500' : 'bg-emerald-500'"></span>
-          {{ h.pending > 0 ? (h.pending + ' eventos pendientes') : 'VeriFactu OK' }}
-        </span>
-        <a routerLink="/facturacion/verifactu-registry" 
-          class="inline-flex items-center gap-1.5 px-3 py-3 rounded-lg text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/60 transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Registro AEAT
-        </a>
+        <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)" class="w-full sm:w-auto px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500">
+          <option value="date-desc">Recientes</option>
+          <option value="date-asc">Antiguas</option>
+          <option value="amount-desc">Mayor importe</option>
+          <option value="amount-asc">Menor importe</option>
+          <option value="client-asc">Cliente A-Z</option>
+        </select>
       </div>
 
-      <!-- Manual Invoice Button -->
+      <!-- Action Button -->
       <button 
         (click)="createDraft()"
-        class="ml-auto flex items-center gap-2 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+        class="w-full md:w-auto flex items-center justify-center gap-2 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
@@ -64,46 +64,125 @@ import { firstValueFrom } from 'rxjs';
       </button>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+    <!-- VeriFactu Badge (if enabled) -->
+    <div *ngIf="isVerifactuEnabled()" class="mb-4 flex flex-wrap items-center gap-3">
+       <span *ngIf="dispatcherHealth() as h" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+              [ngClass]="h.pending > 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200'">
+          <span class="w-2 h-2 rounded-full mr-1.5" [ngClass]="h.pending > 0 ? 'bg-amber-500' : 'bg-emerald-500'"></span>
+          {{ h.pending > 0 ? (h.pending + ' pendientes') : 'VeriFactu OK' }}
+        </span>
+        <a routerLink="/facturacion/verifactu-registry" 
+          class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
+          Registro AEAT
+        </a>
+    </div>
+
+    <!-- Desktop Table View (Hidden on Mobile) -->
+    <div class="hidden md:block bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-700/50">
             <tr>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300">Número</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300">Cliente</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300">Fecha</th>
-              <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300">Estado</th>
-              <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300">Total</th>
-              <th class="px-4 py-2"></th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Número</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
+              <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
+              <th class="px-6 py-3"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
             @for (inv of filteredInvoices(); track inv.id) {
-              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                <td class="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">{{ formatNumber(inv) }}</td>
-                <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ inv.client?.name || inv.client_id }}</td>
-                <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ inv.invoice_date }}</td>
-                <td class="px-4 py-2 text-sm">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" [ngClass]="getStatusClass(inv)">
+              <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                  {{ formatNumber(inv) }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                  {{ inv.client?.name || 'Cliente sin nombre' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  {{ inv.invoice_date | date:'dd/MM/yyyy' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border" [ngClass]="getStatusClass(inv)">
                     {{ getStatusLabel(inv) }}
                   </span>
                 </td>
-                <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-gray-100 font-medium">{{ getDisplayAmount(inv) | number:'1.2-2' }} {{ inv.currency || 'EUR' }}</td>
-                <td class="px-4 py-2 text-right">
-                  <a class="text-blue-600 hover:underline mr-3" [routerLink]="['/facturacion', inv.id]">Ver</a>
-                  <button class="text-sm px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700" (click)="downloadPdf(inv.id)">PDF</button>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-gray-100">
+                  {{ getDisplayAmount(inv) | number:'1.2-2' }} {{ inv.currency || 'EUR' }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <div class="flex items-center justify-end gap-3">
+                    <button class="text-gray-400 hover:text-blue-600 transition-colors" [routerLink]="['/facturacion', inv.id]" title="Ver">
+                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    </button>
+                    <button class="text-gray-400 hover:text-red-600 transition-colors" (click)="downloadPdf(inv.id)" title="Descargar PDF">
+                      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                    </button>
+                  </div>
                 </td>
               </tr>
             }
             @empty {
               <tr>
-                <td colspan="5" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">No hay facturas todavía.</td>
+                <td colspan="6" class="px-6 py-12 text-center">
+                  <div class="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
+                    <svg class="h-12 w-12 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span class="text-base font-medium">No se encontraron facturas</span>
+                  </div>
+                </td>
               </tr>
             }
           </tbody>
         </table>
       </div>
     </div>
+
+    <!-- Mobile Card View (Visible on Mobile) -->
+    <div class="md:hidden space-y-4">
+      @for (inv of filteredInvoices(); track inv.id) {
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+          <div class="flex justify-between items-start mb-3">
+            <div>
+              <div class="text-lg font-bold text-gray-900 dark:text-white">{{ formatNumber(inv) }}</div>
+              <div class="text-sm text-gray-500 dark:text-gray-400">{{ inv.invoice_date | date:'dd MMM yyyy' }}</div>
+            </div>
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border" [ngClass]="getStatusClass(inv)">
+              {{ getStatusLabel(inv) }}
+            </span>
+          </div>
+          
+          <div class="mb-4">
+            <div class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ inv.client?.name || 'Cliente sin nombre' }}</div>
+            <div class="text-xl font-bold text-gray-900 dark:text-white mt-1">
+              {{ getDisplayAmount(inv) | number:'1.2-2' }} {{ inv.currency || 'EUR' }}
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 pt-3 mt-3">
+             <button class="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 flex items-center gap-1" (click)="downloadPdf(inv.id)">
+               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+               PDF
+             </button>
+             <a [routerLink]="['/facturacion', inv.id]" class="inline-flex items-center justify-center px-4 py-2 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-sm font-medium rounded-lg hover:bg-blue-100 transition-colors">
+               Ver Detalle
+               <svg class="ml-1.5 w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+             </a>
+          </div>
+        </div>
+      }
+      @empty {
+        <div class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
+           <svg class="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No se encontraron facturas</p>
+        </div>
+      }
+    </div>
+  </div>
   `
 })
 export class InvoiceListComponent implements OnInit {
