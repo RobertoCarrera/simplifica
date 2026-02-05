@@ -41,7 +41,6 @@ import { AuthService } from '../../../services/auth.service';
   styles: [`
     .main-content-area {
       position: relative;
-      z-index: 20;
     }
     
     @media (min-width: 768px) {

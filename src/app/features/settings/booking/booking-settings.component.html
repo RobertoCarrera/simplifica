@@ -174,7 +174,15 @@
 
         <!-- Calendar Tab -->
         <div *ngIf="activeTab === 'calendar'" class="animate-fadeIn h-[800px]">
-            <app-calendar [events]="calendarEvents" [editable]="true" [selectable]="true"></app-calendar>
+            <app-calendar [events]="calendarEvents" [editable]="true" [selectable]="true" (addEvent)="createEvent()"
+                (dateClick)="createEvent($event.date)">
+            </app-calendar>
         </div>
     </div>
+
+    <!-- Event Creation Modal -->
+    <app-event-form *ngIf="showEventModal" [initialDate]="selectedDate"
+        [calendarId]="googleIntegration()?.metadata?.calendar_id_appointments" [professionals]="professionals()"
+        (close)="closeModal()" (created)="onEventCreated()">
+    </app-event-form>
 </div>

@@ -7,16 +7,16 @@ $transition-speed: 0.2s;
 $radius: 12px;
 
 .webmail-container {
+  height: 100%;
+  background-color: var(--bg-secondary);
+  overflow: hidden;
+
   display: flex;
   flex-direction: column; // Mobile first: Column
 
   @media (min-width: 768px) {
     flex-direction: row; // Desktop: Row
   }
-
-  height: 100%;
-  background-color: var(--bg-secondary);
-  overflow: hidden;
 
   // --- SIDEBAR ---
   .sidebar {

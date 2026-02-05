@@ -135,9 +135,9 @@ import { AnimationService } from '../../services/animation.service';
           }
           
           @case ('week') {
-            <div class="week-view" @slideIn>
+            <div class="week-view h-[600px] overflow-y-auto" @slideIn>
               <!-- Week header -->
-              <div class="grid grid-cols-8 gap-px mb-4">
+              <div class="grid grid-cols-8 gap-px mb-4 sticky top-0 bg-white dark:bg-gray-800 z-20 border-b border-gray-200 dark:border-gray-700 pb-2">
                 <div class="p-2"></div> <!-- Time column header -->
                 @for (day of weekDays; track day) {
                   <div class="p-2 text-center">
@@ -149,68 +149,116 @@ import { AnimationService } from '../../services/animation.service';
                 }
               </div>
               
-              <!-- Week grid -->
-              <div class="grid grid-cols-8 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
-                @for (hour of hourSlots; track hour) {
-                  <div class="bg-white dark:bg-gray-800 p-2 text-sm text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">
-                    {{ formatHour(hour) }}
-                  </div>
-                  @for (day of weekDays; track day) {
-                    <div
-                      class="bg-white dark:bg-gray-800 min-h-[60px] p-1 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-r border-gray-200 dark:border-gray-700"
-                      (click)="onTimeSlotClick(day, hour, $event)">
-                      <!-- Hour events will be rendered here -->
-                      @for (event of getHourEvents(day, hour); track event.id) {
-                        <div
-                          class="text-xs p-1 rounded mb-1 cursor-pointer hover:opacity-80 transition-opacity"
-                          [style.background-color]="event.color || '#6366f1'"
-                          [style.color]="getTextColor(event.color || '#6366f1')"
-                          (click)="onEventClick(event, $event)"
-                          [title]="event.title + (event.description ? ' - ' + event.description : '')">
-                          {{ event.title }}
+              <!-- Week grid Container -->
+              <div class="relative grid grid-cols-8 gap-px bg-white dark:bg-gray-800">
+                
+                <!-- Time Column -->
+                <div class="col-span-1 border-r border-gray-100 dark:border-gray-700">
+                    @for (hour of hourSlots; track hour) {
+                         <!-- Hour Marker -->
+                         <div class="h-[60px] text-xs text-gray-400 text-right pr-2 sticky left-0 -mt-2">
+                            {{ formatHour(hour) }}
+                         </div>
+                    }
+                </div>
+
+                <!-- Day Columns -->
+                @for (day of weekDays; track day) {
+                    <div class="col-span-1 relative border-r border-gray-100 dark:border-gray-700 min-h-[1440px]">
+                        <!-- Background Grid Lines -->
+                        @for (hour of hourSlots; track hour) {
+                            <div class="h-[60px] border-b border-gray-50 dark:border-gray-700 pointer-events-none"></div>
+                        }
+
+                        <!-- Click Overlay (for creating events) -->
+                        <div class="absolute inset-0 z-0">
+                             @for (hour of hourSlots; track hour) {
+                                <div class="h-[60px]" (click)="onTimeSlotClick(day, hour, $event)"></div>
+                            }
                         </div>
-                      }
+
+                        <!-- Absolute Events -->
+                        @for (event of getEventsForDay(day); track event.id) {
+                            <div class="absolute inset-x-0 mx-1 rounded p-1 text-xs overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 shadow-sm border-l-4"
+                                 [style.top]="getEventStyle(event).top"
+                                 [style.height]="getEventStyle(event).height"
+                                 [style.background-color]="getEventStyle(event).backgroundColor"
+                                 [style.color]="getEventStyle(event).color"
+                                 [style.border-color]="getTextColor(event.color || '#6366f1')" 
+                                 (click)="onEventClick(event, $event)"
+                                 [title]="event.title">
+                                 <div class="font-semibold truncate">{{ event.title }}</div>
+                                 <div class="truncate opacity-80 text-[10px]">{{ formatEventTime(event) }}</div>
+                                 @if (event.location) {
+                                    <div class="truncate opacity-75 hidden sm:block">{{ event.location }}</div>
+                                 }
+                            </div>
+                        }
                     </div>
-                  }
                 }
               </div>
             </div>
           }
           
           @case ('day') {
-            <div class="day-view" @slideIn>
+            <div class="day-view h-[600px] overflow-y-auto" @slideIn>
               <!-- Day header -->
-              <div class="mb-4">
+              <div class="mb-4 sticky top-0 bg-white dark:bg-gray-800 z-20 pb-2 border-b border-gray-200 dark:border-gray-700">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                   {{ formatDayHeader() }}
                 </h3>
               </div>
 
-              <!-- Day timeline -->
-              <div class="space-y-1">
-                @for (hour of hourSlots; track hour) {
-                  <div class="flex items-start border-b border-gray-100 dark:border-gray-700 pb-2">
-                    <div class="w-20 flex-shrink-0 text-sm text-gray-500 dark:text-gray-400 pt-2">
-                      {{ formatHour(hour) }}
-                    </div>
-                    <div
-                      class="flex-1 min-h-[60px] p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors"
-                      (click)="onTimeSlotClick('day', hour, $event)">
-                      @for (event of getDayHourEvents(hour); track event.id) {
-                        <div
-                          class="text-sm p-2 rounded mb-2 cursor-pointer hover:opacity-80 transition-opacity"
-                          [style.background-color]="event.color || '#6366f1'"
-                          [style.color]="getTextColor(event.color || '#6366f1')"
-                          (click)="onEventClick(event, $event)">
-                          <div class="font-medium">{{ event.title }}</div>
-                          @if (event.description) {
-                            <div class="text-xs opacity-90 mt-1">{{ event.description }}</div>
-                          }
-                        </div>
-                      }
-                    </div>
+              <div class="flex relative min-h-[1440px]">
+                  <!-- Time Column -->
+                  <div class="w-16 flex-shrink-0 border-r border-gray-100 dark:border-gray-700">
+                     @for (hour of hourSlots; track hour) {
+                         <div class="h-[60px] text-xs text-gray-400 text-right pr-2 -mt-2">
+                            {{ formatHour(hour) }}
+                         </div>
+                    }
                   </div>
-                }
+
+                  <!-- Day Content -->
+                  <div class="flex-1 relative">
+                       <!-- Background Lines -->
+                       @for (hour of hourSlots; track hour) {
+                            <div class="h-[60px] border-b border-gray-50 dark:border-gray-700 pointer-events-none"></div>
+                        }
+
+                        <!-- Click Overlay -->
+                        <div class="absolute inset-0 z-0">
+                             @for (hour of hourSlots; track hour) {
+                                <div class="h-[60px]" (click)="onTimeSlotClick('day', hour, $event)"></div>
+                            }
+                        </div>
+
+                         <!-- Events -->
+                        @for (event of getCurrentDayEvents(); track event.id) {
+                            <div class="absolute left-1 right-1 rounded p-2 text-sm overflow-hidden cursor-pointer hover:opacity-90 transition-opacity z-10 shadow-sm border-l-4"
+                                 [style.top]="getEventStyle(event).top"
+                                 [style.height]="getEventStyle(event).height"
+                                 [style.background-color]="getEventStyle(event).backgroundColor"
+                                 [style.color]="getEventStyle(event).color"
+                                  [style.border-color]="getTextColor(event.color || '#6366f1')" 
+                                 (click)="onEventClick(event, $event)">
+                                 <div class="font-bold mb-0.5">{{ event.title }}</div>
+                                 <div class="text-xs opacity-90 mb-1 flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    {{ formatEventTime(event) }}
+                                 </div>
+                                 @if (event.description) {
+                                    <div class="text-xs opacity-80 line-clamp-2 italic">{{ event.description }}</div>
+                                 }
+                                  @if (event.location) {
+                                    <div class="text-xs opacity-80 mt-1 flex items-center">
+                                       <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                       {{ event.location }}
+                                    </div>
+                                 }
+                            </div>
+                        }
+                  </div>
               </div>
             </div>
           }
@@ -221,14 +269,6 @@ import { AnimationService } from '../../services/animation.service';
   styles: [`
     :host {
       display: block;
-    }
-
-    .month-view .grid {
-      /* min-height removed to fit content */
-    }
-
-    .week-view .grid {
-      min-height: 800px;
     }
 
     .day-view {
@@ -335,11 +375,13 @@ export class CalendarComponent implements OnInit {
         return `${weekStart.toLocaleDateString('es-CL', {
           day: 'numeric',
           month: 'short'
-        })} - ${weekEnd.toLocaleDateString('es-CL', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric'
-        })}`;
+        })
+          } - ${weekEnd.toLocaleDateString('es-CL', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+          })
+          } `;
       case 'day':
         return date.toLocaleDateString('es-CL', {
           weekday: 'long',
@@ -435,8 +477,22 @@ export class CalendarComponent implements OnInit {
     });
   }
 
-  onTimeSlotClick(day: string, hour: number, event: MouseEvent) {
+  onTimeSlotClick(dayOrView: string, hour: number, event: MouseEvent) {
     const slotDate = new Date();
+
+    // If it's week view (day is a string like 'Lun', 'Mar')
+    if (dayOrView !== 'day' && this.weekDays.includes(dayOrView)) {
+      const view = this.currentView();
+      const weekStart = this.getWeekStart(view.date);
+      const dayIndex = this.weekDays.indexOf(dayOrView);
+      slotDate.setTime(weekStart.getTime());
+      slotDate.setDate(weekStart.getDate() + dayIndex);
+    } else {
+      // If it's day view, use current view date
+      const view = this.currentView();
+      slotDate.setTime(view.date.getTime());
+    }
+
     slotDate.setHours(hour, 0, 0, 0);
     this.onDateClick(slotDate, false, event);
   }
@@ -447,7 +503,12 @@ export class CalendarComponent implements OnInit {
 
   getWeekStart(date: Date): Date {
     const start = new Date(date);
-    start.setDate(date.getDate() - date.getDay());
+    const day = start.getDay(); // 0 is Sunday
+    // Adjust to make Monday the first day? Standard is Sunday=0. 
+    // If your weekDays array starts with 'Dom' (Sunday), this is correct.
+    // start.setDate(date.getDate() - day);
+    start.setDate(date.getDate() - day);
+    start.setHours(0, 0, 0, 0);
     return start;
   }
 
@@ -464,25 +525,73 @@ export class CalendarComponent implements OnInit {
     return `${hour.toString().padStart(2, '0')}:00`;
   }
 
-  getHourEvents(day: string, hour: number): CalendarEvent[] {
-    // This would filter events for specific day and hour in week view
+  // Deprecated usage in template, but kept for compatibility logic if needed
+  getHourEvents(dayName: string, hour: number): CalendarEvent[] {
     return [];
   }
 
   getDayHourEvents(hour: number): CalendarEvent[] {
+    return [];
+  }
+
+  // NEW METHODS FOR ABSOLUTE POSITIONING
+
+  getEventsForDay(dayName: string): CalendarEvent[] {
     const view = this.currentView();
-    return this.events.filter(event => {
-      const eventHour = event.start.getHours();
-      return this.isSameDay(event.start, view.date) && eventHour === hour;
-    });
+    const weekStart = this.getWeekStart(view.date);
+    const dayIndex = this.weekDays.indexOf(dayName);
+    const targetDate = new Date(weekStart);
+    targetDate.setDate(weekStart.getDate() + dayIndex);
+
+    return this.events.filter(event =>
+      this.isSameDay(event.start, targetDate) && !event.allDay
+    );
+  }
+
+  // For Day View
+  getCurrentDayEvents(): CalendarEvent[] {
+    const view = this.currentView();
+    return this.events.filter(event =>
+      this.isSameDay(event.start, view.date) && !event.allDay
+    );
+  }
+
+  getEventStyle(event: CalendarEvent): any {
+    const startMinutes = event.start.getHours() * 60 + event.start.getMinutes();
+    const endMinutes = event.end.getHours() * 60 + event.end.getMinutes();
+    let duration = endMinutes - startMinutes;
+
+    // Minimal height validation
+    if (duration < 15) duration = 15;
+
+    // 60px per hour => 1px per minute
+    const top = startMinutes;
+    const height = duration;
+
+    return {
+      top: `${top}px`,
+      height: `${height}px`,
+      backgroundColor: event.color || '#6366f1',
+      color: this.getTextColor(event.color || '#6366f1')
+    };
+  }
+
+  formatEventTime(event: CalendarEvent): string {
+    const start = event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const end = event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `${start} - ${end}`;
   }
 
   getTextColor(backgroundColor: string): string {
+    if (!backgroundColor) return '#ffffff';
     // Simple contrast calculation
     const hex = backgroundColor.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
+    // Handle short hex
+    const fullHex = hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex;
+
+    const r = parseInt(fullHex.substr(0, 2), 16);
+    const g = parseInt(fullHex.substr(2, 2), 16);
+    const b = parseInt(fullHex.substr(4, 2), 16);
     const brightness = (r * 299 + g * 587 + b * 114) / 1000;
     return brightness > 128 ? '#000000' : '#ffffff';
   }
