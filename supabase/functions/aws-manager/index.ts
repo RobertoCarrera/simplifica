@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Route53DomainsClient, CheckDomainAvailabilityCommand, RegisterDomainCommand } from "npm:@aws-sdk/client-route-53-domains";
 import { SESv2Client, CreateEmailIdentityCommand } from "npm:@aws-sdk/client-sesv2";
 import { Route53Client, ChangeResourceRecordSetsCommand } from "npm:@aws-sdk/client-route-53";
@@ -16,6 +17,58 @@ serve(async (req) => {
     }
 
     try {
+        // 1. Verify Authentication
+        const authHeader = req.headers.get('authorization');
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+        // Validate token
+        const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+            global: { headers: { Authorization: authHeader } }
+        });
+
+        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+        if (userError || !user) {
+            return new Response(JSON.stringify({ error: 'Invalid Token' }), {
+                status: 401,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        // 2. Verify Role (RBAC) - Must be super_admin or owner
+        // Use service role to check internal tables securely
+        const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+        const { data: userData, error: roleError } = await supabaseAdmin
+            .from('users')
+            .select('app_roles!inner(name)')
+            .eq('auth_user_id', user.id)
+            .maybeSingle();
+
+        if (roleError) {
+             console.error('Role check error:', roleError);
+             return new Response(JSON.stringify({ error: 'Failed to verify permissions' }), {
+                status: 500,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
+        const roleName = userData?.app_roles?.name;
+        if (!roleName || !['super_admin', 'owner'].includes(roleName)) {
+             return new Response(JSON.stringify({ error: 'Unauthorized: You do not have permission to perform this action.' }), {
+                status: 403,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+
         const { action, payload } = await req.json();
 
         // AWS Config
