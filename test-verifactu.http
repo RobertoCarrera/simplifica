@@ -18,28 +18,28 @@ Authorization: Bearer {{anonKey}}
   "action": "health"
 }
 
-###############################################
-### 2. Debug Environment - Ve la configuración
-###############################################
-POST {{baseUrl}}/functions/v1/verifactu-dispatcher
-Content-Type: application/json
-Authorization: Bearer {{anonKey}}
-
-{
-  "action": "debug-env"
-}
-
-###############################################
-### 3. Diagnostic Info - Estado del sistema
-###############################################
-POST {{baseUrl}}/functions/v1/verifactu-dispatcher
-Content-Type: application/json
-Authorization: Bearer {{anonKey}}
-
-{
-  "action": "diag",
-  "company_id": "{{companyId}}"
-}
+# ###############################################
+# ### 2. Debug Environment - Ve la configuración
+# ###############################################
+# POST {{baseUrl}}/functions/v1/verifactu-dispatcher
+# Content-Type: application/json
+# Authorization: Bearer {{anonKey}}
+#
+# {
+#   "action": "debug-env"
+# }
+#
+# ###############################################
+# ### 3. Diagnostic Info - Estado del sistema
+# ###############################################
+# POST {{baseUrl}}/functions/v1/verifactu-dispatcher
+# Content-Type: application/json
+# Authorization: Bearer {{anonKey}}
+#
+# {
+#   "action": "diag",
+#   "company_id": "{{companyId}}"
+# }
 
 ###############################################
 ### 4. ⭐ Test Certificate - LA MÁS IMPORTANTE
