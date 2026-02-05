@@ -28,7 +28,7 @@ serve(async (req) => {
             throw new Error('Unauthorized');
         }
 
-        const { action, code, redirect_uri, calendarId, timeMin, timeMax } = await req.json();
+        const { action, code, redirect_uri, calendarId, timeMin, timeMax, event } = await req.json();
 
         const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
         const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
@@ -223,6 +223,42 @@ serve(async (req) => {
             const events = await response.json();
 
             return new Response(JSON.stringify({ events: events.items }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
+        if (action === 'create-event') {
+            if (!calendarId) throw new Error('Missing calendarId');
+            if (!event) throw new Error('Missing event data');
+
+            const { data: publicUser } = await supabaseClient
+                .from('users')
+                .select('id')
+                .eq('auth_user_id', user.id)
+                .single();
+
+            if (!publicUser) throw new Error('User not found');
+
+            const accessToken = await getValidAccessToken(publicUser.id, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(event),
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                console.error('Google Create Event Error:', err);
+                throw new Error('Failed to create event');
+            }
+
+            const createdEvent = await response.json();
+
+            return new Response(JSON.stringify({ success: true, event: createdEvent }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
         }
