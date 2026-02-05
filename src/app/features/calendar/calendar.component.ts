@@ -563,7 +563,7 @@ export class CalendarComponent implements OnInit {
 
   previousPeriod() {
     const view = this.currentView();
-    const newDate = new Date(view.date);
+    let newDate = new Date(view.date);
 
     switch (view.type) {
       case 'month':
@@ -573,7 +573,12 @@ export class CalendarComponent implements OnInit {
         newDate.setDate(newDate.getDate() - 7);
         break;
       case 'day':
-        newDate.setDate(newDate.getDate() - 1);
+        if (this.constraints?.workingDays?.length) {
+          newDate.setDate(newDate.getDate() - 1);
+          newDate = this.findNextWorkingDate(newDate, -1);
+        } else {
+          newDate.setDate(newDate.getDate() - 1);
+        }
         break;
     }
 
@@ -583,7 +588,7 @@ export class CalendarComponent implements OnInit {
 
   nextPeriod() {
     const view = this.currentView();
-    const newDate = new Date(view.date);
+    let newDate = new Date(view.date);
 
     switch (view.type) {
       case 'month':
@@ -593,12 +598,35 @@ export class CalendarComponent implements OnInit {
         newDate.setDate(newDate.getDate() + 7);
         break;
       case 'day':
-        newDate.setDate(newDate.getDate() + 1);
+        if (this.constraints?.workingDays?.length) {
+          newDate.setDate(newDate.getDate() + 1);
+          newDate = this.findNextWorkingDate(newDate, 1);
+        } else {
+          newDate.setDate(newDate.getDate() + 1);
+        }
         break;
     }
 
     this.currentView.update(v => ({ ...v, date: newDate }));
     this.viewChange.emit(this.currentView());
+  }
+
+  private findNextWorkingDate(startDate: Date, direction: 1 | -1): Date {
+    if (!this.constraints?.workingDays || this.constraints.workingDays.length === 0) {
+      return startDate;
+    }
+
+    // Ensure workingDays are numbers (handle string/number mismatch from API)
+    const workingDays = this.constraints.workingDays.map(d => Number(d));
+    let current = new Date(startDate);
+
+    // Safety: max 30 checks to prevent infinite loops if misconfigured
+    let checks = 0;
+    while (!workingDays.includes(current.getDay()) && checks < 30) {
+      current.setDate(current.getDate() + direction);
+      checks++;
+    }
+    return current;
   }
 
   today() {
@@ -817,6 +845,8 @@ export class CalendarComponent implements OnInit {
     };
   }
 
+
+
   formatEventTime(event: CalendarEvent): string {
     const start = event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const end = event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -880,7 +910,7 @@ export class CalendarComponent implements OnInit {
 
   isDayWorking(date: Date): boolean {
     if (!this.constraints || !this.constraints.workingDays) return true;
-    return this.constraints.workingDays.includes(date.getDay());
+    return this.constraints.workingDays.map(d => Number(d)).includes(date.getDay());
   }
 
   getWeekDayIndex(dayName: string): number {
