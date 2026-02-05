@@ -159,36 +159,51 @@ import { AnimationService } from '../../services/animation.service';
               <div class="relative grid bg-white dark:bg-gray-800"
                    [style.grid-template-columns]="'minmax(3rem, auto) repeat(' + currentWeekDays.length + ', 1fr)'">
                 
-                <!-- Time Column -->
-                <div class="col-span-1 border-r border-gray-100 dark:border-gray-700">
-                    @for (hour of currentHourSlots; track hour) {
-                         <!-- Hour Marker -->
-                         <div class="h-[60px] text-xs text-gray-400 text-right pr-2 sticky left-0 -mt-2">
-                            {{ formatHour(hour) }}
-                         </div>
-                    }
-                </div>
+                 <!-- Time Column -->
+                 <div class="col-span-1 border-r border-gray-100 dark:border-gray-700">
+                      @for (slot of currentHourSlots; track slot) {
+                           @if (slot.type === 'hour') {
+                               <!-- Hour Marker -->
+                               <div class="h-[60px] border-b border-transparent relative">
+                                  <span class="absolute top-1 right-2 text-xs text-gray-400 block">
+                                     {{ formatHour(slot.hour) }}
+                                  </span>
+                               </div>
+                           } @else {
+                               <!-- Gap Marker -->
+                               <div class="h-[20px] bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNCIgaGVpZ2h0PSI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0tMSwxIGwyLC0yIE0wLDQgbDQsLTQgTTMsNSBsMiwtMiIgc3Ryb2tlPSIjOTY5Njk2IiBzdHJva2Utd2lkdGg9IjEiIG9wYWNpdHk9IjAuNSIvPjwvc3ZnPg==')] opacity-50 border-y border-gray-300 dark:border-gray-600"></div>
+                           }
+                      }
+                 </div>
 
                 <!-- Day Columns -->
                 @for (day of currentWeekDays; track day) {
                     <div class="col-span-1 relative border-r border-gray-100 dark:border-gray-700"
-                         [style.min-height]="(currentHourSlots.length * 60) + 'px'">
+                         [style.min-height]="'100%'">
                         <!-- Background Grid Lines -->
-                        @for (hour of currentHourSlots; track hour) {
-                            <div class="h-[60px] border-b border-gray-50 dark:border-gray-700 pointer-events-none"></div>
+                        @for (slot of currentHourSlots; track slot) {
+                            @if (slot.type === 'hour') {
+                                <div class="h-[60px] border-b border-gray-50 dark:border-gray-700 pointer-events-none relative"></div>
+                            } @else {
+                                <div class="h-[20px] bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNCIgaGVpZ2h0PSI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0tMSwxIGwyLC0yIE0wLDQgbDQsLTQgTTMsNSBsMiwtMiIgc3Ryb2tlPSIjOTY5Njk2IiBzdHJva2Utd2lkdGg9IjEiIG9wYWNpdHk9IjAuNSIvPjwvc3ZnPg==')] opacity-30 border-y border-gray-100 dark:border-gray-700 pointer-events-none"></div>
+                            }
                         }
 
                         <!-- Click Overlay (for creating events) -->
                         <div class="absolute inset-0 z-0 flex flex-col">
-                             @for (hour of currentHourSlots; track hour) {
-                                <div class="h-[60px] border-b border-transparent transition-colors"
-                                     [ngClass]="{
-                                        'bg-gray-200 dark:bg-gray-900': !isSlotAvailable(getWeekDayIndex(day), hour),
-                                        'cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-800': isSlotAvailable(getWeekDayIndex(day), hour),
-                                        'cursor-not-allowed': !isSlotAvailable(getWeekDayIndex(day), hour)
-                                     }"
-                                     (click)="onTimeSlotClick(day, hour, $event)">
-                                </div>
+                             @for (slot of currentHourSlots; track slot) {
+                                @if (slot.type === 'hour') {
+                                    <div class="h-[60px] border-b border-transparent transition-colors"
+                                         [ngClass]="{
+                                            'bg-gray-200 dark:bg-gray-900': !isSlotAvailable(getWeekDayIndex(day), slot.hour),
+                                            'cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-800': isSlotAvailable(getWeekDayIndex(day), slot.hour),
+                                            'cursor-not-allowed': !isSlotAvailable(getWeekDayIndex(day), slot.hour)
+                                         }"
+                                         (click)="onTimeSlotClick(day, slot.hour, $event)">
+                                    </div>
+                                } @else {
+                                    <div class="h-[20px] cursor-not-allowed bg-transparent"></div>
+                                }
                             }
                         </div>
 
@@ -216,43 +231,57 @@ import { AnimationService } from '../../services/animation.service';
           }
           
           @case ('day') {
-            <div class="day-view h-[600px] overflow-y-auto" @slideIn>
-              <!-- Day header -->
-              <div class="mb-4 sticky top-0 bg-white dark:bg-gray-800 z-20 pb-2 border-b border-gray-200 dark:border-gray-700">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-                  {{ formatDayHeader() }}
-                </h3>
-              </div>
+             <div class="day-view h-[600px] overflow-y-auto" @slideIn>
+               <!-- Day header -->
+               <div class="mb-4 sticky top-0 bg-white dark:bg-gray-800 z-20 pb-2 border-b border-gray-200 dark:border-gray-700">
+                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                   {{ formatDayHeader() }}
+                 </h3>
+               </div>
 
-              <div class="flex relative"
-                   [style.min-height]="(currentHourSlots.length * 60) + 'px'">
-                  <!-- Time Column -->
-                  <div class="w-16 flex-shrink-0 border-r border-gray-100 dark:border-gray-700">
-                     @for (hour of currentHourSlots; track hour) {
-                         <div class="h-[60px] text-xs text-gray-400 text-right pr-2 -mt-2">
-                            {{ formatHour(hour) }}
-                         </div>
-                    }
-                  </div>
+               <div class="flex relative"
+                    [style.min-height]="(currentHourSlots.length * 60) + 'px'">
+                   <!-- Time Column -->
+                   <div class="w-16 flex-shrink-0 border-r border-gray-100 dark:border-gray-700">
+                      @for (slot of currentHourSlots; track slot) {
+                          @if (slot.type === 'hour') {
+                              <div class="h-[60px] text-xs text-gray-400 text-right pr-2 relative">
+                                 <span class="block pt-1">
+                                    {{ formatHour(slot.hour) }}
+                                 </span>
+                              </div>
+                          } @else {
+                              <div class="h-[20px] bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNCIgaGVpZ2h0PSI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0tMSwxIGwyLC0yIE0wLDQgbDQsLTQgTTMsNSBsMiwtMiIgc3Ryb2tlPSIjOTY5Njk2IiBzdHJva2Utd2lkdGg9IjEiIG9wYWNpdHk9IjAuNSIvPjwvc3ZnPg==')] opacity-50 border-y border-gray-300 dark:border-gray-600"></div>
+                          }
+                     }
+                   </div>
 
-                  <!-- Day Content -->
-                  <div class="flex-1 relative">
-                       <!-- Background Lines -->
-                       @for (hour of currentHourSlots; track hour) {
-                            <div class="h-[60px] border-b border-gray-50 dark:border-gray-700 pointer-events-none"></div>
+                   <!-- Day Content -->
+                   <div class="flex-1 relative">
+                        <!-- Background Lines -->
+                        @for (slot of currentHourSlots; track slot) {
+                             @if (slot.type === 'hour') {
+                                 <div class="h-[60px] border-b border-gray-50 dark:border-gray-700 pointer-events-none relative"></div>
+                             } @else {
+                                 <div class="h-[20px] bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNCIgaGVpZ2h0PSI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0tMSwxIGwyLC0yIE0wLDQgbDQsLTQgTTMsNSBsMiwtMiIgc3Ryb2tlPSIjOTY5Njk2IiBzdHJva2Utd2lkdGg9IjEiIG9wYWNpdHk9IjAuNSIvPjwvc3ZnPg==')] opacity-30 border-y border-gray-100 dark:border-gray-700 pointer-events-none"></div>
+                             }
                         }
 
                         <!-- Click Overlay -->
                         <div class="absolute inset-0 z-0 flex flex-col">
-                             @for (hour of currentHourSlots; track hour) {
-                                <div class="h-[60px] border-b border-transparent transition-colors"
-                                     [ngClass]="{
-                                        'bg-gray-200 dark:bg-gray-900': !isSlotAvailable(currentView().date.getDay(), hour),
-                                        'cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-800': isSlotAvailable(currentView().date.getDay(), hour),
-                                        'cursor-not-allowed': !isSlotAvailable(currentView().date.getDay(), hour)
-                                     }"
-                                     (click)="onTimeSlotClick('day', hour, $event)">
-                                </div>
+                             @for (slot of currentHourSlots; track slot) {
+                                @if (slot.type === 'hour') {
+                                    <div class="h-[60px] border-b border-transparent transition-colors"
+                                         [ngClass]="{
+                                            'bg-gray-200 dark:bg-gray-900': !isSlotAvailable(currentView().date.getDay(), slot.hour),
+                                            'cursor-pointer hover:bg-indigo-200 dark:hover:bg-indigo-800': isSlotAvailable(currentView().date.getDay(), slot.hour),
+                                            'cursor-not-allowed': !isSlotAvailable(currentView().date.getDay(), slot.hour)
+                                         }"
+                                         (click)="onTimeSlotClick('day', slot.hour, $event)">
+                                    </div>
+                                } @else {
+                                    <div class="h-[20px] cursor-not-allowed bg-transparent"></div>
+                                }
                             }
                         </div>
 
@@ -344,7 +373,8 @@ export class CalendarComponent implements OnInit {
   // Computed hours based on constraints
   hourSlots = Array.from({ length: 24 }, (_, i) => i); // Default fallback
 
-  visibleHourSlots = computed(() => {
+  // Structure for slots with gaps
+  visibleSlotStructure = computed(() => {
     let min = 0;
     let max = 24;
 
@@ -353,15 +383,48 @@ export class CalendarComponent implements OnInit {
       max = this.constraints.maxHour;
     }
 
-    // Ensure valid range
     if (max <= min) { min = 0; max = 24; }
 
-    const slots = [];
+    const slots: { type: 'hour' | 'gap', hour: number, height: number }[] = [];
+
+    // 1. Identify valid hours
+    const validHours: number[] = [];
     for (let i = min; i < max; i++) {
-      slots.push(i);
+      if (this.isHourGloballyUsed(i)) {
+        validHours.push(i);
+      }
+    }
+
+    // 2. Build slots with gaps
+    for (let i = 0; i < validHours.length; i++) {
+      const h = validHours[i];
+      slots.push({ type: 'hour', hour: h, height: 60 });
+
+      // Check for gap
+      if (i < validHours.length - 1) {
+        const nextH = validHours[i + 1];
+        if (nextH > h + 1) {
+          // Found a gap (e.g. 13 -> 16)
+          slots.push({ type: 'gap', hour: h, height: 20 });
+        }
+      }
     }
     return slots;
   });
+
+  // Check if an hour is available in AT LEAST ONE working day
+  private isHourGloballyUsed(hour: number): boolean {
+    if (!this.constraints) return true;
+    // If no detailed schedules, fallback to min/max simple range (which is ALREADY handled by the loop bounds)
+    if (!this.constraints.schedules || this.constraints.schedules.length === 0) return true;
+
+    // If filtering is active, check against all WORKING days
+    const workingDays = this.constraints.workingDays || [];
+    if (workingDays.length === 0) return true;
+
+    // If ANY working day has this slot available, we must show it.
+    return workingDays.some(dayIndex => this.isSlotAvailable(dayIndex, hour));
+  }
 
   monthDays = computed(() => {
     const view = this.currentView();
@@ -380,7 +443,7 @@ export class CalendarComponent implements OnInit {
     const today = new Date();
     const selected = this.selectedDate();
 
-    // 6 weeks * 7 days = 42 days total grid
+    // 6 weeks
     for (let i = 0; i < 42; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
@@ -418,7 +481,7 @@ export class CalendarComponent implements OnInit {
 
   // Update template iteration variables
   get currentWeekDays() { return this.visibleWeekDays(); }
-  get currentHourSlots() { return this.visibleHourSlots(); }
+  get currentHourSlots() { return this.visibleSlotStructure(); }
 
 
   @HostListener('window:resize')
@@ -560,26 +623,20 @@ export class CalendarComponent implements OnInit {
   onTimeSlotClick(dayOrView: string, hour: number, event: MouseEvent) {
     const slotDate = new Date();
 
-    // If it's week view (day is a string like 'Lun', 'Mar')
     if (dayOrView !== 'day' && this.weekDays.includes(dayOrView)) {
       const view = this.currentView();
       const weekStart = this.getWeekStart(view.date);
-      const dayIndex = this.weekDays.indexOf(dayOrView); // matches Monday-based index
+      const dayIndex = this.weekDays.indexOf(dayOrView);
       slotDate.setTime(weekStart.getTime());
       slotDate.setDate(weekStart.getDate() + dayIndex);
     } else {
-      // If it's day view, use current view date
       const view = this.currentView();
       slotDate.setTime(view.date.getTime());
     }
 
-    // Now determine the actual JS day index (0=Sun, 1=Mon) from the DATE itself
-    // DO NOT rely on the loop index which might be shifted if we changed weekDays order.
     const jsDayIndex = slotDate.getDay();
 
-    // STRICT VALIDATION: Check if slot is strictly available (handling breaks)
     if (!this.isSlotAvailable(jsDayIndex, hour)) {
-      console.warn('🚫 Slot unavailable:', jsDayIndex, hour);
       return;
     }
 
@@ -594,9 +651,6 @@ export class CalendarComponent implements OnInit {
   getWeekStart(date: Date): Date {
     const start = new Date(date);
     const day = start.getDay(); // 0 is Sunday
-    // Adjust to make Monday the first day
-    // If day is 0 (Sunday), diff is 6.
-    // If day is 1 (Monday), diff is 0.
     const diff = day === 0 ? 6 : day - 1;
 
     start.setDate(date.getDate() - diff);
@@ -649,35 +703,117 @@ export class CalendarComponent implements OnInit {
   }
 
   getEventTopRelative(event: CalendarEvent): string {
-    let minHour = 0;
-    if (this.constraints) {
-      minHour = this.constraints.minHour;
+    const slots = this.visibleSlotStructure();
+    const startHour = event.start.getHours();
+
+    // Calculate cumulative height until we reach the start index
+    // Note: Event minutes (0-59) adds pixel offset within the 'hour' slot.
+
+    let topPx = 0;
+    let found = false;
+
+    for (const slot of slots) {
+      if (slot.type === 'gap') {
+        topPx += slot.height;
+        continue;
+      }
+
+      // It is an hour slot
+      if (slot.hour === startHour) {
+        // Found start hour
+        topPx += event.start.getMinutes(); // 1 min = 1px (assuming 60px slot)
+        found = true;
+        break;
+      } else if (slot.hour < startHour) {
+        topPx += slot.height;
+      } else {
+        // We passed it? (Should not happen if slots are sorted)
+      }
     }
 
-    const startMinutes = event.start.getHours() * 60 + event.start.getMinutes();
-    const offsetMinutes = minHour * 60;
+    if (!found) {
+      return '-9999px';
+    }
 
-    const top = Math.max(0, startMinutes - offsetMinutes);
-    return `${top}px`;
+    return `${topPx}px`;
   }
 
   getEventStyle(event: CalendarEvent): any {
-    const startMinutes = event.start.getHours() * 60 + event.start.getMinutes();
-    const endMinutes = event.end.getHours() * 60 + event.end.getMinutes();
-    let duration = endMinutes - startMinutes;
-
-    // Minimal height validation
-    if (duration < 15) duration = 15;
-
-    // 60px per hour => 1px per minute
-    // Top is calculated via getEventTopRelative for the view
-    // But we keep height calculation generic
-    const height = duration;
-
-    return {
-      height: `${height}px`,
+    const baseStyle = {
       backgroundColor: event.color || '#6366f1',
       color: this.getTextColor(event.color || '#6366f1')
+    };
+
+    const slots = this.visibleSlotStructure();
+    const startH = event.start.getHours();
+    const endH = event.end.getHours();
+    const startM = event.start.getMinutes();
+    const endM = event.end.getMinutes();
+
+    const startTotalMin = startH * 60 + startM;
+    const endTotalMin = endH * 60 + endM;
+
+    let heightPx = 0;
+
+    // Iterate slots and sum visible intersections
+    slots.forEach((slot: { type: 'hour' | 'gap', hour: number, height: number }) => {
+      if (slot.type === 'gap') {
+        // Does the event span across this gap?
+        // Simplification: If event start < Gap Start Time AND event end > Gap End Time (next slot start).
+        // We will handle via physics of "does event cross this gap" later if precise.
+      } else {
+        // Hour slot
+        const slotStartMin = slot.hour * 60;
+        const slotEndMin = (slot.hour + 1) * 60;
+
+        const overlapStart = Math.max(startTotalMin, slotStartMin);
+        const overlapEnd = Math.min(endTotalMin, slotEndMin);
+
+        if (overlapEnd > overlapStart) {
+          heightPx += (overlapEnd - overlapStart);
+        }
+      }
+    });
+
+    const topPx = parseFloat(this.getEventTopRelative(event));
+    if (topPx < 0) return { display: 'none' }; // Hidden
+
+    // Calc Bottom Px
+    let bottomPx = 0;
+    let foundEnd = false;
+
+    for (const slot of slots) {
+      if (slot.type === 'gap') {
+        const gapStartMin = (slot.hour + 1) * 60;
+        if (endTotalMin > gapStartMin) {
+          bottomPx += slot.height;
+        }
+        continue;
+      }
+
+      // Hour slot
+      if (slot.hour === endH) {
+        bottomPx += endM;
+        foundEnd = true;
+        break;
+      } else if (slot.hour < endH) {
+        bottomPx += slot.height;
+      }
+    }
+
+    if (!foundEnd) {
+      // Fix: if endH > last slot?
+      if (slots.length > 0 && endH > slots[slots.length - 1].hour) {
+        bottomPx = slots.reduce((acc: number, s: { type: 'hour' | 'gap', hour: number, height: number }) => acc + s.height, 0);
+      }
+    }
+
+    heightPx = bottomPx - topPx;
+    if (heightPx < 15) heightPx = 15;
+
+    return {
+      height: `${heightPx}px`,
+      ...baseStyle
     };
   }
 
@@ -727,6 +863,19 @@ export class CalendarComponent implements OnInit {
 
       return hour >= startH && hour < endH;
     });
+  }
+
+  // Check if there is a gap after this hour (next visible slot is not hour + 1)
+  hasGapAfter(hour: number): boolean {
+    const slots = this.visibleSlotStructure();
+    const currentHourSlotIndex = slots.findIndex(s => s.type === 'hour' && s.hour === hour);
+
+    if (currentHourSlotIndex === -1 || currentHourSlotIndex === slots.length - 1) {
+      return false; // Not found or last slot
+    }
+
+    // Check if the next slot is a gap
+    return slots[currentHourSlotIndex + 1].type === 'gap';
   }
 
   isDayWorking(date: Date): boolean {
