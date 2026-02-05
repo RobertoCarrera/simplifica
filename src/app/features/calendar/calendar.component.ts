@@ -74,8 +74,9 @@ import { AnimationService } from '../../services/animation.service';
           @case ('month') {
             <div class="month-view" @slideIn>
               <!-- Month header with days -->
-              <div class="grid grid-cols-7 gap-px mb-2">
-                @for (day of weekDays; track day) {
+              <div class="grid gap-px mb-2"
+                   [style.grid-template-columns]="'repeat(' + visibleWeekDays().length + ', minmax(0, 1fr))'">
+                @for (day of visibleWeekDays(); track day) {
                   <div class="p-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
                     {{ day }}
                   </div>
@@ -83,7 +84,8 @@ import { AnimationService } from '../../services/animation.service';
               </div>
               
               <!-- Month grid -->
-              <div class="grid grid-cols-7 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
+              <div class="grid gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden"
+                   [style.grid-template-columns]="'repeat(' + visibleWeekDays().length + ', minmax(0, 1fr))'">
                 @for (day of monthDays(); track day.date.getTime()) {
                   <div 
                     class="min-h-[120px] p-2 transition-colors border-b border-r border-gray-100 dark:border-gray-700"
@@ -115,7 +117,7 @@ import { AnimationService } from '../../services/animation.service';
                     </div>
                     
                     <!-- Events preview -->
-                    <div class="space-y-1" [class.opacity-50]="!isDayWorking(day.date)">
+                    <div class="space-y-1" [class.opacity-40]="!isDayWorking(day.date)">
                       @for (event of day.events.slice(0, 3); track event.id) {
                         <div 
                           class="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity text-white"
@@ -327,9 +329,16 @@ export class CalendarComponent implements OnInit {
 
   // Computed days for week view based on constraints
   visibleWeekDays = computed(() => {
-    // User wants to SEE the blocked days as gray, so we should NOT filter them out.
-    // We return full weekDays. The slot validation will handle the gray background.
-    return this.weekDays;
+    if (!this.constraints || !this.constraints.workingDays) return this.weekDays;
+
+    // Filter weekDays to only include those in constraints.workingDays
+    // weekDays is ['Lun', 'Mar', ...]
+    // constraints.workingDays is [1, 2, ...] where 1=Mon, 0=Sun.
+
+    return this.weekDays.filter(dayName => {
+      const dayIndex = this.getWeekDayIndex(dayName); // 0=Sun, 1=Mon
+      return this.constraints!.workingDays.includes(dayIndex);
+    });
   });
 
   // Computed hours based on constraints
@@ -346,13 +355,6 @@ export class CalendarComponent implements OnInit {
 
     // Ensure valid range
     if (max <= min) { min = 0; max = 24; }
-
-    // Allow a small buffer? User said "reduce to schedule".
-    // Let's create array from min to max-1 (if max is exclusive end hour)
-    // e.g. 9 to 17. 17 is end time. Last slot is 16:00.
-    // But availability usually means "Open until 17:00". So slots are 9, 10... 16.
-    // If max is 17 (5 PM), and slot is 1 hour, then 16:00-17:00 is the last slot.
-    // Array should be min to max.
 
     const slots = [];
     for (let i = min; i < max; i++) {
@@ -378,15 +380,15 @@ export class CalendarComponent implements OnInit {
     const today = new Date();
     const selected = this.selectedDate();
 
-    // Determine if we should show days based on constraints? 
-    // Usually month view shows all days to keep grid 7x6 sanity.
-    // If we hide week columns in month view it looks broken (jagged).
-    // So we keep month view as is, maybe just dim non-working days?
-    // Constraints mainly affect Week/Day view vertical/horizontal rendering.
-
+    // 6 weeks * 7 days = 42 days total grid
     for (let i = 0; i < 42; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
+
+      // Filter out non-working days if we are "optimizing space"
+      if (!this.isDayWorking(date)) {
+        continue;
+      }
 
       const dayEvents = this.events.filter(event =>
         this.isSameDay(event.start, date)
