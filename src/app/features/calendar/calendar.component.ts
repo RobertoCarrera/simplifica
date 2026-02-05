@@ -224,7 +224,7 @@ import { AnimationService } from '../../services/animation.service';
     }
 
     .month-view .grid {
-      min-height: 600px;
+      /* min-height removed to fit content */
     }
 
     .week-view .grid {
