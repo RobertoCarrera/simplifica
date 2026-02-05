@@ -9,7 +9,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "default-dev-key-change-in-prod";
+const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY");
+if (!ENCRYPTION_KEY) {
+  throw new Error("ENCRYPTION_KEY environment variable is required");
+}
 
 async function decrypt(encryptedBase64: string): Promise<string> {
   try {
