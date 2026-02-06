@@ -11,7 +11,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOW_ALL_ORIGINS = Deno.env.get("ALLOW_ALL_ORIGINS") === "true";
 const ALLOWED_ORIGINS = Deno.env.get("ALLOWED_ORIGINS")?.split(",") || [];
-const ENCRYPTION_KEY = Deno.env.get("ENCRYPTION_KEY") || "default-dev-key-change-in-prod";
 const PUBLIC_SITE_URL = Deno.env.get("PUBLIC_SITE_URL") || "https://app.simplificacrm.es";
 
 function getCorsHeaders(origin: string | null): HeadersInit {
@@ -33,10 +32,10 @@ function getCorsHeaders(origin: string | null): HeadersInit {
   return headers;
 }
 
-async function decrypt(encryptedBase64: string): Promise<string> {
+async function decrypt(encryptedBase64: string, keyString: string): Promise<string> {
   try {
     const encoder = new TextEncoder();
-    const keyData = encoder.encode(ENCRYPTION_KEY.padEnd(32, '0').slice(0, 32));
+    const keyData = encoder.encode(keyString.padEnd(32, '0').slice(0, 32));
     
     const key = await crypto.subtle.importKey(
       "raw",
@@ -57,8 +56,8 @@ async function decrypt(encryptedBase64: string): Promise<string> {
     );
     
     return new TextDecoder().decode(decrypted);
-  } catch {
-    return "";
+  } catch (e) {
+    throw new Error("Decryption failed");
   }
 }
 
@@ -206,6 +205,16 @@ serve(async (req) => {
   }
 
   try {
+    // Security Check: Encryption Key must be present
+    const encryptionKey = Deno.env.get("ENCRYPTION_KEY");
+    if (!encryptionKey) {
+      console.error("[create-payment-link] Missing ENCRYPTION_KEY env var");
+      return new Response(JSON.stringify({ error: "Server configuration error" }), {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+
     const authHeader = req.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Missing authorization" }), {
@@ -303,7 +312,7 @@ serve(async (req) => {
     }
 
     // Decrypt credentials
-    const credentials = JSON.parse(await decrypt(integration.credentials_encrypted));
+    const credentials = JSON.parse(await decrypt(integration.credentials_encrypted, encryptionKey));
 
     // Generate or reuse payment token
     let paymentToken = invoice.payment_link_token;
