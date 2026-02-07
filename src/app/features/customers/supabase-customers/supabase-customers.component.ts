@@ -572,8 +572,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     }
 
 
-    viewCustomer(customer: Customer) {
-        this.router.navigate(['/clientes', customer.id]);
+    viewCustomer(customer: Customer, tab?: string) {
+        const commands = ['/clientes', customer.id];
+        const extras = tab ? { queryParams: { tab } } : undefined;
+        this.router.navigate(commands, extras);
     }
 
     duplicateCustomer(customer: Customer) {

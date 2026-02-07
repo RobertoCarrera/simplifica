@@ -120,21 +120,52 @@
                                                     class="fas fa-id-card w-5 bg-blue-50 dark:bg-blue-900/30 rounded-full p-1 text-xs flex items-center justify-center mr-2"></i>
                                                 Ver Ficha Completa
                                             </button>
+
+                                            <!-- New Action Buttons -->
+                                            <button (click)="viewCustomer(customer, 'agenda')"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
+                                                <i class="fas fa-calendar-alt w-5 text-purple-500 mr-2 opacity-80"></i>
+                                                Agenda
+                                            </button>
+
+                                            <button (click)="viewCustomer(customer, 'clinical')"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
+                                                <i
+                                                    class="fas fa-notes-medical w-5 text-emerald-500 mr-2 opacity-80"></i>
+                                                Notas Clínicas
+                                            </button>
+
+                                            <button (click)="viewCustomer(customer, 'billing')"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
+                                                <i
+                                                    class="fas fa-file-invoice-dollar w-5 text-amber-500 mr-2 opacity-80"></i>
+                                                Facturación
+                                            </button>
+
+                                            <button (click)="viewCustomer(customer, 'documents')"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
+                                                <i class="fas fa-folder w-5 text-cyan-500 mr-2 opacity-80"></i>
+                                                Documentos
+                                            </button>
+
+                                            <div class="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>
+
                                             <button (click)="editCustomer(customer)"
                                                 [disabled]="!hasPendingRectification(customer)"
                                                 [class.opacity-50]="!hasPendingRectification(customer)"
                                                 [class.cursor-not-allowed]="!hasPendingRectification(customer)"
                                                 [title]="!hasPendingRectification(customer) ? 'Edición deshabilitada. Solo disponible si hay una solicitud de rectificación pendiente.' : ''"
                                                 class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center">
-                                                <i class="fas fa-edit w-5 text-gray-400"></i> Editar
+                                                <i class="fas fa-edit w-5 text-gray-400 mr-2"></i> Editar
                                             </button>
                                             <button (click)="duplicateCustomer(customer)"
                                                 class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center">
-                                                <i class="fas fa-copy w-5 text-gray-400"></i> Duplicar
+                                                <i class="fas fa-copy w-5 text-gray-400 mr-2"></i> Duplicar
                                             </button>
                                             <button (click)="openInviteModal(customer)"
                                                 class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center">
-                                                <i class="fas fa-envelope-open-text w-5 text-gray-400"></i> Invitar al
+                                                <i class="fas fa-envelope-open-text w-5 text-gray-400 mr-2"></i> Invitar
+                                                al
                                                 Portal
                                             </button>
                                         </div>
