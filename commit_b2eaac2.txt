@@ -1,0 +1,1084 @@
+commit b2eaac29423feed8b6391473584a0d00e0b2f55d
+Author: RobertoCarrera <robertocarrera93@gmail.com>
+Date:   Wed Jan 14 22:38:19 2026 +0100
+
+    Añadida sección para subida de documentos. Centralizando todos los elementos del CRM en la ficha del cliente
+
+diff --git a/src/app/features/customers/profile/client-profile.component.ts b/src/app/features/customers/profile/client-profile.component.ts
+index 0c403c1..d8a57a4 100644
+--- a/src/app/features/customers/profile/client-profile.component.ts
++++ b/src/app/features/customers/profile/client-profile.component.ts
+@@ -5,12 +5,23 @@ import { SupabaseCustomersService } from '../../../services/supabase-customers.s
+ import { Customer } from '../../../models/customer';
+ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
+ import { SecureClinicalNotesComponent } from '../components/secure-clinical-notes/secure-clinical-notes.component';
++import { ClientBookingsComponent } from './components/client-bookings/client-bookings.component';
++import { ClientBillingComponent } from './components/client-billing/client-billing.component';
++import { ClientDocumentsComponent } from './components/client-documents/client-documents.component';
+ import { ToastService } from '../../../services/toast.service';
+ 
+ @Component({
+     selector: 'app-client-profile',
+     standalone: true,
+-    imports: [CommonModule, RouterModule, TagManagerComponent, SecureClinicalNotesComponent],
++    imports: [
++        CommonModule,
++        RouterModule,
++        TagManagerComponent,
++        SecureClinicalNotesComponent,
++        ClientBookingsComponent,
++        ClientBillingComponent,
++        ClientDocumentsComponent
++    ],
+     template: `
+     <div class="h-full flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden">
+       <!-- Loading State -->
+@@ -56,9 +67,9 @@ import { ToastService } from '../../../services/toast.service';
+              </div>
+ 
+              <!-- Navigation Tabs -->
+-             <div class="flex items-center gap-6 mt-8 overflow-x-auto">
++             <div class="flex items-center gap-6 mt-8 overflow-x-auto no-scrollbar">
+                  <button 
+-                    (click)="activeTab.set('ficha')"
++                    (click)="setActiveTab('ficha')"
+                     class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                     [class.border-blue-500]="activeTab() === 'ficha'"
+                     [class.text-blue-600]="activeTab() === 'ficha'"
+@@ -69,7 +80,7 @@ import { ToastService } from '../../../services/toast.service';
+                  </button>
+ 
+                  <button 
+-                    (click)="activeTab.set('clinical')"
++                    (click)="setActiveTab('clinical')"
+                     class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                     [class.border-emerald-500]="activeTab() === 'clinical'"
+                     [class.text-emerald-600]="activeTab() === 'clinical'"
+@@ -80,51 +91,90 @@ import { ToastService } from '../../../services/toast.service';
+                  </button>
+ 
+                  <button 
+-                    (click)="activeTab.set('billing')"
++                    (click)="setActiveTab('agenda')"
++                    class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
++                    [class.border-purple-500]="activeTab() === 'agenda'"
++                    [class.text-purple-600]="activeTab() === 'agenda'"
++                    [class.dark:text-purple-400]="activeTab() === 'agenda'"
++                    [class.border-transparent]="activeTab() !== 'agenda'"
++                    [class.text-slate-500]="activeTab() !== 'agenda'">
++                    <i class="fas fa-calendar-alt mr-2"></i> Agenda
++                 </button>
++
++                 <button 
++                    (click)="setActiveTab('billing')"
+                     class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
+                     [class.border-amber-500]="activeTab() === 'billing'"
+                     [class.text-amber-600]="activeTab() === 'billing'"
++                    [class.dark:text-amber-400]="activeTab() === 'billing'"
+                     [class.border-transparent]="activeTab() !== 'billing'"
+                     [class.text-slate-500]="activeTab() !== 'billing'">
+                     <i class="fas fa-file-invoice-dollar mr-2"></i> Facturación
+                  </button>
++
++                 <button 
++                    (click)="setActiveTab('documents')"
++                    class="pb-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap"
++                    [class.border-cyan-500]="activeTab() === 'documents'"
++                    [class.text-cyan-600]="activeTab() === 'documents'"
++                    [class.dark:text-cyan-400]="activeTab() === 'documents'"
++                    [class.border-transparent]="activeTab() !== 'documents'"
++                    [class.text-slate-500]="activeTab() !== 'documents'">
++                    <i class="fas fa-folder mr-2"></i> Documentos
++                 </button>
+              </div>
+          </header>
+ 
+          <!-- Content -->
+-         <main class="flex-1 overflow-auto p-6">
+-             <div class="max-w-7xl mx-auto">
++         <main class="flex-1 overflow-auto p-6 bg-slate-50 dark:bg-slate-900 scroll-smooth">
++             <div class="max-w-7xl mx-auto pb-20">
+                  
+                  <!-- Tab: Ficha -->
+-                 <div *ngIf="activeTab() === 'ficha'" class="animate-fade-in">
++                 <div *ngIf="activeTab() === 'ficha'" class="animate-fade-in space-y-6">
+                      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          <!-- Basic Info Card -->
+                          <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-slate-200 dark:border-slate-700">
+-                             <h3 class="font-bold text-lg mb-4 text-slate-800 dark:text-white">Información Personal</h3>
+-                             <dl class="space-y-3">
++                             <h3 class="font-bold text-lg mb-4 text-slate-800 dark:text-white flex items-center gap-2">
++                                 <i class="fas fa-user-circle text-blue-500"></i> Información Personal
++                             </h3>
++                             <dl class="space-y-4">
+                                  <div>
+-                                     <dt class="text-xs text-slate-400 uppercase">DNI / NIF</dt>
++                                     <dt class="text-xs text-slate-400 uppercase font-semibold">DNI / NIF</dt>
+                                      <dd class="text-slate-700 dark:text-slate-300 font-medium">{{ customer()!.dni || customer()!.cif_nif || '-' }}</dd>
+                                  </div>
+                                  <div *ngIf="customer()!.address">
+-                                     <dt class="text-xs text-slate-400 uppercase">Dirección</dt>
++                                     <dt class="text-xs text-slate-400 uppercase font-semibold">Dirección</dt>
+                                      <dd class="text-slate-700 dark:text-slate-300">{{ customer()!.address }}</dd>
+                                  </div>
++                                  <div>
++                                     <dt class="text-xs text-slate-400 uppercase font-semibold">Notas Internas</dt>
++                                     <dd class="text-slate-600 dark:text-slate-400 text-sm italic">{{ customer()!.notes || 'Sin notas' }}</dd>
++                                 </div>
+                              </dl>
+                          </div>
+-                         <!-- More cards (Devices, Metrics) could go here -->
++                         
++                         <!-- Stats or Other Info could go here -->
+                      </div>
+                  </div>
+ 
+                  <!-- Tab: Clinical Notes -->
+-                 <div *ngIf="activeTab() === 'clinical'" class="animate-fade-in max-w-4xl mx-auto">
++                 <div *ngIf="activeTab() === 'clinical'" class="animate-fade-in max-w-5xl mx-auto">
+                      <app-secure-clinical-notes [clientId]="customer()!.id"></app-secure-clinical-notes>
+                  </div>
+ 
++                 <!-- Tab: Agenda -->
++                 <div *ngIf="activeTab() === 'agenda'" class="animate-fade-in max-w-5xl mx-auto">
++                     <app-client-bookings [clientId]="customer()!.id" [clientData]="customer()"></app-client-bookings>
++                 </div>
++
+                  <!-- Tab: Billing -->
+-                 <div *ngIf="activeTab() === 'billing'" class="animate-fade-in text-center py-20 opacity-50">
+-                     <i class="fas fa-tools text-4xl mb-4"></i>
+-                     <p>Módulo de facturación en construcción.</p>
++                 <div *ngIf="activeTab() === 'billing'" class="animate-fade-in max-w-5xl mx-auto">
++                     <app-client-billing [clientId]="customer()!.id"></app-client-billing>
++                 </div>
++
++                  <!-- Tab: Documents -->
++                 <div *ngIf="activeTab() === 'documents'" class="animate-fade-in max-w-5xl mx-auto">
++                     <app-client-documents [clientId]="customer()!.id"></app-client-documents>
+                  </div>
+                  
+              </div>
+@@ -135,6 +185,8 @@ import { ToastService } from '../../../services/toast.service';
+     styles: [`
+     .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+     @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
++    .no-scrollbar::-webkit-scrollbar { display: none; }
++    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+   `]
+ })
+ export class ClientProfileComponent implements OnInit {
+@@ -144,13 +196,15 @@ export class ClientProfileComponent implements OnInit {
+ 
+     customer = signal<Customer | null>(null);
+     isLoading = signal(true);
+-    activeTab = signal<'ficha' | 'clinical' | 'billing'>('ficha');
++    activeTab = signal<'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents'>('ficha');
+ 
+     ngOnInit() {
+         this.route.params.subscribe(params => {
+             const id = params['id'];
+             if (id) this.loadCustomer(id);
+         });
++
++        // Preserve tab on reload via query params? (Optional enhancement)
+     }
+ 
+     loadCustomer(id: string) {
+@@ -168,6 +222,10 @@ export class ClientProfileComponent implements OnInit {
+         });
+     }
+ 
++    setActiveTab(tab: 'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents') {
++        this.activeTab.set(tab);
++    }
++
+     // Helpers
+     getDisplayName(c: Customer): string {
+         return c.client_type === 'business'
+@@ -181,7 +239,6 @@ export class ClientProfileComponent implements OnInit {
+     }
+ 
+     getAvatarGradient(c: Customer): string {
+-        // Generate distinct gradient based on name char code
+         const name = c.name + (c.apellidos || '');
+         let hash = 0;
+         for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+diff --git a/src/app/features/customers/profile/components/client-billing/client-billing.component.ts b/src/app/features/customers/profile/components/client-billing/client-billing.component.ts
+new file mode 100644
+index 0000000..88dd4f2
+--- /dev/null
++++ b/src/app/features/customers/profile/components/client-billing/client-billing.component.ts
+@@ -0,0 +1,238 @@
++import { Component, Input, OnInit, inject, signal } from '@angular/core';
++import { CommonModule } from '@angular/common';
++import { SupabaseInvoicesService } from '../../../../../services/supabase-invoices.service';
++import { SupabaseQuotesService } from '../../../../../services/supabase-quotes.service';
++import { Invoice, InvoiceStatus } from '../../../../../models/invoice.model';
++import { Quote, QuoteStatus } from '../../../../../models/quote.model';
++import { ToastService } from '../../../../../services/toast.service';
++import { Router } from '@angular/router';
++
++@Component({
++    selector: 'app-client-billing',
++    standalone: true,
++    imports: [CommonModule],
++    template: `
++    <div class="space-y-6">
++        <!-- Header & Tabs -->
++        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
++            
++            <!-- Type Toggle -->
++            <div class="inline-flex rounded-lg p-1 bg-gray-100 dark:bg-slate-700">
++                <button (click)="activeTab.set('invoices')"
++                    [class.bg-white]="activeTab() === 'invoices'"
++                    [class.dark:bg-slate-600]="activeTab() === 'invoices'"
++                    [class.text-blue-600]="activeTab() === 'invoices'"
++                    [class.dark:text-blue-400]="activeTab() === 'invoices'"
++                    [class.shadow-sm]="activeTab() === 'invoices'"
++                    class="px-4 py-2 text-sm font-medium rounded-md transition-all text-gray-700 dark:text-gray-300">
++                    Facturas
++                </button>
++                <button (click)="activeTab.set('quotes')"
++                    [class.bg-white]="activeTab() === 'quotes'"
++                    [class.dark:bg-slate-600]="activeTab() === 'quotes'"
++                    [class.text-purple-600]="activeTab() === 'quotes'"
++                    [class.dark:text-purple-400]="activeTab() === 'quotes'"
++                    [class.shadow-sm]="activeTab() === 'quotes'"
++                    class="px-4 py-2 text-sm font-medium rounded-md transition-all text-gray-700 dark:text-gray-300">
++                    Presupuestos
++                </button>
++            </div>
++
++            <!-- Action -->
++            <button (click)="createDocument()" 
++                [class.bg-blue-600]="activeTab() === 'invoices'"
++                [class.hover:bg-blue-700]="activeTab() === 'invoices'"
++                [class.bg-purple-600]="activeTab() === 'quotes'"
++                [class.hover:bg-purple-700]="activeTab() === 'quotes'"
++                class="px-4 py-2 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors">
++                <i class="fas fa-plus"></i> 
++                {{ activeTab() === 'invoices' ? 'Nueva Factura' : 'Nuevo Presupuesto' }}
++            </button>
++        </div>
++
++        <!-- Content Area -->
++        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden min-h-[300px]">
++             
++             <!-- Loading -->
++             <div *ngIf="isLoading()" class="p-12 flex justify-center">
++                <div class="animate-spin rounded-full h-8 w-8 border-b-2" 
++                    [class.border-blue-600]="activeTab() === 'invoices'"
++                    [class.border-purple-600]="activeTab() === 'quotes'"></div>
++             </div>
++
++             <!-- Empty State -->
++             <div *ngIf="!isLoading() && ((activeTab() === 'invoices' && invoices().length === 0) || (activeTab() === 'quotes' && quotes().length === 0))" 
++                  class="p-12 text-center text-gray-500 dark:text-gray-400">
++                <i class="fas fa-file-invoice text-4xl mb-4 opacity-50"></i>
++                <p>No hay {{ activeTab() === 'invoices' ? 'facturas' : 'presupuestos' }} registrados.</p>
++             </div>
++
++             <!-- Invoices List -->
++             <div *ngIf="!isLoading() && activeTab() === 'invoices' && invoices().length > 0" class="divide-y divide-gray-100 dark:divide-slate-700">
++                <div *ngFor="let invoice of invoices()" class="p-4 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
++                    <div class="flex items-center gap-4">
++                        <div class="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
++                            <i class="fas fa-file-invoice-dollar"></i>
++                        </div>
++                        <div>
++                            <h4 class="text-sm font-bold text-gray-900 dark:text-white">{{ invoice.full_invoice_number || invoice.invoice_number }}</h4>
++                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ invoice.invoice_date | date:'mediumDate' }}</p>
++                        </div>
++                    </div>
++                    
++                    <div class="flex items-center gap-6 sm:ml-auto">
++                        <div class="text-right">
++                            <span class="block text-sm font-bold text-gray-900 dark:text-white">{{ invoice.total | currency:'EUR' }}</span>
++                            <span class="px-2 py-0.5 rounded text-xs font-medium" [ngClass]="getInvoiceStatusClass(invoice.status)">
++                                {{ getInvoiceStatusLabel(invoice.status) }}
++                            </span>
++                        </div>
++                        
++                        <div class="flex gap-2">
++                             <button (click)="downloadInvoice(invoice)" title="Descargar PDF" class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
++                                <i class="fas fa-download"></i>
++                             </button>
++                             <!-- More actions could be dropdown -->
++                        </div>
++                    </div>
++                </div>
++             </div>
++
++             <!-- Quotes List -->
++             <div *ngIf="!isLoading() && activeTab() === 'quotes' && quotes().length > 0" class="divide-y divide-gray-100 dark:divide-slate-700">
++                <div *ngFor="let quote of quotes()" class="p-4 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
++                    <div class="flex items-center gap-4">
++                        <div class="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0">
++                            <i class="fas fa-file-contract"></i>
++                        </div>
++                        <div>
++                            <h4 class="text-sm font-bold text-gray-900 dark:text-white">{{ quote.full_quote_number || 'Borrador' }}</h4>
++                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ quote.quote_date | date:'mediumDate' }}</p>
++                        </div>
++                    </div>
++                    
++                    <div class="flex items-center gap-6 sm:ml-auto">
++                        <div class="text-right">
++                            <span class="block text-sm font-bold text-gray-900 dark:text-white">{{ quote.total_amount | currency:'EUR' }}</span>
++                            <span class="px-2 py-0.5 rounded text-xs font-medium" [ngClass]="getQuoteStatusClass(quote.status)">
++                                {{ getQuoteStatusLabel(quote.status) }}
++                            </span>
++                        </div>
++                        
++                         <div class="flex gap-2">
++                             <!-- Example action -->
++                             <button (click)="viewQuote(quote)" class="text-xs font-medium text-purple-600 hover:underline">Ver</button>
++                        </div>
++                    </div>
++                </div>
++             </div>
++
++        </div>
++    </div>
++  `
++})
++export class ClientBillingComponent implements OnInit {
++    @Input({ required: true }) clientId!: string;
++
++    invoicesService = inject(SupabaseInvoicesService); // Assume exists
++    quotesService = inject(SupabaseQuotesService); // Assume exists
++    toast = inject(ToastService);
++    router = inject(Router);
++
++    activeTab = signal<'invoices' | 'quotes'>('invoices');
++    isLoading = signal(false);
++
++    invoices = signal<Invoice[]>([]);
++    quotes = signal<Quote[]>([]);
++
++    ngOnInit() {
++        this.loadData();
++    }
++
++    async loadData() {
++        this.isLoading.set(true);
++        try {
++            // Load Invoices
++            const invoicesObs = this.invoicesService.getInvoices({ client_id: this.clientId });
++            invoicesObs.subscribe({
++                next: (items) => this.invoices.set(items),
++                error: (err) => console.error('Invoices error', err)
++            });
++
++            // Load Quotes
++            // Assuming getQuotes supports filters
++            const quotesObs = this.quotesService.getQuotes({ client_id: this.clientId });
++            quotesObs.subscribe({
++                next: (response) => this.quotes.set(response.data),
++                error: (err) => console.error('Quotes error', err)
++            });
++
++        } catch (e) {
++            console.error(e);
++        } finally {
++            // Because we use observables, allow a small delay or better, manage loading state inside subscription
++            // For MVP, simplistic
++            setTimeout(() => this.isLoading.set(false), 500);
++        }
++    }
++
++    createDocument() {
++        if (this.activeTab() === 'invoices') {
++            this.router.navigate(['/facturas/nueva'], { queryParams: { clientId: this.clientId } });
++        } else {
++            this.router.navigate(['/presupuestos/nuevo'], { queryParams: { clientId: this.clientId } });
++        }
++    }
++
++    downloadInvoice(invoice: Invoice) {
++        this.toast.info('Descargando...', 'Generando PDF');
++        this.invoicesService.getInvoicePdfUrl(invoice.id).subscribe({
++            next: (url) => {
++                window.open(url, '_blank');
++            },
++            error: () => this.toast.error('Error', 'No se pudo descargar el PDF')
++        });
++    }
++
++    viewQuote(quote: Quote) {
++        // Navigate to quote view/edit
++        this.router.navigate(['/presupuestos', quote.id]);
++    }
++
++    // Helpers
++    getInvoiceStatusClass(status: InvoiceStatus) {
++        switch (status) {
++            case InvoiceStatus.PAID: return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
++            case InvoiceStatus.ISSUED:
++            case InvoiceStatus.SENT: return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
++            case InvoiceStatus.OVERDUE: return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
++            case InvoiceStatus.DRAFT: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400';
++            default: return 'bg-gray-100 text-gray-800';
++        }
++    }
++
++    getInvoiceStatusLabel(status: InvoiceStatus) {
++        const map: any = {
++            [InvoiceStatus.PAID]: 'Pagada',
++            [InvoiceStatus.SENT]: 'Enviada',
++            [InvoiceStatus.DRAFT]: 'Borrador',
++            [InvoiceStatus.OVERDUE]: 'Vencida',
++            // ... others
++        };
++        return map[status] || status;
++    }
++
++    getQuoteStatusClass(status: QuoteStatus) {
++        switch (status) {
++            case QuoteStatus.ACCEPTED: return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
++            case QuoteStatus.SENT: return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
++            case QuoteStatus.REJECTED: return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
++            default: return 'bg-purple-50 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
++        }
++    }
++
++    getQuoteStatusLabel(status: QuoteStatus) {
++        // Use the constant if imported or simple map
++        return status; // Simply return status for MVP or use QUOTE_STATUS_LABELS if imported
++    }
++}
+diff --git a/src/app/features/customers/profile/components/client-bookings/client-bookings.component.ts b/src/app/features/customers/profile/components/client-bookings/client-bookings.component.ts
+new file mode 100644
+index 0000000..8f98e7e
+--- /dev/null
++++ b/src/app/features/customers/profile/components/client-bookings/client-bookings.component.ts
+@@ -0,0 +1,283 @@
++import { Component, Input, OnInit, inject, signal, ViewChild } from '@angular/core';
++import { CommonModule } from '@angular/common';
++import { FormsModule } from '@angular/forms';
++import { SupabaseBookingsService, Booking } from '../../../../../services/supabase-bookings.service';
++import { CalendarActionModalComponent } from '../../../../calendar/modal/calendar-action-modal/calendar-action-modal.component';
++import { ToastService } from '../../../../../services/toast.service';
++
++@Component({
++    selector: 'app-client-bookings',
++    standalone: true,
++    imports: [CommonModule, CalendarActionModalComponent],
++    template: `
++    <div class="space-y-6">
++        <!-- Header Actions -->
++        <div class="flex justify-between items-center">
++            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Agenda del Cliente</h3>
++            <button (click)="openNewBooking()" 
++                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors">
++                <i class="fas fa-plus"></i> Nueva Cita
++            </button>
++        </div>
++
++        <!-- Bookings List -->
++        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
++            
++            <div *ngIf="isLoading()" class="p-8 flex justify-center">
++                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
++            </div>
++
++            <div *ngIf="!isLoading() && bookings().length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
++                <i class="fas fa-calendar-times text-4xl mb-3 opacity-50"></i>
++                <p>No hay citas registradas para este cliente.</p>
++            </div>
++
++            <div *ngIf="!isLoading() && bookings().length > 0" class="divide-y divide-gray-100 dark:divide-slate-700">
++                <div *ngFor="let booking of bookings()" class="p-4 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
++                    
++                    <!-- Info -->
++                    <div class="flex items-start gap-4">
++                        <div class="flex-shrink-0 w-12 h-12 rounded-lg flex flex-col items-center justify-center border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700">
++                            <span class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">{{ booking.start_time | date:'MMM' }}</span>
++                            <span class="text-lg font-bold text-gray-900 dark:text-white">{{ booking.start_time | date:'dd' }}</span>
++                        </div>
++                        <div>
++                            <h4 class="text-sm font-bold text-gray-900 dark:text-white">
++                                {{ booking.service?.name || 'Servicio Personalizado' }}
++                            </h4>
++                            <div class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 mt-1">
++                                <span><i class="fas fa-clock mr-1"></i> {{ booking.start_time | date:'shortTime' }} - {{ booking.end_time | date:'shortTime' }}</span>
++                                <span *ngIf="booking.professional?.user?.name" class="hidden sm:inline">
++                                    <i class="fas fa-user-tie mr-1 ml-2"></i> {{ booking.professional?.user?.name }}
++                                </span>
++                            </div>
++                        </div>
++                    </div>
++
++                    <!-- Status & Price -->
++                    <div class="flex items-center gap-4 ml-16 sm:ml-0">
++                         <!-- Status Badge -->
++                        <span class="px-2.5 py-0.5 rounded-full text-xs font-medium border"
++                            [ngClass]="getStatusClasses(booking.status)">
++                            {{ getStatusLabel(booking.status) }}
++                        </span>
++
++                        <!-- Price -->
++                        <div class="text-right min-w-[80px]">
++                            <span class="block text-sm font-bold text-gray-900 dark:text-white">
++                                {{ booking.total_price || 0 | currency:'EUR' }}
++                            </span>
++                            <span class="text-xs" [ngClass]="getPaymentStatusColor(booking.payment_status)">
++                                {{ getPaymentStatusLabel(booking.payment_status) }}
++                            </span>
++                        </div>
++
++                        <!-- Actions -->
++                        <div class="relative group">
++                            <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-2">
++                                <i class="fas fa-ellipsis-v"></i>
++                            </button>
++                            <!-- Dropdown (Simple hover or click for now, MVP: click opens modal) -->
++                            <!-- For simplicity in this iteration, the whole row or a button could open details. Let's add an edit button. -->
++                        </div>
++                        <button (click)="editBooking(booking)" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium">
++                            Ver / Editar
++                        </button>
++                    </div>
++
++                </div>
++            </div>
++        </div>
++
++        <!-- Reuse Calendar Action Modal for Creating/Editing -->
++        <app-calendar-action-modal 
++            #actionModal
++            [isOpen]="isModalOpen()"
++            [services]="availableServices()"
++            [clients]="[clientData]" 
++            (closeModal)="isModalOpen.set(false)"
++            (saveAction)="handleSaveBooking($event)"
++            (deleteAction)="handleDeleteBooking($event)"
++        ></app-calendar-action-modal>
++        <!-- specific input naming for clients/services might vary in modal component, checking... -->
++        <!-- 'clients' and 'services' are the inputs in CalendarActionModalComponent. Fixed below. -->
++    </div>
++  `
++})
++export class ClientBookingsComponent implements OnInit {
++    @Input({ required: true }) clientId!: string;
++
++    // We can pass the full client object to avoid refetching for the modal dropdown
++    @Input() clientData: any = null;
++
++    bookingsService = inject(SupabaseBookingsService);
++    toast = inject(ToastService);
++
++    bookings = signal<Booking[]>([]);
++    isLoading = signal(false);
++
++    // Modal
++    isModalOpen = signal(false);
++    @ViewChild('actionModal') actionModal!: CalendarActionModalComponent;
++
++    // Need to fetch services to pass to modal
++    // In a real app, we might want a global store or service cache.
++    // For now, we assume the parent or a service provides them, or we fetch them.
++    // Let's rely on the service injection or fetch them on init.
++    availableServices = signal<any[]>([]);
++
++    // We need to inject ServicesService to get the list
++    // Importing dynamically to avoid circular deps if any, or just standard import above?
++    // Let's assume standard import if available, or just fetch via bookingsService if it has a helper?
++    // BookingsService doesn't have getServices. Let's use SupabaseClient or ServicesService.
++    // For MPV, let's assume `availableServices` are passed or fetched here.
++
++    ngOnInit() {
++        this.loadBookings();
++        this.loadServices(); // Placeholder
++    }
++
++    async loadBookings() {
++        this.isLoading.set(true);
++        // SupabaseBookingsService.getBookings usually takes date range.
++        // We need a method to get ALL bookings by client_id, pagination maybe?
++        // Or get last 50?
++        // Let's assume we can filter getBookings by clientId if we update the service, OR use a raw query here.
++        // Actually, let's update SupabaseBookingsService to support `getBookingsByClient(clientId)`.
++
++        // TEMPORARY: using raw supabase query here if service doesn't support it, 
++        // to avoid modifying service files widely if not needed.
++        // But better practice is to add the method to service.
++
++        // I will use `this.bookingsService['supabase']` to fetch directly for now to be fast, 
++        // then I might refactor.
++        try {
++            const { data, error } = await this.bookingsService['supabase']
++                .from('bookings')
++                .select('*, booking_type:booking_types(name, color), service:services(name), professional:professionals(user:users(name))')
++                .eq('client_id', this.clientId)
++                .order('start_time', { ascending: false })
++                .limit(50);
++
++            if (error) throw error;
++            this.bookings.set(data as any[]);
++        } catch (e) {
++            console.error(e);
++            this.toast.error('Error', 'No se pudieron cargar las citas.');
++        } finally {
++            this.isLoading.set(false);
++        }
++    }
++
++    async loadServices() {
++        // Fetch services for the modal
++        const { data } = await this.bookingsService['supabase']
++            .from('services')
++            .select('*')
++            .eq('is_active', true)
++            .order('name');
++        if (data) this.availableServices.set(data);
++    }
++
++    openNewBooking() {
++        this.isModalOpen.set(true);
++        // Clean default for new booking
++        // We need to wait for viewchild
++        setTimeout(() => {
++            if (this.actionModal) {
++                this.actionModal.openForCreate(new Date(), 'booking');
++                // Pre-set client
++                this.actionModal.clientId = this.clientId;
++                // Since modal inputs might not be reactive for clientId property if it's just a field?
++                // Checking CalendarActionModal... it has `clientId` property.
++            }
++        });
++    }
++
++    editBooking(booking: Booking) {
++        this.isModalOpen.set(true);
++        setTimeout(() => {
++            if (this.actionModal) {
++                this.actionModal.openForEdit({
++                    id: booking.id,
++                    start: new Date(booking.start_time),
++                    end: new Date(booking.end_time),
++                    title: booking.customer_name,
++                    extendedProps: booking
++                }, 'booking');
++            }
++        });
++    }
++
++    async handleSaveBooking(event: any) {
++        // Mapping event to service call
++        try {
++            if (event.id) {
++                // Update
++                await this.bookingsService.updateBooking(event.id, {
++                    start_time: event.startTime.toISOString(),
++                    end_time: event.endTime.toISOString(),
++                    service_id: event.serviceId,
++                    status: event.status,
++                    // etc
++                });
++                this.toast.success('Actualizado', 'Cita actualizada.');
++            } else {
++                // Create
++                await this.bookingsService.createBooking({
++                    company_id: this.clientData.company_id,
++                    client_id: this.clientId,
++                    customer_name: this.clientData.name || 'Cliente', // Fallback
++                    customer_email: this.clientData.email || '',
++                    service_id: event.serviceId,
++                    start_time: event.startTime.toISOString(),
++                    end_time: event.endTime.toISOString(),
++                    status: event.status || 'confirmed',
++                    notes: 'Creada desde Perfil 360'
++                });
++                this.toast.success('Creado', 'Cita agendada.');
++            }
++            this.isModalOpen.set(false);
++            this.loadBookings();
++        } catch (e) {
++            console.error(e);
++            this.toast.error('Error', 'No se pudo guardar la cita.');
++        }
++    }
++
++    async handleDeleteBooking(event: { id: string }) {
++        if (confirm('¿Seguro que deseas eliminar esta cita?')) {
++            await this.bookingsService.deleteBooking(event.id);
++            this.toast.success('Eliminado', 'Cita eliminada.');
++            this.isModalOpen.set(false);
++            this.loadBookings();
++        }
++    }
++
++    // Helpers
++    getStatusClasses(status: string) {
++        switch (status) {
++            case 'confirmed': return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800';
++            case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800';
++            case 'cancelled': return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800';
++            default: return 'bg-gray-50 text-gray-700 border-gray-200';
++        }
++    }
++
++    getStatusLabel(status: string) {
++        const map: any = { 'confirmed': 'Confirmada', 'pending': 'Pendiente', 'cancelled': 'Cancelada' };
++        return map[status] || status;
++    }
++
++    getPaymentStatusLabel(status?: string) {
++        if (!status) return 'Pendiente';
++        const map: any = { 'paid': 'Pagado', 'pending': 'Pendiente', 'partial': 'Parcial', 'refunded': 'Reembolsado' };
++        return map[status] || status;
++    }
++
++    getPaymentStatusColor(status?: string) {
++        if (status === 'paid') return 'text-emerald-600 font-bold';
++        if (status === 'refunded') return 'text-red-500 line-through';
++        return 'text-amber-600';
++    }
++}
+diff --git a/src/app/features/customers/profile/components/client-documents/client-documents.component.ts b/src/app/features/customers/profile/components/client-documents/client-documents.component.ts
+new file mode 100644
+index 0000000..7f152e4
+--- /dev/null
++++ b/src/app/features/customers/profile/components/client-documents/client-documents.component.ts
+@@ -0,0 +1,161 @@
++import { Component, Input, OnInit, inject, signal } from '@angular/core';
++import { CommonModule } from '@angular/common';
++import { SupabaseDocumentsService, ClientDocument } from '../../../../../services/supabase-documents.service';
++import { ToastService } from '../../../../../services/toast.service';
++
++@Component({
++    selector: 'app-client-documents',
++    standalone: true,
++    imports: [CommonModule],
++    template: `
++    <div class="space-y-6">
++        <!-- Header -->
++        <div class="flex justify-between items-center">
++            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Documentación</h3>
++            <label class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg cursor-pointer flex items-center gap-2 transition-colors">
++                <i class="fas fa-cloud-upload-alt"></i> Subir Documento
++                <input type="file" class="hidden" (change)="handleFileUpload($event)" [disabled]="isUploading()">
++            </label>
++        </div>
++
++        <!-- Upload Progress -->
++        <div *ngIf="isUploading()" class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
++            <div class="bg-blue-600 h-2.5 rounded-full animate-pulse" style="width: 100%"></div>
++        </div>
++
++        <!-- Documents List -->
++        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
++            
++            <div *ngIf="isLoading()" class="p-8 flex justify-center">
++                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
++            </div>
++
++            <div *ngIf="!isLoading() && documents().length === 0" class="p-8 text-center text-gray-500 dark:text-gray-400">
++                <i class="fas fa-folder-open text-4xl mb-3 opacity-50"></i>
++                <p>No hay documentos almacenados.</p>
++            </div>
++
++            <div *ngIf="!isLoading() && documents().length > 0" class="divide-y divide-gray-100 dark:divide-slate-700">
++                <div *ngFor="let doc of documents()" class="p-4 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors flex items-center justify-between group">
++                    
++                    <div class="flex items-center gap-4">
++                        <div class="w-10 h-10 rounded-lg bg-gray-100 dark:bg-slate-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
++                            <i [class]="getFileIcon(doc.file_type)"></i>
++                        </div>
++                        <div>
++                            <h4 class="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[200px] sm:max-w-md">{{ doc.name }}</h4>
++                            <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
++                                <span>{{ doc.created_at | date:'mediumDate' }}</span>
++                                <span>•</span>
++                                <span>{{ formatSize(doc.size) }}</span>
++                            </div>
++                        </div>
++                    </div>
++
++                    <div class="flex items-center gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
++                        <button (click)="download(doc)" class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" title="Descargar">
++                            <i class="fas fa-download"></i>
++                        </button>
++                        <button (click)="delete(doc)" class="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" title="Eliminar">
++                            <i class="fas fa-trash"></i>
++                        </button>
++                    </div>
++
++                </div>
++            </div>
++        </div>
++    </div>
++  `
++})
++export class ClientDocumentsComponent implements OnInit {
++    @Input({ required: true }) clientId!: string;
++
++    docsService = inject(SupabaseDocumentsService);
++    toast = inject(ToastService);
++
++    documents = signal<ClientDocument[]>([]);
++    isLoading = signal(false);
++    isUploading = signal(false);
++
++    ngOnInit() {
++        this.loadDocuments();
++    }
++
++    loadDocuments() {
++        this.isLoading.set(true);
++        this.docsService.getDocuments(this.clientId).subscribe({
++            next: (docs) => {
++                this.documents.set(docs);
++                this.isLoading.set(false);
++            },
++            error: (err) => {
++                console.error(err);
++                this.isLoading.set(false);
++            }
++        });
++    }
++
++    async handleFileUpload(event: any) {
++        const file = event.target.files[0];
++        if (!file) return;
++
++        // Limit size (e.g., 10MB)
++        if (file.size > 10 * 1024 * 1024) {
++            this.toast.error('Error', 'El archivo es demasiado grande (Máx 10MB)');
++            return;
++        }
++
++        this.isUploading.set(true);
++        try {
++            await this.docsService.uploadDocument(this.clientId, file);
++            this.toast.success('Éxito', 'Documento subido correctamente');
++            this.loadDocuments();
++        } catch (e) {
++            console.error(e);
++            this.toast.error('Error', 'No se pudo subir el archivo');
++        } finally {
++            this.isUploading.set(false);
++            event.target.value = ''; // Reset input
++        }
++    }
++
++    async download(doc: ClientDocument) {
++        try {
++            const url = await this.docsService.getDownloadUrl(doc.file_path);
++            window.open(url, '_blank');
++        } catch (e) {
++            this.toast.error('Error', 'No se pudo generar el enlace de descarga');
++        }
++    }
++
++    async delete(doc: ClientDocument) {
++        if (!confirm(`¿Eliminar ${doc.name}?`)) return;
++
++        try {
++            await this.docsService.deleteDocument(doc.id, doc.file_path);
++            this.toast.success('Eliminado', 'Documento eliminado');
++            this.documents.update(prev => prev.filter(d => d.id !== doc.id));
++        } catch (e) {
++            console.error(e);
++            this.toast.error('Error', 'No se pudo eliminar el documento');
++        }
++    }
++
++    // Helpers
++    formatSize(bytes?: number): string {
++        if (!bytes) return '0 B';
++        const k = 1024;
++        const packages = ['B', 'KB', 'MB', 'GB'];
++        const i = Math.floor(Math.log(bytes) / Math.log(k));
++        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + packages[i];
++    }
++
++    getFileIcon(type?: string): string {
++        if (!type) return 'fas fa-file';
++        if (type.includes('pdf')) return 'fas fa-file-pdf text-red-500';
++        if (type.includes('image')) return 'fas fa-file-image text-purple-500';
++        if (type.includes('word') || type.includes('document')) return 'fas fa-file-word text-blue-500';
++        if (type.includes('excel') || type.includes('sheet')) return 'fas fa-file-excel text-green-500';
++        return 'fas fa-file text-gray-400';
++    }
++}
+diff --git a/src/app/models/customer.ts b/src/app/models/customer.ts
+index d726183..7081589 100644
+--- a/src/app/models/customer.ts
++++ b/src/app/models/customer.ts
+@@ -48,6 +48,7 @@ export interface Customer {
+   deletion_reason?: string;
+   anonymized_at?: string;
+   is_minor?: boolean;
++  notes?: string;
+   parental_consent_verified?: boolean;
+   parental_consent_date?: string;
+   data_minimization_applied?: boolean;
+diff --git a/src/app/services/supabase-documents.service.ts b/src/app/services/supabase-documents.service.ts
+new file mode 100644
+index 0000000..3e92a73
+--- /dev/null
++++ b/src/app/services/supabase-documents.service.ts
+@@ -0,0 +1,110 @@
++import { Injectable, inject } from '@angular/core';
++import { Observable, from, map } from 'rxjs';
++import { SupabaseClientService } from './supabase-client.service';
++import { AuthService } from './auth.service';
++
++export interface ClientDocument {
++    id: string;
++    company_id: string;
++    client_id: string;
++    name: string;
++    file_path: string;
++    file_type?: string;
++    size?: number;
++    created_at?: string;
++    created_by?: string;
++    // Joined
++    creator?: { email: string };
++}
++
++@Injectable({
++    providedIn: 'root'
++})
++export class SupabaseDocumentsService {
++    private client = inject(SupabaseClientService);
++    private auth = inject(AuthService);
++    private bucket = 'client-documents';
++
++    private get supabase() {
++        return this.client.instance;
++    }
++
++    // List Documents
++    getDocuments(clientId: string): Observable<ClientDocument[]> {
++        return from(
++            this.supabase
++                .from('client_documents')
++                .select('*') // Adjust if users table is public or auth
++                .eq('client_id', clientId)
++                .order('created_at', { ascending: false })
++        ).pipe(
++            map(({ data, error }) => {
++                if (error) throw error;
++                return data as ClientDocument[];
++            })
++        );
++    }
++
++    // Upload File
++    async uploadDocument(clientId: string, file: File): Promise<ClientDocument> {
++        const companyId = this.auth.companyId();
++        if (!companyId) throw new Error('No Company ID');
++
++        // 1. Upload to Storage
++        const fileExt = file.name.split('.').pop();
++        const fileName = `${crypto.randomUUID()}.${fileExt}`;
++        const filePath = `${companyId}/${clientId}/${fileName}`;
++
++        const { error: uploadError } = await this.supabase.storage
++            .from(this.bucket)
++            .upload(filePath, file);
++
++        if (uploadError) throw uploadError;
++
++        // 2. Insert Record in DB
++        const { data, error: dbError } = await this.supabase
++            .from('client_documents')
++            .insert({
++                company_id: companyId,
++                client_id: clientId,
++                name: file.name,
++                file_path: filePath,
++                file_type: file.type,
++                size: file.size,
++                created_by: (await this.supabase.auth.getUser()).data.user?.id
++            })
++            .select()
++            .single();
++
++        if (dbError) throw dbError;
++        return data as ClientDocument;
++    }
++
++    // Download URL
++    async getDownloadUrl(filePath: string): Promise<string> {
++        const { data } = await this.supabase.storage
++            .from(this.bucket)
++            .createSignedUrl(filePath, 3600); // 1 hour
++
++        if (!data?.signedUrl) throw new Error('Could not generate URL');
++        return data.signedUrl;
++    }
++
++    // Delete Document
++    async deleteDocument(id: string, filePath: string): Promise<void> {
++        // 1. Delete from Storage
++        const { error: storageError } = await this.supabase.storage
++            .from(this.bucket)
++            .remove([filePath]);
++
++        if (storageError) throw storageError;
++
++        // 2. Delete from DB
++        const { error: dbError } = await this.supabase
++            .from('client_documents')
++            .delete()
++            .eq('id', id);
++
++        if (dbError) throw dbError;
++    }
++}
+diff --git a/supabase/migrations/20260114200000_client_documents.sql b/supabase/migrations/20260114200000_client_documents.sql
+new file mode 100644
+index 0000000..95e5af1
+--- /dev/null
++++ b/supabase/migrations/20260114200000_client_documents.sql
+@@ -0,0 +1,45 @@
++-- Create client_documents table
++CREATE TABLE IF NOT EXISTS public.client_documents (
++    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
++    company_id UUID NOT NULL REFERENCES public.companies(id) ON DELETE CASCADE,
++    client_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
++    name TEXT NOT NULL,
++    file_path TEXT NOT NULL,
++    file_type TEXT,
++    size BIGINT,
++    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
++    created_by UUID REFERENCES auth.users(id)
++);
++
++-- RLS
++ALTER TABLE public.client_documents ENABLE ROW LEVEL SECURITY;
++
++CREATE POLICY "Enable read access for company members" ON public.client_documents
++    FOR SELECT
++    USING (company_id IN (
++        SELECT company_id FROM public.company_members WHERE user_id = auth.uid()
++    ));
++
++CREATE POLICY "Enable insert access for company members" ON public.client_documents
++    FOR INSERT
++    WITH CHECK (company_id IN (
++        SELECT company_id FROM public.company_members WHERE user_id = auth.uid()
++    ));
++
++CREATE POLICY "Enable delete access for company members" ON public.client_documents
++    FOR DELETE
++    USING (company_id IN (
++        SELECT company_id FROM public.company_members WHERE user_id = auth.uid()
++    ));
++
++-- Storage Bucket Setup (Attempt to create if not exists)
++INSERT INTO storage.buckets (id, name, public)
++VALUES ('client-documents', 'client-documents', false)
++ON CONFLICT (id) DO NOTHING;
++
++-- Storage Policies
++-- We grant authenticated access to the bucket.
++-- Application logic ensures users only see files via the `client_documents` table which acts as the index and is protected by RLS.
++CREATE POLICY "Give users access to bucket Select" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'client-documents');
++CREATE POLICY "Give users access to bucket Insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'client-documents');
++CREATE POLICY "Give users access to bucket Delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'client-documents');

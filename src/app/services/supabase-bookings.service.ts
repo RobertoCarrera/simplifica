@@ -36,6 +36,28 @@ export interface AvailabilitySchedule {
     is_unavailable: boolean;
 }
 
+export interface Booking {
+    id: string;
+    company_id: string;
+    client_id: string;
+    customer_name: string;
+    customer_email?: string;
+    service_id?: string;
+    // Relations
+    service?: { name: string; color?: string };
+    professional?: { user?: { name: string } };
+    booking_type?: { name: string; color?: string };
+
+    start_time: string;
+    end_time: string;
+    status: 'confirmed' | 'pending' | 'cancelled';
+    payment_status?: 'paid' | 'pending' | 'partial' | 'refunded';
+    total_price?: number;
+    currency?: string;
+    notes?: string;
+    created_at?: string;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -45,6 +67,60 @@ export class SupabaseBookingsService {
 
     private get supabase() {
         return this.sbClient.instance;
+    }
+
+    // --- Bookings CRUD ---
+
+    async getBookings(filters?: { clientId?: string, from?: string, to?: string, limit?: number }): Promise<{ data: Booking[], error: any }> {
+        let query = this.supabase
+            .from('bookings')
+            .select('*, booking_type:booking_types(name, color), service:services(name), professional:professionals(user:users(name))')
+            .order('start_time', { ascending: false });
+
+        if (filters?.clientId) {
+            query = query.eq('client_id', filters.clientId);
+        }
+        if (filters?.from) {
+            query = query.gte('start_time', filters.from);
+        }
+        if (filters?.to) {
+            query = query.lte('start_time', filters.to);
+        }
+        if (filters?.limit) {
+            query = query.limit(filters.limit);
+        }
+
+        const { data, error } = await query;
+        return { data: data as Booking[], error };
+    }
+
+    async createBooking(booking: Partial<Booking>) {
+        const { data, error } = await this.supabase
+            .from('bookings')
+            .insert(booking)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    }
+
+    async updateBooking(id: string, updates: Partial<Booking>) {
+        const { data, error } = await this.supabase
+            .from('bookings')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+        if (error) throw error;
+        return data;
+    }
+
+    async deleteBooking(id: string) {
+        const { error } = await this.supabase
+            .from('bookings')
+            .delete()
+            .eq('id', id);
+        if (error) throw error;
     }
 
     // --- Booking Types ---

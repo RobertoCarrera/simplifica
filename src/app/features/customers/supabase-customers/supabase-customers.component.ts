@@ -11,6 +11,7 @@ import { AddressesService } from '../../../services/addresses.service';
 import { LocalitiesService } from '../../../services/localities.service';
 import { Locality } from '../../../models/locality';
 import { SupabaseCustomersService, CustomerFilters } from '../../../services/supabase-customers.service';
+import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../../services/gdpr-compliance.service';
 import { ToastService } from '../../../services/toast.service';
 import { DevRoleService } from '../../../services/dev-role.service';
@@ -73,6 +74,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     public auth = inject(AuthService);
     portal = inject(ClientPortalService);
     private completenessSvc = inject(CustomersSvc);
+    private tagsService = inject(GlobalTagsService);
 
     // Overlay dependencies
     private overlay = inject(Overlay);
@@ -132,6 +134,10 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     sortBy = signal<'name' | 'apellidos' | 'created_at'>('name'); // Default to name
     sortOrder = signal<'asc' | 'desc'>('asc'); // Default to asc for alphabetical
 
+    // Tag Filter
+    availableTags = signal<GlobalTag[]>([]);
+    selectedTagId = signal<string>('ALL'); // 'ALL' or tag UUID
+
 
 
     // UI filter toggle for incomplete imports (Removed from UI, logic deprecated)
@@ -187,7 +193,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             if (customer.client_type === 'business') {
                 displayName = customer.business_name || customer.trade_name || customer.name || '';
             } else {
-                 displayName = [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
+                displayName = [customer.name, customer.apellidos].filter(Boolean).join(' ').trim();
             }
 
             if (!displayName || !displayName.trim()) {
@@ -199,7 +205,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             }
 
             if (EMAIL_CHECK_REGEX.test(displayName)) {
-                 displayName = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
+                displayName = customer.client_type === 'business' ? 'Empresa' : 'Cliente';
             }
 
             // Initials Logic
@@ -217,14 +223,14 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             // Date Logic
             let formattedDate = '';
             if (customer.created_at) {
-                 const d = typeof customer.created_at === 'string' ? new Date(customer.created_at) : customer.created_at;
-                 if (!isNaN(d.getTime())) {
-                     formattedDate = d.toLocaleDateString('es-ES', {
+                const d = typeof customer.created_at === 'string' ? new Date(customer.created_at) : customer.created_at;
+                if (!isNaN(d.getTime())) {
+                    formattedDate = d.toLocaleDateString('es-ES', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'
                     });
-                 }
+                }
             }
 
             // Searchable Text (combine fields for faster filtering)
@@ -254,10 +260,18 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         // ✅ Filtrar clientes anonimizados (ocultarlos de la lista)
         filtered = filtered.filter(customer => !this.isCustomerAnonymized(customer));
 
+        // Filter by Tag
+        const tagId = this.selectedTagId();
+        if (tagId && tagId !== 'ALL') {
+            filtered = filtered.filter(customer =>
+                customer.tags && customer.tags.some((t: any) => t.id === tagId)
+            );
+        }
+
         // Apply search filter
         const search = this.searchTerm().toLowerCase().trim();
         if (search) {
-             // Use pre-computed searchable text for 10x faster filtering
+            // Use pre-computed searchable text for 10x faster filtering
             filtered = filtered.filter(customer => customer.searchableText.includes(search));
         }
 
@@ -282,22 +296,22 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             let result = 0;
 
             if (sortBy === 'name' || sortBy === 'apellidos') {
-                 // Use Intl.Collator for strings
-                 const aVal = a[sortBy] || '';
-                 const bVal = b[sortBy] || '';
-                 result = COLLATOR.compare(aVal, bVal);
+                // Use Intl.Collator for strings
+                const aVal = a[sortBy] || '';
+                const bVal = b[sortBy] || '';
+                result = COLLATOR.compare(aVal, bVal);
             } else if (sortBy === 'created_at') {
-                 // Date string comparison (ISO strings compare correctly lexicographically)
-                 const aVal = (a.created_at || '').toString();
-                 const bVal = (b.created_at || '').toString();
-                 if (aVal < bVal) result = -1;
-                 else if (aVal > bVal) result = 1;
+                // Date string comparison (ISO strings compare correctly lexicographically)
+                const aVal = (a.created_at || '').toString();
+                const bVal = (b.created_at || '').toString();
+                if (aVal < bVal) result = -1;
+                else if (aVal > bVal) result = 1;
             } else {
-                 // Fallback
-                 const aVal = a[sortBy];
-                 const bVal = b[sortBy];
-                 if (aVal < bVal) result = -1;
-                 else if (aVal > bVal) result = 1;
+                // Fallback
+                const aVal = a[sortBy];
+                const bVal = b[sortBy];
+                if (aVal < bVal) result = -1;
+                else if (aVal > bVal) result = 1;
             }
 
             return sortOrder === 'asc' ? result : -result;
@@ -340,6 +354,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         this.loadGdprData();
         // Initialize portal access cache
         this.refreshPortalAccess();
+        // Load tags
+        this.loadTags();
     }
 
     ngOnDestroy() {
@@ -488,6 +504,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         });
     }
 
+    loadTags() {
+        this.tagsService.getTags('clients').subscribe(tags => {
+            this.availableTags.set(tags);
+        });
+    }
+
     // Via suggestions handler
     // Locality input handlers removed (moved to child component)
 
@@ -551,8 +573,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
 
     viewCustomer(customer: Customer) {
-        // Implementar vista de detalles
-        this.selectCustomer(customer);
+        this.router.navigate(['/clientes', customer.id]);
     }
 
     duplicateCustomer(customer: Customer) {

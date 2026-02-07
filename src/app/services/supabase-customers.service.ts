@@ -188,7 +188,7 @@ export class SupabaseCustomersService {
     // Nota: Usando LEFT JOIN (sin !) para permitir clientes sin dirección
     let query = this.supabase
       .from('clients')
-      .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at)');  // ← Fetch ID and deleted_at for client-side filtering
+      .select('*, direccion:addresses(*), devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(*))');  // ← Fetch ID and deleted_at for client-side filtering
 
     // MULTI-TENANT: Filtrar por company_id del usuario autenticado
     const companyId = this.authService.companyId();
@@ -231,7 +231,7 @@ export class SupabaseCustomersService {
 
         // Schema cache may lack relation: fallback without embed
         if ((error as any)?.code === 'PGRST200') {
-          let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)'); // Try with devices even in fallback if possible, or revert to * if failing again?
+          let q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at), clients_tags(global_tags(*))'); // Try with devices even in fallback if possible, or revert to * if failing again?
           // If PGRST200 happened on main query, it might be due to devices embed?
           // But usually fallback queries are simpler.
           // Let's stick to * but assume we might miss devices if embed fails.
@@ -311,7 +311,7 @@ export class SupabaseCustomersService {
       source: client.source,
       assigned_to: client.assigned_to,
       industry: client.industry,
-      tags: client.tags || [],
+      // tags: client.tags || [], // Removed duplicate
       website: client.website,
       payment_method: client.payment_method,
       payment_terms: client.payment_terms,
@@ -344,7 +344,8 @@ export class SupabaseCustomersService {
       access_restrictions: client.access_restrictions ?? undefined,
       last_accessed_at: client.last_accessed_at ?? undefined,
       access_count: client.access_count ?? undefined,
-      devices: client.devices || []
+      devices: client.devices || [],
+      tags: client.clients_tags?.map((t: any) => t.global_tags) || []
     } as Customer;
   }
 

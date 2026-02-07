@@ -74,6 +74,7 @@ export interface Customer {
   deletion_reason?: string;
   anonymized_at?: string;
   is_minor?: boolean;
+  notes?: string;
   parental_consent_verified?: boolean;
   parental_consent_date?: string;
   data_minimization_applied?: boolean;
