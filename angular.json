@@ -27,7 +27,8 @@
             "inlineStyleLanguage": "scss",
             "allowedCommonJsDependencies": [
               "crypto-js",
-              "node-forge"
+              "node-forge",
+              "qrcode"
             ],
             "assets": [
               "src/assets",
