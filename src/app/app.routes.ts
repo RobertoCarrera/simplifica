@@ -59,6 +59,11 @@ export const routes: Routes = [
         canActivate: [StaffGuard]
     },
     {
+        path: 'clientes/:id',
+        loadComponent: () => import('./features/customers/profile/client-profile.component').then(m => m.ClientProfileComponent),
+        canActivate: [StaffGuard]
+    },
+    {
         path: 'webmail-admin',
         loadComponent: () => import('./features/admin-webmail/admin-webmail.component').then(m => m.AdminWebmailComponent),
         data: { title: 'Admin Webmail' }

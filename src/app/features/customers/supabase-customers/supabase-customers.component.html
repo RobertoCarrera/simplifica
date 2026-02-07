@@ -21,6 +21,16 @@
                 </div>
 
                 <div class="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+
+                    <!-- Tag Filter -->
+                    <select [ngModel]="selectedTagId()" (ngModelChange)="selectedTagId.set($event)"
+                        class="pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="ALL">Todas las etiquetas</option>
+                        @for (tag of availableTags(); track tag.id) {
+                        <option [value]="tag.id">{{ tag.name }}</option>
+                        }
+                    </select>
+
                     <select [(ngModel)]="sortBy" (change)="onFiltersChange()"
                         class="pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500">
                         <option value="created_at">Fecha creación</option>
@@ -104,6 +114,12 @@
                                     <div [id]="'gdpr-menu-' + customer.id"
                                         class="gdpr-dropdown hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-20 overflow-hidden text-sm divide-y divide-gray-100 dark:divide-gray-700">
                                         <div class="py-1">
+                                            <button (click)="viewCustomer(customer)"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center font-medium text-blue-600 dark:text-blue-400">
+                                                <i
+                                                    class="fas fa-id-card w-5 bg-blue-50 dark:bg-blue-900/30 rounded-full p-1 text-xs flex items-center justify-center mr-2"></i>
+                                                Ver Ficha Completa
+                                            </button>
                                             <button (click)="editCustomer(customer)"
                                                 [disabled]="!hasPendingRectification(customer)"
                                                 [class.opacity-50]="!hasPendingRectification(customer)"
@@ -140,8 +156,9 @@
                             </div>
 
                             <!-- Customer Header -->
-                            <div class="flex items-start gap-4 mb-4 pr-8">
-                                <div class="relative shrink-0">
+                            <div class="flex items-start gap-4 mb-4 pr-8 cursor-pointer group"
+                                (click)="viewCustomer(customer)">
+                                <div class="relative shrink-0 transition-transform group-hover:scale-105">
                                     <div class="w-12 h-12 rounded-full flex items-center justify-center text-gray-600 font-bold text-lg shadow-sm"
                                         [style.background]="customer.avatarGradient">
                                         {{ customer.initials }}
@@ -150,7 +167,7 @@
                                 </div>
 
                                 <div class="min-w-0 flex-1">
-                                    <h3 class="font-semibold text-gray-900 dark:text-white truncate"
+                                    <h3 class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
                                         [title]="customer.displayName">
                                         {{ customer.displayName }}
                                     </h3>
