@@ -8,6 +8,7 @@ import { AuthService } from '../../../services/auth.service';
 import { SimpleSupabaseService } from '../../../services/simple-supabase.service';
 import { SupabaseProfessionalsService, Professional } from '../../../services/supabase-professionals.service';
 import { SupabaseBookingsService } from '../../../services/supabase-bookings.service';
+import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { SkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 
 
@@ -25,10 +26,12 @@ export class BookingSettingsComponent implements OnInit {
     private authService = inject(AuthService);
     private supabase = inject(SimpleSupabaseService);
     private professionalsService = inject(SupabaseProfessionalsService);
+    private customersService = inject(SupabaseCustomersService);
 
     activeTab: 'services' | 'professionals' | 'availability' | 'calendar' = 'services';
     bookableServices: Service[] = [];
     professionals = signal<Professional[]>([]); // New signal
+    clients = signal<any[]>([]); // Clients signal
     calendarEvents: any[] = []; // Typed as any[] initially, will map to CalendarEvent
     loading = true;
     error: string | null = null;
@@ -50,6 +53,7 @@ export class BookingSettingsComponent implements OnInit {
         this.loadCalendarEvents(start, end);
         this.loadProfessionals();
         this.loadAvailabilityConstraints();
+        this.loadClients();
     }
 
     // ... helper methods ...
@@ -94,7 +98,7 @@ export class BookingSettingsComponent implements OnInit {
                 if (schedules.length === 0) return; // Keep defaults
 
                 // Find active days
-                const workingDays = [...new Set(schedules.map(s => s.day_of_week))];
+                const workingDays = [...new Set(schedules.map(s => Number(s.day_of_week)))];
 
                 // Find global min/max hours
                 // Format is "HH:MM:SS"
@@ -127,7 +131,11 @@ export class BookingSettingsComponent implements OnInit {
                     minHour: minH,
                     maxHour: maxH,
                     workingDays: workingDays,
-                    schedules: schedules // Pass raw schedules for detailed slot validation
+
+                    schedules: schedules.map(s => ({
+                        ...s,
+                        day_of_week: Number(s.day_of_week)
+                    }))
                 });
 
                 console.log('🔒 Availability Constraints:', this.bookingConstraints());
@@ -175,6 +183,76 @@ export class BookingSettingsComponent implements OnInit {
             const start = this.addMonths(new Date(), -1);
             const end = this.addMonths(new Date(), 2);
             this.loadCalendarEvents(start, end);
+        }
+    }
+
+    async onEventChange(event: any) {
+        console.log('🔄 Event changed:', event);
+
+        // 1. Validation
+        if (!(event.start instanceof Date) || isNaN(event.start.getTime())) {
+            console.error('❌ Invalid event start date:', event.start);
+            return; // Do not update
+        }
+        if (!(event.end instanceof Date) || isNaN(event.end.getTime())) {
+            console.error('❌ Invalid event end date:', event.end);
+            return; // Do not update
+        }
+
+        // 2. Keep reference to old event for rollback
+        const oldEvent = this.calendarEvents.find(e => e.id === event.id);
+        if (!oldEvent) return;
+
+        // 3. Optimistic Update
+        console.log('⚡ Optimistic Update for:', event.title, 'New Start:', event.start);
+        // Create a new reference for the array AND the event to trigger change detection
+        this.calendarEvents = this.calendarEvents.map(e => e.id === event.id ? { ...event } : e);
+
+        const client = this.supabase.getClient();
+        const integration = this.googleIntegration();
+
+        if (!integration?.metadata?.calendar_id_appointments) {
+            console.warn('⚠️ No calendar config for update - Reverting.');
+            // Rollback
+            this.calendarEvents = this.calendarEvents.map(e => e.id === event.id ? oldEvent : e);
+            return;
+        }
+
+        try {
+            // Map to Google Event format
+            const googleEvent: any = {
+                id: event.id,
+                summary: event.title,
+                description: event.description,
+                start: { dateTime: event.start.toISOString() },
+                end: { dateTime: event.end.toISOString() },
+                attendees: event.attendees // Include attendees to ensure they persist and maybe trigger notifications
+                // location: event.location // if we had it
+            };
+
+            const response = await client.functions.invoke('google-auth', {
+                body: {
+                    action: 'update-event',
+                    calendarId: integration.metadata.calendar_id_appointments,
+                    event: googleEvent
+                }
+            });
+
+            if (response.error) {
+                console.error('❌ Error updating event in Google Calendar (Supabase Error):', response.error);
+                // Rollback on API error
+                this.calendarEvents = this.calendarEvents.map(e => e.id === event.id ? oldEvent : e);
+                console.log('↩️ Rolled back event due to API error');
+                throw response.error;
+            }
+
+            console.log('✅ Event updated in Google Calendar (Success)');
+
+        } catch (error) {
+            console.error('❌ Exception in onEventChange:', error);
+            // Rollback on Exception
+            this.calendarEvents = this.calendarEvents.map(e => e.id === event.id ? oldEvent : e);
+            console.log('↩️ Rolled back event due to Exception');
         }
     }
 
@@ -294,7 +372,8 @@ export class BookingSettingsComponent implements OnInit {
                         description: e.description,
                         location: e.location,
                         color: e.colorId ? undefined : '#4285F4',
-                        type: 'appointment'
+                        type: 'appointment',
+                        attendees: e.attendees || []
                     };
                 });
 
@@ -343,6 +422,31 @@ export class BookingSettingsComponent implements OnInit {
             this.error = 'Error al cargar los servicios reservables';
         } finally {
             this.loading = false;
+        }
+    }
+
+    async loadClients() {
+        const companyId = this.authService.currentCompanyId();
+        if (!companyId) return;
+
+        try {
+            console.log('📡 Fetching clients for company:', companyId);
+            // getCustomers automatically filters by current companyId from AuthService
+            this.customersService.getCustomers({}).subscribe({
+                next: (data) => {
+                    console.log('✅ Clients loaded:', data.length);
+                    const mapped = data.map(c => ({
+                        ...c,
+                        // Map name/apellidos to displayName. Fallback to email if no name.
+                        displayName: `${c.name || ''} ${c.apellidos || ''} (${c.email})`.trim()
+                    }));
+                    this.clients.set(mapped);
+                },
+                error: (err) => console.error('❌ Error loading clients:', err)
+            });
+
+        } catch (err) {
+            console.error('❌ Exception loading clients:', err);
         }
     }
 

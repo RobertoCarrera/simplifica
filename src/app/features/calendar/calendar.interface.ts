@@ -7,12 +7,13 @@ export interface CalendarEvent {
   color?: string;
   description?: string;
   location?: string;
-  attendees?: string[];
+  attendees?: any[];
   type?: 'appointment' | 'meeting' | 'task' | 'reminder';
+  draggable?: boolean;
 }
 
 export interface CalendarView {
-  type: 'month' | 'week' | 'day';
+  type: 'month' | 'week' | '3days' | 'day';
   date: Date;
 }
 

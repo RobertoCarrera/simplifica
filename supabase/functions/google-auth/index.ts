@@ -29,6 +29,7 @@ serve(async (req) => {
         }
 
         const { action, code, redirect_uri, calendarId, timeMin, timeMax, event } = await req.json();
+        console.log('Received Action:', action);
 
         const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID');
         const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET');
@@ -241,7 +242,8 @@ serve(async (req) => {
 
             const accessToken = await getValidAccessToken(publicUser.id, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
 
-            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
+            // Add sendUpdates=all to notify attendees
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=all`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -253,12 +255,51 @@ serve(async (req) => {
             if (!response.ok) {
                 const err = await response.json();
                 console.error('Google Create Event Error:', err);
-                throw new Error('Failed to create event');
+                return new Response(JSON.stringify(err), {
+                    status: response.status,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                });
             }
 
             const createdEvent = await response.json();
 
             return new Response(JSON.stringify({ success: true, event: createdEvent }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+
+        if (action === 'update-event') {
+            if (!calendarId) throw new Error('Missing calendarId');
+            if (!event || !event.id) throw new Error('Missing event data or event ID');
+
+            const { data: publicUser } = await supabaseClient
+                .from('users')
+                .select('id')
+                .eq('auth_user_id', user.id)
+                .single();
+
+            if (!publicUser) throw new Error('User not found');
+
+            const accessToken = await getValidAccessToken(publicUser.id, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(event.id)}?sendUpdates=all`, {
+                method: 'PATCH',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(event),
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                console.error('Google Update Event Error:', err);
+                throw new Error('Failed to update event');
+            }
+
+            const updatedEvent = await response.json();
+
+            return new Response(JSON.stringify({ success: true, event: updatedEvent }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
         }
