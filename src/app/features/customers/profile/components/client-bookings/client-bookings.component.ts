@@ -2,13 +2,16 @@ import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SupabaseBookingsService, Booking } from '../../../../../services/supabase-bookings.service';
-// import { CalendarActionModalComponent } from '../../../../calendar/modal/calendar-action-modal/calendar-action-modal.component';
+import { SupabaseProfessionalsService } from '../../../../../services/supabase-professionals.service';
+import { SimpleSupabaseService } from '../../../../../services/simple-supabase.service';
+import { AuthService } from '../../../../../services/auth.service';
 import { ToastService } from '../../../../../services/toast.service';
+import { EventFormComponent } from '../../../../settings/booking/event-form/event-form.component';
 
 @Component({
     selector: 'app-client-bookings',
     standalone: true,
-    imports: [CommonModule],
+    imports: [CommonModule, EventFormComponent],
     template: `
     <div class="space-y-6">
         <!-- Header Actions -->
@@ -87,17 +90,16 @@ import { ToastService } from '../../../../../services/toast.service';
             </div>
         </div>
 
-        <!-- Reuse Calendar Action Modal for Creating/Editing -->
-        <!-- TODO: Restore modal once available -->
-        <!-- <app-calendar-action-modal 
-            #actionModal
-            [isOpen]="isModalOpen()"
-            [services]="availableServices()"
-            [clients]="[clientData]" 
-            (closeModal)="isModalOpen.set(false)"
-            (saveAction)="handleSaveBooking($event)"
-            (deleteAction)="handleDeleteBooking($event)"
-        ></app-calendar-action-modal> -->
+        <!-- Event Form Modal -->
+        <app-event-form
+            *ngIf="isModalOpen()"
+            [calendarId]="calendarId()"
+            [professionals]="professionals()"
+            [bookableServices]="availableServices()"
+            [clients]="[clientData]"
+            (close)="isModalOpen.set(false)"
+            (created)="handleBookingCreated()"
+        ></app-event-form>
     </div>
   `
 })
@@ -106,20 +108,25 @@ export class ClientBookingsComponent implements OnInit {
     @Input() clientData: any = null;
 
     bookingsService = inject(SupabaseBookingsService);
+    professionalsService = inject(SupabaseProfessionalsService);
+    supabase = inject(SimpleSupabaseService);
+    authService = inject(AuthService);
     toast = inject(ToastService);
 
     bookings = signal<Booking[]>([]);
     isLoading = signal(false);
 
-    // Modal
+    // Modal & Data for Modal
     isModalOpen = signal(false);
-    // @ViewChild('actionModal') actionModal!: CalendarActionModalComponent;
-
     availableServices = signal<any[]>([]);
+    professionals = signal<any[]>([]);
+    calendarId = signal<string | undefined>(undefined);
 
     ngOnInit() {
         this.loadBookings();
         this.loadServices();
+        this.loadProfessionals();
+        this.loadCalendarConfig();
     }
 
     async loadBookings() {
@@ -143,7 +150,6 @@ export class ClientBookingsComponent implements OnInit {
     }
 
     async loadServices() {
-        // Fetch services for the modal (when active)
         const { data } = await this.bookingsService['supabase']
             .from('services')
             .select('*')
@@ -152,20 +158,58 @@ export class ClientBookingsComponent implements OnInit {
         if (data) this.availableServices.set(data);
     }
 
+    loadProfessionals() {
+        this.professionalsService.getProfessionals().subscribe({
+            next: (data) => this.professionals.set(data),
+            error: (err) => console.error('Error loading professionals', err)
+        });
+    }
+
+    async loadCalendarConfig() {
+        try {
+            const client = this.supabase.getClient();
+            const { data: { user } } = await client.auth.getUser();
+            if (!user) return;
+
+            // Get public user ID
+            const { data: publicUser } = await client
+                .from('users')
+                .select('id')
+                .eq('auth_user_id', user.id)
+                .single();
+
+            if (!publicUser) return;
+
+            const { data: integ } = await client
+                .from('integrations')
+                .select('metadata')
+                .eq('user_id', publicUser.id)
+                .eq('provider', 'google_calendar')
+                .single();
+
+            if (integ?.metadata?.calendar_id_appointments) {
+                this.calendarId.set(integ.metadata.calendar_id_appointments);
+            }
+        } catch (err) {
+            console.error('Error loading calendar config', err);
+        }
+    }
+
     openNewBooking() {
-        // this.isModalOpen.set(true);
-        // ...
-        this.toast.info('En construcción', 'La funcionalidad de crear cita desde perfil estará disponible pronto.');
+        if (!this.calendarId()) {
+            this.toast.error('Configuración incompleta', 'No se ha configurado un calendario de Google para las citas.');
+            return;
+        }
+        this.isModalOpen.set(true);
     }
 
     editBooking(booking: Booking) {
-        // this.isModalOpen.set(true);
-        // ...
-        this.toast.info('En construcción', 'La funcionalidad de editar cita desde perfil estará disponible pronto.');
+        this.toast.info('En construcción', 'La edición de citas desde aquí estará disponible pronto. Por favor, usa la vista de calendario.');
     }
 
-    async handleSaveBooking(event: any) {
-        // ... existing logic ...
+    handleBookingCreated() {
+        this.loadBookings();
+        this.isModalOpen.set(false);
     }
 
     // Helpers

@@ -2,8 +2,8 @@ import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SupabaseInvoicesService } from '../../../../../services/supabase-invoices.service';
 import { SupabaseQuotesService } from '../../../../../services/supabase-quotes.service';
-import { Invoice, InvoiceStatus } from '../../../../../models/invoice.model';
-import { Quote, QuoteStatus } from '../../../../../models/quote.model';
+import { Invoice, InvoiceStatus, CreateInvoiceDTO, PaymentMethod } from '../../../../../models/invoice.model';
+import { Quote, QuoteStatus, CreateQuoteDTO } from '../../../../../models/quote.model';
 import { ToastService } from '../../../../../services/toast.service';
 import { Router } from '@angular/router';
 
@@ -40,13 +40,14 @@ import { Router } from '@angular/router';
 
             <!-- Action -->
             <button (click)="createDocument()" 
+                [disabled]="isCreating()"
                 [class.bg-blue-600]="activeTab() === 'invoices'"
                 [class.hover:bg-blue-700]="activeTab() === 'invoices'"
                 [class.bg-purple-600]="activeTab() === 'quotes'"
                 [class.hover:bg-purple-700]="activeTab() === 'quotes'"
-                class="px-4 py-2 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors">
-                <i class="fas fa-plus"></i> 
-                {{ activeTab() === 'invoices' ? 'Nueva Factura' : 'Nuevo Presupuesto' }}
+                class="px-4 py-2 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fas" [class.fa-plus]="!isCreating()" [class.fa-spinner]="isCreating()" [class.fa-spin]="isCreating()"></i> 
+                {{ isCreating() ? 'Creando...' : (activeTab() === 'invoices' ? 'Nueva Factura' : 'Nuevo Presupuesto') }}
             </button>
         </div>
 
@@ -89,10 +90,12 @@ import { Router } from '@angular/router';
                         </div>
                         
                         <div class="flex gap-2">
+                             <button (click)="viewInvoice(invoice)" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium mr-2">
+                                Ver
+                             </button>
                              <button (click)="downloadInvoice(invoice)" title="Descargar PDF" class="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                 <i class="fas fa-download"></i>
                              </button>
-                             <!-- More actions could be dropdown -->
                         </div>
                     </div>
                 </div>
@@ -120,7 +123,6 @@ import { Router } from '@angular/router';
                         </div>
                         
                          <div class="flex gap-2">
-                             <!-- Example action -->
                              <button (click)="viewQuote(quote)" class="text-xs font-medium text-purple-600 hover:underline">Ver</button>
                         </div>
                     </div>
@@ -141,6 +143,7 @@ export class ClientBillingComponent implements OnInit {
 
     activeTab = signal<'invoices' | 'quotes'>('invoices');
     isLoading = signal(false);
+    isCreating = signal(false);
 
     invoices = signal<Invoice[]>([]);
     quotes = signal<Quote[]>([]);
@@ -174,10 +177,51 @@ export class ClientBillingComponent implements OnInit {
     }
 
     createDocument() {
+        this.isCreating.set(true);
+        const today = new Date().toISOString().split('T')[0];
+
         if (this.activeTab() === 'invoices') {
-            this.router.navigate(['/facturas/nueva'], { queryParams: { clientId: this.clientId } });
+            const dto: CreateInvoiceDTO = {
+                client_id: this.clientId,
+                invoice_date: today,
+                items: [],
+                payment_method: PaymentMethod.BANK_TRANSFER, // Default
+                notes: ''
+            };
+
+            this.invoicesService.createInvoice(dto).subscribe({
+                next: (inv) => {
+                    this.isCreating.set(false);
+                    this.toast.success('Factura creada', 'Se ha generado el borrador de factura');
+                    this.router.navigate(['/facturas', inv.id]);
+                },
+                error: (e) => {
+                    this.isCreating.set(false);
+                    console.error(e);
+                    this.toast.error('Error', 'No se pudo crear la factura');
+                }
+            });
         } else {
-            this.router.navigate(['/presupuestos/nuevo'], { queryParams: { clientId: this.clientId } });
+            const dto: CreateQuoteDTO = {
+                client_id: this.clientId,
+                quote_date: today,
+                items: [],
+                title: 'Nuevo Presupuesto',
+                notes: ''
+            };
+
+            this.quotesService.createQuote(dto).subscribe({
+                next: (quote) => {
+                    this.isCreating.set(false);
+                    this.toast.success('Presupuesto creado', 'Se ha generado el borrador de presupuesto');
+                    this.router.navigate(['/presupuestos', quote.id]);
+                },
+                error: (e) => {
+                    this.isCreating.set(false);
+                    console.error(e);
+                    this.toast.error('Error', 'No se pudo crear el presupuesto');
+                }
+            });
         }
     }
 
@@ -195,6 +239,10 @@ export class ClientBillingComponent implements OnInit {
         this.router.navigate(['/presupuestos', quote.id]);
     }
 
+    viewInvoice(invoice: Invoice) {
+        this.router.navigate(['/facturas', invoice.id]);
+    }
+
     // Helpers
     getInvoiceStatusClass(status: InvoiceStatus) {
         switch (status) {
@@ -203,6 +251,7 @@ export class ClientBillingComponent implements OnInit {
             case InvoiceStatus.SENT: return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
             case InvoiceStatus.OVERDUE: return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
             case InvoiceStatus.DRAFT: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400';
+            case InvoiceStatus.APPROVED: return 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400';
             default: return 'bg-gray-100 text-gray-800';
         }
     }
@@ -213,6 +262,7 @@ export class ClientBillingComponent implements OnInit {
             [InvoiceStatus.SENT]: 'Enviada',
             [InvoiceStatus.DRAFT]: 'Borrador',
             [InvoiceStatus.OVERDUE]: 'Vencida',
+            [InvoiceStatus.APPROVED]: 'Aprobada',
         };
         return map[status] || status;
     }

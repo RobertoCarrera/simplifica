@@ -200,9 +200,17 @@ export class ClientProfileComponent implements OnInit {
     activeTab = signal<'ficha' | 'clinical' | 'agenda' | 'billing' | 'documents'>('ficha');
 
     ngOnInit() {
+        // Subscribe to params and queryParams using combineLatest or separate subscriptions
         this.route.params.subscribe(params => {
             const id = params['id'];
             if (id) this.loadCustomer(id);
+        });
+
+        this.route.queryParams.subscribe(params => {
+            const tab = params['tab'];
+            if (tab && ['ficha', 'clinical', 'agenda', 'billing', 'documents'].includes(tab)) {
+                this.setActiveTab(tab);
+            }
         });
     }
 
