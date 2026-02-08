@@ -126,6 +126,12 @@ export class NotificationsComponent {
             this.selectedTicketId.set(notification.reference_id);
         } else if (notification.type === 'gdpr_request') {
             this.selectedGdprRequestId.set(notification.reference_id);
+        } else if (notification.type === 'project_comment') {
+            // Navigate to projects and open the project dialog
+            // We need a way to open the specific project. 
+            // For now, let's just navigate to the projects page.
+            // Ideally, we'd have a query param or route to open the dialog.
+            this.router.navigate(['/projects'], { queryParams: { openProject: notification.reference_id } });
         } else {
             // Just mark as read if no specific view handler
         }
@@ -141,6 +147,7 @@ export class NotificationsComponent {
         if (type === 'ticket_comment') return 'Respuestas Tickets';
         if (type === 'ticket_assigned') return 'Tickets Asignados';
         if (type === 'gdpr_request') return 'Solicitudes RGPD';
+        if (type === 'project_comment') return 'Comentarios Proyectos';
         return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
     }
 
@@ -148,6 +155,7 @@ export class NotificationsComponent {
         if (type.includes('comment')) return 'message-circle';
         if (type.includes('created')) return 'tag';
         if (type.includes('assigned')) return 'alert-circle';
+        if (type === 'project_comment') return 'message-circle';
         return 'bell';
     }
 }

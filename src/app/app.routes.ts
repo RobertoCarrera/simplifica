@@ -84,7 +84,7 @@ export const routes: Routes = [
     { path: 'productos', component: ProductsComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloProductos' } },
     { path: 'servicios', component: SupabaseServicesComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
     { path: 'dispositivos', component: DevicesManagerComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
-    { path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard], data: { moduleKey: 'moduloChat' } },
+    { path: 'chat', component: AnychatComponent, canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloChat' } },
     { path: 'ayuda', component: HelpComponent, canActivate: [AuthGuard] },
     { path: 'notifications', component: NotificationsComponent, canActivate: [AuthGuard] },
     { path: 'analytics', loadComponent: () => import('./features/analytics/dashboard-analytics.component').then(m => m.DashboardAnalyticsComponent), canActivate: [AuthGuard, ModuleGuard], data: { moduleKey: 'moduloAnaliticas' } },
@@ -104,7 +104,7 @@ export const routes: Routes = [
     {
         path: 'projects',
         loadComponent: () => import('./features/projects/projects/projects.component').then(m => m.ProjectsComponent),
-        canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard],
+        canActivate: [AuthGuard, ModuleGuard],
         data: { moduleKey: 'moduloProyectos' }
     },
     // Admin modules management (solo admin)

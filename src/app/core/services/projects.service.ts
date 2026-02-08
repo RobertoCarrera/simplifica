@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Observable, from, map } from 'rxjs';
+import { Observable, from, map, switchMap } from 'rxjs';
 import { Project, ProjectStage, ProjectTask } from '../../models/project';
 import { SupabaseClientService } from '../../services/supabase-client.service';
 
@@ -106,6 +106,35 @@ export class ProjectsService {
                 };
             }) as Project[];
         }));
+    }
+
+    async getProjectById(id: string): Promise<Project | null> {
+        const { data, error } = await this.supabase
+            .from('projects')
+            .select(`
+                *,
+                client:client_id (id, name, apellidos, business_name),
+                tasks:project_tasks (id, is_completed, title, position)
+            `)
+            .eq('id', id)
+            .maybeSingle();
+
+        if (error) {
+            console.error('Error fetching project by id:', error);
+            return null;
+        }
+
+        if (!data) return null;
+
+        const p = data as any;
+        const tasks = (p.tasks || []).sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+
+        return {
+            ...p,
+            tasks,
+            tasks_count: tasks.length,
+            completed_tasks_count: tasks.filter((t: any) => t.is_completed).length
+        } as Project;
     }
 
     createProject(project: Partial<Project>): Observable<Project> {
@@ -265,5 +294,142 @@ export class ProjectsService {
                 return true;
             })
         );
+    }
+
+    // --- Comments ---
+
+    async getComments(projectId: string): Promise<any[]> {
+        const { data, error } = await this.supabase
+            .from('project_comments')
+            .select(`
+                id,
+                content,
+                created_at,
+                user_id,
+                client_id,
+                user:user_id (
+                    email,
+                    name,
+                    surname
+                ),
+                client:client_id (
+                    email,
+                    name
+                )
+            `)
+            .eq('project_id', projectId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        return data || [];
+    }
+
+    async addComment(projectId: string, content: string): Promise<any> {
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
+
+        // Determine if user is internal or client
+        // We'll try to find an internal user first
+        const { data: internalUser } = await this.supabase
+            .from('users')
+            .select('id')
+            .eq('auth_user_id', user.id)
+            .maybeSingle();
+
+        let payload: any = {
+            project_id: projectId,
+            content: content
+        };
+
+        if (internalUser) {
+            payload.user_id = internalUser.id;
+        } else {
+            // Try to find a client
+            const { data: clientUser } = await this.supabase
+                .from('clients')
+                .select('id')
+                .eq('auth_user_id', user.id)
+                .maybeSingle();
+
+            if (clientUser) {
+                payload.client_id = clientUser.id;
+            } else {
+                throw new Error('User profile not found');
+            }
+        }
+
+        const { data, error } = await this.supabase
+            .from('project_comments')
+            .insert(payload)
+            .select(`
+                id,
+                content,
+                created_at,
+                user_id,
+                client_id,
+                user:user_id (
+                    email,
+                    name,
+                    surname
+                ),
+                client:client_id (
+                    email,
+                    name
+                )
+            `)
+            .single();
+
+        if (error) throw error;
+        return data;
+    }
+
+    async markProjectAsRead(projectId: string): Promise<void> {
+        const { error } = await this.supabase
+            .rpc('mark_project_as_read', { p_project_id: projectId });
+
+        if (error) console.error('Error marking project as read:', error);
+    }
+
+    async getUnreadCount(projectId: string): Promise<number> {
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (!user) return 0;
+
+        // Determine identity
+        const { data: internalUser } = await this.supabase
+            .from('users')
+            .select('id')
+            .eq('auth_user_id', user.id)
+            .maybeSingle();
+
+        let lastReadAt = new Date(0).toISOString();
+        let query = this.supabase.from('project_reads').select('last_read_at').eq('project_id', projectId);
+
+        if (internalUser) {
+            query = query.eq('user_id', internalUser.id);
+        } else {
+            const { data: clientUser } = await this.supabase
+                .from('clients')
+                .select('id')
+                .eq('auth_user_id', user.id)
+                .maybeSingle();
+            if (clientUser) {
+                query = query.eq('client_id', clientUser.id);
+            } else {
+                return 0;
+            }
+        }
+
+        const { data: readData } = await query.maybeSingle();
+        if (readData) {
+            lastReadAt = readData.last_read_at;
+        }
+
+        const { count, error } = await this.supabase
+            .from('project_comments')
+            .select('*', { count: 'exact', head: true })
+            .eq('project_id', projectId)
+            .gt('created_at', lastReadAt);
+
+        return count || 0;
     }
 }
