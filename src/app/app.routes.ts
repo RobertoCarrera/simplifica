@@ -103,7 +103,7 @@ export const routes: Routes = [
     { path: 'empresa', component: CompanyAdminComponent, canActivate: [AuthGuard, OwnerAdminGuard] },
     {
         path: 'projects',
-        loadComponent: () => import('./features/projects/kanban-board/kanban-board.component').then(m => m.KanbanBoardComponent),
+        loadComponent: () => import('./features/projects/projects/projects.component').then(m => m.ProjectsComponent),
         canActivate: [AuthGuard, OwnerAdminGuard, ModuleGuard],
         data: { moduleKey: 'moduloProyectos' }
     },

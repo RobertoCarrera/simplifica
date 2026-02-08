@@ -1,0 +1,48 @@
+<div class="h-full flex flex-col bg-white dark:bg-gray-900 absolute inset-0">
+    <!-- Timeline Header (Months) -->
+    <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 sticky top-0 z-20">
+        <div
+            class="w-64 flex-shrink-0 p-3 border-r border-gray-200 dark:border-gray-700 font-semibold text-gray-700 dark:text-gray-200 text-sm bg-gray-50 dark:bg-gray-800 sticky left-0 z-30">
+            Proyecto
+        </div>
+        <div class="flex-1 relative overflow-hidden h-10">
+            <div *ngFor="let month of months"
+                class="absolute top-0 bottom-0 border-l border-gray-300 dark:border-gray-600 px-2 pt-2 text-xs font-medium text-gray-500 dark:text-gray-400 truncate whitespace-nowrap"
+                [style.left.%]="((month.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays) * 100">
+                {{ month | date:'MMMM yyyy' }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline Body -->
+    <div class="flex-1 overflow-auto relative">
+        <div class="min-h-full">
+            <!-- Projects Rows -->
+            <div *ngFor="let project of projects"
+                class="flex border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors h-12 group relative">
+                <!-- Project Info Column -->
+                <div
+                    class="w-64 flex-shrink-0 px-3 border-r border-gray-200 dark:border-gray-700 flex flex-col justify-center truncate sticky left-0 bg-white dark:bg-gray-900 z-10 group-hover:bg-gray-50 dark:group-hover:bg-gray-800/50 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)]">
+                    <div class="font-medium text-sm text-gray-900 dark:text-gray-100 truncate" title="{{project.name}}">
+                        {{ project.name }}</div>
+                    <div class="text-xs text-gray-500 truncate">{{ getClientName(project) }}</div>
+                </div>
+
+                <!-- Timeline Bar area -->
+                <div class="flex-1 relative h-full">
+                    <!-- Bar -->
+                    <div class="absolute top-2 h-8 rounded shadow-sm border border-white/20 flex items-center px-2 text-xs text-white cursor-pointer hover:brightness-110 transition-all truncate"
+                        [ngClass]="getPriorityColor(project.priority)" [style]="getProjectStyle(project)"
+                        (click)="projectClick.emit(project)"
+                        title="{{ project.name }} ({{ project.start_date | date:'shortDate' }} - {{ project.end_date | date:'shortDate' }})">
+                        <span class="truncate drop-shadow-md font-medium">{{ project.name }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div *ngIf="projects.length === 0" class="p-8 text-center text-gray-400">
+                No hay proyectos visibles en este periodo.
+            </div>
+        </div>
+    </div>
+</div>

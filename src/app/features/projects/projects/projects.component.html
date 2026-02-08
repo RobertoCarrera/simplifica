@@ -1,0 +1,44 @@
+<div class="h-full flex flex-col">
+    <!-- Header with View Switcher -->
+    <div
+        class="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Proyectos</h1>
+
+        <!-- View Switcher -->
+        <div class="flex bg-gray-800/50 p-1 rounded-lg">
+            <button (click)="toggleView('kanban')" [class.bg-gray-700]="currentView === 'kanban'"
+                [class.text-white]="currentView === 'kanban'"
+                class="px-3 py-1.5 text-xs font-medium rounded-md text-gray-400 hover:text-white transition-all">
+                Tablero
+            </button>
+            <button (click)="toggleView('timeline')" [class.bg-gray-700]="currentView === 'timeline'"
+                [class.text-white]="currentView === 'timeline'"
+                class="px-3 py-1.5 text-xs font-medium rounded-md text-gray-400 hover:text-white transition-all">
+                Cronograma
+            </button>
+            <button (click)="toggleView('list')" [class.bg-gray-700]="currentView === 'list'"
+                [class.text-white]="currentView === 'list'"
+                class="px-3 py-1.5 text-xs font-medium rounded-md text-gray-400 hover:text-white transition-all">
+                Tabla
+            </button>
+        </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="flex-1 overflow-hidden relative">
+        <app-kanban-board *ngIf="currentView === 'kanban'" class="h-full block"></app-kanban-board>
+
+        <app-timeline-view *ngIf="currentView === 'timeline'" [projects]="projects"
+            (projectClick)="openEditProject($event)" class="h-full block overflow-auto bg-gray-50 dark:bg-gray-900">
+        </app-timeline-view>
+
+        <app-list-view *ngIf="currentView === 'list'" [projects]="projects" [stages]="stages"
+            (projectClick)="openEditProject($event)" class="h-full block overflow-hidden">
+        </app-list-view>
+    </div>
+
+    <!-- Project Dialog (Shared/Timeline context) -->
+    <app-project-dialog *ngIf="isProjectDialogVisible" [visible]="isProjectDialogVisible" [project]="selectedProject"
+        [stages]="stages" (close)="onProjectDialogClose($event)">
+    </app-project-dialog>
+</div>
