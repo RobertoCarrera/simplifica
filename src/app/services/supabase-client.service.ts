@@ -99,11 +99,7 @@ export class SupabaseClientService {
           persistSession: true,
           autoRefreshToken: true,
           // CRITICAL FIX: Bypass navigator.locks entirely to prevent NavigatorLockAcquireTimeoutError
-          // This forces the client to run without exclusive locks, which is safe for this app's architecture
-          lock: async (name: string, acquireTimeout: number, acquireFn: (lock: any) => Promise<any>) => {
-            // Immediately execute the callback without real locking
-            return await acquireFn({ name });
-          }
+          lock: (name, _timeout, fn) => fn(),
         },
         realtime: {
           params: {

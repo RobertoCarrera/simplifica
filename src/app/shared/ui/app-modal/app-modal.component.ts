@@ -11,6 +11,7 @@ import { CommonModule } from '@angular/common';
 export class AppModalComponent implements OnChanges, OnDestroy {
   @Input() visible: boolean = false;
   @Input() dismissible: boolean = true;
+  @Input() maxWidth: string = '640px';
   @Output() close = new EventEmitter<void>();
 
   ngOnChanges(changes: SimpleChanges) {

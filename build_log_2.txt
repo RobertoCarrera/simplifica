@@ -12,47 +12,44 @@
 
 [33m❯[39m Building...
 [32m✔[39m Building...
-Application bundle generation failed. [16.012 seconds]
+Application bundle generation failed. [15.355 seconds]
 
-[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../../core/services/supabase-client.service"[0m
+[1m[33m[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mNG8105: Your ngFor is missing a value. Did you forget to add the `let` keyword?[0m [1m[35m[plugin angular-compiler][0m
 
-    src/app/core/services/contracts.service.ts:2:38:
-[37m      2 │ ...ClientService } from [32m'../../core/services/supabase-client.service'[37m;
-        ╵                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    src/app/features/projects/kanban-board/kanban-board.component.html:34:26:
+[37m      34 │                     <div *[32mngFor="letproject [37mof column.projects" cd...
+         ╵                           [32m~~~~~~~~~~~~~~~~~~[0m
 
+  Error occurs in the template of component KanbanBoardComponent.
 
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2307: Cannot find module '../../core/services/supabase-client.service' or its corresponding type declarations.[0m [1m[35m[plugin angular-compiler][0m
+    src/app/features/projects/kanban-board/kanban-board.component.ts:23:15:
+[37m      23 │   templateUrl: [32m'./kanban-board.component.html'[37m,
+         ╵                [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
 
-    src/app/core/services/contracts.service.ts:2:38:
-[37m      2 │ ...ClientService } from [32m'../../core/services/supabase-client.service'[37m;
-        ╵                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[39m[22m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG9: Property 'project' does not exist on type 'KanbanBoardComponent'.[0m [1m[35m[plugin angular-compiler][0m
 
+    src/app/features/projects/kanban-board/kanban-board.component.html:34:87:
+[37m      34 │ ...or="letproject of column.projects" cdkDrag [cdkDragData]="[32mproject[37m"
+         ╵                                                              [32m~~~~~~~[0m
 
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2571: Object is of type 'unknown'.[0m [1m[35m[plugin angular-compiler][0m
+  Error occurs in the template of component KanbanBoardComponent.
 
-    src/app/core/services/contracts.service.ts:34:23:
-[37m      34 │     private supabase = [32minject(SupabaseClientService)[37m.supabase;
-         ╵                        [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
-
-
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../../../../core/services/auth.service"[0m
-
-    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:4:28:
-[37m      4 │ import { AuthService } from [32m'../../../../core/services/auth.service'[37m;
-        ╵                             [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    src/app/features/projects/kanban-board/kanban-board.component.ts:23:15:
+[37m      23 │   templateUrl: [32m'./kanban-board.component.html'[37m,
+         ╵                [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
 
 
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2307: Cannot find module '../../../../core/services/auth.service' or its corresponding type declarations.[0m [1m[35m[plugin angular-compiler][0m
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mNG9: Property 'project' does not exist on type 'KanbanBoardComponent'.[0m [1m[35m[plugin angular-compiler][0m
 
-    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:4:28:
-[37m      4 │ import { AuthService } from [32m'../../../../core/services/auth.service'[37m;
-        ╵                             [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    src/app/features/projects/kanban-board/kanban-board.component.html:36:53:
+[37m      36 │ ...         <app-project-card [project]="[32mproject[37m"></app-project-card>
+         ╵                                          [32m~~~~~~~[0m
 
+  Error occurs in the template of component KanbanBoardComponent.
 
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2571: Object is of type 'unknown'.[0m [1m[35m[plugin angular-compiler][0m
-
-    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:110:25:
-[37m      110 │       const user = await [32mthis.authService[37m.getCurrentUser();
-          ╵                          [32m~~~~~~~~~~~~~~~~[0m
+    src/app/features/projects/kanban-board/kanban-board.component.ts:23:15:
+[37m      23 │   templateUrl: [32m'./kanban-board.component.html'[37m,
+         ╵                [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
 
 [39m[22m

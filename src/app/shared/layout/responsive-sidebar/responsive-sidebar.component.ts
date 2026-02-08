@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building, Calendar } from 'lucide-angular';
+import { LucideAngularModule, LUCIDE_ICONS, LucideIconProvider, Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building, Calendar, LayoutGrid } from 'lucide-angular';
 import { PWAService } from '../../../services/pwa.service';
 import { SidebarStateService } from '../../../services/sidebar-state.service';
 import { DevRoleService } from '../../../services/dev-role.service';
@@ -40,7 +40,7 @@ interface MenuItem {
   providers: [
     {
       provide: LUCIDE_ICONS,
-      useValue: new LucideIconProvider({ Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building, Calendar })
+      useValue: new LucideIconProvider({ Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp, Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft, ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, ChevronDown, Check, Building, Calendar, LayoutGrid })
     }
   ],
   templateUrl: './responsive-sidebar.component.html',
@@ -136,7 +136,7 @@ export class ResponsiveSidebarComponent implements OnInit {
   readonly icons = {
     Home, Users, Ticket, MessageCircle, FileText, Receipt, TrendingUp,
     Package, Wrench, Settings, Sparkles, HelpCircle, ChevronLeft,
-    ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, Calendar
+    ChevronRight, LogOut, Smartphone, Download, FileQuestion, FileStack, Bell, Mail, Shield, Calendar, LayoutGrid
   };
 
   private allMenuItems: MenuItem[] = [
@@ -260,6 +260,14 @@ export class ResponsiveSidebarComponent implements OnInit {
       route: '/webmail-admin',
       module: 'core',
       roleOnly: 'adminOnlyWebmail' // Specific role for admin webmail
+    },
+    {
+      id: 12, // Next available ID (after 11)
+      label: 'Proyectos',
+      icon: 'layout-grid', // Use a suitable icon, e.g. layout-grid or similar if available, or 'folder-kanban'
+      route: '/projects',
+      module: 'production',
+      moduleKey: 'moduloProyectos'
     },
     {
       id: 99,
@@ -508,6 +516,8 @@ export class ResponsiveSidebarComponent implements OnInit {
         return 'moduloFacturas';
       case '/chat':
         return 'moduloChat';
+      case '/projects':
+        return 'moduloProyectos';
       default:
         return null; // elementos sin control por módulo
     }
