@@ -23,6 +23,8 @@ export class ProjectsComponent implements OnInit {
   selectedProject: Project | null = null;
   stages: any[] = []; // We might need stages for the dialog
 
+  showArchived = false;
+
   constructor(private projectsService: ProjectsService) { }
 
   ngOnInit() {
@@ -30,7 +32,7 @@ export class ProjectsComponent implements OnInit {
   }
 
   loadData() {
-    this.projectsService.getProjects().subscribe(projects => {
+    this.projectsService.getProjects(this.showArchived).subscribe(projects => {
       this.projects = projects;
     });
 
@@ -38,6 +40,11 @@ export class ProjectsComponent implements OnInit {
     this.projectsService.getStages().subscribe(stages => {
       this.stages = stages;
     });
+  }
+
+  toggleArchived() {
+    this.showArchived = !this.showArchived;
+    this.loadData();
   }
 
   toggleView(view: 'kanban' | 'timeline' | 'list') {
@@ -55,5 +62,10 @@ export class ProjectsComponent implements OnInit {
     if (refresh) {
       this.loadData();
     }
+  }
+
+  openNewProject() {
+    this.selectedProject = null;
+    this.isProjectDialogVisible = true;
   }
 }

@@ -28,6 +28,7 @@ export interface Project {
     end_date?: string;
     priority?: 'low' | 'medium' | 'high' | 'critical';
     position: number;
+    is_archived?: boolean;
     created_at?: string;
     updated_at?: string;
 
