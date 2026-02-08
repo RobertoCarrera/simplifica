@@ -12,75 +12,33 @@
 
 [33m❯[39m Building...
 [32m✔[39m Building...
-Application bundle generation failed. [16.263 seconds]
+Application bundle generation failed. [15.173 seconds]
 
-[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../../../core/services/contracts.service"[0m
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2307: Cannot find module '../../../../core/services/projects.service' or its corresponding type declarations.[0m [1m[35m[plugin angular-compiler][0m
 
-    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:3:43:
-[37m      3 │ ...ervice, Contract } from [32m'../../../core/services/contracts.service'[37m;
-        ╵                            [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
-
-
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2307: Cannot find module '../../../core/services/contracts.service' or its corresponding type declarations.[0m [1m[35m[plugin angular-compiler][0m
-
-    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:3:43:
-[37m      3 │ ...ervice, Contract } from [32m'../../../core/services/contracts.service'[37m;
-        ╵                            [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    src/app/features/projects/kanban-board/kanban-board.component.ts:9:32:
+[37m      9 │ ...rojectsService } from [32m'../../../../core/services/projects.service'[37m;
+        ╵                          [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
 
 
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "../../../core/services/auth.service"[0m
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2307: Cannot find module '../../../../models/project' or its corresponding type declarations.[0m [1m[35m[plugin angular-compiler][0m
 
-    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:4:28:
-[37m      4 │ import { AuthService } from [32m'../../../core/services/auth.service'[37m;
-        ╵                             [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
-
-
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2307: Cannot find module '../../../core/services/auth.service' or its corresponding type declarations.[0m [1m[35m[plugin angular-compiler][0m
-
-    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:4:28:
-[37m      4 │ import { AuthService } from [32m'../../../core/services/auth.service'[37m;
-        ╵                             [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+    src/app/features/projects/kanban-board/kanban-board.component.ts:10:38:
+[37m      10 │ import { Project, ProjectStage } from [32m'../../../../models/project'[37m;
+         ╵                                       [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
 
 
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2571: Object is of type 'unknown'.[0m [1m[35m[plugin angular-compiler][0m
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS-992003: No suitable injection token for parameter 'projectsService' of class 'KanbanBoardComponent'.
+  Consider using the @Inject decorator to specify an injection token.[0m [1m[35m[plugin angular-compiler][0m
 
-    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:110:31:
-[37m      110 │             const user = await [32mthis.authService[37m.getCurrentUser();
-          ╵                                [32m~~~~~~~~~~~~~~~~[0m
+    src/app/features/projects/kanban-board/kanban-board.component.ts:30:22:
+[37m      30 │   constructor(private [32mprojectsService[37m: ProjectsService) { }
+         ╵                       [32m~~~~~~~~~~~~~~~[0m
 
+  This type does not have a value, so it cannot be used as injection token.
 
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2571: Object is of type 'unknown'.[0m [1m[35m[plugin angular-compiler][0m
-
-    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:118:47:
-[37m      118 │ ...st { data: clientData } = await [32mthis.contractsService[37m['supabase']
-          ╵                                    [32m~~~~~~~~~~~~~~~~~~~~~[0m
-
-
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2571: Object is of type 'unknown'.[0m [1m[35m[plugin angular-compiler][0m
-
-    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:125:16:
-[37m      125 │                 [32mthis.contractsService[37m.getClientContracts(clientDa...
-          ╵                 [32m~~~~~~~~~~~~~~~~~~~~~[0m
-
-
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS7006: Parameter 'data' implicitly has an 'any' type.[0m [1m[35m[plugin angular-compiler][0m
-
-    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:126:27:
-[37m      126 │                     next: ([32mdata[37m) => {
-          ╵                            [32m~~~~[0m
-
-
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS7006: Parameter 'err' implicitly has an 'any' type.[0m [1m[35m[plugin angular-compiler][0m
-
-    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:130:28:
-[37m      130 │                     error: ([32merr[37m) => {
-          ╵                             [32m~~~[0m
-
-
-[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2571: Object is of type 'unknown'.[0m [1m[35m[plugin angular-compiler][0m
-
-    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:163:26:
-[37m      163 │ ...   const url = await [32mthis.contractsService[37m.getContractPdfUrl(c...
-          ╵                         [32m~~~~~~~~~~~~~~~~~~~~~[0m
+    src/app/features/projects/kanban-board/kanban-board.component.ts:30:39:
+[37m      30 │   constructor(private projectsService: [32mProjectsService[37m) { }
+         ╵                                        [32m~~~~~~~~~~~~~~~[0m
 
 [39m[22m
