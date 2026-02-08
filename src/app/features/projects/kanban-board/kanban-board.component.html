@@ -53,9 +53,7 @@
     </div>
 </div>
 
-<!-- Project Dialog -->
-<app-project-dialog [visible]="isProjectDialogVisible" [project]="selectedProject" [stages]="stages"
-    (close)="onProjectDialogClose($event)"></app-project-dialog>
+
 
 <app-column-dialog [visible]="isColumnDialogVisible" [stageToEdit]="selectedStage"
     (close)="onColumnDialogClose($event)">

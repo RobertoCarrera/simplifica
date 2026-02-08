@@ -44,4 +44,5 @@ export interface Project {
     // UI Helpers
     tasks_count?: number;
     completed_tasks_count?: number;
+    unread_comments_count?: number;
 }

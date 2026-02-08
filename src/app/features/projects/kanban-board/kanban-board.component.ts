@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnChanges, EventEmitter, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   CdkDragDrop,
@@ -9,9 +9,7 @@ import {
 import { ProjectsService } from '../../../core/services/projects.service';
 import { Project, ProjectStage } from '../../../models/project';
 import { ProjectCardComponent } from '../components/project-card/project-card.component';
-import { ProjectDialogComponent } from '../components/project-dialog/project-dialog.component';
 import { ColumnDialogComponent } from '../components/column-dialog/column-dialog.component';
-import { Observable, forkJoin } from 'rxjs';
 
 interface KanbanColumn {
   stage: ProjectStage;
@@ -21,41 +19,33 @@ interface KanbanColumn {
 @Component({
   selector: 'app-kanban-board',
   standalone: true,
-  imports: [CommonModule, DragDropModule, ProjectCardComponent, ProjectDialogComponent, ColumnDialogComponent],
+  imports: [CommonModule, DragDropModule, ProjectCardComponent, ColumnDialogComponent], // Removed ProjectDialogComponent
   templateUrl: './kanban-board.component.html',
   styleUrl: './kanban-board.component.scss'
 })
-export class KanbanBoardComponent implements OnInit {
+export class KanbanBoardComponent implements OnChanges {
+  @Input() projects: Project[] = [];
+  @Input() stages: ProjectStage[] = [];
+  @Output() editProject = new EventEmitter<Project>();
+  @Output() refresh = new EventEmitter<void>();
+
   columns: KanbanColumn[] = [];
-  isLoading = true;
 
   constructor(private projectsService: ProjectsService) { }
 
-  ngOnInit() {
-    this.loadBoardData();
+  ngOnChanges() {
+    this.updateColumns();
   }
 
-  loadBoardData() {
-    this.isLoading = true;
-    forkJoin({
-      stages: this.projectsService.getStages(),
-      projects: this.projectsService.getProjects()
-    }).subscribe({
-      next: ({ stages, projects }) => {
-        this.stages = stages;
-        this.columns = stages.map((stage: ProjectStage) => ({
-          stage,
-          projects: projects
-            .filter((p: Project) => p.stage_id === stage.id)
-            .sort((a: Project, b: Project) => (a.position - b.position))
-        }));
-        this.isLoading = false;
-      },
-      error: (err) => {
-        console.error('Error loading board data:', err);
-        this.isLoading = false;
-      }
-    });
+  updateColumns() {
+    if (!this.stages || !this.projects) return;
+
+    this.columns = this.stages.map((stage: ProjectStage) => ({
+      stage,
+      projects: this.projects
+        .filter((p: Project) => p.stage_id === stage.id)
+        .sort((a: Project, b: Project) => (a.position - b.position))
+    }));
   }
 
   drop(event: CdkDragDrop<Project[]>) {
@@ -78,7 +68,9 @@ export class KanbanBoardComponent implements OnInit {
       // Update project stage in DB
       this.projectsService.updateProject(movedProject.id, {
         stage_id: newStageId
-      }).subscribe();
+      }).subscribe(() => {
+        this.refresh.emit();
+      });
 
       // Update positions in new column
       this.updatePositions(event.container.data);
@@ -93,48 +85,29 @@ export class KanbanBoardComponent implements OnInit {
     });
   }
 
-  // Dialog state
-  isProjectDialogVisible = false;
-  selectedProject: Project | null = null;
-  stages: ProjectStage[] = []; // Store stages flat for dialog
-
-  openNewProject() {
-    this.selectedProject = null;
-    this.isProjectDialogVisible = true;
-  }
-
   openEditProject(project: Project) {
-    this.selectedProject = project;
-    this.isProjectDialogVisible = true;
-  }
-
-  onProjectDialogClose(refresh: boolean) {
-    this.isProjectDialogVisible = false;
-    this.selectedProject = null;
-    if (refresh) {
-      this.loadBoardData();
-    }
+    this.editProject.emit(project);
   }
 
   // Column Dialog
   isColumnDialogVisible = false;
-  selectedStage: ProjectStage | null = null; // New property
+  selectedStage: ProjectStage | null = null;
 
   openNewColumn() {
-    this.selectedStage = null; // Reset for new column
+    this.selectedStage = null;
     this.isColumnDialogVisible = true;
   }
 
-  openEditColumn(stage: ProjectStage) { // New method
+  openEditColumn(stage: ProjectStage) {
     this.selectedStage = stage;
     this.isColumnDialogVisible = true;
   }
 
   onColumnDialogClose(refresh: boolean) {
     this.isColumnDialogVisible = false;
-    this.selectedStage = null; // Reset selected stage
+    this.selectedStage = null;
     if (refresh) {
-      this.loadBoardData();
+      this.refresh.emit();
     }
   }
 

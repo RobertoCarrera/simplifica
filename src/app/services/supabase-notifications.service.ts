@@ -56,12 +56,23 @@ export class SupabaseNotificationsService implements OnDestroy {
         if (!userId) return;
 
         try {
-            const { data, error } = await this.supabase.getClient()
+            // Determine identity (Internal vs Client)
+            const { data: { user } } = await this.supabase.getClient().auth.getUser();
+            const isClient = this.authService.userProfile?.role === 'client';
+
+            let query = this.supabase.getClient()
                 .from('notifications')
                 .select('*')
-                .eq('recipient_id', userId)
                 .order('created_at', { ascending: false })
                 .limit(50);
+
+            if (isClient) {
+                query = query.eq('client_recipient_id', userId);
+            } else {
+                query = query.eq('recipient_id', userId);
+            }
+
+            const { data, error } = await query;
 
             if (error) throw error;
             this._notifications.set(data || []);
@@ -93,16 +104,25 @@ export class SupabaseNotificationsService implements OnDestroy {
     async markAllAsRead() {
         const profile = this.authService.userProfile;
         if (!profile?.id) return;
+        const isClient = profile.role === 'client';
 
         try {
             // Optimistic
             this._notifications.update(list => list.map(n => ({ ...n, is_read: true })));
 
-            await this.supabase.getClient()
+            let query = this.supabase.getClient()
                 .from('notifications')
                 .update({ is_read: true })
-                .eq('recipient_id', profile.id)
                 .eq('is_read', false);
+
+            if (isClient) {
+                query = query.eq('client_recipient_id', profile.id);
+            } else {
+                query = query.eq('recipient_id', profile.id);
+            }
+
+            await query;
+
         } catch (err) {
             console.error('Error marking all as read:', err);
         }
@@ -110,6 +130,8 @@ export class SupabaseNotificationsService implements OnDestroy {
 
     private subscribeToNotifications(userId: string) {
         this.unsubscribeRealtime();
+        const isClient = this.authService.userProfile?.role === 'client';
+        const filter = isClient ? `client_recipient_id=eq.${userId}` : `recipient_id=eq.${userId}`;
 
         this.realtimeChannel = this.supabase.getClient()
             .channel('public:notifications:' + userId)
@@ -119,7 +141,7 @@ export class SupabaseNotificationsService implements OnDestroy {
                     event: '*', // INSERT, UPDATE
                     schema: 'public',
                     table: 'notifications',
-                    filter: `recipient_id=eq.${userId}`
+                    filter: filter
                 },
                 (payload: any) => {
                     this.handleRealtimeEvent(payload);
@@ -153,19 +175,25 @@ export class SupabaseNotificationsService implements OnDestroy {
             return currentList;
         });
     }
-    async sendNotification(recipientId: string, title: string, content: string, type: string = 'info', referenceId: string | null = null) {
+
+    async sendNotification(recipientId: string, title: string, content: string, type: string = 'info', referenceId: string | null = null, isClientRecipient: boolean = false) {
         if (!recipientId) return;
 
         const companyId = this.authService.companyId();
         try {
             const payload: any = {
                 company_id: companyId,
-                recipient_id: recipientId,
                 type,
                 title,
                 content,
                 is_read: false
             };
+
+            if (isClientRecipient) {
+                payload.client_recipient_id = recipientId;
+            } else {
+                payload.recipient_id = recipientId;
+            }
 
             if (referenceId) {
                 payload.reference_id = referenceId;

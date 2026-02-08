@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, Input, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Project } from '../../../../models/project';
 import { ProjectsService } from '../../../../core/services/projects.service';
@@ -10,6 +10,11 @@ import { ProjectsService } from '../../../../core/services/projects.service';
   template: `
     <div class="group project-card bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md hover:border-blue-200 dark:hover:border-blue-500/30 transition-all duration-200 cursor-grab active:cursor-grabbing relative overflow-hidden">
       
+      <!-- Unread Badge -->
+      <div *ngIf="unreadCount() > 0" class="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm z-10 animate-pulse">
+        {{ unreadCount() }}
+      </div>
+
       <!-- Priority Badge & Options -->
       <div class="flex justify-between items-start mb-3">
         <span 
@@ -83,9 +88,18 @@ import { ProjectsService } from '../../../../core/services/projects.service';
   `,
   styles: []
 })
-export class ProjectCardComponent {
+export class ProjectCardComponent implements OnInit {
   @Input() project!: Project;
   private projectsService = inject(ProjectsService);
+  unreadCount = signal(0);
+
+  ngOnInit() {
+    if (this.project?.id) {
+      this.projectsService.getUnreadCount(this.project.id).then(count => {
+        this.unreadCount.set(count);
+      });
+    }
+  }
 
   get topTasks() {
     if (!this.project.tasks) return [];

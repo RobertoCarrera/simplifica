@@ -1,57 +1,120 @@
-<div class="h-full flex flex-col">
-    <!-- Header with View Switcher -->
-    <div
-        class="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Proyectos</h1>
+<div class="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
+    <!-- Header with Views & Filters -->
+    <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <!-- Top Row: Title, Views, New Project -->
+        <div class="px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Proyectos</h1>
 
-        <div class="flex items-center space-x-3">
-            <!-- View Switcher -->
-            <div class="flex bg-gray-800/50 p-1 rounded-lg">
-                <button (click)="toggleView('kanban')" [class.bg-gray-700]="currentView === 'kanban'"
-                    [class.text-white]="currentView === 'kanban'"
-                    class="px-3 py-1.5 text-xs font-medium rounded-md text-gray-400 hover:text-white transition-all">
-                    Tablero
-                </button>
-                <button (click)="toggleView('timeline')" [class.bg-gray-700]="currentView === 'timeline'"
-                    [class.text-white]="currentView === 'timeline'"
-                    class="px-3 py-1.5 text-xs font-medium rounded-md text-gray-400 hover:text-white transition-all">
-                    Cronograma
-                </button>
-                <button (click)="toggleView('list')" [class.bg-gray-700]="currentView === 'list'"
-                    [class.text-white]="currentView === 'list'"
-                    class="px-3 py-1.5 text-xs font-medium rounded-md text-gray-400 hover:text-white transition-all">
-                    Tabla
-                </button>
+                <!-- View Switcher -->
+                <div class="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                    <button (click)="toggleView('kanban')" [class.bg-white]="currentView === 'kanban'"
+                        [class.text-blue-600]="currentView === 'kanban'" [class.shadow-sm]="currentView === 'kanban'"
+                        [class.dark:bg-gray-600]="currentView === 'kanban'"
+                        [class.dark:text-blue-400]="currentView === 'kanban'"
+                        class="px-3 py-1.5 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all">
+                        Tablero
+                    </button>
+                    <button (click)="toggleView('timeline')" [class.bg-white]="currentView === 'timeline'"
+                        [class.text-blue-600]="currentView === 'timeline'"
+                        [class.shadow-sm]="currentView === 'timeline'"
+                        [class.dark:bg-gray-600]="currentView === 'timeline'"
+                        [class.dark:text-blue-400]="currentView === 'timeline'"
+                        class="px-3 py-1.5 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all">
+                        Cronograma
+                    </button>
+                    <button (click)="toggleView('list')" [class.bg-white]="currentView === 'list'"
+                        [class.text-blue-600]="currentView === 'list'" [class.shadow-sm]="currentView === 'list'"
+                        [class.dark:bg-gray-600]="currentView === 'list'"
+                        [class.dark:text-blue-400]="currentView === 'list'"
+                        class="px-3 py-1.5 text-xs font-medium rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all">
+                        Tabla
+                    </button>
+                </div>
             </div>
 
-            <!-- Archived Toggle -->
-            <button (click)="toggleArchived()" [class.bg-orange-100]="showArchived"
-                [class.text-orange-700]="showArchived" [class.border-orange-200]="showArchived"
-                class="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all flex items-center space-x-1">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
+            <div class="flex items-center space-x-3">
+                <!-- Archived Toggle -->
+                <button (click)="toggleArchived()" [class.bg-orange-100]="showArchived"
+                    [class.text-orange-700]="showArchived" [class.border-orange-200]="showArchived"
+                    class="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all flex items-center space-x-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span class="hidden sm:inline">{{ showArchived ? 'Ocultar Papelera' : 'Papelera' }}</span>
+                </button>
+
+                <!-- New Project Button -->
+                <button *ngIf="!showArchived" (click)="openNewProject()"
+                    class="ml-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors shadow-sm flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20"
+                        fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    <span class="hidden sm:inline">Nuevo Proyecto</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="px-6 pb-4 flex items-center space-x-4">
+            <!-- Search -->
+            <div class="relative w-full md:w-64">
+                <input type="text" [(ngModel)]="searchText" (ngModelChange)="applyFilters()"
+                    placeholder="Buscar por nombre..."
+                    class="w-full pl-9 pr-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 dark:text-gray-200 placeholder-gray-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg"
+                    class="h-4 w-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <span class="hidden sm:inline">{{ showArchived ? 'Ocultar Papelera' : 'Papelera' }}</span>
+            </div>
+
+            <!-- Client Filter -->
+            <div class="relative w-full md:w-64">
+                <select [(ngModel)]="selectedClientId" (ngModelChange)="applyFilters()"
+                    class="w-full pl-3 pr-8 py-1.5 text-sm bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-700 dark:text-gray-200 appearance-none cursor-pointer transition-colors">
+                    <option [ngValue]="null">Todos los clientes</option>
+                    <option *ngFor="let client of clients" [value]="client.id">
+                        {{ client.business_name || client.name + ' ' + (client.apellidos || '') }}
+                    </option>
+                </select>
+                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Clear Filters -->
+            <button *ngIf="searchText || selectedClientId"
+                (click)="searchText = ''; selectedClientId = null; applyFilters()"
+                class="text-sm text-red-500 hover:text-red-700 transition-colors font-medium">
+                Limpiar filtros
             </button>
         </div>
     </div>
 
     <!-- Content Area -->
     <div class="flex-1 overflow-hidden relative">
-        <app-kanban-board *ngIf="currentView === 'kanban'" class="h-full block"></app-kanban-board>
+        <app-kanban-board *ngIf="currentView === 'kanban'" [projects]="filteredProjects" [stages]="stages"
+            (editProject)="openEditProject($event)" (refresh)="loadData()" class="h-full block"></app-kanban-board>
 
-        <app-timeline-view *ngIf="currentView === 'timeline'" [projects]="projects"
+        <app-timeline-view *ngIf="currentView === 'timeline'" [projects]="filteredProjects"
             (projectClick)="openEditProject($event)" class="h-full block overflow-auto bg-gray-50 dark:bg-gray-900">
         </app-timeline-view>
 
-        <app-list-view *ngIf="currentView === 'list'" [projects]="projects" [stages]="stages"
+        <app-list-view *ngIf="currentView === 'list'" [projects]="filteredProjects" [stages]="stages"
             (projectClick)="openEditProject($event)" class="h-full block overflow-hidden">
         </app-list-view>
     </div>
 
-    <!-- Project Dialog (Shared/Timeline context) -->
+    <!-- Project Dialog -->
     <app-project-dialog *ngIf="isProjectDialogVisible" [visible]="isProjectDialogVisible" [project]="selectedProject"
         [stages]="stages" (close)="onProjectDialogClose($event)">
     </app-project-dialog>

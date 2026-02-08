@@ -35,8 +35,23 @@ import { Customer } from '../../../../models/customer';
           </button>
         </div>
 
-        <!-- Body (Grid Layout) -->
-        <div class="flex-1 overflow-y-auto p-0 flex flex-col md:flex-row">
+        <!-- Tabs -->
+        <div class="px-6 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 flex space-x-6">
+            <button (click)="setActiveTab('details')" 
+                class="py-3 text-sm font-medium border-b-2 transition-colors relative"
+                [ngClass]="activeTab === 'details' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'">
+                Detalles
+            </button>
+            <button (click)="setActiveTab('comments')" 
+                class="py-3 text-sm font-medium border-b-2 transition-colors relative flex items-center space-x-2"
+                [ngClass]="activeTab === 'comments' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'">
+                <span>Comentarios</span>
+                <span *ngIf="comments.length > 0" class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs py-0.5 px-2 rounded-full">{{ comments.length }}</span>
+            </button>
+        </div>
+
+        <!-- Body (Details) -->
+        <div *ngIf="activeTab === 'details'" class="flex-1 overflow-y-auto p-0 flex flex-col md:flex-row">
           
           <!-- LEFT COLUMN: Main Content -->
           <div class="flex-1 p-6 md:p-8 space-y-8 border-r border-gray-100 dark:border-gray-700">
@@ -187,8 +202,76 @@ import { Customer } from '../../../../models/customer';
           </div>
         </div>
 
-        <!-- Footer Actions -->
-        <div class="px-6 py-4 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
+        <!-- Body (Comments) -->
+        <div *ngIf="activeTab === 'comments'" class="flex-1 overflow-hidden flex flex-col bg-gray-50/30 dark:bg-gray-900/10">
+            <!-- Comments List -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <!-- Loading State -->
+                <div *ngIf="isLoadingComments" class="flex justify-center py-8">
+                    <div class="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                </div>
+
+                <!-- Empty State -->
+                <div *ngIf="!isLoadingComments && comments.length === 0" class="flex flex-col items-center justify-center h-full text-center text-gray-400 space-y-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                    <p class="text-sm">No hay comentarios aún. ¡Sé el primero en comentar!</p>
+                </div>
+
+                <!-- List -->
+                <div *ngFor="let comment of comments" class="flex space-x-3 group w-full">
+                    <div class="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs uppercase"
+                        [ngClass]="{'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400': comment.user_id, 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400': comment.client_id}">
+                        {{ (comment.user?.email?.[0] || comment.client?.email?.[0] || 'U') }}
+                    </div>
+                    <div class="flex-1 space-y-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                             <div class="flex items-center space-x-2">
+                                <span class="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                    <ng-container *ngIf="comment.user">
+                                        {{ comment.user.name ? (comment.user.name + ' ' + (comment.user.surname || '')) : (comment.user.email || 'Usuario') }}
+                                        <span class="text-xs font-normal text-gray-500 ml-1">(Equipo)</span>
+                                    </ng-container>
+                                    <ng-container *ngIf="comment.client">
+                                        {{ comment.client.name || comment.client.email || 'Cliente' }}
+                                        <span class="text-xs font-normal text-gray-500 ml-1">(Cliente)</span>
+                                    </ng-container>
+                                </span>
+                                <span class="text-xs text-gray-400">
+                                    {{ comment.created_at | date:'medium' }}
+                                </span>
+                             </div>
+                        </div>
+                        <div class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed bg-white dark:bg-gray-800 p-3 rounded-tr-xl rounded-bl-xl rounded-br-xl shadow-sm border border-gray-100 dark:border-gray-700 break-words">
+                            {{ comment.content }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-4 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 relative">
+                <div class="flex items-end space-x-2">
+                     <textarea [(ngModel)]="newComment" rows="2" 
+                        class="flex-1 w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                        placeholder="Escribe un comentario..."
+                        (keydown.control.enter)="addComment()"></textarea>
+                     <button (click)="addComment()" [disabled]="!newComment.trim()"
+                        class="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                     </button>
+                </div>
+                <div class="text-xs text-gray-400 mt-2 text-right">
+                    Presiona <span class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded">Ctrl + Enter</span> para enviar
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer Actions (Keep separated from body) -->
+        <div class="bg-white dark:bg-gray-800 px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center" *ngIf="activeTab === 'details' || true">
             
             <!-- Left Actions (Archive/Restore) -->
             <div>
@@ -242,6 +325,12 @@ export class ProjectDialogComponent {
 
   isSaving = false;
   isEditing = signal(false);
+
+  // Comments
+  activeTab: 'details' | 'comments' = 'details';
+  comments: any[] = [];
+  newComment = '';
+  isLoadingComments = false;
 
   ngOnInit() {
     this.customersService.getCustomers().subscribe(clients => {
@@ -429,5 +518,41 @@ export class ProjectDialogComponent {
         this.isSaving = false;
       }
     });
+  }
+
+  // --- Comments Logic ---
+
+  setActiveTab(tab: 'details' | 'comments') {
+    this.activeTab = tab;
+    if (tab === 'comments' && this.project?.id) {
+      this.loadComments(this.project.id);
+      this.projectsService.markProjectAsRead(this.project.id);
+    }
+  }
+
+  async loadComments(projectId: string) {
+    this.isLoadingComments = true;
+    try {
+      this.comments = await this.projectsService.getComments(projectId);
+    } catch (err) {
+      console.error('Error loading comments', err);
+    } finally {
+      this.isLoadingComments = false;
+    }
+  }
+
+  async addComment() {
+    if (!this.newComment.trim() || !this.project?.id) return;
+
+    this.isLoadingComments = true;
+    try {
+      const newCommentData = await this.projectsService.addComment(this.project.id, this.newComment);
+      this.comments.push(newCommentData);
+      this.newComment = '';
+    } catch (err) {
+      console.error('Error adding comment', err);
+    } finally {
+      this.isLoadingComments = false;
+    }
   }
 }
