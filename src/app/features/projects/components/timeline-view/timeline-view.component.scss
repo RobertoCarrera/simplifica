@@ -1,0 +1,19 @@
+// Custom scrollbar for timeline
+:host {
+    display: block;
+    height: 100%;
+    overflow: hidden;
+}
+
+.timeline-scroll-container {
+    scrollbar-width: thin;
+
+    &::-webkit-scrollbar {
+        height: 6px;
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+    }
+}
