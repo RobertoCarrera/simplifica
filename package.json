@@ -56,7 +56,10 @@
     "rxjs": "~7.8.0",
     "supabase": "^2.72.8",
     "tslib": "^2.3.0",
-    "zone.js": "~0.15.0"
+    "zone.js": "~0.15.0",
+    "jspdf": "^2.5.1",
+    "html2canvas": "^1.4.1",
+    "signature_pad": "^5.0.4"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^19.2.18",

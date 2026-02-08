@@ -28,6 +28,7 @@ import { ClientPortalAdminComponent } from './features/admin/client-portal/clien
 import { ClientPasswordSetupComponent } from './features/portal/password-setup/client-password-setup.component';
 import { PortalInvoicesComponent } from './features/invoices/portal/list/portal-invoices.component';
 import { PortalInvoiceDetailComponent } from './features/invoices/portal/detail/portal-invoice-detail.component';
+import { ClientContractsComponent } from './features/client-portal/pages/contracts/client-contracts.component';
 import { PortalQuotesComponent } from './features/quotes/portal/list/portal-quotes.component';
 import { PortalQuoteDetailComponent } from './features/quotes/portal/detail/portal-quote-detail.component';
 import { ModulesAdminComponent } from './features/admin/modules/modules-admin.component';
@@ -160,6 +161,8 @@ export const routes: Routes = [
     { path: 'portal/servicios', loadComponent: () => import('./features/services/portal-services/portal-services.component').then(m => m.PortalServicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloServicios' } },
     // Client portal devices
     { path: 'portal/dispositivos', loadComponent: () => import('./features/devices/portal-devices/portal-devices.component').then(m => m.PortalDevicesComponent), canActivate: [AuthGuard, ClientRoleGuard, ModuleGuard], data: { moduleKey: 'moduloSAT' } },
+    // Client portal contracts
+    { path: 'portal/contratos', component: ClientContractsComponent, canActivate: [AuthGuard, ClientRoleGuard] },
 
 
     // Public payment pages (NO AUTH REQUIRED)

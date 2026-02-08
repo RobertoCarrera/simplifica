@@ -2,25 +2,35 @@ import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SupabaseDocumentsService, ClientDocument } from '../../../../../services/supabase-documents.service';
 import { ToastService } from '../../../../../services/toast.service';
+import { ContractCreationDialogComponent } from '../contract-creation-dialog/contract-creation-dialog.component';
 
 @Component({
     selector: 'app-client-documents',
     standalone: true,
-    imports: [CommonModule],
+    imports: [CommonModule, ContractCreationDialogComponent],
     template: `
     <div class="space-y-6">
         <!-- Header -->
         <div class="flex justify-between items-center">
             <h3 class="text-lg font-bold text-gray-900 dark:text-white">Documentos</h3>
-            <div class="relative">
-                <input type="file" id="fileUpload" class="hidden" (change)="handleFileUpload($event)" [disabled]="isUploading()">
-                <label for="fileUpload" 
-                    [class.opacity-50]="isUploading()"
-                    [class.cursor-not-allowed]="isUploading()"
-                    class="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors">
-                    <i class="fas fa-upload" [class.fa-spinner]="isUploading()" [class.fa-spin]="isUploading()"></i> 
-                    {{ isUploading() ? 'Subiendo...' : 'Subir Documento' }}
-                </label>
+            <div class="flex gap-3">
+                <button 
+                    (click)="showCreateContract.set(true)"
+                    class="px-4 py-2 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors">
+                    <i class="fas fa-file-signature"></i> 
+                    Crear Contrato
+                </button>
+
+                <div class="relative">
+                    <input type="file" id="fileUpload" class="hidden" (change)="handleFileUpload($event)" [disabled]="isUploading()">
+                    <label for="fileUpload" 
+                        [class.opacity-50]="isUploading()"
+                        [class.cursor-not-allowed]="isUploading()"
+                        class="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg flex items-center gap-2 transition-colors">
+                        <i class="fas fa-upload" [class.fa-spinner]="isUploading()" [class.fa-spin]="isUploading()"></i> 
+                        {{ isUploading() ? 'Subiendo...' : 'Subir Documento' }}
+                    </label>
+                </div>
             </div>
         </div>
 
@@ -64,10 +74,23 @@ import { ToastService } from '../../../../../services/toast.service';
             </div>
         </div>
     </div>
+
+    <app-contract-creation-dialog
+        *ngIf="showCreateContract()"
+        [clientId]="clientId"
+        [companyId]="companyId"
+        [clientName]="clientName"
+        [clientEmail]="clientEmail"
+        (close)="showCreateContract.set(false)"
+        (created)="onContractCreated()"
+    ></app-contract-creation-dialog>
   `
 })
 export class ClientDocumentsComponent implements OnInit {
     @Input({ required: true }) clientId!: string;
+    @Input({ required: true }) companyId!: string;
+    @Input() clientName: string = '';
+    @Input() clientEmail: string = '';
 
     docsService = inject(SupabaseDocumentsService);
     toast = inject(ToastService);
@@ -75,6 +98,7 @@ export class ClientDocumentsComponent implements OnInit {
     documents = signal<ClientDocument[]>([]);
     isLoading = signal(false);
     isUploading = signal(false);
+    showCreateContract = signal(false);
 
     ngOnInit() {
         this.loadDocuments();
@@ -156,5 +180,15 @@ export class ClientDocumentsComponent implements OnInit {
         if (type.includes('word') || type.includes('document')) return 'fas fa-file-word text-blue-500';
         if (type.includes('excel') || type.includes('sheet')) return 'fas fa-file-excel text-green-500';
         return 'fas fa-file text-gray-400';
+    }
+
+    onContractCreated() {
+        // Optionally refresh documents list if contracts are shown here, 
+        // OR separate list. For now, contracts are in a separate table/route, 
+        // but maybe we want to list them here too? 
+        // The requirement said "create ... button ... available to read ... and sign"
+        // Usually contracts are documents too.
+        // For now, doing nothing special other than closing dialog.
+        this.showCreateContract.set(false);
     }
 }

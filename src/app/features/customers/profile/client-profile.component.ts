@@ -175,7 +175,12 @@ import { ToastService } from '../../../services/toast.service';
 
                   <!-- Tab: Documents -->
                  <div *ngIf="activeTab() === 'documents'" class="animate-fade-in max-w-5xl mx-auto">
-                     <app-client-documents [clientId]="customer()!.id"></app-client-documents>
+                      <app-client-documents 
+                        [clientId]="customer()!.id"
+                        [companyId]="customer()!.usuario_id"
+                        [clientName]="getDisplayName(customer()!)"
+                        [clientEmail]="customer()!.email"
+                      ></app-client-documents>
                  </div>
                  
              </div>

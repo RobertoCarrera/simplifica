@@ -1,0 +1,36 @@
+
+> simplifica@0.0.0 prebuild
+> node scripts/generate-runtime-config.mjs
+
+[runtime-config] Loaded environment variables from .env.local
+[runtime-config] Wrote src/assets/runtime-config.json
+[runtime-config] Supabase URL: https://ufutyjbqfjrlzkprvyvs.supabase.co
+[runtime-config] Supabase anon key (redacted): sb_pub…vcqq
+
+> simplifica@0.0.0 build
+> ng build
+
+[33m❯[39m Building...
+[32m✔[39m Building...
+Application bundle generation failed. [16.760 seconds]
+
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2339: Property 'supabase' does not exist on type 'SupabaseClientService'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/core/services/contracts.service.ts:34:53:
+[37m      34 │     private supabase = inject(SupabaseClientService).[32msupabase[37m;
+         ╵                                                      [32m~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2551: Property 'getCurrentUser' does not exist on type 'AuthService'. Did you mean 'currentUser'?[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/features/client-portal/pages/contracts/client-contracts.component.ts:110:42:
+[37m      110 │       const user = await this.authService.[32mgetCurrentUser[37m();
+          ╵                                           [32m~~~~~~~~~~~~~~[0m
+
+  'currentUser' is declared here.
+
+    src/app/services/auth.service.ts:927:6:
+[37m      927 │   get [32mcurrentUser[37m(): User | null {
+          ╵       [32m~~~~~~~~~~~[0m
+
+[39m[22m
