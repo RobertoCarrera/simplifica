@@ -82,7 +82,7 @@ export class ProjectsService {
 
     // --- Projects ---
 
-    getProjects(): Observable<Project[]> {
+    getProjects(archived: boolean = false): Observable<Project[]> {
         return from(
             this.supabase
                 .from('projects')
@@ -91,6 +91,7 @@ export class ProjectsService {
           client:client_id (id, name, apellidos, business_name),
           tasks:project_tasks (id, is_completed, title, position)
         `)
+                .eq('is_archived', archived)
                 .order('position', { ascending: true })
         ).pipe(map(({ data, error }) => {
             if (error) throw error;
@@ -139,6 +140,28 @@ export class ProjectsService {
             this.supabase
                 .from('projects')
                 .delete()
+                .eq('id', id)
+        ).pipe(map(({ error }) => {
+            if (error) throw error;
+        }));
+    }
+
+    archiveProject(id: string): Observable<void> {
+        return from(
+            this.supabase
+                .from('projects')
+                .update({ is_archived: true })
+                .eq('id', id)
+        ).pipe(map(({ error }) => {
+            if (error) throw error;
+        }));
+    }
+
+    restoreProject(id: string): Observable<void> {
+        return from(
+            this.supabase
+                .from('projects')
+                .update({ is_archived: false })
                 .eq('id', id)
         ).pipe(map(({ error }) => {
             if (error) throw error;
