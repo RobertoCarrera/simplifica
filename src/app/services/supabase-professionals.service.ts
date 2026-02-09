@@ -144,11 +144,18 @@ export class SupabaseProfessionalsService {
         const companyId = this.companyId;
         if (!companyId) return [];
 
+        // First get role IDs for the desired roles from app_roles
+        const { data: roles } = await this.supabase
+            .from('app_roles')
+            .select('id')
+            .in('name', ['owner', 'admin', 'member', 'professional']);
+        const roleIds = (roles || []).map((r: any) => r.id);
+
         const { data, error } = await this.supabase
             .from('company_members')
             .select('user_id, users:user_id(id, email, name, surname)')
             .eq('company_id', companyId)
-            .in('role', ['owner', 'admin', 'member', 'professional']);
+            .in('role_id', roleIds);
 
         if (error) throw error;
 

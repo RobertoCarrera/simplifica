@@ -10,59 +10,273 @@ import { ToastService } from '../../../services/toast.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div class="max-w-md w-full space-y-8">
-        <div>
-          <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Recuperar contraseña
-          </h2>
-          <p class="mt-2 text-center text-sm text-gray-600" *ngIf="!tokenPresent()">
-            Ingresa tu nueva contraseña (has llegado desde el enlace del email)
+    <div class="reset-container">
+      <div class="reset-card">
+        <!-- Header with icon -->
+        <div class="reset-header">
+          <div class="icon-circle">
+            <i class="bi bi-key-fill"></i>
+          </div>
+          <h2 class="reset-title">Recuperar contraseña</h2>
+          <p class="reset-subtitle" *ngIf="!tokenPresent()">
+            Ingresa tu nueva contraseña
           </p>
         </div>
 
+        <!-- Form -->
         <div *ngIf="stage() === 'setting'">
-          <form [formGroup]="form" (ngSubmit)="onSubmit()" class="mt-8 space-y-6">
-            <div class="rounded-md shadow-sm -space-y-px">
-              <div>
-                <label class="sr-only">Nueva contraseña</label>
-                <input type="password" formControlName="password" placeholder="Nueva contraseña"
-                  class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm">
+          <form [formGroup]="form" (ngSubmit)="onSubmit()" class="reset-form">
+            <div class="input-group">
+              <div class="input-wrapper">
+                <i class="bi bi-lock"></i>
+                <input type="password" formControlName="password" placeholder="Nueva contraseña" />
               </div>
-              <div>
-                <label class="sr-only">Confirmar contraseña</label>
-                <input type="password" formControlName="confirm" placeholder="Confirmar contraseña"
-                  class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm">
+            </div>
+            <div class="input-group">
+              <div class="input-wrapper">
+                <i class="bi bi-lock-fill"></i>
+                <input type="password" formControlName="confirm" placeholder="Confirmar contraseña" />
               </div>
             </div>
 
-            <div>
-              <button type="submit" [disabled]="form.invalid || loading()"
-                class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
-                <span *ngIf="!loading(); else loadingTpl">Actualizar contraseña</span>
-              </button>
-              <ng-template #loadingTpl>
-                <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </ng-template>
-            </div>
+            <button type="submit" [disabled]="form.invalid || loading()" class="btn-primary">
+              <span *ngIf="!loading(); else loadingTpl">Actualizar contraseña</span>
+            </button>
+            <ng-template #loadingTpl>
+              <span class="spinner"></span> Actualizando...
+            </ng-template>
           </form>
         </div>
 
-        <div *ngIf="stage() === 'done'" class="text-center space-y-4">
-          <p class="text-green-700 font-medium">Contraseña actualizada correctamente</p>
-          <button (click)="router.navigate(['/login'])" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Ir al login</button>
+        <!-- Success -->
+        <div *ngIf="stage() === 'done'" class="result-section success">
+          <p class="result-message success-text">Contraseña actualizada correctamente</p>
+          <button (click)="router.navigate(['/login'])" class="btn-primary">Ir al login</button>
         </div>
 
-        <div *ngIf="stage() === 'error'" class="text-center space-y-4">
-          <p class="text-red-600">{{errorMessage()}}</p>
-          <button (click)="reload()" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">Reintentar</button>
+        <!-- Error -->
+        <div *ngIf="stage() === 'error'" class="result-section">
+          <p class="result-message error-text">{{errorMessage()}}</p>
+          <button (click)="reload()" class="btn-secondary">Reintentar</button>
         </div>
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    :host { display: block; }
+    
+    .reset-container {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: linear-gradient(145deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+    
+    .reset-card {
+      width: 100%;
+      max-width: 400px;
+      background: white;
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 10px 40px -12px rgba(0,0,0,0.15);
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .reset-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .icon-circle {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      font-size: 1.5rem;
+      color: #6366f1;
+    }
+    
+    .reset-title {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin: 0 0 0.5rem;
+    }
+    
+    .reset-subtitle {
+      color: #64748b;
+      font-size: 0.9rem;
+      margin: 0;
+    }
+    
+    .reset-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .input-group { margin-bottom: 0.5rem; }
+    
+    .input-wrapper {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 0.875rem 1rem;
+      gap: 0.75rem;
+      transition: all 0.2s ease;
+    }
+    
+    .input-wrapper:focus-within {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+    
+    .input-wrapper i {
+      font-size: 1.1rem;
+      color: #94a3b8;
+    }
+    
+    .input-wrapper input {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 1rem;
+      color: #1e293b;
+    }
+    
+    .input-wrapper input::placeholder {
+      color: #94a3b8;
+    }
+    
+    .btn-primary {
+      width: 100%;
+      background: #6366f1;
+      color: white;
+      border: none;
+      padding: 0.875rem;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .btn-primary:not(:disabled):hover {
+      background: #4f46e5;
+      transform: translateY(-1px);
+    }
+    
+    .btn-secondary {
+      width: 100%;
+      background: #475569;
+      color: white;
+      border: none;
+      padding: 0.875rem;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-secondary:hover {
+      background: #334155;
+    }
+    
+    .spinner {
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .result-section {
+      text-align: center;
+    }
+    
+    .result-message {
+      font-weight: 500;
+      margin-bottom: 1.5rem;
+    }
+    
+    .success-text { color: #059669; }
+    .error-text { color: #dc2626; }
+    
+    /* Dark mode */
+    @media (prefers-color-scheme: dark) {
+      .reset-container {
+        background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+      }
+      
+      .reset-card {
+        background: #1e293b;
+        border-color: #334155;
+        box-shadow: 0 10px 40px -12px rgba(0,0,0,0.4);
+      }
+      
+      .icon-circle {
+        background: rgba(99, 102, 241, 0.2);
+        color: #818cf8;
+      }
+      
+      .reset-title { color: #f1f5f9; }
+      .reset-subtitle { color: #94a3b8; }
+      
+      .input-wrapper {
+        background: #0f172a;
+        border-color: #475569;
+      }
+      
+      .input-wrapper:focus-within {
+        background: #1e293b;
+        border-color: #818cf8;
+        box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
+      }
+      
+      .input-wrapper i { color: #64748b; }
+      
+      .input-wrapper input {
+        color: #f1f5f9;
+      }
+      
+      .input-wrapper input::placeholder {
+        color: #64748b;
+      }
+      
+      .success-text { color: #34d399; }
+      .error-text { color: #f87171; }
+      
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover,
+      input:-webkit-autofill:focus {
+        transition: background-color 5000s ease-in-out 0s;
+        -webkit-text-fill-color: #f1f5f9 !important;
+      }
+    }
+  `]
 })
 export class ResetPasswordComponent implements OnInit {
   form;

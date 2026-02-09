@@ -339,7 +339,7 @@ export class AuthService {
       if (userRes.data) {
         const membersRes = await this.supabase
           .from('company_members')
-          .select(`id, user_id, company_id, role_id, role, status, created_at, company:companies(*), role_data:app_roles(name)`)
+          .select(`id, user_id, company_id, role_id, status, created_at, company:companies(*), role_data:app_roles(name)`)
           .eq('user_id', userRes.data.id)
           .eq('status', 'active'); // Only active memberships
 
@@ -347,9 +347,9 @@ export class AuthService {
 
         const internalMemberships = (membersRes.data || []) as any[];
         const typedInternal: CompanyMembership[] = internalMemberships.map(m => {
-          // Resolve role with multiple fallbacks
-          const resolvedRole = m.role_data?.name || m.role || 'member';
-          console.log(`🎭 [DEBUG] Membership ${m.id}: role_data=${JSON.stringify(m.role_data)}, role_id=${m.role_id}, role=${m.role} -> resolved: ${resolvedRole}`);
+          // Resolve role from app_roles join (role_data)
+          const resolvedRole = m.role_data?.name || 'member';
+          console.log(`🎭 [DEBUG] Membership ${m.id}: role_data=${JSON.stringify(m.role_data)}, role_id=${m.role_id} -> resolved: ${resolvedRole}`);
           return {
             id: m.id,
             user_id: m.user_id,
@@ -630,10 +630,12 @@ export class AuthService {
                 .single();
 
               if (insertResult.data) {
+                // Look up 'member' role_id from app_roles
+                const { data: memberRole } = await this.supabase.from('app_roles').select('id').eq('name', 'member').maybeSingle();
                 await this.supabase.from('company_members').insert({
                   user_id: insertResult.data.id,
                   company_id: companyId,
-                  role: 'member',
+                  role_id: memberRole?.id || null,
                   status: 'active'
                 });
               }
@@ -689,10 +691,12 @@ export class AuthService {
               .single();
 
             if (insertResult.data) {
+              // Look up 'owner' role_id from app_roles
+              const { data: ownerRole } = await this.supabase.from('app_roles').select('id').eq('name', 'owner').maybeSingle();
               await this.supabase.from('company_members').insert({
                 user_id: insertResult.data.id,
                 company_id: companyId,
-                role: 'owner',
+                role_id: ownerRole?.id || null,
                 status: 'active'
               });
             }
