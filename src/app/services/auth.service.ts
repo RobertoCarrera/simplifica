@@ -431,20 +431,21 @@ export class AuthService {
           return null;
         }
 
+        const globalRole = (userRes.data as any)?.app_role?.name;
         appUser = {
           id: clientRecord.id, // Client ID
           auth_user_id: clientRecord.auth_user_id,
           email: clientRecord.email,
           name: clientRecord.name,
-          role: 'client',
+          role: globalRole === 'super_admin' ? 'super_admin' : 'client',
           active: clientRecord.is_active,
           company_id: clientRecord.company_id,
           permissions: {},
           full_name: clientRecord.name,
           company: activeMembership.company || null,
           client_id: clientRecord.id,
-          is_super_admin: (userRes.data as any)?.app_role?.name === 'super_admin',
-          app_role_id: undefined
+          is_super_admin: globalRole === 'super_admin',
+          app_role_id: (userRes.data as any)?.app_role_id
         };
         console.log('✅ Active Context: CLIENT', appUser.company?.name);
 

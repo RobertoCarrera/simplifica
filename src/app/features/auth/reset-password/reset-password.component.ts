@@ -10,16 +10,16 @@ import { ToastService } from '../../../services/toast.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <div class="reset-container">
-      <div class="reset-card">
+    <div class="reset-container transition-colors duration-300">
+      <div class="reset-card transition-all duration-300">
         <!-- Header with icon -->
         <div class="reset-header">
           <div class="icon-circle">
-            <i class="bi bi-key-fill"></i>
+            <i class="fa-solid fa-key-skeleton"></i>
           </div>
-          <h2 class="reset-title">Recuperar contraseña</h2>
-          <p class="reset-subtitle" *ngIf="!tokenPresent()">
-            Ingresa tu nueva contraseña
+          <h2 class="reset-title">Establecer contraseña</h2>
+          <p class="reset-subtitle">
+            Ingresa tu nueva contraseña para acceder a tu cuenta
           </p>
         </div>
 
@@ -27,116 +27,148 @@ import { ToastService } from '../../../services/toast.service';
         <div *ngIf="stage() === 'setting'">
           <form [formGroup]="form" (ngSubmit)="onSubmit()" class="reset-form">
             <div class="input-group">
-              <div class="input-wrapper">
-                <i class="bi bi-lock"></i>
-                <input type="password" formControlName="password" placeholder="Nueva contraseña" />
+              <label class="input-label">Nueva Contraseña</label>
+              <div class="input-wrapper group">
+                <i class="fa-solid fa-lock group-focus-within:text-blue-500 transition-colors"></i>
+                <input type="password" formControlName="password" placeholder="Mínimo 6 caracteres" />
               </div>
             </div>
             <div class="input-group">
-              <div class="input-wrapper">
-                <i class="bi bi-lock-fill"></i>
-                <input type="password" formControlName="confirm" placeholder="Confirmar contraseña" />
+              <label class="input-label">Confirmar Contraseña</label>
+              <div class="input-wrapper group">
+                <i class="fa-solid fa-lock-open group-focus-within:text-blue-500 transition-colors"></i>
+                <input type="password" formControlName="confirm" placeholder="Repite tu contraseña" />
               </div>
             </div>
 
             <button type="submit" [disabled]="form.invalid || loading()" class="btn-primary">
-              <span *ngIf="!loading(); else loadingTpl">Actualizar contraseña</span>
+              @if (loading()) {
+                <span class="spinner animate-spin"></span>
+                <span>Actualizando...</span>
+              } @else {
+                <span>Actualizar Contraseña</span>
+              }
             </button>
-            <ng-template #loadingTpl>
-              <span class="spinner"></span> Actualizando...
-            </ng-template>
           </form>
         </div>
 
         <!-- Success -->
-        <div *ngIf="stage() === 'done'" class="result-section success">
-          <p class="result-message success-text">Contraseña actualizada correctamente</p>
-          <button (click)="router.navigate(['/login'])" class="btn-primary">Ir al login</button>
+        <div *ngIf="stage() === 'done'" class="result-section">
+          <div class="success-icon animate-bounce">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+          <p class="result-message success-text">¡Contraseña actualizada con éxito!</p>
+          <button (click)="router.navigate(['/login'])" class="btn-primary">
+            Volver al Inicio de Sesión
+          </button>
         </div>
 
         <!-- Error -->
         <div *ngIf="stage() === 'error'" class="result-section">
+          <div class="error-icon">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </div>
           <p class="result-message error-text">{{errorMessage()}}</p>
-          <button (click)="reload()" class="btn-secondary">Reintentar</button>
+          <button (click)="reload()" class="btn-secondary">
+            <i class="fa-solid fa-rotate-right mr-2"></i> Reintentar
+          </button>
         </div>
       </div>
     </div>
   `,
   styles: [`
-    :host { display: block; }
+    :host { display: block; height: 100vh; width: 100%; }
     
     .reset-container {
-      min-height: 100vh;
+      height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1rem;
-      background: linear-gradient(145deg, #f8fafc 0%, #e2e8f0 100%);
+      padding: 1.5rem;
+      background: #f8fafc;
+      font-family: system-ui, -apple-system, sans-serif;
     }
     
     .reset-card {
       width: 100%;
-      max-width: 400px;
+      max-width: 440px;
       background: white;
-      border-radius: 20px;
-      padding: 2rem;
-      box-shadow: 0 10px 40px -12px rgba(0,0,0,0.15);
+      border-radius: 24px;
+      padding: 2.5rem 2rem;
+      box-shadow: 0 10px 40px -12px rgba(0,0,0,0.15), 0 4px 16px -8px rgba(0,0,0,0.1);
       border: 1px solid rgba(0,0,0,0.05);
     }
     
     .reset-header {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: 2.5rem;
     }
     
     .icon-circle {
       width: 64px;
       height: 64px;
-      border-radius: 50%;
+      border-radius: 16px;
       background: rgba(99, 102, 241, 0.1);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 1rem;
-      font-size: 1.5rem;
+      margin: 0 auto 1.5rem;
+      font-size: 1.75rem;
       color: #6366f1;
+      border: 1px solid rgba(99, 102, 241, 0.1);
     }
     
     .reset-title {
       font-size: 1.75rem;
       font-weight: 700;
       color: #1e293b;
-      margin: 0 0 0.5rem;
+      margin: 0 0 0.75rem;
+      letter-spacing: -0.01em;
     }
     
     .reset-subtitle {
       color: #64748b;
-      font-size: 0.9rem;
-      margin: 0;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      max-width: 280px;
+      margin: 0 auto;
     }
     
     .reset-form {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 1.25rem;
     }
     
-    .input-group { margin-bottom: 0.5rem; }
+    .input-group { 
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .input-label {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #475569;
+      padding-left: 0.25rem;
+    }
     
     .input-wrapper {
       display: flex;
       align-items: center;
       background: #fff;
-      border: 2px solid #e2e8f0;
+      border: 1px solid #cbd5e1;
       border-radius: 12px;
-      padding: 0.875rem 1rem;
+      padding: 0 1rem;
       gap: 0.75rem;
-      transition: all 0.2s ease;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      height: 52px;
     }
     
     .input-wrapper:focus-within {
       border-color: #6366f1;
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+      transform: translateY(-1px);
     }
     
     .input-wrapper i {
@@ -151,10 +183,7 @@ import { ToastService } from '../../../services/toast.service';
       background: transparent;
       font-size: 1rem;
       color: #1e293b;
-    }
-    
-    .input-wrapper input::placeholder {
-      color: #94a3b8;
+      height: 100%;
     }
     
     .btn-primary {
@@ -162,7 +191,7 @@ import { ToastService } from '../../../services/toast.service';
       background: #6366f1;
       color: white;
       border: none;
-      padding: 0.875rem;
+      height: 52px;
       border-radius: 12px;
       font-weight: 600;
       font-size: 1rem;
@@ -171,65 +200,84 @@ import { ToastService } from '../../../services/toast.service';
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
     }
     
-    .btn-primary:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
     
     .btn-primary:not(:disabled):hover {
       background: #4f46e5;
       transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
     }
     
     .btn-secondary {
       width: 100%;
-      background: #475569;
-      color: white;
-      border: none;
-      padding: 0.875rem;
+      background: transparent;
+      color: #64748b;
+      border: 1px solid #e2e8f0;
+      height: 52px;
       border-radius: 12px;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.2s ease;
+      margin-top: 1rem;
     }
     
-    .btn-secondary:hover {
-      background: #334155;
+    .btn-secondary:hover { 
+      background: #f8fafc;
+      color: #1e293b;
+      border-color: #cbd5e1;
     }
     
     .spinner {
-      width: 1rem;
-      height: 1rem;
+      width: 1.25rem;
+      height: 1.25rem;
       border: 2px solid rgba(255,255,255,0.3);
       border-top-color: white;
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
     }
     
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 0.8s linear infinite; }
     
     .result-section {
       text-align: center;
+      padding: 1rem 0;
     }
     
-    .result-message {
-      font-weight: 500;
+    .success-icon {
+      font-size: 3.5rem;
+      color: #10b981;
       margin-bottom: 1.5rem;
     }
     
-    .success-text { color: #059669; }
-    .error-text { color: #dc2626; }
+    .error-icon {
+      font-size: 3.5rem;
+      color: #ef4444;
+      margin-bottom: 1.5rem;
+    }
+    
+    .result-message {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 2rem;
+    }
+    
+    .success-text { color: #065f46; }
+    .error-text { color: #991b1b; }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .animate-bounce { animation: bounce 1s infinite; }
     
     /* Dark mode */
     @media (prefers-color-scheme: dark) {
-      .reset-container {
-        background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
-      }
+      .reset-container { background: #0f172a; }
       
       .reset-card {
         background: #1e293b;
@@ -238,33 +286,41 @@ import { ToastService } from '../../../services/toast.service';
       }
       
       .icon-circle {
-        background: rgba(99, 102, 241, 0.2);
+        background: rgba(99, 102, 241, 0.15);
         color: #818cf8;
+        border-color: rgba(99, 102, 241, 0.2);
       }
       
       .reset-title { color: #f1f5f9; }
       .reset-subtitle { color: #94a3b8; }
+      .input-label { color: #94a3b8; }
       
       .input-wrapper {
         background: #0f172a;
-        border-color: #475569;
+        border-color: #334155;
       }
       
       .input-wrapper:focus-within {
-        background: #1e293b;
+        background: #0f172a;
         border-color: #818cf8;
-        box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
+        box-shadow: 0 0 0 4px rgba(129, 140, 248, 0.1);
       }
       
-      .input-wrapper i { color: #64748b; }
+      .input-wrapper i { color: #475569; }
+      .input-wrapper input { color: #f1f5f9; }
+      .input-wrapper input::placeholder { color: #475569; }
       
-      .input-wrapper input {
-        color: #f1f5f9;
+      .btn-primary { 
+        background: #6366f1; 
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
       }
+      .btn-primary:not(:disabled):hover { background: #4f46e5; }
       
-      .input-wrapper input::placeholder {
-        color: #64748b;
+      .btn-secondary {
+        border-color: #334155;
+        color: #94a3b8;
       }
+      .btn-secondary:hover { background: #1e293b; color: #f1f5f9; border-color: #475569; }
       
       .success-text { color: #34d399; }
       .error-text { color: #f87171; }

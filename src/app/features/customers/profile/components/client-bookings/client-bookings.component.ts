@@ -176,7 +176,7 @@ export class ClientBookingsComponent implements OnInit {
                 .from('users')
                 .select('id')
                 .eq('auth_user_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (!publicUser) return;
 
@@ -185,7 +185,7 @@ export class ClientBookingsComponent implements OnInit {
                 .select('metadata')
                 .eq('user_id', publicUser.id)
                 .eq('provider', 'google_calendar')
-                .single();
+                .maybeSingle();
 
             if (integ?.metadata?.calendar_id_appointments) {
                 this.calendarId.set(integ.metadata.calendar_id_appointments);

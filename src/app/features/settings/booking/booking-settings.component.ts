@@ -89,7 +89,7 @@ export class BookingSettingsComponent implements OnInit {
             .from('users')
             .select('id')
             .eq('auth_user_id', user.id)
-            .single();
+            .maybeSingle();
 
         if (!publicUser) return;
 
@@ -309,7 +309,7 @@ export class BookingSettingsComponent implements OnInit {
                     .from('users')
                     .select('id')
                     .eq('auth_user_id', user.id)
-                    .single();
+                    .maybeSingle();
 
                 if (!publicUser) return;
 
@@ -318,7 +318,7 @@ export class BookingSettingsComponent implements OnInit {
                     .select('metadata')
                     .eq('user_id', publicUser.id)
                     .eq('provider', 'google_calendar')
-                    .single();
+                    .maybeSingle();
 
                 integration = integ;
                 this.googleIntegration.set(integration);

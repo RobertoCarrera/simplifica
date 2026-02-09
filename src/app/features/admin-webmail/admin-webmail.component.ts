@@ -54,7 +54,7 @@ export class AdminWebmailComponent implements OnInit {
 
     async loadDomains() {
         const { data, error } = await this.supabase
-            .from('mail_domains')
+            .from('domains')
             .select('*')
             .order('created_at', { ascending: false });
 
@@ -125,7 +125,7 @@ export class AdminWebmailComponent implements OnInit {
 
         // Simulate SES verification process
         const { error } = await this.supabase
-            .from('mail_domains')
+            .from('domains')
             .insert({
                 domain: result.domain,
                 // In a real flow, assigned_to_user would come from context or current admin
@@ -150,7 +150,7 @@ export class AdminWebmailComponent implements OnInit {
         if (!confirm('¿Eliminar dominio? Esto puede romper cuentas asociadas.')) return;
 
         const { error } = await this.supabase
-            .from('mail_domains')
+            .from('domains')
             .delete()
             .eq('id', id);
 
@@ -240,7 +240,7 @@ export class AdminWebmailComponent implements OnInit {
         if (!confirm(`¿Vincular ${cleanName} a ${userLabel}?`)) return;
 
         const { error } = await this.supabase
-            .from('mail_domains')
+            .from('domains')
             .insert({
                 domain: cleanName,
                 assigned_to_user: targetAuthId, // Correct UUID for auth.users FK
