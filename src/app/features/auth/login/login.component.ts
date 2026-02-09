@@ -118,8 +118,8 @@ import { ToastService } from '../../../services/toast.service';
     }
   `,
   styles: [`
-    :host { display: block; height: 100vh; width: 100vw; overflow: hidden; }
-    .login-shell { height: 100vh; width: 100%; display: flex; background: #f1f5f9; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    :host { display: block; height: 100vh; width: 100%; margin: 0; padding: 0; overflow: hidden; }
+    .login-shell { height: 100vh; width: 100%; display: flex; background: #ffffff; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; }
     
     /* Brand Panel */
     .brand-side { 
@@ -397,6 +397,7 @@ import { ToastService } from '../../../services/toast.service';
 
     /* Dark mode support */
     @media (prefers-color-scheme: dark) {
+      .login-shell { background: #0f172a; }
       .form-side { background: #0f172a; }
       .form-wrapper { 
         background: #1e293b; 
