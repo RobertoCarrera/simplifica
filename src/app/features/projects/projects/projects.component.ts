@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -9,6 +9,8 @@ import { ProjectDialogComponent } from '../components/project-dialog/project-dia
 import { ProjectsService } from '../../../core/services/projects.service';
 import { Project } from '../../../models/project';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
+import { SupabaseClientService } from '../../../services/supabase-client.service';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 @Component({
   selector: 'app-projects',
@@ -17,7 +19,7 @@ import { SupabaseCustomersService } from '../../../services/supabase-customers.s
   templateUrl: './projects.component.html',
   styleUrl: './projects.component.scss'
 })
-export class ProjectsComponent implements OnInit {
+export class ProjectsComponent implements OnInit, OnDestroy {
   currentView: 'kanban' | 'timeline' | 'list' = 'kanban';
   projects: any[] = [];
 
@@ -34,6 +36,11 @@ export class ProjectsComponent implements OnInit {
 
   filteredProjects: Project[] = []; // Changed to property
 
+  // Realtime subscriptions
+  private sbService = inject(SupabaseClientService);
+  private projectsChannel: RealtimeChannel | null = null;
+  private tasksChannel: RealtimeChannel | null = null;
+
   constructor(
     private projectsService: ProjectsService,
     private customersService: SupabaseCustomersService,
@@ -42,6 +49,8 @@ export class ProjectsComponent implements OnInit {
 
   ngOnInit() {
     this.loadData();
+    this.setupRealtimeSubscriptions();
+
     this.customersService.getCustomers().subscribe(clients => {
       this.clients = clients;
     });
@@ -60,6 +69,52 @@ export class ProjectsComponent implements OnInit {
         }).catch(err => console.error('Error opening project from notification', err));
       }
     });
+  }
+
+  ngOnDestroy() {
+    this.cleanupRealtimeSubscriptions();
+  }
+
+  private setupRealtimeSubscriptions() {
+    const supabase = this.sbService.instance;
+
+    // Subscribe to projects changes
+    this.projectsChannel = supabase
+      .channel('projects-realtime')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'projects' },
+        (payload) => {
+          console.log('🔄 Projects realtime event:', payload.eventType);
+          this.loadData();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to project_tasks changes
+    this.tasksChannel = supabase
+      .channel('tasks-realtime')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'project_tasks' },
+        (payload) => {
+          console.log('🔄 Tasks realtime event:', payload.eventType);
+          this.loadData();
+        }
+      )
+      .subscribe();
+
+    console.log('📡 Realtime subscriptions active for projects and tasks');
+  }
+
+  private cleanupRealtimeSubscriptions() {
+    if (this.projectsChannel) {
+      this.sbService.instance.removeChannel(this.projectsChannel);
+      this.projectsChannel = null;
+    }
+    if (this.tasksChannel) {
+      this.sbService.instance.removeChannel(this.tasksChannel);
+      this.tasksChannel = null;
+    }
+    console.log('📡 Realtime subscriptions cleaned up');
   }
 
   loadData() {
@@ -114,3 +169,4 @@ export class ProjectsComponent implements OnInit {
     this.isProjectDialogVisible = true;
   }
 }
+

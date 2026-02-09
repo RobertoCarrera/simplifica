@@ -88,18 +88,26 @@ export class ProjectsService {
                 .from('projects')
                 .select(`
           *,
-          client:client_id (id, name, apellidos, business_name),
+          permissions:project_permissions(*),
+                client:client_id (id, name, apellidos, business_name, auth_user_id),
           tasks:project_tasks (id, is_completed, title, position)
         `)
                 .eq('is_archived', archived)
+                .eq('company_id', this.getCompanyId())
                 .order('position', { ascending: true })
         ).pipe(map(({ data, error }) => {
             if (error) throw error;
 
             return (data as any[]).map(p => {
                 const tasks = (p.tasks || []).sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
+                // Map permissions: if array (unlikely with 1:1) take first, else take object, else default
+                let perms = p.permissions;
+                // If it came as array due to relationship definition (it is 1:1 but supabase might return array or object depending on relationship)
+                if (Array.isArray(perms)) perms = perms[0];
+
                 return {
                     ...p,
+                    permissions: perms || {}, // Use empty object if null permissions (defaults handled in component or DB)
                     tasks,
                     tasks_count: tasks.length,
                     completed_tasks_count: tasks.filter((t: any) => t.is_completed).length
@@ -113,7 +121,8 @@ export class ProjectsService {
             .from('projects')
             .select(`
                 *,
-                client:client_id (id, name, apellidos, business_name),
+                permissions:project_permissions(*),
+                client:client_id (id, name, apellidos, business_name, auth_user_id),
                 tasks:project_tasks (id, is_completed, title, position)
             `)
             .eq('id', id)
@@ -129,8 +138,12 @@ export class ProjectsService {
         const p = data as any;
         const tasks = (p.tasks || []).sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
 
+        let perms = p.permissions;
+        if (Array.isArray(perms)) perms = perms[0];
+
         return {
             ...p,
+            permissions: perms || {},
             tasks,
             tasks_count: tasks.length,
             completed_tasks_count: tasks.filter((t: any) => t.is_completed).length
@@ -431,5 +444,92 @@ export class ProjectsService {
             .gt('created_at', lastReadAt);
 
         return count || 0;
+    }
+
+    async getCompanyMembers(): Promise<any[]> {
+        const companyId = this.getCompanyId();
+        const { data, error } = await this.supabase
+            .from('users')
+            .select('id, name, surname, email, auth_user_id')
+            .eq('company_id', companyId);
+
+        if (error) {
+            console.error('Error fetching company members:', error);
+            return [];
+        }
+
+        return (data || []).map((u: any) => ({
+            ...u,
+            displayName: u.name ? `${u.name} ${u.surnames || ''}`.trim() : u.email
+        }));
+    }
+
+    async updateProjectPermissions(projectId: string, permissions: any): Promise<void> {
+        // Upsert into project_permissions table
+        const payload = {
+            project_id: projectId,
+            ...permissions
+        };
+
+        const { error } = await this.supabase
+            .from('project_permissions')
+            .upsert(payload, { onConflict: 'project_id' });
+
+        if (error) {
+            console.error('Error updating permissions:', error);
+            throw error;
+        }
+    }
+
+    async getNotificationPreferences(projectId: string): Promise<any> {
+        try {
+            const { data, error } = await this.supabase
+                .from('project_notification_preferences')
+                .select('*')
+                .eq('project_id', projectId)
+                .maybeSingle();
+
+            if (error) {
+                throw error;
+            }
+            return data;
+        } catch (err) {
+            console.error('Error fetching notification preferences:', err);
+            return null;
+        }
+    }
+
+    async updateNotificationPreferences(projectId: string, preferences: any): Promise<void> {
+        try {
+            // Get current user to determine if they are client or team member
+            const { data: { user } } = await this.supabase.auth.getUser();
+            if (!user) throw new Error('Not authenticated');
+
+            // Check if user is a client
+            const { data: clientData } = await this.supabase
+                .from('clients')
+                .select('id')
+                .eq('auth_user_id', user.id)
+                .single();
+
+            const isClient = !!clientData;
+
+            const payload = {
+                project_id: projectId,
+                ...(isClient ? { client_id: clientData.id } : { user_id: user.id }),
+                ...preferences
+            };
+
+            const { error } = await this.supabase
+                .from('project_notification_preferences')
+                .upsert(payload, {
+                    onConflict: isClient ? 'project_id,client_id' : 'project_id,user_id'
+                });
+
+            if (error) throw error;
+        } catch (err) {
+            console.error('Error updating notification preferences:', err);
+            throw err;
+        }
     }
 }

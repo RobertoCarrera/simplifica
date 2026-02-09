@@ -32,7 +32,9 @@
                 <div cdkDropList [cdkDropListData]="column.projects" [id]="column.stage.id"
                     class="flex-1 overflow-y-auto p-3 space-y-3 min-h-[100px]" (cdkDropListDropped)="drop($event)">
                     <div *ngFor="let project of column.projects" cdkDrag [cdkDragData]="project"
-                        class="cursor-grab active:cursor-grabbing">
+                        [cdkDragDisabled]="!canMoveProject(project)" [class.cursor-grab]="canMoveProject(project)"
+                        [class.active:cursor-grabbing]="canMoveProject(project)"
+                        [class.cursor-default]="!canMoveProject(project)">
                         <div (click)="openEditProject(project)" class="cursor-pointer group">
                             <app-project-card [project]="project"></app-project-card>
                         </div>

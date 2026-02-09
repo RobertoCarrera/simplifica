@@ -1,7 +1,8 @@
 import { Component, Input, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Project } from '../../../../models/project';
+import { Project, ProjectPermissions } from '../../../../models/project';
 import { ProjectsService } from '../../../../core/services/projects.service';
+import { AuthService } from '../../../../services/auth.service';
 
 @Component({
   selector: 'app-project-card',
@@ -52,7 +53,12 @@ import { ProjectsService } from '../../../../core/services/projects.service';
 
       <!-- Subtasks -->
       <div class="mb-3 space-y-1.5" *ngIf="topTasks.length > 0">
-        <div *ngFor="let task of topTasks" class="flex items-start group/task cursor-pointer" (click)="toggleTask($event, task)">
+        <div *ngFor="let task of topTasks" 
+             class="flex items-start group/task" 
+             [class.cursor-pointer]="canCompleteTask(task)"
+             [class.cursor-not-allowed]="!canCompleteTask(task)"
+             [class.opacity-50]="!canCompleteTask(task)"
+             (click)="toggleTask($event, task)">
           <div class="mt-0.5 mr-2 flex-shrink-0 text-gray-400 dark:text-gray-500 group-hover/task:text-blue-500 transition-colors">
             <svg *ngIf="!task.is_completed" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L9 17l-4-4m6 2l6-6L14 11l-6 6" opacity="0" /> <!-- Empty box visual needed? Using simpler circle/square -->
@@ -91,14 +97,56 @@ import { ProjectsService } from '../../../../core/services/projects.service';
 export class ProjectCardComponent implements OnInit {
   @Input() project!: Project;
   private projectsService = inject(ProjectsService);
+  private authService = inject(AuthService);
   unreadCount = signal(0);
+  currentUser: any = null;
 
   ngOnInit() {
+    // Subscribe to current user
+    this.authService.userProfile$.subscribe(u => this.currentUser = u);
+
     if (this.project?.id) {
       this.projectsService.getUnreadCount(this.project.id).then(count => {
         this.unreadCount.set(count);
       });
     }
+  }
+
+  // Permission helpers
+  private get permissions(): ProjectPermissions {
+    return this.project?.permissions || {
+      client_can_create_tasks: false,
+      client_can_edit_tasks: false,
+      client_can_delete_tasks: false,
+      client_can_assign_tasks: false,
+      client_can_complete_tasks: false,
+      client_can_comment: true,
+      client_can_view_all_comments: true,
+      client_can_edit_project: false,
+      client_can_move_stage: false
+    };
+  }
+
+  private isClient(): boolean {
+    return this.currentUser?.auth_user_id === this.project?.client?.auth_user_id;
+  }
+
+  private isOwnerOrAdmin(): boolean {
+    if (!this.currentUser) return false;
+    if (this.currentUser.is_super_admin) return true;
+    const hasRole = this.currentUser.role === 'owner' || this.currentUser.role === 'admin';
+    if (!hasRole) return false;
+    if (this.project?.company_id && this.currentUser.company_id) {
+      return this.project.company_id === this.currentUser.company_id;
+    }
+    return hasRole;
+  }
+
+  canCompleteTask(task: any): boolean {
+    if (!this.currentUser) return false;
+    if (this.isOwnerOrAdmin()) return true;
+    if (this.isClient()) return this.permissions.client_can_complete_tasks;
+    return true; // Team members can
   }
 
   get topTasks() {
@@ -210,6 +258,12 @@ export class ProjectCardComponent implements OnInit {
 
   toggleTask(event: MouseEvent, task: any) {
     event.stopPropagation(); // Prevent opening modal
+
+    // Permission check - reject if user cannot complete tasks
+    if (!this.canCompleteTask(task)) {
+      console.log('⛔ Permission denied: cannot complete task');
+      return;
+    }
 
     // Optimistic update
     task.is_completed = !task.is_completed;

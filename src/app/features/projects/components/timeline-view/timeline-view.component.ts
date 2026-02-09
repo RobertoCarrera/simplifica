@@ -99,4 +99,23 @@ export class TimelineViewComponent implements OnInit, OnChanges {
       ((project.client.name || '') + ' ' + (project.client.apellidos || '')).trim() ||
       'Sin nombre';
   }
+
+  getTodayStyle(): any {
+    const today = new Date();
+    // Normalize today
+    today.setHours(0, 0, 0, 0);
+
+    if (today < this.minDate || today > this.maxDate) {
+      return { display: 'none' };
+    }
+
+    const offset = (today.getTime() - this.minDate.getTime()) / (1000 * 60 * 60 * 24);
+    const leftPercent = (offset / this.totalDays) * 100;
+
+    return {
+      left: `${leftPercent}%`
+    };
+  }
+
+
 }
