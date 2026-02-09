@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { Observable, from, map, switchMap } from 'rxjs';
 import { Project, ProjectStage, ProjectTask } from '../../models/project';
 import { SupabaseClientService } from '../../services/supabase-client.service';
@@ -159,22 +159,70 @@ export class ProjectsService {
                 .single()
         ).pipe(map(({ data, error }) => {
             if (error) throw error;
-            return data as Project;
+            const newProject = data as Project;
+            this.logActivity(newProject.id, 'project_created');
+            return newProject;
         }));
     }
 
     updateProject(id: string, updates: Partial<Project>): Observable<Project> {
         return from(
-            this.supabase
-                .from('projects')
-                .update(updates)
-                .eq('id', id)
-                .select()
-                .single()
-        ).pipe(map(({ data, error }) => {
-            if (error) throw error;
-            return data as Project;
-        }));
+            (async (): Promise<Project> => {
+                // 1. If stage_id is present, check if it actually changed
+                let stageChangeDetails = null;
+                if (updates.stage_id) {
+                    const { data: currentProject } = await this.supabase
+                        .from('projects')
+                        .select('stage_id')
+                        .eq('id', id)
+                        .single();
+
+                    if (currentProject && currentProject.stage_id !== updates.stage_id) {
+                        // Fetch stage names for better logging
+                        const { data: stages } = await this.supabase
+                            .from('project_stages')
+                            .select('id, name')
+                            .in('id', [currentProject.stage_id, updates.stage_id]);
+
+                        const fromStage = stages?.find(s => s.id === currentProject.stage_id)?.name;
+                        const toStage = stages?.find(s => s.id === updates.stage_id)?.name;
+
+                        stageChangeDetails = {
+                            from_stage_id: currentProject.stage_id,
+                            to_stage_id: updates.stage_id,
+                            from_stage_name: fromStage || 'anterior',
+                            to_stage_name: toStage || 'nueva'
+                        };
+                    }
+                }
+
+                // 2. Perform the update
+                const { data, error } = await this.supabase
+                    .from('projects')
+                    .update(updates)
+                    .eq('id', id)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                const updatedProject = data as Project;
+
+                // 3. Log activity
+                if (stageChangeDetails) {
+                    this.logActivity(id, 'project_stage_changed', stageChangeDetails);
+                } else {
+                    // Check if other meaningful fields changed (avoid logging if only position/updated_at changed)
+                    const meaningfulFields = ['name', 'description', 'start_date', 'end_date', 'priority', 'client_id'];
+                    const hasMeaningfulChanges = Object.keys(updates).some(key => meaningfulFields.includes(key));
+
+                    if (hasMeaningfulChanges) {
+                        this.logActivity(id, 'project_updated');
+                    }
+                }
+
+                return updatedProject;
+            })()
+        );
     }
 
     deleteProject(id: string): Observable<void> {
@@ -196,6 +244,7 @@ export class ProjectsService {
                 .eq('id', id)
         ).pipe(map(({ error }) => {
             if (error) throw error;
+            this.logActivity(id, 'project_archived');
         }));
     }
 
@@ -207,6 +256,7 @@ export class ProjectsService {
                 .eq('id', id)
         ).pipe(map(({ error }) => {
             if (error) throw error;
+            this.logActivity(id, 'project_restored');
         }));
     }
 
@@ -234,7 +284,11 @@ export class ProjectsService {
                 .single()
         ).pipe(map(({ data, error }) => {
             if (error) throw error;
-            return data as ProjectTask;
+            const newTask = data as ProjectTask;
+            if (newTask.project_id) {
+                this.logActivity(newTask.project_id, 'task_created', { task_id: newTask.id, task_title: newTask.title });
+            }
+            return newTask;
         }));
     }
 
@@ -248,7 +302,19 @@ export class ProjectsService {
                 .single()
         ).pipe(map(({ data, error }) => {
             if (error) throw error;
-            return data as ProjectTask;
+            const updatedTask = data as ProjectTask;
+
+            if (updatedTask.project_id) {
+                if (updates.is_completed === true) {
+                    this.logActivity(updatedTask.project_id, 'task_completed', { task_id: updatedTask.id, task_title: updatedTask.title });
+                } else if (updates.is_completed === false) {
+                    this.logActivity(updatedTask.project_id, 'task_reopened', { task_id: updatedTask.id, task_title: updatedTask.title });
+                } else if (updates.assigned_to) {
+                    this.logActivity(updatedTask.project_id, 'task_assigned', { task_id: updatedTask.id, task_title: updatedTask.title, assigned_to: updates.assigned_to });
+                }
+            }
+
+            return updatedTask;
         }));
     }
 
@@ -277,12 +343,6 @@ export class ProjectsService {
         }
 
         // Upserts (Insert or Update)
-        // Note: Supabase 'upsert' works if we provide the ID. For new tasks without ID, we must 'insert'.
-        // We can limit this to just inserts/updates loop or try to do bulk.
-        // Mixed new/existing is tricky with bulk upsert if IDs are missing.
-        // Safer to separate them or just iterate. for simplicity in this context, iteration is fine for small numbers.
-        // Actually, let's group them.
-
         const toInsert = tasksToUpsert.filter(t => !t.id).map(t => ({ ...t, project_id: projectId }));
         const toUpdate = tasksToUpsert.filter(t => t.id);
 
@@ -290,14 +350,23 @@ export class ProjectsService {
             operations.push(
                 this.supabase.from('project_tasks').insert(toInsert)
             );
+            // Log insertions
+            toInsert.forEach(t => {
+                this.logActivity(projectId, 'task_created', { task_title: t.title });
+            });
         }
 
-        // Updates must be done one by one usually unless we use upsert with all fields.
-        // Let's use loop for updates to be safe
+        // Updates
         toUpdate.forEach(t => {
             operations.push(
                 this.supabase.from('project_tasks').update(t).eq('id', t.id!)
             );
+            // Log completion or reopening if toggled
+            if (t.is_completed === true) {
+                this.logActivity(projectId, 'task_completed', { task_id: t.id, task_title: t.title });
+            } else if (t.is_completed === false) {
+                this.logActivity(projectId, 'task_reopened', { task_id: t.id, task_title: t.title });
+            }
         });
 
         return from(Promise.all(operations)).pipe(
@@ -393,6 +462,10 @@ export class ProjectsService {
             .single();
 
         if (error) throw error;
+
+        // Log activity
+        this.logActivity(projectId, 'comment_added', { comment_id: data.id, excerpt: content.substring(0, 50) });
+
         return data;
     }
 
@@ -531,5 +604,101 @@ export class ProjectsService {
             console.error('Error updating notification preferences:', err);
             throw err;
         }
+    }
+
+    // ---- Project Activity / History ----
+
+    async getProjectActivity(projectId: string): Promise<any[]> {
+        const { data, error } = await this.supabase
+            .from('project_activity')
+            .select(`
+                *,
+                user:users!project_activity_user_id_fkey(id, name, surname, email),
+                client:clients!project_activity_client_id_fkey(id, name, email, business_name)
+            `)
+            .eq('project_id', projectId)
+            .order('created_at', { ascending: false })
+            .limit(100);
+
+        if (error) {
+            console.error('Error fetching project activity:', error);
+            throw error;
+        }
+        return data || [];
+    }
+
+    async logActivity(projectId: string, activityType: string, details: any = {}): Promise<void> {
+        const companyId = this.getCompanyId();
+        const profile = this.authService.userProfile;
+
+        const activityData: any = {
+            project_id: projectId,
+            company_id: companyId,
+            activity_type: activityType,
+            details
+        };
+
+        // Determine if user is a client or team member
+        if (profile?.role === 'client') {
+            // Find client_id from clients table
+            const { data: clientData } = await this.supabase
+                .from('clients')
+                .select('id')
+                .eq('auth_user_id', profile.auth_user_id)
+                .single();
+            if (clientData) {
+                activityData.client_id = clientData.id;
+            }
+        } else if (profile) {
+            // Team member - get user_id from users table
+            const { data: userData } = await this.supabase
+                .from('users')
+                .select('id')
+                .eq('auth_user_id', profile.auth_user_id)
+                .single();
+            if (userData) {
+                activityData.user_id = userData.id;
+            }
+        }
+
+        const { error } = await this.supabase
+            .from('project_activity')
+            .insert(activityData);
+
+        if (error) {
+            console.error('Error logging activity:', error);
+            // Don't throw - activity logging is not critical
+        }
+    }
+
+    subscribeToProjectActivity(projectId: string, callback: (payload: any) => void): RealtimeChannel {
+        return this.supabase
+            .channel(`project-activity-${projectId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'project_activity',
+                    filter: `project_id=eq.${projectId}`
+                },
+                async (payload) => {
+                    // Enrich the payload with user/client info before sending to callback
+                    const { data, error } = await this.supabase
+                        .from('project_activity')
+                        .select(`
+                            *,
+                            user:users!project_activity_user_id_fkey(id, name, surname, email),
+                            client:clients!project_activity_client_id_fkey(id, name, email, business_name)
+                        `)
+                        .eq('id', payload.new['id'])
+                        .single();
+
+                    if (!error && data) {
+                        callback(data);
+                    }
+                }
+            )
+            .subscribe();
     }
 }

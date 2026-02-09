@@ -1,5 +1,5 @@
 import { CdkDragDrop, moveItemInArray, DragDropModule } from '@angular/cdk/drag-drop';
-import { Component, EventEmitter, Input, Output, inject, signal, ViewChildren, QueryList, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, signal, ViewChildren, QueryList, ElementRef, AfterViewChecked, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
@@ -10,11 +10,19 @@ import { SupabaseCustomersService } from '../../../../services/supabase-customer
 import { Customer } from '../../../../models/customer';
 import { AuthService } from '../../../../services/auth.service';
 import { ToastService } from '../../../../services/toast.service';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 @Component({
   selector: 'app-project-dialog',
   standalone: true,
   imports: [CommonModule, FormsModule, AppModalComponent, DragDropModule],
+  styles: [`
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { 
+      -ms-overflow-style: none;  /* IE and Edge */
+      scrollbar-width: none;  /* Firefox */
+    }
+  `],
   template: `
     <app-modal [visible]="visible" (close)="onClose()" [maxWidth]="'95vw'">
       <div class="w-full max-w-[95vw] mx-auto flex flex-col h-[90vh] bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-2xl">
@@ -72,14 +80,16 @@ import { ToastService } from '../../../../services/toast.service';
             <!-- Turn Title into a large input -->
             <div>
               <input type="text" [(ngModel)]="formData.name" placeholder="Nombre del Proyecto"
-                class="w-full text-3xl font-bold text-gray-900 dark:text-white bg-transparent border-none focus:ring-0 placeholder-gray-300 dark:placeholder-gray-600 p-0 mb-2">
+                [disabled]="!canEditProject()"
+                class="w-full text-3xl font-bold text-gray-900 dark:text-white bg-transparent border-none focus:ring-0 placeholder-gray-300 dark:placeholder-gray-600 p-0 mb-2 disabled:opacity-50">
             </div>
 
             <!-- Description -->
             <div>
               <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Descripción</label>
               <textarea [(ngModel)]="formData.description" rows="4" placeholder="Describe el alcance del proyecto..."
-                class="w-full text-base text-gray-700 dark:text-gray-300 bg-transparent border-none focus:ring-0 p-0 placeholder-gray-400 resize-none leading-relaxed"></textarea>
+                [disabled]="!canEditProject()"
+                class="w-full text-base text-gray-700 dark:text-gray-300 bg-transparent border-none focus:ring-0 p-0 placeholder-gray-400 resize-none leading-relaxed disabled:opacity-50"></textarea>
             </div>
 
             <!-- Tasks Section -->
@@ -110,8 +120,9 @@ import { ToastService } from '../../../../services/toast.service';
                             class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 cursor-pointer disabled:opacity-50">
                         <input type="text" [(ngModel)]="task.title" placeholder="Escribe una tarea..." 
                             #taskInput
+                            [disabled]="!canEditTask(task)"
                             (keydown.enter)="onTaskEnter($event)"
-                            class="flex-1 bg-transparent border-none focus:ring-0 text-sm text-gray-700 dark:text-gray-200">
+                            class="flex-1 bg-transparent border-none focus:ring-0 text-sm text-gray-700 dark:text-gray-200 disabled:opacity-50">
                         
                         <!-- Assignee Selector -->
                         <div class="relative group/assignee">
@@ -124,7 +135,8 @@ import { ToastService } from '../../../../services/toast.service';
                             </button>
                             <!-- Dropdown (Simple native for now or custom) -->
                             <select [(ngModel)]="task.assigned_to" 
-                                class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                [disabled]="!canAssignTask()"
+                                class="absolute inset-0 opacity-0 cursor-pointer w-full h-full disabled:cursor-not-allowed"
                                 title="Asignar a...">
                                 <option [ngValue]="null">Sin asignar</option>
                                 <optgroup label="Equipo">
@@ -160,11 +172,11 @@ import { ToastService } from '../../../../services/toast.service';
                                 [disabled]="!canCompleteTask(task)"
                                 class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 cursor-pointer disabled:opacity-50">
                             <span class="flex-1 text-sm text-gray-500 line-through decoration-gray-400">{{ task.title }}</span>
-                            <button (click)="removeTask(task)" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
+                             <button *ngIf="canDeleteTask(task)" (click)="removeTask(task)" class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all">
+                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                 </svg>
+                             </button>
                         </div>
                     </div>
                 </div>
@@ -178,8 +190,8 @@ import { ToastService } from '../../../../services/toast.service';
             <!-- Stage -->
             <div>
               <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Estado</label>
-              <select [(ngModel)]="formData.stage_id"
-                class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm">
+              <select [(ngModel)]="formData.stage_id" [disabled]="!canEditProject()"
+                class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm disabled:opacity-50">
                 <option *ngFor="let stage of stages" [value]="stage.id">{{ stage.name }}</option>
               </select>
             </div>
@@ -188,8 +200,8 @@ import { ToastService } from '../../../../services/toast.service';
             <div>
               <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Prioridad</label>
               <div class="relative">
-                  <select [(ngModel)]="formData.priority"
-                    class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer">
+                  <select [(ngModel)]="formData.priority" [disabled]="!canEditProject()"
+                    class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer disabled:opacity-50">
                     <option value="low">🟡 Baja</option>
                     <option value="medium">🔵 Media</option>
                     <option value="high">🟠 Alta</option>
@@ -205,8 +217,8 @@ import { ToastService } from '../../../../services/toast.service';
             <div>
                 <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Cliente</label>
                 <div class="relative">
-                    <select [(ngModel)]="formData.client_id"
-                        class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer">
+                    <select [(ngModel)]="formData.client_id" [disabled]="!canEditProject()"
+                        class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm appearance-none cursor-pointer disabled:opacity-50">
                         <option [value]="null">Seleccionar Cliente</option>
                         <option *ngFor="let client of clients" [value]="client.id">
                             {{ client.business_name || client.name + ' ' + (client.apellidos || '') }}
@@ -222,21 +234,51 @@ import { ToastService } from '../../../../services/toast.service';
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Inicio</label>
-                    <input type="date" [(ngModel)]="formData.start_date"
-                        class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm">
+                    <input type="date" [(ngModel)]="formData.start_date" [disabled]="!canEditProject()"
+                        class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm disabled:opacity-50">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Fin</label>
-                    <input type="date" [(ngModel)]="formData.end_date"
-                        class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm">
+                    <input type="date" [(ngModel)]="formData.end_date" [disabled]="!canEditProject()"
+                        class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-gray-700 dark:text-gray-200 shadow-sm disabled:opacity-50">
                 </div>
             </div>
 
-            <!-- Meta info (Created at) -->
+            <!-- Activity History (Inline) -->
             <div *ngIf="isEditing()" class="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <p class="text-xs text-gray-400">
-                    Creado el {{ project?.created_at | date:'mediumDate' }}
-                </p>
+                <div class="flex items-center justify-between mb-3">
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Historial</label>
+                </div>
+                
+                <!-- History Container with scroll -->
+                <div class="max-h-48 overflow-y-auto space-y-2 pr-1 no-scrollbar scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+                    
+                    <!-- Loading -->
+                    <div *ngIf="isLoadingActivity" class="flex justify-center py-4">
+                        <div class="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                    </div>
+                    
+                    <!-- Empty -->
+                    <div *ngIf="!isLoadingActivity && activityHistory.length === 0" class="text-center py-4">
+                        <p class="text-xs text-gray-400">Sin actividad registrada</p>
+                    </div>
+
+                    <!-- Activity Items -->
+                    <div *ngFor="let activity of activityHistory" 
+                        class="flex items-start space-x-2 p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                        <span class="text-base flex-shrink-0">{{ getActivityIcon(activity.activity_type) }}</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs text-gray-700 dark:text-gray-300 leading-snug">
+                                {{ getActivityMessage(activity) }}
+                            </p>
+                            <p class="text-[10px] text-gray-400 mt-0.5">
+                                {{ activity.created_at | date:'short' }}
+                                <span *ngIf="activity.user"> • {{ activity.user.name || activity.user.email }}</span>
+                                <span *ngIf="activity.client"> • {{ activity.client.name || 'Cliente' }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
           </div>
@@ -435,13 +477,13 @@ import { ToastService } from '../../../../services/toast.service';
             
             <!-- Standard Actions (Save/Cancel) for Details Tab -->
             <ng-container *ngIf="activeTab === 'details'">
-                <button *ngIf="!project?.is_archived" (click)="onArchive()" class="mr-auto text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1">
+                <button *ngIf="isOwnerOrAdmin() && !project?.is_archived" (click)="archive()" class="mr-auto text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1">
                     Archivar Proyecto
                 </button>
                 <button (click)="onClose()" class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
                     Cancelar
                 </button>
-                <button (click)="saveProject()" [disabled]="isSaving" 
+                <button *ngIf="canEditProject()" (click)="saveProject()" [disabled]="isSaving" 
                     class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all disabled:opacity-50 flex items-center">
                     <span *ngIf="isSaving" class="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
                     Guardar
@@ -571,47 +613,11 @@ import { ToastService } from '../../../../services/toast.service';
                 </div>
             </div>
         </div>
-        
-        <!-- Footer Actions (Keep separated from body) -->
-        <div class="bg-white dark:bg-gray-800 px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center" *ngIf="activeTab === 'details' || true">
-            
-            <!-- Left Actions (Archive/Restore) -->
-            <div>
-                <button *ngIf="isEditing() && !project?.is_archived" (click)="archive()" [disabled]="isSaving"
-                    class="px-3 py-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors text-sm font-medium flex items-center space-x-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    <span>Archivar</span>
-                </button>
-
-                 <button *ngIf="isEditing() && project?.is_archived" (click)="restore()" [disabled]="isSaving"
-                    class="px-3 py-2 text-green-600 hover:text-green-800 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md transition-colors text-sm font-medium flex items-center space-x-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    <span>Restaurar</span>
-                </button>
-            </div>
-
-            <!-- Right Actions -->
-            <div class="flex space-x-3">
-                <button (click)="onClose()"
-                    class="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
-                    Cancelar
-                </button>
-            <button (click)="saveProject()" [disabled]="!isValid() || isSaving"
-                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-                <span *ngIf="isSaving" class="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                {{ isEditing() ? 'Guardar Cambios' : 'Crear Proyecto' }}
-            </button>
-        </div>
-      </div>
     </div>
   </app-modal>
   `
 })
-export class ProjectDialogComponent {
+export class ProjectDialogComponent implements OnDestroy {
   @Input() visible = false;
   @Input() project: Project | null = null;
   @Input() stages: ProjectStage[] = [];
@@ -629,10 +635,15 @@ export class ProjectDialogComponent {
   isEditing = signal(false);
 
   // Comments
-  activeTab: 'details' | 'comments' | 'permissions' | 'notifications' = 'details';
+  activeTab: 'details' | 'comments' | 'permissions' | 'notifications' | 'history' = 'details';
   comments: any[] = [];
   newComment = '';
   isLoadingComments = false;
+
+  // Activity History
+  activityHistory: any[] = [];
+  isLoadingActivity = false;
+  private historySubscription: RealtimeChannel | null = null;
 
   // Permissions
   permissions: ProjectPermissions = {
@@ -678,6 +689,10 @@ export class ProjectDialogComponent {
 
         // Load notification preferences
         this.loadNotificationPreferences();
+
+        // Load activity history
+        this.loadActivity(this.project.id);
+        this.setupHistoryRealtime(this.project.id);
       } else {
         this.isEditing.set(false);
         this.formData = {
@@ -687,7 +702,13 @@ export class ProjectDialogComponent {
         this.tasks = [];
         this.deletedTaskIds = [];
       }
+    } else {
+      this.cleanupHistoryRealtime();
     }
+  }
+
+  ngOnDestroy() {
+    this.cleanupHistoryRealtime();
   }
 
   loadTasks(projectId: string) {
@@ -716,6 +737,10 @@ export class ProjectDialogComponent {
   }
 
   removeTask(task: Partial<ProjectTask>) {
+    if (!this.canDeleteTask(task)) {
+      this.toastService.error('Error', 'No tienes permiso para eliminar esta tarea.');
+      return;
+    }
     const index = this.tasks.indexOf(task);
     if (index > -1) {
       if (task.id) {
@@ -748,6 +773,10 @@ export class ProjectDialogComponent {
   }
 
   addTask() {
+    if (!this.canCreateTask()) {
+      this.toastService.error('Error', 'No tienes permiso para crear tareas.');
+      return;
+    }
     const maxPos = this.tasks.length > 0 ? Math.max(...this.tasks.map(t => t.position || 0)) : 0;
     this.tasks.push({
       title: '',
@@ -774,6 +803,10 @@ export class ProjectDialogComponent {
   }
 
   async saveProject() {
+    if (!this.canEditProject()) {
+      this.toastService.error('Error', 'No tienes permiso para editar este proyecto.');
+      return;
+    }
     if (!this.isValid()) return;
     this.isSaving = true;
 
@@ -810,6 +843,10 @@ export class ProjectDialogComponent {
   }
 
   archive() {
+    if (!this.isOwnerOrAdmin()) {
+      this.toastService.error('Error', 'No tienes permiso para archivar proyectos.');
+      return;
+    }
     if (!this.project?.id) return;
     if (!confirm('¿Estás seguro de que quieres archivar este proyecto?')) return;
 
@@ -827,6 +864,10 @@ export class ProjectDialogComponent {
   }
 
   restore() {
+    if (!this.isOwnerOrAdmin()) {
+      this.toastService.error('Error', 'No tienes permiso para restaurar proyectos.');
+      return;
+    }
     if (!this.project?.id) return;
 
     this.isSaving = true;
@@ -844,11 +885,14 @@ export class ProjectDialogComponent {
 
   // --- Comments Logic ---
 
-  setActiveTab(tab: 'details' | 'comments' | 'permissions' | 'notifications') {
+  setActiveTab(tab: 'details' | 'comments' | 'permissions' | 'notifications' | 'history') {
     this.activeTab = tab;
     if (tab === 'comments' && this.project?.id) {
       this.loadComments(this.project.id);
       this.projectsService.markProjectAsRead(this.project.id);
+    }
+    if (tab === 'history' && this.project?.id) {
+      this.loadActivity(this.project.id);
     }
   }
 
@@ -1095,5 +1139,76 @@ export class ProjectDialogComponent {
     } finally {
       this.isSaving = false;
     }
+  }
+
+  // --- Activity History Logic ---
+
+  async loadActivity(projectId: string) {
+    this.isLoadingActivity = true;
+    try {
+      this.activityHistory = await this.projectsService.getProjectActivity(projectId);
+    } catch (err) {
+      console.error('Error loading activity history', err);
+    } finally {
+      this.isLoadingActivity = false;
+    }
+  }
+
+  private setupHistoryRealtime(projectId: string) {
+    this.cleanupHistoryRealtime();
+    this.historySubscription = this.projectsService.subscribeToProjectActivity(projectId, (newActivity) => {
+      // Add new activity to the top of the list if it doesn't already exist
+      if (!this.activityHistory.find(a => a.id === newActivity.id)) {
+        this.activityHistory = [newActivity, ...this.activityHistory];
+      }
+    });
+  }
+
+  private cleanupHistoryRealtime() {
+    if (this.historySubscription) {
+      this.historySubscription.unsubscribe();
+      this.historySubscription = null;
+    }
+  }
+
+  getActivityIcon(type: string): string {
+    const icons: Record<string, string> = {
+      'project_created': '🚀',
+      'project_updated': '✏️',
+      'project_archived': '📦',
+      'project_restored': '↩️',
+      'project_stage_changed': '🔄',
+      'project_completed_early': '🎉',
+      'project_overdue': '⚠️',
+      'task_created': '➕',
+      'task_completed': '✅',
+      'task_reopened': '🔓',
+      'task_deleted': '🗑️',
+      'task_assigned': '👤',
+      'comment_added': '💬',
+      'permission_changed': '🔐'
+    };
+    return icons[type] || '📝';
+  }
+
+  getActivityMessage(activity: any): string {
+    const messages: Record<string, (a: any) => string> = {
+      'project_created': () => 'Proyecto creado',
+      'project_updated': () => 'Proyecto actualizado',
+      'project_archived': () => 'Proyecto archivado',
+      'project_restored': () => 'Proyecto restaurado',
+      'project_stage_changed': (a) => `Etapa cambiada de "${a.details?.from_stage_name || 'anterior'}" a "${a.details?.to_stage_name || 'nueva'}"`,
+      'project_completed_early': (a) => `¡Proyecto completado ${a.details?.days_early || 0} días antes!`,
+      'project_overdue': (a) => `Proyecto vencido hace ${a.details?.days_overdue || 0} días`,
+      'task_created': (a) => `Tarea creada: "${a.details?.task_title || 'Sin título'}"`,
+      'task_completed': (a) => `Tarea completada: "${a.details?.task_title || 'Sin título'}"`,
+      'task_reopened': (a) => `Tarea reabierta: "${a.details?.task_title || 'Sin título'}"`,
+      'task_deleted': (a) => `Tarea eliminada: "${a.details?.task_title || 'Sin título'}"`,
+      'task_assigned': (a) => `Tarea "${a.details?.task_title || 'Sin título'}" asignada a ${a.details?.assigned_name || 'usuario'}`,
+      'comment_added': () => 'Nuevo comentario añadido',
+      'permission_changed': () => 'Permisos del proyecto modificados'
+    };
+    const fn = messages[activity.activity_type];
+    return fn ? fn(activity) : 'Evento desconocido';
   }
 }
