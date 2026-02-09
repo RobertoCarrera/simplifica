@@ -6,6 +6,18 @@ export interface ProjectStage {
     created_at?: string;
 }
 
+export interface ProjectPermissions {
+    client_can_create_tasks: boolean;
+    client_can_edit_tasks: boolean;
+    client_can_delete_tasks: boolean;
+    client_can_assign_tasks: boolean;
+    client_can_complete_tasks: boolean;
+    client_can_comment: boolean;
+    client_can_view_all_comments: boolean;
+    client_can_edit_project: boolean;
+    client_can_move_stage: boolean;
+}
+
 export interface ProjectTask {
     id: string;
     project_id: string;
@@ -15,6 +27,21 @@ export interface ProjectTask {
     assigned_to?: string;
     position?: number;
     created_at?: string;
+}
+
+export interface ProjectNotificationPreferences {
+    id?: string;
+    project_id: string;
+    user_id?: string;
+    client_id?: string;
+    notify_on_new_task: boolean;
+    notify_on_task_completed: boolean;
+    notify_on_task_assigned: boolean;
+    notify_on_new_comment: boolean;
+    notify_on_project_update: boolean;
+    notify_on_deadline_approaching: boolean;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface Project {
@@ -31,6 +58,7 @@ export interface Project {
     is_archived?: boolean;
     created_at?: string;
     updated_at?: string;
+    permissions?: ProjectPermissions; // Joined from project_permissions table
 
     // Relations (joined)
     client?: {
@@ -38,6 +66,7 @@ export interface Project {
         name: string;
         apellidos?: string; // For individuals
         business_name?: string; // For companies
+        auth_user_id?: string;
     };
     tasks?: ProjectTask[];
 

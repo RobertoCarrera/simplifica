@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, EventEmitter, Output } from '@angular/core';
+import { Component, Input, OnChanges, OnInit, EventEmitter, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   CdkDragDrop,
@@ -7,9 +7,10 @@ import {
   DragDropModule
 } from '@angular/cdk/drag-drop';
 import { ProjectsService } from '../../../core/services/projects.service';
-import { Project, ProjectStage } from '../../../models/project';
+import { Project, ProjectStage, ProjectPermissions } from '../../../models/project';
 import { ProjectCardComponent } from '../components/project-card/project-card.component';
 import { ColumnDialogComponent } from '../components/column-dialog/column-dialog.component';
+import { AuthService } from '../../../services/auth.service';
 
 interface KanbanColumn {
   stage: ProjectStage;
@@ -23,7 +24,7 @@ interface KanbanColumn {
   templateUrl: './kanban-board.component.html',
   styleUrl: './kanban-board.component.scss'
 })
-export class KanbanBoardComponent implements OnChanges {
+export class KanbanBoardComponent implements OnChanges, OnInit {
   @Input() projects: Project[] = [];
   @Input() stages: ProjectStage[] = [];
   @Output() editProject = new EventEmitter<Project>();
@@ -31,7 +32,14 @@ export class KanbanBoardComponent implements OnChanges {
 
   columns: KanbanColumn[] = [];
 
+  private authService = inject(AuthService);
+  currentUser: any = null;
+
   constructor(private projectsService: ProjectsService) { }
+
+  ngOnInit() {
+    this.authService.userProfile$.subscribe(u => this.currentUser = u);
+  }
 
   ngOnChanges() {
     this.updateColumns();
@@ -48,13 +56,41 @@ export class KanbanBoardComponent implements OnChanges {
     }));
   }
 
+  // Permission helpers
+  private isClient(project: Project): boolean {
+    return this.currentUser?.auth_user_id === project?.client?.auth_user_id;
+  }
+
+  private isOwnerOrAdmin(): boolean {
+    if (!this.currentUser) return false;
+    if (this.currentUser.is_super_admin) return true;
+    return this.currentUser.role === 'owner' || this.currentUser.role === 'admin';
+  }
+
+  canMoveProject(project: Project): boolean {
+    if (!this.currentUser) return false;
+    if (this.isOwnerOrAdmin()) return true;
+    if (this.isClient(project)) {
+      const perms = project.permissions || {} as ProjectPermissions;
+      return perms.client_can_move_stage || false;
+    }
+    return true; // Team members can
+  }
+
   drop(event: CdkDragDrop<Project[]>) {
     if (event.previousContainer === event.container) {
       // Reordering within the same column
       moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
       this.updatePositions(event.container.data);
     } else {
-      // Moving to another column
+      // Moving to another column - check permission
+      const movedProject = event.previousContainer.data[event.previousIndex];
+
+      if (!this.canMoveProject(movedProject)) {
+        console.log('⛔ Permission denied: cannot move project between stages');
+        return;
+      }
+
       transferArrayItem(
         event.previousContainer.data,
         event.container.data,
@@ -62,7 +98,6 @@ export class KanbanBoardComponent implements OnChanges {
         event.currentIndex,
       );
 
-      const movedProject = event.container.data[event.currentIndex];
       const newStageId = event.container.id; // We bind the stage ID to the container ID
 
       // Update project stage in DB
