@@ -23,12 +23,9 @@ export class StaffGuard implements CanActivate {
 
                 if (!profile) {
                     // Critical fix: If user is authenticated but has no profile (integrity issue),
-                    // forcing logout breaks the infinite loop with GuestGuard (which redirects to / if authenticated).
-                    if (this.auth.currentUser) {
-                        console.warn('StaffGuard: User authenticated but no profile found. Forcing logout to prevent redirect loop.');
-                        this.auth.logout(); // Async, but we redirect immediately
-                    }
-                    return this.router.parseUrl('/login');
+                    // redirect to complete-profile instead of forcing logout.
+                    console.warn('StaffGuard: User authenticated but no profile found. Redirecting to /complete-profile.');
+                    return this.router.parseUrl('/complete-profile');
                 }
 
                 // Check for specific staff roles

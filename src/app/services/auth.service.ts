@@ -721,10 +721,43 @@ export class AuthService {
       }
 
     } catch (e) {
-      console.error('❌ Error in ensureAppUser:', e);
       // Remover la marca de progreso también en caso de error
       this.registrationInProgress.delete(authUser.id);
       throw e;
+    }
+  }
+
+  /**
+   * Completa el perfil del usuario autenticado si no tiene registro en app/companies.
+   * Utilizado en /complete-profile
+   */
+  async completeProfile(data: { name: string; surname?: string; companyName: string }): Promise<boolean> {
+    const user = this.currentUserSubject.value;
+    if (!user) return false;
+
+    try {
+      console.log('📝 Completing profile for user:', user.email);
+      // Actualizar metadata del usuario en Auth (opcional pero útil)
+      await this.supabase.auth.updateUser({
+        data: {
+          full_name: `${data.name} ${data.surname || ''}`.trim(),
+          given_name: data.name,
+          surname: data.surname,
+          company_name: data.companyName
+        }
+      });
+
+      // Asegurar creación de App User y Company
+      // Pasamos el usuario actualizado (aunque ensureAppUser usa el ID)
+      await this.ensureAppUser(user, data.companyName);
+
+      // Forzar recarga del perfil
+      await this.setCurrentUser(user);
+
+      return !!this.userProfileSubject.value;
+    } catch (error) {
+      console.error('❌ Error in completeProfile:', error);
+      return false;
     }
   }
 
