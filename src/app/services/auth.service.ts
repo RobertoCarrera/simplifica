@@ -127,6 +127,27 @@ export class AuthService {
       });
       // Setup inactivity timeout to auto-signout after configurable period
       this.setupInactivityTimeout();
+
+      // FIX: Pause auto-refresh when tab is hidden to prevent multi-tab token race conditions
+      // since we have locks disabled in SupabaseClientService.
+      document.addEventListener('visibilitychange', async () => {
+        if (document.hidden) {
+          console.log('⏸️ Pausing auth auto-refresh (tab hidden)');
+          this.supabase.auth.stopAutoRefresh();
+        } else {
+          console.log('▶️ Resuming auth auto-refresh (tab visible)');
+          // Force check session from storage to ensure we have latest token (from other tabs)
+          // before ensuring auto-refresh is running. 
+          // getSession() will read from localStorage and update internal state if needed.
+          await this.supabase.auth.getSession();
+          this.supabase.auth.startAutoRefresh();
+
+          const { data } = await this.supabase.auth.getSession();
+          if (!data.session) {
+            console.log('⚠️ No session found on tab resume - potential logout in other tab.');
+          }
+        }
+      });
     } else {
       console.log('🔐 AuthService: Ya inicializado, reutilizando instancia');
       this.loadingSubject.next(false);
