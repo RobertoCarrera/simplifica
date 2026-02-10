@@ -8,7 +8,7 @@ import { LoginComponent } from './features/auth/login/login.component';
 import { SupabaseTicketsComponent } from './features/tickets/list/supabase-tickets.component';
 import { TicketDetailComponent } from './features/tickets/detail/ticket-detail.component';
 import { ConfiguracionComponent } from './features/settings/configuracion/configuracion.component';
-import { EmergencyLoginComponent } from './features/auth/emergency-login/emergency-login.component';
+
 import { AuthGuard, AdminGuard, GuestGuard, DevGuard, OwnerAdminGuard } from './guards/auth.guard';
 import { StaffGuard } from './core/guards/staff.guard';
 import { ModuleGuard } from './guards/module.guard';
