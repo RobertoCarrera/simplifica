@@ -71,6 +71,7 @@ export class ResponsiveLayoutComponent {
       url.includes('/recuperar-password') ||
       url.includes('/auth/callback') ||
       url.includes('/consent') ||
+      url.includes('/complete-profile') ||
       url.includes('/pago/');
   }
 
