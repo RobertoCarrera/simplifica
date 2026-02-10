@@ -147,7 +147,9 @@ export class AuthService {
 
     // Reset on user interactions
     ['click', 'mousemove', 'keydown', 'touchstart'].forEach(evt => {
-      window.addEventListener(evt, reset, { passive: true });
+      window.addEventListener(evt, () => {
+        if (!document.hidden) reset();
+      }, { passive: true });
     });
 
     // Initialize timer
@@ -252,7 +254,17 @@ export class AuthService {
     if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
       await this.setCurrentUser(session.user);
     } else if (event === 'SIGNED_OUT') {
-      this.clearUserData();
+      // Debounce spurious SIGNED_OUT events (common with custom storage/migrations)
+      // Wait 1s and check if we really have no session
+      setTimeout(async () => {
+        const { data } = await this.supabase.auth.getSession();
+        if (!data.session) {
+          console.log('🚪 Confirming SIGNED_OUT after grace period.');
+          this.clearUserData();
+        } else {
+          console.log('⚠️ Ignored spurious SIGNED_OUT event - session is still active.');
+        }
+      }, 1000);
     }
   }
 
