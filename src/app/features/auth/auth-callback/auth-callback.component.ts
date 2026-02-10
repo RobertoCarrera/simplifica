@@ -154,8 +154,14 @@ export class AuthCallbackComponent implements OnInit {
       this.toastService.success('¡Éxito!', 'Autenticación exitosa');
 
       // Redirigir al dashboard después de un breve delay
+      // Redirigir según el tipo de acción
       setTimeout(() => {
-        this.router.navigate(['/clientes']);
+        if (type === 'invite' || type === 'recovery') {
+          console.log('[AUTH-CALLBACK] Invite/Recovery detected, redirecting to password setup...');
+          this.router.navigate(['/reset-password']);
+        } else {
+          this.router.navigate(['/clientes']);
+        }
       }, 1500);
 
     } catch (error: any) {
