@@ -399,16 +399,39 @@ export class AuthService {
         const onInviteFlow = typeof window !== 'undefined' && window.location.pathname.startsWith('/invite');
         if (onInviteFlow) {
           console.log('ℹ️ User has no active memberships yet (Invite Flow) - normal state.');
+        } else if (userRes.data?.company_id) {
+          console.warn('⚠️ User has company_id but no properties in company_members. Creating fallback shim.');
+          // FallbackShim: Create a temporary membership object so login can proceed
+          const fallbackCompanyId = userRes.data.company_id;
+
+          // Try to find company details in clientRes or just use minimal
+          // We can't fetch company details easily here without another query, so we'll trust the ID
+          // and let the UI handle missing company name if needed, or maybe the interceptor handles it.
+          // Better: just add it.
+          allMemberships.push({
+            id: 'legacy-shim-' + fallbackCompanyId,
+            user_id: userRes.data.id,
+            company_id: fallbackCompanyId,
+            role: (userRes.data as any).app_role?.name === 'super_admin' ? 'super_admin' : 'member', // Default to member
+            status: 'active',
+            created_at: new Date().toISOString(),
+            company: {
+              id: fallbackCompanyId,
+              name: 'Empresa (Recuperada)', // Placeholder until proper fetch
+              is_active: true,
+              slug: null
+            } as any
+          });
+
         } else {
           console.warn('⚠️ User has no active memberships (Internal or Client).');
+          // Special case: Super Admin without explicit memberships can still proceed
+          const appRole = (userRes.data as any)?.app_role;
+          if (appRole?.name !== 'super_admin') {
+            return null; // Regular users must have a membership
+          }
+          console.log('🛡️ User is Super Admin without memberships - proceeding.');
         }
-
-        // Special case: Super Admin without explicit memberships can still proceed
-        const appRole = (userRes.data as any)?.app_role;
-        if (appRole?.name !== 'super_admin') {
-          return null; // Regular users must have a membership
-        }
-        console.log('🛡️ User is Super Admin without memberships - proceeding.');
       }
 
       // 3. Determine Active Context
@@ -871,10 +894,16 @@ export class AuthService {
 
   async logout(): Promise<void> {
     try {
+      // Clear local state immediately to avoid guards redirecting back to protected routes
+      // if checking currentUser$ before the debounce fires.
+      this.clearUserData();
       await this.supabase.auth.signOut();
+      this.currentCompanyId.set(null); // Reset company signal
       this.router.navigate(['/login']);
     } catch (error) {
       console.error('Error during logout:', error);
+      // Ensure we redirect even on error
+      this.router.navigate(['/login']);
     }
   }
 
