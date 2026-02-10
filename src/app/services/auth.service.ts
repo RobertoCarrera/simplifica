@@ -633,127 +633,48 @@ export class AuthService {
             console.log('🤝 Company exists. Linking user as member to:', companyId);
 
             await this.retryWithBackoff(async () => {
-              let userId = existingUserId;
+              const { data: joinResult, error: joinError } = await this.supabase.rpc('join_company_as_member', {
+                p_company_id: companyId
+              });
 
-              if (!userId) {
-                const insertResult = await this.supabase.from('users').insert({
-                  email: authUser.email,
-                  name: (authUser.user_metadata && (authUser.user_metadata as any)['given_name']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ')[0] : null) || authUser.email?.split('@')[0] || 'Usuario',
-                  surname: (authUser.user_metadata && (authUser.user_metadata as any)['surname']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ').slice(1).join(' ') : null) || null,
-                  active: true,
-                  company_id: companyId,
-                  auth_user_id: authUser.id,
-                  permissions: {}
-                })
-                  .select('id')
-                  .single();
-
-                if (insertResult.error) throw insertResult.error;
-                userId = insertResult.data.id;
-              } else {
-                // Update existing user ensuring company_id is set
-                await this.supabase.from('users').update({ company_id: companyId }).eq('id', userId);
-              }
-
-              if (userId) {
-                // Look up 'member' role_id from app_roles
-                const { data: memberRole } = await this.supabase.from('app_roles').select('id').eq('name', 'member').maybeSingle();
-
-                // Check membership
-                const { count } = await this.supabase.from('company_members')
-                  .select('*', { count: 'exact', head: true })
-                  .eq('user_id', userId)
-                  .eq('company_id', companyId);
-
-                if (!count) {
-                  await this.supabase.from('company_members').insert({
-                    user_id: userId,
-                    company_id: companyId,
-                    role_id: memberRole?.id || null,
-                    status: 'active'
-                  });
-                }
-              }
-              return { success: true };
+              if (joinError) throw joinError;
+              if (joinResult?.success === false) throw new Error(joinResult.error || 'Failed to join company');
+              return joinResult;
             });
 
-            console.log('✅ App user created/linked as member');
+            console.log('✅ App user created/linked as member via RPC');
             return;
           }
 
-          // La empresa no existe: crearla con el nombre indicado y asignar owner
-          console.log('🏢 Creating company (from form):', desiredCompanyName);
+          // La empresa no existe: crearla via RPC (SECURITY DEFINER bypasses RLS)
+          console.log('🏢 Creating company via RPC:', desiredCompanyName);
 
-          // Verificar sesión válida antes de inserts
+          // Verificar sesión válida antes del RPC
           await new Promise(resolve => setTimeout(resolve, 300));
           const { data: { session } } = await this.supabase.auth.getSession();
           if (!session?.access_token) {
             await this.supabase.auth.refreshSession();
           }
 
-          const company = await this.retryWithSession(async () => {
-            const { data, error } = await this.supabase
-              .from('companies')
-              .insert({
-                name: desiredCompanyName,
-                slug: this.generateSlug(desiredCompanyName),
-                nif: companyNif || null
-              })
-              .select()
-              .single();
-            if (error) throw error;
-            return data;
+          const { data: rpcResult, error: rpcError } = await this.retryWithSession(async () => {
+            return await this.supabase.rpc('create_company_with_owner', {
+              p_name: desiredCompanyName,
+              p_slug: this.generateSlug(desiredCompanyName),
+              p_nif: companyNif || null
+            });
           });
 
-          const companyId = company?.id as string;
-          if (!companyId) throw new Error('Company creation returned no id');
+          if (rpcError) {
+            console.error('❌ Error in create_company_with_owner RPC:', rpcError);
+            throw rpcError;
+          }
 
-          console.log('✅ Company created with ID:', companyId);
+          if (rpcResult?.success === false) {
+            console.error('❌ RPC returned error:', rpcResult.error);
+            throw new Error(rpcResult.error || 'Company creation failed');
+          }
 
-          await this.retryWithBackoff(async () => {
-            let userId = existingUserId;
-
-            if (!userId) {
-              const insertResult = await this.supabase.from('users').insert({
-                email: authUser.email,
-                name: (authUser.user_metadata && (authUser.user_metadata as any)['given_name']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ')[0] : null) || authUser.email?.split('@')[0] || 'Usuario',
-                surname: (authUser.user_metadata && (authUser.user_metadata as any)['surname']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ').slice(1).join(' ') : null) || null,
-                active: true,
-                company_id: companyId,
-                auth_user_id: authUser.id,
-                permissions: {}
-              })
-                .select('id')
-                .single();
-
-              if (insertResult.error) throw insertResult.error;
-              userId = insertResult.data.id;
-            } else {
-              await this.supabase.from('users').update({ company_id: companyId }).eq('id', userId);
-            }
-
-            if (userId) {
-              // Look up 'owner' role_id from app_roles
-              const { data: ownerRole } = await this.supabase.from('app_roles').select('id').eq('name', 'owner').maybeSingle();
-
-              const { count } = await this.supabase.from('company_members')
-                .select('*', { count: 'exact', head: true })
-                .eq('user_id', userId)
-                .eq('company_id', companyId);
-
-              if (!count) {
-                await this.supabase.from('company_members').insert({
-                  user_id: userId,
-                  company_id: companyId,
-                  role_id: ownerRole?.id || null,
-                  status: 'active'
-                });
-              }
-            }
-            return { success: true };
-          });
-
-          console.log('✅ App user created/linked successfully');
+          console.log('✅ Company created via RPC:', rpcResult);
           return;
 
         }
