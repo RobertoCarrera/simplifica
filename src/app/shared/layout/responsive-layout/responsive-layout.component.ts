@@ -12,7 +12,9 @@ import { AuthService } from '../../../services/auth.service';
   imports: [CommonModule, RouterModule, ResponsiveSidebarComponent, MobileBottomNavComponent],
   template: `
     <!-- Layout sin sidebar para login/register O usuarios no autenticados -->
-    @if (isAuthPage() || !isAuthenticated()) {
+    @if (isLoading | async) {
+      <div class="h-screen w-full bg-gray-50 dark:bg-gray-900 transition-colors duration-200"></div>
+    } @else if (isAuthPage() || !isAuthenticated()) {
       <div class="min-h-screen">
         <router-outlet></router-outlet>
       </div>
@@ -59,6 +61,8 @@ export class ResponsiveLayoutComponent {
   sidebarService = inject(SidebarStateService); // Hacer público
   private authService = inject(AuthService);
   private router = inject(Router);
+
+  isLoading = this.authService.loading$;
 
   // Check if current route is auth page (no sidebar)
   isAuthPage(): boolean {

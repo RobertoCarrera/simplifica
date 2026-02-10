@@ -562,42 +562,57 @@ export class AuthService {
         }
 
         if (existing.data) {
-          console.log('✅ User already exists in app database');
-          this.registrationInProgress.delete(authUser.id);
-          return; // ya está enlazado
+          // Check if user has active memberships
+          const { count } = await this.supabase.from('company_members')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', existing.data.id)
+            .eq('status', 'active');
+
+          if (count && count > 0) {
+            console.log('✅ User already exists and has active memberships');
+            this.registrationInProgress.delete(authUser.id);
+            return;
+          }
+          console.log('⚠️ User exists in users table but has no active memberships. Proceeding to ensure links...');
         }
 
-        console.log('➕ Creating new app user...');
+        const existingUserId = existing.data?.id;
+
+        console.log('➕ Ensuring app user and company links...');
 
         // 2. Si existe un registro pendiente, delegar en la función de confirmación (backend decide)
-        const pendingRes = await this.supabase
-          .from('pending_users')
-          .select('company_name, confirmed_at, expires_at')
-          .eq('auth_user_id', authUser.id)
-          .order('created_at', { ascending: false })
-          .maybeSingle();
+        // Solo si NO existe el usuario ya (si existe, asumimos que estamos completando perfil manualmente)
+        if (!existingUserId) {
+          const pendingRes = await this.supabase
+            .from('pending_users')
+            .select('company_name, confirmed_at, expires_at')
+            .eq('auth_user_id', authUser.id)
+            .order('created_at', { ascending: false })
+            .maybeSingle();
 
-        if (pendingRes.data && !pendingRes.error) {
-          console.log('📨 Pending registration found, confirming via RPC...');
-          const { data: confirmData, error: confirmErr } = await this.supabase.rpc('confirm_user_registration', {
-            p_auth_user_id: authUser.id
-          });
+          if (pendingRes.data && !pendingRes.error) {
+            console.log('📨 Pending registration found, confirming via RPC...');
+            const { data: confirmData, error: confirmErr } = await this.supabase.rpc('confirm_user_registration', {
+              p_auth_user_id: authUser.id
+            });
 
-          if (confirmErr) {
-            console.error('❌ Error in confirm_user_registration:', confirmErr);
-          } else if (confirmData?.requires_invitation_approval) {
-            console.log(' Invitation approval required. Not creating user/company client-side.');
-            return; // Esperar aprobación del owner
-          } else if (confirmData?.success) {
-            console.log('✅ Registration completed via RPC');
-            return; // El backend ya creó la empresa y el usuario
+            if (confirmErr) {
+              console.error('❌ Error in confirm_user_registration:', confirmErr);
+            } else if (confirmData?.requires_invitation_approval) {
+              console.log(' Invitation approval required. Not creating user/company client-side.');
+              return; // Esperar aprobación del owner
+            } else if (confirmData?.success) {
+              console.log('✅ Registration completed via RPC');
+              return; // El backend ya creó la empresa y el usuario
+            }
+            // Si falla, continuamos con la lógica local como fallback
           }
-          // Si falla, continuamos con la lógica local como fallback
         }
 
         // 3. Determinar el nombre de empresa deseado (respetar el del formulario si existe)
-        const desiredCompanyName = (companyName ?? pendingRes.data?.company_name ?? '').trim();
+        const desiredCompanyName = (companyName ?? '').trim();
 
+        // Si tenemos nombre de empresa, comprobar si ya existe para unir como miembro
         // Si tenemos nombre de empresa, comprobar si ya existe para unir como miembro
         if (desiredCompanyName) {
           console.log('🔎 Checking company existence for:', desiredCompanyName);
@@ -618,34 +633,51 @@ export class AuthService {
             console.log('🤝 Company exists. Linking user as member to:', companyId);
 
             await this.retryWithBackoff(async () => {
-              const insertResult = await this.supabase.from('users').insert({
-                email: authUser.email,
-                name: (authUser.user_metadata && (authUser.user_metadata as any)['given_name']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ')[0] : null) || authUser.email?.split('@')[0] || 'Usuario',
-                surname: (authUser.user_metadata && (authUser.user_metadata as any)['surname']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ').slice(1).join(' ') : null) || null,
-                active: true,
-                company_id: companyId,
-                auth_user_id: authUser.id,
-                permissions: {}
-              })
-                .select('id')
-                .single();
+              let userId = existingUserId;
 
-              if (insertResult.data) {
-                // Look up 'member' role_id from app_roles
-                const { data: memberRole } = await this.supabase.from('app_roles').select('id').eq('name', 'member').maybeSingle();
-                await this.supabase.from('company_members').insert({
-                  user_id: insertResult.data.id,
+              if (!userId) {
+                const insertResult = await this.supabase.from('users').insert({
+                  email: authUser.email,
+                  name: (authUser.user_metadata && (authUser.user_metadata as any)['given_name']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ')[0] : null) || authUser.email?.split('@')[0] || 'Usuario',
+                  surname: (authUser.user_metadata && (authUser.user_metadata as any)['surname']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ').slice(1).join(' ') : null) || null,
+                  active: true,
                   company_id: companyId,
-                  role_id: memberRole?.id || null,
-                  status: 'active'
-                });
+                  auth_user_id: authUser.id,
+                  permissions: {}
+                })
+                  .select('id')
+                  .single();
+
+                if (insertResult.error) throw insertResult.error;
+                userId = insertResult.data.id;
+              } else {
+                // Update existing user ensuring company_id is set
+                await this.supabase.from('users').update({ company_id: companyId }).eq('id', userId);
               }
 
-              if (insertResult.error) throw insertResult.error;
-              return insertResult;
+              if (userId) {
+                // Look up 'member' role_id from app_roles
+                const { data: memberRole } = await this.supabase.from('app_roles').select('id').eq('name', 'member').maybeSingle();
+
+                // Check membership
+                const { count } = await this.supabase.from('company_members')
+                  .select('*', { count: 'exact', head: true })
+                  .eq('user_id', userId)
+                  .eq('company_id', companyId);
+
+                if (!count) {
+                  await this.supabase.from('company_members').insert({
+                    user_id: userId,
+                    company_id: companyId,
+                    role_id: memberRole?.id || null,
+                    status: 'active'
+                  });
+                }
+              }
+              return { success: true };
             });
 
-            console.log('✅ App user created as member');
+            console.log('✅ App user created/linked as member');
             return;
           }
 
@@ -679,34 +711,49 @@ export class AuthService {
           console.log('✅ Company created with ID:', companyId);
 
           await this.retryWithBackoff(async () => {
-            const insertResult = await this.supabase.from('users').insert({
-              email: authUser.email,
-              name: (authUser.user_metadata && (authUser.user_metadata as any)['given_name']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ')[0] : null) || authUser.email?.split('@')[0] || 'Usuario',
-              surname: (authUser.user_metadata && (authUser.user_metadata as any)['surname']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ').slice(1).join(' ') : null) || null,
-              active: true,
-              company_id: companyId,
-              auth_user_id: authUser.id,
-              permissions: {}
-            })
-              .select('id')
-              .single();
+            let userId = existingUserId;
 
-            if (insertResult.data) {
-              // Look up 'owner' role_id from app_roles
-              const { data: ownerRole } = await this.supabase.from('app_roles').select('id').eq('name', 'owner').maybeSingle();
-              await this.supabase.from('company_members').insert({
-                user_id: insertResult.data.id,
+            if (!userId) {
+              const insertResult = await this.supabase.from('users').insert({
+                email: authUser.email,
+                name: (authUser.user_metadata && (authUser.user_metadata as any)['given_name']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ')[0] : null) || authUser.email?.split('@')[0] || 'Usuario',
+                surname: (authUser.user_metadata && (authUser.user_metadata as any)['surname']) || ((authUser.user_metadata && (authUser.user_metadata as any)['full_name']) ? (authUser.user_metadata as any)['full_name'].split(' ').slice(1).join(' ') : null) || null,
+                active: true,
                 company_id: companyId,
-                role_id: ownerRole?.id || null,
-                status: 'active'
-              });
+                auth_user_id: authUser.id,
+                permissions: {}
+              })
+                .select('id')
+                .single();
+
+              if (insertResult.error) throw insertResult.error;
+              userId = insertResult.data.id;
+            } else {
+              await this.supabase.from('users').update({ company_id: companyId }).eq('id', userId);
             }
 
-            if (insertResult.error) throw insertResult.error;
-            return insertResult;
+            if (userId) {
+              // Look up 'owner' role_id from app_roles
+              const { data: ownerRole } = await this.supabase.from('app_roles').select('id').eq('name', 'owner').maybeSingle();
+
+              const { count } = await this.supabase.from('company_members')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userId)
+                .eq('company_id', companyId);
+
+              if (!count) {
+                await this.supabase.from('company_members').insert({
+                  user_id: userId,
+                  company_id: companyId,
+                  role_id: ownerRole?.id || null,
+                  status: 'active'
+                });
+              }
+            }
+            return { success: true };
           });
 
-          console.log('✅ App user created successfully');
+          console.log('✅ App user created/linked successfully');
           return;
 
         }
