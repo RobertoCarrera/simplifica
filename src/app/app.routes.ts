@@ -148,6 +148,11 @@ export const routes: Routes = [
     { path: 'auth/callback', component: AuthCallbackComponent }, // Callback de Supabase
     { path: 'auth/confirm', component: EmailConfirmationComponent }, // Confirmación de email
     { path: 'reset-password', component: ResetPasswordComponent }, // Recuperación de contraseña
+    {
+        path: 'complete-profile',
+        loadComponent: () => import('./features/auth/complete-profile/complete-profile.component').then(m => m.CompleteProfileComponent),
+        canActivate: [AuthGuard]
+    },
     { path: 'recuperar-password', component: ForgotPasswordComponent, canActivate: [GuestGuard] }, // Solicitud de recuperación
     // Public GDPR consent portal (no guard)
     { path: 'consent', component: ConsentPortalComponent },

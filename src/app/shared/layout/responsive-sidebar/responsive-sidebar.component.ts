@@ -294,7 +294,6 @@ export class ResponsiveSidebarComponent implements OnInit {
     // Si no hay perfil de app (usuario pendiente/invitado): menú mínimo
     if (!profile) {
       return [
-        { id: 1001, label: 'Confirmación', icon: 'sparkles', route: '/auth/confirm?pending=1', module: 'core' },
         { id: 14, label: 'Ayuda', icon: 'help-circle', route: '/ayuda', module: 'core' }
       ];
     }
