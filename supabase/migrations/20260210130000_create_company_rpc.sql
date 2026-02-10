@@ -38,6 +38,16 @@ BEGIN
     RAISE EXCEPTION 'Owner role not found';
   END IF;
 
+  -- CHECK: User cannot be owner of another company
+  IF EXISTS (
+      SELECT 1 FROM company_members 
+      WHERE user_id = v_app_user_id 
+      AND role_id = v_owner_role_id
+      AND status = 'active'
+  ) THEN
+      RAISE EXCEPTION 'User is already an owner of a company.';
+  END IF;
+
   -- Insert Company
   INSERT INTO companies (name, slug, nif, is_active)
   VALUES (p_name, p_slug, p_nif, true)
