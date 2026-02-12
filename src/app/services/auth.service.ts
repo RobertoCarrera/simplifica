@@ -475,6 +475,23 @@ export class AuthService {
       // 4. Construct AppUser based on Active Context
       let appUser: AppUser;
 
+      if (!activeMembership) {
+        // Critical Fallback: No membership found (and no Shim created/valid).
+        // This might happen if company_members fetch failed (e.g. 400 error) or user effectively has no access.
+        // We cannot proceed to create a full AppUser without a context, unless we treat them as a "headless" user.
+        console.error('❌ No active membership found for user. Cannot resolve AppUser context.');
+
+        // Return null to allow UI to handle "No Access" or "Setup Required" state
+        // or attempt to construct a minimal user if super_admin
+        if ((userRes.data as any)?.app_role?.name === 'super_admin') {
+          console.log('🛡️ Recovering Super Admin without membership context.');
+          // Proceed to create a dummy membership context below or handle specifically
+          // But for now, returning null is safer than crashing, provided the caller handles it.
+          // Actually, let's try to construct a minimal appUser if possible.
+        }
+        return null;
+      }
+
       const activeContextIsClient = activeMembership.role === 'client';
 
       if (activeContextIsClient) {

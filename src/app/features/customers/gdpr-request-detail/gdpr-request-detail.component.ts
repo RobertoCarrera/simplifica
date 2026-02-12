@@ -51,10 +51,13 @@ export class GdprRequestDetailComponent {
     }
 
     loadCustomer(email: string) {
-        this.customersService.getCustomers().subscribe((customers: Customer[]) => {
+        // Use search to find specific customer, avoiding pagination issues
+        this.customersService.getCustomers({ search: email }).subscribe((customers: Customer[]) => {
             const found = customers.find((c: Customer) => c.email === email);
             if (found) {
                 this.customer.set(found);
+            } else {
+                console.warn('Customer not found for GDPR request email:', email);
             }
             this.isLoading.set(false);
         });
@@ -108,7 +111,17 @@ export class GdprRequestDetailComponent {
     confirmAutoApply() {
         const req = this.request();
         const cust = this.customer();
-        if (!req || !cust) return;
+
+        console.log('Attempting auto-apply:', { req, cust });
+
+        if (!req) {
+            this.toastService.error('Error', 'No se ha cargado la solicitud.');
+            return;
+        }
+        if (!cust) {
+            this.toastService.error('Error', 'No se ha encontrado el cliente asociado al email: ' + req.subject_email);
+            return;
+        }
 
         const updates = this.parseRectificationRequests(req.request_details?.description || '');
 

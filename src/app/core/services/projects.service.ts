@@ -80,6 +80,71 @@ export class ProjectsService {
         }));
     }
 
+    reorderStages(stages: { id: string; position: number }[]): Observable<void> {
+        const updates = stages.map(s =>
+            this.supabase
+                .from('project_stages')
+                .update({ position: s.position })
+                .eq('id', s.id)
+        );
+        return from(Promise.all(updates)).pipe(map(results => {
+            const err = results.find(r => r.error);
+            if (err?.error) throw err.error;
+        }));
+    }
+
+    setReviewStage(stageId: string, companyId: string): Observable<void> {
+        // First clear any existing review stage for this company, then set the new one
+        return from(
+            this.supabase
+                .from('project_stages')
+                .update({ is_review: false })
+                .eq('company_id', companyId)
+                .then(() =>
+                    this.supabase
+                        .from('project_stages')
+                        .update({ is_review: true })
+                        .eq('id', stageId)
+                )
+        ).pipe(map(({ error }) => {
+            if (error) throw error;
+        }));
+    }
+
+    setDefaultStage(stageId: string, companyId: string): Observable<void> {
+        return from(
+            this.supabase
+                .from('project_stages')
+                .update({ is_default: false })
+                .eq('company_id', companyId)
+                .then(() =>
+                    this.supabase
+                        .from('project_stages')
+                        .update({ is_default: true })
+                        .eq('id', stageId)
+                )
+        ).pipe(map(({ error }) => {
+            if (error) throw error;
+        }));
+    }
+
+    setLandingStage(stageId: string, companyId: string): Observable<void> {
+        return from(
+            this.supabase
+                .from('project_stages')
+                .update({ is_landing: false })
+                .eq('company_id', companyId)
+                .then(() =>
+                    this.supabase
+                        .from('project_stages')
+                        .update({ is_landing: true })
+                        .eq('id', stageId)
+                )
+        ).pipe(map(({ error }) => {
+            if (error) throw error;
+        }));
+    }
+
     // --- Projects ---
 
     getProjects(archived: boolean = false): Observable<Project[]> {
