@@ -6,8 +6,9 @@ import { KanbanBoardComponent } from '../kanban-board/kanban-board.component';
 import { TimelineViewComponent } from '../components/timeline-view/timeline-view.component';
 import { ListViewComponent } from '../components/list-view/list-view.component';
 import { ProjectDialogComponent } from '../components/project-dialog/project-dialog.component';
+import { ColumnDialogComponent } from '../components/column-dialog/column-dialog.component';
 import { ProjectsService } from '../../../core/services/projects.service';
-import { Project } from '../../../models/project';
+import { Project, ProjectStage } from '../../../models/project';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { SupabaseClientService } from '../../../services/supabase-client.service';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -15,7 +16,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 @Component({
   selector: 'app-projects',
   standalone: true,
-  imports: [CommonModule, FormsModule, KanbanBoardComponent, TimelineViewComponent, ListViewComponent, ProjectDialogComponent],
+  imports: [CommonModule, FormsModule, KanbanBoardComponent, TimelineViewComponent, ListViewComponent, ProjectDialogComponent, ColumnDialogComponent],
   templateUrl: './projects.component.html',
   styleUrl: './projects.component.scss'
 })
@@ -26,6 +27,10 @@ export class ProjectsComponent implements OnInit, OnDestroy {
   // Dialog state
   isProjectDialogVisible = false;
   selectedProject: Project | null = null;
+
+  // Stage Dialog state
+  isColumnDialogVisible = false;
+
   clients: any[] = [];
   stages: any[] = [];
   showArchived = false;
@@ -97,7 +102,8 @@ export class ProjectsComponent implements OnInit, OnDestroy {
         { event: '*', schema: 'public', table: 'project_tasks' },
         (payload) => {
           console.log('🔄 Tasks realtime event:', payload.eventType);
-          this.loadData();
+          // Wait a bit database triggers might be running
+          setTimeout(() => this.loadData(), 500);
         }
       )
       .subscribe();
@@ -167,6 +173,18 @@ export class ProjectsComponent implements OnInit, OnDestroy {
   openNewProject() {
     this.selectedProject = null;
     this.isProjectDialogVisible = true;
+  }
+
+  // Stage Dialog Methods
+  openStageDialog() {
+    this.isColumnDialogVisible = true;
+  }
+
+  onStageDialogClose(refresh: boolean) {
+    this.isColumnDialogVisible = false;
+    if (refresh) {
+      this.loadData();
+    }
   }
 }
 

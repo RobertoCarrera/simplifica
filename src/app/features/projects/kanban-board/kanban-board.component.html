@@ -9,23 +9,52 @@
                 <!-- Column Header -->
                 <div class="p-3 font-medium bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center handle cursor-move"
                     cdkDragHandle>
-                    <div class="flex items-center space-x-2">
-                        <span class="text-sm text-gray-700 dark:text-gray-200 uppercase tracking-wide">{{
-                            column.stage.name }}</span>
+                    <div class="flex items-center space-x-2 flex-1 min-w-0">
+                        <div class="flex items-center space-x-1 flex-1 min-w-0">
+                            <!-- Inline Editing Input -->
+                            <input *ngIf="editingStageId === column.stage.id" type="text" [(ngModel)]="editingStageName"
+                                (blur)="saveStageName(column.stage)" (keyup.enter)="saveStageName(column.stage)"
+                                (keyup.escape)="stopEditingStage()"
+                                class="w-full px-2 py-0.5 text-sm bg-white dark:bg-gray-900 border border-blue-500 rounded outline-none text-gray-900 dark:text-white"
+                                autoFocus>
+
+                            <!-- Display Mode -->
+                            <span *ngIf="editingStageId !== column.stage.id" (click)="startEditingStage(column.stage)"
+                                class="text-sm text-gray-700 dark:text-gray-200 uppercase tracking-wide truncate cursor-text hover:bg-gray-200 dark:hover:bg-gray-700 px-1 rounded transition-colors border border-transparent hover:border-gray-300 dark:hover:border-gray-600">
+                                {{ column.stage.name }}
+                            </span>
+
+                            <!-- Indicators -->
+                            <span *ngIf="column.stage.is_landing" class="text-indigo-500 flex-shrink-0"
+                                title="Etapa de Aterrizaje (Nuevos)">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20"
+                                    fill="currentColor">
+                                    <path
+                                        d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                                </svg>
+                            </span>
+                            <span *ngIf="column.stage.is_default" class="text-blue-500 flex-shrink-0"
+                                title="Etapa En Proceso (Por defecto)">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20"
+                                    fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                            <span *ngIf="column.stage.is_review" class="text-amber-500 flex-shrink-0"
+                                title="Etapa de Revisión">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20"
+                                    fill="currentColor">
+                                    <path
+                                        d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                            </span>
+                        </div>
                         <span
-                            class="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs px-2 py-0.5 rounded-full">{{
+                            class="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs px-2 py-0.5 rounded-full flex-shrink-0">{{
                             column.projects.length }}</span>
                     </div>
-                    <button (click)="openEditColumn(column.stage)"
-                        class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </button>
                 </div>
 
                 <!-- Column Body (Drop List) -->
@@ -54,9 +83,3 @@
         </div>
     </div>
 </div>
-
-
-
-<app-column-dialog [visible]="isColumnDialogVisible" [stageToEdit]="selectedStage"
-    (close)="onColumnDialogClose($event)">
-</app-column-dialog>

@@ -34,6 +34,20 @@
             </div>
 
             <div class="flex items-center space-x-3">
+                <!-- Configuration Button -->
+                <button (click)="openStageDialog()"
+                    class="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-200 dark:border-gray-700 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all flex items-center space-x-1"
+                    title="Configurar etapas del tablero">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span class="hidden sm:inline">Configuración</span>
+                </button>
+
                 <!-- Archived Toggle -->
                 <button (click)="toggleArchived()" [class.bg-orange-100]="showArchived"
                     [class.text-orange-700]="showArchived" [class.border-orange-200]="showArchived"
@@ -103,7 +117,8 @@
     <!-- Content Area -->
     <div class="flex-1 overflow-hidden relative">
         <app-kanban-board *ngIf="currentView === 'kanban'" [projects]="filteredProjects" [stages]="stages"
-            (editProject)="openEditProject($event)" (refresh)="loadData()" class="h-full block"></app-kanban-board>
+            (editProject)="openEditProject($event)" (editStage)="openStageDialog()" (refresh)="loadData()"
+            class="h-full block"></app-kanban-board>
 
         <app-timeline-view *ngIf="currentView === 'timeline'" [projects]="filteredProjects"
             (projectClick)="openEditProject($event)" class="h-full block overflow-auto bg-gray-50 dark:bg-gray-900">
@@ -118,4 +133,8 @@
     <app-project-dialog *ngIf="isProjectDialogVisible" [visible]="isProjectDialogVisible" [project]="selectedProject"
         [stages]="stages" (close)="onProjectDialogClose($event)">
     </app-project-dialog>
+
+    <!-- Column Dialog -->
+    <app-column-dialog [visible]="isColumnDialogVisible" [allStages]="stages" (close)="onStageDialogClose($event)">
+    </app-column-dialog>
 </div>

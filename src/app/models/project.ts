@@ -3,6 +3,9 @@ export interface ProjectStage {
     company_id: string;
     name: string;
     position: number;
+    is_review?: boolean;
+    is_default?: boolean;
+    is_landing?: boolean;
     created_at?: string;
 }
 

@@ -1,5 +1,6 @@
 import { Component, Input, OnChanges, OnInit, EventEmitter, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import {
   CdkDragDrop,
   moveItemInArray,
@@ -9,7 +10,6 @@ import {
 import { ProjectsService } from '../../../core/services/projects.service';
 import { Project, ProjectStage, ProjectPermissions } from '../../../models/project';
 import { ProjectCardComponent } from '../components/project-card/project-card.component';
-import { ColumnDialogComponent } from '../components/column-dialog/column-dialog.component';
 import { AuthService } from '../../../services/auth.service';
 
 interface KanbanColumn {
@@ -20,7 +20,7 @@ interface KanbanColumn {
 @Component({
   selector: 'app-kanban-board',
   standalone: true,
-  imports: [CommonModule, DragDropModule, ProjectCardComponent, ColumnDialogComponent], // Removed ProjectDialogComponent
+  imports: [CommonModule, DragDropModule, ProjectCardComponent, FormsModule],
   templateUrl: './kanban-board.component.html',
   styleUrl: './kanban-board.component.scss'
 })
@@ -28,6 +28,7 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
   @Input() projects: Project[] = [];
   @Input() stages: ProjectStage[] = [];
   @Output() editProject = new EventEmitter<Project>();
+  @Output() editStage = new EventEmitter<ProjectStage | null>();
   @Output() refresh = new EventEmitter<void>();
 
   columns: KanbanColumn[] = [];
@@ -124,29 +125,55 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
     this.editProject.emit(project);
   }
 
-  // Column Dialog
-  isColumnDialogVisible = false;
-  selectedStage: ProjectStage | null = null;
-
   openNewColumn() {
-    this.selectedStage = null;
-    this.isColumnDialogVisible = true;
+    this.editStage.emit(null);
   }
 
   openEditColumn(stage: ProjectStage) {
-    this.selectedStage = stage;
-    this.isColumnDialogVisible = true;
+    this.editStage.emit(stage);
   }
 
-  onColumnDialogClose(refresh: boolean) {
-    this.isColumnDialogVisible = false;
-    this.selectedStage = null;
-    if (refresh) {
-      this.refresh.emit();
-    }
-  }
+  editingStageId: string | null = null;
+  editingStageName: string = '';
 
   getConnectedListIds(): string[] {
     return this.columns.map(c => c.stage.id);
+  }
+
+  startEditingStage(stage: ProjectStage) {
+    if (!this.canEditStage()) return;
+    this.editingStageId = stage.id;
+    this.editingStageName = stage.name;
+  }
+
+  stopEditingStage() {
+    this.editingStageId = null;
+    this.editingStageName = '';
+  }
+
+  saveStageName(stage: ProjectStage) {
+    if (!this.editingStageId || !this.editingStageName.trim() || this.editingStageName.trim() === stage.name) {
+      this.stopEditingStage();
+      return;
+    }
+
+    const newName = this.editingStageName.trim();
+    this.projectsService.updateStage(stage.id, { name: newName }).subscribe({
+      next: () => {
+        stage.name = newName; // Optimistic update
+        this.stopEditingStage();
+      },
+      error: (err) => {
+        console.error('Error updating stage name', err);
+        // Revert or show toast
+        this.stopEditingStage();
+      }
+    });
+  }
+
+  private canEditStage(): boolean {
+    // Only owners/admins should edit stage names? Or maybe everyone?
+    // Let's restrict to owner/admin for now as per "Configuration" logic usually
+    return this.isOwnerOrAdmin();
   }
 }
