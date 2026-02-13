@@ -1,4 +1,4 @@
-import { Component, Input, inject, OnInit, signal } from '@angular/core';
+import { Component, Input, inject, OnInit, signal, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Project, ProjectPermissions } from '../../../../models/project';
 import { ProjectsService } from '../../../../core/services/projects.service';
@@ -31,6 +31,24 @@ import { AuthService } from '../../../../services/auth.service';
         </span>
         
         <!-- More options (dots) could go here -->
+        <!-- Approve Button (Only in Review Stage) -->
+        <button *ngIf="isReviewStage && isOwnerOrAdmin()" (click)="onApprove($event)"
+          class="text-gray-400 hover:text-green-500 dark:hover:text-green-400 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 mr-1"
+          title="Aprobar y Finalizar">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </button>
+
+        <!-- Archive Button -->
+        <button *ngIf="isOwnerOrAdmin()" (click)="onArchive($event)"
+          class="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+          title="Ocultar proyecto (Admin)">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+          </svg>
+        </button>
       </div>
       
       <!-- Project Title -->
@@ -96,6 +114,9 @@ import { AuthService } from '../../../../services/auth.service';
 })
 export class ProjectCardComponent implements OnInit {
   @Input() project!: Project;
+  @Input() isReviewStage = false;
+  @Output() archive = new EventEmitter<void>();
+  @Output() approve = new EventEmitter<void>();
   private projectsService = inject(ProjectsService);
   private authService = inject(AuthService);
   unreadCount = signal(0);
@@ -131,7 +152,7 @@ export class ProjectCardComponent implements OnInit {
     return this.currentUser?.auth_user_id === this.project?.client?.auth_user_id;
   }
 
-  private isOwnerOrAdmin(): boolean {
+  isOwnerOrAdmin(): boolean {
     if (!this.currentUser) return false;
     if (this.currentUser.is_super_admin) return true;
     const hasRole = this.currentUser.role === 'owner' || this.currentUser.role === 'admin';
@@ -140,6 +161,16 @@ export class ProjectCardComponent implements OnInit {
       return this.project.company_id === this.currentUser.company_id;
     }
     return hasRole;
+  }
+
+  onArchive(event: MouseEvent) {
+    event.stopPropagation();
+    this.archive.emit();
+  }
+
+  onApprove(event: MouseEvent) {
+    event.stopPropagation();
+    this.approve.emit();
   }
 
   canCompleteTask(task: any): boolean {

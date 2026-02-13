@@ -86,6 +86,18 @@ import { ToastService } from '../../../../services/toast.service';
                        Nuevos
                      </span>
                    </label>
+
+                   <!-- Final Toggle -->
+                   <label class="flex items-center gap-2 cursor-pointer group">
+                     <div class="relative inline-flex items-center">
+                       <input type="checkbox" [checked]="s.is_final" (change)="toggleStageType(s, 'final')" class="sr-only peer">
+                       <div class="w-8 h-4 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[0px] after:left-[0px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:after:border-gray-600 peer-checked:bg-green-500"></div>
+                     </div>
+                     <span class="text-xs text-gray-500 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors flex items-center gap-1">
+                       <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                       Final
+                     </span>
+                   </label>
                  </div>
                </div>
 
@@ -166,20 +178,21 @@ export class ColumnDialogComponent implements OnChanges {
     });
   }
 
-  toggleStageType(stage: ProjectStage, type: 'review' | 'default' | 'landing') {
+  toggleStageType(stage: ProjectStage, type: 'review' | 'default' | 'landing' | 'final') {
     const stageId = stage.id;
     const companyId = stage.company_id;
-    const currentValue = type === 'review' ? stage.is_review : type === 'default' ? stage.is_default : stage.is_landing;
+    const currentValue = type === 'review' ? stage.is_review : type === 'default' ? stage.is_default : type === 'landing' ? stage.is_landing : stage.is_final;
 
     if (currentValue) {
       // Uncheck
-      const update = type === 'review' ? { is_review: false } : type === 'default' ? { is_default: false } : { is_landing: false };
+      const update = type === 'review' ? { is_review: false } : type === 'default' ? { is_default: false } : type === 'landing' ? { is_landing: false } : { is_final: false };
       this.projectsService.updateStage(stageId, update as any).subscribe({
         next: () => {
           // Manually update local state to reflect change immediately (optimistic-ish)
           if (type === 'review') stage.is_review = false;
           if (type === 'default') stage.is_default = false;
           if (type === 'landing') stage.is_landing = false;
+          if (type === 'final') stage.is_final = false;
         },
         error: (err) => {
           this.toastService.error('Error', 'No se pudo actualizar la etapa.');
@@ -191,7 +204,8 @@ export class ColumnDialogComponent implements OnChanges {
       let obs;
       if (type === 'review') obs = this.projectsService.setReviewStage(stageId, companyId);
       else if (type === 'default') obs = this.projectsService.setDefaultStage(stageId, companyId);
-      else obs = this.projectsService.setLandingStage(stageId, companyId);
+      else if (type === 'landing') obs = this.projectsService.setLandingStage(stageId, companyId);
+      else obs = this.projectsService.setFinalStage(stageId, companyId);
 
       obs.subscribe({
         next: () => {
@@ -200,6 +214,7 @@ export class ColumnDialogComponent implements OnChanges {
             if (type === 'review') s.is_review = (s.id === stageId);
             if (type === 'default') s.is_default = (s.id === stageId);
             if (type === 'landing') s.is_landing = (s.id === stageId);
+            if (type === 'final') s.is_final = (s.id === stageId);
           });
         },
         error: (err) => {
