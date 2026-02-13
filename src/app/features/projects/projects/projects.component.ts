@@ -34,10 +34,13 @@ export class ProjectsComponent implements OnInit, OnDestroy {
   clients: any[] = [];
   stages: any[] = [];
   showArchived = false;
+  showHidden = false;
 
   searchText: string = '';
   selectedClientId: string | null = null;
-  selectedStageId: string | null = null;
+  selectedStageId: string | null = null; // helper if needed, though not in UI yet
+  selectedPriority: string | null = null;
+  selectedDeadline: string | null = null; // 'overdue', 'today', 'week', 'month'
 
   filteredProjects: Project[] = []; // Changed to property
 
@@ -124,7 +127,7 @@ export class ProjectsComponent implements OnInit, OnDestroy {
   }
 
   loadData() {
-    this.projectsService.getProjects(this.showArchived).subscribe(projects => {
+    this.projectsService.getProjects(this.showArchived, this.showHidden).subscribe(projects => {
       this.projects = projects;
       this.applyFilters(); // Apply filters when data loads
     });
@@ -143,13 +146,49 @@ export class ProjectsComponent implements OnInit, OnDestroy {
 
       const matchesClient = !this.selectedClientId || project.client_id === this.selectedClientId;
       const matchesStage = !this.selectedStageId || project.stage_id === this.selectedStageId;
+      const matchesPriority = !this.selectedPriority || project.priority === this.selectedPriority;
+      const matchesDeadline = !this.selectedDeadline || this.checkDeadline(project, this.selectedDeadline);
 
-      return matchesSearch && matchesClient && matchesStage;
+
+      return matchesSearch && matchesClient && matchesStage && matchesPriority && matchesDeadline;
     });
+  }
+
+  checkDeadline(project: Project, filter: string): boolean {
+    if (!project.end_date) return false;
+    const date = new Date(project.end_date);
+    date.setHours(0, 0, 0, 0); // normalize project date to start of day for comparison if it has time, usually it's date only but good to be safe
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    switch (filter) {
+      case 'overdue':
+        return date < today;
+      case 'today':
+        return date.getTime() === today.getTime();
+      case 'week':
+        const nextWeek = new Date(today);
+        nextWeek.setDate(today.getDate() + 7);
+        return date >= today && date <= nextWeek;
+      case 'month':
+        const nextMonth = new Date(today);
+        nextMonth.setDate(today.getDate() + 30); // Approx month
+        return date >= today && date <= nextMonth;
+      default:
+        return true;
+    }
   }
 
   toggleArchived() {
     this.showArchived = !this.showArchived;
+    // If we switch to archived, maybe disable hidden? Or keep independent.
+    // Let's keep them independent for now.
+    this.loadData();
+  }
+
+  toggleHidden() {
+    this.showHidden = !this.showHidden;
     this.loadData();
   }
 
@@ -184,6 +223,27 @@ export class ProjectsComponent implements OnInit, OnDestroy {
     this.isColumnDialogVisible = false;
     if (refresh) {
       this.loadData();
+    }
+  }
+
+  archiveProjectInternal(project: Project, event?: Event) {
+    if (event) {
+      event.stopPropagation();
+    }
+
+    // Toggle logic: If already hidden, restore. If visible, hide.
+    const isHidden = project.is_internal_archived;
+    const action = isHidden ? 'mostrar (restaurar)' : 'ocultar';
+    const confirmMsg = isHidden
+      ? '¿Quieres volver a mostrar este proyecto en tu panel?'
+      : '¿Quieres ocultar este proyecto de tu panel administrativo? Seguirá siendo visible para el cliente.';
+
+    if (confirm(confirmMsg)) {
+      if (isHidden) {
+        this.projectsService.restoreProjectInternal(project.id).subscribe(() => this.loadData());
+      } else {
+        this.projectsService.archiveProjectInternal(project.id).subscribe(() => this.loadData());
+      }
     }
   }
 }

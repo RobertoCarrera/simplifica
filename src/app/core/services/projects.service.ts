@@ -145,9 +145,48 @@ export class ProjectsService {
         }));
     }
 
+    setFinalStage(stageId: string, companyId: string): Observable<void> {
+        return from(
+            // 1. Unset any existing final stage
+            this.supabase
+                .from('project_stages')
+                .update({ is_final: false })
+                .eq('company_id', companyId)
+                .is('is_final', true)
+        ).pipe(
+            switchMap(() => {
+                // 2. Set new final stage
+                return from(
+                    this.supabase
+                        .from('project_stages')
+                        .update({ is_final: true })
+                        .eq('id', stageId)
+                );
+            }),
+            map(({ error }) => {
+                if (error) throw error;
+            })
+        );
+    }
+
+    async getFinalStageId(companyId: string): Promise<string | null> {
+        const { data, error } = await this.supabase
+            .from('project_stages')
+            .select('id')
+            .eq('company_id', companyId)
+            .eq('is_final', true)
+            .maybeSingle();
+
+        if (error) {
+            console.error('Error getting final stage:', error);
+            return null;
+        }
+        return data?.id || null;
+    }
+
     // --- Projects ---
 
-    getProjects(archived: boolean = false): Observable<Project[]> {
+    getProjects(archived: boolean = false, includeHidden: boolean = false): Observable<Project[]> {
         return from(
             this.supabase
                 .from('projects')
@@ -163,21 +202,31 @@ export class ProjectsService {
         ).pipe(map(({ data, error }) => {
             if (error) throw error;
 
-            return (data as any[]).map(p => {
+            let projects = (data as any[]).map(p => {
                 const tasks = (p.tasks || []).sort((a: any, b: any) => (a.position || 0) - (b.position || 0));
-                // Map permissions: if array (unlikely with 1:1) take first, else take object, else default
                 let perms = p.permissions;
-                // If it came as array due to relationship definition (it is 1:1 but supabase might return array or object depending on relationship)
                 if (Array.isArray(perms)) perms = perms[0];
 
                 return {
                     ...p,
-                    permissions: perms || {}, // Use empty object if null permissions (defaults handled in component or DB)
+                    permissions: perms || {},
                     tasks,
                     tasks_count: tasks.length,
                     completed_tasks_count: tasks.filter((t: any) => t.is_completed).length
                 };
             }) as Project[];
+
+            // Filter out internally archived projects for non-clients (unless viewing archived)
+            // Clients should STILL see them (unless globally archived)
+            const userRole = this.authService.userRole();
+            if (userRole !== 'client' && !archived) {
+                // If not requesting hidden projects, filter them out
+                if (!includeHidden) {
+                    projects = projects.filter(p => !p.is_internal_archived);
+                }
+            }
+
+            return projects;
         }));
     }
 
@@ -310,6 +359,30 @@ export class ProjectsService {
         ).pipe(map(({ error }) => {
             if (error) throw error;
             this.logActivity(id, 'project_archived');
+        }));
+    }
+
+    archiveProjectInternal(id: string): Observable<void> {
+        return from(
+            this.supabase
+                .from('projects')
+                .update({ is_internal_archived: true })
+                .eq('id', id)
+        ).pipe(map(({ error }) => {
+            if (error) throw error;
+            this.logActivity(id, 'project_admin_archived');
+        }));
+    }
+
+    restoreProjectInternal(id: string): Observable<void> {
+        return from(
+            this.supabase
+                .from('projects')
+                .update({ is_internal_archived: false })
+                .eq('id', id)
+        ).pipe(map(({ error }) => {
+            if (error) throw error;
+            this.logActivity(id, 'project_admin_restored');
         }));
     }
 
@@ -766,4 +839,139 @@ export class ProjectsService {
             )
             .subscribe();
     }
+
+    // --- Project Files ---
+
+    async getProjectFiles(projectId: string): Promise<any[]> {
+        const { data, error } = await this.supabase
+            .from('project_files')
+            .select('*')
+            .eq('project_id', projectId)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching project files:', error);
+            throw error;
+        }
+        return data || [];
+    }
+
+    async uploadProjectFile(projectId: string, file: File, parentId: string | null = null): Promise<any> {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${projectId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = fileName;
+
+        // 1. Upload to Storage
+        const { error: uploadError } = await this.supabase.storage
+            .from('project-files')
+            .upload(filePath, file);
+
+        if (uploadError) {
+            console.error('Error uploading file to storage:', uploadError);
+            throw uploadError;
+        }
+
+        // 2. Insert into DB
+        const { data, error: dbError } = await this.supabase
+            .from('project_files')
+            .insert({
+                project_id: projectId,
+                name: file.name,
+                file_path: filePath,
+                file_type: file.type,
+                size: file.size,
+                created_by: this.authService.currentUser?.id, // Optional, dependent on RLS/Auth setup
+                parent_id: parentId
+            })
+            .select()
+            .single();
+
+        if (dbError) {
+            console.error('Error saving file metadata:', dbError);
+            // Optional: Cleanup storage if DB insert fails
+            await this.supabase.storage.from('project-files').remove([filePath]);
+            throw dbError;
+        }
+
+        return data;
+    }
+
+    async deleteProjectFile(fileId: string, filePath: string): Promise<void> {
+        // 1. Delete from Storage (if path exists)
+        if (filePath) {
+            const { error: storageError } = await this.supabase.storage
+                .from('project-files')
+                .remove([filePath]);
+
+            if (storageError) {
+                console.error('Error deleting file from storage:', storageError);
+                // Proceed to delete from DB anyway to keep consistent state? Or throw?
+                // Usually better to throw or warn.
+            }
+        }
+
+        // 2. Delete from DB
+        const { error: dbError } = await this.supabase
+            .from('project_files')
+            .delete()
+            .eq('id', fileId);
+
+        if (dbError) {
+            console.error('Error deleting file metadata:', dbError);
+            throw dbError;
+        }
+    }
+
+    async renameProjectFile(fileId: string, newName: string): Promise<void> {
+        const { error } = await this.supabase
+            .from('project_files')
+            .update({ name: newName })
+            .eq('id', fileId);
+
+        if (error) {
+            console.error('Error renaming file:', error);
+            throw error;
+        }
+    }
+
+    async moveProjectFile(fileId: string, newParentId: string | null): Promise<void> {
+        const { error } = await this.supabase
+            .from('project_files')
+            .update({ parent_id: newParentId })
+            .eq('id', fileId);
+
+        if (error) {
+            console.error('Error moving file:', error);
+            throw error;
+        }
+    }
+
+    async getFileUrl(filePath: string): Promise<string | null> {
+        const { data } = await this.supabase.storage
+            .from('project-files')
+            .createSignedUrl(filePath, 3600); // 1 hour expiry
+
+        return data?.signedUrl || null;
+    }
+    async createProjectFolder(projectId: string, name: string, parentId: string | null = null): Promise<any> {
+        const { data, error } = await this.supabase
+            .from('project_files')
+            .insert({
+                project_id: projectId,
+                name: name,
+                file_path: '', // No physical path for folders
+                is_folder: true,
+                parent_id: parentId,
+                created_by: this.authService.currentUser?.id
+            })
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Error creating folder:', error);
+            throw error;
+        }
+        return data;
+    }
+
 }

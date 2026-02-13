@@ -6,6 +6,7 @@ export interface ProjectStage {
     is_review?: boolean;
     is_default?: boolean;
     is_landing?: boolean;
+    is_final?: boolean;
     created_at?: string;
 }
 
@@ -59,6 +60,7 @@ export interface Project {
     priority?: 'low' | 'medium' | 'high' | 'critical';
     position: number;
     is_archived?: boolean;
+    is_internal_archived?: boolean; // New flag for admin archiving
     created_at?: string;
     updated_at?: string;
     permissions?: ProjectPermissions; // Joined from project_permissions table

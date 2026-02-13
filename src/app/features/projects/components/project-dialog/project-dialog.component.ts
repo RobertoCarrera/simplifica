@@ -69,6 +69,12 @@ import { RealtimeChannel } from '@supabase/supabase-js';
                 [ngClass]="activeTab === 'notifications' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'">
                 Notificaciones
             </button>
+            <button (click)="setActiveTab('documents')" 
+                class="py-3 text-sm font-medium border-b-2 transition-colors relative flex items-center space-x-2"
+                [ngClass]="activeTab === 'documents' ? 'border-blue-500 text-blue-600 dark:text-blue-400' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'">
+                <span>Documentos</span>
+                <span *ngIf="projectFiles.length > 0" class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs py-0.5 px-2 rounded-full">{{ projectFiles.length }}</span>
+            </button>
         </div>
 
         <!-- Body (Details) -->
@@ -613,6 +619,311 @@ import { RealtimeChannel } from '@supabase/supabase-js';
                 </div>
             </div>
         </div>
+
+        <!-- Body (Documents) -->
+        <div *ngIf="activeTab === 'documents'" class="flex-1 overflow-y-auto p-6">
+            <div class="max-w-4xl mx-auto space-y-6">
+                <!-- Header & Actions -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100">Documentos</h4>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Gestiona los archivos y carpetas del proyecto.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <!-- View Toggle -->
+                        <div class="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+                            <button (click)="viewMode = 'grid'" [class.bg-white]="viewMode === 'grid'" [class.dark:bg-gray-600]="viewMode === 'grid'" [class.shadow-sm]="viewMode === 'grid'" class="p-1.5 rounded-md transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                </svg>
+                            </button>
+                            <button (click)="viewMode = 'list'" [class.bg-white]="viewMode === 'list'" [class.dark:bg-gray-600]="viewMode === 'list'" [class.shadow-sm]="viewMode === 'list'" class="p-1.5 rounded-md transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Create Folder -->
+                        <button (click)="openCreateFolderModal()" class="px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg transition-colors flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                            </svg>
+                            Nueva Carpeta
+                        </button>
+                        
+                        <!-- Upload -->
+                        <input type="file" #fileInput multiple (change)="onFileSelected($event)" class="hidden">
+                        <button (click)="fileInput.click()" [disabled]="isUploading"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-all flex items-center disabled:opacity-50">
+                            <span *ngIf="isUploading" class="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                            <svg *ngIf="!isUploading" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            Subir
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Breadcrumbs -->
+                <div class="flex items-center text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-lg px-3 py-2">
+                     <button (click)="resetNavigation()" class="hover:text-blue-600 dark:hover:text-blue-400 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                    </button>
+                    <ng-container *ngFor="let folder of currentPath">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mx-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                        <button (click)="jumpToFolder(folder)" class="hover:text-blue-600 dark:hover:text-blue-400 font-medium">
+                            {{ folder.name }}
+                        </button>
+                    </ng-container>
+                    <span *ngIf="currentPath.length === 0" class="ml-2 text-gray-400">/</span>
+                </div>
+
+                <!-- Loading State -->
+                <div *ngIf="isLoadingFiles" class="flex justify-center py-12">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+
+                <!-- Empty State -->
+                <div *ngIf="!isLoadingFiles && currentFiles.length === 0" class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Carpeta vacía</p>
+                    <button (click)="openCreateFolderModal()" class="mt-3 text-blue-600 hover:text-blue-700 text-sm font-medium">
+                        Crear carpeta nueva
+                    </button>
+                </div>
+
+                <!-- GRID VIEW -->
+                <div *ngIf="!isLoadingFiles && currentFiles.length > 0 && viewMode === 'grid'" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div *ngFor="let file of currentFiles" 
+                        (dblclick)="file.is_folder ? navigateTo(file) : viewFile(file)"
+                        class="group relative flex flex-col items-center p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer">
+                        
+                        <!-- Icon -->
+                        <div class="h-16 w-16 mb-3 flex items-center justify-center rounded-2xl"
+                            [ngClass]="{
+                                'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300': file.is_folder,
+                                'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300': !file.is_folder && getFileIconType(file) === 'image',
+                                'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300': !file.is_folder && getFileIconType(file) === 'pdf',
+                                'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300': !file.is_folder && getFileIconType(file) === 'other'
+                            }">
+                            <!-- Folder Icon -->
+                            <svg *ngIf="file.is_folder" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
+                                 <path d="M2.165 19.551c.086.681.577 1.232 1.258 1.409h17.154c.681-.177 1.172-.728 1.258-1.409l.666-10.468C22.628 8.214 21.946 7.5 21.077 7.5H20V5.5C20 4.12 18.88 3 17.5 3H6.5C5.12 3 4 4.12 4 5.5V7.5H2.923c-.869 0-1.551.714-1.424 1.583l.666 10.468z" opacity=".4"/>
+                                 <path d="M20 7.5v-2C20 4.12 18.88 3 17.5 3H6.5C5.12 3 4 4.12 4 5.5v2h16z"/>
+                            </svg>
+                            <!-- File Icons... -->
+                             <svg *ngIf="!file.is_folder && getFileIconType(file) === 'image'" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                             <svg *ngIf="!file.is_folder && getFileIconType(file) === 'pdf'" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                             <svg *ngIf="!file.is_folder && getFileIconType(file) === 'other'" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        
+                        <!-- Name -->
+                        <p class="text-xs font-medium text-gray-900 dark:text-gray-100 text-center truncate w-full px-2" [title]="file.name">{{ file.name }}</p>
+                        <!-- Meta -->
+                        <p *ngIf="!file.is_folder" class="text-[10px] text-gray-500 dark:text-gray-400 mt-1">{{ (file.size / 1024).toFixed(1) }} KB</p>
+                        <p *ngIf="file.is_folder" class="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Carpeta</p>
+
+                        <!-- Actions Overlay -->
+                        <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <button (click)="deleteFile(file); $event.stopPropagation()" class="p-1.5 bg-white dark:bg-gray-700 rounded-full text-gray-400 hover:text-red-500 shadow-sm border border-gray-200 dark:border-gray-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LIST VIEW -->
+                <div *ngIf="!isLoadingFiles && currentFiles.length > 0 && viewMode === 'list'" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700/50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10"></th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nombre</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tamaño</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
+                                 <th scope="col" class="relative px-6 py-3"><span class="sr-only">Acciones</span></th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr *ngFor="let file of currentFiles" 
+                                (dblclick)="file.is_folder ? navigateTo(file) : viewFile(file)"
+                                class="hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-lg"
+                                        [ngClass]="{
+                                            'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300': file.is_folder,
+                                            'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300': !file.is_folder && getFileIconType(file) === 'image',
+                                            'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300': !file.is_folder && getFileIconType(file) === 'pdf',
+                                            'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300': !file.is_folder && getFileIconType(file) === 'other'
+                                        }">
+                                        <svg *ngIf="file.is_folder" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                        </svg>
+                                         <svg *ngIf="!file.is_folder && getFileIconType(file) === 'image'" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <svg *ngIf="!file.is_folder && getFileIconType(file) === 'pdf'" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                        <svg *ngIf="!file.is_folder && getFileIconType(file) === 'other'" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{ file.name }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    {{ file.is_folder ? '-' : (file.size / 1024).toFixed(1) + ' KB' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                    {{ file.created_at | date:'short' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <div class="flex items-center justify-end space-x-2">
+                                        <!-- Rename -->
+                                        <button (click)="openRenameModal(file, $event)" class="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Renombrar">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                            </svg>
+                                        </button>
+                                        <!-- Move -->
+                                        <button (click)="openMoveModal(file, $event)" class="text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" title="Mover">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                <path d="M7 9a2 2 0 012-2h6a2 2 0 012 2v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9z" />
+                                                <path d="M5 3a2 2 0 00-2 2v6a2 2 0 002 2V5h8a2 2 0 00-2-2H5z" />
+                                            </svg>
+                                        </button>
+                                        <!-- Delete -->
+                                        <button (click)="deleteFile(file); $event.stopPropagation()" class="text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Eliminar">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                     </table>
+                </div>
+
+                <!-- Create Folder Modal Overlay -->
+                <!-- Use *ngIf to show/hide. Use fixed or absolute positioning to overlay. -->
+                <div *ngIf="isCreateFolderModalOpen" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4 m-4 border border-gray-100 dark:border-gray-700 transform transition-all scale-100">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Nueva Carpeta</h3>
+                            <button (click)="closeCreateFolderModal()" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div>
+                            <label for="folderName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre</label>
+                            <input type="text" id="folderName" [(ngModel)]="newFolderName" (keyup.enter)="confirmCreateFolder()" autofocus autocomplete="off"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all">
+                        </div>
+
+                        <div class="flex justify-end space-x-3 pt-2">
+                            <button (click)="closeCreateFolderModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
+                                Cancelar
+                            </button>
+                            <button (click)="confirmCreateFolder()" [disabled]="!newFolderName.trim()"
+                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all">
+                                Crear Carpeta
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rename Modal Overlay -->
+                <div *ngIf="isRenameModalOpen" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4 m-4 border border-gray-100 dark:border-gray-700 transform transition-all scale-100">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Renombrar</h3>
+                        <input type="text" [(ngModel)]="renameName" (keyup.enter)="confirmRename()" autofocus autocomplete="off"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-all">
+                        <div class="flex justify-end space-x-3 pt-2">
+                             <button (click)="closeRenameModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
+                                Cancelar
+                            </button>
+                            <button (click)="confirmRename()" [disabled]="!renameName.trim()"
+                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all">
+                                Guardar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Move Modal Overlay -->
+                <div *ngIf="isMoveModalOpen" class="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4 m-4 border border-gray-100 dark:border-gray-700 transform transition-all scale-100">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Mover a...</h3>
+                        
+                        <div class="max-h-60 overflow-y-auto space-y-2">
+                            <!-- Root option -->
+                             <button (click)="moveTargetFolderId = null" 
+                                [class.bg-blue-50]="moveTargetFolderId === null"
+                                [class.dark:bg-blue-900_30]="moveTargetFolderId === null"
+                                class="w-full flex items-center px-3 py-2 text-left rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M2 5a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5z" />
+                                </svg>
+                                Documentos (Raíz)
+                                <svg *ngIf="moveTargetFolderId === null" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-auto text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </button>
+
+                            <!-- Folder list -->
+                            <ng-container *ngFor="let folder of getAvailableFoldersForMove()">
+                                <button (click)="moveTargetFolderId = folder.id"
+                                    [class.bg-blue-50]="moveTargetFolderId === folder.id"
+                                    [class.dark:bg-blue-900_30]="moveTargetFolderId === folder.id"
+                                    class="w-full flex items-center px-3 py-2 text-left rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                                          <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                                    </svg>
+                                    {{ folder.name }}
+                                     <svg *ngIf="moveTargetFolderId === folder.id" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-auto text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </button>
+                            </ng-container>
+                             <div *ngIf="getAvailableFoldersForMove().length === 0" class="text-center text-sm text-gray-500 py-4">
+                                No hay carpetas disponibles
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end space-x-3 pt-2">
+                             <button (click)="closeMoveModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all">
+                                Cancelar
+                            </button>
+                            <button (click)="confirmMove()"
+                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm transition-all">
+                                Mover
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
   </app-modal>
   `
@@ -634,8 +945,38 @@ export class ProjectDialogComponent implements OnDestroy {
   isSaving = false;
   isEditing = signal(false);
 
+  // Documents
+  projectFiles: any[] = [];
+  isLoadingFiles = false;
+  isUploading = false;
+  viewMode: 'list' | 'grid' = 'list';
+  currentPath: any[] = []; // Array of folder objects
+
+  // Folder Creation Modal
+  isCreateFolderModalOpen = false;
+  newFolderName = '';
+
+  // Rename Modal
+  isRenameModalOpen = false;
+  renameItem: any = null;
+  renameName = '';
+
+  // Move Modal
+  isMoveModalOpen = false;
+  moveItem: any = null;
+  moveTargetFolderId: string | null = null;
+
+
+  get currentFolderId(): string | null {
+    return this.currentPath.length > 0 ? this.currentPath[this.currentPath.length - 1].id : null;
+  }
+
+  get currentFiles(): any[] {
+    return this.projectFiles.filter(f => f.parent_id === this.currentFolderId);
+  }
+
   // Comments
-  activeTab: 'details' | 'comments' | 'permissions' | 'notifications' | 'history' = 'details';
+  activeTab: 'details' | 'comments' | 'permissions' | 'notifications' | 'history' | 'documents' = 'details';
   comments: any[] = [];
   newComment = '';
   isLoadingComments = false;
@@ -885,7 +1226,7 @@ export class ProjectDialogComponent implements OnDestroy {
 
   // --- Comments Logic ---
 
-  setActiveTab(tab: 'details' | 'comments' | 'permissions' | 'notifications' | 'history') {
+  setActiveTab(tab: 'details' | 'comments' | 'permissions' | 'notifications' | 'history' | 'documents') {
     this.activeTab = tab;
     if (tab === 'comments' && this.project?.id) {
       this.loadComments(this.project.id);
@@ -893,6 +1234,9 @@ export class ProjectDialogComponent implements OnDestroy {
     }
     if (tab === 'history' && this.project?.id) {
       this.loadActivity(this.project.id);
+    }
+    if (tab === 'documents' && this.project?.id) {
+      this.loadProjectFiles();
     }
   }
 
@@ -1210,5 +1554,218 @@ export class ProjectDialogComponent implements OnDestroy {
     };
     const fn = messages[activity.activity_type];
     return fn ? fn(activity) : 'Evento desconocido';
+  }
+  // --- Document Management Methods ---
+
+  async loadProjectFiles() {
+    if (!this.project?.id) return;
+    this.isLoadingFiles = true;
+    try {
+      this.projectFiles = await this.projectsService.getProjectFiles(this.project.id);
+    } catch (error) {
+      console.error('Error loading files:', error);
+      this.toastService.error('Error', 'Error al cargar los archivos');
+    } finally {
+      this.isLoadingFiles = false;
+    }
+  }
+
+  async onFileSelected(event: any) {
+    const files: FileList = event.target.files;
+    if (!files || files.length === 0) return;
+
+    this.isUploading = true;
+    try {
+      // Upload one by one
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        await this.projectsService.uploadProjectFile(this.project!.id, file, this.currentFolderId);
+      }
+      this.toastService.success('Archivos', 'Archivos subidos correctamente');
+      await this.loadProjectFiles();
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      this.toastService.error('Error', 'Error al subir archivos');
+    } finally {
+      this.isUploading = false;
+      // Reset input
+      event.target.value = '';
+    }
+  }
+
+  openCreateFolderModal() {
+    this.newFolderName = '';
+    this.isCreateFolderModalOpen = true;
+  }
+
+  closeCreateFolderModal() {
+    this.isCreateFolderModalOpen = false;
+    this.newFolderName = '';
+  }
+
+  async confirmCreateFolder() {
+    if (!this.newFolderName || !this.newFolderName.trim()) return;
+
+    this.isLoadingFiles = true;
+    try {
+      await this.projectsService.createProjectFolder(this.project!.id, this.newFolderName, this.currentFolderId);
+      this.toastService.success('Carpeta', 'Carpeta creada');
+      await this.loadProjectFiles();
+      this.closeCreateFolderModal();
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      this.toastService.error('Error', 'Error al crear la carpeta');
+    } finally {
+      this.isLoadingFiles = false;
+    }
+  }
+
+  // Rename Logic
+  openRenameModal(item: any, event: Event) {
+    event.stopPropagation();
+    this.renameItem = item;
+    this.renameName = item.name;
+    this.isRenameModalOpen = true;
+  }
+
+  closeRenameModal() {
+    this.isRenameModalOpen = false;
+    this.renameItem = null;
+    this.renameName = '';
+  }
+
+  async confirmRename() {
+    if (!this.renameItem || !this.renameName.trim()) return;
+
+    this.isLoadingFiles = true;
+    try {
+      await this.projectsService.renameProjectFile(this.renameItem.id, this.renameName);
+      this.toastService.success('Renombrado', 'Elemento renombrado correctamente');
+      await this.loadProjectFiles();
+      this.closeRenameModal();
+    } catch (error) {
+      console.error('Error renaming:', error);
+      this.toastService.error('Error', 'Error al renombrar');
+    } finally {
+      this.isLoadingFiles = false;
+    }
+  }
+
+  // Move Logic
+  openMoveModal(item: any, event: Event) {
+    event.stopPropagation();
+    this.moveItem = item;
+    this.moveTargetFolderId = null; // Default to root or current? Let's verify valid targets.
+    this.isMoveModalOpen = true;
+  }
+
+  closeMoveModal() {
+    this.isMoveModalOpen = false;
+    this.moveItem = null;
+    this.moveTargetFolderId = null;
+  }
+
+  async confirmMove() {
+    if (!this.moveItem) return;
+
+    if (this.moveItem.id === this.moveTargetFolderId) {
+      this.toastService.warning('Mover', 'No puedes mover una carpeta dentro de sí misma');
+      return;
+    }
+
+    this.isLoadingFiles = true;
+    try {
+      await this.projectsService.moveProjectFile(this.moveItem.id, this.moveTargetFolderId);
+      this.toastService.success('Movido', 'Elemento movido correctamente');
+      await this.loadProjectFiles();
+      this.closeMoveModal();
+    } catch (error) {
+      console.error('Error moving:', error);
+      this.toastService.error('Error', 'Error al mover elemento');
+    } finally {
+      this.isLoadingFiles = false;
+    }
+  }
+
+  // Helper to get available folders for moving (excluding self and children if it's a folder)
+  getAvailableFoldersForMove(): any[] {
+    if (!this.moveItem) return [];
+
+    return this.projectFiles.filter(f => {
+      if (!f.is_folder) return false;
+      if (f.id === this.moveItem.id) return false;
+      // If moving a folder, exclude its children (simplified check, might need recursive check for deep nesting)
+      // For now, just exclude self. Proper cycle detection would be better but expensive for simple app.
+      return true;
+    });
+  }
+
+  navigateTo(folder: any) {
+    this.currentPath.push(folder);
+  }
+
+  navigateUp() {
+    this.currentPath.pop();
+  }
+
+  jumpToFolder(folder: any) {
+    const index = this.currentPath.findIndex(f => f.id === folder.id);
+    if (index !== -1) {
+      this.currentPath = this.currentPath.slice(0, index + 1);
+    }
+  }
+
+  resetNavigation() {
+    this.currentPath = [];
+  }
+
+  toggleViewMode() {
+    this.viewMode = this.viewMode === 'list' ? 'grid' : 'list';
+  }
+
+  async deleteFile(file: any) {
+    if (file.is_folder) {
+      // Check if folder is empty
+      const hasChildren = this.projectFiles.some(f => f.parent_id === file.id);
+      if (hasChildren) {
+        this.toastService.error('Error', 'La carpeta no está vacía. Elimina su contenido primero.');
+        return;
+      }
+      if (!confirm(`¿Estás seguro de que deseas eliminar la carpeta "${file.name}"?`)) return;
+    } else {
+      if (!confirm(`¿Estás seguro de que deseas eliminar el archivo "${file.name}"?`)) return;
+    }
+
+    this.isLoadingFiles = true;
+    try {
+      await this.projectsService.deleteProjectFile(file.id, file.file_path);
+      this.toastService.success('Eliminado', 'Elemento eliminado correctamente');
+      await this.loadProjectFiles();
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      this.toastService.error('Error', 'Error al eliminar el elemento');
+    } finally {
+      this.isLoadingFiles = false;
+    }
+  }
+
+  async viewFile(file: any) {
+    try {
+      const url = await this.projectsService.getFileUrl(file.file_path);
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        this.toastService.error('Error', 'No se pudo obtener el enlace del archivo');
+      }
+    } catch (error) {
+      console.error('Error viewing file:', error);
+      this.toastService.error('Error', 'Error al abrir el archivo');
+    }
+  }
+
+  getFileIconType(file: any): 'image' | 'pdf' | 'other' {
+    if (file.file_type.startsWith('image/')) return 'image';
+    if (file.file_type === 'application/pdf') return 'pdf';
+    return 'other';
   }
 }

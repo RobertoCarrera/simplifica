@@ -17,10 +17,12 @@ interface KanbanColumn {
   projects: Project[];
 }
 
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+
 @Component({
   selector: 'app-kanban-board',
   standalone: true,
-  imports: [CommonModule, DragDropModule, ProjectCardComponent, FormsModule],
+  imports: [CommonModule, DragDropModule, ProjectCardComponent, FormsModule, ConfirmDialogComponent],
   templateUrl: './kanban-board.component.html',
   styleUrl: './kanban-board.component.scss'
 })
@@ -30,11 +32,49 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
   @Output() editProject = new EventEmitter<Project>();
   @Output() editStage = new EventEmitter<ProjectStage | null>();
   @Output() refresh = new EventEmitter<void>();
+  @Output() archiveProject = new EventEmitter<Project>();
 
   columns: KanbanColumn[] = [];
 
   private authService = inject(AuthService);
   currentUser: any = null;
+
+  confirmDialog = {
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirmar',
+    cancelText: 'Cancelar',
+    type: 'danger' as 'danger' | 'info' | 'warning' | 'success',
+    action: () => { }
+  };
+
+  openConfirmDialog(config: {
+    title: string,
+    message: string,
+    confirmText?: string,
+    type?: 'danger' | 'info' | 'warning' | 'success',
+    action: () => void
+  }) {
+    this.confirmDialog = {
+      isOpen: true,
+      title: config.title,
+      message: config.message,
+      confirmText: config.confirmText || 'Confirmar',
+      cancelText: 'Cancelar',
+      type: config.type || 'danger',
+      action: config.action
+    };
+  }
+
+  onConfirmAction() {
+    this.confirmDialog.action();
+    this.confirmDialog.isOpen = false;
+  }
+
+  onCancelAction() {
+    this.confirmDialog.isOpen = false;
+  }
 
   constructor(private projectsService: ProjectsService) { }
 
@@ -175,5 +215,52 @@ export class KanbanBoardComponent implements OnChanges, OnInit {
     // Only owners/admins should edit stage names? Or maybe everyone?
     // Let's restrict to owner/admin for now as per "Configuration" logic usually
     return this.isOwnerOrAdmin();
+  }
+
+  archiveProjectInternal(project: Project) {
+    const isHidden = project.is_internal_archived;
+
+    this.openConfirmDialog({
+      title: isHidden ? 'Mostrar Proyecto' : 'Ocultar Proyecto',
+      message: isHidden
+        ? '¿Quieres volver a mostrar este proyecto en tu panel?'
+        : '¿Quieres ocultar este proyecto de tu panel administrativo? Seguirá siendo visible para el cliente.',
+      confirmText: isHidden ? 'Mostrar' : 'Ocultar',
+      type: isHidden ? 'info' : 'warning',
+      action: () => {
+        if (isHidden) {
+          this.projectsService.restoreProjectInternal(project.id).subscribe(() => this.refresh.emit());
+        } else {
+          this.projectsService.archiveProjectInternal(project.id).subscribe(() => this.refresh.emit());
+        }
+      }
+    });
+  }
+
+  async approveProject(project: Project) {
+    if (!project.company_id) return;
+
+    this.openConfirmDialog({
+      title: 'Aprobar Proyecto',
+      message: '¿Estás seguro de que quieres aprobar este proyecto? Se moverá a la etapa "Final".',
+      confirmText: 'Aprobar y Finalizar',
+      type: 'success',
+      action: async () => {
+        try {
+          const finalStageId = await this.projectsService.getFinalStageId(project.company_id!);
+          if (!finalStageId) {
+            // We can use a toast here if we had one injected, for now console error or simple alert if critical
+            console.error('No Final stage configured');
+            return;
+          }
+          this.projectsService.updateProject(project.id, { stage_id: finalStageId }).subscribe({
+            next: () => this.refresh.emit(),
+            error: (err) => console.error(err)
+          });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    });
   }
 }

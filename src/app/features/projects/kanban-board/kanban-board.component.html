@@ -50,6 +50,15 @@
                                         d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                 </svg>
                             </span>
+                            <span *ngIf="column.stage.is_final" class="text-green-500 flex-shrink-0"
+                                title="Etapa Final">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20"
+                                    fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                            </span>
                         </div>
                         <span
                             class="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs px-2 py-0.5 rounded-full flex-shrink-0">{{
@@ -65,7 +74,9 @@
                         [class.active:cursor-grabbing]="canMoveProject(project)"
                         [class.cursor-default]="!canMoveProject(project)">
                         <div (click)="openEditProject(project)" class="cursor-pointer group">
-                            <app-project-card [project]="project"></app-project-card>
+                            <app-project-card [project]="project" [isReviewStage]="column.stage.is_review || false"
+                                (archive)="archiveProjectInternal(project)"
+                                (approve)="approveProject(project)"></app-project-card>
                         </div>
 
                         <!-- Drag Placeholder -->
@@ -83,3 +94,8 @@
         </div>
     </div>
 </div>
+
+<app-confirm-dialog [isOpen]="confirmDialog.isOpen" [title]="confirmDialog.title" [message]="confirmDialog.message"
+    [confirmText]="confirmDialog.confirmText" [cancelText]="confirmDialog.cancelText" [type]="confirmDialog.type"
+    (confirm)="onConfirmAction()" (cancel)="onCancelAction()">
+</app-confirm-dialog>
