@@ -661,11 +661,11 @@ export class GdprComplianceService {
         .select('id, consent_status, marketing_consent, invitation_status, invitation_sent_at, consent_date')
         .eq('id', clientId)
         .eq('company_id', companyId) // Security check
-        .single()
+        .maybeSingle()
     ).pipe(
       map(({ data, error }) => {
         if (error) throw error;
-        return data;
+        return data || null;
       }),
       catchError(error => {
         console.error('Error fetching client GDPR status:', error);
