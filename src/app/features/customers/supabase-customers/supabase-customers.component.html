@@ -20,11 +20,11 @@
                     }
                 </div>
 
-                <div class="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                <div class="flex flex-wrap gap-2 items-center">
 
                     <!-- Tag Filter -->
                     <select [ngModel]="selectedTagId()" (ngModelChange)="selectedTagId.set($event)"
-                        class="pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500">
+                        class="flex-1 min-w-0 pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
                         <option value="ALL">Todas las etiquetas</option>
                         @for (tag of availableTags(); track tag.id) {
                         <option [value]="tag.id">{{ tag.name }}</option>
@@ -32,14 +32,14 @@
                     </select>
 
                     <select [ngModel]="sortBy()" (ngModelChange)="sortBy.set($event)"
-                        class="pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500">
+                        class="flex-1 min-w-0 pl-3 pr-8 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-blue-500 focus:border-blue-500 truncate">
                         <option value="created_at">Fecha creación</option>
                         <option value="name">Nombre</option>
                         <option value="apellidos">Apellidos</option>
                     </select>
 
                     <button (click)="sortOrder.set(sortOrder() === 'asc' ? 'desc' : 'asc')"
-                        class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
+                        class="flex-shrink-0 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
                         [title]="sortOrder() === 'asc' ? 'Orden ascendente' : 'Orden descendente'">
                         <i class="fas" [class.fa-sort-amount-down]="sortOrder() === 'desc'"
                             [class.fa-sort-amount-up]="sortOrder() === 'asc'"></i>
@@ -47,7 +47,7 @@
 
                     <!-- View Mode Toggle -->
                     <div
-                        class="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
+                        class="flex-shrink-0 hidden sm:flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
                         <button (click)="viewMode.set('grid')" [class.bg-white]="viewMode() === 'grid'"
                             [class.dark:bg-gray-700]="viewMode() === 'grid'" [class.shadow-sm]="viewMode() === 'grid'"
                             class="p-1.5 rounded-md text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-all">
@@ -62,584 +62,571 @@
 
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Content -->
-            <div class="customers-container flex-1 overflow-hidden relative">
-                @if (isLoading() && customers().length === 0) {
-                <div class="p-6">
-                    <app-skeleton type="card-grid" [count]="6"></app-skeleton>
-                </div>
-                } @else if (filteredCustomers().length === 0) {
-                <div
-                    class="h-full flex flex-col items-center justify-center p-8 text-center text-gray-500 dark:text-gray-400 animate-fade-in">
-                    <div
-                        class="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
-                        <i class="fas fa-users text-4xl text-gray-400 dark:text-gray-500"></i>
-                    </div>
-                    <h3 class="text-xl font-medium text-gray-900 dark:text-white mb-2">No se encontraron clientes</h3>
-                    <p class="max-w-md mx-auto mb-8">
-                        {{ searchTerm() ? 'Intenta ajustar los filtros de búsqueda.' : 'Comienza añadiendo tu primer
-                        cliente o
-                        importando una lista CSV.' }}
-                    </p>
-                    @if (!searchTerm()) {
-                    <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                        <button (click)="openForm()"
-                            class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm">
-                            <i class="fas fa-plus mr-2"></i> Crear Cliente
-                        </button>
-                    </div>
-                    } @else {
-                    <button (click)="clearFilters()"
-                        class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
-                        Limpiar Filtros
-                    </button>
-                    }
-                </div>
-                } @else {
-                <!-- Main Scrollable Area -->
-                <div class="flex-1 flex flex-col px-4 py-6 pb-0 sm:px-6 lg:px-8 overflow-hidden h-full">
+    <!-- Content Area (sibling of header, scrollable) -->
+    <div class="customers-container flex-1 min-h-0 overflow-y-auto relative">
+        @if (isLoading() && customers().length === 0) {
+        <div class="p-6">
+            <app-skeleton type="card-grid" [count]="6"></app-skeleton>
+        </div>
+        } @else if (filteredCustomers().length === 0) {
+        <div
+            class="h-full flex flex-col items-center justify-center p-8 text-center text-gray-500 dark:text-gray-400 animate-fade-in">
+            <div class="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6">
+                <i class="fas fa-users text-4xl text-gray-400 dark:text-gray-500"></i>
+            </div>
+            <h3 class="text-xl font-medium text-gray-900 dark:text-white mb-2">No se encontraron clientes</h3>
+            <p class="max-w-md mx-auto mb-8">
+                {{ searchTerm() ? 'Intenta ajustar los filtros de búsqueda.' : 'Comienza añadiendo tu primer
+                cliente o
+                importando una lista CSV.' }}
+            </p>
+            @if (!searchTerm()) {
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <button (click)="openForm()"
+                    class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm">
+                    <i class="fas fa-plus mr-2"></i> Crear Cliente
+                </button>
+            </div>
+            } @else {
+            <button (click)="clearFilters()"
+                class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium">
+                Limpiar Filtros
+            </button>
+            }
+        </div>
+        } @else {
+        <!-- Main Scrollable Area -->
+        <div class="px-4 py-6 pb-0 sm:px-6 lg:px-8">
 
-                    <!-- Scrollable Grid -->
-                    @if (viewMode() === 'grid') {
-                    <div class="customers-grid">
-                        @for (customer of filteredCustomers(); track customer.id; let i = $index) {
-                        <div class="customer-card relative bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow h-full flex flex-col"
-                            [style.animation-delay]="i * 50 + 'ms'">
+            <!-- Scrollable Grid -->
+            @if (viewMode() === 'grid') {
+            <div class="customers-grid">
+                @for (customer of filteredCustomers(); track customer.id; let i = $index) {
+                <div class="customer-card relative bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow h-full flex flex-col"
+                    [style.animation-delay]="i * 50 + 'ms'">
 
-                            <!-- Flip Container for GDPR -->
-                            <div class="flip-container h-full" [class.flipped]="flippedCardId() === customer.id">
+                    <!-- Flip Container for GDPR -->
+                    <div class="flip-container h-full" [class.flipped]="flippedCardId() === customer.id">
 
-                                <!-- FRONT: Customer Info -->
-                                <div class="flip-front h-full flex flex-col p-4 md:p-5">
-                                    <!-- Actions Menu Top Right -->
-                                    <div class="absolute top-4 right-4 z-10">
-                                        <div class="relative gdpr-actions-menu">
+                        <!-- FRONT: Customer Info -->
+                        <div class="flip-front h-full flex flex-col p-4 md:p-5">
+                            <!-- Actions Menu Top Right -->
+                            <div class="absolute top-4 right-4 z-10">
+                                <div class="relative gdpr-actions-menu">
 
-                                            <!-- Dropdown Menu -->
-                                            <div [id]="'gdpr-menu-' + customer.id"
-                                                class="gdpr-dropdown hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-20 overflow-hidden text-sm divide-y divide-gray-100 dark:divide-gray-700">
-                                                <div class="py-1">
-                                                    <button (click)="viewCustomer(customer)"
-                                                        class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center font-medium text-blue-600 dark:text-blue-400">
-                                                        <i
-                                                            class="fas fa-id-card w-5 bg-blue-50 dark:bg-blue-900/30 rounded-full p-1 text-xs flex items-center justify-center mr-2"></i>
-                                                        Ver Ficha Completa
-                                                    </button>
+                                    <!-- Dropdown Menu -->
+                                    <div [id]="'gdpr-menu-' + customer.id"
+                                        class="gdpr-dropdown hidden absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-20 overflow-hidden text-sm divide-y divide-gray-100 dark:divide-gray-700">
+                                        <div class="py-1">
+                                            <button (click)="viewCustomer(customer)"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center font-medium text-blue-600 dark:text-blue-400">
+                                                <i
+                                                    class="fas fa-id-card w-5 bg-blue-50 dark:bg-blue-900/30 rounded-full p-1 text-xs flex items-center justify-center mr-2"></i>
+                                                Ver Ficha Completa
+                                            </button>
 
-                                                    <!-- New Action Buttons -->
-                                                    <button (click)="viewCustomer(customer, 'agenda')"
-                                                        class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
-                                                        <i
-                                                            class="fas fa-calendar-alt w-5 text-purple-500 mr-2 opacity-80"></i>
-                                                        Agenda
-                                                    </button>
+                                            <!-- New Action Buttons -->
+                                            <button (click)="viewCustomer(customer, 'agenda')"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
+                                                <i class="fas fa-calendar-alt w-5 text-purple-500 mr-2 opacity-80"></i>
+                                                Agenda
+                                            </button>
 
-                                                    <button (click)="viewCustomer(customer, 'clinical')"
-                                                        class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
-                                                        <i
-                                                            class="fas fa-notes-medical w-5 text-emerald-500 mr-2 opacity-80"></i>
-                                                        Notas Clínicas
-                                                    </button>
+                                            <button (click)="viewCustomer(customer, 'clinical')"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
+                                                <i
+                                                    class="fas fa-notes-medical w-5 text-emerald-500 mr-2 opacity-80"></i>
+                                                Notas Clínicas
+                                            </button>
 
-                                                    <button (click)="viewCustomer(customer, 'billing')"
-                                                        class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
-                                                        <i
-                                                            class="fas fa-file-invoice-dollar w-5 text-amber-500 mr-2 opacity-80"></i>
-                                                        Facturación
-                                                    </button>
+                                            <button (click)="viewCustomer(customer, 'billing')"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
+                                                <i
+                                                    class="fas fa-file-invoice-dollar w-5 text-amber-500 mr-2 opacity-80"></i>
+                                                Facturación
+                                            </button>
 
-                                                    <button (click)="viewCustomer(customer, 'documents')"
-                                                        class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
-                                                        <i class="fas fa-folder w-5 text-cyan-500 mr-2 opacity-80"></i>
-                                                        Documentos
-                                                    </button>
+                                            <button (click)="viewCustomer(customer, 'documents')"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
+                                                <i class="fas fa-folder w-5 text-cyan-500 mr-2 opacity-80"></i>
+                                                Documentos
+                                            </button>
 
-                                                    <div class="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>
+                                            <div class="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>
 
-                                                    <button (click)="editCustomer(customer)"
-                                                        [disabled]="!hasPendingRectification(customer)"
-                                                        [class.opacity-50]="!hasPendingRectification(customer)"
-                                                        [class.cursor-not-allowed]="!hasPendingRectification(customer)"
-                                                        [title]="!hasPendingRectification(customer) ? 'Edición deshabilitada. Solo disponible si hay una solicitud de rectificación pendiente.' : ''"
-                                                        class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center">
-                                                        <i class="fas fa-edit w-5 text-gray-400 mr-2"></i> Editar
-                                                    </button>
-                                                    <button (click)="duplicateCustomer(customer)"
-                                                        class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center">
-                                                        <i class="fas fa-copy w-5 text-gray-400 mr-2"></i> Duplicar
-                                                    </button>
-                                                    <button (click)="openInviteModal(customer)"
-                                                        class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center">
-                                                        <i class="fas fa-envelope-open-text w-5 text-gray-400 mr-2"></i>
-                                                        Invitar
-                                                        al
-                                                        Portal
-                                                    </button>
-                                                </div>
-                                                <!-- GDPR Section -->
-                                                <div class="py-1 bg-gray-50 dark:bg-gray-700/30">
-                                                    <button (click)="flipCardToGdpr($event, customer.id)"
-                                                        class="w-full text-left px-4 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 flex items-center">
-                                                        <i class="fas fa-shield-alt w-5"></i> Opciones RGPD
-                                                    </button>
-                                                </div>
-                                                <div class="py-1">
-                                                    <button (click)="deleteCustomer(customer)"
-                                                        class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 flex items-center">
-                                                        <i class="fas fa-trash-alt w-5"></i> Eliminar
-                                                    </button>
-                                                </div>
-                                            </div>
+                                            <button (click)="editCustomer(customer)"
+                                                [disabled]="!hasPendingRectification(customer)"
+                                                [class.opacity-50]="!hasPendingRectification(customer)"
+                                                [class.cursor-not-allowed]="!hasPendingRectification(customer)"
+                                                [title]="!hasPendingRectification(customer) ? 'Edición deshabilitada. Solo disponible si hay una solicitud de rectificación pendiente.' : ''"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center">
+                                                <i class="fas fa-edit w-5 text-gray-400 mr-2"></i> Editar
+                                            </button>
+                                            <button (click)="duplicateCustomer(customer)"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center">
+                                                <i class="fas fa-copy w-5 text-gray-400 mr-2"></i> Duplicar
+                                            </button>
+                                            <button (click)="openInviteModal(customer)"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center">
+                                                <i class="fas fa-envelope-open-text w-5 text-gray-400 mr-2"></i>
+                                                Invitar
+                                                al
+                                                Portal
+                                            </button>
                                         </div>
-                                    </div>
-
-                                    <!-- Customer Header -->
-                                    <div class="flex items-start gap-4 mb-4 pr-8 cursor-pointer group"
-                                        (click)="viewCustomer(customer)">
-                                        <div class="relative shrink-0 transition-transform group-hover:scale-105">
-                                            <div class="w-12 h-12 rounded-full flex items-center justify-center text-gray-600 font-bold text-lg shadow-sm"
-                                                [style.background]="customer.avatarGradient">
-                                                {{ customer.initials }}
-                                            </div>
-                                            <!-- Online/Active Indicator could go here -->
-                                        </div>
-
-                                        <div class="min-w-0 flex-1">
-                                            <h3 class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
-                                                [title]="customer.displayName">
-                                                {{ customer.displayName }}
-                                            </h3>
-                                            <!-- Incomplete warning -->
-                                            @if (!isCustomerComplete(customer)) {
-                                            <div class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200"
-                                                [title]="formatAttentionReasons(customer)">
-                                                <i class="fas fa-exclamation-triangle"></i>
-                                                Faltan datos
-                                            </div>
-                                            }
-                                            <div
-                                                class="flex flex-col gap-0.5 text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                                @if (customer.email) {
-                                                <a [href]="'mailto:' + customer.email"
-                                                    class="hover:text-blue-600 dark:hover:text-blue-400 truncate flex items-center gap-1.5 transition-colors">
-                                                    <i class="far fa-envelope text-xs opacity-70"></i> {{ customer.email
-                                                    }}
-                                                </a>
-                                                }
-                                                @if (customer.phone) {
-                                                <a [href]="'tel:' + customer.phone"
-                                                    class="hover:text-blue-600 dark:hover:text-blue-400 truncate flex items-center gap-1.5 transition-colors">
-                                                    <i class="fas fa-phone text-xs opacity-70"></i> {{ customer.phone }}
-                                                </a>
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Metadata Grid -->
-                                    <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-xs mb-4">
-                                        <div class="flex flex-col">
-                                            <span class="text-gray-400 dark:text-gray-500 mb-0.5">DNI/CIF</span>
-                                            <span class="text-gray-700 dark:text-gray-300 font-medium truncate">{{
-                                                customer.dni
-                                                || customer.cif_nif || '-' }}</span>
-                                        </div>
-                                        <div class="flex flex-col">
-                                            <span class="text-gray-400 dark:text-gray-500 mb-0.5">Alta</span>
-                                            <span class="text-gray-700 dark:text-gray-300">{{ customer.formattedDate
-                                                }}</span>
-                                        </div>
-                                    </div>
-
-                                    <!-- Footer Actions -->
-                                    <div
-                                        class="mt-auto pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-1">
-                                        <!-- Portal Access (compact) -->
-                                        <button
-                                            (click)="togglePortalAccess(customer, !hasPortalAccess(customer, customer.email), $event)"
-                                            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors"
-                                            [class]="hasPortalAccess(customer, customer.email)
-                                        ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300' 
-                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700/50 dark:text-gray-400'"
-                                            [title]="hasPortalAccess(customer, customer.email) ? 'Acceso Portal activo' : 'Sin acceso al portal'">
-                                            <i class="fas" [class.fa-key]="hasPortalAccess(customer, customer.email)"
-                                                [class.fa-lock]="!hasPortalAccess(customer, customer.email)"></i>
-                                            {{ hasPortalAccess(customer, customer.email) ? 'Portal' : 'Sin Acceso' }}
-                                        </button>
-
-                                        <!-- Action Icons -->
-                                        <div class="flex items-center gap-1">
-                                            <!-- GDPR Badge -->
-                                            @let badge = getGdprBadgeConfig(customer);
+                                        <!-- GDPR Section -->
+                                        <div class="py-1 bg-gray-50 dark:bg-gray-700/30">
                                             <button (click)="flipCardToGdpr($event, customer.id)"
-                                                class="w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-help"
-                                                [class]="badge.classes" [title]="badge.label">
-                                                <i [class]="'fas ' + badge.icon" class="text-xs"></i>
-                                            </button>
-
-                                            <!-- Invite -->
-                                            <button (click)="openInviteModal(customer); $event.stopPropagation()"
-                                                class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                                                title="Invitar al Portal">
-                                                <i class="fas fa-envelope-open-text text-xs"></i>
-                                            </button>
-
-                                            <!-- Edit -->
-                                            <button (click)="editCustomer(customer); $event.stopPropagation()"
-                                                class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 transition-colors"
-                                                title="Editar">
-                                                <i class="fas fa-edit text-xs"></i>
-                                            </button>
-
-                                            <!-- View -->
-                                            <button (click)="viewCustomer(customer); $event.stopPropagation()"
-                                                class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
-                                                title="Ver Ficha">
-                                                <i class="fas fa-chevron-right text-xs"></i>
+                                                class="w-full text-left px-4 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 flex items-center">
+                                                <i class="fas fa-shield-alt w-5"></i> Opciones RGPD
                                             </button>
                                         </div>
-                                    </div>
-                                </div>
-
-                                <!-- BACK: GDPR Actions -->
-                                <div
-                                    class="flip-back h-full absolute inset-0 bg-gray-900 text-white rounded-lg p-5 flex flex-col items-center justify-center text-center space-y-4 shadow-xl z-20">
-                                    <button (click)="closeGdprCard($event)"
-                                        class="absolute top-3 right-3 text-gray-400 hover:text-white transition-colors">
-                                        <i class="fas fa-times text-lg"></i>
-                                    </button>
-
-                                    <div
-                                        class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mb-1 shadow-lg shadow-blue-900/50">
-                                        <i class="fas fa-shield-alt text-2xl text-white"></i>
-                                    </div>
-
-                                    <h3 class="font-bold text-lg">Gestión RGPD</h3>
-
-                                    <div class="w-full space-y-2">
-                                        <button (click)="requestDataAccess(customer)"
-                                            class="w-full py-2 px-3 bg-white/10 hover:bg-white/20 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 border border-white/10">
-                                            <i class="fas fa-database"></i> Acceso Datos
-                                        </button>
-                                        <button (click)="sendConsentRequest(customer)"
-                                            class="w-full py-2 px-3 bg-white/10 hover:bg-white/20 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 border border-white/10">
-                                            <i class="fas fa-paper-plane"></i> Pedir Consentimiento
-                                        </button>
-                                        <button (click)="exportCustomerData(customer)"
-                                            class="w-full py-2 px-3 bg-white/10 hover:bg-white/20 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 border border-white/10">
-                                            <i class="fas fa-file-export"></i> Exportar JSON
-                                        </button>
-                                        <div class="h-px bg-white/10 my-1"></div>
-                                        <button (click)="anonymizeCustomer(customer)"
-                                            class="w-full py-2 px-3 bg-red-500/20 hover:bg-red-500/40 text-red-200 hover:text-white rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 border border-red-500/30">
-                                            <i class="fas fa-user-slash"></i> Olvido / Anonimizar
-                                        </button>
+                                        <div class="py-1">
+                                            <button (click)="deleteCustomer(customer)"
+                                                class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 flex items-center">
+                                                <i class="fas fa-trash-alt w-5"></i> Eliminar
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        }
-                    </div>
-                    } @else {
-                    <!-- Table View -->
-                    <div
-                        class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                <thead class="bg-gray-50 dark:bg-gray-900/50">
-                                    <tr>
-                                        <th scope="col" class="px-6 py-3 text-left w-10">
-                                            <input type="checkbox"
-                                                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-100 dark:bg-gray-700 dark:border-gray-600"
-                                                (change)="toggleAllSelection()"
-                                                [checked]="selectedCustomers().size === filteredCustomers().length && filteredCustomers().length > 0"
-                                                [indeterminate]="selectedCustomers().size > 0 && selectedCustomers().size < filteredCustomers().length">
-                                        </th>
-                                        <th scope="col"
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
-                                            (click)="sortBy.set('name')">
-                                            Cliente
-                                            @if(sortBy() === 'name') { <i class="fas fa-sort ml-1"></i> }
-                                        </th>
-                                        <th scope="col"
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                            Contacto
-                                        </th>
-                                        <th scope="col"
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                            Etiquetas
-                                        </th>
-                                        <th scope="col"
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                            Estado / Completeness
-                                        </th>
-                                        <th scope="col"
-                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
-                                            (click)="sortBy.set('created_at')">
-                                            Fecha Alta
-                                            @if(sortBy() === 'created_at') { <i class="fas fa-sort ml-1"></i> }
-                                        </th>
-                                        <th scope="col"
-                                            class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                            Acciones
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                                    @for (customer of filteredCustomers(); track customer.id) {
-                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors" [ngClass]="{
-                                    'bg-blue-50': selectedCustomers().has(customer.id),
-                                    'dark:bg-blue-900/20': selectedCustomers().has(customer.id)
-                                }">
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <input type="checkbox"
-                                                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-100 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
-                                                (change)="toggleSelection(customer.id)"
-                                                (click)="$event.stopPropagation()"
-                                                [checked]="selectedCustomers().has(customer.id)">
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="flex items-center cursor-pointer"
-                                                (click)="viewCustomer(customer)">
-                                                <div class="flex-shrink-0 h-10 w-10">
-                                                    <div class="h-10 w-10 rounded-full flex items-center justify-center text-gray-600 font-bold shadow-sm"
-                                                        [style.background]="customer.avatarGradient">
-                                                        {{ customer.initials }}
-                                                    </div>
-                                                </div>
-                                                <div class="ml-4">
-                                                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{
-                                                        customer.displayName }}</div>
-                                                    <div class="text-xs text-gray-500 dark:text-gray-300">{{
-                                                        customer.dni ||
-                                                        'Sin ID' }}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900 dark:text-white flex flex-col gap-1">
-                                                @if(customer.email) {
-                                                <a [href]="'mailto:' + customer.email"
-                                                    class="hover:text-blue-600 flex items-center gap-1">
-                                                    <i class="far fa-envelope text-xs opacity-70"></i> {{ customer.email
-                                                    }}
-                                                </a>
-                                                }
-                                                @if(customer.phone) {
-                                                <a [href]="'tel:' + customer.phone"
-                                                    class="hover:text-blue-600 flex items-center gap-1">
-                                                    <i class="fas fa-phone text-xs opacity-70"></i> {{ customer.phone }}
-                                                </a>
-                                                }
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="flex flex-wrap gap-1 max-w-[200px]">
-                                                @for (tag of customer.tags; track tag) {
-                                                <span
-                                                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white shadow-sm"
-                                                    [style.background-color]="getTagColor(tag)">
-                                                    {{ tag }}
-                                                </span>
-                                                }
-                                                @if (!customer.tags?.length) {
-                                                <span class="text-xs text-gray-400 italic">-</span>
-                                                }
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <!-- Completeness Warning -->
-                                            @if (!isCustomerComplete(customer)) {
-                                            <span
-                                                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
-                                                [title]="formatAttentionReasons(customer)">
-                                                <i class="fas fa-exclamation-triangle"></i> Incompleto
-                                            </span>
-                                            } @else {
-                                            <span
-                                                class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                                                <i class="fas fa-check"></i> Completo
-                                            </span>
-                                            }
 
-                                            <!-- GDPR Badge -->
-                                            <div class="mt-1">
-                                                @let badge = getGdprBadgeConfig(customer);
-                                                <span
-                                                    [class]="badge.classes + ' inline-flex items-center justify-center w-7 h-7 rounded-full text-sm shadow-sm cursor-help'"
-                                                    [title]="badge.label">
-                                                    <i [class]="'fas ' + badge.icon"></i>
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td
-                                            class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                            {{ customer.formattedDate }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <div class="flex items-center justify-end gap-2">
+                            <!-- Customer Header -->
+                            <div class="flex items-start gap-4 mb-4 pr-8 cursor-pointer group"
+                                (click)="viewCustomer(customer)">
+                                <div class="relative shrink-0 transition-transform group-hover:scale-105">
+                                    <div class="w-12 h-12 rounded-full flex items-center justify-center text-gray-600 font-bold text-lg shadow-sm"
+                                        [style.background]="customer.avatarGradient">
+                                        {{ customer.initials }}
+                                    </div>
+                                    <!-- Online/Active Indicator could go here -->
+                                </div>
 
-                                                <button (click)="openInviteModal(customer)"
-                                                    class="text-gray-400 hover:text-blue-600 transition-colors"
-                                                    title="Invitar al Portal">
-                                                    <i class="fas fa-envelope-open-text"></i>
-                                                </button>
-
-                                                <button (click)="editCustomer(customer)"
-                                                    class="text-gray-400 hover:text-yellow-600 transition-colors"
-                                                    title="Editar">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-
-                                                <button (click)="viewCustomer(customer)"
-                                                    class="text-gray-400 hover:text-indigo-600 transition-colors"
-                                                    title="Ver Ficha">
-                                                    <i class="fas fa-chevron-right"></i>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
+                                        [title]="customer.displayName">
+                                        {{ customer.displayName }}
+                                    </h3>
+                                    <!-- Incomplete warning -->
+                                    @if (!isCustomerComplete(customer)) {
+                                    <div class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200"
+                                        [title]="formatAttentionReasons(customer)">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Faltan datos
+                                    </div>
                                     }
-                                </tbody>
-                            </table>
+                                    <div class="flex flex-col gap-0.5 text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        @if (customer.email) {
+                                        <a [href]="'mailto:' + customer.email"
+                                            class="hover:text-blue-600 dark:hover:text-blue-400 truncate flex items-center gap-1.5 transition-colors">
+                                            <i class="far fa-envelope text-xs opacity-70"></i> {{ customer.email
+                                            }}
+                                        </a>
+                                        }
+                                        @if (customer.phone) {
+                                        <a [href]="'tel:' + customer.phone"
+                                            class="hover:text-blue-600 dark:hover:text-blue-400 truncate flex items-center gap-1.5 transition-colors">
+                                            <i class="fas fa-phone text-xs opacity-70"></i> {{ customer.phone }}
+                                        </a>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Metadata Grid -->
+                            <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-xs mb-4">
+                                <div class="flex flex-col">
+                                    <span class="text-gray-400 dark:text-gray-500 mb-0.5">DNI/CIF</span>
+                                    <span class="text-gray-700 dark:text-gray-300 font-medium truncate">{{
+                                        customer.dni
+                                        || customer.cif_nif || '-' }}</span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-gray-400 dark:text-gray-500 mb-0.5">Alta</span>
+                                    <span class="text-gray-700 dark:text-gray-300">{{ customer.formattedDate
+                                        }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Footer Actions -->
+                            <div
+                                class="mt-auto pt-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-1">
+                                <!-- Portal Access (compact) -->
+                                <button
+                                    (click)="togglePortalAccess(customer, !hasPortalAccess(customer, customer.email), $event)"
+                                    class="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors"
+                                    [class]="hasPortalAccess(customer, customer.email)
+                                        ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300' 
+                                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700/50 dark:text-gray-400'"
+                                    [title]="hasPortalAccess(customer, customer.email) ? 'Acceso Portal activo' : 'Sin acceso al portal'">
+                                    <i class="fas" [class.fa-key]="hasPortalAccess(customer, customer.email)"
+                                        [class.fa-lock]="!hasPortalAccess(customer, customer.email)"></i>
+                                    {{ hasPortalAccess(customer, customer.email) ? 'Portal' : 'Sin Acceso' }}
+                                </button>
+
+                                <!-- Action Icons -->
+                                <div class="flex items-center gap-1">
+                                    <!-- GDPR Badge -->
+                                    @let badge = getGdprBadgeConfig(customer);
+                                    <button (click)="flipCardToGdpr($event, customer.id)"
+                                        class="w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-help"
+                                        [class]="badge.classes" [title]="badge.label">
+                                        <i [class]="'fas ' + badge.icon" class="text-xs"></i>
+                                    </button>
+
+                                    <!-- Edit -->
+                                    <button (click)="editCustomer(customer); $event.stopPropagation()"
+                                        class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 transition-colors"
+                                        title="Editar">
+                                        <i class="fas fa-edit text-xs"></i>
+                                    </button>
+
+                                    <!-- View -->
+                                    <button (click)="viewCustomer(customer); $event.stopPropagation()"
+                                        class="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                                        title="Ver Ficha">
+                                        <i class="fas fa-chevron-right text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    }
 
-                    <!-- Safe area for mobile fab/nav -->
-                    <div class="h-20 sm:h-0"></div>
-
-                    <!-- Floating Action Buttons (FABs) -->
-                    <div class="fixed bottom-0 right-0 z-50 pointer-events-none">
-                        <!-- Wrapper for positioning -->
-                        <div class="absolute bottom-6 right-6 flex flex-col items-end gap-4 pointer-events-auto">
-                            <!-- Audio Client FAB -->
-                            <button (click)="toggleRecording()"
-                                class="w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white transition-all transform hover:scale-105"
-                                [ngClass]="{
-                            'bg-red-500 animate-pulse': isRecording(), 
-                            'bg-purple-600 hover:bg-purple-700': !isRecording() 
-                        }" [title]="isRecording() ? 'Detener grabación' : 'Crear cliente por voz (IA)'">
-                                @if(isProcessingAudio()) {
-                                <i class="fas fa-circle-notch fa-spin text-lg"></i>
-                                } @else {
-                                <i class="fas text-lg" [class.fa-microphone]="!isRecording()"
-                                    [class.fa-stop]="isRecording()"></i>
-                                }
+                        <!-- BACK: GDPR Actions -->
+                        <div
+                            class="flip-back h-full absolute inset-0 bg-gray-900 text-white rounded-lg p-5 flex flex-col items-center justify-center text-center space-y-4 shadow-xl z-20">
+                            <button (click)="closeGdprCard($event)"
+                                class="absolute top-3 right-3 text-gray-400 hover:text-white transition-colors">
+                                <i class="fas fa-times text-lg"></i>
                             </button>
 
-                            <!-- New Customer FAB -->
-                            <button (click)="openForm()" class="fab-button relative static-fab" title="Crear Cliente">
-                                <i class="fas fa-plus"></i>
-                            </button>
+                            <div
+                                class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mb-1 shadow-lg shadow-blue-900/50">
+                                <i class="fas fa-shield-alt text-2xl text-white"></i>
+                            </div>
+
+                            <h3 class="font-bold text-lg">Gestión RGPD</h3>
+
+                            <div class="w-full space-y-2">
+                                <button (click)="requestDataAccess(customer)"
+                                    class="w-full py-2 px-3 bg-white/10 hover:bg-white/20 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 border border-white/10">
+                                    <i class="fas fa-database"></i> Acceso Datos
+                                </button>
+                                <button (click)="sendConsentRequest(customer)"
+                                    class="w-full py-2 px-3 bg-white/10 hover:bg-white/20 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 border border-white/10">
+                                    <i class="fas fa-paper-plane"></i> Pedir Consentimiento
+                                </button>
+                                <button (click)="exportCustomerData(customer)"
+                                    class="w-full py-2 px-3 bg-white/10 hover:bg-white/20 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 border border-white/10">
+                                    <i class="fas fa-file-export"></i> Exportar JSON
+                                </button>
+                                <div class="h-px bg-white/10 my-1"></div>
+                                <button (click)="anonymizeCustomer(customer)"
+                                    class="w-full py-2 px-3 bg-red-500/20 hover:bg-red-500/40 text-red-200 hover:text-white rounded text-sm font-medium transition-colors flex items-center justify-center gap-2 border border-red-500/30">
+                                    <i class="fas fa-user-slash"></i> Olvido / Anonimizar
+                                </button>
+                            </div>
                         </div>
                     </div>
-
-                    <!-- Bulk Actions Toolbar -->
-                    @if (selectedCustomers().size > 0) {
-                    <div
-                        class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-white dark:bg-gray-800 rounded-full shadow-2xl border border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center gap-6 animate-slideUp">
-                        <div class="flex items-center gap-3">
-                            <span
-                                class="bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                                {{ selectedCustomers().size }}
-                            </span>
-                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">seleccionados</span>
-                        </div>
-
-                        <div class="h-5 w-px bg-gray-300 dark:bg-gray-600"></div>
-
-                        <button (click)="deleteSelected()"
-                            class="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium text-sm flex items-center gap-2 transition-colors">
-                            <i class="fas fa-trash-alt"></i>
-                            <span>Eliminar</span>
-                        </button>
-
-                        <button
-                            class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white font-medium text-sm flex items-center gap-2 transition-colors cursor-not-allowed opacity-50"
-                            disabled title="Próximamente">
-                            <i class="fas fa-file-export"></i>
-                            <span>Exportar</span>
-                        </button>
-                    </div>
-                    }
                 </div>
                 }
             </div>
-        </div>
+            } @else {
+            <!-- Table View -->
+            <div
+                class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-900/50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left w-10">
+                                    <input type="checkbox"
+                                        class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-100 dark:bg-gray-700 dark:border-gray-600"
+                                        (change)="toggleAllSelection()"
+                                        [checked]="selectedCustomers().size === filteredCustomers().length && filteredCustomers().length > 0"
+                                        [indeterminate]="selectedCustomers().size > 0 && selectedCustomers().size < filteredCustomers().length">
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                                    (click)="sortBy.set('name')">
+                                    Cliente
+                                    @if(sortBy() === 'name') { <i class="fas fa-sort ml-1"></i> }
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    Contacto
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    Etiquetas
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    Estado / Completeness
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-300"
+                                    (click)="sortBy.set('created_at')">
+                                    Fecha Alta
+                                    @if(sortBy() === 'created_at') { <i class="fas fa-sort ml-1"></i> }
+                                </th>
+                                <th scope="col"
+                                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                    Acciones
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                            @for (customer of filteredCustomers(); track customer.id) {
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors" [ngClass]="{
+                                    'bg-blue-50': selectedCustomers().has(customer.id),
+                                    'dark:bg-blue-900/20': selectedCustomers().has(customer.id)
+                                }">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <input type="checkbox"
+                                        class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 bg-gray-100 dark:bg-gray-700 dark:border-gray-600 cursor-pointer"
+                                        (change)="toggleSelection(customer.id)" (click)="$event.stopPropagation()"
+                                        [checked]="selectedCustomers().has(customer.id)">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center cursor-pointer" (click)="viewCustomer(customer)">
+                                        <div class="flex-shrink-0 h-10 w-10">
+                                            <div class="h-10 w-10 rounded-full flex items-center justify-center text-gray-600 font-bold shadow-sm"
+                                                [style.background]="customer.avatarGradient">
+                                                {{ customer.initials }}
+                                            </div>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900 dark:text-white">{{
+                                                customer.displayName }}</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-300">{{
+                                                customer.dni ||
+                                                'Sin ID' }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900 dark:text-white flex flex-col gap-1">
+                                        @if(customer.email) {
+                                        <a [href]="'mailto:' + customer.email"
+                                            class="hover:text-blue-600 flex items-center gap-1">
+                                            <i class="far fa-envelope text-xs opacity-70"></i> {{ customer.email
+                                            }}
+                                        </a>
+                                        }
+                                        @if(customer.phone) {
+                                        <a [href]="'tel:' + customer.phone"
+                                            class="hover:text-blue-600 flex items-center gap-1">
+                                            <i class="fas fa-phone text-xs opacity-70"></i> {{ customer.phone }}
+                                        </a>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex flex-wrap gap-1 max-w-[200px]">
+                                        @for (tag of customer.tags; track tag) {
+                                        <span
+                                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white shadow-sm"
+                                            [style.background-color]="getTagColor(tag)">
+                                            {{ tag }}
+                                        </span>
+                                        }
+                                        @if (!customer.tags?.length) {
+                                        <span class="text-xs text-gray-400 italic">-</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <!-- Completeness Warning -->
+                                    @if (!isCustomerComplete(customer)) {
+                                    <span
+                                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                                        [title]="formatAttentionReasons(customer)">
+                                        <i class="fas fa-exclamation-triangle"></i> Incompleto
+                                    </span>
+                                    } @else {
+                                    <span
+                                        class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                        <i class="fas fa-check"></i> Completo
+                                    </span>
+                                    }
 
-        <!-- Add/Edit Customer Slide-over Modal -->
-        <ng-template #modalTemplate>
-            <!-- The component handles its own modal overlay and styling. 
-         We render it via Portal to ensure it sits on top of everything (z-index). -->
-            <app-form-new-customer [customer]="selectedCustomer()" (onSave)="onCustomerSaved()" (onCancel)="closeForm()"
-                (close)="closeForm()">
-            </app-form-new-customer>
-        </ng-template>
+                                    <!-- GDPR Badge -->
+                                    <div class="mt-1">
+                                        @let badge = getGdprBadgeConfig(customer);
+                                        <span
+                                            [class]="badge.classes + ' inline-flex items-center justify-center w-7 h-7 rounded-full text-sm shadow-sm cursor-help'"
+                                            [title]="badge.label">
+                                            <i [class]="'fas ' + badge.icon"></i>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                    {{ customer.formattedDate }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <div class="flex items-center justify-end gap-2">
 
-        <!-- CSV Mapper Modal -->
+                                        <button (click)="openInviteModal(customer)"
+                                            class="text-gray-400 hover:text-blue-600 transition-colors"
+                                            title="Invitar al Portal">
+                                            <i class="fas fa-envelope-open-text"></i>
+                                        </button>
 
+                                        <button (click)="editCustomer(customer)"
+                                            class="text-gray-400 hover:text-yellow-600 transition-colors"
+                                            title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
 
-        <!-- Invite Modal -->
-        @if (showInviteModal()) {
-        <div class="fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" (click)="closeInviteModal()">
+                                        <button (click)="viewCustomer(customer)"
+                                            class="text-gray-400 hover:text-indigo-600 transition-colors"
+                                            title="Ver Ficha">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            }
+
+            <!-- Safe area for mobile fab/nav -->
+            <div class="h-20 sm:h-0"></div>
+
+            <!-- Floating Action Buttons (FABs) -->
+            <div class="fixed bottom-0 right-0 z-50 pointer-events-none">
+                <!-- Wrapper for positioning -->
+                <div class="absolute bottom-6 right-6 flex flex-col items-end gap-4 pointer-events-auto">
+                    <!-- Audio Client FAB -->
+                    <button (click)="toggleRecording()"
+                        class="w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-white transition-all transform hover:scale-105"
+                        [ngClass]="{
+                            'bg-red-500 animate-pulse': isRecording(), 
+                            'bg-purple-600 hover:bg-purple-700': !isRecording() 
+                        }" [title]="isRecording() ? 'Detener grabación' : 'Crear cliente por voz (IA)'">
+                        @if(isProcessingAudio()) {
+                        <i class="fas fa-circle-notch fa-spin text-lg"></i>
+                        } @else {
+                        <i class="fas text-lg" [class.fa-microphone]="!isRecording()"
+                            [class.fa-stop]="isRecording()"></i>
+                        }
+                    </button>
+
+                    <!-- New Customer FAB -->
+                    <button (click)="openForm()" class="fab-button relative static-fab" title="Crear Cliente">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bulk Actions Toolbar -->
+            @if (selectedCustomers().size > 0) {
+            <div
+                class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-white dark:bg-gray-800 rounded-full shadow-2xl border border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center gap-6 animate-slideUp">
+                <div class="flex items-center gap-3">
+                    <span
+                        class="bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 px-2.5 py-0.5 rounded-full text-xs font-bold">
+                        {{ selectedCustomers().size }}
+                    </span>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-200">seleccionados</span>
                 </div>
 
-                <div
-                    class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
-                    <div class="bg-white dark:bg-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-                        <div class="sm:flex sm:items-start">
-                            <div
-                                class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                                <i class="fas fa-envelope-open-text text-blue-600"></i>
+                <div class="h-5 w-px bg-gray-300 dark:bg-gray-600"></div>
+
+                <button (click)="deleteSelected()"
+                    class="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium text-sm flex items-center gap-2 transition-colors">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>Eliminar</span>
+                </button>
+
+                <button
+                    class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white font-medium text-sm flex items-center gap-2 transition-colors cursor-not-allowed opacity-50"
+                    disabled title="Próximamente">
+                    <i class="fas fa-file-export"></i>
+                    <span>Exportar</span>
+                </button>
+            </div>
+            }
+        </div>
+        }
+    </div>
+</div>
+
+<!-- Add/Edit Customer Slide-over Modal -->
+<ng-template #modalTemplate>
+    <!-- The component handles its own modal overlay and styling. 
+         We render it via Portal to ensure it sits on top of everything (z-index). -->
+    <app-form-new-customer [customer]="selectedCustomer()" (onSave)="onCustomerSaved()" (onCancel)="closeForm()"
+        (close)="closeForm()">
+    </app-form-new-customer>
+</ng-template>
+
+<!-- CSV Mapper Modal -->
+
+
+<!-- Invite Modal -->
+@if (showInviteModal()) {
+<div class="fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" (click)="closeInviteModal()">
+        </div>
+
+        <div
+            class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg">
+            <div class="bg-white dark:bg-gray-800 px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
+                <div class="sm:flex sm:items-start">
+                    <div
+                        class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <i class="fas fa-envelope-open-text text-blue-600"></i>
+                    </div>
+                    <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
+                        <h3 class="text-lg font-semibold leading-6 text-gray-900 dark:text-white" id="modal-title">
+                            Invitar al Portal de Cliente
+                        </h3>
+                        <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                            <p>Envía una invitación por email a <strong>{{ inviteTarget()?.name }}</strong>.
+                                Podrá
+                                establecer su contraseña y acceder a facturas y documentos.</p>
+                        </div>
+
+                        <div class="mt-4 space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email
+                                    destino</label>
+                                <input type="email" [(ngModel)]="inviteEmail"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                                    placeholder="cliente@email.com">
                             </div>
-                            <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                                <h3 class="text-lg font-semibold leading-6 text-gray-900 dark:text-white"
-                                    id="modal-title">
-                                    Invitar al Portal de Cliente
-                                </h3>
-                                <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                                    <p>Envía una invitación por email a <strong>{{ inviteTarget()?.name }}</strong>.
-                                        Podrá
-                                        establecer su contraseña y acceder a facturas y documentos.</p>
-                                </div>
 
-                                <div class="mt-4 space-y-3">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email
-                                            destino</label>
-                                        <input type="email" [(ngModel)]="inviteEmail"
-                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-                                            placeholder="cliente@email.com">
-                                    </div>
-
-                                    <div>
-                                        <label
-                                            class="block text-sm font-medium text-gray-700 dark:text-gray-300">Mensaje
-                                            opcional</label>
-                                        <textarea [(ngModel)]="inviteMessage" rows="3"
-                                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
-                                            placeholder="Hola, te invito a acceder..."></textarea>
-                                    </div>
-                                </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Mensaje
+                                    opcional</label>
+                                <textarea [(ngModel)]="inviteMessage" rows="3"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                                    placeholder="Hola, te invito a acceder..."></textarea>
                             </div>
                         </div>
                     </div>
-                    <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
-                        <button type="button" (click)="sendInvite()" [disabled]="inviting()"
-                            class="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-wait">
-                            @if(inviting()) { <i class="fas fa-circle-notch fa-spin mr-2"></i> }
-                            {{ inviting() ? 'Enviando...' : 'Enviar Invitación' }}
-                        </button>
-                        <button type="button" (click)="closeInviteModal()"
-                            class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 sm:mt-0 sm:w-auto">
-                            Cancelar
-                        </button>
-                    </div>
                 </div>
             </div>
+            <div class="bg-gray-50 dark:bg-gray-700 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">
+                <button type="button" (click)="sendInvite()" [disabled]="inviting()"
+                    class="inline-flex w-full justify-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 sm:ml-3 sm:w-auto disabled:opacity-50 disabled:cursor-wait">
+                    @if(inviting()) { <i class="fas fa-circle-notch fa-spin mr-2"></i> }
+                    {{ inviting() ? 'Enviando...' : 'Enviar Invitación' }}
+                </button>
+                <button type="button" (click)="closeInviteModal()"
+                    class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-gray-200 shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 sm:mt-0 sm:w-auto">
+                    Cancelar
+                </button>
+            </div>
         </div>
-        }
+    </div>
+</div>
+}

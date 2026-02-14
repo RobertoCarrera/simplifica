@@ -1,32 +1,25 @@
 :host {
     display: block;
     height: 100%;
-    overflow: hidden;
-    /* Prevent global scrollbar */
 }
 
 .customers-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
+    /* Mobile-first: single column */
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    /* Grid layout */
     padding: 0;
-
-    /* Scroll handling inside the grid container */
-    flex: 1;
-    overflow-y: auto;
 
     /* Increased bottom padding for mobile scrolling to clear FAB/Nav */
     padding-bottom: 8rem;
 
     /* Hiding scrollbar */
     scrollbar-width: none;
-    /* Firefox */
     -ms-overflow-style: none;
 
-    /* IE/Edge */
     &::-webkit-scrollbar {
         display: none;
-        /* Chrome/Safari */
         width: 0;
         background: transparent;
     }
@@ -34,15 +27,18 @@
     /* Ensure smooth scrolling on touch devices */
     -webkit-overflow-scrolling: touch;
 
+    /* Tablet and up: auto-fill grid */
+    @media (min-width: 640px) {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+    }
+
     @media (min-width: 768px) {
         gap: 2rem;
     }
 }
 
 .customer-card {
-    /* Using 3D transform for better performance and to enable flip effect */
-    perspective: 1000px;
-    transform-style: preserve-3d;
     height: auto;
     min-height: 220px;
 }
@@ -53,37 +49,39 @@
     width: 100%;
     height: 100%;
     text-align: left;
-    transition: transform 0.6s;
-    transform-style: preserve-3d;
 }
 
 .flip-container.flipped {
-    transform: rotateY(180deg);
+    perspective: 1000px;
+
+    .flip-front {
+        visibility: hidden;
+    }
+
+    .flip-back {
+        visibility: visible;
+        opacity: 1;
+    }
 }
 
-.flip-front,
+.flip-front {
+    position: relative;
+    z-index: 2;
+    background: inherit;
+    border-radius: 0.5rem;
+}
+
 .flip-back {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
+    z-index: 3;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
     border-radius: 0.5rem;
-}
-
-.flip-front {
-    z-index: 2;
-    transform: rotateY(0deg);
-    background: inherit;
-    /* Use parent background */
-}
-
-.flip-back {
-    transform: rotateY(180deg);
-    z-index: 1;
-    /* Background color set in HTML classes (bg-gray-900) */
 }
 
 /* Action Menu Styles */
