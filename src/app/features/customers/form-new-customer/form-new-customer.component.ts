@@ -534,6 +534,22 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     }
   }
 
+  @HostListener('document:keydown.enter', ['$event'])
+  onEnterKey(event: KeyboardEvent) {
+    const target = event.target as HTMLElement;
+    const tag = target?.tagName;
+    // Only skip for textareas (multiline input) and selects
+    if (tag === 'TEXTAREA' || tag === 'SELECT') {
+      return;
+    }
+    event.preventDefault();
+    if (this.currentStep < this.totalSteps) {
+      this.nextStep();
+    } else {
+      this.saveCustomer();
+    }
+  }
+
   prevStep() {
     if (this.currentStep > 1) {
       this.currentStep--;

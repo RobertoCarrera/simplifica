@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { Location } from '@angular/common';
 import { SupabaseCustomersService } from '../../../services/supabase-customers.service';
 import { Customer } from '../../../models/customer';
 import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-manager.component';
@@ -24,13 +25,68 @@ import { ToastService } from '../../../services/toast.service';
     ],
     template: `
     <div class="h-full flex flex-col bg-slate-50 dark:bg-slate-900 overflow-hidden">
-      <!-- Loading State -->
-      <div *ngIf="isLoading()" class="h-full flex items-center justify-center">
-         <div class="flex flex-col items-center gap-4">
-            <i class="fas fa-circle-notch fa-spin text-4xl text-blue-500"></i>
-            <p class="text-slate-500">Cargando perfil...</p>
-         </div>
-      </div>
+
+      <!-- Loading Skeleton -->
+      <div *ngIf="isLoading()" class="flex-1 flex flex-col overflow-hidden animate-pulse">
+          <!-- Skeleton Header -->
+          <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6">
+              <div class="flex items-center gap-2 mb-4">
+                  <div class="w-5 h-5 rounded bg-slate-200 dark:bg-slate-700"></div>
+                  <div class="h-4 w-28 rounded bg-slate-200 dark:bg-slate-700"></div>
+              </div>
+              <div class="flex items-center gap-4">
+                  <div class="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0"></div>
+                  <div class="flex-1 space-y-2">
+                      <div class="h-6 w-48 rounded bg-slate-200 dark:bg-slate-700"></div>
+                      <div class="flex gap-4">
+                          <div class="h-4 w-40 rounded bg-slate-200 dark:bg-slate-700"></div>
+                          <div class="h-4 w-28 rounded bg-slate-200 dark:bg-slate-700"></div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+          <!-- Skeleton Tabs -->
+          <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+              <div class="flex gap-6">
+                  <div class="h-4 w-24 rounded bg-slate-200 dark:bg-slate-700"></div>
+                  <div class="h-4 w-28 rounded bg-slate-200 dark:bg-slate-700"></div>
+                  <div class="h-4 w-20 rounded bg-slate-200 dark:bg-slate-700"></div>
+                  <div class="h-4 w-24 rounded bg-slate-200 dark:bg-slate-700"></div>
+                  <div class="h-4 w-24 rounded bg-slate-200 dark:bg-slate-700"></div>
+              </div>
+          </div>
+          <!-- Skeleton Content Cards -->
+          <div class="p-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                      <div class="h-5 w-40 rounded bg-slate-200 dark:bg-slate-700"></div>
+                      <div class="space-y-3">
+                          <div class="h-3 w-16 rounded bg-slate-200 dark:bg-slate-700"></div>
+                          <div class="h-4 w-32 rounded bg-slate-200 dark:bg-slate-700"></div>
+                          <div class="h-3 w-16 rounded bg-slate-200 dark:bg-slate-700"></div>
+                          <div class="h-4 w-full rounded bg-slate-200 dark:bg-slate-700"></div>
+                          <div class="h-3 w-20 rounded bg-slate-200 dark:bg-slate-700"></div>
+                          <div class="h-4 w-24 rounded bg-slate-200 dark:bg-slate-700"></div>
+                      </div>
+                  </div>
+                  <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                      <div class="h-5 w-36 rounded bg-slate-200 dark:bg-slate-700"></div>
+                      <div class="space-y-3">
+                          <div class="h-4 w-full rounded bg-slate-200 dark:bg-slate-700"></div>
+                          <div class="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-700"></div>
+                          <div class="h-4 w-1/2 rounded bg-slate-200 dark:bg-slate-700"></div>
+                      </div>
+                  </div>
+                  <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
+                      <div class="h-5 w-28 rounded bg-slate-200 dark:bg-slate-700"></div>
+                      <div class="space-y-3">
+                          <div class="h-4 w-full rounded bg-slate-200 dark:bg-slate-700"></div>
+                          <div class="h-4 w-2/3 rounded bg-slate-200 dark:bg-slate-700"></div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+       </div>
 
       <div *ngIf="!isLoading() && customer()" class="flex-1 flex flex-col overflow-hidden">
          <!-- Main Scrollable Area -->
@@ -38,6 +94,12 @@ import { ToastService } from '../../../services/toast.service';
              
              <!-- Client Info (Scrolls away) -->
              <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6">
+                 <!-- Back Button -->
+                 <button (click)="goBack()" 
+                     class="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 mb-4 transition-colors group">
+                     <i class="fas fa-arrow-left group-hover:-translate-x-0.5 transition-transform"></i>
+                     Volver a clientes
+                 </button>
                  <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                      <div class="flex items-center gap-4">
                          <!-- Avatar -->
@@ -197,6 +259,8 @@ import { ToastService } from '../../../services/toast.service';
 })
 export class ClientProfileComponent implements OnInit {
     private route = inject(ActivatedRoute);
+    private router = inject(Router);
+    private location = inject(Location);
     private customersService = inject(SupabaseCustomersService);
     private toastService = inject(ToastService);
 
@@ -236,6 +300,10 @@ export class ClientProfileComponent implements OnInit {
 
     setActiveTab(tab: any) {
         this.activeTab.set(tab);
+    }
+
+    goBack() {
+        this.location.back();
     }
 
     // Helpers

@@ -64,11 +64,18 @@ export interface Customer {
   contacts?: ClientContact[];
 
   // GDPR Compliance Fields
+  consent_status?: 'pending' | 'accepted' | 'rejected' | 'revoked';
   marketing_consent?: boolean;
   marketing_consent_date?: string;
   marketing_consent_method?: string;
   data_processing_consent?: boolean;
   data_processing_consent_date?: string;
+
+  // Invitation Fields
+  invitation_token?: string;
+  invitation_status?: 'not_sent' | 'sent' | 'opened' | 'completed';
+  invitation_sent_at?: string;
+
   data_processing_legal_basis?: string;
   data_retention_until?: string;
   deletion_requested_at?: string;
