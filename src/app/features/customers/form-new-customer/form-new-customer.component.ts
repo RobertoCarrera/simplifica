@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output, inject, signal, ViewChild, ElementRef, ChangeDetectorRef, SimpleChanges, OnChanges, HostListener } from '@angular/core';
 
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, NgForm } from '@angular/forms';
 import { Customer, ClientContact } from '../../../models/customer';
 import { LocalitiesService } from '../../../services/localities.service';
 import { Locality } from '../../../models/locality';
@@ -41,10 +41,10 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
   // Step Titles
   stepTitles = [
-    { step: 1, title: 'Datos Principales', icon: 'fas fa-user', description: 'Identificación y contacto' },
+    { step: 1, title: 'Datos', icon: 'fas fa-user', description: 'Identificación y contacto' },
     { step: 2, title: 'Dirección', icon: 'fas fa-map-marker-alt', description: 'Ubicación física' },
     { step: 3, title: 'Facturación', icon: 'fas fa-file-invoice-dollar', description: 'Datos fiscales y pago' },
-    { step: 4, title: 'CRM y Contactos', icon: 'fas fa-chart-line', description: 'Estado y equipo' }
+    { step: 4, title: 'CRM', icon: 'fas fa-chart-line', description: 'Estado y equipo' }
   ];
 
   // Services
@@ -180,7 +180,9 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
   // Animation State
   contentHeight: string | number = 'auto'; // Initial auto
-  @ViewChild('tabContentContainer') tabContentContainer!: ElementRef<HTMLDivElement>;
+  @ViewChild('customerForm') customerForm!: NgForm;
+  @ViewChild('tabContentContainer') tabContentContainer!: ElementRef;
+  @ViewChild('modalBody') modalBody!: ElementRef<HTMLDivElement>;
 
 
   // Honeypot tracking
@@ -535,8 +537,9 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   }
 
   @HostListener('document:keydown.enter', ['$event'])
-  onEnterKey(event: KeyboardEvent) {
-    const target = event.target as HTMLElement;
+  onEnterKey(event: Event) {
+    const keyboardEvent = event as KeyboardEvent;
+    const target = keyboardEvent.target as HTMLElement;
     const tag = target?.tagName;
     // Only skip for textareas (multiline input) and selects
     if (tag === 'TEXTAREA' || tag === 'SELECT') {
@@ -565,10 +568,10 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   }
 
   private scrollToTop() {
-    // Small delay to allow View transition
-    setTimeout(() => {
-      this.tabContentContainer?.nativeElement?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
+    // Immediate scroll to top of the container
+    if (this.modalBody?.nativeElement) {
+      this.modalBody.nativeElement.scrollTop = 0;
+    }
   }
 
   // Client Type Helpers

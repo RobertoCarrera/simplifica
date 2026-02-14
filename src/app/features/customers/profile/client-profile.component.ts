@@ -29,7 +29,7 @@ import { ToastService } from '../../../services/toast.service';
       <!-- Loading Skeleton -->
       <div *ngIf="isLoading()" class="flex-1 flex flex-col overflow-hidden animate-pulse">
           <!-- Skeleton Header -->
-          <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6">
+          <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4 sm:p-6">
               <div class="flex items-center gap-2 mb-4">
                   <div class="w-5 h-5 rounded bg-slate-200 dark:bg-slate-700"></div>
                   <div class="h-4 w-28 rounded bg-slate-200 dark:bg-slate-700"></div>
@@ -46,7 +46,7 @@ import { ToastService } from '../../../services/toast.service';
               </div>
           </div>
           <!-- Skeleton Tabs -->
-          <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+          <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 sm:px-6 py-3 sm:py-4">
               <div class="flex gap-6">
                   <div class="h-4 w-24 rounded bg-slate-200 dark:bg-slate-700"></div>
                   <div class="h-4 w-28 rounded bg-slate-200 dark:bg-slate-700"></div>
@@ -56,7 +56,7 @@ import { ToastService } from '../../../services/toast.service';
               </div>
           </div>
           <!-- Skeleton Content Cards -->
-          <div class="p-6">
+          <div class="p-4 sm:p-6">
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <div class="bg-white dark:bg-slate-800 rounded-xl p-6 border border-slate-200 dark:border-slate-700 space-y-4">
                       <div class="h-5 w-40 rounded bg-slate-200 dark:bg-slate-700"></div>
@@ -93,7 +93,7 @@ import { ToastService } from '../../../services/toast.service';
          <main class="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900 scroll-smooth relative">
              
              <!-- Client Info (Scrolls away) -->
-             <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-6">
+             <div class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 p-4 sm:p-6">
                  <!-- Back Button -->
                  <button (click)="goBack()" 
                      class="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 mb-4 transition-colors group">
@@ -109,7 +109,7 @@ import { ToastService } from '../../../services/toast.service';
                          </div>
                          
                          <div>
-                             <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                             <h1 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                  {{ getDisplayName(customer()!) }}
                                  <span *ngIf="customer()!.client_type === 'business'" class="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Empresa</span>
                              </h1>

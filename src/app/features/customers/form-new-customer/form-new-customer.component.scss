@@ -22,21 +22,31 @@
 @media (max-width: 767px) {
     .modal-overlay {
         padding: 0 !important;
-        align-items: stretch !important;
+        align-items: flex-start !important;
+        /* Start from top to avoid cropping when keyboard opens */
         background: #f9fafb !important;
         backdrop-filter: none !important;
+        height: 100dvh !important;
+        /* Use dynamic viewport height */
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
     }
 
     .modal-content {
         border-radius: 0 !important;
-        max-height: 100dvh !important;
+        min-height: 100dvh !important;
+        /* Min height to fill screen */
         height: 100dvh !important;
+        max-height: 100dvh !important;
         max-width: 100% !important;
         width: 100% !important;
         box-shadow: none !important;
         background: #f9fafb !important;
         border: none !important;
         margin: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
     }
 
     .modal-header {
@@ -48,8 +58,8 @@
 
     .modal-body {
         background: #f9fafb !important;
-        padding: 0 16px 16px !important;
-        padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important;
+        padding: 20px 16px 16px !important;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom)) !important;
     }
 
     .modal-actions {
@@ -681,4 +691,17 @@ select.form-input {
             }
         }
     }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
 }

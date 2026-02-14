@@ -1,6 +1,6 @@
 <div class="modal-overlay">
     <div
-        class="modal-content bg-white dark:bg-gray-800 shadow-xl rounded-xl w-full max-w-3xl flex flex-col max-h-[90vh]">
+        class="modal-content bg-white dark:bg-gray-800 shadow-xl rounded-none sm:rounded-xl w-full max-w-3xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
         <!-- HEADER -->
         <div
             class="modal-header flex justify-between items-center px-5 py-3 border-b border-gray-200 dark:border-gray-700">
@@ -19,54 +19,60 @@
         </div>
 
         <!-- WIZARD STEPPER -->
-        <div class="px-4 py-2.5 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-            <div class="flex items-center justify-between relative">
-                <!-- Connecting Line -->
-                <div
-                    class="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-200 dark:bg-gray-700 -z-0">
-                </div>
-                <div class="absolute left-0 top-1/2 transform -translate-y-1/2 h-1 bg-primary-500 transition-all duration-500 ease-in-out -z-0"
-                    [style.width.%]="(currentStep - 1) / (totalSteps - 1) * 100"></div>
+        <div class="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 no-scrollbar">
+            <div class="flex items-center justify-between min-w-full sm:min-w-0 gap-1 sm:gap-2">
 
-                <!-- Steps -->
-                <div *ngFor="let step of stepTitles"
-                    class="relative z-10 flex flex-col items-center cursor-pointer group" (click)="goToStep(step.step)">
+                <ng-container *ngFor="let step of stepTitles; let i = index; let isLast = last">
+                    <!-- Step Item -->
+                    <div class="relative z-10 flex flex-col items-center cursor-pointer group flex-shrink-0"
+                        (click)="goToStep(step.step)">
+                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 text-sm shadow-sm"
+                            [class.bg-primary-600]="currentStep >= step.step"
+                            [class.border-primary-600]="currentStep >= step.step"
+                            [class.text-white]="currentStep >= step.step" [class.bg-white]="currentStep < step.step"
+                            [class.dark:bg-gray-800]="currentStep < step.step"
+                            [class.border-gray-300]="currentStep < step.step"
+                            [class.dark:border-gray-600]="currentStep < step.step"
+                            [class.text-gray-400]="currentStep < step.step">
 
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center border-[3px] transition-all duration-300 bg-white dark:bg-gray-800 text-sm"
-                        [class.border-primary-500]="currentStep >= step.step"
-                        [class.border-gray-300]="currentStep < step.step"
-                        [class.dark:border-gray-600]="currentStep < step.step"
-                        [class.text-primary-600]="currentStep >= step.step"
-                        [class.text-gray-400]="currentStep < step.step">
+                            <i class="fas" [class]="currentStep > step.step ? 'fa-check' : step.icon"></i>
+                        </div>
 
-                        <i class="fas" [class.fa-check]="currentStep > step.step"
-                            [class]="currentStep > step.step ? 'fa-check' : step.icon"></i>
+                        <span
+                            class="mt-2 text-[10px] sm:text-xs font-semibold uppercase tracking-wide transition-colors duration-300 text-center max-w-[4.5rem] sm:max-w-none leading-tight line-clamp-2 sm:line-clamp-none"
+                            [class.text-primary-700]="currentStep >= step.step"
+                            [class.dark:text-primary-400]="currentStep >= step.step"
+                            [class.text-gray-500]="currentStep < step.step"
+                            [class.dark:text-gray-400]="currentStep < step.step">
+                            {{ step.title }}
+                        </span>
                     </div>
 
-                    <span class="mt-2 text-xs font-semibold uppercase tracking-wider transition-colors duration-300"
-                        [class.text-primary-600]="currentStep >= step.step"
-                        [class.text-gray-400]="currentStep < step.step">
-                        {{ step.title }}
-                    </span>
-                </div>
+                    <!-- Connector Arrow (only if not last) -->
+                    <div *ngIf="!isLast"
+                        class="flex-1 flex justify-center items-center px-1 sm:px-4 opacity-30 text-gray-400 dark:text-gray-600 min-w-[10px]">
+                        <i class="fas fa-chevron-right text-[10px] sm:text-sm"></i>
+                    </div>
+                </ng-container>
+
             </div>
         </div>
 
         <!-- FORM BODY -->
-        <div class="modal-body bg-white dark:bg-gray-800 px-5 py-3 overflow-y-auto flex-1">
+        <div #modalBody
+            class="modal-body bg-white dark:bg-gray-800 px-4 sm:px-5 pt-5 pb-3 overflow-y-auto flex-1 min-h-0">
             <form (ngSubmit)="saveCustomer()" #customerForm="ngForm" class="customer-form">
 
                 <!-- ANIMATION CONTAINER -->
-                <div class="transition-all duration-300 ease-in-out overflow-visible"
-                    [style.height.px]="contentHeight === 'auto' ? null : contentHeight">
+                <div class="transition-all duration-300 ease-in-out overflow-visible">
 
                     <div #tabContentContainer class="space-y-4">
 
                         <!-- TAB: GENERAL -->
                         <div *ngIf="currentStep === 1" class="space-y-4 animate-fadeIn">
-                            <div class="form-row grid grid-cols-2 gap-4">
+                            <div class="form-row grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <!-- Client Type Selector -->
-                                <div class="form-group client-type-dropdown-container col-span-2">
+                                <div class="form-group client-type-dropdown-container sm:col-span-2">
                                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         <i class="fas fa-user-tag text-gray-400 dark:text-gray-500 mr-1"></i>
                                         Tipo de cliente
@@ -92,7 +98,7 @@
                                 </div>
 
                                 <!-- General Fields (Conditional) -->
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 col-span-2">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:col-span-2">
                                     <!-- IF INDIVIDUAL -->
                                     <ng-container *ngIf="formData.client_type === 'individual'">
                                         <div class="form-group">
