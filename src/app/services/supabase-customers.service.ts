@@ -2243,4 +2243,84 @@ export class SupabaseCustomersService {
 
     if (error) throw error;
   }
+
+  // ============================
+  // REAL-TIME UPDATES
+  // ============================
+  private realTimeChannel: any = null;
+
+  public subscribeToClientChanges() {
+    if (this.realTimeChannel) {
+      return; // Already subscribed
+    }
+
+    const companyId = this.authService.companyId();
+    if (!companyId) return;
+
+    // devLog('Iniciando suscripción Realtime a tabla clients', { companyId });
+
+    this.realTimeChannel = this.supabase.channel('public:clients')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients', filter: `company_id=eq.${companyId}` }, (payload) => {
+        this.handleRealTimeEvent(payload);
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // devSuccess('Suscrito a cambios en tiempo real (clients)');
+        }
+      });
+  }
+
+  public unsubscribeFromClientChanges() {
+    if (this.realTimeChannel) {
+      this.supabase.removeChannel(this.realTimeChannel);
+      this.realTimeChannel = null;
+      // devLog('Desuscrito de cambios en tiempo real (clients)');
+    }
+  }
+
+  private handleRealTimeEvent(payload: any) {
+    // devLog('Evento Realtime recibido:', payload);
+    const eventType = payload.eventType;
+    const newRecord = payload.new;
+    const oldRecord = payload.old;
+    const currentCustomers = this.customersSubject.value;
+
+    switch (eventType) {
+      case 'INSERT':
+        // Check if already exists (prevent duplicates if loaded via other means)
+        if (!currentCustomers.find(c => c.id === newRecord.id)) {
+          // We need to convert it to our Customer interface.
+          const newCustomer = this.toCustomerFromClient({ ...newRecord, direccion: null });
+          this.customersSubject.next([newCustomer, ...currentCustomers]);
+          this.updateStats();
+        }
+        break;
+
+      case 'UPDATE':
+        // Update the specific customer in the list
+        const updatedList = currentCustomers.map(c => {
+          if (c.id === newRecord.id) {
+            const mappedNew = this.toCustomerFromClient({ ...newRecord });
+            return {
+              ...c,
+              ...mappedNew,
+              // Restore complex objects not present in raw row
+              devices: c.devices,
+              tags: c.tags,
+              direccion: c.direccion // address handled separately usually
+            };
+          }
+          return c;
+        });
+        this.customersSubject.next(updatedList);
+        this.updateStats();
+        break;
+
+      case 'DELETE':
+        const filtered = currentCustomers.filter(c => c.id !== oldRecord.id);
+        this.customersSubject.next(filtered);
+        this.updateStats();
+        break;
+    }
+  }
 }

@@ -17,7 +17,7 @@ import { SupabaseNotificationsService } from '../../../services/supabase-notific
 @Component({
   selector: 'app-gdpr-customer-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, GdprAuditListComponent, SkeletonLoaderComponent, FormNewCustomerComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, GdprAuditListComponent, FormNewCustomerComponent],
   templateUrl: './gdpr-customer-manager.component.html',
   styleUrls: ['./gdpr-customer-manager.component.scss']
 })
@@ -37,14 +37,11 @@ export class GdprCustomerManagerComponent implements OnInit {
 
   // State signals
   customers = signal<Customer[]>([]);
-  stats = signal<CustomerStats | null>(null);
-  complianceStats = signal<any>(null);
-  auditEntries = signal<any[]>([]);
   isLoading = signal(false);
+
   selectedCustomer = signal<Customer | null>(null);
   searchTerm = signal('');
   showDeleted = signal(false);
-  sortOrder = signal<'asc' | 'desc'>('asc'); // Sort order
 
   selectedRequest = signal<GdprAccessRequest | null>(null);
   showRequestDetailModal = false;
@@ -67,18 +64,12 @@ export class GdprCustomerManagerComponent implements OnInit {
   anonymizeConfirmationInput = '';
   anonymizeError = '';
 
-  // Bulk Anonymization State
-  showBulkAnonymizeModal = false;
-  bulkAnonymizeConfirmationInput = '';
-  bulkAnonymizeError = '';
-  isBulkProcessing = false;
-  bulkProgress = { current: 0, total: 0, failed: 0 };
+
 
   // Computed properties
   filteredCustomers = computed(() => {
     let customers = this.customers();
     const search = this.searchTerm().toLowerCase();
-    // const incompleteOnly = this.showIncompleteOnly(); // Removed
 
     // 1. Filter by Search
     if (search) {
@@ -91,24 +82,10 @@ export class GdprCustomerManagerComponent implements OnInit {
       );
     }
 
-    // 2. Sort Logic: Incomplete First > Name Alpha
-    const order = this.sortOrder();
-    customers.sort((a, b) => {
-      // Primary: Incomplete Status (Not compliant) first
-      const aIncomplete = this.getGdprComplianceStatus(a) !== 'compliant';
-      const bIncomplete = this.getGdprComplianceStatus(b) !== 'compliant';
-
-      if (aIncomplete && !bIncomplete) return -1;
-      if (!aIncomplete && bIncomplete) return 1;
-
-      // Secondary: Name Alphabetical
-      const nameA = a.name?.toLowerCase() || '';
-      const nameB = b.name?.toLowerCase() || '';
-      return order === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
-    });
-
     return customers;
   });
+
+  targetCustomer = computed<Customer | null>(() => this.filteredCustomers()[0] || null);
 
   customersWithConsent = computed(() =>
     this.customers().filter(customer => customer.marketing_consent)
@@ -118,34 +95,12 @@ export class GdprCustomerManagerComponent implements OnInit {
     this.customers().filter(customer => !customer.marketing_consent)
   );
 
-  compliancePercentage = computed(() => {
-    const total = this.customers().length;
-    const withConsent = this.customersWithConsent().length;
-    return total > 0 ? Math.round((withConsent / total) * 100) : 0;
-  });
+  accessRequests = signal<GdprAccessRequest[]>([]);
 
-  inactiveCustomers = computed(() => {
-    const twoYearsAgo = new Date();
-    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
-
-    return this.customers().filter(customer => {
-      // 1. Must be created at least 6 months ago to be considered (grace period)
-      if (!customer.created_at) return false;
-      const createdAt = new Date(customer.created_at);
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-      if (createdAt > sixMonthsAgo) return false;
-
-      // 2. If valid candidate, check access
-      // If customer has never accessed
-      if (!customer.last_accessed_at) {
-        return true;
-      }
-
-      const lastAccess = new Date(customer.last_accessed_at);
-      return lastAccess < twoYearsAgo;
-    });
+  customerAccessRequests = computed(() => {
+    const customer = this.targetCustomer();
+    if (!customer?.email) return [];
+    return this.accessRequests().filter(r => r.subject_email === customer.email);
   });
 
   constructor() {
@@ -158,19 +113,7 @@ export class GdprCustomerManagerComponent implements OnInit {
     });
   }
 
-  // Pagination State
-  currentPage = signal(1);
-  pageSize = signal(5);
 
-  totalPages = computed(() => {
-    return Math.ceil(this.filteredCustomers().length / this.pageSize());
-  });
-
-  paginatedCustomers = computed(() => {
-    const start = (this.currentPage() - 1) * this.pageSize();
-    const end = start + this.pageSize();
-    return this.filteredCustomers().slice(start, end);
-  });
 
   // Services
   private router = inject(Router);
@@ -185,36 +128,24 @@ export class GdprCustomerManagerComponent implements OnInit {
     }
   }
 
-  // Pagination Methods
-  changePage(page: number) {
-    if (page >= 1 && page <= this.totalPages()) {
-      this.currentPage.set(page);
-    }
-  }
-
-  nextPage() {
-    if (this.currentPage() < this.totalPages()) {
-      this.currentPage.update(p => p + 1);
-    }
-  }
-
-  prevPage() {
-    if (this.currentPage() > 1) {
-      this.currentPage.update(p => p - 1);
-    }
-  }
 
 
-  accessRequests = signal<GdprAccessRequest[]>([]);
+
+
 
   ngOnInit() {
     this.loadCustomers();
-    this.loadComplianceStats();
-    this.loadAuditEntries();
+
     this.loadAccessRequests();
 
-    // Listen for query params to open request detail
+    // Listen for query params
     this.route.queryParams.subscribe(params => {
+      const search = params['search'];
+      if (search) {
+        this.searchTerm.set(search);
+        this.loadCustomers(); // Reload with search
+      }
+
       const requestId = params['requestId'];
       if (requestId && this.accessRequests().length > 0) {
         const req = this.accessRequests().find(r => r.id === requestId);
@@ -231,12 +162,6 @@ export class GdprCustomerManagerComponent implements OnInit {
   private loadCustomers() {
     this.isLoading.set(true);
 
-    // Subscribe to stats
-    this.customersService.getCustomerStats().subscribe({
-      next: (stats) => this.stats.set(stats),
-      error: (error) => console.error('Error loading stats:', error)
-    });
-
     this.customersService.getCustomers({ showDeleted: this.showDeleted() }).subscribe({
       next: (customers) => {
         this.customers.set(customers);
@@ -250,19 +175,9 @@ export class GdprCustomerManagerComponent implements OnInit {
     });
   }
 
-  private loadComplianceStats() {
-    this.gdprService.getComplianceDashboard().subscribe({
-      next: (stats: any) => this.complianceStats.set(stats),
-      error: (error: any) => console.error('Error loading compliance stats:', error)
-    });
-  }
 
-  private loadAuditEntries() {
-    this.gdprService.getAuditLog({ limit: 10 }).subscribe({
-      next: (entries: any[]) => this.auditEntries.set(entries),
-      error: (error: any) => console.error('Error loading audit entries:', error)
-    });
-  }
+
+
 
   private loadAccessRequests() {
     this.gdprService.getAccessRequests().subscribe({
@@ -286,6 +201,23 @@ export class GdprCustomerManagerComponent implements OnInit {
 
 
 
+  duplicateCustomer(customer: Customer) {
+    // Navigate to new customer form with copied data or open modal
+    // For now, let's use the local form for simplicity if it supports it, 
+    // OR just navigate back to main list with a query param to open form.
+    // Given the component structure, opening the local form is easiest.
+    if (!customer) return;
+
+    this.selectedCustomerForEdit.set({
+      ...customer,
+      id: undefined, // Clear ID for new creation
+      created_at: undefined,
+      marketing_consent: false // Reset consent
+    } as any);
+    this.showCustomerForm = true;
+    this.toastService.info('Duplicando', 'Se ha abierto el formulario con los datos duplicados. Revisa y guarda.');
+  }
+
   deleteCustomer(customer: Customer) {
     const msg = `¿Proceder con la eliminación de ${customer.name} ${customer.apellidos}?\n\n` +
       `• Con facturas: se desactiva y se conserva para cumplimiento fiscal.\n` +
@@ -295,7 +227,7 @@ export class GdprCustomerManagerComponent implements OnInit {
     this.customersService.deleteCustomer(customer.id).subscribe({
       next: () => {
         this.toastService.success('Éxito', 'Operación completada (eliminado o desactivado)');
-        this.loadCustomers();
+        this.backToCustomers(); // Redirect after delete since this view is valid no more
       },
       error: (error: any) => {
         console.error('Error remove/deactivate:', error);
@@ -325,76 +257,13 @@ export class GdprCustomerManagerComponent implements OnInit {
 
         this.closeRequestDetailModal();
         this.loadAccessRequests();
-        this.loadComplianceStats();
       },
       error: (err) => this.toastService.error('Error', 'No se pudo actualizar la solicitud')
     });
   }
 
   // Import/Export functionality
-  exportCustomers() {
-    const filters: CustomerFilters = {
-      search: this.searchTerm()
-    };
 
-    this.customersService.exportToCSV(filters).subscribe({
-      next: (csvData) => {
-        const blob = new Blob([csvData], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `clientes-${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-
-        this.toastService.success('Éxito', 'Clientes exportados correctamente');
-      },
-      error: (error: any) => {
-        console.error('Error exporting customers:', error);
-        this.toastService.error('Error', 'No se pudieron exportar los clientes');
-      }
-    });
-  }
-
-  importCustomers(event: any) {
-    const file = event.target.files[0];
-
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      this.toastService.error('Error', 'Por favor selecciona un archivo CSV válido');
-      return;
-    }
-
-    this.toastService.info('Procesando...', 'Importando clientes desde CSV');
-
-    this.customersService.importFromCSV(file).subscribe({
-      next: (result: any) => {
-        const importedCount = Array.isArray(result) ? result.length : 0;
-        this.toastService.success('Éxito', `${importedCount} clientes importados correctamente`);
-        this.loadCustomers();
-        // Reset file input
-        event.target.value = '';
-      },
-      error: (error: any) => {
-        console.error('Error importing customers:', error);
-        this.toastService.error('Error', 'No se pudieron importar los clientes');
-        event.target.value = '';
-      }
-    });
-  }
-
-  showImportInfo(event: Event) {
-    event.stopPropagation();
-    const infoMessage = `
-      El archivo CSV debe tener las siguientes columnas:
-      - name (obligatorio)
-      - apellidos (obligatorio)  
-      - email (obligatorio)
-      - phone (opcional)
-      - dni (opcional)
-      - address (opcional)
-    `;
-    this.toastService.info('CSV requerido', infoMessage, 6000);
-  }
 
   // GDPR specific methods
   sendConsentRequest(customer: Customer) {
@@ -467,7 +336,6 @@ export class GdprCustomerManagerComponent implements OnInit {
         this.toastService.success('Éxito', 'Solicitud RGPD creada correctamente');
         this.showAccessRequestForm = false;
         this.accessRequestForm.reset();
-        this.loadComplianceStats();
       },
       error: (error: any) => {
         console.error('Error creating access request:', error);
@@ -552,68 +420,7 @@ export class GdprCustomerManagerComponent implements OnInit {
     });
   }
 
-  // Bulk Anonymization Logic
-  openBulkAnonymizeModal() {
-    if (this.inactiveCustomers().length === 0) {
-      this.toastService.info('Info', 'No hay clientes inactivos para anonimizar');
-      return;
-    }
-    this.showBulkAnonymizeModal = true;
-    this.bulkAnonymizeConfirmationInput = '';
-    this.bulkAnonymizeError = '';
-  }
 
-  closeBulkAnonymizeModal() {
-    if (this.isBulkProcessing) return; // Prevent closing while processing
-    this.showBulkAnonymizeModal = false;
-    this.bulkAnonymizeConfirmationInput = '';
-    this.bulkAnonymizeError = '';
-  }
-
-  async processBulkAnonymization() {
-    if (this.bulkAnonymizeConfirmationInput !== 'ANONIMIZAR TODO') {
-      this.bulkAnonymizeError = 'Debes escribir "ANONIMIZAR TODO" para confirmar.';
-      return;
-    }
-
-    this.isBulkProcessing = true;
-    const targets = this.inactiveCustomers();
-    this.bulkProgress = { current: 0, total: targets.length, failed: 0 };
-
-    // Process sequentially to avoid overwhelming the server
-    for (const customer of targets) {
-      try {
-        await this.anonymizeCustomerPromise(customer);
-      } catch (err) {
-        console.error(`Failed to anonymize ${customer.id}`, err);
-        this.bulkProgress.failed++;
-      }
-      this.bulkProgress.current++;
-    }
-
-    this.isBulkProcessing = false;
-    this.closeBulkAnonymizeModal();
-    this.loadCustomers();
-
-    if (this.bulkProgress.failed > 0) {
-      this.toastService.warning('Proceso Completado', `Se anonimizaron ${this.bulkProgress.total - this.bulkProgress.failed} clientes. Fallaron ${this.bulkProgress.failed}.`);
-    } else {
-      this.toastService.success('Éxito', `Se anonimizaron todos los ${this.bulkProgress.total} clientes inactivos.`);
-    }
-  }
-
-  // Promise wrapper for GdprService.anonymizeClientData to use in async/await loop
-  private anonymizeCustomerPromise(customer: Customer): Promise<any> {
-    return new Promise((resolve, reject) => {
-      this.gdprService.anonymizeClientData(customer.id, 'bulk_inactivity_cleanup').subscribe({
-        next: (res) => {
-          if (res.success) resolve(res);
-          else reject(res.error);
-        },
-        error: (err) => reject(err)
-      });
-    });
-  }
 
   manageConsent(customer: Customer) {
     // Implementation for consent management modal
@@ -634,30 +441,7 @@ export class GdprCustomerManagerComponent implements OnInit {
     this.toastService.info('Funcionalidad', 'Vista detallada de RGPD próximamente');
   }
 
-  exportComplianceReport() {
-    this.isLoading.set(true);
 
-    // Generate compliance report
-    const report = {
-      generated_at: new Date().toISOString(),
-      company_id: 'current_company', // Get from auth service
-      compliance_stats: this.complianceStats(),
-      total_customers: this.customers().length,
-      customers_with_consent: this.customers().filter(c => this.getCustomerGdprStatus(c)?.hasValidConsent).length,
-      recent_audit_entries: this.auditEntries().slice(0, 20)
-    };
-
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `informe-cumplimiento-rgpd-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-
-    this.toastService.success('Éxito', 'Informe de cumplimiento exportado');
-    this.isLoading.set(false);
-  }
 
   // Utility methods
   getCustomerGdprStatus(customer: Customer): any {
@@ -759,9 +543,7 @@ export class GdprCustomerManagerComponent implements OnInit {
 
 
 
-  toggleSort() {
-    this.sortOrder.update(o => o === 'asc' ? 'desc' : 'asc');
-  }
+
 
   // toggleIncompleteFilter removed
 

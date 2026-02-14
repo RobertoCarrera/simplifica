@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, effect } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, effect, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GdprComplianceService, GdprAuditEntry } from '../../../services/gdpr-compliance.service';
@@ -83,7 +83,7 @@ import { ToastService } from '../../../services/toast.service';
                   <span>No se encontraron registros{{ searchTerm() ? ' para "' + searchTerm() + '"' : '' }}.</span>
                 </div>
               </td>
-            </tr>
+              </tr>
           </tbody>
         </table>
       </div>
@@ -198,6 +198,8 @@ export class GdprAuditListComponent implements OnInit {
   private gdprService = inject(GdprComplianceService);
   private toastService = inject(ToastService);
 
+  @Input() subjectEmail?: string;
+
   logs = signal<GdprAuditEntry[]>([]);
   loading = signal(false);
   searchTerm = signal('');
@@ -243,6 +245,17 @@ export class GdprAuditListComponent implements OnInit {
       this.searchTerm();
       this.currentPage.set(1);
     }, { allowSignalWrites: true });
+
+    // Auto-reload when subjectEmail changes (if it were a signal, but Input is not naturally reactive here unless we use ngOnChanges or effect with input signal)
+    // For now, simple OnInit is enough, but if email changes dynamically, we need ngOnChanges.
+    // Inputs are not signals by default in this version of Angular? 
+    // We'll stick to OnInit for now, assuming the component is re-created or stable.
+    // Actually, if selected customer changes, this component might remain.
+  }
+
+  ngOnChanges() {
+    // Reload logs when input changes
+    this.loadLogs();
   }
 
   ngOnInit() {
@@ -251,7 +264,15 @@ export class GdprAuditListComponent implements OnInit {
 
   loadLogs() {
     this.loading.set(true);
-    this.gdprService.getAuditLogs(100).subscribe({
+    let obs$;
+
+    if (this.subjectEmail) {
+      obs$ = this.gdprService.getAuditLog({ subjectEmail: this.subjectEmail, limit: 100 });
+    } else {
+      obs$ = this.gdprService.getAuditLogs(100);
+    }
+
+    obs$.subscribe({
       next: (data: GdprAuditEntry[]) => {
         this.logs.set(data);
         this.loading.set(false);

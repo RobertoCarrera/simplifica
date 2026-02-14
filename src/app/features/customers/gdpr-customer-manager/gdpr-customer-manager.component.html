@@ -18,404 +18,153 @@
       </div>
     </div>
 
-    <!-- Stats Cards -->
-    @if (stats(); as currentStats) {
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 mb-6">
-      <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-100 dark:border-blue-900/30">
-        <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <i class="fas fa-users text-blue-600 dark:text-blue-400 text-xl"></i>
+    <!-- Client Detail Card -->
+    @if (isLoading()) {
+    <div
+      class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 animate-pulse border border-gray-200 dark:border-gray-700">
+      <div class="flex items-center space-x-4 mb-6">
+        <div class="rounded-full bg-gray-200 dark:bg-gray-700 h-16 w-16"></div>
+        <div class="flex-1">
+          <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-2"></div>
+          <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="h-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+        <div class="h-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+        <div class="h-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+      </div>
+    </div>
+    } @else if (filteredCustomers().length === 0) {
+    <div
+      class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
+        <i class="fas fa-user-slash text-gray-400 dark:text-gray-500 text-3xl"></i>
+      </div>
+      <h3 class="text-lg font-medium text-gray-900 dark:text-white">Cliente no encontrado</h3>
+      <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+        No se ha encontrado ningún cliente con los criterios de búsqueda actuales.
+        Intenta acceder nuevamente desde la lista de clientes.
+      </p>
+      <button (click)="backToCustomers()"
+        class="mt-6 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        <i class="fas fa-arrow-left mr-2"></i> Volver a la lista
+      </button>
+    </div>
+    } @else {
+    @if (targetCustomer(); as customer) {
+    <div
+      class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 mb-8 transition-all hover:shadow-xl">
+      <!-- Card Header / Identity -->
+      <div
+        class="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700/50 p-6 border-b border-gray-100 dark:border-gray-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div class="flex items-center gap-4">
+          <div
+            class="h-16 w-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-2xl font-bold shadow-sm border-2 border-white dark:border-gray-600">
+            {{ customer.name.charAt(0) }}{{ customer.apellidos.charAt(0) }}
           </div>
-          <div class="ml-3">
-            <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Total Clientes</p>
-            <p class="text-2xl font-semibold text-blue-900 dark:text-blue-100">{{ currentStats.total }}</p>
+          <div>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              {{ customer.name }} {{ customer.apellidos }}
+              <span
+                [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide shadow-sm ' + getGdprStatusClass(customer)">
+                {{ getGdprStatusText(customer) }}
+              </span>
+            </h2>
+            <div
+              class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <span class="flex items-center gap-1"><i class="fas fa-envelope w-4"></i> {{ customer.email }}</span>
+              <span class="hidden sm:inline text-gray-300 dark:text-gray-600">|</span>
+              @if (customer.phone) {
+              <span class="flex items-center gap-1"><i class="fas fa-phone w-4"></i> {{ customer.phone }}</span>
+              <span class="hidden sm:inline text-gray-300 dark:text-gray-600">|</span>
+              }
+              @if (customer.dni) {
+              <span class="flex items-center gap-1"><i class="fas fa-id-card w-4"></i> {{ customer.dni }}</span>
+              }
+            </div>
           </div>
+        </div>
+
+        <!-- Quick Stats / Dates -->
+        <div class="flex flex-col items-end text-right">
+          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Último Acceso</div>
+          <div class="font-medium text-gray-900 dark:text-white">
+            {{ customer.last_accessed_at ? formatDate(customer.last_accessed_at) : 'Nunca' }}
+          </div>
+          @if (customer.marketing_consent_date) {
+          <div
+            class="mt-2 text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1 bg-green-50 dark:bg-green-900/10 px-2 py-0.5 rounded-full">
+            <i class="fas fa-check-circle"></i> Consentimiento Marketing
+          </div>
+          }
         </div>
       </div>
 
-      <div class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-100 dark:border-green-900/30">
-        <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <i class="fas fa-check-circle text-green-600 dark:text-green-400 text-xl"></i>
-          </div>
-          <div class="ml-3">
-            <p class="text-sm font-medium text-green-600 dark:text-green-400">Con Consentimiento</p>
-            <p class="text-2xl font-semibold text-green-900 dark:text-green-100">{{ customersWithConsent().length }}</p>
-          </div>
-        </div>
-      </div>
+      <!-- Actions Toolbar -->
+      <div
+        class="p-6 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <button (click)="editCustomer(customer)"
+          class="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-gray-200 dark:border-gray-600 hover:border-blue-200 dark:hover:border-blue-800 transition-all group shadow-sm">
+          <i class="fas fa-edit text-xl mb-2 text-blue-500 group-hover:text-blue-600 dark:text-blue-400"></i>
+          <span
+            class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-300">Editar
+            Datos</span>
+        </button>
 
-      <div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4 border border-yellow-100 dark:border-yellow-900/30">
-        <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <i class="fas fa-clock text-yellow-600 dark:text-yellow-400 text-xl"></i>
-          </div>
-          <div class="ml-3">
-            <p class="text-sm font-medium text-yellow-600 dark:text-yellow-400">Pendientes</p>
-            <p class="text-2xl font-semibold text-yellow-900 dark:text-yellow-100">{{ customersWithoutConsent().length
-              }}</p>
-          </div>
-        </div>
-      </div>
+        <button (click)="sendConsentRequest(customer)"
+          class="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-gray-700 hover:bg-green-50 dark:hover:bg-green-900/20 border border-gray-200 dark:border-gray-600 hover:border-green-200 dark:hover:border-green-800 transition-all group shadow-sm">
+          <i class="fas fa-paper-plane text-xl mb-2 text-green-500 group-hover:text-green-600 dark:text-green-400"></i>
+          <span
+            class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-green-700 dark:group-hover:text-green-300">Enviar
+            Consent.</span>
+        </button>
 
-      <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-100 dark:border-purple-900/30">
-        <div class="flex items-center">
-          <div class="flex-shrink-0">
-            <i class="fas fa-shield-alt text-purple-600 dark:text-purple-400 text-xl"></i>
-          </div>
-          <div class="ml-3">
-            <p class="text-sm font-medium text-purple-600 dark:text-purple-400">% Cumplimiento</p>
-            <p class="text-2xl font-semibold text-purple-900 dark:text-purple-100">{{ compliancePercentage() }}%</p>
-          </div>
-        </div>
+        <button (click)="exportCustomerData(customer)"
+          class="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-gray-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 border border-gray-200 dark:border-gray-600 hover:border-purple-200 dark:hover:border-purple-800 transition-all group shadow-sm">
+          <i class="fas fa-download text-xl mb-2 text-purple-500 group-hover:text-purple-600 dark:text-purple-400"></i>
+          <span
+            class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-700 dark:group-hover:text-purple-300">Exportar
+            Datos</span>
+        </button>
+
+        <button (click)="createAccessRequest(customer)"
+          class="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-gray-700 hover:bg-orange-50 dark:hover:bg-orange-900/20 border border-gray-200 dark:border-gray-600 hover:border-orange-200 dark:hover:border-orange-800 transition-all group shadow-sm">
+          <i
+            class="fas fa-clipboard-list text-xl mb-2 text-orange-500 group-hover:text-orange-600 dark:text-orange-400"></i>
+          <span
+            class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-orange-700 dark:group-hover:text-orange-300">Crear
+            Solicitud</span>
+        </button>
+
+        <button (click)="duplicateCustomer(customer)"
+          class="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all group shadow-sm">
+          <i class="fas fa-copy text-xl mb-2 text-gray-500 group-hover:text-gray-700 dark:text-gray-400"></i>
+          <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Duplicar</span>
+        </button>
+
+        <button (click)="confirmAnonymizeCustomer(customer)"
+          class="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 border border-gray-200 dark:border-gray-600 hover:border-red-200 dark:hover:border-red-800 transition-all group shadow-sm">
+          <i class="fas fa-user-slash text-xl mb-2 text-red-500 group-hover:text-red-600 dark:text-red-400"></i>
+          <span
+            class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-red-700 dark:group-hover:text-red-300">Anonimizar</span>
+        </button>
       </div>
     </div>
     }
+    }
 
-    <!-- Search and Filters -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6 border border-gray-200 dark:border-gray-700">
-      <div class="flex flex-col sm:flex-row gap-4">
-        <div class="flex-1 w-full">
-          <div class="relative">
-            <input type="text" [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)"
-              placeholder="Buscar clientes por nombre, apellidos, email..."
-              class="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400">
-            <i class="fas fa-search absolute left-3 top-3 text-gray-400 dark:text-gray-500"></i>
-          </div>
-        </div>
+    <!-- Removed: Global Stats, Search Bar, Client List Table -->
+    <!-- Replaced with: Specific Client Detail Card and Actions -->
 
-
-
-        <button (click)="clearSearch()"
-          class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors whitespace-nowrap">
-          <i class="fas fa-times mr-2"></i>
-          Limpiar
-        </button>
-
-
-      </div>
-    </div>
-
-    <!-- Customers Table -->
-    <div
-      class="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
-      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Lista de Clientes</h2>
-      </div>
-
-      @if (isLoading()) {
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-700/50">
-            <tr>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Cliente</th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Contacto</th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Estado RGPD</th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Última Actividad
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Acciones</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-
-            <tr *ngFor="let item of [1,2,3,4,5]">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <app-skeleton-loader type="circle" width="2.5rem" height="2.5rem" class="mr-4"></app-skeleton-loader>
-                  <div class="flex-1">
-                    <app-skeleton-loader type="text" width="120px" height="1rem" class="mb-2"></app-skeleton-loader>
-                    <app-skeleton-loader type="text" width="80px" height="0.75rem"></app-skeleton-loader>
-                  </div>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <app-skeleton-loader type="text" width="150px" height="1rem" class="mb-2"></app-skeleton-loader>
-                <app-skeleton-loader type="text" width="100px" height="0.75rem"></app-skeleton-loader>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <app-skeleton-loader type="text" width="100px" height="1.5rem"
-                  styleClass="rounded-full"></app-skeleton-loader>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <app-skeleton-loader type="text" width="100px" height="1rem"></app-skeleton-loader>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right">
-                <div class="flex gap-2 justify-end">
-                  <app-skeleton-loader type="block" width="24px" height="24px"></app-skeleton-loader>
-                  <app-skeleton-loader type="block" width="24px" height="24px"></app-skeleton-loader>
-                  <app-skeleton-loader type="block" width="24px" height="24px"></app-skeleton-loader>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      } @else if (filteredCustomers().length === 0) {
-      <div class="p-8 text-center">
-        <i class="fas fa-users text-gray-300 dark:text-gray-600 text-4xl mb-4"></i>
-        <p class="text-gray-500 dark:text-gray-400">No se encontraron clientes</p>
-      </div>
-      } @else {
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-700/50">
-            <tr>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                (click)="toggleSort()">
-                Cliente
-                <i class="fas fa-sort ml-1" [class.fa-sort-up]="sortOrder() === 'asc'"
-                  [class.fa-sort-down]="sortOrder() === 'desc'"></i>
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Contacto</th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Estado RGPD</th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Última Actividad
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Acciones</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            @for (customer of paginatedCustomers(); track customer.id) {
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                  <div class="flex-shrink-0 h-10 w-10">
-                    <div class="h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                      <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {{ customer.name.charAt(0) }}{{ customer.apellidos.charAt(0) }}
-                      </span>
-                    </div>
-                  </div>
-                  <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                      <!-- Consent status icon: green check if compliant, yellow if partial, red if pending -->
-                      <span
-                        [class]="getGdprStatusClass(customer) + ' inline-flex items-center justify-center h-5 w-5 rounded-full text-xs'"
-                        title="{{ getGdprStatusText(customer) }}">
-                        <i *ngIf="getGdprComplianceStatus(customer) === 'compliant'"
-                          class="fas fa-check text-white text-xs"></i>
-                        <i *ngIf="getGdprComplianceStatus(customer) === 'partial'"
-                          class="fas fa-exclamation text-white text-xs"></i>
-                        <i *ngIf="getGdprComplianceStatus(customer) === 'pending'"
-                          class="fas fa-clock text-white text-xs"></i>
-                      </span>
-                      <span>{{ customer.name }} {{ customer.apellidos }}</span>
-                    </div>
-                    @if (customer.dni) {
-                    <div class="text-sm text-gray-500 dark:text-gray-400">{{ customer.dni }}</div>
-                    }
-                  </div>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900 dark:text-gray-300">{{ customer.email }}</div>
-                @if (customer.phone) {
-                <div class="text-sm text-gray-500 dark:text-gray-400">{{ customer.phone }}</div>
-                }
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span
-                  [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + getGdprStatusClass(customer)">
-                  {{ getGdprStatusText(customer) }}
-                </span>
-                @if (customer.marketing_consent_date) {
-                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Consentimiento: {{ formatDate(customer.marketing_consent_date) }}
-                </div>
-                }
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                @if (customer.last_accessed_at) {
-                {{ formatDate(customer.last_accessed_at) }}
-                } @else {
-                Sin actividad
-                }
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <div class="flex items-center gap-2">
-                  <button (click)="editCustomer(customer)"
-                    class="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 p-1"
-                    title="Editar cliente">
-                    <i class="fas fa-edit"></i>
-                  </button>
-
-                  <!-- Always-visible: copiar enlace de consentimiento -->
-                  <button (click)="sendConsentRequest(customer)"
-                    class="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 p-1"
-                    title="Copiar enlace de consentimiento" aria-label="Copiar enlace de consentimiento">
-                    <i class="fas fa-link"></i>
-                  </button>
-
-                  <button (click)="exportCustomerData(customer)"
-                    class="text-purple-600 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 p-1"
-                    title="Exportar datos RGPD">
-                    <i class="fas fa-download"></i>
-                  </button>
-
-                  <button (click)="createAccessRequest(customer)"
-                    class="text-orange-600 dark:text-orange-400 hover:text-orange-900 dark:hover:text-orange-300 p-1"
-                    title="Crear solicitud de acceso">
-                    <i class="fas fa-clipboard-list"></i>
-                  </button>
-
-                  <button (click)="confirmAnonymizeCustomer(customer)"
-                    class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 p-1"
-                    title="Anonimizar cliente">
-                    <i class="fas fa-user-slash"></i>
-                  </button>
-
-                  <button (click)="deleteCustomer(customer)"
-                    class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 p-1"
-                    title="Eliminar cliente">
-                    <i class="fas fa-trash"></i>
-                  </button>
-                </div>
-              </td>
-            </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Pagination Controls -->
-      <div
-        class="px-6 py-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-        <div class="flex-1 flex justify-between sm:hidden">
-          <button (click)="prevPage()" [disabled]="currentPage() === 1"
-            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
-            Anterior
-          </button>
-          <button (click)="nextPage()" [disabled]="currentPage() === totalPages()"
-            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
-            Siguiente
-          </button>
-        </div>
-        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-          <div>
-            <p class="text-sm text-gray-700 dark:text-gray-300">
-              Mostrando <span class="font-medium">{{ (currentPage() - 1) * pageSize() + 1 }}</span> a <span
-                class="font-medium">{{ Math.min(currentPage() * pageSize(), filteredCustomers().length) }}</span> de
-              <span class="font-medium">{{ filteredCustomers().length }}</span> resultados
-            </p>
-          </div>
-          <div>
-            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-              <button (click)="prevPage()" [disabled]="currentPage() === 1"
-                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50">
-                <span class="sr-only">Anterior</span>
-                <i class="fas fa-chevron-left"></i>
-              </button>
-
-              <!-- Simple Page Numbers -->
-              <span
-                class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200">
-                Página {{ currentPage() }} de {{ totalPages() }}
-              </span>
-
-              <button (click)="nextPage()" [disabled]="currentPage() === totalPages()"
-                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50">
-                <span class="sr-only">Siguiente</span>
-                <i class="fas fa-chevron-right"></i>
-              </button>
-            </nav>
-          </div>
-        </div>
-      </div>
-      }
-    </div>
-
-
-
-    <!-- Audit Logs Section -->
+    <!-- Audit Logs Section (Kept as requested, assumes it filters by client or is general) -->
     <div class="mt-8">
       <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Registro de Auditoría</h2>
-      <app-gdpr-audit-list></app-gdpr-audit-list>
+      <!-- Ideally, this component handles its own filtering or receives an input -->
+      <app-gdpr-audit-list [subjectEmail]="targetCustomer()?.email"></app-gdpr-audit-list>
     </div>
 
-    <!-- Inactive Clients Management Section -->
-    <div class="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-      <div class="flex justify-between items-center mb-4">
-        <div>
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white">Gestión de Clientes Inactivos</h2>
-          <p class="text-gray-600 dark:text-gray-400 text-sm mt-1">
-            Clientes sin actividad en los últimos 2 años. Se recomienda anonimizarlos para cumplir con el principio de
-            limitación del plazo de conservación.
-          </p>
-        </div>
-
-        @if (inactiveCustomers().length > 0) {
-        <button (click)="openBulkAnonymizeModal()"
-          class="px-4 py-2 border-2 border-red-500 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium flex items-center gap-2">
-          <i class="fas fa-trash-alt"></i>
-          Anonimizar Todo ({{ inactiveCustomers().length }})
-        </button>
-        }
-      </div>
-
-      @if (inactiveCustomers().length === 0) {
-      <div
-        class="p-6 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-100 dark:border-green-900/30 text-center">
-        <i class="fas fa-check-circle text-green-600 dark:text-green-400 text-2xl mb-2"></i>
-        <p class="text-green-800 dark:text-green-300 font-medium">No hay clientes inactivos pendientes de revisión.</p>
-      </div>
-      } @else {
-      <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-700/50">
-            <tr>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Cliente</th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Último Acceso</th>
-              <th
-                class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Acción</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            @for (customer of inactiveCustomers(); track customer.id) {
-            <tr class="hover:bg-red-50 dark:hover:bg-red-900/10">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ customer.name }} {{
-                  customer.apellidos }}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400">{{ customer.email }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                {{ customer.last_accessed_at ? formatDate(customer.last_accessed_at) : 'Nunca registrado' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right">
-                <button (click)="confirmAnonymizeCustomer(customer)"
-                  class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 font-medium text-sm">
-                  Anonimizar
-                </button>
-              </td>
-            </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      }
-    </div>
+    <!-- Removed: Inactive Clients Management Section (Not relevant for single view) -->
   </div>
 
   <!-- GDPR Compliance Section -->
@@ -425,12 +174,13 @@
       <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Solicitudes de Acceso RGPD</h3>
 
 
-      @if (accessRequests().length === 0) {
-      <p class="text-gray-500 dark:text-gray-400 text-sm italic text-center py-4">No hay solicitudes de acceso recientes
+      @if (customerAccessRequests().length === 0) {
+      <p class="text-gray-500 dark:text-gray-400 text-sm italic text-center py-4">No hay solicitudes de acceso para este
+        cliente
       </p>
       } @else {
       <div class="space-y-3">
-        @for (req of accessRequests().slice(0, 5); track req.id) {
+        @for (req of customerAccessRequests(); track req.id) {
         <div (click)="viewRequestDetail(req)"
           class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/30 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group">
           <div class="flex justify-between items-start">
@@ -471,33 +221,7 @@
       }
     </div>
 
-    <!-- Compliance Stats -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Estadísticas de Cumplimiento</h3>
 
-      @if (complianceStats(); as stats) {
-      <div class="space-y-4">
-        <div class="flex justify-between items-center p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50">
-          <span class="text-sm text-gray-600 dark:text-gray-300">Solicitudes de Acceso</span>
-          <span class="text-sm font-medium text-gray-900 dark:text-white">{{ stats.accessRequests || 0 }}</span>
-        </div>
-        <div class="flex justify-between items-center p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50">
-          <span class="text-sm text-gray-600 dark:text-gray-300">Datos Exportados</span>
-          <span class="text-sm font-medium text-gray-900 dark:text-white">{{ stats.dataExports || 0 }}</span>
-        </div>
-        <div class="flex justify-between items-center p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-700/50">
-          <span class="text-sm text-gray-600 dark:text-gray-300">Anonimizaciones</span>
-          <span class="text-sm font-medium text-gray-900 dark:text-white">{{ stats.anonymizations || 0 }}</span>
-        </div>
-      </div>
-      }
-
-      <button (click)="exportComplianceReport()"
-        class="w-full mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">
-        <i class="fas fa-file-export mr-2"></i>
-        Exportar Informe de Cumplimiento
-      </button>
-    </div>
   </div>
 </div>
 
@@ -636,77 +360,7 @@
 </div>
 }
 
-<!-- Bulk Anonymize Confirmation Modal -->
-@if (showBulkAnonymizeModal) {
-<div
-  class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center backdrop-blur-sm">
-  <div
-    class="relative p-5 border w-11/12 md:w-1/3 shadow-2xl rounded-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
 
-    @if (isBulkProcessing) {
-    <div class="text-center py-8">
-      <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 dark:border-red-400 mb-4">
-      </div>
-      <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Procesando...</h3>
-      <p class="text-gray-600 dark:text-gray-400">
-        Anonimizando cliente {{ bulkProgress.current + 1 }} de {{ bulkProgress.total }}
-      </p>
-      <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-4">
-        <div class="bg-red-600 h-2.5 rounded-full transition-all duration-300"
-          [style.width.%]="(bulkProgress.current / bulkProgress.total) * 100"></div>
-      </div>
-    </div>
-    } @else {
-    <div class="mt-3 text-center">
-      <div
-        class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 dark:bg-red-900/30 mb-4 border-2 border-red-200 dark:border-red-800">
-        <i class="fas fa-radiation text-red-600 dark:text-red-400 text-3xl"></i>
-      </div>
-      <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">¿Anonimizar TODOS los inactivos?</h3>
-
-      <div
-        class="mt-2 px-4 py-3 bg-red-50 dark:bg-red-900/10 rounded-lg text-left border border-red-100 dark:border-red-900/30">
-        <p class="text-sm text-red-800 dark:text-red-300 font-bold mb-2">
-          Vas a anonimizar a {{ inactiveCustomers().length }} clientes.
-        </p>
-        <ul class="list-disc list-inside text-xs text-red-700 dark:text-red-400 space-y-1">
-          <li>Esta acción es <strong>IRREVERSIBLE</strong> y masiva.</li>
-          <li>Se eliminarán los datos personales de todos los clientes listados.</li>
-          <li>El proceso puede tardar unos segundos.</li>
-        </ul>
-      </div>
-
-      <div class="mt-6">
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 text-left">
-          Para confirmar, escribe <strong>ANONIMIZAR TODO</strong>:
-        </label>
-        <input type="text" [(ngModel)]="bulkAnonymizeConfirmationInput" placeholder="ANONIMIZAR TODO"
-          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 uppercase font-mono tracking-wider text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          (keyup.enter)="processBulkAnonymization()">
-
-        @if (bulkAnonymizeError) {
-        <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ bulkAnonymizeError }}</p>
-        }
-      </div>
-
-      <div class="mt-6 flex justify-end gap-3">
-        <button (click)="closeBulkAnonymizeModal()"
-          class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium">
-          Cancelar
-        </button>
-
-        <button (click)="processBulkAnonymization()" [disabled]="bulkAnonymizeConfirmationInput !== 'ANONIMIZAR TODO'"
-          [class.opacity-50]="bulkAnonymizeConfirmationInput !== 'ANONIMIZAR TODO'"
-          [class.cursor-not-allowed]="bulkAnonymizeConfirmationInput !== 'ANONIMIZAR TODO'"
-          class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-bold shadow-sm">
-          CONFIRMAR TODO
-        </button>
-      </div>
-    </div>
-    }
-  </div>
-</div>
-}
 
 <!-- Request Detail Modal -->
 @if (showRequestDetailModal && selectedRequest()) {
