@@ -1,229 +1,220 @@
-<div
-  class="px-6 py-8 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 h-full overflow-y-auto gdpr-customer-manager">
-  <!-- Header Section with Actions -->
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6 border border-gray-200 dark:border-gray-700">
-    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Gestión RGPD de Clientes</h1>
-        <p class="text-gray-600 dark:text-gray-400 mt-1">Gestión completa de clientes con cumplimiento RGPD</p>
-      </div>
+<div class="h-full flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden gdpr-customer-manager">
 
-      <div class="flex flex-wrap gap-3">
+  <!-- Top Navigation / Back Bar -->
+  <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex-none z-10">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
         <button (click)="backToCustomers()"
-          class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors flex items-center gap-2"
+          class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
           title="Volver a Clientes">
-          <i class="fas fa-arrow-left"></i>
-          Volver a Clientes
+          <i class="fas fa-arrow-left text-lg"></i>
         </button>
-      </div>
-    </div>
-
-    <!-- Client Detail Card -->
-    @if (isLoading()) {
-    <div
-      class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 animate-pulse border border-gray-200 dark:border-gray-700">
-      <div class="flex items-center space-x-4 mb-6">
-        <div class="rounded-full bg-gray-200 dark:bg-gray-700 h-16 w-16"></div>
-        <div class="flex-1">
-          <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-2"></div>
-          <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+        <div>
+          <h1 class="text-xl font-bold text-gray-900 dark:text-white leading-tight">Gestión RGPD</h1>
+          <p class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Centro de control de privacidad</p>
         </div>
       </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="h-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-        <div class="h-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-        <div class="h-24 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+
+      <!-- Placeholder for global actions if any -->
+    </div>
+  </header>
+
+  <!-- Main Content (Scrollable) -->
+  <main class="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
+
+    @if (isLoading()) {
+    <!-- Skeleton Loading State -->
+    <div class="animate-pulse space-y-6">
+      <div class="bg-white dark:bg-gray-800 h-40 rounded-xl shadow-sm"></div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white dark:bg-gray-800 h-96 rounded-xl shadow-sm"></div>
+        <div class="bg-white dark:bg-gray-800 h-96 rounded-xl shadow-sm"></div>
       </div>
     </div>
     } @else if (filteredCustomers().length === 0) {
-    <div
-      class="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-      <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
-        <i class="fas fa-user-slash text-gray-400 dark:text-gray-500 text-3xl"></i>
+    <!-- Empty State -->
+    <div class="flex flex-col items-center justify-center h-full text-center p-8">
+      <div class="bg-gray-100 dark:bg-gray-700 p-6 rounded-full mb-4">
+        <i class="fas fa-user-slash text-gray-400 dark:text-gray-500 text-4xl"></i>
       </div>
-      <h3 class="text-lg font-medium text-gray-900 dark:text-white">Cliente no encontrado</h3>
-      <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-        No se ha encontrado ningún cliente con los criterios de búsqueda actuales.
-        Intenta acceder nuevamente desde la lista de clientes.
-      </p>
-      <button (click)="backToCustomers()"
-        class="mt-6 inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-        <i class="fas fa-arrow-left mr-2"></i> Volver a la lista
+      <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Cliente no encontrado</h3>
+      <p class="text-gray-500 dark:text-gray-400 mt-2 max-w-sm">No se pudo cargar la información del cliente. Por favor,
+        intenta acceder nuevamente.</p>
+      <button (click)="backToCustomers()" class="mt-6 btn btn-primary">
+        Volver a la lista
       </button>
     </div>
     } @else {
     @if (targetCustomer(); as customer) {
-    <div
-      class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700 mb-8 transition-all hover:shadow-xl">
-      <!-- Card Header / Identity -->
+    <div class="space-y-6">
+
+      <!-- Unified Client Header Card -->
       <div
-        class="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-700/50 p-6 border-b border-gray-100 dark:border-gray-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div class="flex items-center gap-4">
-          <div
-            class="h-16 w-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-2xl font-bold shadow-sm border-2 border-white dark:border-gray-600">
-            {{ customer.name.charAt(0) }}{{ customer.apellidos.charAt(0) }}
-          </div>
-          <div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              {{ customer.name }} {{ customer.apellidos }}
-              <span
-                [class]="'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide shadow-sm ' + getGdprStatusClass(customer)">
-                {{ getGdprStatusText(customer) }}
-              </span>
-            </h2>
+        class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
+
+          <!-- Identity Section -->
+          <div class="flex items-center gap-5">
             <div
-              class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
-              <span class="flex items-center gap-1"><i class="fas fa-envelope w-4"></i> {{ customer.email }}</span>
-              <span class="hidden sm:inline text-gray-300 dark:text-gray-600">|</span>
-              @if (customer.phone) {
-              <span class="flex items-center gap-1"><i class="fas fa-phone w-4"></i> {{ customer.phone }}</span>
-              <span class="hidden sm:inline text-gray-300 dark:text-gray-600">|</span>
-              }
-              @if (customer.dni) {
-              <span class="flex items-center gap-1"><i class="fas fa-id-card w-4"></i> {{ customer.dni }}</span>
-              }
+              class="h-20 w-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold shadow-md ring-4 ring-white dark:ring-gray-800 shrink-0">
+              {{ customer.name.charAt(0) }}{{ customer.apellidos.charAt(0) }}
+            </div>
+            <div>
+              <div class="flex items-center gap-3 mb-1">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">{{ customer.name }} {{ customer.apellidos
+                  }}</h2>
+                <span
+                  [class]="'px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide border ' + getGdprStatusClass(customer)">
+                  {{ getGdprStatusText(customer) }}
+                </span>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600 dark:text-gray-400">
+                <span class="flex items-center gap-1.5"><i class="fas fa-envelope text-gray-400"></i> {{ customer.email
+                  }}</span>
+                @if (customer.phone) {
+                <span class="hidden sm:inline text-gray-300">|</span>
+                <span class="flex items-center gap-1.5"><i class="fas fa-phone text-gray-400"></i> {{ customer.phone
+                  }}</span>
+                }
+                @if (customer.dni) {
+                <span class="hidden sm:inline text-gray-300">|</span>
+                <span class="flex items-center gap-1.5"><i class="fas fa-id-card text-gray-400"></i> {{ customer.dni
+                  }}</span>
+                }
+              </div>
             </div>
           </div>
+
+          <!-- Compact Actions Toolbar -->
+          <div class="flex flex-wrap gap-2 self-start md:self-center">
+            <button (click)="editCustomer(customer)"
+              class="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors text-sm font-medium border border-transparent hover:border-blue-200 dark:hover:border-blue-800">
+              <i class="fas fa-edit"></i> <span class="hidden lg:inline">Editar</span>
+            </button>
+
+            @if (getGdprComplianceStatus(customer) !== 'compliant') {
+            <button (click)="sendConsentRequest(customer)"
+              class="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-green-50 dark:hover:bg-green-900/30 text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 rounded-lg transition-colors text-sm font-medium border border-transparent hover:border-green-200 dark:hover:border-green-800">
+              <i class="fas fa-paper-plane"></i> <span class="hidden lg:inline">Solicitar Consent.</span>
+            </button>
+            }
+
+            <button (click)="exportCustomerData(customer)"
+              class="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-purple-50 dark:hover:bg-purple-900/30 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 rounded-lg transition-colors text-sm font-medium border border-transparent hover:border-purple-200 dark:hover:border-purple-800">
+              <i class="fas fa-download"></i> <span class="hidden lg:inline">Exportar</span>
+            </button>
+
+            <button (click)="confirmAnonymizeCustomer(customer)"
+              class="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg transition-colors text-sm font-medium border border-transparent hover:border-red-200 dark:hover:border-red-800">
+              <i class="fas fa-user-slash"></i> <span class="hidden lg:inline">Anonimizar</span>
+            </button>
+          </div>
+
         </div>
 
-        <!-- Quick Stats / Dates -->
-        <div class="flex flex-col items-end text-right">
-          <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">Último Acceso</div>
-          <div class="font-medium text-gray-900 dark:text-white">
-            {{ customer.last_accessed_at ? formatDate(customer.last_accessed_at) : 'Nunca' }}
+        <!-- Secondary Info Bar -->
+        <div
+          class="px-6 py-3 bg-gray-50 dark:bg-gray-700/30 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between text-xs">
+          <div class="text-gray-500 dark:text-gray-400">
+            Último acceso: <span class="font-medium text-gray-800 dark:text-gray-200">{{ customer.last_accessed_at ?
+              formatDate(customer.last_accessed_at) : 'Nunca' }}</span>
           </div>
           @if (customer.marketing_consent_date) {
-          <div
-            class="mt-2 text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1 bg-green-50 dark:bg-green-900/10 px-2 py-0.5 rounded-full">
-            <i class="fas fa-check-circle"></i> Consentimiento Marketing
+          <div class="flex items-center gap-1.5 text-green-600 dark:text-green-400 font-medium">
+            <i class="fas fa-check-circle"></i> Marketing Aceptado
           </div>
           }
         </div>
       </div>
 
-      <!-- Actions Toolbar -->
-      <div
-        class="p-6 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <button (click)="editCustomer(customer)"
-          class="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-gray-200 dark:border-gray-600 hover:border-blue-200 dark:hover:border-blue-800 transition-all group shadow-sm">
-          <i class="fas fa-edit text-xl mb-2 text-blue-500 group-hover:text-blue-600 dark:text-blue-400"></i>
-          <span
-            class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-300">Editar
-            Datos</span>
-        </button>
+      <!-- Main Content Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <button (click)="sendConsentRequest(customer)"
-          class="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-gray-700 hover:bg-green-50 dark:hover:bg-green-900/20 border border-gray-200 dark:border-gray-600 hover:border-green-200 dark:hover:border-green-800 transition-all group shadow-sm">
-          <i class="fas fa-paper-plane text-xl mb-2 text-green-500 group-hover:text-green-600 dark:text-green-400"></i>
-          <span
-            class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-green-700 dark:group-hover:text-green-300">Enviar
-            Consent.</span>
-        </button>
-
-        <button (click)="exportCustomerData(customer)"
-          class="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-gray-700 hover:bg-purple-50 dark:hover:bg-purple-900/20 border border-gray-200 dark:border-gray-600 hover:border-purple-200 dark:hover:border-purple-800 transition-all group shadow-sm">
-          <i class="fas fa-download text-xl mb-2 text-purple-500 group-hover:text-purple-600 dark:text-purple-400"></i>
-          <span
-            class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-700 dark:group-hover:text-purple-300">Exportar
-            Datos</span>
-        </button>
-
-        <button (click)="createAccessRequest(customer)"
-          class="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-gray-700 hover:bg-orange-50 dark:hover:bg-orange-900/20 border border-gray-200 dark:border-gray-600 hover:border-orange-200 dark:hover:border-orange-800 transition-all group shadow-sm">
-          <i
-            class="fas fa-clipboard-list text-xl mb-2 text-orange-500 group-hover:text-orange-600 dark:text-orange-400"></i>
-          <span
-            class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-orange-700 dark:group-hover:text-orange-300">Crear
-            Solicitud</span>
-        </button>
-
-        <button (click)="duplicateCustomer(customer)"
-          class="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600 transition-all group shadow-sm">
-          <i class="fas fa-copy text-xl mb-2 text-gray-500 group-hover:text-gray-700 dark:text-gray-400"></i>
-          <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Duplicar</span>
-        </button>
-
-        <button (click)="confirmAnonymizeCustomer(customer)"
-          class="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 border border-gray-200 dark:border-gray-600 hover:border-red-200 dark:hover:border-red-800 transition-all group shadow-sm">
-          <i class="fas fa-user-slash text-xl mb-2 text-red-500 group-hover:text-red-600 dark:text-red-400"></i>
-          <span
-            class="text-xs font-medium text-gray-700 dark:text-gray-300 group-hover:text-red-700 dark:group-hover:text-red-300">Anonimizar</span>
-        </button>
-      </div>
-    </div>
-    }
-    }
-
-    <!-- Removed: Global Stats, Search Bar, Client List Table -->
-    <!-- Replaced with: Specific Client Detail Card and Actions -->
-
-    <!-- Audit Logs Section (Kept as requested, assumes it filters by client or is general) -->
-    <div class="mt-8">
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Registro de Auditoría</h2>
-      <!-- Ideally, this component handles its own filtering or receives an input -->
-      <app-gdpr-audit-list [subjectEmail]="targetCustomer()?.email"></app-gdpr-audit-list>
-    </div>
-
-    <!-- Removed: Inactive Clients Management Section (Not relevant for single view) -->
-  </div>
-
-  <!-- GDPR Compliance Section -->
-  <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Access Requests -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Solicitudes de Acceso RGPD</h3>
-
-
-      @if (customerAccessRequests().length === 0) {
-      <p class="text-gray-500 dark:text-gray-400 text-sm italic text-center py-4">No hay solicitudes de acceso para este
-        cliente
-      </p>
-      } @else {
-      <div class="space-y-3">
-        @for (req of customerAccessRequests(); track req.id) {
-        <div (click)="viewRequestDetail(req)"
-          class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-gray-50 dark:bg-gray-700/30 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group">
-          <div class="flex justify-between items-start">
-            <div>
-              <p
-                class="text-sm font-medium text-gray-900 dark:text-gray-200 capitalize group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                @switch (req.request_type) {
-                @case ('rectification') { Rectificación }
-                @case ('access') { Acceso }
-                @case ('erasure') { Supresión }
-                @case ('portability') { Portabilidad }
-                @case ('restriction') { Limitación }
-                @case ('objection') { Oposición }
-                @default { {{ req.request_type }} }
-                }
-                <i
-                  class="fas fa-external-link-alt ml-1 text-xs opacity-0 group-hover:opacity-100 transition-opacity"></i>
-              </p>
-              <p class="text-xs text-gray-500 dark:text-gray-400">{{ req.subject_email }}</p>
-            </div>
-            <div class="text-right">
-              <span class="text-xs text-gray-400 dark:text-gray-500 block">{{ formatDate(req.created_at || '') }}</span>
-              <span [class.text-green-600]="req.processing_status === 'completed'"
-                [class.text-yellow-600]="req.processing_status === 'received'" class="text-xs font-semibold capitalize">
-                @switch (req.processing_status) {
-                @case ('received') { Recibido }
-                @case ('in_progress') { En Progreso }
-                @case ('completed') { Completado }
-                @case ('rejected') { Rechazado }
-                @default { {{ req.processing_status }} }
-                }
-              </span>
-            </div>
+        <!-- Left Column: Audit Log (Takes 2/3 width on LG) -->
+        <div class="lg:col-span-2 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <i class="fas fa-history text-gray-400"></i> Registro de Auditoría
+            </h3>
+          </div>
+          <div
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden min-h-[400px]">
+            <app-gdpr-audit-list [subjectEmail]="targetCustomer()?.email"></app-gdpr-audit-list>
           </div>
         </div>
-        }
+
+        <!-- Right Column: Access Requests (Takes 1/3 width on LG) -->
+        <div class="space-y-4">
+          <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <i class="fas fa-clipboard-list text-gray-400"></i> Solicitudes Activas
+          </h3>
+
+          <div
+            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden h-full flex flex-col">
+            @if (customerAccessRequests().length === 0) {
+            <div
+              class="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-500 dark:text-gray-400">
+              <i class="fas fa-inbox text-4xl mb-3 opacity-30"></i>
+              <p class="text-sm">No hay solicitudes de acceso pendientes.</p>
+            </div>
+            } @else {
+            <div class="p-3 space-y-2 overflow-y-auto max-h-[600px] custom-scrollbar">
+              @for (req of customerAccessRequests(); track req.id) {
+              <div (click)="viewRequestDetail(req)"
+                class="p-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 hover:bg-blue-50 dark:hover:bg-blue-900/10 hover:border-blue-200 dark:hover:border-blue-800 transition-all cursor-pointer group">
+
+                <div class="flex justify-between items-start mb-2">
+                  <span
+                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold capitalize bg-white dark:bg-gray-600 text-gray-800 dark:text-gray-200 shadow-sm">
+                    @switch (req.request_type) {
+                    @case ('rectification') { Rectificación }
+                    @case ('access') { Acceso }
+                    @case ('erasure') { Supresión }
+                    @case ('portability') { Portabilidad }
+                    @case ('restriction') { Limitación }
+                    @case ('objection') { Oposición }
+                    @default { {{ req.request_type }} }
+                    }
+                  </span>
+                  <span class="text-[10px] text-gray-400">{{ formatDate(req.created_at || '') }}</span>
+                </div>
+
+                <div class="flex justify-between items-end">
+                  <p class="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]"
+                    title="{{ req.subject_email }}">
+                    {{ req.subject_email }}
+                  </p>
+                  <span [class.text-green-600]="req.processing_status === 'completed'"
+                    [class.text-yellow-600]="req.processing_status === 'received' || req.processing_status === 'in_progress'"
+                    class="text-xs font-semibold flex items-center gap-1">
+                    @if(req.processing_status === 'received' || req.processing_status === 'in_progress') { <i
+                      class="fas fa-clock text-[10px]"></i> }
+                    @if(req.processing_status === 'completed') { <i class="fas fa-check text-[10px]"></i> }
+                    @switch (req.processing_status) {
+                    @case ('received') { Recibido }
+                    @case ('in_progress') { Proceso }
+                    @case ('completed') { Listo }
+                    @case ('rejected') { Rechazado }
+                    @default { {{ req.processing_status }} }
+                    }
+                  </span>
+                </div>
+              </div>
+              }
+            </div>
+            }
+          </div>
+        </div>
+
       </div>
-      }
     </div>
-
-
-  </div>
+    }
+    }
+  </main>
 </div>
+
+<!-- Modals (Kept outside main flow) -->
 
 <!-- Customer Form Modal -->
 @if (showCustomerForm) {
@@ -232,127 +223,56 @@
 </app-form-new-customer>
 }
 
-
-
-<!-- Access Request Form Modal -->
-@if (showAccessRequestForm) {
-<div class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 backdrop-blur-sm">
-  <div
-    class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-2xl rounded-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-    <div class="mt-3">
-      <div class="flex justify-between items-center mb-6">
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Nueva Solicitud de Acceso RGPD</h3>
-        <button (click)="showAccessRequestForm = false"
-          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-          <i class="fas fa-times text-xl"></i>
-        </button>
-      </div>
-
-      <form [formGroup]="accessRequestForm" (ngSubmit)="submitAccessRequest()" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email del solicitante *</label>
-          <input type="email" formControlName="subjectEmail" required
-            class="block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre completo</label>
-          <input type="text" formControlName="subjectName"
-            class="block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Identificador (DNI/NIE)</label>
-          <input type="text" formControlName="subjectIdentifier"
-            class="block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo de solicitud *</label>
-          <select formControlName="requestType" required
-            class="block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-            <option value="">Seleccionar tipo</option>
-            <option value="access">Acceso a datos personales</option>
-            <option value="rectification">Rectificación de datos</option>
-            <option value="erasure">Supresión de datos</option>
-            <option value="portability">Portabilidad de datos</option>
-            <option value="restriction">Limitación del tratamiento</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
-          <textarea formControlName="description" rows="4" placeholder="Describa detalladamente su solicitud..."
-            class="block w-full border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
-            </textarea>
-        </div>
-
-        <div class="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700 mt-6">
-          <button type="button" (click)="showAccessRequestForm = false"
-            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
-            Cancelar
-          </button>
-          <button type="submit" [disabled]="!accessRequestForm.valid || isLoading()"
-            class="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 disabled:opacity-50 transition-colors">
-            {{ isLoading() ? 'Creando...' : 'Crear Solicitud' }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-}
-
 <!-- Anonymize Confirmation Modal -->
 @if (showAnonymizeModal && anonymizeTarget()) {
 <div
-  class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-50 flex items-center justify-center backdrop-blur-sm">
+  class="fixed inset-0 bg-gray-900/70 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
   <div
-    class="relative p-5 border w-11/12 md:w-1/3 shadow-2xl rounded-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-    <div class="mt-3 text-center">
-      <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
-        <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-xl"></i>
+    class="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
+    <!-- Modal Header -->
+    <div class="bg-red-50 dark:bg-red-900/20 p-6 text-center border-b border-red-100 dark:border-red-800">
+      <div
+        class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-red-100 dark:bg-red-900/40 mb-4 animate-bounce-short">
+        <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-2xl"></i>
       </div>
-      <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">¿Estás absolutamente seguro?</h3>
+      <h3 class="text-xl font-bold text-gray-900 dark:text-white">Acción Destructiva</h3>
+      <p class="text-red-600 dark:text-red-400 text-sm mt-1">Esta acción no se puede deshacer</p>
+    </div>
+
+    <div class="p-6">
+      <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 text-center">
+        Estás solicitando anonimizar a <strong class="text-gray-900 dark:text-white">{{ anonymizeTarget()?.name }} {{
+          anonymizeTarget()?.apellidos }}</strong>.
+      </p>
 
       <div
-        class="mt-2 px-4 py-3 bg-red-50 dark:bg-red-900/10 rounded-lg text-left border border-red-100 dark:border-red-900/30">
-        <p class="text-sm text-red-800 dark:text-red-300">
-          Estás a punto de anonimizar los datos de <span class="font-bold">{{ anonymizeTarget()?.name }} {{
-            anonymizeTarget()?.apellidos }}</span>.
-        </p>
-        <ul class="list-disc list-inside text-xs text-red-700 dark:text-red-400 mt-2 space-y-1">
-          <li>Esta acción es <strong>IRREVERSIBLE</strong>.</li>
-          <li>Se eliminarán nombre, email, teléfono y dirección.</li>
-          <li>Se conservarán los registros fiscales (facturas) pero anonimizados.</li>
-          <li>El usuario perderá acceso al portal de cliente.</li>
-        </ul>
+        class="bg-red-50 dark:bg-red-900/10 rounded-lg p-3 mb-6 text-xs text-red-800 dark:text-red-300 space-y-2 border border-red-100 dark:border-red-900/20">
+        <p class="flex items-center gap-2"><i class="fas fa-circle text-[6px]"></i> Elimina datos personales (nombre,
+          email, etc.)</p>
+        <p class="flex items-center gap-2"><i class="fas fa-circle text-[6px]"></i> Conserva facturas (anonimizadas)</p>
+        <p class="flex items-center gap-2"><i class="fas fa-circle text-[6px]"></i> Revoca acceso al portal</p>
       </div>
 
-      <div class="mt-6">
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 text-left">
-          Para confirmar, escribe <strong>BORRAR</strong> abajo:
-        </label>
-        <input type="text" [(ngModel)]="anonymizeConfirmationInput" placeholder="BORRAR"
-          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 uppercase font-mono tracking-wider text-center bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          (keyup.enter)="processAnonymization()">
-
-        @if (anonymizeError) {
-        <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ anonymizeError }}</p>
-        }
+      <div class="space-y-3">
+        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Escribe "BORRAR"
+          para confirmar</label>
+        <input type="text" [(ngModel)]="anonymizeConfirmationInput"
+          class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-center font-bold tracking-widest focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all uppercase placeholder-gray-300 dark:placeholder-gray-500"
+          placeholder="BORRAR" (keyup.enter)="processAnonymization()">
       </div>
 
-      <div class="mt-6 flex justify-end gap-3">
+      @if (anonymizeError) {
+      <p class="mt-3 text-sm text-red-600 text-center font-medium animate-shake">{{ anonymizeError }}</p>
+      }
+
+      <div class="grid grid-cols-2 gap-4 mt-8">
         <button (click)="closeAnonymizeModal()"
-          class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-medium">
+          class="px-4 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">
           Cancelar
         </button>
-
         <button (click)="processAnonymization()" [disabled]="anonymizeConfirmationInput !== 'BORRAR'"
-          [class.opacity-50]="anonymizeConfirmationInput !== 'BORRAR'"
-          [class.cursor-not-allowed]="anonymizeConfirmationInput !== 'BORRAR'"
-          class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-bold shadow-sm">
-          Confirmar Anonimización
+          class="px-4 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-200 dark:shadow-none transition-all">
+          Anonimizar
         </button>
       </div>
     </div>
@@ -360,180 +280,231 @@
 </div>
 }
 
-
-
 <!-- Request Detail Modal -->
+<!-- (Keeping the existing modal structure but cleaning styles optionally, sticking to provided code for now to avoid breaking complex logic inside unless requested) -->
 @if (showRequestDetailModal && selectedRequest()) {
 <div
-  class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full z-[1200] backdrop-blur-sm flex items-center justify-center">
+  class="fixed inset-0 bg-gray-900/70 backdrop-blur-sm overflow-y-auto h-full w-full z-[1200] flex items-center justify-center p-4">
   <div
-    class="relative p-6 border w-11/12 md:w-2/3 lg:w-1/2 shadow-2xl rounded-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-    <div class="flex justify-between items-start mb-6 border-b border-gray-200 dark:border-gray-700 pb-4">
-      <div>
-        <h3 class="text-xl font-bold text-gray-900 dark:text-white capitalize flex items-center gap-2">
-          @switch (selectedRequest()?.request_type) {
-          @case ('rectification') { Rectificación }
-          @case ('access') { Acceso }
-          @case ('erasure') { Supresión }
-          @case ('portability') { Portabilidad }
-          @case ('restriction') { Limitación }
-          @case ('objection') { Oposición }
-          @default { {{ selectedRequest()?.request_type }} }
+    class="relative w-full max-w-4xl bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]">
+
+    <!-- Modal Header -->
+    <div class="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+      <div class="flex items-center gap-3">
+        <div
+          class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
+          @switch(selectedRequest()?.request_type) {
+          @case ('rectification') { <i class="fas fa-edit"></i> }
+          @case ('erasure') { <i class="fas fa-trash-alt"></i> }
+          @case ('access') { <i class="fas fa-eye"></i> }
+          @default { <i class="fas fa-file-alt"></i> }
           }
-          <span [class.text-green-600]="selectedRequest()?.processing_status === 'completed'"
-            [class.text-yellow-600]="selectedRequest()?.processing_status === 'received' || selectedRequest()?.processing_status === 'in_progress'"
-            class="text-sm px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700">
-            @switch (selectedRequest()?.processing_status) {
-            @case ('received') { Recibido }
-            @case ('in_progress') { En Progreso }
-            @case ('completed') { Completado }
-            @case ('rejected') { Rechazado }
-            @default { {{ selectedRequest()?.processing_status }} }
+        </div>
+        <div>
+          <h3 class="text-xl font-bold text-gray-900 dark:text-white capitalize">
+            @switch (selectedRequest()?.request_type) {
+            @case ('rectification') { Solicitud de Rectificación }
+            @case ('access') { Solicitud de Acceso }
+            @case ('erasure') { Solicitud de Supresión }
+            @case ('portability') { Solicitud de Portabilidad }
+            @case ('restriction') { Limitación del Tratamiento }
+            @case ('objection') { Oposición }
+            @default { {{ selectedRequest()?.request_type }} }
             }
-          </span>
-        </h3>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Solicitado el {{ formatDate(selectedRequest()?.created_at || '') }}
-        </p>
-      </div>
-      <button (click)="closeRequestDetailModal()"
-        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-        <i class="fas fa-times text-xl"></i>
-      </button>
-    </div>
-
-    <div class="space-y-6">
-      <!-- Requester Info -->
-      <div class="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-4">
-        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-3">Datos del
-          Solicitante</h4>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <span class="text-xs text-gray-500 dark:text-gray-400 block">Nombre</span>
-            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ selectedRequest()?.subject_name || 'No
-              especificado' }}</span>
-          </div>
-          <div>
-            <span class="text-xs text-gray-500 dark:text-gray-400 block">Email</span>
-            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ selectedRequest()?.subject_email
-              }}</span>
-          </div>
-          <div>
-            <span class="text-xs text-gray-500 dark:text-gray-400 block">Identificador</span>
-            <span class="text-sm font-medium text-gray-900 dark:text-white">{{ selectedRequest()?.subject_identifier ||
-              'No propocionado' }}</span>
-          </div>
-          <div>
-            <span class="text-xs text-gray-500 dark:text-gray-400 block">ID Solicitud</span>
-            <span class="text-xs font-mono text-gray-600 dark:text-gray-300">{{ selectedRequest()?.id }}</span>
-          </div>
+          </h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">ID: {{ selectedRequest()?.id }}</p>
         </div>
       </div>
 
-      <!-- Request Details -->
-      <div>
-        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Detalle de la
-          Solicitud</h4>
-        <div
-          class="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-          {{ selectedRequest()?.request_details?.description || 'Sin descripción adicional proporcionada.' }}
-        </div>
+      <div class="flex items-center gap-4">
+        <span [class.text-green-600]="selectedRequest()?.processing_status === 'completed'"
+          [class.text-yellow-600]="selectedRequest()?.processing_status === 'received' || selectedRequest()?.processing_status === 'in_progress'"
+          class="px-3 py-1 rounded-full text-sm font-bold bg-gray-100 dark:bg-gray-700 uppercase tracking-wide">
+          @switch (selectedRequest()?.processing_status) {
+          @case ('received') { Recibido }
+          @case ('in_progress') { En Progreso }
+          @case ('completed') { Completado }
+          @case ('rejected') { Rechazado }
+          @default { {{ selectedRequest()?.processing_status }} }
+          }
+        </span>
+        <button (click)="closeRequestDetailModal()"
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+          <i class="fas fa-times text-2xl"></i>
+        </button>
       </div>
-
-      <!-- Response / Actions (Placeholder for future feature) -->
-      @if ($any(selectedRequest()?.response_data)) {
-      <div>
-        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2">Respuesta
-          Enviada</h4>
-        <div
-          class="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-lg text-gray-800 dark:text-gray-200">
-          {{ selectedRequest()?.response_data | json }}
-        </div>
-      </div>
-      }
     </div>
 
-    <!-- Info Alerts based on Request Type -->
-    @if (selectedRequest()?.request_type === 'rectification') {
-    <div class="mt-6 mb-2 text-sm text-blue-700 bg-blue-100 p-3 rounded border border-blue-200 flex items-start gap-2">
-      <i class="fas fa-info-circle mt-1"></i>
-      <span>
-        <strong>Rectificación:</strong> Debes corregir los datos inexactos del cliente.
-        Al pulsar el botón, accederás a su ficha para editar la información.
-        No olvides notificar al cliente una vez realizados los cambios.
-      </span>
-    </div>
-    }
+    <!-- Modal Body (Scrollable) -->
+    <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Left: Request Info -->
+        <div class="md:col-span-2 space-y-6">
+          <!-- Alert Banner -->
+          @if (selectedRequest()?.request_type === 'rectification') {
+          <div class="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 rounded-r-lg">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <i class="fas fa-info-circle text-blue-500"></i>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-blue-700 dark:text-blue-300">
+                  <strong>Acción Requerida:</strong> Revisa los datos inexactos y corrígelos. Notifica al cliente al
+                  finalizar.
+                </p>
+              </div>
+            </div>
+          </div>
+          }
 
-    @if (selectedRequest()?.request_type === 'restriction') {
+          <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-5">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Mensaje del Cliente</h4>
+            <p class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+              {{ selectedRequest()?.request_details?.description || 'Sin descripción adicional.' }}
+            </p>
+          </div>
+
+          @if ($any(selectedRequest()?.response_data)) {
+          <div class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-5 border border-gray-200 dark:border-gray-700">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Respuesta del Sistema</h4>
+            <pre
+              class="text-xs text-gray-600 dark:text-gray-400 overflow-x-auto">{{ selectedRequest()?.response_data | json }}</pre>
+          </div>
+          }
+        </div>
+
+        <!-- Right: Metadata & Actions -->
+        <div class="space-y-6">
+          <div class="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-5 border border-gray-100 dark:border-gray-700">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Datos del Solicitante</h4>
+            <dl class="space-y-3">
+              <div>
+                <dt class="text-xs text-gray-400">Nombre</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-white">{{ selectedRequest()?.subject_name ||
+                  'N/A' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-400">Email</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-white truncate"
+                  title="{{ selectedRequest()?.subject_email }}">{{ selectedRequest()?.subject_email }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-400">Fecha Solicitud</dt>
+                <dd class="text-sm font-medium text-gray-900 dark:text-white">{{
+                  formatDate(selectedRequest()?.created_at || '') }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <!-- Context Actions -->
+          @if (selectedRequest()?.processing_status !== 'completed' && selectedRequest()?.processing_status !==
+          'rejected')
+          {
+          <div class="space-y-3">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones Disponibles</h4>
+
+            @if (selectedRequest()?.request_type === 'rectification') {
+            <button (click)="applyRectification(selectedRequest()!)"
+              class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm font-medium flex items-center justify-center gap-2 transition-colors">
+              <i class="fas fa-magic"></i> Auto-Aplicar
+            </button>
+            <button (click)="handleRequestAction(selectedRequest()!)"
+              class="w-full py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 font-medium flex items-center justify-center gap-2 transition-colors">
+              <i class="fas fa-edit"></i> Editar Manualmente
+            </button>
+            }
+
+            @if (selectedRequest()?.request_type === 'restriction') {
+            <button (click)="handleRestriction(selectedRequest()!)"
+              class="w-full py-2 bg-orange-600 text-white rounded-lg shadow-sm font-medium flex items-center justify-center gap-2 transition-colors">
+              <i class="fas fa-ban"></i> Restringir Acceso
+            </button>
+            }
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
     <div
-      class="mt-6 mb-2 text-sm text-orange-700 bg-orange-100 p-3 rounded border border-orange-200 flex items-start gap-2">
-      <i class="fas fa-exclamation-triangle mt-1"></i>
-      <span>
-        <strong>Limitación del Tratamiento:</strong> Se bloqueará el acceso del cliente y
-        se detendrá cualquier procesamiento de sus datos, conservándolos solo para ejercicio de defensa o
-        reclamaciones.
-        Esta acción <strong>desactiva</strong> al usuario.
-      </span>
-    </div>
-    }
-
-    <div class="mt-4 flex flex-wrap justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700 items-center">
-
-
-      @if (selectedRequest()?.processing_status !== 'completed' && selectedRequest()?.processing_status !== 'rejected')
-      {
-      <button (click)="applyRectification(selectedRequest()!)"
-        class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all transform hover:scale-105 shadow-md font-bold flex items-center gap-2 border border-indigo-500">
-        <i class="fas fa-magic text-yellow-300"></i>
-        Aplicar Cambios
-      </button>
-      }
-      @if (selectedRequest()?.request_type === 'rectification') {
-      <button *ngIf="selectedRequest()?.processing_status !== 'completed'"
-        (click)="handleRequestAction(selectedRequest()!)"
-        class="px-4 py-2 bg-white text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors font-medium flex items-center gap-2">
-        <i class="fas fa-user-edit"></i>
-        Editar
+      class="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3 bg-gray-50 dark:bg-gray-800/50">
+      <button (click)="closeRequestDetailModal()"
+        class="px-5 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg font-medium hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+        Cerrar
       </button>
 
-      <!-- Mark as Completed Button -->
-      <!-- Show ONLY if NOT completed and NOT rejected -->
       @if (selectedRequest()?.processing_status !== 'completed' && selectedRequest()?.processing_status !== 'rejected')
       {
       <button (click)="markRequestCompleted(selectedRequest()!)"
-        [disabled]="!isRectificationCompleted(selectedRequest()!)"
-        [title]="!isRectificationCompleted(selectedRequest()!) ? 'Debes aplicar los cambios (Automática o Manualmente) antes de completar.' : 'Marcar como completado'"
-        [class.opacity-50]="!isRectificationCompleted(selectedRequest()!)"
-        [class.cursor-not-allowed]="!isRectificationCompleted(selectedRequest()!)"
-        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2">
-        <i class="fas fa-check-circle"></i>
-        Completado
+        [disabled]="selectedRequest()?.request_type === 'rectification' && !isRectificationCompleted(selectedRequest()!)"
+        class="px-5 py-2.5 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 shadow-md transition-colors flex items-center gap-2 disabled:opacity-50 disabled:grayscale">
+        <i class="fas fa-check-circle"></i> Marcar como Completado
       </button>
       }
-      }
-
-      @if (selectedRequest()?.request_type === 'restriction') {
-      <button (click)="handleRestriction(selectedRequest()!)"
-        class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-medium flex items-center gap-2">
-        <i class="fas fa-ban"></i>
-        Restringir (Desactivar) Tratamiento
-      </button>
-      }
-      <button (click)="closeRequestDetailModal()"
-        class="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-        Cerrar
-      </button>
     </div>
+
   </div>
 </div>
 }
 
-<!-- Auto-Apply Confirmation Modal -->
+<!-- Manual Access Request Form Modal (keeping provided ID/bindings) -->
+@if (showAccessRequestForm) {
+<div
+  class="fixed inset-0 bg-gray-900/70 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+  <div
+    class="relative w-full max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700">
+    <!-- Header -->
+    <div class="flex justify-between items-center p-5 border-b border-gray-200 dark:border-gray-700">
+      <h3 class="text-lg font-bold text-gray-900 dark:text-white">Nueva Solicitud RGPD</h3>
+      <button (click)="showAccessRequestForm = false"
+        class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form [formGroup]="accessRequestForm" (ngSubmit)="submitAccessRequest()" class="p-5 space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email *</label>
+        <input type="email" formControlName="subjectEmail"
+          class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all dark:text-white">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tipo *</label>
+        <select formControlName="requestType"
+          class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all dark:text-white">
+          <option value="">Seleccionar...</option>
+          <option value="access">Acceso</option>
+          <option value="rectification">Rectificación</option>
+          <option value="erasure">Supresión</option>
+          <option value="portability">Portabilidad</option>
+          <option value="restriction">Limitación</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Detalles</label>
+        <textarea formControlName="description" rows="3"
+          class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all dark:text-white"></textarea>
+      </div>
+
+      <div class="pt-4 flex justify-end gap-3">
+        <button type="button" (click)="showAccessRequestForm = false"
+          class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancelar</button>
+        <button type="submit" [disabled]="!accessRequestForm.valid || isLoading()"
+          class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 shadow-md transition-colors disabled:opacity-50">
+          {{ isLoading() ? 'Enviando...' : 'Crear' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+}
+
+<!-- Auto-Apply Confirmation Modal (Same as original but styled) -->
 @if (showAutoApplyModal) {
 <div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1300] flex items-center justify-center p-4">
   <div
-    class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100 dark:border-gray-700 transform transition-all scale-100">
+    class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-100 dark:border-gray-700 transform transition-all scale-100 animate-zoom-in">
     <div class="bg-indigo-600 p-6 text-center">
       <div class="mx-auto bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mb-4 backdrop-blur-md">
         <i class="fas fa-magic text-3xl text-white"></i>
@@ -544,8 +515,6 @@
 
     <div class="p-6">
       <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-6 border border-gray-200 dark:border-gray-600">
-        <h4 class="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 font-semibold mb-3">Resumen de
-          Cambios</h4>
         <ul class="space-y-3">
           @for (change of autoApplyChangesList; track change.field) {
           <li class="flex items-start gap-3">
@@ -560,17 +529,13 @@
         </ul>
       </div>
 
-      <p class="text-sm text-gray-500 dark:text-gray-400 text-center mb-6">
-        Al confirmar, se actualizará el perfil del cliente y se marcará la solicitud como completada.
-      </p>
-
       <div class="flex gap-3">
         <button (click)="closeAutoApplyModal()"
           class="flex-1 px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
           Cancelar
         </button>
         <button (click)="confirmAutoApply()"
-          class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-none transition-all transform hover:-translate-y-0.5">
+          class="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-lg transition-all transform hover:-translate-y-0.5">
           Aplicar y Completar
         </button>
       </div>
