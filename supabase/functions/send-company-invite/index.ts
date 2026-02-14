@@ -11,14 +11,22 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// CORS headers helper
 function getCorsHeaders(origin?: string) {
-  const allowAll = (Deno.env.get("ALLOW_ALL_ORIGINS") || "false").toLowerCase() === "true";
-  const allowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const isAllowed = allowAll || (origin && allowedOrigins.includes(origin));
+  const allowedOrigins = [
+    "http://localhost:4200",
+    "https://app.simplificacrm.es",
+    "https://simplificacrm.es"
+  ];
+
+  // Check if origin is allowed or if we should allow all (dev mode mostly)
+  const isAllowed = origin && allowedOrigins.includes(origin);
+  const allowOrigin = isAllowed ? origin : allowedOrigins[0];
+
   return {
-    "Access-Control-Allow-Origin": isAllowed && origin ? origin : (allowAll ? "*" : ""),
+    "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE",
     "Vary": "Origin",
   } as Record<string, string>;
 }
@@ -33,11 +41,12 @@ function isAllowedOrigin(origin?: string) {
 
 serve(async (req: Request) => {
   const origin = req.headers.get("Origin") || undefined;
-  const corsHeaders = getCorsHeaders(origin);
-
+  // Handle CORS preflight request
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: { ...corsHeaders, "Content-Type": "text/plain" } });
+    return new Response("ok", { headers: getCorsHeaders(req.headers.get("origin") ?? undefined) });
   }
+
+  const corsHeaders = getCorsHeaders(origin);
 
   if (!isAllowedOrigin(origin)) {
     console.warn("send-company-invite: Origin not allowed:", origin);
@@ -72,8 +81,10 @@ serve(async (req: Request) => {
     const role = String(body?.role || "member").trim();
     const message = body?.message != null ? String(body.message) : null;
     const forceEmail = body?.force_email === true; // Flag to ALWAYS send email
-    if (!email) {
-      return new Response(JSON.stringify({ success: false, error: "invalid_request", message: "email is required" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      return new Response(JSON.stringify({ success: false, error: "invalid_request", message: "Email address is invalid" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -113,28 +124,38 @@ serve(async (req: Request) => {
 
     let membershipQuery = supabaseAdmin
       .from("company_members")
-      .select("company_id, role")
+      .select("company_id, role_data:app_roles(name)")
       .eq("user_id", userData.id)
-      .eq("status", "active")
-      .in("role", ["owner", "admin"]);
+      .eq("status", "active");
 
     if (requestedCompanyId) {
       membershipQuery = membershipQuery.eq("company_id", requestedCompanyId);
     }
 
-    const { data: memberships, error: memberErr } = await membershipQuery;
+    const { data: allMemberships, error: memberErr } = await membershipQuery;
 
-    if (memberErr || !memberships || memberships.length === 0) {
+    if (memberErr || !allMemberships) {
+      return new Response(JSON.stringify({ success: false, error: "forbidden", message: "Error checking permissions" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Filter for owner/admin in memory since we can't easily filter by joined column in simple query
+    const validMemberships = allMemberships.filter((m: any) => {
+      const roleName = m.role_data?.name;
+      return roleName === 'owner' || roleName === 'admin';
+    });
+
+    if (validMemberships.length === 0) {
       return new Response(JSON.stringify({ success: false, error: "forbidden", message: "User is not an admin/owner of any active company (or the requested one)" }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Use the first valid membership found
-    const activeMembership = memberships[0];
+    const activeMembership = validMemberships[0];
+    const activeRole = activeMembership.role_data?.name;
 
     const currentUser = {
       id: userData.id,
       company_id: activeMembership.company_id,
-      role: activeMembership.role
+      role: activeRole
     };
 
     // Create invitation directly
@@ -261,19 +282,32 @@ serve(async (req: Request) => {
       if (forceEmail) {
         return new Response(
           JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email: " + emailError?.message, token: inviteToken }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          {
+            headers: { ...getCorsHeaders(req.headers.get("origin") ?? undefined), "Content-Type": "application/json" },
+            status: 200,
+          }
         );
       }
       return new Response(
         JSON.stringify({ success: false, error: "email_send_failed", message: "No se pudo enviar el email (pero la invitación se creó): " + emailError?.message }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        {
+          headers: { ...getCorsHeaders(req.headers.get("origin") ?? undefined), "Content-Type": "application/json" },
+          status: 200,
+        }
       );
     }
 
-    return new Response(JSON.stringify({ success: true, invitation_id: invitationId || null, token: inviteToken }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (e: any) {
-    console.error("send-company-invite: unhandled error", e);
-    // Last-resort: avoid surfacing 500 to client to prevent function-layer retries/loops
-    return new Response(JSON.stringify({ success: false, error: "unhandled", message: e?.message || String(e) }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ success: true, invitation_id: invitationId || null, token: inviteToken }), {
+      headers: { ...getCorsHeaders(req.headers.get("origin") ?? undefined), "Content-Type": "application/json" },
+      status: 200,
+    });
+  } catch (error: any) {
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      {
+        headers: { ...getCorsHeaders(req.headers.get("origin") ?? undefined), "Content-Type": "application/json" },
+        status: 200, // Return 200 to avoid browser errors, let client handle success: false
+      }
+    );
   }
 });

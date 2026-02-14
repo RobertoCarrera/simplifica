@@ -8,7 +8,8 @@ import { SkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.compo
 import { GdprComplianceService, GdprConsentRecord, GdprAccessRequest } from '../../../../services/gdpr-compliance.service';
 import { ToastService } from '../../../../services/toast.service';
 import { SupabaseCustomersService } from '../../../../services/supabase-customers.service';
-import { firstValueFrom } from 'rxjs';
+import { AuthService } from '../../../../services/auth.service';
+import { firstValueFrom, filter, switchMap, take } from 'rxjs';
 
 /**
  * Panel GDPR para gestión de datos personales del cliente
@@ -339,6 +340,7 @@ export class ClientGdprPanelComponent implements OnInit {
   dpoEmail = environment.gdpr.dpoEmail;
 
   private gdprService = inject(GdprComplianceService);
+  private authService = inject(AuthService);
   private toastService = inject(ToastService);
   private customersService = inject(SupabaseCustomersService);
 
@@ -348,7 +350,16 @@ export class ClientGdprPanelComponent implements OnInit {
       this.loading = false;
       return;
     }
-    await this.loadConsentStatus();
+
+    // Wait for auth service to be ready and have company context
+    this.authService.userProfile$
+      .pipe(
+        filter(p => !!p?.company_id),
+        take(1)
+      )
+      .subscribe(() => {
+        this.loadConsentStatus();
+      });
   }
 
   /**
@@ -360,29 +371,60 @@ export class ClientGdprPanelComponent implements OnInit {
 
     this.gdprService.getConsentRecords(this.clientEmail).subscribe({
       next: (records) => {
-        const marketing = records.find(r => r.consent_type === 'marketing');
-        const processing = records.find(r => r.consent_type === 'data_processing');
+        const marketingRecord = records.find(r => r.consent_type === 'marketing');
+        const dataProcessingRecord = records.find(r => r.consent_type === 'data_processing');
 
-        if (marketing) {
-          this.marketingConsent = marketing.consent_given;
-          this.lastConsentUpdate = this.formatDate(marketing.created_at || '');
-        }
-        if (processing) {
-          this.dataProcessingConsent = processing.consent_given;
-          if (processing.created_at && (!marketing?.created_at || processing.created_at > marketing.created_at)) {
-            this.lastConsentUpdate = this.formatDate(processing.created_at);
-          }
-        }
+        this.marketingConsent = marketingRecord ? marketingRecord.consent_given : false;
+        this.dataProcessingConsent = dataProcessingRecord ? dataProcessingRecord.consent_given : false;
 
+        const latestRecord = records.reduce((prev, current) => {
+          const currentDate = current.created_at ? new Date(current.created_at) : new Date(0);
+          const prevDate = prev.created_at ? new Date(prev.created_at) : new Date(0);
+          return (currentDate > prevDate) ? current : prev;
+        }, records[0]);
+
+        this.lastConsentUpdate = latestRecord?.created_at ? this.formatDate(latestRecord.created_at) : 'Nunca';
         this.loading = false;
       },
       error: (err) => {
-        console.error('Error loading consents:', err);
-        this.error = 'Error cargando historial de consentimientos';
+        this.error = 'Error al cargar el estado de consentimientos: ' + err.message;
         this.loading = false;
       }
     });
   }
+
+  // New private auth service injection needed in class property list
+  // private authService = inject(import('../../../../services/auth.service').then(m => m.AuthService)); // Dynamic import? No, just add to imports. 
+  // Wait, I need to update the imports first. Let's do it cleanly.
+
+  // Re-writing the whole strategy:
+  // 1. Inject AuthService
+  // 2. In ngOnInit, pipe userProfile$ -> filter(p => !!p?.company_id) -> first() -> switchMap(() => loadConsentStatus)
+
+  // Let's just update the imports and class properties first in a separate block if needed, 
+  // but here I will implement the logic assuming I can add the injection.
+
+  // Correction: I can't easily add the import and injection in this single block if they are far apart.
+  // The file view shows `private gdprService = inject(GdprComplianceService);` at line 341.
+  // I will add `private authService = inject(AuthService);` there.
+
+  // This block is for ngOnInit. I will assume authService is available.
+
+  // WRONG APPROACH: I should split this into two edits:
+  // 1. Add AuthService to imports and injection.
+  // 2. Update ngOnInit.
+
+  // Let's do step 1 first. I'll cancel this tool call and do imports first.
+
+  // Actually, look at the file content again.
+  // Line 345 is ngOnInit.
+  // I need to add `import { AuthService } from .....` but it's already imported in `client-portal.service.ts` not here?
+  // Checking `client-gdpr-panel.component.ts` imports...
+  // It imports `GdprComplianceService`.
+  // It DOES NOT import `AuthService`.
+
+  // OK, I will cancel this and do the imports first.
+
 
   updateMarketingConsent() {
     this.recordConsent('marketing', this.marketingConsent);
