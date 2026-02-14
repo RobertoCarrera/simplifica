@@ -869,12 +869,12 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       mercantile_registry_data: this.formData.mercantile_registry_data,
 
       // CRM
-      status: this.formData.status,
+      status: this.formData.status || 'active',
       source: this.formData.source,
       website: this.formData.website,
       industry: this.formData.industry,
       internal_notes: this.formData.internal_notes,
-      language: this.formData.language,
+      language: this.formData.language || 'es',
 
       // Billing
       payment_method: this.formData.payment_method,

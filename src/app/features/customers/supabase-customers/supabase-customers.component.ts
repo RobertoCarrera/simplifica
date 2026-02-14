@@ -103,13 +103,8 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     private popStateListener: any = null;
 
     // GDPR signals
-    gdprPanelVisible = signal(false);
-    complianceStats = signal<any>(null);
 
-    // GDPR Modal signals
-    showGdprModal = signal(false);
-    gdprModalClient = signal<Customer | null>(null);
-    flippedCardId = signal<string | null>(null);
+
 
     // Devices Modal
     showClientDevicesModal = signal(false);
@@ -403,14 +398,20 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         // Start initial load
         this.customersService.loadCustomers();
 
-        this.loadGdprData();
+
         // Initialize portal access cache
         this.refreshPortalAccess();
         // Load tags
         this.loadTags();
+
+        // Subscribe to real-time changes
+        this.customersService.subscribeToClientChanges();
     }
 
     ngOnDestroy() {
+        // Unsubscribe from real-time changes
+        this.customersService.unsubscribeFromClientChanges();
+
         // Asegurar que el scroll se restaure si el componente se destruye con modal abierto
         document.body.classList.remove('modal-open');
         document.body.style.overflow = '';
@@ -842,183 +843,20 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     // GDPR METHODS
     // ========================================
 
-    toggleGdprPanel() {
-        this.gdprPanelVisible.set(!this.gdprPanelVisible());
-        if (this.gdprPanelVisible()) {
-            this.loadComplianceStats();
-        }
-    }
 
-    goToGdpr() {
-        // Navigate to the dedicated GDPR manager route (same app) with a query param
-        // so users can access the full GDPR interface if they prefer.
-        try {
-            this.router.navigate(['/clientes-gdpr'], { queryParams: { gdpr: '1' } });
-        } catch (e) {
-            console.error('Navigation to GDPR manager failed', e);
-        }
-    }
-
-    // Handle GDPR access request for a customer
-    requestDataAccess(customer: Customer) {
-        if (!customer.email) {
-            this.toastService.error('Error', 'El cliente debe tener un email para solicitar acceso a datos');
-            return;
-        }
-
-        const accessRequest: GdprAccessRequest = {
-            subject_email: customer.email,
-            subject_name: `${customer.name} ${customer.apellidos}`,
-            request_type: 'access',
-            request_details: `Solicitud de acceso a datos personales del cliente desde CRM`,
-            verification_method: 'email'
-        };
-
-        this.gdprService.createAccessRequest(accessRequest).subscribe({
-            next: (response: any) => {
-                this.toastService.success('RGPD', 'Solicitud de acceso a datos creada correctamente');
-                this.loadGdprData(); // Refresh stats
-            },
-            error: (error: any) => {
-                console.error('Error creating access request:', error);
-                this.toastService.error('Error RGPD', 'No se pudo crear la solicitud de acceso');
-            }
-        });
-    }
-
-    // Export customer data for GDPR compliance
-    exportCustomerData(customer: Customer) {
-        if (!customer.email) {
-            this.toastService.error('Error', 'El cliente debe tener un email para exportar datos');
-            return;
-        }
-
-        this.gdprService.exportClientData(customer.email).subscribe({
-            next: (data: any) => {
-                // Create and download the export file
-                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `gdpr-export-${customer.email}-${new Date().toISOString().split('T')[0]}.json`;
-                a.click();
-                window.URL.revokeObjectURL(url);
-
-                this.toastService.success('RGPD', 'Datos exportados correctamente');
-            },
-            error: (error: any) => {
-                console.error('Error exporting customer data:', error);
-                this.toastService.error('Error RGPD', 'No se pudieron exportar los datos del cliente');
-            }
-        });
-    }
-
-    // Create a consent request and show a shareable link
-    sendConsentRequest(customer: Customer) {
-        if (!customer.email) {
-            this.toastService.error('Error', 'El cliente debe tener un email para solicitar consentimiento');
-            return;
-        }
-        this.gdprService.createConsentRequest(customer.id, customer.email, ['data_processing', 'marketing', 'analytics'], 'Gestión de consentimiento')
-            .subscribe({
-                next: ({ path }) => {
-                    const url = `${window.location.origin}${path}`;
-                    navigator.clipboard?.writeText(url);
-                    this.toastService.success('Enlace de consentimiento copiado al portapapeles', 'Consentimiento');
-                },
-                error: (err) => {
-                    console.error('Error creating consent request', err);
-                    this.toastService.error('No se pudo crear la solicitud de consentimiento', 'Error');
-                }
-            });
-    }
-
-    // Anonymize customer data (GDPR erasure)
-    anonymizeCustomer(customer: Customer) {
-        // ✅ Verificar si ya está anonimizado
-        if (this.isCustomerAnonymized(customer)) {
-            this.toastService.warning('RGPD', 'Este cliente ya ha sido anonimizado');
-            return;
-        }
-
-        const confirmMessage = `¿Estás seguro de que quieres anonimizar los datos de ${customer.name} ${customer.apellidos}?\n\nEsta acción es irreversible y cumple con el derecho al olvido del RGPD.`;
-
-        if (!confirm(confirmMessage)) {
-            return;
-        }
-
-        // ✅ Cerrar la tarjeta GDPR inmediatamente
-        this.flippedCardId.set(null);
-
-        this.gdprService.anonymizeClientData(customer.id, 'gdpr_erasure_request').subscribe({
-            next: (result: any) => {
-                if (result.success) {
-                    // ✅ Actualizar el cliente localmente primero (para feedback inmediato)
-                    const currentCustomers = this.customers();
-                    const updatedCustomers = currentCustomers.map(c => {
-                        if (c.id === customer.id) {
-                            return {
-                                ...c,
-                                name: 'ANONYMIZED_' + Math.random().toString(36).substr(2, 8),
-                                apellidos: 'ANONYMIZED_' + Math.random().toString(36).substr(2, 8),
-                                email: 'anonymized.' + Math.random().toString(36).substr(2, 8) + '@anonymized.local',
-                                phone: '',
-                                dni: '',
-                                anonymized_at: new Date().toISOString()
-                            } as Customer;
-                        }
-                        return c;
-                    });
-                    this.customers.set(updatedCustomers);
-
-                    // ✅ Forzar detección de cambios de Angular
-                    this.cdr.detectChanges();
-
-                    // ✅ Recargar datos reales de Supabase después de un momento
-                    setTimeout(() => {
-                        this.loadData();
-                        this.loadGdprData();
-                        this.toastService.success('RGPD', 'Cliente anonimizado y ocultado de la lista');
-                    }, 500);
-                } else {
-                    this.toastService.error('Error RGPD', result.error || 'No se pudieron anonimizar los datos');
-                }
-            },
-            error: (error: any) => {
-                console.error('Error anonymizing customer:', error);
-                this.toastService.error('Error RGPD', 'No se pudieron anonimizar los datos del cliente');
-            }
-        });
-    }
 
     // Open GDPR modal for comprehensive management
     openGdprModal(customer: Customer): void {
-        this.gdprModalClient.set(customer);
-        this.showGdprModal.set(true);
-        // Close the flipped card
-        this.flippedCardId.set(null);
+        // Navigate to the full GDPR Customer Manager, pre-filtering by this customer
+        this.router.navigate(['/clientes-gdpr'], {
+            queryParams: { search: customer.email }
+        });
     }
 
-    // Close GDPR modal
-    closeGdprModal(): void {
-        this.showGdprModal.set(false);
-        this.gdprModalClient.set(null);
-        // Refresh data after modal closes
-        this.loadData();
-        this.loadGdprData();
-    }
+    // Modal methods removed as we navigate to full view
 
-    // Flip card to show GDPR menu
-    flipCardToGdpr(event: Event, customerId: string) {
-        event.stopPropagation();
-        this.flippedCardId.set(customerId);
-    }
 
-    // Close GDPR card and flip back to customer info
-    closeGdprCard(event: Event) {
-        event.stopPropagation();
-        this.flippedCardId.set(null);
-    }
+
 
     // Check if customer is already anonymized
     isCustomerAnonymized(customer: Customer): boolean {
@@ -1030,44 +868,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
 
     // Pending Rectification Requests Logic
-    pendingRectifications = signal<Set<string>>(new Set());
 
-    loadGdprData() {
-        // Load compliance stats - Use getComplianceDashboard instead of getComplianceStats
-        this.gdprService.getComplianceDashboard().subscribe(stats => {
-            this.complianceStats.set(stats);
-        });
-
-        // Load pending rectification requests to control "Edit" button visibility
-        // Access 'accessRequests' from the dashboard stats or fetch separate if needed.
-        // Assuming getAccessRequests exists (as used in other components) or deriving from dashboard if it returns list.
-        // Based on service review, getComplianceDashboard returns counts. We need the list.
-        // Let's use getAuditLog or verify getAccessRequests Exists.
-        // Wait, step 17560 line 85 shows createAccessRequest. I didn't see getAccessRequests in the snippet.
-        // But GdprCustomerManager uses it. Let's assume it exists or use getComplianceDashboard if it includes data.
-        // Re-reading service (17570) - getComplianceDashboard returns counts and filtered lists in 'pendingAccessRequests' (count).
-        // It does not return the full list in the mapped response (just counts).
-        // I need to fetch the actual requests.
-
-        // Let's assume getAccessRequests exists as inferred from other usage, otherwise I will use supabase client directly here for speed or verify service again.
-        // Actually, looking at GdprCustomerManager (Step 17524), it uses this.gdprService.getAccessRequests().
-        this.gdprService.getAccessRequests().subscribe((requests: GdprAccessRequest[]) => {
-            if (requests) {
-                const rectificationEmails = new Set<string>();
-                requests.forEach(req => {
-                    // Use processing_status
-                    if (req.request_type === 'rectification' && (req.processing_status === 'received' || req.processing_status === 'in_progress')) {
-                        rectificationEmails.add(req.subject_email);
-                    }
-                });
-                this.pendingRectifications.set(rectificationEmails);
-            }
-        });
-    }
-
-    hasPendingRectification(customer: Customer): boolean {
-        return this.pendingRectifications().has(customer.email);
-    }
 
     // Avatar gradient generator - consistent hash-based color selection
     getAvatarGradient(customer: Customer): string {
@@ -1136,45 +937,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     }
 
     // Load GDPR compliance statistics
-    async loadComplianceStats() {
-        try {
-            // Simple mock stats for now - can be enhanced later
-            this.complianceStats.set({
-                accessRequestsCount: 5,
-                activeConsentsCount: this.customers().filter(c => c.marketing_consent_date).length,
-                pendingRequestsCount: 2,
-                overdueRequestsCount: 0
-            });
-        } catch (error) {
-            console.error('Error loading compliance stats:', error);
-        }
-    }
 
-    // Export compliance report
-    async exportComplianceReport() {
-        try {
-            const stats = this.complianceStats();
-            const reportData = {
-                generatedAt: new Date().toISOString(),
-                totalCustomers: this.customers().length,
-                customersWithConsent: this.customers().filter(c => c.marketing_consent_date).length,
-                complianceStats: stats
-            };
-
-            const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `gdpr-compliance-report-${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-
-            this.toastService.success('Éxito', 'Informe de cumplimiento GDPR exportado');
-        } catch (error) {
-            console.error('Error exporting compliance report:', error);
-            this.toastService.error('Error', 'No se pudo exportar el informe');
-        }
-    }
 
     // Prevent Escape key from closing the customer modal unintentionally.
     // Some global handlers may close modals on Escape; intercept it while our modal is open.
