@@ -144,6 +144,42 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                 <svg class="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
               </button>
 
+              <!-- Consent Invitation Management -->
+              <div class="pt-4 mt-4 border-t border-gray-100 dark:border-gray-700">
+                <h5 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Gestión de Invitación</h5>
+                
+                <div class="flex flex-col gap-3">
+                  <!-- Status Indicator -->
+                  <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-600 dark:text-gray-400">Estado:</span>
+                    <span [ngClass]="{
+                      'bg-gray-100 text-gray-600': invitationStatus === 'not_sent',
+                      'bg-blue-100 text-blue-700': invitationStatus === 'sent',
+                      'bg-yellow-100 text-yellow-700': invitationStatus === 'opened',
+                      'bg-green-100 text-green-700': invitationStatus === 'completed'
+                    }" class="px-2 py-0.5 rounded-full text-xs font-medium uppercase">
+                      {{ getInvitationStatusLabel(invitationStatus) }}
+                    </span>
+                  </div>
+                  
+                  <div *ngIf="invitationSentAt" class="text-xs text-gray-500">
+                    Enviado: {{ formatDate(invitationSentAt) }}
+                  </div>
+
+                  <!-- Send/Resend Button -->
+                  <button 
+                    (click)="sendInvite()"
+                    [disabled]="sendingInvite"
+                    class="w-full flex items-center justify-center gap-2 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg *ngIf="!sendingInvite" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    <svg *ngIf="sendingInvite" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    
+                    <span *ngIf="invitationStatus === 'not_sent'">Enviar Invitación</span>
+                    <span *ngIf="invitationStatus !== 'not_sent'">Reenviar Invitación</span>
+                  </button>
+                </div>
+              </div>
+
               <!-- Admin Rights Actions (Available to ALL now) -->
                 
                 <!-- Rectificar -->
@@ -321,6 +357,11 @@ export class ClientGdprPanelComponent implements OnInit {
   lastConsentUpdate: string = '';
   retentionPeriodYears: number = 7; // Default by strict fiscal laws
 
+  // Invitation Status
+  invitationStatus: 'not_sent' | 'sent' | 'opened' | 'completed' = 'not_sent';
+  invitationSentAt: string | null = null;
+  sendingInvite: boolean = false;
+
   // Estado general
   loading: boolean = true;
   updatingConsent: boolean = false;
@@ -369,28 +410,56 @@ export class ClientGdprPanelComponent implements OnInit {
     this.loading = true;
     this.error = '';
 
-    this.gdprService.getConsentRecords(this.clientEmail).subscribe({
-      next: (records) => {
-        const marketingRecord = records.find(r => r.consent_type === 'marketing');
-        const dataProcessingRecord = records.find(r => r.consent_type === 'data_processing');
+    // Load current GDPR status from clients table (includes invitation status)
+    this.gdprService.getClientGdprStatus(this.clientId).subscribe({
+      next: (status) => {
+        if (status) {
+          this.marketingConsent = status.marketing_consent;
+          this.invitationStatus = status.invitation_status || 'not_sent';
+          this.invitationSentAt = status.invitation_sent_at;
+          this.dataProcessingConsent = status.consent_status === 'accepted';
 
-        this.marketingConsent = marketingRecord ? marketingRecord.consent_given : false;
-        this.dataProcessingConsent = dataProcessingRecord ? dataProcessingRecord.consent_given : false;
-
-        const latestRecord = records.reduce((prev, current) => {
-          const currentDate = current.created_at ? new Date(current.created_at) : new Date(0);
-          const prevDate = prev.created_at ? new Date(prev.created_at) : new Date(0);
-          return (currentDate > prevDate) ? current : prev;
-        }, records[0]);
-
-        this.lastConsentUpdate = latestRecord?.created_at ? this.formatDate(latestRecord.created_at) : 'Nunca';
+          if (status.consent_date) {
+            this.lastConsentUpdate = this.formatDate(status.consent_date);
+          } else if (status.invitation_sent_at) {
+            this.lastConsentUpdate = 'Invitación enviada';
+          } else {
+            this.lastConsentUpdate = 'Nunca';
+          }
+        }
         this.loading = false;
       },
       error: (err) => {
-        this.error = 'Error al cargar el estado de consentimientos: ' + err.message;
+        console.error('Error loading GDPR status', err);
+        this.error = 'Error cargando estado GDPR';
         this.loading = false;
       }
     });
+  }
+
+  sendInvite() {
+    this.sendingInvite = true;
+    this.gdprService.sendConsentInvite(this.clientId).subscribe({
+      next: (res) => {
+        this.toastService.success('Invitación enviada correctamente.', 'Éxito');
+        this.sendingInvite = false;
+        this.loadConsentStatus(); // Refresh status
+      },
+      error: (err) => {
+        this.sendingInvite = false;
+        this.toastService.error(err.message || 'Error al enviar invitación', 'Error');
+      }
+    });
+  }
+
+  getInvitationStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      'not_sent': 'No enviada',
+      'sent': 'Enviada',
+      'opened': 'Abierta',
+      'completed': 'Completado'
+    };
+    return labels[status] || status;
   }
 
   // New private auth service injection needed in class property list
@@ -550,7 +619,7 @@ export class ClientGdprPanelComponent implements OnInit {
     // Optional: refresh logic if needed
   }
 
-  private formatDate(dateString: string): string {
+  formatDate(dateString: string): string {
     if (!dateString) return 'No disponible';
     try {
       return new Date(dateString).toLocaleDateString('es-ES', {

@@ -33,8 +33,19 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
   @Output() saved = new EventEmitter<void>();
 
   // UI State
-  // UI State
-  activeTab: 'general' | 'address' | 'billing' | 'crm' | 'contactos' = 'general';
+  // Wizard State
+  currentStep = 1;
+  totalSteps = 4;
+  maxStepReached = 1;
+  completedSteps: number[] = [];
+
+  // Step Titles
+  stepTitles = [
+    { step: 1, title: 'Datos Principales', icon: 'fas fa-user', description: 'Identificación y contacto' },
+    { step: 2, title: 'Dirección', icon: 'fas fa-map-marker-alt', description: 'Ubicación física' },
+    { step: 3, title: 'Facturación', icon: 'fas fa-file-invoice-dollar', description: 'Datos fiscales y pago' },
+    { step: 4, title: 'CRM y Contactos', icon: 'fas fa-chart-line', description: 'Estado y equipo' }
+  ];
 
   // Services
   private customersService = inject(SupabaseCustomersService);
@@ -98,6 +109,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
 
   // Billing Security
   showIban = signal(false);
+
+  // Validation Signals
+  dniError = signal<string>('');
+  ibanError = signal<string>('');
+  emailError = signal<string>('');
 
   toggleIban() {
     const newState = !this.showIban();
@@ -423,40 +439,120 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       credit_limit: 0,
       default_discount: 0,
       tier: 'C',
-      contacts: [],
+      contacts: [], // Reset contacts
 
       honeypot: ''
     };
+    this.contactList = []; // Also reset local contact list
+    this.contactsToDelete = [];
     this.addressLocalityName = '';
-    this.activeTab = 'general';
+
+    // Reset wizard
+    this.currentStep = 1;
+    this.maxStepReached = 1;
+    this.completedSteps = [];
+
+    // Reset errors
+    this.dniError.set('');
+    this.ibanError.set('');
+    this.emailError.set('');
   }
 
-  // Tab Switching
-  setTab(tab: 'general' | 'address' | 'billing' | 'crm' | 'contactos') {
-    if (this.activeTab === tab) return;
+  // Wizard Navigation
 
-    // 1. Measure current height
-    const currentH = this.tabContentContainer?.nativeElement?.offsetHeight;
-    if (currentH) {
-      this.contentHeight = currentH;
+  validateStep(step: number): boolean {
+    switch (step) {
+      case 1: // Identity
+        if (this.formData.client_type === 'individual') {
+          if (!this.formData.name || !this.formData.apellidos) {
+            this.toastService.error('Faltan datos', 'Nombre y Apellidos son obligatorios');
+            return false;
+          }
+        } else {
+          if (!this.formData.business_name || !this.formData.cif_nif) {
+            this.toastService.error('Faltan datos', 'Razón Social y CIF/NIF son obligatorios');
+            return false;
+          }
+        }
+        // Common
+        if (!this.formData.email) {
+          this.toastService.error('Faltan datos', 'El email es obligatorio');
+          return false;
+        }
+        // Basic Email validation
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formData.email)) {
+          this.toastService.error('Datos inválidos', 'El formato del email no es correcto');
+          return false;
+        }
+        return true;
+
+      case 2: // Address
+        // Address is usually optional, but if partially filled, validate? 
+        // For now, let's treat it as optional or enforce at least specific fields if any is filled.
+        // Rule: If 'Name' or 'Type' is filled, Locality/CP is recommended? 
+        // Let's keep it lenient unless business rules require address.
+        return true;
+
+      case 3: // Billing
+        // Validate IBAN if provided
+        if (this.formData.iban) {
+          // Remove spaces
+          const iban = this.formData.iban.replace(/\s/g, '').toUpperCase();
+          // Basic length check (Spain is 24)
+          if (iban.length < 15 || iban.length > 34) {
+            this.toastService.error('IBAN Inválido', 'La longitud del IBAN no parece correcta');
+            return false;
+          }
+          // Add proper mod97 check if needed, for now basic format
+          if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{1,30}$/.test(iban)) {
+            this.toastService.error('IBAN Inválido', 'El formato del IBAN no es correcto');
+            return false;
+          }
+        }
+        return true;
+
+      case 4: // CRM - No mandatory fields here yet
+        return true;
+
+      default:
+        return true;
     }
+  }
 
-    this.activeTab = tab;
-
-    // 2. Wait for CD and measure new height
-    this.cdr.detectChanges(); // Force update to render new tab content
-
-    requestAnimationFrame(() => {
-      const newH = this.tabContentContainer?.nativeElement?.scrollHeight;
-      if (newH) {
-        this.contentHeight = newH; // Trigger transition
+  nextStep() {
+    if (this.validateStep(this.currentStep)) {
+      if (this.currentStep < this.totalSteps) {
+        if (!this.completedSteps.includes(this.currentStep)) {
+          this.completedSteps.push(this.currentStep);
+        }
+        this.currentStep++;
+        if (this.currentStep > this.maxStepReached) {
+          this.maxStepReached = this.currentStep;
+        }
+        this.scrollToTop();
       }
+    }
+  }
 
-      // 3. Reset to auto after transition ends
-      setTimeout(() => {
-        this.contentHeight = 'auto'; // Allow dynamic growth
-      }, 300);
-    });
+  prevStep() {
+    if (this.currentStep > 1) {
+      this.currentStep--;
+      this.scrollToTop();
+    }
+  }
+
+  goToStep(step: number) {
+    if (step <= this.maxStepReached) { // Allow navigation only to reached steps
+      this.currentStep = step;
+      this.scrollToTop();
+    }
+  }
+
+  private scrollToTop() {
+    // Small delay to allow View transition
+    setTimeout(() => {
+      this.tabContentContainer?.nativeElement?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   }
 
   // Client Type Helpers
@@ -506,6 +602,47 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       return nameMatch || cpMatch;
     });
     this.localityDropdownOpen = this.filteredLocalities.length > 0;
+  }
+
+  // Validation Helpers
+  validateDni() {
+    const dni = this.formData.dni;
+    if (!dni) {
+      this.dniError.set('');
+      return;
+    }
+    // Basic NIF/NIE Regex (Spain)
+    // X1234567L, 12345678Z, Y1234567P
+    const valid = /^[XYZ\d]\d{7,8}[A-Z]$/i.test(dni);
+    this.dniError.set(valid ? '' : 'Formato de DNI/NIE inválido');
+  }
+
+  validateEmail() {
+    const email = this.formData.email;
+    if (!email) {
+      this.emailError.set('');
+      return;
+    }
+    const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    this.emailError.set(valid ? '' : 'Email inválido');
+  }
+
+  validateIban() {
+    const iban = this.formData.iban;
+    if (!iban) {
+      this.ibanError.set('');
+      return;
+    }
+    const cleanIban = iban.replace(/\s/g, '').toUpperCase();
+    if (cleanIban.length < 15 || cleanIban.length > 34) {
+      this.ibanError.set('Longitud incorrecta');
+      return;
+    }
+    if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{1,30}$/.test(cleanIban)) {
+      this.ibanError.set('Formato inválido');
+      return;
+    }
+    this.ibanError.set('');
   }
 
   selectLocality(loc: Locality) {
