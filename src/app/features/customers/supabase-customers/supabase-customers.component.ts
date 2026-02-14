@@ -48,9 +48,8 @@ interface CustomerViewModel extends Customer {
         CommonModule,
         FormsModule,
         SkeletonComponent,
-        // ClientGdprModalComponent, // Removed as it is unused and causes build warning
-        OverlayModule,
-        FormNewCustomerComponent
+        FormNewCustomerComponent,
+        OverlayModule
     ],
     templateUrl: './supabase-customers.component.html',
     styleUrls: ['./supabase-customers.component.scss'],
@@ -134,11 +133,21 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     sortBy = signal<'name' | 'apellidos' | 'created_at'>('name'); // Default to name
     sortOrder = signal<'asc' | 'desc'>('asc'); // Default to asc for alphabetical
 
+    // New Signals
+    viewMode = signal<'grid' | 'table'>('grid');
+    filterIndustry = signal<string>('');
+    filterStatus = signal<string>('');
+    filterDateFrom = signal<string>('');
+    filterDateTo = signal<string>('');
+    showAdvancedFilters = signal(false);
+
     // Tag Filter
     availableTags = signal<GlobalTag[]>([]);
     selectedTagId = signal<string>('ALL'); // 'ALL' or tag UUID
+    tagColors = signal<Map<string, string>>(new Map()); // Map tagName -> color
 
-
+    // Bulk selection
+    selectedCustomers = signal<Set<string>>(new Set());
 
     // UI filter toggle for incomplete imports (Removed from UI, logic deprecated)
     onlyIncomplete: boolean = false;
@@ -507,6 +516,62 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     loadTags() {
         this.tagsService.getTags('clients').subscribe(tags => {
             this.availableTags.set(tags);
+            // Create color map
+            const colorMap = new Map<string, string>();
+            tags.forEach(t => colorMap.set(t.name, t.color));
+            this.tagColors.set(colorMap);
+        });
+    }
+
+    getTagColor(tagName: string): string {
+        return this.tagColors().get(tagName) || '#e5e7eb'; // Default gray
+    }
+
+    // Bulk Actions
+    toggleSelection(id: string) {
+        const current = new Set(this.selectedCustomers());
+        if (current.has(id)) {
+            current.delete(id);
+        } else {
+            current.add(id);
+        }
+        this.selectedCustomers.set(current);
+    }
+
+    toggleAllSelection() {
+        const current = this.selectedCustomers();
+        const all = this.filteredCustomers();
+        if (current.size === all.length) {
+            this.selectedCustomers.set(new Set());
+        } else {
+            const newSet = new Set<string>();
+            all.forEach(c => newSet.add(c.id));
+            this.selectedCustomers.set(newSet);
+        }
+    }
+
+    deleteSelected() {
+        const count = this.selectedCustomers().size;
+        if (count === 0) return;
+
+        if (!confirm(`¿Estás seguro de eliminar ${count} clientes seleccionados?`)) return;
+
+        const ids = Array.from(this.selectedCustomers());
+        // For now, sequentially delete (or use a bulk RPC if available)
+        // Since we don't have bulk delete RPC exposed in service yet, let's just log or implement loops.
+        // Actually, we should probably implement bulk delete in service, but for now loop is fine for MVP.
+        let deleted = 0;
+        ids.forEach(id => {
+            this.customersService.deleteCustomer(id).subscribe({
+                next: () => {
+                    deleted++;
+                    if (deleted === count) {
+                        this.toastService.success(`Se han eliminado ${count} clientes.`, 'Éxito');
+                        this.selectedCustomers.set(new Set());
+                        this.loadCustomers();
+                    }
+                }
+            });
         });
     }
 
@@ -522,11 +587,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     }
 
     onFiltersChange() {
-        const filters: CustomerFilters = {
-            sortBy: this.sortBy(),
-            sortOrder: this.sortOrder()
-        };
-        this.customersService.getCustomers(filters).subscribe();
+        this.loadCustomers(); // Uses the updated loadCustomers method
     }
 
     // Customer actions
@@ -637,7 +698,27 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     // Wrapper for template access to refresh service data upon GDPR updates
     loadCustomers() {
-        this.customersService.loadCustomers();
+        // Pass all current filters to the service
+        this.customersService.getCustomers({
+            search: this.searchTerm(),
+            sortBy: this.sortBy(),
+            sortOrder: this.sortOrder(),
+            industry: this.filterIndustry() || undefined,
+            status: this.filterStatus() || undefined,
+            dateFrom: this.filterDateFrom() || undefined,
+            dateTo: this.filterDateTo() || undefined,
+            showDeleted: false // Or add a toggle for this if needed
+        }).subscribe({
+            next: (customers) => {
+                this.customers.set(customers);
+                this.refreshPortalAccess();
+            },
+            error: (err) => console.error('Error loading customers:', err)
+        });
+    }
+
+    toggleViewMode() {
+        this.viewMode.set(this.viewMode() === 'grid' ? 'table' : 'grid');
     }
 
     async deleteCustomer(customer: Customer) {
@@ -660,7 +741,12 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
 
     clearFilters() {
         this.searchTerm.set('');
-        this.onSearchChange('');
+        this.selectedTagId.set('ALL');
+        this.filterIndustry.set('');
+        this.filterStatus.set('');
+        this.filterDateFrom.set('');
+        this.filterDateTo.set('');
+        this.loadCustomers();
     }
 
     // Utility methods

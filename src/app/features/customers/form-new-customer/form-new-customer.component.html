@@ -17,45 +17,38 @@
             </button>
         </div>
 
-        <!-- TABS HEADER -->
-        <div class="border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 px-6">
-            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                <button (click)="setTab('general')"
-                    [class]="activeTab === 'general' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'"
-                    class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 outline-none">
-                    <i class="fas fa-user mr-2" [class.text-primary-500]="activeTab==='general'"
-                        [class.dark:text-primary-400]="activeTab==='general'"></i>
-                    General
-                </button>
-                <button (click)="setTab('address')"
-                    [class]="activeTab === 'address' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'"
-                    class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 outline-none">
-                    <i class="fas fa-map-marker-alt mr-2" [class.text-primary-500]="activeTab==='address'"
-                        [class.dark:text-primary-400]="activeTab==='address'"></i>
-                    Dirección
-                </button>
-                <button (click)="setTab('billing')"
-                    [class]="activeTab === 'billing' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'"
-                    class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 outline-none">
-                    <i class="fas fa-file-invoice-dollar mr-2" [class.text-primary-500]="activeTab==='billing'"
-                        [class.dark:text-primary-400]="activeTab==='billing'"></i>
-                    Facturación
-                </button>
-                <button (click)="setTab('crm')"
-                    [class]="activeTab === 'crm' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'"
-                    class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 outline-none">
-                    <i class="fas fa-chart-line mr-2" [class.text-primary-500]="activeTab==='crm'"
-                        [class.dark:text-primary-400]="activeTab==='crm'"></i>
-                    CRM
-                </button>
-                <button (click)="setTab('contactos')"
-                    [class]="activeTab === 'contactos' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'"
-                    class="group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200 outline-none">
-                    <i class="fas fa-users mr-2" [class.text-primary-500]="activeTab==='contactos'"
-                        [class.dark:text-primary-400]="activeTab==='contactos'"></i>
-                    Contactos
-                </button>
-            </nav>
+        <!-- WIZARD STEPPER -->
+        <div class="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-between relative">
+                <!-- Connecting Line -->
+                <div
+                    class="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-gray-200 dark:bg-gray-700 -z-0">
+                </div>
+                <div class="absolute left-0 top-1/2 transform -translate-y-1/2 h-1 bg-primary-500 transition-all duration-500 ease-in-out -z-0"
+                    [style.width.%]="(currentStep - 1) / (totalSteps - 1) * 100"></div>
+
+                <!-- Steps -->
+                <div *ngFor="let step of stepTitles"
+                    class="relative z-10 flex flex-col items-center cursor-pointer group" (click)="goToStep(step.step)">
+
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center border-4 transition-all duration-300 bg-white dark:bg-gray-800"
+                        [class.border-primary-500]="currentStep >= step.step"
+                        [class.border-gray-300]="currentStep < step.step"
+                        [class.dark:border-gray-600]="currentStep < step.step"
+                        [class.text-primary-600]="currentStep >= step.step"
+                        [class.text-gray-400]="currentStep < step.step">
+
+                        <i class="fas" [class.fa-check]="currentStep > step.step"
+                            [class]="currentStep > step.step ? 'fa-check' : step.icon"></i>
+                    </div>
+
+                    <span class="mt-2 text-xs font-semibold uppercase tracking-wider transition-colors duration-300"
+                        [class.text-primary-600]="currentStep >= step.step"
+                        [class.text-gray-400]="currentStep < step.step">
+                        {{ step.title }}
+                    </span>
+                </div>
+            </div>
         </div>
 
         <!-- FORM BODY -->
@@ -69,7 +62,7 @@
                     <div #tabContentContainer class="space-y-6 pb-40">
 
                         <!-- TAB: GENERAL -->
-                        <div *ngIf="activeTab === 'general'" class="space-y-6 animate-fadeIn">
+                        <div *ngIf="currentStep === 1" class="space-y-6 animate-fadeIn">
                             <div class="form-row grid grid-cols-2 gap-6">
                                 <!-- Client Type Selector -->
                                 <div class="form-group client-type-dropdown-container col-span-2">
@@ -122,8 +115,11 @@
                                             <label
                                                 class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">DNI/NIF</label>
                                             <input type="text" name="dni" [(ngModel)]="formData.dni"
+                                                (blur)="validateDni()" [class.border-red-500]="dniError()"
                                                 class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                                 placeholder="12345678Z">
+                                            <p *ngIf="dniError()" class="text-xs text-red-500 mt-1 animate-fadeIn">{{
+                                                dniError() }}</p>
                                         </div>
                                     </ng-container>
 
@@ -162,8 +158,11 @@
                                             class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email
                                             *</label>
                                         <input type="email" name="email" [(ngModel)]="formData.email" required
+                                            (blur)="validateEmail()" [class.border-red-500]="emailError()"
                                             class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                                             placeholder="correo@ejemplo.com">
+                                        <p *ngIf="emailError()" class="text-xs text-red-500 mt-1 animate-fadeIn">{{
+                                            emailError() }}</p>
                                     </div>
                                     <div class="form-group">
                                         <label
@@ -181,7 +180,7 @@
                         </div>
 
                         <!-- TAB: ADDRESS -->
-                        <div *ngIf="activeTab === 'address'" class="space-y-6 animate-fadeIn">
+                        <div *ngIf="currentStep === 2" class="space-y-6 animate-fadeIn">
                             <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Dirección principal para envíos y
                                 facturación.</p>
 
@@ -268,7 +267,7 @@
                         </div>
 
                         <!-- TAB: BILLING -->
-                        <div *ngIf="activeTab === 'billing'" class="space-y-6 animate-fadeIn">
+                        <div *ngIf="currentStep === 3" class="space-y-6 animate-fadeIn">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="form-group">
                                     <label
@@ -330,7 +329,8 @@
                                         class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IBAN</label>
                                     <div class="relative">
                                         <input [type]="showIban() ? 'text' : 'password'" name="iban"
-                                            [(ngModel)]="formData.iban"
+                                            [(ngModel)]="formData.iban" (blur)="validateIban()"
+                                            [class.border-red-500]="ibanError()"
                                             class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 font-mono pr-10"
                                             placeholder="ES00 0000 0000 0000 0000 0000">
                                         <button type="button" (click)="toggleIban()"
@@ -339,6 +339,8 @@
                                                 [class.fa-eye-slash]="showIban()"></i>
                                         </button>
                                     </div>
+                                    <p *ngIf="ibanError()" class="text-xs text-red-500 mt-1 animate-fadeIn">{{
+                                        ibanError() }}</p>
                                 </div>
 
                                 <div class="form-group">
@@ -365,8 +367,8 @@
                             </div>
                         </div>
 
-                        <!-- TAB: CRM -->
-                        <div *ngIf="activeTab === 'crm'" class="space-y-6 animate-fadeIn">
+                        <!-- TAB: CRM & CONTACTOS (Combined in Step 4) -->
+                        <div *ngIf="currentStep === 4" class="space-y-6 animate-fadeIn">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div class="form-group">
                                     <label
@@ -484,10 +486,12 @@
                             </div>
                         </div>
 
-                        <!-- DATA TABS CONTENT -->
-                        <!-- Added pb-40 to prevent dropdown clipping at the bottom -->
-                        <!-- TAB: CONTACTOS -->
-                        <div *ngIf="activeTab === 'contactos'" class="space-y-6 animate-fadeIn">
+                        <!-- CONTACTOS SECTION (Inside Step 4) -->
+                        <div class="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                <i class="fas fa-users text-primary-500"></i> Personas de Contacto
+                            </h3>
+
                             <div class="flex justify-between items-center mb-4">
                                 <p class="text-sm text-gray-500 dark:text-gray-400">Gestiona las personas de
                                     contacto
@@ -573,7 +577,7 @@
                         </div>
 
                     </div>
-                </div>
+                </div> <!-- End of Step 4 Container -->
             </form>
 
 
@@ -581,18 +585,28 @@
 
         <!-- FOOTER ACTIONS -->
         <div
-            class="modal-actions border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 rounded-b-xl flex justify-end gap-3">
-            <button type="button" (click)="closeForm()"
+            class="modal-actions border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 rounded-b-xl flex justify-between items-center">
+
+            <button type="button" (click)="currentStep === 1 ? closeForm() : prevStep()"
                 class="px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 font-medium transition-all">
-                Cancelar
+                {{ currentStep === 1 ? 'Cancelar' : 'Anterior' }}
             </button>
-            <button type="button" (click)="saveCustomer()"
-                class="px-6 py-2.5 rounded-lg text-white bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 focus:ring-2 focus:ring-blue-500 font-medium shadow-sm transition-all flex items-center gap-2"
-                [disabled]="isLoading()">
-                <i class="fas fa-save" *ngIf="!isLoading()"></i>
-                <i class="fas fa-spinner fa-spin" *ngIf="isLoading()"></i>
-                <span>{{ customer ? 'Actualizar Cliente' : 'Guardar Cliente' }}</span>
-            </button>
+
+            <div class="flex gap-3">
+                <button *ngIf="currentStep < totalSteps" type="button" (click)="nextStep()"
+                    class="px-6 py-2.5 rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 font-medium shadow-sm transition-all flex items-center gap-2">
+                    <span>Siguiente</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+
+                <button *ngIf="currentStep === totalSteps" type="button" (click)="saveCustomer()"
+                    class="px-6 py-2.5 rounded-lg text-white bg-green-600 hover:bg-green-700 focus:ring-2 focus:ring-green-500 font-medium shadow-sm transition-all flex items-center gap-2"
+                    [disabled]="isLoading()">
+                    <i class="fas fa-save" *ngIf="!isLoading()"></i>
+                    <i class="fas fa-spinner fa-spin" *ngIf="isLoading()"></i>
+                    <span>{{ customer ? 'Actualizar Cliente' : 'Guardar Cliente' }}</span>
+                </button>
+            </div>
         </div>
     </div>
 </div>

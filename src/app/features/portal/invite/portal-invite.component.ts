@@ -13,9 +13,19 @@ import { environment } from '../../../../environments/environment';
   template: `
   <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
     <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
-      <h1 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
-        {{ isStaff ? 'Configura tu Cuenta' : 'Portal de Clientes' }}
-      </h1>
+      
+      <!-- Branding Section -->
+      <div class="text-center mb-8">
+        <div *ngIf="companyLogoUrl" class="mb-4 flex justify-center">
+            <img [src]="companyLogoUrl" alt="Company Logo" class="h-16 w-auto object-contain">
+        </div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+          {{ companyNameDisplay || (isStaff ? 'Configura tu Cuenta' : 'Portal de Clientes') }}
+        </h1>
+        <p *ngIf="companyNameDisplay" class="text-gray-500 dark:text-gray-400 mt-2 text-sm">
+          Te ha invitado a unirte a su plataforma
+        </p>
+      </div>
       
       <div *ngIf="loading" class="text-center py-8">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
@@ -33,12 +43,17 @@ import { environment } from '../../../../environments/environment';
       <!-- Password setup form -->
       <div *ngIf="showPasswordForm" class="space-y-6">
         <div>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Crea tu contraseña para acceder al portal de clientes
+          <p class="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
+            Completa tus datos para finalizar el registro
           </p>
-          <p class="text-xs text-gray-500 dark:text-gray-500 mb-4">
-            Email: <strong>{{ userEmail }}</strong> <span class="badge bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs ml-2">{{ getRoleLabel(invitationData?.role) }}</span>
-          </p>
+          <div class="flex items-center justify-center gap-2 mb-4">
+               <span class="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full text-xs font-medium text-gray-600 dark:text-gray-300">
+                 {{ userEmail }}
+               </span>
+               <span class="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded-full text-xs font-medium border border-blue-200 dark:border-blue-800">
+                 {{ getRoleLabel(invitationData?.role) }}
+               </span>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -51,7 +66,7 @@ import { environment } from '../../../../environments/environment';
                [(ngModel)]="name"
                name="name"
                required
-               class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+               class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition-shadow"
                placeholder="Tu nombre"
                [disabled]="submitting"
              />
@@ -65,7 +80,7 @@ import { environment } from '../../../../environments/environment';
                [(ngModel)]="surname"
                name="surname"
                required
-               class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+               class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition-shadow"
                placeholder="Tus apellidos"
                [disabled]="submitting"
              />
@@ -89,18 +104,41 @@ import { environment } from '../../../../environments/environment';
            </div>
         </div>
 
-        <div>
+        <!-- Password Field with Toggle & Strength -->
+        <div class="relative">
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Contraseña
           </label>
-          <input 
-            type="password" 
-            [(ngModel)]="password"
-            (keyup.enter)="submitPassword()"
-            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-            placeholder="Mínimo 6 caracteres"
-            [disabled]="submitting"
-          />
+          <div class="relative">
+              <input 
+                [type]="showPassword ? 'text' : 'password'" 
+                [(ngModel)]="password"
+                (ngModelChange)="updatePasswordStrength()"
+                (keyup.enter)="submitPassword()"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white pr-10 transition-shadow"
+                placeholder="Mínimo 6 caracteres"
+                [disabled]="submitting"
+              />
+              <button 
+                type="button" 
+                (click)="togglePasswordVisibility()"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
+              >
+                <span class="material-icons-outlined text-lg" style="font-family: Arial, sans-serif; font-size: 1.2rem;">
+                    {{ showPassword ? '👁️' : '🔒' }}
+                </span>
+              </button>
+          </div>
+          
+          <!-- Strength Meter -->
+          <div class="mt-2 h-1 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden" *ngIf="password">
+              <div 
+                class="h-full transition-all duration-300 ease-in-out" 
+                [ngClass]="strengthClass"
+                [style.width.%]="strengthPercent"
+              ></div>
+          </div>
+          <p class="text-xs mt-1 text-right" [ngClass]="strengthTextClass" *ngIf="password">{{ strengthLabel }}</p>
         </div>
 
         <div>
@@ -108,10 +146,10 @@ import { environment } from '../../../../environments/environment';
             Confirmar contraseña
           </label>
           <input 
-            type="password" 
+            [type]="showPassword ? 'text' : 'password'" 
             [(ngModel)]="passwordConfirm"
             (keyup.enter)="submitPassword()"
-            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+            class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white transition-shadow"
             placeholder="Repite la contraseña"
             [disabled]="submitting"
           />
@@ -119,45 +157,46 @@ import { environment } from '../../../../environments/environment';
 
         <!-- GDPR Consent (Only for Clients and Owners) -->
         <div class="space-y-3 pt-2" *ngIf="!isStaff">
-            <div class="flex items-start gap-3">
+            <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700">
                 <div class="flex items-center h-5">
                     <input id="privacy" type="checkbox" [(ngModel)]="privacyAccepted" name="privacy" required
                         class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
                 </div>
-                <div class="ml-1 text-sm">
-                    <label for="privacy" class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                        He leído y acepto la <a href="/privacy-policy" target="_blank" class="text-indigo-600 hover:text-indigo-500 underline">política de privacidad</a> *
+                <div class="ml-2 text-sm">
+                    <label for="privacy" class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                        He leído y acepto la <a href="/privacy-policy" target="_blank" class="text-indigo-600 hover:text-indigo-500 underline font-semibold">política de privacidad</a> <span class="text-red-500">*</span>
                     </label>
                 </div>
             </div>
 
-            <div class="flex items-start gap-3">
+            <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700">
                 <div class="flex items-center h-5">
                     <input id="marketing" type="checkbox" [(ngModel)]="marketingAccepted" name="marketing"
                         class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
                 </div>
-                <div class="ml-1 text-sm">
-                    <label for="marketing" class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                <div class="ml-2 text-sm">
+                    <label for="marketing" class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
                         Acepto recibir comunicaciones comerciales
                     </label>
                 </div>
             </div>
         </div>
 
-        <div *ngIf="passwordError" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-          <p class="text-sm text-red-800 dark:text-red-200">{{ passwordError }}</p>
+        <div *ngIf="passwordError" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-start gap-2">
+          <span class="text-red-500">⚠️</span>
+          <p class="text-sm text-red-800 dark:text-red-200 font-medium">{{ passwordError }}</p>
         </div>
 
         <button 
           (click)="submitPassword()"
           [disabled]="submitting || !password || !passwordConfirm || !name || !surname || (!privacyAccepted && !isStaff)"
-          class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+          class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:translate-y-0"
         >
-          {{ submitting ? 'Creando cuenta...' : 'Crear cuenta' }}
+          {{ submitting ? 'Creando cuenta...' : 'Crear Cuenta' }}
         </button>
 
-        <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-4">
-          Después de crear tu contraseña, podrás iniciar sesión en el portal
+        <p class="text-xs text-center text-gray-500 dark:text-gray-400 mt-6">
+          Al crear la cuenta aceptas nuestros términos de servicio.
         </p>
       </div>
     </div>
@@ -192,6 +231,17 @@ export class PortalInviteComponent {
   showPasswordForm = false;
   userEmail = '';
 
+  // Branding
+  companyNameDisplay: string | null = null;
+  companyLogoUrl: string | null = null;
+
+  // Password UI
+  showPassword = false;
+  strengthPercent = 0;
+  strengthLabel = '';
+  strengthClass = 'bg-gray-200';
+  strengthTextClass = 'text-gray-400';
+
   invitationToken = '';
   invitationData: any = null;
 
@@ -220,6 +270,42 @@ export class PortalInviteComponent {
 
   constructor() {
     this.handle();
+  }
+
+  togglePasswordVisibility() {
+    this.showPassword = !this.showPassword;
+  }
+
+  updatePasswordStrength() {
+    const p = this.password;
+    let score = 0;
+    if (!p) {
+      this.strengthPercent = 0;
+      this.strengthLabel = '';
+      return;
+    }
+
+    if (p.length > 5) score += 20;
+    if (p.length > 8) score += 20;
+    if (/[A-Z]/.test(p)) score += 20;
+    if (/[0-9]/.test(p)) score += 20;
+    if (/[^A-Za-z0-9]/.test(p)) score += 20;
+
+    this.strengthPercent = score;
+
+    if (score < 40) {
+      this.strengthLabel = 'Débil';
+      this.strengthClass = 'bg-red-500';
+      this.strengthTextClass = 'text-red-500';
+    } else if (score < 80) {
+      this.strengthLabel = 'Buena';
+      this.strengthClass = 'bg-yellow-500';
+      this.strengthTextClass = 'text-yellow-600';
+    } else {
+      this.strengthLabel = 'Fuerte';
+      this.strengthClass = 'bg-green-500';
+      this.strengthTextClass = 'text-green-600';
+    }
   }
 
   private handle = async () => {
@@ -267,6 +353,7 @@ export class PortalInviteComponent {
           this.invitationToken = invData.token;
           this.invitationData = invData;
           this.userEmail = invData.email;
+          this.loadBranding(invData.company_id);
           this.loading = false;
           this.showPasswordForm = true;
           return;
@@ -290,8 +377,27 @@ export class PortalInviteComponent {
 
     this.invitationData = invData;
     this.userEmail = invData.email;
+    this.loadBranding(invData.company_id);
     this.loading = false;
     this.showPasswordForm = true;
+  }
+
+  private async loadBranding(companyId: string) {
+    if (!companyId) return;
+    try {
+      const { data, error } = await this.auth.client
+        .from('companies')
+        .select('name, logo_url')
+        .eq('id', companyId)
+        .maybeSingle();
+
+      if (!error && data) {
+        this.companyNameDisplay = data.name;
+        this.companyLogoUrl = data.logo_url;
+      }
+    } catch (e) {
+      console.warn('Could not load company branding');
+    }
   }
 
   private async getInvitationByEmail(email: string): Promise<any> {

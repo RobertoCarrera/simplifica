@@ -645,8 +645,58 @@ export class GdprComplianceService {
   }
 
   // ========================================
-  // DATA VALIDATION AND SECURITY
+  // CONSENT INVITATIONS AND STATUS (NEW GDPR FLOW)
   // ========================================
+
+  /**
+   * Get current GDPR status from clients table
+   */
+  getClientGdprStatus(clientId: string): Observable<any> {
+    const companyId = this.authService.companyId();
+    if (!companyId) return throwError(() => new Error('No company assigned'));
+
+    return from(
+      this.supabase
+        .from('clients')
+        .select('id, consent_status, marketing_consent, invitation_status, invitation_sent_at, consent_date')
+        .eq('id', clientId)
+        .eq('company_id', companyId) // Security check
+        .single()
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return data;
+      }),
+      catchError(error => {
+        console.error('Error fetching client GDPR status:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Send consent invitation email via Edge Function
+   */
+  sendConsentInvite(clientId: string): Observable<any> {
+    return from(
+      this.supabase.functions.invoke('send-client-consent-invite', {
+        body: { clientId }
+      })
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return data; // { success: true, message: ... }
+      }),
+      tap(() => {
+        // Log the action? The Edge Function updates DB, which triggers audit log if configured.
+        // We can also log explicit action from frontend if needed, but backend is safer.
+      }),
+      catchError(error => {
+        console.error('Error sending consent invite:', error);
+        return throwError(() => error);
+      })
+    );
+  }
 
   /**
    * Validate if user has sufficient permissions for GDPR operations

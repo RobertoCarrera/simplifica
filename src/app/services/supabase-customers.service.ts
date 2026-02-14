@@ -16,7 +16,12 @@ export interface CustomerFilters {
   sortOrder?: 'asc' | 'desc';
   limit?: number;
   offset?: number;
-  showDeleted?: boolean; // New filter
+  showDeleted?: boolean;
+  // New filters
+  industry?: string;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 export interface CustomerStats {
@@ -203,6 +208,23 @@ export class SupabaseCustomersService {
       query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
     }
 
+    // Filtros Adicionales
+    if (filters.industry) {
+      query = query.eq('industry', filters.industry);
+    }
+
+    if (filters.status) {
+      query = query.eq('status', filters.status);
+    }
+
+    if (filters.dateFrom) {
+      query = query.gte('created_at', filters.dateFrom);
+    }
+
+    if (filters.dateTo) {
+      query = query.lte('created_at', filters.dateTo);
+    }
+
     // Filtrar sólo activos (deleted_at IS NULL) a menos que showDeleted sea true
     // Nota: la tabla 'clients' no tiene columna is_active; usamos deleted_at para ordenar activos primero
     if (!filters.showDeleted) {
@@ -239,6 +261,11 @@ export class SupabaseCustomersService {
           q2 = this.supabase.from('clients').select('*, devices!devices_client_id_fkey(id, deleted_at)');
           if (this.isValidUuid(companyId)) q2 = q2.eq('company_id', companyId!);
           if (filters.search) q2 = q2.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+
+          if (filters.industry) q2 = q2.eq('industry', filters.industry);
+          if (filters.status) q2 = q2.eq('status', filters.status);
+          if (filters.dateFrom) q2 = q2.gte('created_at', filters.dateFrom);
+          if (filters.dateTo) q2 = q2.lte('created_at', filters.dateTo);
 
           if (!filters.showDeleted) {
             q2 = q2.is('deleted_at', null);
