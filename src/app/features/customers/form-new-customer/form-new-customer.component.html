@@ -1,10 +1,11 @@
 <div class="modal-overlay">
     <div
-        class="modal-content bg-white dark:bg-gray-800 shadow-xl rounded-xl w-full max-w-4xl flex flex-col max-h-[90vh]">
+        class="modal-content bg-white dark:bg-gray-800 shadow-xl rounded-xl w-full max-w-3xl flex flex-col max-h-[90vh]">
         <!-- HEADER -->
-        <div class="modal-header flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+        <div
+            class="modal-header flex justify-between items-center px-5 py-3 border-b border-gray-200 dark:border-gray-700">
             <div class="modal-title-group">
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <i class="fas" [class.fa-plus]="!customer" [class.fa-edit]="customer"></i>
                     {{ customer ? 'Editar Cliente' : 'Nuevo Cliente' }}
                 </h2>
@@ -18,7 +19,7 @@
         </div>
 
         <!-- WIZARD STEPPER -->
-        <div class="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+        <div class="px-4 py-2.5 bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
             <div class="flex items-center justify-between relative">
                 <!-- Connecting Line -->
                 <div
@@ -31,7 +32,7 @@
                 <div *ngFor="let step of stepTitles"
                     class="relative z-10 flex flex-col items-center cursor-pointer group" (click)="goToStep(step.step)">
 
-                    <div class="w-10 h-10 rounded-full flex items-center justify-center border-4 transition-all duration-300 bg-white dark:bg-gray-800"
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center border-[3px] transition-all duration-300 bg-white dark:bg-gray-800 text-sm"
                         [class.border-primary-500]="currentStep >= step.step"
                         [class.border-gray-300]="currentStep < step.step"
                         [class.dark:border-gray-600]="currentStep < step.step"
@@ -52,18 +53,18 @@
         </div>
 
         <!-- FORM BODY -->
-        <div class="modal-body bg-white dark:bg-gray-800 p-6 overflow-y-auto flex-1">
+        <div class="modal-body bg-white dark:bg-gray-800 px-5 py-3 overflow-y-auto flex-1">
             <form (ngSubmit)="saveCustomer()" #customerForm="ngForm" class="customer-form">
 
                 <!-- ANIMATION CONTAINER -->
                 <div class="transition-all duration-300 ease-in-out overflow-visible"
                     [style.height.px]="contentHeight === 'auto' ? null : contentHeight">
 
-                    <div #tabContentContainer class="space-y-6 pb-40">
+                    <div #tabContentContainer class="space-y-4">
 
                         <!-- TAB: GENERAL -->
-                        <div *ngIf="currentStep === 1" class="space-y-6 animate-fadeIn">
-                            <div class="form-row grid grid-cols-2 gap-6">
+                        <div *ngIf="currentStep === 1" class="space-y-4 animate-fadeIn">
+                            <div class="form-row grid grid-cols-2 gap-4">
                                 <!-- Client Type Selector -->
                                 <div class="form-group client-type-dropdown-container col-span-2">
                                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -91,7 +92,7 @@
                                 </div>
 
                                 <!-- General Fields (Conditional) -->
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 col-span-2">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 col-span-2">
                                     <!-- IF INDIVIDUAL -->
                                     <ng-container *ngIf="formData.client_type === 'individual'">
                                         <div class="form-group">
@@ -180,7 +181,7 @@
                         </div>
 
                         <!-- TAB: ADDRESS -->
-                        <div *ngIf="currentStep === 2" class="space-y-6 animate-fadeIn">
+                        <div *ngIf="currentStep === 2" class="space-y-4 animate-fadeIn">
                             <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Dirección principal para envíos y
                                 facturación.</p>
 
@@ -267,8 +268,8 @@
                         </div>
 
                         <!-- TAB: BILLING -->
-                        <div *ngIf="currentStep === 3" class="space-y-6 animate-fadeIn">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div *ngIf="currentStep === 3" class="space-y-4 animate-fadeIn">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="form-group">
                                     <label
                                         class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Método
@@ -368,8 +369,8 @@
                         </div>
 
                         <!-- TAB: CRM & CONTACTOS (Combined in Step 4) -->
-                        <div *ngIf="currentStep === 4" class="space-y-6 animate-fadeIn">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div *ngIf="currentStep === 4" class="space-y-4 animate-fadeIn">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="form-group">
                                     <label
                                         class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado</label>
@@ -444,7 +445,7 @@
                             </div>
 
                             <!-- Pro fields -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="form-group">
                                     <label
                                         class="form-label block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -487,7 +488,7 @@
                         </div>
 
                         <!-- CONTACTOS SECTION (Inside Step 4) -->
-                        <div class="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
+                        <div *ngIf="currentStep === 4" class="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
                             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                                 <i class="fas fa-users text-primary-500"></i> Personas de Contacto
                             </h3>
@@ -585,7 +586,7 @@
 
         <!-- FOOTER ACTIONS -->
         <div
-            class="modal-actions border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 rounded-b-xl flex justify-between items-center">
+            class="modal-actions border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-5 py-3 rounded-b-xl flex justify-between items-center">
 
             <button type="button" (click)="currentStep === 1 ? closeForm() : prevStep()"
                 class="px-5 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-600 font-medium transition-all">

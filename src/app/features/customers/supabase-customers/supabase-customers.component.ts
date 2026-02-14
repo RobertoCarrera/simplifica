@@ -292,31 +292,18 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         const completeness = this.completenessCache();
 
         filtered.sort((a, b) => {
-            // Priority Sort: Incomplete users FIRST
-            const aComplete = completeness.get(a.id) ?? false;
-            const bComplete = completeness.get(b.id) ?? false;
-
-            if (aComplete !== bComplete) {
-                // If one is incomplete (false) and other is complete (true), incomplete comes first
-                return aComplete ? 1 : -1;
-            }
-
-            // Secondary Sort: Respect selected sort
             let result = 0;
 
             if (sortBy === 'name' || sortBy === 'apellidos') {
-                // Use Intl.Collator for strings
                 const aVal = a[sortBy] || '';
                 const bVal = b[sortBy] || '';
                 result = COLLATOR.compare(aVal, bVal);
             } else if (sortBy === 'created_at') {
-                // Date string comparison (ISO strings compare correctly lexicographically)
                 const aVal = (a.created_at || '').toString();
                 const bVal = (b.created_at || '').toString();
                 if (aVal < bVal) result = -1;
                 else if (aVal > bVal) result = 1;
             } else {
-                // Fallback
                 const aVal = a[sortBy];
                 const bVal = b[sortBy];
                 if (aVal < bVal) result = -1;
@@ -346,13 +333,69 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     formatAttentionReasons(c: any): string {
         const md = (c && c.metadata) || {};
         const reasons: string[] = Array.isArray(md.attention_reasons) ? md.attention_reasons : [];
-        if (!reasons.length) return 'Marcado para revisión';
+
+        // Check computed missing fields if no metadata reasons
+        if (!reasons.length) {
+            const missing = this.completenessSvc.computeCompleteness(c).missingFields;
+            if (missing.length > 0) {
+                return 'Faltan: ' + missing.join(', ');
+            }
+            return 'Marcado para revisión';
+        }
+
         const map: Record<string, string> = {
-            email_missing_or_invalid: 'Email faltante o inválido',
-            name_missing: 'Nombre faltante',
-            surname_missing: 'Apellidos faltantes',
+            email_missing_or_invalid: 'Email',
+            name_missing: 'Nombre',
+            surname_missing: 'Apellidos',
+            dni_missing: 'DNI/CIF',
+            phone_missing: 'Teléfono',
+            address_missing: 'Dirección'
         };
-        return 'Revisar: ' + reasons.map(r => map[r] || r).join(', ');
+        return 'Faltan: ' + reasons.map(r => map[r] || r).join(', ');
+    }
+
+    // ... (ngInit/Destroy omitted for brevity in replacement if needed, but here we replace specific block)
+
+    // Unified RGPD badge configuration - follows style guide semantic palette
+    rgpdStatusConfig = {
+        compliant: {
+            label: 'Consentimiento otorgado',
+            classes: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+            icon: 'fa-shield-alt'
+        },
+        partial: {
+            label: 'Consentimiento parcial',
+            classes: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+            icon: 'fa-shield-alt'
+        },
+        nonCompliant: {
+            label: 'Sin consentimiento',
+            classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
+            icon: 'fa-shield-alt'
+        }
+    };
+
+    // Show GDPR compliance status for a customer
+    getGdprComplianceStatus(customer: Customer): 'compliant' | 'partial' | 'nonCompliant' {
+        // If they have the mandatory consent (data_processing), they are compliant for service provision.
+        if (customer.data_processing_consent) {
+            return 'compliant';
+        } else {
+            return 'nonCompliant';
+        }
+    }
+
+    getGdprBadgeConfig(customer: Customer) {
+        // Check for migration compatibility - if consent_status exists, use it
+        if (customer.consent_status === 'rejected' || customer.consent_status === 'revoked') {
+            return {
+                ...this.rgpdStatusConfig.nonCompliant,
+                label: 'Consentimiento ' + (customer.consent_status === 'revoked' ? 'revocado' : 'rechazado')
+            };
+        }
+
+        const status = this.getGdprComplianceStatus(customer);
+        return this.rgpdStatusConfig[status];
     }
 
     ngOnInit() {
@@ -984,40 +1027,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             customer.email?.includes('@anonymized.local');
     }
 
-    // Show GDPR compliance status for a customer
-    getGdprComplianceStatus(customer: Customer): 'compliant' | 'partial' | 'nonCompliant' {
-        // This would typically check various compliance factors
-        // If they have the mandatory consent (data_processing), they are compliant for service provision.
-        if (customer.data_processing_consent) {
-            return 'compliant';
-        } else {
-            return 'nonCompliant';
-        }
-    }
 
-    // Unified RGPD badge configuration - follows style guide semantic palette
-    rgpdStatusConfig = {
-        compliant: {
-            label: '',
-            classes: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 font-medium px-2 py-0.5 text-xs rounded-full border border-green-200 dark:border-green-800',
-            icon: 'fa-shield-alt text-xs'
-        },
-        partial: {
-            label: '',
-            classes: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-medium px-2 py-0.5 text-xs rounded-full border border-amber-200 dark:border-amber-800',
-            icon: 'fa-shield-alt text-xs'
-        },
-        nonCompliant: {
-            label: '',
-            classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 font-medium px-2 py-0.5 text-xs rounded-full border border-red-200 dark:border-red-800',
-            icon: 'fa-shield-exclamation text-xs'
-        }
-    };
-
-    getGdprBadgeConfig(customer: Customer) {
-        const status = this.getGdprComplianceStatus(customer);
-        return this.rgpdStatusConfig[status];
-    }
 
     // Pending Rectification Requests Logic
     pendingRectifications = signal<Set<string>>(new Set());
@@ -1071,21 +1081,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     }
 
 
-    getGdprStatusClass(customer: Customer): string {
-        // Deprecated: kept for backwards compatibility, use getGdprBadgeConfig instead
-        const status = this.getGdprComplianceStatus(customer);
-        switch (status) {
-            case 'compliant': return 'text-green-600 bg-green-100';
-            case 'partial': return 'text-yellow-600 bg-yellow-100';
-            default: return 'text-red-600 bg-red-100';
-        }
-    }
 
-    getGdprStatusText(customer: Customer): string {
-        // Deprecated: kept for backwards compatibility, use getGdprBadgeConfig instead
-        const config = this.getGdprBadgeConfig(customer);
-        return config.label;
-    }
 
     toggleGdprMenu(event: Event, customerId: string) {
         event.stopPropagation();
