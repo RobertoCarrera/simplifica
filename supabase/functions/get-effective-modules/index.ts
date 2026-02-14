@@ -90,22 +90,25 @@ serve(async (req) => {
     // Resolve app user row
     const { data: me, error: meErr } = await supabaseAdmin
       .from("users")
-      .select("id, company_id, role, active")
+      .select("id, company_id, app_role:app_roles(name), active")
       .eq("auth_user_id", user.id)
       .single();
+
     if (meErr || !me?.company_id || me.active === false) {
       return new Response(JSON.stringify({ error: "User not associated/active" }), { status: 400, headers: corsHeaders });
     }
 
+    const myRole = me.app_role?.name;
+
     // Determine effective user for module inheritance
     let effectiveUserId = me.id;
-    if (me.role === "client") {
+    if (myRole === "client") {
       // Find active owner of same company
       const { data: owner, error: ownerErr } = await supabaseAdmin
         .from("users")
-        .select("id")
+        .select("id, app_roles!inner(name)")
         .eq("company_id", me.company_id)
-        .eq("role", "owner")
+        .eq("app_roles.name", "owner")
         .eq("active", true)
         .order("created_at", { ascending: true })
         .limit(1)
