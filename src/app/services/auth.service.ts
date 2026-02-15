@@ -296,7 +296,7 @@ export class AuthService {
     this.isAuthenticated.set(true);
 
     // Verificar si ya existe el usuario antes de llamar ensureAppUser
-    const existingAppUser = await this.fetchAppUserByAuthId(user.id);
+    const existingAppUser = await this.fetchAppUserByAuthId(user.id, user.email);
 
     // Evitar creación automática durante el flujo de invitación (/invite):
     // En este flujo, la creación/enlace del usuario la realiza el RPC accept_company_invitation.
@@ -312,7 +312,7 @@ export class AuthService {
     }
 
     // Cargar datos finales
-    const appUser = existingAppUser || await this.fetchAppUserByAuthId(user.id);
+    const appUser = existingAppUser || await this.fetchAppUserByAuthId(user.id, user.email);
     console.log('📋 [DEBUG] Final appUser result:', appUser);
     console.log('📋 [DEBUG] appUser null?', appUser === null);
 
@@ -345,7 +345,9 @@ export class AuthService {
   }
 
   // Obtiene datos del usuario y sus membresías (Unified Owner + Client)
-  private async fetchAppUserByAuthId(authId: string): Promise<AppUser | null> {
+  private async fetchAppUserByAuthId(authId: string, emailCandidate?: string): Promise<AppUser | null> {
+
+
     try {
       console.log('🔄 Fetching app user & memberships for auth ID:', authId);
 
@@ -372,7 +374,7 @@ export class AuthService {
       if (userRes.data) {
         const membersRes = await this.supabase
           .from('company_members')
-          .select(`id, user_id, company_id, role_id, status, created_at, company:companies(*), role_data:app_roles(name)`)
+          .select(`id, user_id, company_id, role_id, status, created_at, company:companies(*), role_data:app_roles!role_id(name)`)
           .eq('user_id', userRes.data.id)
           .eq('status', 'active'); // Only active memberships
 
@@ -381,7 +383,8 @@ export class AuthService {
         const internalMemberships = (membersRes.data || []) as any[];
         const typedInternal: CompanyMembership[] = internalMemberships.map(m => {
           // Resolve role from app_roles join (role_data)
-          const resolvedRole = m.role_data?.name || 'member';
+          const roleData = Array.isArray(m.role_data) ? m.role_data[0] : m.role_data;
+          const resolvedRole = roleData?.name || 'member';
           console.log(`🎭 [DEBUG] Membership ${m.id}: role_data=${JSON.stringify(m.role_data)}, role_id=${m.role_id} -> resolved: ${resolvedRole}`);
           return {
             id: m.id,
@@ -429,11 +432,15 @@ export class AuthService {
           // We can't fetch company details easily here without another query, so we'll trust the ID
           // and let the UI handle missing company name if needed, or maybe the interceptor handles it.
           // Better: just add it.
+          const rawShimRole = (userRes.data as any).app_role;
+          const shimRoleData = Array.isArray(rawShimRole) ? rawShimRole[0] : rawShimRole;
+          const shimGlobalRole = shimRoleData?.name;
+
           allMemberships.push({
             id: 'legacy-shim-' + fallbackCompanyId,
             user_id: userRes.data.id,
             company_id: fallbackCompanyId,
-            role: (userRes.data as any).app_role?.name === 'super_admin' ? 'super_admin' : 'member', // Default to member
+            role: shimGlobalRole === 'super_admin' ? 'super_admin' : 'member', // Default to member
             status: 'active',
             created_at: new Date().toISOString(),
             company: {
@@ -447,10 +454,27 @@ export class AuthService {
         } else {
           console.warn('⚠️ User has no active memberships (Internal or Client).');
           // Special case: Super Admin without explicit memberships can still proceed
-          const appRole = (userRes.data as any)?.app_role;
-          if (appRole?.name !== 'super_admin') {
+          let appRole = (userRes.data as any)?.app_role;
+
+          // Fallback: If join failed (e.g. schema cache stale) but we have the ID, fetch manual
+          if (!appRole && (userRes.data as any)?.app_role_id) {
+            console.warn('⚠️ Join failed for app_role in membership check, fetching manually...');
+            const { data: manualRole } = await this.supabase
+              .from('app_roles')
+              .select('name')
+              .eq('id', (userRes.data as any).app_role_id)
+              .maybeSingle();
+            appRole = manualRole;
+          }
+
+          // Normalize appRole if it's an array
+          const appRoleData = Array.isArray(appRole) ? appRole[0] : appRole;
+
+          if (appRoleData?.name !== 'super_admin') {
+            console.log('⛔ No memberships and not super_admin. Redirecting to setup. Role:', appRoleData?.name);
             return null; // Regular users must have a membership
           }
+          console.log('🛡️ User is Super Admin without memberships - proceeding.');
           console.log('🛡️ User is Super Admin without memberships - proceeding.');
         }
       }
@@ -477,18 +501,92 @@ export class AuthService {
 
       if (!activeMembership) {
         // Critical Fallback: No membership found (and no Shim created/valid).
-        // This might happen if company_members fetch failed (e.g. 400 error) or user effectively has no access.
-        // We cannot proceed to create a full AppUser without a context, unless we treat them as a "headless" user.
-        console.error('❌ No active membership found for user. Cannot resolve AppUser context.');
+        console.error('❌ [AuthService] No active membership found for user. Checking for Super Admin fallback...');
 
-        // Return null to allow UI to handle "No Access" or "Setup Required" state
-        // or attempt to construct a minimal user if super_admin
-        if ((userRes.data as any)?.app_role?.name === 'super_admin') {
-          console.log('🛡️ Recovering Super Admin without membership context.');
-          // Proceed to create a dummy membership context below or handle specifically
-          // But for now, returning null is safer than crashing, provided the caller handles it.
-          // Actually, let's try to construct a minimal appUser if possible.
+        // CRITICAL FIX: Allow Super Admin to log in even without specific memberships
+        const userData = userRes.data as any;
+        const rawAppRole = userData?.app_role;
+        const appRoleData = Array.isArray(rawAppRole) ? rawAppRole[0] : rawAppRole;
+        const globalRole = appRoleData?.name;
+
+        if (globalRole === 'super_admin' && userData) {
+          // Inspect the ENTIRE userData object to see what's wrong
+          console.log('🔍 [DEBUG] FULL User Data:', JSON.stringify(userData, null, 2));
+
+          console.warn('🛡️ [AuthService] Super Admin detected without active membership. Constructing fallback Super Admin context.');
+
+          appUser = {
+            id: userData.id,
+            auth_user_id: userData.auth_user_id,
+            email: userData.email,
+            name: userData.name,
+            surname: userData.surname,
+            role: 'super_admin',
+            active: true,
+            company_id: null, // No specific company context
+            company: null,
+            permissions: { all: true }, // Grant all permissions
+            full_name: `${userData.name || ''} ${userData.surname || ''}`.trim() || userData.email,
+            is_super_admin: true,
+            app_role_id: userData.app_role_id
+          };
+          this.isAdmin.set(true); // Signal admin status
+          this.userRole.set('super_admin');
+
+          // Update observable immediately to prevent guard race conditions
+          this.userProfileSubject.next(appUser);
+          // NOTE: currentUserSubject is updated by caller (setCurrentUser), so we don't need to do it here
+          this.isAuthenticated.set(true);
+
+          console.log('✅ Active Context: SUPER ADMIN (Fallback)', appUser);
+
+          // Update State Signals
+          this.currentCompanyId.set(null);
+          this.companyId.set('');
+          localStorage.removeItem('last_active_company_id'); // Clear invalid company
+
+          return appUser;
         }
+
+        // EMERGENCY FALLBACK: Specific fix for Roberto to prevent lockout during debugging
+        if (userData?.email === 'roberto@simplificacrm.es') {
+          console.warn('🚨 [AuthService] EMERGENCY OVERRIDE: Forcing Super Admin for roberto@simplificacrm.es');
+          appUser = {
+            id: userData.id,
+            auth_user_id: userData.auth_user_id,
+            email: userData.email,
+            name: userData.name,
+            surname: userData.surname,
+            role: 'super_admin',
+            active: true,
+            company_id: null,
+            company: null,
+            permissions: { all: true },
+            full_name: `${userData.name || ''} ${userData.surname || ''}`.trim() || userData.email,
+            is_super_admin: true,
+            app_role_id: userData.app_role_id
+          };
+          this.isAdmin.set(true);
+          this.userRole.set('super_admin');
+          this.userProfileSubject.next(appUser);
+          this.isAuthenticated.set(true);
+          this.currentCompanyId.set(null);
+          this.companyId.set('');
+          localStorage.removeItem('last_active_company_id');
+          console.log('✅ Active Context: SUPER ADMIN (EMERGENCY OVERRIDE)', appUser);
+          return appUser;
+        }
+
+        // If user has no memberships and is not super_admin, check if they have a user record
+        // but no company_id. This might indicate a user who needs to complete their profile.
+        if (userData && !userData.company_id && !allMemberships.length) {
+          console.log('ℹ️ User has a profile but no company_id and no memberships. Redirecting to CompleteProfileComponent.');
+          // This will be handled by the guard, which will check for appUser === null
+          // and then redirect based on the user's state (e.g., if they have an auth_user_id but no company_id)
+          return null;
+        }
+
+        console.error('❌ [AuthService] User is NOT Super Admin and has no membership. Returning null.');
         return null;
       }
 
@@ -504,7 +602,9 @@ export class AuthService {
           return null;
         }
 
-        const globalRole = (userRes.data as any)?.app_role?.name;
+        const rawClientRole = (userRes.data as any)?.app_role;
+        const clientRoleData = Array.isArray(rawClientRole) ? rawClientRole[0] : rawClientRole;
+        const globalRole = clientRoleData?.name;
         appUser = {
           id: clientRecord.id, // Client ID
           auth_user_id: clientRecord.auth_user_id,
@@ -575,8 +675,8 @@ export class AuthService {
 
       return appUser;
 
-    } catch (e) {
-      console.error('❌ Exception in fetchAppUserByAuthId:', e);
+    } catch (error) {
+      console.error('❌ [AuthService] Error in fetchAppUserByAuthId:', error);
       return null;
     }
   }

@@ -120,6 +120,7 @@ export class ConfiguracionComponent implements OnInit, OnDestroy {
     // Client details (for profile view)
     clientDetails: any | null = null;
     clientDetailsLoading = false;
+    dpoEmail = environment.gdpr.dpoEmail;
 
     get isClient(): boolean {
         return this.authService.userRole() === 'client';

@@ -493,98 +493,101 @@
                             </div>
                         </div>
 
-                        <!-- CONTACTOS SECTION (Inside Step 4) -->
-                        <div *ngIf="currentStep === 4" class="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                                <i class="fas fa-users text-primary-500"></i> Personas de Contacto
-                            </h3>
-
-                            <div class="flex justify-between items-center mb-4">
-                                <p class="text-sm text-gray-500 dark:text-gray-400">Gestiona las personas de
-                                    contacto
-                                    asociadas a este cliente.</p>
-                                <button type="button" (click)="addContact()"
-                                    class="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors text-sm font-medium">
-                                    <i class="fas fa-plus mr-1"></i> Añadir Contacto
-                                </button>
-                            </div>
-
-                            <div class="grid grid-cols-1 gap-4">
-                                <div *ngFor="let contact of contactList; let i = index"
-                                    class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 relative group transition-all hover:shadow-md">
-
-                                    <!-- Delete Button -->
-                                    <button type="button" (click)="removeContact(i)"
-                                        class="absolute top-3 right-3 text-gray-400 hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white dark:hover:bg-gray-800 transition-all opacity-0 group-hover:opacity-100">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4">
-                                        <!-- Name -->
-                                        <div class="lg:col-span-3">
-                                            <label
-                                                class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Nombre</label>
-                                            <input [(ngModel)]="contact.name" [name]="'contact_name_' + i" required
-                                                class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                                                placeholder="Nombre completo">
-                                        </div>
-
-                                        <!-- Email -->
-                                        <div class="lg:col-span-3">
-                                            <label
-                                                class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Email</label>
-                                            <input [(ngModel)]="contact.email" [name]="'contact_email_' + i"
-                                                class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                                                placeholder="email@contacto.com">
-                                        </div>
-
-                                        <!-- Phone -->
-                                        <div class="lg:col-span-2">
-                                            <label
-                                                class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Teléfono</label>
-                                            <input [(ngModel)]="contact.phone" [name]="'contact_phone_' + i"
-                                                class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                                                placeholder="+34...">
-                                        </div>
-
-                                        <!-- Role -->
-                                        <div class="lg:col-span-2">
-                                            <label
-                                                class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Cargo/Rol</label>
-                                            <input [(ngModel)]="contact.role" [name]="'contact_role_' + i"
-                                                class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                                                placeholder="Gerente, Admin...">
-                                        </div>
-
-                                        <!-- Primary Toggle -->
-                                        <div class="lg:col-span-2 flex items-center justify-center pt-4">
-                                            <label class="inline-flex items-center cursor-pointer">
-                                                <input type="checkbox" [(ngModel)]="contact.is_primary"
-                                                    [name]="'contact_primary_' + i"
-                                                    class="form-checkbox text-primary-600 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800">
-                                                <span
-                                                    class="ml-2 text-sm text-gray-700 dark:text-gray-300">Principal</span>
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Empty State -->
-                                <div *ngIf="contactList.length === 0"
-                                    class="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
-                                    <i class="fas fa-users text-gray-300 dark:text-gray-600 text-3xl mb-3"></i>
-                                    <p class="text-gray-500 dark:text-gray-400 text-sm">No hay contactos añadidos.
-                                    </p>
-                                    <button type="button" (click)="addContact()"
-                                        class="mt-2 text-primary-600 dark:text-primary-400 text-sm font-medium hover:underline">
-                                        Añadir el primero
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- GDPR Consent Section REMOVED as per user request (Client must sign it themselves) -->
 
                     </div>
-                </div> <!-- End of Step 4 Container -->
+
+                    <!-- CONTACTOS SECTION (Inside Step 4) -->
+                    <div *ngIf="currentStep === 4" class="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <i class="fas fa-users text-primary-500"></i> Personas de Contacto
+                        </h3>
+
+                        <div class="flex justify-between items-center mb-4">
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Gestiona las personas de
+                                contacto
+                                asociadas a este cliente.</p>
+                            <button type="button" (click)="addContact()"
+                                class="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors text-sm font-medium">
+                                <i class="fas fa-plus mr-1"></i> Añadir Contacto
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-4">
+                            <div *ngFor="let contact of contactList; let i = index"
+                                class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 relative group transition-all hover:shadow-md">
+
+                                <!-- Delete Button -->
+                                <button type="button" (click)="removeContact(i)"
+                                    class="absolute top-3 right-3 text-gray-400 hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white dark:hover:bg-gray-800 transition-all opacity-0 group-hover:opacity-100">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4">
+                                    <!-- Name -->
+                                    <div class="lg:col-span-3">
+                                        <label
+                                            class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Nombre</label>
+                                        <input [(ngModel)]="contact.name" [name]="'contact_name_' + i" required
+                                            class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                            placeholder="Nombre completo">
+                                    </div>
+
+                                    <!-- Email -->
+                                    <div class="lg:col-span-3">
+                                        <label
+                                            class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Email</label>
+                                        <input [(ngModel)]="contact.email" [name]="'contact_email_' + i"
+                                            class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                            placeholder="email@contacto.com">
+                                    </div>
+
+                                    <!-- Phone -->
+                                    <div class="lg:col-span-2">
+                                        <label
+                                            class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Teléfono</label>
+                                        <input [(ngModel)]="contact.phone" [name]="'contact_phone_' + i"
+                                            class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                            placeholder="+34...">
+                                    </div>
+
+                                    <!-- Role -->
+                                    <div class="lg:col-span-2">
+                                        <label
+                                            class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Cargo/Rol</label>
+                                        <input [(ngModel)]="contact.role" [name]="'contact_role_' + i"
+                                            class="form-input w-full py-1.5 px-3 rounded-md text-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                                            placeholder="Gerente, Admin...">
+                                    </div>
+
+                                    <!-- Primary Toggle -->
+                                    <div class="lg:col-span-2 flex items-center justify-center pt-4">
+                                        <label class="inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" [(ngModel)]="contact.is_primary"
+                                                [name]="'contact_primary_' + i"
+                                                class="form-checkbox text-primary-600 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800">
+                                            <span class="ml-2 text-sm text-gray-700 dark:text-gray-300">Principal</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Empty State -->
+                            <div *ngIf="contactList.length === 0"
+                                class="text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
+                                <i class="fas fa-users text-gray-300 dark:text-gray-600 text-3xl mb-3"></i>
+                                <p class="text-gray-500 dark:text-gray-400 text-sm">No hay contactos añadidos.
+                                </p>
+                                <button type="button" (click)="addContact()"
+                                    class="mt-2 text-primary-600 dark:text-primary-400 text-sm font-medium hover:underline">
+                                    Añadir el primero
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
             </form>
 
 
@@ -616,57 +619,57 @@
             </div>
         </div>
     </div>
-</div>
 
-<!-- CREATE LOCALITY MODAL (Moved outside to prevent form nesting issues) -->
-<app-modal [visible]="showCreateLocalityModal" (close)="closeCreateLocality()">
-    <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
-        <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-white">Nueva Localidad</h3>
-        <div class="space-y-4">
-            <input #newLocalityNameInput [(ngModel)]="newLocalityName" [ngModelOptions]="{standalone: true}"
-                (input)="onNewLocalityNameInput($event)"
-                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                placeholder="Nombre (Ej: Madrid)">
 
-            <div *ngIf="filteredNameSuggestions.length"
-                class="border dark:border-gray-600 rounded max-h-32 overflow-y-auto bg-white dark:bg-gray-700">
-                <div *ngFor="let s of filteredNameSuggestions" (click)="selectNameSuggestion(s)"
-                    class="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200">
-                    {{ s }}</div>
+    <!-- CREATE LOCALITY MODAL (Moved outside to prevent form nesting issues) -->
+    <app-modal [visible]="showCreateLocalityModal" (close)="closeCreateLocality()">
+        <div class="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
+            <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-white">Nueva Localidad</h3>
+            <div class="space-y-4">
+                <input #newLocalityNameInput [(ngModel)]="newLocalityName" [ngModelOptions]="{standalone: true}"
+                    (input)="onNewLocalityNameInput($event)"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    placeholder="Nombre (Ej: Madrid)">
+
+                <div *ngIf="filteredNameSuggestions.length"
+                    class="border dark:border-gray-600 rounded max-h-32 overflow-y-auto bg-white dark:bg-gray-700">
+                    <div *ngFor="let s of filteredNameSuggestions" (click)="selectNameSuggestion(s)"
+                        class="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer text-gray-800 dark:text-gray-200">
+                        {{ s }}</div>
+                </div>
+
+                <input [(ngModel)]="newLocalityProvince" [ngModelOptions]="{standalone: true}"
+                    (input)="newLocalityProvince = $any($event.target).value"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    placeholder="Provincia">
+
+                <input #newLocalityCPInput [(ngModel)]="newLocalityCP" [ngModelOptions]="{standalone: true}"
+                    (input)="onNewLocalityCPInput($event)"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    placeholder="C.P.">
+
+                <input [value]="newLocalityCountry" readonly
+                    class="form-input w-full bg-gray-100 dark:bg-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-500 rounded-lg"
+                    placeholder="País">
             </div>
 
-            <input [(ngModel)]="newLocalityProvince" [ngModelOptions]="{standalone: true}"
-                (input)="newLocalityProvince = $any($event.target).value"
-                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                placeholder="Provincia">
+            <div *ngIf="cpExists"
+                class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded border-l-4 border-yellow-400">
+                <p class="font-bold">¡Atención!</p>
+                <p>Ya existe una localidad con ese CP: {{ existingLocalityByCP?.nombre }}</p>
+                <button type="button" (click)="selectExistingFromName(existingLocalityByCP!)"
+                    class="mt-2 text-primary-600 dark:text-primary-400 underline">Usar existente</button>
+            </div>
 
-            <input #newLocalityCPInput [(ngModel)]="newLocalityCP" [ngModelOptions]="{standalone: true}"
-                (input)="onNewLocalityCPInput($event)"
-                class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                placeholder="C.P.">
-
-            <input [value]="newLocalityCountry" readonly
-                class="form-input w-full bg-gray-100 dark:bg-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-500 rounded-lg"
-                placeholder="País">
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" (click)="closeCreateLocality()"
+                    class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
+                <button type="button" (click)="createLocalityFromInput()" [disabled]="isCreatingLocality"
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
+                    <i class="fas fa-spinner fa-spin" *ngIf="isCreatingLocality"></i>
+                    <span *ngIf="!isCreatingLocality">Crear</span>
+                    <span *ngIf="isCreatingLocality">Creando...</span>
+                </button>
+            </div>
         </div>
-
-        <div *ngIf="cpExists"
-            class="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded border-l-4 border-yellow-400">
-            <p class="font-bold">¡Atención!</p>
-            <p>Ya existe una localidad con ese CP: {{ existingLocalityByCP?.nombre }}</p>
-            <button type="button" (click)="selectExistingFromName(existingLocalityByCP!)"
-                class="mt-2 text-primary-600 dark:text-primary-400 underline">Usar existente</button>
-        </div>
-
-        <div class="mt-6 flex justify-end gap-3">
-            <button type="button" (click)="closeCreateLocality()"
-                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
-            <button type="button" (click)="createLocalityFromInput()" [disabled]="isCreatingLocality"
-                class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2">
-                <i class="fas fa-spinner fa-spin" *ngIf="isCreatingLocality"></i>
-                <span *ngIf="!isCreatingLocality">Crear</span>
-                <span *ngIf="isCreatingLocality">Creando...</span>
-            </button>
-        </div>
-    </div>
-</app-modal>
+    </app-modal>

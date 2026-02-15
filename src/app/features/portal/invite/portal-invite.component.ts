@@ -159,6 +159,19 @@ import { environment } from '../../../../environments/environment';
         <div class="space-y-3 pt-2" *ngIf="!isStaff">
             <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700">
                 <div class="flex items-center h-5">
+                    <input id="health" type="checkbox" [(ngModel)]="healthDataAccepted" name="health" required
+                        class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 cursor-pointer">
+                </div>
+                <div class="ml-2 text-sm">
+                    <label for="health" class="font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                        Autorizo el tratamiento de mis <span class="font-bold text-gray-900 dark:text-white">datos de salud</span> <span class="text-xs uppercase bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded ml-1">Requerido</span>
+                    </label>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Necesario para la prestación de servicios asistenciales y gestión de historia clínica.</p>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-100 dark:border-gray-700">
+                <div class="flex items-center h-5">
                     <input id="privacy" type="checkbox" [(ngModel)]="privacyAccepted" name="privacy" required
                         class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
                 </div>
@@ -189,7 +202,7 @@ import { environment } from '../../../../environments/environment';
 
         <button 
           (click)="submitPassword()"
-          [disabled]="submitting || !password || !passwordConfirm || !name || !surname || (!privacyAccepted && !isStaff)"
+          [disabled]="submitting || !password || !passwordConfirm || !name || !surname || ((!privacyAccepted || !healthDataAccepted) && !isStaff)"
           class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:translate-y-0"
         >
           {{ submitting ? 'Creando cuenta...' : 'Crear Cuenta' }}
@@ -221,6 +234,7 @@ export class PortalInviteComponent {
   // GDPR Consent
   privacyAccepted = false;
   marketingAccepted = false;
+  healthDataAccepted = false;
 
   // UI state
   loading = true;
@@ -479,8 +493,8 @@ export class PortalInviteComponent {
       }
     }
 
-    if (!this.privacyAccepted && !this.isStaff) {
-      this.passwordError = 'Debes aceptar la política de privacidad para continuar';
+    if ((!this.privacyAccepted || !this.healthDataAccepted) && !this.isStaff) {
+      this.passwordError = 'Debes aceptar la política de privacidad y el tratamiento de datos de salud';
       return;
     }
 
@@ -666,6 +680,18 @@ export class PortalInviteComponent {
       }, { userId: authUserId, companyId }).subscribe();
     }
 
+    if (this.healthDataAccepted) {
+      this.gdprService.recordConsent({
+        subject_id: authUserId,
+        subject_email: email,
+        consent_type: 'health_data',
+        consent_given: true,
+        consent_method: 'form',
+        purpose: 'Consentimiento Explícito Datos Salud (Invitación)',
+        data_processing_purposes: ['health_data_processing', 'clinical_history']
+      }, { userId: authUserId, companyId }).subscribe();
+    }
+
     if (this.marketingAccepted) {
       this.gdprService.recordConsent({
         subject_id: authUserId,
@@ -690,9 +716,14 @@ export class PortalInviteComponent {
           .maybeSingle();
 
         if (clientData) {
+          const updateData: any = { marketing_consent: true, privacy_policy_accepted: true };
+          if (this.healthDataAccepted) {
+            updateData.health_data_consent = true;
+          }
+
           await this.auth.client
             .from('clients')
-            .update({ marketing_consent: true, privacy_policy_accepted: true })
+            .update(updateData)
             .eq('id', clientData.id);
 
           // Also log consent for the Client ID specifically to be clean (double record but safer)
@@ -705,6 +736,18 @@ export class PortalInviteComponent {
             purpose: 'Sincronización GDPR Cliente (Invitación)',
             data_processing_purposes: ['marketing']
           }).subscribe();
+
+          if (this.healthDataAccepted) {
+            this.gdprService.recordConsent({
+              subject_id: clientData.id,
+              subject_email: email,
+              consent_type: 'health_data',
+              consent_given: true,
+              consent_method: 'form',
+              purpose: 'Sincronización GDPR Cliente (Invitación - Salud)',
+              data_processing_purposes: ['health_data_processing']
+            }).subscribe();
+          }
         }
       }
     }

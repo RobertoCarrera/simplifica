@@ -135,6 +135,7 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
     filterDateFrom = signal<string>('');
     filterDateTo = signal<string>('');
     showAdvancedFilters = signal(false);
+    showRestricted = signal(false); // Toggle to show/hide restricted users
 
     // Tag Filter
     availableTags = signal<GlobalTag[]>([]);
@@ -264,6 +265,15 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
         // ✅ Filtrar clientes anonimizados (ocultarlos de la lista)
         filtered = filtered.filter(customer => !this.isCustomerAnonymized(customer));
 
+        // ✅ Filtrar clientes restringidos (Modo Exclusivo: O ver activos O ver restringidos)
+        if (this.showRestricted()) {
+            // Mostrar SOLO restringidos
+            filtered = filtered.filter(customer => customer.access_restrictions?.blocked);
+        } else {
+            // Mostrar SOLO activos (no restringidos) - Comportamiento por defecto
+            filtered = filtered.filter(customer => !customer.access_restrictions?.blocked);
+        }
+
         // Filter by Tag
         const tagId = this.selectedTagId();
         if (tagId && tagId !== 'ALL') {
@@ -367,11 +377,21 @@ export class SupabaseCustomersComponent implements OnInit, OnDestroy {
             label: 'Sin consentimiento',
             classes: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
             icon: 'fa-shield-alt'
+        },
+        blocked: {
+            label: 'Acceso Restringido',
+            classes: 'bg-gray-800 text-white dark:bg-gray-600 dark:text-gray-100 ring-2 ring-red-500',
+            icon: 'fa-ban'
         }
     };
 
     // Show GDPR compliance status for a customer
-    getGdprComplianceStatus(customer: Customer): 'compliant' | 'partial' | 'nonCompliant' {
+    getGdprComplianceStatus(customer: Customer): 'compliant' | 'partial' | 'nonCompliant' | 'blocked' {
+        // High priority: Blocked status
+        if (customer.access_restrictions?.blocked) {
+            return 'blocked';
+        }
+
         // If they have the mandatory consent (data_processing), they are compliant for service provision.
         if (customer.data_processing_consent) {
             return 'compliant';

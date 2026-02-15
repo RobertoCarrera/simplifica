@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -86,7 +86,7 @@ import { ThemeService } from '../../../services/theme.service';
     </div>
   `
 })
-export class CompleteProfileComponent {
+export class CompleteProfileComponent implements OnInit {
   private auth = inject(AuthService);
   private router = inject(Router);
   private themeService = inject(ThemeService); // Inject to ensure initialization
@@ -96,6 +96,16 @@ export class CompleteProfileComponent {
   companyName = '';
   loading = signal(false);
   error = signal<string | null>(null);
+
+  ngOnInit() {
+    // Safety Net: If user already has a valid profile, redirect to dashboard
+    this.auth.userProfile$.subscribe(profile => {
+      if (profile && profile.role !== 'none' && profile.active) {
+        console.log('✅ [CompleteProfile] User already has a valid profile. Redirecting to /inicio');
+        this.router.navigate(['/inicio']);
+      }
+    });
+  }
 
   async onSubmit(event: Event) {
     event.preventDefault();

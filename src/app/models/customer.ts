@@ -68,7 +68,12 @@ export interface Customer {
   marketing_consent?: boolean;
   marketing_consent_date?: string;
   marketing_consent_method?: string;
-  data_processing_consent?: boolean;
+
+  // Granular Consents (New)
+  health_data_consent?: boolean;
+  privacy_policy_consent?: boolean;
+
+  data_processing_consent?: boolean; // Deprecated or mapped to privacy/health
   data_processing_consent_date?: string;
 
   // Invitation Fields
