@@ -26,7 +26,7 @@ export interface GdprConsentRecord {
   id?: string;
   subject_id?: string;
   subject_email: string;
-  consent_type: 'marketing' | 'analytics' | 'data_processing' | 'third_party_sharing';
+  consent_type: 'marketing' | 'analytics' | 'data_processing' | 'third_party_sharing' | 'health_data' | 'privacy_policy';
   purpose: string;
   consent_given: boolean;
   consent_method: 'form' | 'email' | 'phone' | 'in_person' | 'website';
@@ -301,6 +301,85 @@ export class GdprComplianceService {
     );
   }
 
+  /**
+   * Restrict processing for a client (GDPR Article 18 - Right to Restriction)
+   */
+  restrictProcessing(clientId: string, reason: string): Observable<any> {
+    const currentUser = this.authService.currentUser;
+
+    if (!currentUser) {
+      return throwError(() => new Error('User not authenticated'));
+    }
+
+    // specific RPC for restriction, or update metadata directly if no RPC exists yet.
+    // Plan said: "Use access_restrictions JSONB field in Customer model"
+    // Since we don't have a specific RPC for this in the plan, we'll likely updates the customer directly.
+    // However, for audit trail, it's better to update via a specific path or log it.
+    // Let's implement it by updating the 'access_restrictions' field on the customer record.
+
+    const restrictionData = {
+      blocked: true,
+      blocked_at: new Date().toISOString(),
+      blocked_by: currentUser.id,
+      reason: reason
+    };
+
+    return from(
+      this.supabase
+        .from('clients')
+        .update({
+          access_restrictions: restrictionData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', clientId)
+        .select()
+        .single()
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return data;
+      }),
+      tap(() => this.logGdprEvent('restriction', 'clients', clientId, undefined, `Processing restricted: ${reason}`)),
+      catchError(error => {
+        console.error('Error restricting processing:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Unrestrict/Unblock processing for a client
+   */
+  unrestrictProcessing(clientId: string, reason: string = 'admin_unlock'): Observable<any> {
+    const currentUser = this.authService.currentUser;
+
+    if (!currentUser) {
+      return throwError(() => new Error('User not authenticated'));
+    }
+
+    return from(
+      this.supabase
+        .from('clients')
+        .update({
+          access_restrictions: null, // Clear restrictions or set blocked: false
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', clientId)
+        .select()
+        .single()
+    ).pipe(
+      map(({ data, error }) => {
+        if (error) throw error;
+        return data;
+      }),
+      tap(() => this.logGdprEvent('unrestriction', 'clients', clientId, undefined, `Processing restriction lifted: ${reason}`)),
+      catchError(error => {
+        console.error('Error unrestricting processing:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   // ========================================
   // CONSENT MANAGEMENT (GDPR Article 7)
   // ========================================
@@ -493,7 +572,7 @@ export class GdprComplianceService {
   /**
    * Log GDPR-related events
    */
-  private logGdprEvent(
+  public logGdprEvent(
     actionType: string,
     tableName: string,
     recordId?: string,

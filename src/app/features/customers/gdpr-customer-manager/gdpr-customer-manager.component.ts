@@ -420,6 +420,92 @@ export class GdprCustomerManagerComponent implements OnInit {
     });
   }
 
+  // Restriction Modal State
+  showRestrictModal = false;
+  restrictTarget = signal<Customer | null>(null);
+  restrictReason = '';
+
+  // Unrestrict Modal State
+  unrestrictTarget = signal<Customer | null>(null);
+  showUnrestrictModal = false;
+
+  openRestrictModal(customer: Customer) {
+    this.restrictTarget.set(customer);
+    this.restrictReason = '';
+    this.showRestrictModal = true;
+  }
+
+  closeRestrictModal() {
+    this.showRestrictModal = false;
+    this.restrictTarget.set(null);
+    this.restrictReason = '';
+  }
+
+  processRestriction() {
+    const customer = this.restrictTarget();
+    if (!customer) return;
+
+    if (!this.restrictReason.trim()) {
+      this.toastService.error('Error', 'Debes indicar un motivo para la restricción');
+      return;
+    }
+
+    this.isLoading.set(true);
+
+    this.gdprService.restrictProcessing(customer.id, this.restrictReason).subscribe({
+      next: () => {
+        this.toastService.success('Éxito', 'Tratamiento restringido correctamente');
+        this.closeRestrictModal();
+        this.loadCustomers();
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Error restricting processing:', err);
+        this.toastService.error('Error', 'No se pudo restringir el tratamiento');
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  confirmRestrictProcessing(customer: Customer) {
+    this.restrictTarget.set(customer);
+    this.openRestrictModal(customer);
+  }
+
+  isCustomerBlocked(customer: Customer): boolean {
+    return !!customer.access_restrictions?.blocked;
+  }
+
+  unrestrictCustomer(customer: Customer) {
+    this.unrestrictTarget.set(customer);
+    this.showUnrestrictModal = true;
+  }
+
+  closeUnrestrictModal() {
+    this.showUnrestrictModal = false;
+    this.unrestrictTarget.set(null);
+  }
+
+  processUnrestriction() {
+    const customer = this.unrestrictTarget();
+    if (!customer) return;
+
+    this.isLoading.set(true);
+    this.gdprService.unrestrictProcessing(customer.id).subscribe({
+      next: () => {
+        this.toastService.success('Restricción levantada', 'El cliente ha sido desbloqueado');
+        this.closeUnrestrictModal();
+        this.loadCustomers();
+        this.isLoading.set(false);
+      },
+      error: (err) => {
+        console.error('Error unrestricting:', err);
+        this.toastService.error('Error', 'No se pudo desbloquear al cliente');
+        this.isLoading.set(false);
+      }
+    });
+  }
+
 
 
   manageConsent(customer: Customer) {
@@ -500,7 +586,7 @@ export class GdprCustomerManagerComponent implements OnInit {
     const updates: Partial<Customer> = {};
     const lines = description.split('\n');
 
-    lines.forEach(line => {
+    lines.forEach((line: string) => {
       // Expected format: "- DNI / NIF: Valor actual "old" => Nuevo valor "new""
       // Regex to capture: Field Name, Old Value (ignored), New Value
       // Adjusted regex to match the exact format produced by GdprRequestModalComponent

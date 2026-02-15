@@ -13,9 +13,9 @@ import { TagManagerComponent } from '../../../shared/components/tag-manager/tag-
 import { AuthService } from '../../../services/auth.service';
 import { AddressesService } from '../../../services/addresses.service';
 import { GlobalTagsService, GlobalTag } from '../../../core/services/global-tags.service';
-import { Observable, Subscription, of } from 'rxjs';
+import { Observable, Subscription, of, firstValueFrom } from 'rxjs';
 import { finalize, switchMap, map } from 'rxjs/operators';
-import { GdprComplianceService } from '../../../services/gdpr-compliance.service';
+import { GdprComplianceService, GdprConsentRecord } from '../../../services/gdpr-compliance.service';
 import { AuditLoggerService } from '../../../services/audit-logger.service';
 
 @Component({
@@ -44,7 +44,7 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     { step: 1, title: 'Datos', icon: 'fas fa-user', description: 'Identificación y contacto' },
     { step: 2, title: 'Dirección', icon: 'fas fa-map-marker-alt', description: 'Ubicación física' },
     { step: 3, title: 'Facturación', icon: 'fas fa-file-invoice-dollar', description: 'Datos fiscales y pago' },
-    { step: 4, title: 'CRM', icon: 'fas fa-chart-line', description: 'Estado y equipo' }
+    { step: 4, title: 'CRM', icon: 'fas fa-shield-alt', description: 'Estado y Privacidad' }
   ];
 
   // Services
@@ -170,6 +170,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
     // Pro CRM
     tier: 'C',
     contacts: [],
+
+    // GDPR Granular Consents
+    health_data_consent: false,
+    privacy_policy_consent: false,
+    marketing_consent: false,
 
     // Honeypot field (hidden from users, bots will fill it)
     honeypot: ''
@@ -366,6 +371,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       tier: customer.tier || 'C',
       contacts: [], // Contacts loaded separately via loadContacts
 
+      // GDPR Granular Consents
+      health_data_consent: customer.health_data_consent || false,
+      privacy_policy_consent: customer.privacy_policy_consent || false,
+      marketing_consent: customer.marketing_consent || false,
+
       honeypot: ''
     };
 
@@ -442,6 +452,11 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       default_discount: 0,
       tier: 'C',
       contacts: [], // Reset contacts
+
+      // GDPR Granular Consents
+      health_data_consent: false,
+      privacy_policy_consent: false,
+      marketing_consent: false,
 
       honeypot: ''
     };
@@ -976,8 +991,12 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       // Use the ID from savedUser or existing customer
       const finalId = savedUser?.id || this.customer?.id;
       if (finalId) {
-        // Ensure contacts have the correct client_id
         await this.customersService.saveClientContacts(finalId, this.contactList);
+      }
+
+      // SAVE CONSENTS
+      if (finalId) {
+        await this.saveConsents(finalId);
       }
 
       this.saved.emit();
@@ -988,6 +1007,66 @@ export class FormNewCustomerComponent implements OnInit, OnChanges {
       this.toastService.error(`Error: ${err.message || 'No se pudo guardar'}`, 'Error');
     } finally {
       this.isLoading.set(false);
+    }
+  }
+
+  private async saveConsents(customerId: string) {
+    if (!this.formData.email) return;
+
+    const consentsToSave: { type: GdprConsentRecord['consent_type'], purpose: string, value: boolean }[] = [];
+
+    // Always save current state for new customers, or if changed for existing
+    // For simplicity, we save all checked consents to ensure record exists
+    // Health Data
+    if (this.formData.health_data_consent !== (this.customer?.health_data_consent || false)) {
+      consentsToSave.push({
+        type: 'health_data',
+        purpose: 'Prestación de servicios asistenciales y gestión de historia clínica',
+        value: this.formData.health_data_consent
+      });
+    }
+
+    // Privacy Policy
+    if (this.formData.privacy_policy_consent !== (this.customer?.privacy_policy_consent || false)) {
+      consentsToSave.push({
+        type: 'privacy_policy',
+        purpose: 'Aceptación de política de privacidad y condiciones',
+        value: this.formData.privacy_policy_consent
+      });
+    }
+
+    // Marketing
+    if (this.formData.marketing_consent !== (this.customer?.marketing_consent || false)) {
+      consentsToSave.push({
+        type: 'marketing',
+        purpose: 'Envío de comunicaciones comerciales y novedades',
+        value: this.formData.marketing_consent
+      });
+    }
+
+    if (consentsToSave.length === 0) return;
+
+    console.log('Saving granular consents:', consentsToSave);
+
+    try {
+      const promises = consentsToSave.map(c => {
+        const record: GdprConsentRecord = {
+          subject_email: this.formData.email,
+          consent_type: c.type,
+          purpose: c.purpose,
+          consent_given: c.value,
+          consent_method: 'form', // Created via internal CRM form
+          subject_id: customerId
+        };
+        return firstValueFrom(this.gdprService.recordConsent(record, { companyId: this.companyId }));
+      });
+
+      await Promise.all(promises);
+      console.log('Consents saved successfully');
+    } catch (err) {
+      console.error('Error saving consents:', err);
+      // We don't block the UI flow for consent errors, but we log them
+      this.toastService.warning('Aviso', 'El cliente se guardó pero hubo un error al registrar algunos consentimientos.');
     }
   }
 

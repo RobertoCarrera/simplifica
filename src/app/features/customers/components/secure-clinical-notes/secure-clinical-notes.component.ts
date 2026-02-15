@@ -3,12 +3,13 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ClinicalNotesService, ClinicalNote } from '../../../../services/clinical-notes.service';
 import { ToastService } from '../../../../services/toast.service';
+import { GdprComplianceService } from '../../../../services/gdpr-compliance.service';
 
 @Component({
-    selector: 'app-secure-clinical-notes',
-    standalone: true,
-    imports: [CommonModule, FormsModule, DatePipe],
-    template: `
+  selector: 'app-secure-clinical-notes',
+  standalone: true,
+  imports: [CommonModule, FormsModule, DatePipe],
+  template: `
     <div class="secure-notes-container">
       <!-- Header / Add Note -->
       <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6 relative overflow-hidden">
@@ -98,65 +99,68 @@ import { ToastService } from '../../../../services/toast.service';
       </div>
     </div>
   `,
-    styles: [`
+  styles: [`
     .blur-sm { filter: blur(4px); }
   `]
 })
 export class SecureClinicalNotesComponent implements OnInit {
-    @Input({ required: true }) clientId!: string;
+  @Input({ required: true }) clientId!: string;
 
-    private notesService = inject(ClinicalNotesService);
-    private toastService = inject(ToastService);
+  private notesService = inject(ClinicalNotesService);
+  private toastService = inject(ToastService);
+  private gdprService = inject(GdprComplianceService);
 
-    notes = signal<ClinicalNote[]>([]);
-    isLoading = signal(true);
-    isSaving = signal(false);
-    newNoteContent = '';
+  notes = signal<ClinicalNote[]>([]);
+  isLoading = signal(true);
+  isSaving = signal(false);
+  newNoteContent = '';
 
-    revealedNotes = new Set<string>();
+  revealedNotes = new Set<string>();
 
-    ngOnInit() {
-        this.loadNotes();
+  ngOnInit() {
+    this.loadNotes();
+  }
+
+  loadNotes() {
+    this.isLoading.set(true);
+    this.notesService.getNotes(this.clientId).subscribe({
+      next: (data) => {
+        this.notes.set(data);
+        this.isLoading.set(false);
+        // Log GDPR 'Read Access' event
+        this.gdprService.logGdprEvent('ACCESS', 'clinical_notes', this.clientId, undefined, 'User accessed clinical notes timeline');
+      },
+      error: (err) => {
+        this.toastService.error('Error al cargar notas clínicas', 'Error de desencriptado');
+        this.isLoading.set(false);
+      }
+    });
+  }
+
+  addNote() {
+    const content = this.newNoteContent.trim();
+    if (!content) return;
+
+    this.isSaving.set(true);
+    this.notesService.createNote(this.clientId, content).subscribe({
+      next: () => {
+        this.toastService.success('Nota guardada y encriptada correctamente', 'Seguridad');
+        this.newNoteContent = '';
+        this.isSaving.set(false);
+        this.loadNotes(); // Reload timeline
+      },
+      error: (err) => {
+        this.toastService.error('Error al guardar la nota', 'Error');
+        this.isSaving.set(false);
+      }
+    });
+  }
+
+  toggleReveal(id: string) {
+    if (this.revealedNotes.has(id)) {
+      this.revealedNotes.delete(id);
+    } else {
+      this.revealedNotes.add(id);
     }
-
-    loadNotes() {
-        this.isLoading.set(true);
-        this.notesService.getNotes(this.clientId).subscribe({
-            next: (data) => {
-                this.notes.set(data);
-                this.isLoading.set(false);
-            },
-            error: (err) => {
-                this.toastService.error('Error al cargar notas clínicas', 'Error de desencriptado');
-                this.isLoading.set(false);
-            }
-        });
-    }
-
-    addNote() {
-        const content = this.newNoteContent.trim();
-        if (!content) return;
-
-        this.isSaving.set(true);
-        this.notesService.createNote(this.clientId, content).subscribe({
-            next: () => {
-                this.toastService.success('Nota guardada y encriptada correctamente', 'Seguridad');
-                this.newNoteContent = '';
-                this.isSaving.set(false);
-                this.loadNotes(); // Reload timeline
-            },
-            error: (err) => {
-                this.toastService.error('Error al guardar la nota', 'Error');
-                this.isSaving.set(false);
-            }
-        });
-    }
-
-    toggleReveal(id: string) {
-        if (this.revealedNotes.has(id)) {
-            this.revealedNotes.delete(id);
-        } else {
-            this.revealedNotes.add(id);
-        }
-    }
+  }
 }

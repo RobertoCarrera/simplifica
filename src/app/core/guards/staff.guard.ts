@@ -24,7 +24,7 @@ export class StaffGuard implements CanActivate {
                 if (!profile) {
                     // Critical fix: If user is authenticated but has no profile (integrity issue),
                     // redirect to complete-profile instead of forcing logout.
-                    console.warn('StaffGuard: User authenticated but no profile found. Redirecting to /complete-profile.');
+                    console.warn('🛡️ [StaffGuard] BLOCKED: User authenticated but "profile" is null/undefined. Redirecting to /complete-profile.');
                     return this.router.parseUrl('/complete-profile');
                 }
 

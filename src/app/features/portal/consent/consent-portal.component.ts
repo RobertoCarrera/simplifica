@@ -1,5 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { environment } from '../../../../environments/environment';
 import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { RuntimeConfigService } from '../../../services/runtime-config.service';
@@ -73,6 +74,20 @@ import { RuntimeConfigService } from '../../../services/runtime-config.service';
           </div>
         </ng-container>
       </div>
+      
+      <!-- Footer with DPO Contact -->
+      <div class="max-w-xl w-full mt-6 text-center">
+        <p class="text-xs text-gray-500">
+          Contacto Delegado de Protección de Datos (DPO): 
+          <a [href]="'mailto:' + dpoEmail" class="font-medium text-blue-600 hover:text-blue-800 hover:underline">
+            {{ dpoEmail }}
+          </a>
+        </p>
+        <div class="mt-2 text-[10px] text-gray-400">
+          &copy; {{ currentYear }} {{ companyName || 'Simplifica CRM' }}. Todos los derechos reservados.
+        </div>
+      </div>
+
     </div>
   `
 })
@@ -94,6 +109,9 @@ export class ConsentPortalComponent implements OnInit {
     data_processing: true, // Always true/required
     marketing: false
   };
+
+  dpoEmail = environment.gdpr.dpoEmail;
+  currentYear = new Date().getFullYear();
 
   ngOnInit() {
     this.route.queryParams.subscribe(async params => {
@@ -135,7 +153,9 @@ export class ConsentPortalComponent implements OnInit {
     const payload = {
       p_token: this.token,
       p_marketing_consent: this.prefs.marketing,
-      p_ip: 'client-ip', // Backend should extract from headers if possible or we use a service. For now placeholder.
+      p_health_data_consent: this.prefs.data_processing, // Helper mapping or distinct field
+      p_privacy_policy_consent: true, // Implicit acceptance via button click
+      p_ip: 'client-ip',
       p_user_agent: navigator.userAgent
     };
 

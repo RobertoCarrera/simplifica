@@ -55,11 +55,52 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              Consentimientos
+              Consentimientos (RGPD)
             </h4>
             
             <div class="space-y-4">
-              <!-- Marketing Consent -->
+              
+              <!-- 1. Health Data (Sensitive - Art. 9) -->
+              <div class="relative flex items-start p-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800">
+                <div class="flex items-center h-5">
+                  <input 
+                    type="checkbox" 
+                    [(ngModel)]="healthDataConsent"
+                    (change)="updateHealthDataConsent()"
+                    [disabled]="updatingConsent || readOnly"
+                    class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 focus:ring-offset-2 dark:bg-gray-700 dark:border-gray-600">
+                </div>
+                <div class="ml-3 text-sm">
+                  <label class="font-bold text-gray-800 dark:text-gray-100 cursor-pointer">
+                    Datos de Salud (Asistencial)
+                    <span class="ml-2 text-[10px] uppercase font-bold px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded border border-emerald-200">Requerido</span>
+                  </label>
+                  <p class="text-gray-600 dark:text-gray-300 text-xs mt-1">Autorizo el tratamiento de mis datos de salud para la prestación de servicios asistenciales (Historia Clínica).</p>
+                </div>
+              </div>
+
+              <!-- 2. Privacy Policy -->
+              <div class="relative flex items-start p-4 rounded-lg bg-gray-50 dark:bg-gray-700/30 border border-gray-100 dark:border-gray-700">
+                <div class="flex items-center h-5">
+                  <input 
+                    type="checkbox" 
+                    [(ngModel)]="privacyPolicyConsent"
+                    (change)="updatePrivacyPolicyConsent()"
+                    [disabled]="updatingConsent || readOnly"
+                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-offset-2 dark:bg-gray-700 dark:border-gray-600">
+                </div>
+                <div class="ml-3 text-sm">
+                  <label class="font-medium text-gray-700 dark:text-gray-200 cursor-pointer flex items-center gap-2">
+                    Política de Privacidad
+                    <span *ngIf="privacyPolicyConsent" class="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200 uppercase">
+                      Contrato Firmado
+                    </span>
+                  </label>
+                  <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">Acepto la política de privacidad y condiciones del servicio.</p>
+                </div>
+              </div>
+
+              <!-- 3. Marketing Consent -->
               <div class="relative flex items-start p-4 rounded-lg bg-gray-50 dark:bg-gray-700/30 border border-gray-100 dark:border-gray-700">
                 <div class="flex items-center h-5">
                   <input 
@@ -67,29 +108,13 @@ import { firstValueFrom, filter, switchMap, take } from 'rxjs';
                     [(ngModel)]="marketingConsent"
                     (change)="updateMarketingConsent()"
                     [disabled]="updatingConsent || readOnly"
-                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-offset-2 dark:bg-gray-700 dark:border-gray-600">
+                    class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 focus:ring-offset-2 dark:bg-gray-700 dark:border-gray-600">
                 </div>
                 <div class="ml-3 text-sm">
-                  <label class="font-medium text-gray-700 dark:text-gray-200 cursor-pointer">Marketing y comunicaciones</label>
-                  <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">Autorizo el envío de novedades y ofertas comerciales.</p>
+                  <label class="font-medium text-gray-700 dark:text-gray-200 cursor-pointer">Marketing y Novedades</label>
+                  <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">Autorizo el envío de ofertas comerciales, recordatorios y newsletters.</p>
                 </div>
                 <span *ngIf="updatingConsent" class="absolute top-2 right-2 text-xs text-blue-500 animate-pulse">Guardando...</span>
-              </div>
-
-              <!-- Data Processing Consent -->
-              <div class="relative flex items-start p-4 rounded-lg bg-gray-50 dark:bg-gray-700/30 border border-gray-100 dark:border-gray-700">
-                <div class="flex items-center h-5">
-                  <input 
-                    type="checkbox" 
-                    [(ngModel)]="dataProcessingConsent"
-                    (change)="updateDataProcessingConsent()"
-                    [disabled]="updatingConsent || readOnly"
-                    class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-offset-2 dark:bg-gray-700 dark:border-gray-600">
-                </div>
-                <div class="ml-3 text-sm">
-                  <label class="font-medium text-gray-700 dark:text-gray-200 cursor-pointer">Procesamiento de datos</label>
-                  <p class="text-gray-500 dark:text-gray-400 text-xs mt-1">Autorizo el tratamiento de mis datos para la prestación del servicio.</p>
-                </div>
               </div>
 
               <!-- Last Update -->
@@ -352,10 +377,12 @@ export class ClientGdprPanelComponent implements OnInit {
   @ViewChild('requestModal') requestModal!: GdprRequestModalComponent;
 
   // Estado de consentimientos
+  healthDataConsent: boolean = false;
+  privacyPolicyConsent: boolean = false;
   marketingConsent: boolean = false;
-  dataProcessingConsent: boolean = false;
+
   lastConsentUpdate: string = '';
-  retentionPeriodYears: number = 7; // Default by strict fiscal laws
+  retentionPeriodYears: number = 5; // Updated to 5 years (Health Data Law)
 
   // Invitation Status
   invitationStatus: 'not_sent' | 'sent' | 'opened' | 'completed' = 'not_sent';
@@ -414,10 +441,20 @@ export class ClientGdprPanelComponent implements OnInit {
     this.gdprService.getClientGdprStatus(this.clientId).subscribe({
       next: (status) => {
         if (status) {
+          // Map legacy/new fields
           this.marketingConsent = status.marketing_consent;
           this.invitationStatus = status.invitation_status || 'not_sent';
           this.invitationSentAt = status.invitation_sent_at;
-          this.dataProcessingConsent = status.consent_status === 'accepted';
+
+          // Map 'consent_status' to granular if possible, or use defaults
+          // Ideally we fetch from 'gdpr_consent_records' table for granular details, 
+          // but for now we might need to rely on what we have or fetch extra.
+          // Let's assume 'data_processing_consent' (legacy) maps to 'privacy_policy'
+          this.privacyPolicyConsent = status.consent_status === 'accepted';
+
+          // healthDataConsent is new, likely false unless verified
+          // We should ideally fetch the specific records.
+          this.loadGranularConsents();
 
           if (status.consent_date) {
             this.lastConsentUpdate = this.formatDate(status.consent_date);
@@ -433,6 +470,21 @@ export class ClientGdprPanelComponent implements OnInit {
         console.error('Error loading GDPR status', err);
         this.error = 'Error cargando estado GDPR';
         this.loading = false;
+      }
+    });
+  }
+
+  loadGranularConsents() {
+    this.gdprService.getConsentRecords(this.clientEmail).subscribe({
+      next: (records) => {
+        // Find latest for each type
+        const health = records.filter(r => r.consent_type === 'health_data').sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
+        const privacy = records.filter(r => r.consent_type === 'privacy_policy').sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
+        const marketing = records.filter(r => r.consent_type === 'marketing').sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0];
+
+        if (health) this.healthDataConsent = health.consent_given;
+        if (privacy) this.privacyPolicyConsent = privacy.consent_given;
+        if (marketing) this.marketingConsent = marketing.consent_given;
       }
     });
   }
@@ -495,15 +547,19 @@ export class ClientGdprPanelComponent implements OnInit {
   // OK, I will cancel this and do the imports first.
 
 
+  updateHealthDataConsent() {
+    this.recordConsent('health_data', this.healthDataConsent);
+  }
+
+  updatePrivacyPolicyConsent() {
+    this.recordConsent('privacy_policy', this.privacyPolicyConsent);
+  }
+
   updateMarketingConsent() {
     this.recordConsent('marketing', this.marketingConsent);
   }
 
-  updateDataProcessingConsent() {
-    this.recordConsent('data_processing', this.dataProcessingConsent);
-  }
-
-  private recordConsent(type: 'marketing' | 'data_processing', given: boolean) {
+  private recordConsent(type: 'marketing' | 'health_data' | 'privacy_policy', given: boolean) {
     this.updatingConsent = true;
 
     const record: GdprConsentRecord = {
@@ -512,16 +568,17 @@ export class ClientGdprPanelComponent implements OnInit {
       consent_type: type,
       consent_given: given,
       consent_method: 'form',
-      purpose: type === 'marketing' ? 'Comunicaciones comerciales' : 'Gestión de servicios',
-      data_processing_purposes: type === 'data_processing' ? ['service_delivery', 'legal_compliance'] : ['marketing']
+      purpose: this.getPurposeLabel(type),
+      data_processing_purposes: [type]
     };
 
     this.gdprService.recordConsent(record).subscribe({
       next: () => {
-        // SYNC WITH CUSTOMERS TABLE FOR STATS
+        // SYNC WITH CUSTOMERS TABLE FOR STATS (Legacy support)
         const updatePayload: any = {};
         if (type === 'marketing') updatePayload.marketing_consent = given;
-        if (type === 'data_processing') updatePayload.data_processing_consent = given;
+        if (type === 'privacy_policy') updatePayload.data_processing_consent = given; // Map privacy to processing
+        // Health data consent might not have a direct column in clients table yet, strictly specific record
 
         this.customersService.updateCustomer(this.clientId, updatePayload).subscribe({
           error: (e) => console.error('Error syncing consent stats', e)
@@ -529,17 +586,28 @@ export class ClientGdprPanelComponent implements OnInit {
 
         this.toastService.success('Consentimiento actualizado correctamente', 'Éxito');
         this.updatingConsent = false;
-        this.loadConsentStatus();
+        // this.loadConsentStatus(); // Avoid full reload to prevent UI jump
+        this.lastConsentUpdate = 'Ahora mismo';
       },
       error: (err) => {
         this.error = 'Error al guardar consentimiento: ' + err.message;
         this.toastService.error(this.error, 'Error');
         // Revert UI
         if (type === 'marketing') this.marketingConsent = !given;
-        else this.dataProcessingConsent = !given;
+        if (type === 'health_data') this.healthDataConsent = !given;
+        if (type === 'privacy_policy') this.privacyPolicyConsent = !given;
         this.updatingConsent = false;
       }
     });
+  }
+
+  private getPurposeLabel(type: string): string {
+    switch (type) {
+      case 'health_data': return 'Tratamiento de Datos de Salud (Asistencial)';
+      case 'privacy_policy': return 'Política de Privacidad y Términos';
+      case 'marketing': return 'Comunicaciones Comerciales';
+      default: return type;
+    }
   }
 
   exportData() {

@@ -45,6 +45,15 @@
                             [class.fa-sort-amount-up]="sortOrder() === 'asc'"></i>
                     </button>
 
+                    <!-- Show Restricted Toggle -->
+                    <button (click)="showRestricted.set(!showRestricted())"
+                        class="flex-shrink-0 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
+                        [class.bg-red-50]="showRestricted()" [class.text-red-600]="showRestricted()"
+                        [class.border-red-200]="showRestricted()"
+                        [title]="showRestricted() ? 'Ver clientes activos' : 'Ver solo usuarios restringidos'">
+                        <i class="fas fa-ban" [class.text-red-500]="showRestricted()"></i>
+                    </button>
+
                     <!-- View Mode Toggle -->
                     <div
                         class="flex-shrink-0 hidden sm:flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
@@ -130,27 +139,31 @@
 
                                             <!-- New Action Buttons -->
                                             <button (click)="viewCustomer(customer, 'agenda')"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
+                                                [disabled]="customer.access_restrictions?.blocked"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <i class="fas fa-calendar-alt w-5 text-purple-500 mr-2 opacity-80"></i>
                                                 Agenda
                                             </button>
 
                                             <button (click)="viewCustomer(customer, 'clinical')"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
+                                                [disabled]="customer.access_restrictions?.blocked"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <i
                                                     class="fas fa-notes-medical w-5 text-emerald-500 mr-2 opacity-80"></i>
                                                 Notas Clínicas
                                             </button>
 
                                             <button (click)="viewCustomer(customer, 'billing')"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
+                                                [disabled]="customer.access_restrictions?.blocked"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <i
                                                     class="fas fa-file-invoice-dollar w-5 text-amber-500 mr-2 opacity-80"></i>
                                                 Facturación
                                             </button>
 
                                             <button (click)="viewCustomer(customer, 'documents')"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300">
+                                                [disabled]="customer.access_restrictions?.blocked"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <i class="fas fa-folder w-5 text-cyan-500 mr-2 opacity-80"></i>
                                                 Documentos
                                             </button>
@@ -158,19 +171,20 @@
                                             <div class="h-px bg-gray-100 dark:bg-gray-700 my-1"></div>
 
                                             <button (click)="editCustomer(customer)"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center">
+                                                [disabled]="customer.access_restrictions?.blocked"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <i class="fas fa-edit w-5 text-gray-400 mr-2"></i> Editar
                                             </button>
                                             <button (click)="duplicateCustomer(customer)"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center">
+                                                [disabled]="customer.access_restrictions?.blocked"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <i class="fas fa-copy w-5 text-gray-400 mr-2"></i> Duplicar
                                             </button>
                                             <button (click)="openInviteModal(customer)"
-                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center">
+                                                [disabled]="customer.access_restrictions?.blocked"
+                                                class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
                                                 <i class="fas fa-envelope-open-text w-5 text-gray-400 mr-2"></i>
-                                                Invitar
-                                                al
-                                                Portal
+                                                Invitar al Portal
                                             </button>
                                         </div>
                                         <!-- GDPR Section -->
@@ -198,7 +212,6 @@
                                         [style.background]="customer.avatarGradient">
                                         {{ customer.initials }}
                                     </div>
-                                    <!-- Online/Active Indicator could go here -->
                                 </div>
 
                                 <div class="min-w-0 flex-1">
@@ -206,8 +219,15 @@
                                         [title]="customer.displayName">
                                         {{ customer.displayName }}
                                     </h3>
-                                    <!-- Incomplete warning -->
-                                    @if (!isCustomerComplete(customer)) {
+
+                                    <!-- Status Badges: Blocked takes priority over Missing Data -->
+                                    @if(customer.access_restrictions?.blocked) {
+                                    <div
+                                        class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 tracking-wide">
+                                        <i class="fas fa-ban"></i>
+                                        Acceso Restringido
+                                    </div>
+                                    } @else if (!isCustomerComplete(customer)) {
                                     <div class="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200"
                                         [title]="formatAttentionReasons(customer)">
                                         <i class="fas fa-exclamation-triangle"></i>
@@ -253,7 +273,8 @@
                                 <!-- Portal Access (compact) -->
                                 <button
                                     (click)="togglePortalAccess(customer, !hasPortalAccess(customer, customer.email), $event)"
-                                    class="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors"
+                                    [disabled]="customer.access_restrictions?.blocked"
+                                    class="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     [class]="hasPortalAccess(customer, customer.email)
                                         ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300' 
                                         : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700/50 dark:text-gray-400'"
@@ -275,7 +296,8 @@
 
                                     <!-- Edit -->
                                     <button (click)="editCustomer(customer); $event.stopPropagation()"
-                                        class="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 transition-all transform hover:scale-110 duration-200"
+                                        [disabled]="customer.access_restrictions?.blocked"
+                                        class="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 transition-all transform hover:scale-110 duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-400 disabled:hover:bg-transparent"
                                         title="Editar">
                                         <i class="fas fa-edit text-xs"></i>
                                     </button>
